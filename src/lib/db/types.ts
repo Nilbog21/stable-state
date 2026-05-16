@@ -30,6 +30,7 @@ export interface Horse {
   barn_id: string
   name: string
   created_at: string
+  updated_at: string
 }
 
 export interface Rider {
@@ -37,6 +38,7 @@ export interface Rider {
   barn_id: string
   name: string
   created_at: string
+  updated_at: string
 }
 
 export interface Lesson {
@@ -50,6 +52,7 @@ export interface Lesson {
 
 export interface LessonHorse {
   id: string
+  barn_id: string
   lesson_id: string
   horse_id: string
   exertion_level: number
@@ -57,6 +60,7 @@ export interface LessonHorse {
 
 export interface LessonRider {
   id: string
+  barn_id: string
   lesson_id: string
   rider_id: string
 }

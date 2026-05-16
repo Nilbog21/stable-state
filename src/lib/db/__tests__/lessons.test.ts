@@ -22,6 +22,7 @@ const mockLesson = {
 
 const mockLessonHorse = {
   id: 'lh-1',
+  barn_id: 'barn-1',
   lesson_id: 'lesson-1',
   horse_id: 'horse-1',
   exertion_level: 3,
@@ -29,6 +30,7 @@ const mockLessonHorse = {
 
 const mockLessonRider = {
   id: 'lr-1',
+  barn_id: 'barn-1',
   lesson_id: 'lesson-1',
   rider_id: 'rider-1',
 }
@@ -118,10 +120,10 @@ describe('addHorseToLesson', () => {
       from: vi.fn().mockReturnValue({ insert: mockInsert }),
     } as any)
 
-    await addHorseToLesson('lesson-1', 'horse-1', 5)
+    await addHorseToLesson('lesson-1', 'horse-1', 'barn-1', 5)
 
     expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 5 })
+      expect.objectContaining({ lesson_id: 'lesson-1', horse_id: 'horse-1', barn_id: 'barn-1', exertion_level: 5 })
     )
   })
 
@@ -135,7 +137,7 @@ describe('addHorseToLesson', () => {
       from: vi.fn().mockReturnValue({ insert: mockInsert }),
     } as any)
 
-    await addHorseToLesson('lesson-1', 'horse-1')
+    await addHorseToLesson('lesson-1', 'horse-1', 'barn-1')
 
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ exertion_level: 3 })
@@ -153,9 +155,25 @@ describe('addHorseToLesson', () => {
       }),
     } as any)
 
-    const result = await addHorseToLesson('lesson-1', 'horse-1', 3)
+    const result = await addHorseToLesson('lesson-1', 'horse-1', 'barn-1', 3)
 
     expect(result).toEqual(mockLessonHorse)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(
+      addHorseToLesson('lesson-1', 'horse-1', 'barn-1')
+    ).rejects.toThrow('db error')
   })
 })
 
@@ -164,7 +182,7 @@ describe('addRiderToLesson', () => {
     vi.clearAllMocks()
   })
 
-  it('should_insert_lesson_rider_with_lesson_and_rider_ids', async () => {
+  it('should_insert_lesson_rider_with_lesson_rider_and_barn_ids', async () => {
     const mockInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
         single: vi.fn().mockResolvedValue({ data: mockLessonRider, error: null }),
@@ -174,10 +192,10 @@ describe('addRiderToLesson', () => {
       from: vi.fn().mockReturnValue({ insert: mockInsert }),
     } as any)
 
-    await addRiderToLesson('lesson-1', 'rider-1')
+    await addRiderToLesson('lesson-1', 'rider-1', 'barn-1')
 
     expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ lesson_id: 'lesson-1', rider_id: 'rider-1' })
+      expect.objectContaining({ lesson_id: 'lesson-1', rider_id: 'rider-1', barn_id: 'barn-1' })
     )
   })
 
@@ -192,8 +210,24 @@ describe('addRiderToLesson', () => {
       }),
     } as any)
 
-    const result = await addRiderToLesson('lesson-1', 'rider-1')
+    const result = await addRiderToLesson('lesson-1', 'rider-1', 'barn-1')
 
     expect(result).toEqual(mockLessonRider)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(
+      addRiderToLesson('lesson-1', 'rider-1', 'barn-1')
+    ).rejects.toThrow('db error')
   })
 })
