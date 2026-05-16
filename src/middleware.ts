@@ -1,6 +1,8 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 
+const BARN_ROUTE = /^\/barn\/([^/]+)\//
+
 export async function middleware(request: NextRequest) {
   let response = NextResponse.next({ request })
 
@@ -23,7 +25,25 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  await supabase.auth.getUser()
+  const { data } = await supabase.auth.getUser()
+
+  const { pathname } = new URL(request.url)
+  const barnMatch = BARN_ROUTE.exec(pathname)
+
+  if (barnMatch) {
+    const barnSlug = barnMatch[1]
+
+    if (pathname === `/barn/${barnSlug}/login`) {
+      return response
+    }
+
+    const userId = data?.user?.id
+    const sessionCookie = request.cookies.get(`barn_session_${barnSlug}`)
+
+    if (!sessionCookie || sessionCookie.value !== userId) {
+      return NextResponse.redirect(new URL(`/barn/${barnSlug}/login`, request.url))
+    }
+  }
 
   return response
 }
