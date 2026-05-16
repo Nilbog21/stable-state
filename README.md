@@ -43,7 +43,7 @@ Paste the contents of `supabase/migrations/20260516000000_roles_and_barn_members
 
 ### Seed the admin account
 
-After the migration runs, insert the admin's Google email address into `seeded_accounts`. On the admin's first Google OAuth sign-in, the trigger will automatically create an active `barn_memberships` row for them.
+After the migration runs, insert the admin's Google email address into `seeded_accounts`. On the admin's first Google OAuth sign-in, the SQL trigger `on_auth_user_created` fires automatically — it checks whether the new user's email is in `seeded_accounts` and, if so, creates an active `barn_memberships` row for them.
 
 ```sql
 INSERT INTO public.seeded_accounts (email, role, barn_id)
@@ -59,4 +59,4 @@ INSERT INTO public.seeded_accounts (email, role, barn_id)
 VALUES ('<manager-google-email>', 'manager', '<barn-uuid>');
 ```
 
-The manager will receive an active membership the first time they sign in with that Google account.
+The same SQL trigger applies: when the manager first signs in with Google, `on_auth_user_created` matches their email against `seeded_accounts` and creates an active `barn_memberships` row automatically.
