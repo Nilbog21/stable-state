@@ -47,3 +47,25 @@ export async function seedManagerAccount(
 
   if (error) throw error
 }
+
+export async function applySeededMembership(
+  userId: string,
+  email: string
+): Promise<void> {
+  const supabase = await createClient()
+
+  const { data: seeded } = await supabase
+    .from('seeded_accounts')
+    .select('*')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (!seeded) return
+
+  await supabase
+    .from('barn_memberships')
+    .upsert(
+      { user_id: userId, barn_id: seeded.barn_id, role: seeded.role, status: 'active' },
+      { onConflict: 'user_id,barn_id' }
+    )
+}
