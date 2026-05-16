@@ -98,5 +98,23 @@ describe('middleware', () => {
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
+
+    it('should_not_redirect_barn_register_page_itself', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } })
+
+      const request = makeRequest('http://localhost:3000/barn/green-acres/register')
+      await middleware(request)
+
+      expect(mockNextResponseRedirect).not.toHaveBeenCalled()
+    })
+
+    it('should_not_redirect_barn_pending_page_itself', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: null } })
+
+      const request = makeRequest('http://localhost:3000/barn/green-acres/pending')
+      await middleware(request)
+
+      expect(mockNextResponseRedirect).not.toHaveBeenCalled()
+    })
   })
 })
