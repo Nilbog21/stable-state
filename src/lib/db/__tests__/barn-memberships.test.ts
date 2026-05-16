@@ -9,6 +9,7 @@ import {
   getUserMembership,
   createPendingMembership,
   seedManagerAccount,
+  applySeededMembership,
 } from '../barn-memberships'
 
 const mockMembership = {
@@ -151,5 +152,59 @@ describe('seedManagerAccount', () => {
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ barn_id: 'barn-1' })
     )
+  })
+})
+
+describe('applySeededMembership', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_upsert_active_membership_when_email_is_in_seeded_accounts', async () => {
+    const seeded = { email: 'admin@example.com', role: 'admin', barn_id: null }
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'seeded_accounts') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: seeded, error: null }),
+              }),
+            }),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applySeededMembership('user-1', 'admin@example.com')
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1', role: 'admin', status: 'active' }),
+      expect.anything()
+    )
+  })
+
+  it('should_not_upsert_when_email_is_not_in_seeded_accounts', async () => {
+    const mockUpsert = vi.fn()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'seeded_accounts') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applySeededMembership('user-1', 'unknown@example.com')
+
+    expect(mockUpsert).not.toHaveBeenCalled()
   })
 })
