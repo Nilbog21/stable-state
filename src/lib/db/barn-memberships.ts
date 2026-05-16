@@ -3,21 +3,16 @@ import type { BarnMembership, Role } from './types'
 
 export async function getUserMembership(
   userId: string,
-  barnId?: string
+  barnId: string
 ): Promise<BarnMembership | null> {
   const supabase = await createClient()
-  let query = supabase
+  const { data, error } = await supabase
     .from('barn_memberships')
     .select('*')
     .eq('user_id', userId)
+    .eq('barn_id', barnId)
+    .maybeSingle()
 
-  if (barnId !== undefined) {
-    query = query.eq('barn_id', barnId)
-  } else {
-    query = query.limit(1)
-  }
-
-  const { data, error } = await query.maybeSingle()
   if (error) throw error
   return data
 }

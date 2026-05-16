@@ -10,7 +10,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { signInWithGoogle, signOut } from '../auth'
+import { signInWithGoogle, signOut, signInWithGoogleForBarn } from '../auth'
 
 describe('signInWithGoogle', () => {
   beforeEach(() => {
@@ -62,6 +62,64 @@ describe('signInWithGoogle', () => {
     await signInWithGoogle()
 
     expect(redirect).toHaveBeenCalledWith('/login?error=oauth_failed')
+  })
+})
+
+describe('signInWithGoogleForBarn', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_include_barn_slug_in_callback_redirect_url', async () => {
+    const mockSignInWithOAuth = vi.fn().mockResolvedValue({
+      data: { url: 'https://accounts.google.com/oauth' },
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { signInWithOAuth: mockSignInWithOAuth },
+    } as any)
+
+    await signInWithGoogleForBarn('green-acres')
+
+    const callArgs = mockSignInWithOAuth.mock.calls[0][0]
+    expect(callArgs.options.redirectTo).toContain('barn=green-acres')
+  })
+
+  it('should_redirect_to_oauth_url_on_success', async () => {
+    const oauthUrl = 'https://accounts.google.com/oauth?client_id=xxx'
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        signInWithOAuth: vi.fn().mockResolvedValue({
+          data: { url: oauthUrl },
+          error: null,
+        }),
+      },
+    } as any)
+
+    await signInWithGoogleForBarn('green-acres')
+
+    expect(redirect).toHaveBeenCalledWith(oauthUrl)
+  })
+
+  it('should_redirect_to_login_error_when_slug_contains_invalid_characters', async () => {
+    await signInWithGoogleForBarn('../../etc')
+
+    expect(redirect).toHaveBeenCalledWith('/login?error=invalid_barn')
+  })
+
+  it('should_redirect_to_barn_login_error_page_when_oauth_fails', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        signInWithOAuth: vi.fn().mockResolvedValue({
+          data: { url: null },
+          error: { message: 'oauth error' },
+        }),
+      },
+    } as any)
+
+    await signInWithGoogleForBarn('green-acres')
+
+    expect(redirect).toHaveBeenCalledWith('/barn/green-acres/login?error=oauth_failed')
   })
 })
 
