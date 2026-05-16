@@ -13,9 +13,12 @@ export async function getUserMembership(
 
   if (barnId !== undefined) {
     query = query.eq('barn_id', barnId)
+  } else {
+    query = query.limit(1)
   }
 
-  const { data } = await query.maybeSingle()
+  const { data, error } = await query.maybeSingle()
+  if (error) throw error
   return data
 }
 
@@ -62,10 +65,11 @@ export async function applySeededMembership(
 
   if (!seeded) return
 
-  await supabase
+  const { error } = await supabase
     .from('barn_memberships')
     .upsert(
       { user_id: userId, barn_id: seeded.barn_id, role: seeded.role, status: 'active' },
       { onConflict: 'user_id,barn_id' }
     )
+  if (error) throw error
 }

@@ -11,9 +11,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user?.email) {
-        await applySeededMembership(user.id, user.email)
+      const { data } = await supabase.auth.getUser()
+      if (data?.user?.email) {
+        await applySeededMembership(data.user.id, data.user.email)
       }
       return NextResponse.redirect(`${origin}/`)
     }

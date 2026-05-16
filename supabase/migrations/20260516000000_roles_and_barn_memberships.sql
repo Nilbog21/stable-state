@@ -31,7 +31,7 @@ CREATE TABLE public.barn_memberships (
   role TEXT NOT NULL REFERENCES public.roles(name),
   status TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('active', 'pending')),
   created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE(user_id, barn_id)
+  UNIQUE NULLS NOT DISTINCT (user_id, barn_id)
 );
 
 -- Auto-grant trigger: when a new auth.users row is inserted (first OAuth sign-in),
