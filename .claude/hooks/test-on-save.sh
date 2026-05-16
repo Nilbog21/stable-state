@@ -9,5 +9,5 @@ fi
 
 if [[ "$file_path" == *test* ]] || [[ "$file_path" == *spec* ]]; then
   cwd=$(echo "$input" | jq -r '.cwd // empty')
-  cd "$cwd" && npx vitest run --reporter=verbose 2>&1 | head -50
+  cd "$cwd" && npx vitest run --reporter=verbose 2>&1
 fi

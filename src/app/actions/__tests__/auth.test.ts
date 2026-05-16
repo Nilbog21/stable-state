@@ -101,6 +101,12 @@ describe('signInWithGoogleForBarn', () => {
     expect(redirect).toHaveBeenCalledWith(oauthUrl)
   })
 
+  it('should_redirect_to_login_error_when_slug_contains_invalid_characters', async () => {
+    await signInWithGoogleForBarn('../../etc')
+
+    expect(redirect).toHaveBeenCalledWith('/login?error=invalid_barn')
+  })
+
   it('should_redirect_to_barn_login_error_page_when_oauth_fails', async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {

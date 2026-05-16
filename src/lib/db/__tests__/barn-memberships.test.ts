@@ -31,7 +31,7 @@ describe('getUserMembership', () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
               maybeSingle: vi.fn().mockResolvedValue({
                 data: mockMembership,
                 error: null,
@@ -42,7 +42,7 @@ describe('getUserMembership', () => {
       }),
     } as any)
 
-    const result = await getUserMembership('user-1')
+    const result = await getUserMembership('user-1', 'barn-1')
 
     expect(result).toEqual(mockMembership)
   })
@@ -52,7 +52,7 @@ describe('getUserMembership', () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            limit: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
               maybeSingle: vi.fn().mockResolvedValue({
                 data: null,
                 error: null,
@@ -63,27 +63,26 @@ describe('getUserMembership', () => {
       }),
     } as any)
 
-    const result = await getUserMembership('user-1')
+    const result = await getUserMembership('user-1', 'barn-1')
 
     expect(result).toBeNull()
   })
 
-  it('should_query_by_barn_id_when_provided', async () => {
-    const mockEq = vi.fn()
-    const chainable = {
-      eq: mockEq,
+  it('should_query_by_user_id_and_barn_id', async () => {
+    const mockBarnEq = vi.fn().mockReturnValue({
       maybeSingle: vi.fn().mockResolvedValue({ data: mockMembership, error: null }),
-    }
-    mockEq.mockReturnValue(chainable)
+    })
+    const mockUserEq = vi.fn().mockReturnValue({ eq: mockBarnEq })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue(chainable),
+        select: vi.fn().mockReturnValue({ eq: mockUserEq }),
       }),
     } as any)
 
     await getUserMembership('user-1', 'barn-1')
 
-    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockUserEq).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 })
 

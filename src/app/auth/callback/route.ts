@@ -37,7 +37,7 @@ export async function GET(request: NextRequest) {
           httpOnly: true,
           sameSite: 'lax',
           secure: process.env.NODE_ENV === 'production',
-          path: '/',
+          path: `/barn/${barnSlug}/`,
         })
         return response
       }

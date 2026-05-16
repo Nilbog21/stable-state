@@ -136,7 +136,7 @@ describe('GET /auth/callback', () => {
       expect(mockCookiesSet).toHaveBeenCalledWith(
         'barn_session_green-acres',
         'user-1',
-        expect.objectContaining({ httpOnly: true })
+        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres/' })
       )
     })
 
