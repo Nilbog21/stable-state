@@ -64,18 +64,21 @@ describe('getUserMembership', () => {
   })
 
   it('should_query_by_barn_id_when_provided', async () => {
-    const mockEq = vi.fn().mockReturnValue({
+    const mockEq = vi.fn()
+    const chainable = {
+      eq: mockEq,
       maybeSingle: vi.fn().mockResolvedValue({ data: mockMembership, error: null }),
-    })
+    }
+    mockEq.mockReturnValue(chainable)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({ eq: mockEq }),
+        select: vi.fn().mockReturnValue(chainable),
       }),
     } as any)
 
     await getUserMembership('user-1', 'barn-1')
 
-    expect(mockEq).toHaveBeenCalledWith(expect.stringMatching(/barn_id/), 'barn-1')
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 })
 
