@@ -29,7 +29,11 @@ export async function GET(request: NextRequest) {
           : null
 
         if (!membership) {
-          return NextResponse.redirect(`${origin}/barn/${barnSlug}/login?error=access_denied`)
+          return NextResponse.redirect(`${origin}/barn/${barnSlug}/register`)
+        }
+
+        if (membership.status === 'pending') {
+          return NextResponse.redirect(`${origin}/barn/${barnSlug}/pending`)
         }
 
         const response = NextResponse.redirect(`${origin}/barn/${barnSlug}/`)
