@@ -33,7 +33,12 @@ export async function middleware(request: NextRequest) {
   if (barnMatch) {
     const barnSlug = barnMatch[1]
 
-    if (pathname === `/barn/${barnSlug}/login`) {
+    const exemptPaths = [
+      `/barn/${barnSlug}/login`,
+      `/barn/${barnSlug}/register`,
+      `/barn/${barnSlug}/pending`,
+    ]
+    if (exemptPaths.includes(pathname)) {
       return response
     }
 

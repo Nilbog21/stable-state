@@ -26,12 +26,13 @@ export async function createLesson({
 export async function addHorseToLesson(
   lessonId: string,
   horseId: string,
+  barnId: string,
   exertionLevel = 3
 ): Promise<LessonHorse> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('lesson_horses')
-    .insert({ lesson_id: lessonId, horse_id: horseId, exertion_level: exertionLevel })
+    .insert({ lesson_id: lessonId, horse_id: horseId, barn_id: barnId, exertion_level: exertionLevel })
     .select()
     .single()
 
@@ -41,12 +42,13 @@ export async function addHorseToLesson(
 
 export async function addRiderToLesson(
   lessonId: string,
-  riderId: string
+  riderId: string,
+  barnId: string
 ): Promise<LessonRider> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('lesson_riders')
-    .insert({ lesson_id: lessonId, rider_id: riderId })
+    .insert({ lesson_id: lessonId, rider_id: riderId, barn_id: barnId })
     .select()
     .single()
 
