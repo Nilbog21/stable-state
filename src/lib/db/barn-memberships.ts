@@ -46,6 +46,71 @@ export async function seedManagerAccount(
   if (error) throw error
 }
 
+export async function getAdminMembership(
+  userId: string
+): Promise<BarnMembership | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .select('*')
+    .eq('user_id', userId)
+    .is('barn_id', null)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function getPendingMemberships(
+  barnId: string
+): Promise<BarnMembership[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .select('*')
+    .eq('barn_id', barnId)
+    .eq('status', 'pending')
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data ?? []
+}
+
+export async function getActiveMemberships(
+  barnId: string
+): Promise<BarnMembership[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .select('*')
+    .eq('barn_id', barnId)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data ?? []
+}
+
+export async function approveMembership(membershipId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('barn_memberships')
+    .update({ status: 'active' })
+    .eq('id', membershipId)
+
+  if (error) throw error
+}
+
+export async function deleteMembership(membershipId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('barn_memberships')
+    .delete()
+    .eq('id', membershipId)
+
+  if (error) throw error
+}
+
 export async function applySeededMembership(
   userId: string,
   email: string

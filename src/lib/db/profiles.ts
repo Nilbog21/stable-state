@@ -19,3 +19,18 @@ export async function upsertProfile(
   if (error) throw error
   return data
 }
+
+export async function getProfilesByUserIds(
+  userIds: string[]
+): Promise<Profile[]> {
+  if (userIds.length === 0) return []
+
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .in('user_id', userIds)
+
+  if (error) throw error
+  return data ?? []
+}
