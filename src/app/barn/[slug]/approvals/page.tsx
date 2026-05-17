@@ -83,6 +83,8 @@ export default async function ApprovalsPage({
     isAdmin ? getActiveMemberships(barn.id) : Promise.resolve([] as BarnMembership[]),
   ])
 
+  const removable = active.filter((m) => m.user_id !== data.user!.id)
+
   const allUserIds = [...new Set([...pending, ...active].map((m) => m.user_id))]
   const profiles = await getProfilesByUserIds(allUserIds)
 
@@ -146,7 +148,7 @@ export default async function ApprovalsPage({
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Active Members
           </h2>
-          {active.length === 0 ? (
+          {removable.length === 0 ? (
             <p className="text-sm text-zinc-500 dark:text-zinc-400">No active members.</p>
           ) : (
             <table className="w-full">
@@ -159,7 +161,7 @@ export default async function ApprovalsPage({
                 </tr>
               </thead>
               <tbody>
-                {active.map((m) => (
+                {removable.map((m) => (
                   <MemberRow
                     key={m.id}
                     membership={m}
