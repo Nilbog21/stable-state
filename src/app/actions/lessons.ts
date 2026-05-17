@@ -2,6 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { redirect } from 'next/navigation'
 
 export async function submitLesson(
@@ -24,12 +25,17 @@ export async function submitLesson(
 
   if (!user) return { error: 'not authenticated' }
 
+  const membership = await getUserMembership(user.id, barnId)
+  const isManager = membership?.role === 'manager'
+  const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
+  const instructorId = instructorIdFromForm || user.id
+
   const fee = feeRaw ? parseFloat(feeRaw) : null
 
   try {
     const lesson = await createLesson({
       barnId,
-      instructorId: user.id,
+      instructorId,
       fee,
       lessonAt,
     })
