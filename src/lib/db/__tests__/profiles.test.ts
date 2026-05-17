@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { upsertProfile } from '../profiles'
+import { upsertProfile, getProfilesByUserIds } from '../profiles'
 
 const mockProfile = { user_id: 'user-1', first_name: 'Jane', last_name: 'Doe', created_at: '' }
 
@@ -54,5 +54,49 @@ describe('upsertProfile', () => {
     vi.mocked(createClient).mockResolvedValue(mock as any)
 
     await expect(upsertProfile('user-1', 'Jane', 'Doe')).rejects.toEqual(dbError)
+  })
+})
+
+const mockProfiles = [
+  { user_id: 'user-1', first_name: 'Jane', last_name: 'Doe', created_at: '' },
+  { user_id: 'user-2', first_name: 'John', last_name: 'Smith', created_at: '' },
+]
+
+describe('getProfilesByUserIds', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_return_profiles_for_given_user_ids', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          in: vi.fn().mockResolvedValue({ data: mockProfiles, error: null }),
+        }),
+      }),
+    } as any)
+
+    const result = await getProfilesByUserIds(['user-1', 'user-2'])
+
+    expect(result).toEqual(mockProfiles)
+  })
+
+  it('should_return_empty_array_for_empty_input', async () => {
+    const result = await getProfilesByUserIds([])
+
+    expect(result).toEqual([])
+  })
+
+  it('should_query_profiles_by_user_id_in_list', async () => {
+    const mockIn = vi.fn().mockResolvedValue({ data: mockProfiles, error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ in: mockIn }),
+      }),
+    } as any)
+
+    await getProfilesByUserIds(['user-1', 'user-2'])
+
+    expect(mockIn).toHaveBeenCalledWith('user_id', ['user-1', 'user-2'])
   })
 })
