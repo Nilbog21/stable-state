@@ -98,4 +98,45 @@ describe('registerForBarn', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/')
     expect(createPendingMembership).not.toHaveBeenCalled()
   })
+
+  it('should_return_error_for_invalid_role', async () => {
+    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'admin' })
+    const result = await registerForBarn('green-acres', null, fd)
+    expect(result).toEqual({ error: 'Please select a valid role.' })
+  })
+
+  it('should_return_error_for_blank_first_name', async () => {
+    const fd = makeFormData({ firstName: '   ', lastName: 'Doe', role: 'trainer' })
+    const result = await registerForBarn('green-acres', null, fd)
+    expect(result).toEqual({ error: 'First name is required.' })
+  })
+
+  it('should_return_error_for_blank_last_name', async () => {
+    const fd = makeFormData({ firstName: 'Jane', lastName: '', role: 'trainer' })
+    const result = await registerForBarn('green-acres', null, fd)
+    expect(result).toEqual({ error: 'Last name is required.' })
+  })
+
+  it('should_redirect_to_login_error_when_barn_is_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
+    await expect(registerForBarn('unknown-barn', null, fd)).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/login?error=auth_callback_failed')
+  })
+
+  it('should_redirect_to_barn_login_when_user_is_not_authenticated', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+    } as any)
+    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
+    await expect(registerForBarn('green-acres', null, fd)).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+
+  it('should_return_error_when_db_write_fails', async () => {
+    vi.mocked(upsertProfile).mockRejectedValue(new Error('DB error'))
+    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
+    const result = await registerForBarn('green-acres', null, fd)
+    expect(result).toEqual({ error: 'Something went wrong. Please try again.' })
+  })
 })

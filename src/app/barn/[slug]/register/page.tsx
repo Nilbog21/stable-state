@@ -3,6 +3,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { createClient } from '@/lib/supabase/server'
 import { registerForBarn } from './actions'
+import { RegisterForm } from './RegisterForm'
 
 export default async function BarnRegisterPage({
   params,
@@ -47,51 +48,11 @@ export default async function BarnRegisterPage({
       <p className="text-zinc-500 dark:text-zinc-400">
         Request access to this barn.
       </p>
-      <form action={action} className="flex w-full max-w-sm flex-col gap-4">
-        <div className="flex flex-col gap-1">
-          <label htmlFor="firstName" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            First name
-          </label>
-          <input
-            id="firstName"
-            name="firstName"
-            type="text"
-            required
-            defaultValue={defaultFirstName}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label htmlFor="lastName" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Last name
-          </label>
-          <input
-            id="lastName"
-            name="lastName"
-            type="text"
-            required
-            defaultValue={defaultLast}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-        <fieldset className="flex flex-col gap-2">
-          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Role</legend>
-          <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-            <input type="radio" name="role" value="trainer" required />
-            Trainer
-          </label>
-          <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-            <input type="radio" name="role" value="rider" required />
-            Rider
-          </label>
-        </fieldset>
-        <button
-          type="submit"
-          className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          Request access
-        </button>
-      </form>
+      <RegisterForm
+        defaultFirstName={defaultFirstName}
+        defaultLast={defaultLast}
+        action={action}
+      />
     </main>
   )
 }

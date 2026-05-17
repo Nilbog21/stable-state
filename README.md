@@ -35,6 +35,10 @@ The easiest way to deploy your Next.js app is to use the [Vercel Platform](https
 
 Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
 
+## Known Limitations
+
+- **Single-barn membership per user** — a user (trainer or rider) can only belong to one barn at a time. Multi-barn support is not yet implemented.
+
 ## Database Setup
 
 ### Apply the schema migration

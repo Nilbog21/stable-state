@@ -6,15 +6,19 @@ import { getUserMembership, createPendingMembership } from '@/lib/db/barn-member
 import { upsertProfile } from '@/lib/db/profiles'
 import { redirect } from 'next/navigation'
 
+export type RegisterState = { error: string } | null
+
 export async function registerForBarn(
   barnSlug: string,
-  _prevState: unknown,
+  _prevState: RegisterState,
   formData: FormData
-) {
+): Promise<RegisterState> {
   const firstName = (formData.get('firstName') as string | null)?.trim() ?? ''
   const lastName = (formData.get('lastName') as string | null)?.trim() ?? ''
   const role = formData.get('role') as string | null
 
+  if (!firstName) return { error: 'First name is required.' }
+  if (!lastName) return { error: 'Last name is required.' }
   if (role !== 'trainer' && role !== 'rider') {
     return { error: 'Please select a valid role.' }
   }
@@ -38,7 +42,12 @@ export async function registerForBarn(
     redirect(`/barn/${barnSlug}/pending`)
   }
 
-  await upsertProfile(data.user.id, firstName, lastName)
-  await createPendingMembership(data.user.id, barn.id, role)
+  try {
+    await upsertProfile(data.user.id, firstName, lastName)
+    await createPendingMembership(data.user.id, barn.id, role)
+  } catch {
+    return { error: 'Something went wrong. Please try again.' }
+  }
+
   redirect(`/barn/${barnSlug}/pending`)
 }

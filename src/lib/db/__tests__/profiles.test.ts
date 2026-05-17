@@ -47,4 +47,12 @@ describe('upsertProfile', () => {
 
     expect(result).toEqual(updated)
   })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = { message: 'unique constraint violation', code: '23505' }
+    const mock = makeSupabaseMock(null, dbError)
+    vi.mocked(createClient).mockResolvedValue(mock as any)
+
+    await expect(upsertProfile('user-1', 'Jane', 'Doe')).rejects.toEqual(dbError)
+  })
 })
