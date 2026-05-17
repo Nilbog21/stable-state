@@ -7,10 +7,16 @@ export function LessonForm({
   horses,
   riders,
   action,
+  isManager,
+  instructors,
+  currentUserId,
 }: {
   horses: Horse[]
   riders: Rider[]
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
+  isManager: boolean
+  instructors: { userId: string; name: string }[]
+  currentUserId: string
 }) {
   const [state, formAction, pending] = useActionState(action, { error: null })
 
@@ -20,6 +26,24 @@ export function LessonForm({
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}
         </p>
+      )}
+      {isManager && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="instructor_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Instructor
+          </label>
+          <select
+            id="instructor_id"
+            name="instructor_id"
+            required
+            defaultValue={currentUserId}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            {instructors.map((i) => (
+              <option key={i.userId} value={i.userId}>{i.name}</option>
+            ))}
+          </select>
+        </div>
       )}
       <div className="flex flex-col gap-1">
         <label htmlFor="horse_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
