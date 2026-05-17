@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
@@ -23,7 +23,9 @@ export default async function LessonNewPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  const membership = user ? await getUserMembership(user.id, barn.id) : null
+  if (!user) redirect(`/barn/${slug}/login`)
+
+  const membership = await getUserMembership(user.id, barn.id)
   const isManager = membership?.role === 'manager'
 
   const [horses, riders] = await Promise.all([

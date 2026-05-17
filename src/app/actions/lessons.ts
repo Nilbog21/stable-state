@@ -2,7 +2,7 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { redirect } from 'next/navigation'
 
 export async function submitLesson(
@@ -29,6 +29,12 @@ export async function submitLesson(
   const isManager = membership?.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
+
+  if (isManager && instructorIdFromForm && instructorIdFromForm !== user.id) {
+    const trainerMemberships = await getActiveTrainerMembershipsByBarn(barnId)
+    const validIds = new Set(trainerMemberships.map((m) => m.user_id))
+    if (!validIds.has(instructorIdFromForm)) return { error: 'Invalid instructor' }
+  }
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
 
