@@ -10,12 +10,17 @@ vi.mock('@/lib/db/lessons', () => ({
   addRiderToLesson: vi.fn(),
 }))
 
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
+}))
+
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }))
 
 import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { redirect } from 'next/navigation'
 import { submitLesson } from '../lessons'
 
@@ -26,6 +31,20 @@ const mockLesson = {
   fee: null,
   lesson_at: '2026-05-17T10:00',
   submitted_at: '2026-05-17T10:05:00Z',
+}
+
+const mockTrainerMembership = {
+  id: 'mem-1',
+  user_id: 'user-1',
+  barn_id: 'barn-1',
+  role: 'trainer' as const,
+  status: 'active' as const,
+  created_at: '2026-01-01T00:00:00Z',
+}
+
+const mockManagerMembership = {
+  ...mockTrainerMembership,
+  role: 'manager' as const,
 }
 
 function makeFormData(fields: Record<string, string>): FormData {
@@ -45,6 +64,7 @@ describe('submitLesson', () => {
         }),
       },
     } as any)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(createLesson).mockResolvedValue(mockLesson)
     vi.mocked(addHorseToLesson).mockResolvedValue({} as any)
     vi.mocked(addRiderToLesson).mockResolvedValue({} as any)
@@ -114,5 +134,32 @@ describe('submitLesson', () => {
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'Failed to submit lesson' })
     expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const fd = makeFormData({
+      horse_id: 'horse-1',
+      rider_id: 'rider-1',
+      lesson_at: '2026-05-17T10:00',
+      instructor_id: 'trainer-99',
+    })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorId: 'trainer-99' })
+    )
+  })
+
+  it('should_use_current_user_id_when_user_is_a_trainer', async () => {
+    const fd = makeFormData({
+      horse_id: 'horse-1',
+      rider_id: 'rider-1',
+      lesson_at: '2026-05-17T10:00',
+      instructor_id: 'trainer-99',
+    })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorId: 'user-1' })
+    )
   })
 })

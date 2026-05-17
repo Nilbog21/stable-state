@@ -15,6 +15,7 @@ import {
   getActiveMemberships,
   approveMembership,
   deleteMembership,
+  getActiveTrainerMembershipsByBarn,
 } from '../barn-memberships'
 
 const mockMembership = {
@@ -440,5 +441,71 @@ describe('deleteMembership', () => {
     } as any)
 
     await expect(deleteMembership('mem-1')).rejects.toThrow('delete failed')
+  })
+})
+
+describe('getActiveTrainerMembershipsByBarn', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_return_active_trainer_memberships_for_barn', async () => {
+    const trainers = [mockMembership]
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: trainers, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getActiveTrainerMembershipsByBarn('barn-1')
+
+    expect(result).toEqual(trainers)
+  })
+
+  it('should_return_empty_array_when_no_active_trainers', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: [], error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getActiveTrainerMembershipsByBarn('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_query_by_barn_id_trainer_role_and_active_status', async () => {
+    const mockActiveEq = vi.fn().mockReturnValue({
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    })
+    const mockRoleEq = vi.fn().mockReturnValue({ eq: mockActiveEq })
+    const mockBarnEq = vi.fn().mockReturnValue({ eq: mockRoleEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: mockBarnEq }),
+      }),
+    } as any)
+
+    await getActiveTrainerMembershipsByBarn('barn-1')
+
+    expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockRoleEq).toHaveBeenCalledWith('role', 'trainer')
+    expect(mockActiveEq).toHaveBeenCalledWith('status', 'active')
   })
 })
