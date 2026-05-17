@@ -12,26 +12,33 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const horseId = formData.get('horse_id') as string | null
   const riderId = formData.get('rider_id') as string | null
-  const lessonAt = formData.get('lesson_at') as string
+  const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
 
   if (!horseId) return { error: 'horse required' }
   if (!riderId) return { error: 'rider required' }
+  if (!lessonAt) return { error: 'date and time required' }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
+  if (!user) return { error: 'not authenticated' }
+
   const fee = feeRaw ? parseFloat(feeRaw) : null
 
-  const lesson = await createLesson({
-    barnId,
-    instructorId: user?.id ?? null,
-    fee,
-    lessonAt,
-  })
+  try {
+    const lesson = await createLesson({
+      barnId,
+      instructorId: user.id,
+      fee,
+      lessonAt,
+    })
 
-  await addHorseToLesson(lesson.id, horseId, barnId)
-  await addRiderToLesson(lesson.id, riderId, barnId)
+    await addHorseToLesson(lesson.id, horseId, barnId)
+    await addRiderToLesson(lesson.id, riderId, barnId)
+  } catch {
+    return { error: 'Failed to submit lesson' }
+  }
 
   redirect(`/barn/${barnSlug}/lessons`)
 }

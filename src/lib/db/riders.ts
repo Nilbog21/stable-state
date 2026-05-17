@@ -7,6 +7,7 @@ export async function getRidersByBarn(barnId: string): Promise<Rider[]> {
     .from('riders')
     .select()
     .eq('barn_id', barnId)
+    .order('name')
 
   if (error) throw error
   return data

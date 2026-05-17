@@ -28,6 +28,7 @@ export function LessonForm({
         <select
           id="horse_id"
           name="horse_id"
+          required
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           <option value="">Select a horse</option>
@@ -43,6 +44,7 @@ export function LessonForm({
         <select
           id="rider_id"
           name="rider_id"
+          required
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           <option value="">Select a rider</option>

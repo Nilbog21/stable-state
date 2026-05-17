@@ -21,7 +21,9 @@ describe('getHorsesByBarn', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: mockHorses, error: null }),
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: mockHorses, error: null }),
+          }),
         }),
       }),
     } as any)
@@ -35,7 +37,9 @@ describe('getHorsesByBarn', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+          }),
         }),
       }),
     } as any)
@@ -49,7 +53,9 @@ describe('getHorsesByBarn', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+          }),
         }),
       }),
     } as any)

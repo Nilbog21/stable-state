@@ -87,4 +87,32 @@ describe('submitLesson', () => {
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
   })
+
+  it('should_return_error_when_lesson_at_is_missing', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'date and time required' })
+  })
+
+  it('should_return_error_when_user_is_not_authenticated', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: null },
+          error: null,
+        }),
+      },
+    } as any)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authenticated' })
+  })
+
+  it('should_return_error_when_createLesson_throws', async () => {
+    vi.mocked(createLesson).mockRejectedValue(new Error('db error'))
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'Failed to submit lesson' })
+    expect(redirect).not.toHaveBeenCalled()
+  })
 })
