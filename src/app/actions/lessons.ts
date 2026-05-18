@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse } from '@/lib/db/horses'
-import { getUserMembership } from '@/lib/db/barn-memberships'
 import { redirect } from 'next/navigation'
 
 export async function submitLesson(

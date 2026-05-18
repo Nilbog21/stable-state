@@ -56,4 +56,19 @@ describe('getBarnBySlug', () => {
 
     expect(result).toBeNull()
   })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: dbError }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getBarnBySlug('some-slug')).rejects.toThrow('query failed')
+  })
 })
