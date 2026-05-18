@@ -51,23 +51,47 @@ export function LessonForm({
           <span className="font-normal text-zinc-500">(select at least one)</span>
         </legend>
         {horses.map((h) => (
-          <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+          <div key={h.id} className="flex items-center gap-3">
+            <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+              <input
+                type="checkbox"
+                name="horse_id"
+                value={h.id}
+                className="rounded border-zinc-300 dark:border-zinc-600"
+              />
+              {h.name}
+            </label>
             <input
-              type="checkbox"
-              name="horse_id"
-              value={h.id}
-              className="rounded border-zinc-300 dark:border-zinc-600"
+              type="number"
+              name={`exertion_${h.id}`}
+              aria-label={`Exertion level for ${h.name}`}
+              min="1"
+              max="5"
+              defaultValue={3}
+              required
+              className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
-            {h.name}
-          </label>
+          </div>
         ))}
         {isManager && (
-          <input
-            type="text"
-            name="new_horse_name"
-            placeholder="Add new horse…"
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
+          <div className="flex items-center gap-3">
+            <input
+              type="text"
+              name="new_horse_name"
+              placeholder="Add new horse…"
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+            <input
+              type="number"
+              name="new_horse_exertion_level"
+              aria-label="Exertion level for new horse"
+              min="1"
+              max="5"
+              defaultValue={3}
+              required
+              className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </div>
         )}
       </fieldset>
       <div className="flex flex-col gap-1">
