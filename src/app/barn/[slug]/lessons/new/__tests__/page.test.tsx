@@ -84,20 +84,21 @@ const mockTrainerBarnMembership = {
   id: 'mem-2',
 }
 
+function mockSupabaseUser(userId = 'user-1') {
+  vi.mocked(createClient).mockResolvedValue({
+    auth: {
+      getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }),
+    },
+  } as any)
+}
+
 describe('LessonNewPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
     vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'user-1' } },
-          error: null,
-        }),
-      },
-    } as any)
+    mockSupabaseUser()
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([])
@@ -138,11 +139,11 @@ describe('LessonNewPage', () => {
     expect(notFound).toHaveBeenCalled()
   })
 
-  it('should_render_horse_options_in_select', async () => {
+  it('should_render_horse_checkboxes', async () => {
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('option', { name: 'Thunderbolt' })).toBeDefined()
-    expect(screen.getByRole('option', { name: 'Shadow' })).toBeDefined()
+    expect(screen.getByRole('checkbox', { name: 'Thunderbolt' })).toBeDefined()
+    expect(screen.getByRole('checkbox', { name: 'Shadow' })).toBeDefined()
   })
 
   it('should_render_rider_options_in_select', async () => {
@@ -160,14 +161,7 @@ describe('LessonNewPage', () => {
   })
 
   it('should_render_instructor_select_when_user_is_a_manager', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'manager-1' } },
-          error: null,
-        }),
-      },
-    } as any)
+    mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getProfilesByUserIds).mockResolvedValue([
       { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
@@ -178,14 +172,7 @@ describe('LessonNewPage', () => {
   })
 
   it('should_render_trainer_options_in_instructor_select_for_manager', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'manager-1' } },
-          error: null,
-        }),
-      },
-    } as any)
+    mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([mockTrainerBarnMembership])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([
@@ -198,14 +185,7 @@ describe('LessonNewPage', () => {
   })
 
   it('should_pre_select_current_user_in_instructor_select', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'manager-1' } },
-          error: null,
-        }),
-      },
-    } as any)
+    mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getProfilesByUserIds).mockResolvedValue([
       { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
@@ -214,5 +194,19 @@ describe('LessonNewPage', () => {
     render(jsx)
     const select = screen.getByLabelText(/instructor/i) as HTMLSelectElement
     expect(select.value).toBe('manager-1')
+  })
+
+  it('should_show_new_horse_input_when_user_is_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByPlaceholderText(/add new horse/i)).toBeDefined()
+  })
+
+  it('should_not_show_new_horse_input_when_user_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByPlaceholderText(/add new horse/i)).toBeNull()
   })
 })
