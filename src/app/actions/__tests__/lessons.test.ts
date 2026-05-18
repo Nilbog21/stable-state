@@ -217,6 +217,7 @@ describe('submitLesson', () => {
   it('should_create_new_horse_and_add_to_lesson_when_new_horse_name_is_provided', async () => {
     const newHorse = { id: 'horse-new', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' }
     vi.mocked(createHorse).mockResolvedValue(newHorse)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createHorse).toHaveBeenCalledWith('barn-1', 'Blaze')
@@ -227,5 +228,13 @@ describe('submitLesson', () => {
     const fd = makeFormData({ rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'horse required' })
+  })
+
+  it('should_return_error_when_non_manager_tries_to_create_new_horse', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockTrainerMembership, role: 'trainer' })
+    const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized to add horses' })
+    expect(createHorse).not.toHaveBeenCalled()
   })
 })

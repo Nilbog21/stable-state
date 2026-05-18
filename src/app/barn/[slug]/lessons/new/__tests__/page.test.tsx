@@ -43,7 +43,7 @@ import { getRidersByBarn } from '@/lib/db/riders'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { createClient } from '@/lib/supabase/server'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import LessonNewPage from '../page'
 
 const mockBarn = {
@@ -110,20 +110,21 @@ describe('LessonNewPage', () => {
     expect(screen.getByRole('button', { name: /submit/i })).toBeDefined()
   })
 
-  it('should_redirect_to_login_when_user_is_not_authenticated', async () => {
+  it('should_call_notFound_when_user_is_not_authenticated', async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: {
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: null },
-          error: null,
-        }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
       },
     } as any)
-    vi.mocked(redirect).mockImplementation(() => { throw new Error('NEXT_REDIRECT') })
+    vi.mocked(notFound).mockImplementation(() => {
+      throw new Error('NEXT_NOT_FOUND')
+    })
+
     await expect(
       LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    ).rejects.toThrow('NEXT_REDIRECT')
-    expect(redirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    ).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(notFound).toHaveBeenCalled()
   })
 
   it('should_call_notFound_when_barn_slug_does_not_exist', async () => {
