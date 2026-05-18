@@ -106,7 +106,7 @@ describe('submitLesson', () => {
   it('should_add_horse_to_lesson', async () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1')
+    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1', 3)
   })
 
   it('should_add_rider_to_lesson', async () => {
@@ -209,8 +209,8 @@ describe('submitLesson', () => {
   it('should_add_horse_to_lesson_for_each_selected_horse', async () => {
     const fd = makeFormData({ horse_id: ['horse-1', 'horse-2'], rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1')
-    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-2', 'barn-1')
+    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1', 3)
+    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-2', 'barn-1', 3)
     expect(addHorseToLesson).toHaveBeenCalledTimes(2)
   })
 
@@ -221,7 +221,28 @@ describe('submitLesson', () => {
     const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createHorse).toHaveBeenCalledWith('barn-1', 'Blaze')
-    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-new', 'barn-1')
+    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-new', 'barn-1', 3)
+  })
+
+  it('should_pass_exertion_level_to_addHorseToLesson_when_provided', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', 'exertion_horse-1': '5', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1', 5)
+  })
+
+  it('should_default_exertion_level_to_3_when_not_provided_in_form', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1', 3)
+  })
+
+  it('should_pass_exertion_level_for_newly_created_horse', async () => {
+    const newHorse = { id: 'horse-new', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    vi.mocked(createHorse).mockResolvedValue(newHorse)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const fd = makeFormData({ new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(addHorseToLesson).toHaveBeenCalledWith('lesson-1', 'horse-new', 'barn-1', 4)
   })
 
   it('should_return_error_when_no_horse_ids_and_no_new_horse_name', async () => {
