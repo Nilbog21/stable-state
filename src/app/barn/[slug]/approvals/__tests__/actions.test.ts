@@ -89,6 +89,15 @@ describe('approveMembershipAction', () => {
     expect(approveMembership).not.toHaveBeenCalled()
   })
 
+  it('should_redirect_to_login_when_barn_is_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+
+    await expect(approveMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(approveMembership).not.toHaveBeenCalled()
+  })
+
   it('should_redirect_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(getAdminMembership).mockResolvedValue(null)
@@ -152,6 +161,15 @@ describe('rejectMembershipAction', () => {
     expect(deleteMembership).not.toHaveBeenCalled()
   })
 
+  it('should_redirect_to_login_when_barn_is_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+
+    await expect(rejectMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(deleteMembership).not.toHaveBeenCalled()
+  })
+
   it('should_redirect_when_user_is_not_manager_or_admin', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(getAdminMembership).mockResolvedValue(null)
@@ -196,6 +214,15 @@ describe('removeMembershipAction', () => {
 
   it('should_redirect_to_login_when_unauthenticated', async () => {
     setupAuth(null)
+
+    await expect(removeMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(deleteMembership).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_login_when_barn_is_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
     await expect(removeMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 

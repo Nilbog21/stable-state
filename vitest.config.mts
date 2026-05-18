@@ -8,5 +8,15 @@ export default defineConfig({
   },
   test: {
     environment: 'jsdom',
+    coverage: {
+      provider: 'v8',
+      reporter: ['html', 'json'],
+      include: ['src/**'],
+      exclude: [
+        'src/app/layout.tsx',
+        'src/lib/supabase/client.ts',
+        'src/lib/supabase/server.ts',
+      ],
+    },
   },
 })
