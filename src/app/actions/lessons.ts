@@ -3,6 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
+import { createHorse } from '@/lib/db/horses'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { redirect } from 'next/navigation'
 
 export async function submitLesson(
@@ -11,14 +13,15 @@ export async function submitLesson(
   prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const horseId = formData.get('horse_id') as string | null
+  const horseIds = formData.getAll('horse_id') as string[]
+  const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
   const riderId = formData.get('rider_id') as string | null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
 
-  if (!horseId) return { error: 'horse required' }
   if (!riderId) return { error: 'rider required' }
   if (!lessonAt) return { error: 'date and time required' }
+  if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -39,6 +42,15 @@ export async function submitLesson(
   const fee = feeRaw ? parseFloat(feeRaw) : null
 
   try {
+    if (newHorseName) {
+      const membership = await getUserMembership(user.id, barnId)
+      if (membership?.role !== 'manager') {
+        return { error: 'not authorized to add horses' }
+      }
+      const horse = await createHorse(barnId, newHorseName)
+      horseIds.push(horse.id)
+    }
+
     const lesson = await createLesson({
       barnId,
       instructorId,
@@ -46,7 +58,7 @@ export async function submitLesson(
       lessonAt,
     })
 
-    await addHorseToLesson(lesson.id, horseId, barnId)
+    await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId)))
     await addRiderToLesson(lesson.id, riderId, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }

@@ -12,3 +12,15 @@ export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
   if (error) throw error
   return data
 }
+
+export async function createHorse(barnId: string, name: string): Promise<Horse> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('horses')
+    .insert({ barn_id: barnId, name })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

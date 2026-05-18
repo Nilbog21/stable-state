@@ -1,4 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
@@ -23,19 +23,21 @@ export default async function LessonNewPage({
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
-  if (!user) redirect(`/barn/${slug}/login`)
+  if (!user) {
+    notFound()
+  }
 
-  const membership = await getUserMembership(user.id, barn.id)
-  const isManager = membership?.role === 'manager'
-
-  const [horses, riders] = await Promise.all([
+  const [horses, riders, membership] = await Promise.all([
     getHorsesByBarn(barn.id),
     getRidersByBarn(barn.id),
+    getUserMembership(user.id, barn.id),
   ])
+
+  const isManager = membership?.role === 'manager'
 
   let instructors: { userId: string; name: string }[] = []
 
-  if (isManager && user) {
+  if (isManager) {
     const trainerMemberships = await getActiveTrainerMembershipsByBarn(barn.id)
     const trainerUserIds = trainerMemberships.map((m) => m.user_id)
     const allUserIds = [...new Set([user.id, ...trainerUserIds])]
@@ -65,7 +67,7 @@ export default async function LessonNewPage({
         action={submit}
         isManager={isManager}
         instructors={instructors}
-        currentUserId={user?.id ?? ''}
+        currentUserId={user.id}
       />
     </main>
   )

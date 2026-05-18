@@ -6,15 +6,15 @@ import type { Horse, Rider } from '@/lib/db/types'
 export function LessonForm({
   horses,
   riders,
-  action,
   isManager,
+  action,
   instructors,
   currentUserId,
 }: {
   horses: Horse[]
   riders: Rider[]
-  action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   isManager: boolean
+  action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   instructors: { userId: string; name: string }[]
   currentUserId: string
 }) {
@@ -45,22 +45,31 @@ export function LessonForm({
           </select>
         </div>
       )}
-      <div className="flex flex-col gap-1">
-        <label htmlFor="horse_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Horse
-        </label>
-        <select
-          id="horse_id"
-          name="horse_id"
-          required
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        >
-          <option value="">Select a horse</option>
-          {horses.map((h) => (
-            <option key={h.id} value={h.id}>{h.name}</option>
-          ))}
-        </select>
-      </div>
+      <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+        <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Horse{' '}
+          <span className="font-normal text-zinc-500">(select at least one)</span>
+        </legend>
+        {horses.map((h) => (
+          <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+            <input
+              type="checkbox"
+              name="horse_id"
+              value={h.id}
+              className="rounded border-zinc-300 dark:border-zinc-600"
+            />
+            {h.name}
+          </label>
+        ))}
+        {isManager && (
+          <input
+            type="text"
+            name="new_horse_name"
+            placeholder="Add new horse…"
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        )}
+      </fieldset>
       <div className="flex flex-col gap-1">
         <label htmlFor="rider_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Rider
