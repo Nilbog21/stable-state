@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 afterEach(cleanup)
 
@@ -211,9 +211,18 @@ describe('LessonNewPage', () => {
     expect(screen.queryByPlaceholderText(/add new horse/i)).toBeNull()
   })
 
+  it('should_not_render_exertion_input_when_horse_is_unchecked', async () => {
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('spinbutton', { name: 'Exertion level for Thunderbolt' })).toBeNull()
+    expect(screen.queryByRole('spinbutton', { name: 'Exertion level for Shadow' })).toBeNull()
+  })
+
   it('should_render_exertion_input_for_each_horse', async () => {
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Thunderbolt' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Shadow' }))
     expect(screen.getByRole('spinbutton', { name: 'Exertion level for Thunderbolt' })).toBeDefined()
     expect(screen.getByRole('spinbutton', { name: 'Exertion level for Shadow' })).toBeDefined()
   })
@@ -221,6 +230,7 @@ describe('LessonNewPage', () => {
   it('should_default_exertion_input_to_3', async () => {
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Thunderbolt' }))
     const input = screen.getByRole('spinbutton', { name: 'Exertion level for Thunderbolt' }) as HTMLInputElement
     expect(input.defaultValue).toBe('3')
   })
@@ -228,15 +238,24 @@ describe('LessonNewPage', () => {
   it('should_set_exertion_input_min_1_max_5', async () => {
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Thunderbolt' }))
     const input = screen.getByRole('spinbutton', { name: 'Exertion level for Thunderbolt' }) as HTMLInputElement
     expect(input.min).toBe('1')
     expect(input.max).toBe('5')
+  })
+
+  it('should_not_render_new_horse_exertion_input_when_name_is_empty', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('spinbutton', { name: 'Exertion level for new horse' })).toBeNull()
   })
 
   it('should_render_new_horse_exertion_input_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
+    fireEvent.change(screen.getByPlaceholderText(/add new horse/i), { target: { value: 'Blaze' } })
     expect(screen.getByRole('spinbutton', { name: 'Exertion level for new horse' })).toBeDefined()
   })
 })
