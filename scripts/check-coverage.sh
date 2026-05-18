@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
+# Set SKIP_COVERAGE_RUN=1 to skip running tests and parse an existing
+# coverage/coverage-final.json (useful in CI where tests already ran).
 set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-echo "Running coverage..."
-npm run test:coverage
+if [[ "${SKIP_COVERAGE_RUN:-}" != "1" ]]; then
+  echo "Running coverage..."
+  npm run test:coverage
+  echo ""
+else
+  if [[ ! -f "coverage/coverage-final.json" ]]; then
+    echo "Error: coverage/coverage-final.json not found. Run 'npm run test:coverage' first." >&2
+    exit 1
+  fi
+  echo "Skipping test run — using existing coverage/coverage-final.json"
+  echo ""
+fi
 
-echo ""
 node -e "
 const fs = require('fs');
 const path = require('path');
