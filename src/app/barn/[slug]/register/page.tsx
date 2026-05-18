@@ -35,7 +35,7 @@ export default async function BarnRegisterPage({
   const meta = data.user.user_metadata ?? {}
   const fullName: string = meta.full_name ?? ''
   const [defaultFirst = '', ...rest] = fullName.split(' ')
-  const defaultLast = rest.join(' ') || (meta.family_name ?? '')
+  const defaultLastName = rest.join(' ') || (meta.family_name ?? '')
   const defaultFirstName: string = meta.given_name ?? defaultFirst
 
   const action = registerForBarn.bind(null, slug)
@@ -50,7 +50,7 @@ export default async function BarnRegisterPage({
       </p>
       <RegisterForm
         defaultFirstName={defaultFirstName}
-        defaultLast={defaultLast}
+        defaultLastName={defaultLastName}
         action={action}
       />
     </main>

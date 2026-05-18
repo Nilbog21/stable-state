@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Dev-only: switch your barn_memberships role without needing multiple Google accounts.
-# Requires SUPABASE_SERVICE_ROLE_KEY in .env.local (or exported in the shell).
+# Required in .env.local (or exported in the shell):
+#   DEV_USER_EMAIL         — your Supabase auth email
+#   DEV_BARN_SLUG          — slug of the barn to operate on (not required for admin role)
+#   SUPABASE_SERVICE_ROLE_KEY
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 ENV_FILE="$SCRIPT_DIR/../.env.local"
-USER_EMAIL="aseefried@gmail.com"
 
 # Load vars from .env.local
 if [[ -f "$ENV_FILE" ]]; then
@@ -27,6 +29,11 @@ if [[ -z "$SERVICE_ROLE_KEY" ]]; then
   echo
 fi
 
+USER_EMAIL="${DEV_USER_EMAIL:-}"
+if [[ -z "$USER_EMAIL" ]]; then
+  echo "Error: DEV_USER_EMAIL not set. Add it to .env.local or export it in your shell." >&2; exit 1
+fi
+
 AUTH=(-H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "apikey: $SERVICE_ROLE_KEY")
 
 # Resolve user ID
@@ -37,11 +44,6 @@ USER_ID=$(curl -sf "${AUTH[@]}" "${SUPABASE_URL}/auth/v1/admin/users?per_page=10
 if [[ -z "$USER_ID" ]]; then
   echo "User not found. Sign in with Google at least once first." >&2; exit 1
 fi
-
-# Fetch barns
-BARNS=$(curl -sf "${AUTH[@]}" "${SUPABASE_URL}/rest/v1/barns?select=id,name&order=name")
-mapfile -t BARN_IDS   < <(echo "$BARNS" | jq -r '.[].id')
-mapfile -t BARN_NAMES < <(echo "$BARNS" | jq -r '.[].name')
 
 # Role menu
 echo ""
@@ -65,33 +67,34 @@ esac
 
 BARN_ID_JSON="null"
 BARN_LABEL=""
+# Default: scope delete to admin (null barn) memberships only
+DELETE_FILTER="user_id=eq.${USER_ID}&barn_id=is.null"
+
 if $NEEDS_BARN; then
-  if [[ ${#BARN_IDS[@]} -eq 0 ]]; then
-    echo "No barns found. Create one in Supabase Studio first." >&2; exit 1
+  BARN_SLUG="${DEV_BARN_SLUG:-}"
+  if [[ -z "$BARN_SLUG" ]]; then
+    echo "Error: DEV_BARN_SLUG not set. Add it to .env.local or export it in your shell." >&2; exit 1
   fi
 
-  echo ""
-  echo "Select a barn:"
-  for i in "${!BARN_IDS[@]}"; do
-    printf "  %d) %s\n" $((i + 1)) "${BARN_NAMES[$i]}"
-  done
-  echo ""
-  read -rp "Choice [1-${#BARN_IDS[@]}]: " BARN_CHOICE
-  BARN_IDX=$((BARN_CHOICE - 1))
+  BARN=$(curl -sf "${AUTH[@]}" "${SUPABASE_URL}/rest/v1/barns?select=id,name&slug=eq.${BARN_SLUG}")
+  BARN_ID=$(echo "$BARN" | jq -r '.[0].id // empty')
+  BARN_NAME=$(echo "$BARN" | jq -r '.[0].name // empty')
 
-  if [[ $BARN_IDX -lt 0 || $BARN_IDX -ge ${#BARN_IDS[@]} ]]; then
-    echo "Invalid choice." >&2; exit 1
+  if [[ -z "$BARN_ID" ]]; then
+    echo "Error: Barn with slug '${BARN_SLUG}' not found." >&2; exit 1
   fi
 
-  BARN_ID_JSON="\"${BARN_IDS[$BARN_IDX]}\""
-  BARN_LABEL=" @ ${BARN_NAMES[$BARN_IDX]}"
+  BARN_ID_JSON="\"${BARN_ID}\""
+  BARN_LABEL=" @ ${BARN_NAME}"
+  # Scope delete to this barn only, preserving memberships in other barns
+  DELETE_FILTER="user_id=eq.${USER_ID}&barn_id=eq.${BARN_ID}"
 fi
 
-# Replace membership (delete-then-insert to avoid constraint edge cases)
+# Replace membership (delete-then-insert, scoped to this barn to preserve other memberships)
 echo ""
 echo "Updating membership..."
 curl -sf -X DELETE "${AUTH[@]}" \
-  "${SUPABASE_URL}/rest/v1/barn_memberships?user_id=eq.${USER_ID}" > /dev/null
+  "${SUPABASE_URL}/rest/v1/barn_memberships?${DELETE_FILTER}" > /dev/null
 
 curl -sf -X POST "${AUTH[@]}" \
   -H "Content-Type: application/json" \

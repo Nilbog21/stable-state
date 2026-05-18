@@ -623,4 +623,23 @@ describe('getActiveTrainerMembershipsByBarn', () => {
     expect(mockRoleEq).toHaveBeenCalledWith('role', 'trainer')
     expect(mockActiveEq).toHaveBeenCalledWith('status', 'active')
   })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: null, error: dbError }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getActiveTrainerMembershipsByBarn('barn-1')).rejects.toThrow('query failed')
+  })
 })
