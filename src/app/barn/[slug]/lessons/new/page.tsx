@@ -35,7 +35,7 @@ export default async function LessonNewPage({
 
   let instructors: { userId: string; name: string }[] = []
 
-  if (isManager && user) {
+  if (isManager) {
     const trainerMemberships = await getActiveTrainerMembershipsByBarn(barn.id)
     const trainerUserIds = trainerMemberships.map((m) => m.user_id)
     const allUserIds = [...new Set([user.id, ...trainerUserIds])]
@@ -65,7 +65,7 @@ export default async function LessonNewPage({
         action={submit}
         isManager={isManager}
         instructors={instructors}
-        currentUserId={user?.id ?? ''}
+        currentUserId={user.id}
       />
     </main>
   )
