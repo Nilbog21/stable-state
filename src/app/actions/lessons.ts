@@ -6,6 +6,11 @@ import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/b
 import { createHorse } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 
+function parseExertionLevel(raw: FormDataEntryValue | null): number {
+  const n = parseInt(raw as string ?? '', 10)
+  return Number.isNaN(n) ? 3 : Math.max(1, Math.min(5, n))
+}
+
 export async function submitLesson(
   barnId: string,
   barnSlug: string,
@@ -40,6 +45,11 @@ export async function submitLesson(
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
 
+  const exertionLevels = new Map<string, number>(
+    horseIds.map(id => [id, parseExertionLevel(formData.get(`exertion_${id}`))])
+  )
+  const newHorseExertionLevel = parseExertionLevel(formData.get('new_horse_exertion_level'))
+
   try {
     if (newHorseName) {
       const membership = await getUserMembership(user.id, barnId)
@@ -48,6 +58,7 @@ export async function submitLesson(
       }
       const horse = await createHorse(barnId, newHorseName)
       horseIds.push(horse.id)
+      exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
     const lesson = await createLesson({
@@ -57,7 +68,7 @@ export async function submitLesson(
       lessonAt,
     })
 
-    await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId)))
+    await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId, exertionLevels.get(id) ?? 3)))
     await addRiderToLesson(lesson.id, riderId, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }
