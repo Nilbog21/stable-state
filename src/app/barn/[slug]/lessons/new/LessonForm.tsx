@@ -62,12 +62,16 @@ export function LessonForm({
           </label>
         ))}
         {isManager && (
-          <input
-            type="text"
-            name="new_horse_name"
-            placeholder="Add new horse…"
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
+          <>
+            <label htmlFor="new_horse_name" className="sr-only">Add new horse</label>
+            <input
+              id="new_horse_name"
+              type="text"
+              name="new_horse_name"
+              placeholder="Add new horse…"
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </>
         )}
       </fieldset>
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
@@ -85,12 +89,16 @@ export function LessonForm({
           ))}
         </select>
         {isManager && (
-          <input
-            type="text"
-            name="new_rider_name"
-            placeholder="Add new rider…"
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
+          <>
+            <label htmlFor="new_rider_name" className="sr-only">Add new rider</label>
+            <input
+              id="new_rider_name"
+              type="text"
+              name="new_rider_name"
+              placeholder="Add new rider…"
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </>
         )}
       </fieldset>
       <div className="flex flex-col gap-1">

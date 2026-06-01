@@ -21,8 +21,10 @@ export async function submitLesson(
   const feeRaw = formData.get('fee') as string | null
 
   if (!riderId && !newRiderName) return { error: 'rider required' }
+  if (riderId && newRiderName) return { error: 'select a rider or add a new one, not both' }
   if (!lessonAt) return { error: 'date and time required' }
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
+  if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()

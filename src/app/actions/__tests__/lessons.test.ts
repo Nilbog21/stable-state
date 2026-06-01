@@ -250,6 +250,18 @@ describe('submitLesson', () => {
     expect(result).toEqual({ error: 'rider required' })
   })
 
+  it('should_return_error_when_both_rider_id_and_new_rider_name_are_provided', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'select a rider or add a new one, not both' })
+  })
+
+  it('should_return_error_when_both_horse_id_and_new_horse_name_are_provided', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'select a horse or add a new one, not both' })
+  })
+
   it('should_create_new_rider_and_add_to_lesson_when_new_rider_name_is_provided', async () => {
     const newRider = { id: 'rider-new', barn_id: 'barn-1', name: 'Carol', created_at: '2026-01-01', updated_at: '2026-01-01' }
     vi.mocked(createRider).mockResolvedValue(newRider)
