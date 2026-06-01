@@ -27,6 +27,12 @@ vi.mock('@/app/actions/lessons', () => ({
   deleteLessonAction: vi.fn(),
 }))
 
+vi.mock('../DeleteLessonButton', () => ({
+  DeleteLessonButton: ({ action }: { action: () => void }) => (
+    <button type="button" onClick={action}>Delete</button>
+  ),
+}))
+
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonsByBarn } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
@@ -94,6 +100,19 @@ describe('LessonsPage', () => {
 
     await expect(
       LessonsPage({ params: Promise.resolve({ slug: 'unknown' }) })
+    ).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(notFound).toHaveBeenCalled()
+  })
+
+  it('should_call_notFound_when_user_has_no_membership', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    vi.mocked(notFound).mockImplementation(() => {
+      throw new Error('NEXT_NOT_FOUND')
+    })
+
+    await expect(
+      LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
 
     expect(notFound).toHaveBeenCalled()
