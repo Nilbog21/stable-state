@@ -56,7 +56,6 @@ export async function submitLesson(
 
   try {
     if (newHorseName) {
-      const membership = await getUserMembership(user.id, barnId)
       if (membership?.role !== 'manager') {
         return { error: 'not authorized to add horses' }
       }
@@ -80,7 +79,7 @@ export async function submitLesson(
       lessonAt,
     })
     await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId, exertionLevels.get(id) ?? 3)))
-    await addRiderToLesson(lesson.id, riderId, barnId)
+    await addRiderToLesson(lesson.id, riderId!, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }
   }
