@@ -262,6 +262,17 @@ describe('submitLesson', () => {
     expect(result).toEqual({ error: 'rider not found in this barn' })
     expect(createLesson).not.toHaveBeenCalled()
   })
+
+  it('should_return_error_when_rider_does_not_belong_to_barn_on_new_horse_path', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getRidersByBarn).mockResolvedValue([
+      { id: 'other-rider', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'rider not found in this barn' })
+    expect(createLesson).not.toHaveBeenCalled()
+  })
 })
 
 describe('deleteLessonAction', () => {
