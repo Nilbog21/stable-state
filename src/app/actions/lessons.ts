@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse } from '@/lib/db/horses'
+import { createRider } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
 
 export async function submitLesson(
@@ -14,11 +15,12 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const horseIds = formData.getAll('horse_id') as string[]
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
-  const riderId = formData.get('rider_id') as string | null
+  let riderId = (formData.get('rider_id') as string | null) || null
+  const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
 
-  if (!riderId) return { error: 'rider required' }
+  if (!riderId && !newRiderName) return { error: 'rider required' }
   if (!lessonAt) return { error: 'date and time required' }
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
 
@@ -50,6 +52,14 @@ export async function submitLesson(
       horseIds.push(horse.id)
     }
 
+    if (newRiderName) {
+      if (membership?.role !== 'manager') {
+        return { error: 'not authorized to add riders' }
+      }
+      const rider = await createRider(barnId, newRiderName)
+      riderId = rider.id
+    }
+
     const lesson = await createLesson({
       barnId,
       instructorId,
@@ -58,7 +68,7 @@ export async function submitLesson(
     })
 
     await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId)))
-    await addRiderToLesson(lesson.id, riderId, barnId)
+    await addRiderToLesson(lesson.id, riderId!, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }
   }

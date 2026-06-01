@@ -12,3 +12,15 @@ export async function getRidersByBarn(barnId: string): Promise<Rider[]> {
   if (error) throw error
   return data
 }
+
+export async function createRider(barnId: string, name: string): Promise<Rider> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('riders')
+    .insert({ barn_id: barnId, name })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

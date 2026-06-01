@@ -70,14 +70,13 @@ export function LessonForm({
           />
         )}
       </fieldset>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="rider_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+      <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+        <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Rider
-        </label>
+        </legend>
         <select
           id="rider_id"
           name="rider_id"
-          required
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           <option value="">Select a rider</option>
@@ -85,7 +84,15 @@ export function LessonForm({
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </select>
-      </div>
+        {isManager && (
+          <input
+            type="text"
+            name="new_rider_name"
+            placeholder="Add new rider…"
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        )}
+      </fieldset>
       <div className="flex flex-col gap-1">
         <label htmlFor="lesson_at" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Date &amp; time
