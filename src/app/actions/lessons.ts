@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
+import { createLesson, addHorseToLesson, addRiderToLesson, deleteLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
@@ -72,6 +72,30 @@ export async function submitLesson(
     await addRiderToLesson(lesson.id, riderId, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }
+  }
+
+  redirect(`/barn/${barnSlug}/lessons`)
+}
+
+export async function deleteLessonAction(
+  barnId: string,
+  barnSlug: string,
+  lessonId: string
+): Promise<{ error: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'not authenticated' }
+
+  const membership = await getUserMembership(user.id, barnId)
+  if (membership?.role !== 'manager' && membership?.role !== 'admin') {
+    return { error: 'not authorized' }
+  }
+
+  try {
+    await deleteLesson(lessonId, barnId)
+  } catch {
+    return { error: 'Failed to delete lesson' }
   }
 
   redirect(`/barn/${barnSlug}/lessons`)

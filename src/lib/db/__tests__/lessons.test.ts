@@ -10,6 +10,8 @@ import {
   createLesson,
   addHorseToLesson,
   addRiderToLesson,
+  deleteLesson,
+  getLessonsByBarn,
 } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -211,5 +213,70 @@ describe('addRiderToLesson', () => {
     await expect(
       addRiderToLesson('lesson-1', 'rider-1', 'barn-1')
     ).rejects.toThrow('db error')
+  })
+})
+
+describe('deleteLesson', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_delete_lesson_by_id_and_barn_id', async () => {
+    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ delete: mockDelete }),
+    } as any)
+
+    await deleteLesson('lesson-1', 'barn-1')
+
+    expect(mockDelete).toHaveBeenCalled()
+    expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const mockEq2 = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ delete: mockDelete }),
+    } as any)
+
+    await expect(deleteLesson('lesson-1', 'barn-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('getLessonsByBarn', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_return_lessons_for_the_barn_ordered_by_lesson_at_desc', async () => {
+    const lessons = [mockLesson]
+    const mockOrder = vi.fn().mockResolvedValue({ data: lessons, error: null })
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: mockSelect }),
+    } as any)
+
+    const result = await getLessonsByBarn('barn-1')
+
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: false })
+    expect(result).toEqual(lessons)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: mockSelect }),
+    } as any)
+
+    await expect(getLessonsByBarn('barn-1')).rejects.toThrow('db error')
   })
 })

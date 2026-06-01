@@ -10,6 +10,7 @@ vi.mock('@/lib/db/lessons', () => ({
   createLesson: vi.fn(),
   addHorseToLesson: vi.fn(),
   addRiderToLesson: vi.fn(),
+  deleteLesson: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -26,11 +27,11 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
+import { createLesson, addHorseToLesson, addRiderToLesson, deleteLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
-import { submitLesson } from '../lessons'
+import { submitLesson, deleteLessonAction } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: null, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
 const mockTrainerMembership = createMockMembership({ created_at: '2026-01-01T00:00:00Z' })
@@ -227,5 +228,66 @@ describe('submitLesson', () => {
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized to add horses' })
     expect(createHorse).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteLessonAction', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({
+          data: { user: { id: 'user-1' } },
+          error: null,
+        }),
+      },
+    } as any)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(deleteLesson).mockResolvedValue(undefined)
+  })
+
+  it('should_return_error_when_not_authenticated', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
+      },
+    } as any)
+    const result = await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(result).toEqual({ error: 'not authenticated' })
+  })
+
+  it('should_return_error_when_user_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const result = await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_return_error_when_user_is_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockTrainerMembership, role: 'rider' as const })
+    const result = await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_call_deleteLesson_when_user_is_manager', async () => {
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+  })
+
+  it('should_call_deleteLesson_when_user_is_admin', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'admin' as const })
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+  })
+
+  it('should_redirect_after_deletion_when_manager', async () => {
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+  })
+
+  it('should_return_error_when_deleteLesson_throws', async () => {
+    vi.mocked(deleteLesson).mockRejectedValue(new Error('db error'))
+    const result = await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(result).toEqual({ error: 'Failed to delete lesson' })
+    expect(redirect).not.toHaveBeenCalled()
   })
 })
