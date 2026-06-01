@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-
-afterEach(cleanup)
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
 
 vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
@@ -46,12 +45,7 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import LessonNewPage from '../page'
 
-const mockBarn = {
-  id: 'barn-1',
-  name: 'Green Acres',
-  slug: 'green-acres',
-  created_at: '2026-01-01T00:00:00Z',
-}
+const mockBarn = createMockBarn()
 
 const mockHorses = [
   { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
@@ -63,26 +57,9 @@ const mockRiders = [
   { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', created_at: '2026-01-02', updated_at: '2026-01-02' },
 ]
 
-const mockTrainerMembership = {
-  id: 'mem-1',
-  user_id: 'user-1',
-  barn_id: 'barn-1',
-  role: 'trainer' as const,
-  status: 'active' as const,
-  created_at: '2026-01-01T00:00:00Z',
-}
-
-const mockManagerMembership = {
-  ...mockTrainerMembership,
-  user_id: 'manager-1',
-  role: 'manager' as const,
-}
-
-const mockTrainerBarnMembership = {
-  ...mockTrainerMembership,
-  user_id: 'trainer-2',
-  id: 'mem-2',
-}
+const mockTrainerMembership = createMockMembership({ id: 'mem-1', created_at: '2026-01-01T00:00:00Z' })
+const mockManagerMembership = createMockMembership({ id: 'mem-1', user_id: 'manager-1', role: 'manager', created_at: '2026-01-01T00:00:00Z' })
+const mockTrainerBarnMembership = createMockMembership({ id: 'mem-2', user_id: 'trainer-2', created_at: '2026-01-01T00:00:00Z' })
 
 function mockSupabaseUser(userId = 'user-1') {
   vi.mocked(createClient).mockResolvedValue({
@@ -94,7 +71,6 @@ function mockSupabaseUser(userId = 'user-1') {
 
 describe('LessonNewPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
     vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)

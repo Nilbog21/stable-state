@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { createMockProfile } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -7,7 +8,7 @@ vi.mock('@/lib/supabase/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { upsertProfile, getProfilesByUserIds } from '../profiles'
 
-const mockProfile = { user_id: 'user-1', first_name: 'Jane', last_name: 'Doe', created_at: '' }
+const mockProfile = createMockProfile()
 
 function makeSupabaseMock(returnData: unknown, returnError: unknown = null) {
   const single = vi.fn().mockResolvedValue({ data: returnData, error: returnError })
@@ -20,10 +21,6 @@ function makeSupabaseMock(returnData: unknown, returnError: unknown = null) {
 }
 
 describe('upsertProfile', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_upsert_profile_with_provided_name', async () => {
     const mock = makeSupabaseMock(mockProfile)
     vi.mocked(createClient).mockResolvedValue(mock as any)
@@ -39,7 +36,7 @@ describe('upsertProfile', () => {
   })
 
   it('should_update_existing_profile_on_conflict', async () => {
-    const updated = { ...mockProfile, first_name: 'Janet' }
+    const updated = createMockProfile({ first_name: 'Janet' })
     const mock = makeSupabaseMock(updated)
     vi.mocked(createClient).mockResolvedValue(mock as any)
 
@@ -58,15 +55,11 @@ describe('upsertProfile', () => {
 })
 
 const mockProfiles = [
-  { user_id: 'user-1', first_name: 'Jane', last_name: 'Doe', created_at: '' },
-  { user_id: 'user-2', first_name: 'John', last_name: 'Smith', created_at: '' },
+  createMockProfile({ user_id: 'user-1', first_name: 'Jane', last_name: 'Doe' }),
+  createMockProfile({ user_id: 'user-2', first_name: 'John', last_name: 'Smith' }),
 ]
 
 describe('getProfilesByUserIds', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_return_profiles_for_given_user_ids', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({

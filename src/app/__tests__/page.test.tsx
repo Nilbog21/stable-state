@@ -1,7 +1,5 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-
-afterEach(cleanup)
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -19,10 +17,6 @@ function makeSupabase(error: unknown = null) {
 }
 
 describe('Home', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_render_stable_state_heading', async () => {
     vi.mocked(createClient).mockResolvedValue(makeSupabase() as any)
     const jsx = await Home()

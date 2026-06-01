@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { createMockLesson } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -11,14 +12,7 @@ import {
   addRiderToLesson,
 } from '../lessons'
 
-const mockLesson = {
-  id: 'lesson-1',
-  barn_id: 'barn-1',
-  instructor_id: 'user-1',
-  fee: 75,
-  lesson_at: '2026-05-16T10:00:00Z',
-  submitted_at: '2026-05-16T10:05:00Z',
-}
+const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
 
 const mockLessonHorse = {
   id: 'lh-1',
@@ -36,10 +30,6 @@ const mockLessonRider = {
 }
 
 describe('createLesson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_insert_lesson_with_barn_id_instructor_fee_and_lesson_at', async () => {
     const mockInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -106,10 +96,6 @@ describe('createLesson', () => {
 })
 
 describe('addHorseToLesson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_insert_lesson_horse_with_provided_exertion_level', async () => {
     const mockInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({
@@ -178,10 +164,6 @@ describe('addHorseToLesson', () => {
 })
 
 describe('addRiderToLesson', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_insert_lesson_rider_with_lesson_rider_and_barn_ids', async () => {
     const mockInsert = vi.fn().mockReturnValue({
       select: vi.fn().mockReturnValue({

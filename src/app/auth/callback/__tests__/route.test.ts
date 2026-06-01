@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -32,12 +33,11 @@ import { applySeededMembership, getUserMembership } from '@/lib/db/barn-membersh
 import { getBarnBySlug } from '@/lib/db/barns'
 import { GET } from '../route'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
-const mockMembership = { id: 'm1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer', status: 'active', created_at: '' }
+const mockBarn = createMockBarn()
+const mockMembership = createMockMembership({ id: 'm1' })
 
 describe('GET /auth/callback', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockRedirect.mockImplementation((url: string | URL) => ({
       url: url.toString(),
       status: 302,
@@ -164,7 +164,7 @@ describe('GET /auth/callback', () => {
 
     it('should_redirect_to_pending_page_when_user_has_pending_membership', async () => {
       vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-      vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'pending' } as any)
+      vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'm1', status: 'pending' }) as any)
 
       const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
       await GET(request as any)
@@ -176,7 +176,7 @@ describe('GET /auth/callback', () => {
 
     it('should_not_set_session_cookie_for_pending_membership', async () => {
       vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-      vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'pending' } as any)
+      vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'm1', status: 'pending' }) as any)
 
       const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
       await GET(request as any)

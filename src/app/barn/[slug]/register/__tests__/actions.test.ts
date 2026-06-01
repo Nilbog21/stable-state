@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createMockBarn } from '@/test/fixtures'
+import { makeFormData } from '@/test/utils/forms'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -29,18 +31,11 @@ import { getUserMembership, createPendingMembership } from '@/lib/db/barn-member
 import { upsertProfile } from '@/lib/db/profiles'
 import { registerForBarn } from '../actions'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = createMockBarn()
 const mockUser = { id: 'user-1', email: 'trainer@example.com', user_metadata: {} }
-
-function makeFormData(fields: Record<string, string>) {
-  const fd = new FormData()
-  Object.entries(fields).forEach(([k, v]) => fd.append(k, v))
-  return fd
-}
 
 describe('registerForBarn', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: mockUser } }),

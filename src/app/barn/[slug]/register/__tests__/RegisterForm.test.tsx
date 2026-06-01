@@ -1,8 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
 import { useActionState } from 'react'
-
-afterEach(cleanup)
 
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
@@ -15,7 +13,6 @@ const mockAction = vi.fn()
 
 describe('RegisterForm', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(useActionState).mockReturnValue([null, mockAction, false] as any)
   })
 
