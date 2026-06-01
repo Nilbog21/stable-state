@@ -256,6 +256,12 @@ describe('deleteLessonAction', () => {
     expect(result).toEqual({ error: 'not authenticated' })
   })
 
+  it('should_return_error_when_user_has_no_membership', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    const result = await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
   it('should_return_error_when_user_is_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     const result = await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')

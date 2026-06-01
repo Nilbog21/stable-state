@@ -81,7 +81,7 @@ export async function deleteLessonAction(
   barnId: string,
   barnSlug: string,
   lessonId: string
-): Promise<{ error: string | null }> {
+): Promise<{ error: string }> {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 

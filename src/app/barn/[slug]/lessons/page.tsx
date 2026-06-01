@@ -4,6 +4,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonsByBarn } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { deleteLessonAction } from '@/app/actions/lessons'
+import { DeleteLessonButton } from './DeleteLessonButton'
 
 export default async function LessonsPage({
   params,
@@ -29,7 +30,11 @@ export default async function LessonsPage({
     getUserMembership(user.id, barn.id),
   ])
 
-  const isManager = membership?.role === 'manager' || membership?.role === 'admin'
+  if (!membership) {
+    notFound()
+  }
+
+  const isManager = membership.role === 'manager' || membership.role === 'admin'
   const deleteAction = deleteLessonAction.bind(null, barn.id, slug)
 
   return (
@@ -45,21 +50,14 @@ export default async function LessonsPage({
             <li key={lesson.id} className="flex items-center justify-between py-4">
               <div className="flex flex-col gap-1">
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                  {new Date(lesson.lesson_at).toLocaleString()}
+                  {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(lesson.lesson_at))}
                 </span>
                 {lesson.fee != null && (
                   <span className="text-sm text-zinc-500">${lesson.fee}</span>
                 )}
               </div>
               {isManager && (
-                <form action={deleteAction.bind(null, lesson.id)}>
-                  <button
-                    type="submit"
-                    className="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white hover:bg-red-700"
-                  >
-                    Delete
-                  </button>
-                </form>
+                <DeleteLessonButton action={deleteAction.bind(null, lesson.id)} />
               )}
             </li>
           ))}
