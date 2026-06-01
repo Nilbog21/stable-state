@@ -20,6 +20,11 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 
 vi.mock('@/lib/db/horses', () => ({
   createHorse: vi.fn(),
+  getHorsesByBarn: vi.fn(),
+}))
+
+vi.mock('@/lib/db/riders', () => ({
+  getRidersByBarn: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -29,7 +34,8 @@ vi.mock('next/navigation', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson, deleteLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
-import { createHorse } from '@/lib/db/horses'
+import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
+import { getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
 import { submitLesson, deleteLessonAction } from '../lessons'
 
@@ -52,6 +58,13 @@ describe('submitLesson', () => {
     vi.mocked(createLesson).mockResolvedValue(mockLesson)
     vi.mocked(addHorseToLesson).mockResolvedValue({} as any)
     vi.mocked(addRiderToLesson).mockResolvedValue({} as any)
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
+    ])
+    vi.mocked(getRidersByBarn).mockResolvedValue([
+      { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
   })
 
   it('should_return_error_when_no_horse_selected', async () => {
@@ -228,6 +241,37 @@ describe('submitLesson', () => {
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized to add horses' })
     expect(createHorse).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_horse_does_not_belong_to_barn', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      { id: 'other-horse', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'horse not found in this barn' })
+    expect(createLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_rider_does_not_belong_to_barn', async () => {
+    vi.mocked(getRidersByBarn).mockResolvedValue([
+      { id: 'other-rider', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'rider not found in this barn' })
+    expect(createLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_rider_does_not_belong_to_barn_on_new_horse_path', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getRidersByBarn).mockResolvedValue([
+      { id: 'other-rider', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'rider not found in this barn' })
+    expect(createLesson).not.toHaveBeenCalled()
   })
 })
 
