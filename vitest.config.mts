@@ -7,6 +7,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    setupFiles: ['./vitest.setup.ts'],
     environment: 'jsdom',
     coverage: {
       provider: 'v8',
