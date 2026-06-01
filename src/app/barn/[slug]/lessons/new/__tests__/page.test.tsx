@@ -236,4 +236,14 @@ describe('LessonNewPage', () => {
     fireEvent.change(screen.getByPlaceholderText(/add new horse/i), { target: { value: 'Blaze' } })
     expect(screen.getByRole('spinbutton', { name: 'Exertion level for new horse' })).toBeDefined()
   })
+
+  it('should_call_getHorsesByBarn_with_barn_id', async () => {
+    await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getHorsesByBarn).mock.calls[0][0]).toBe('barn-1')
+  })
+
+  it('should_call_getRidersByBarn_with_barn_id', async () => {
+    await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getRidersByBarn).mock.calls[0][0]).toBe('barn-1')
+  })
 })

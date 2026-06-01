@@ -3,8 +3,8 @@
 import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson, deleteLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
-import { createHorse } from '@/lib/db/horses'
-import { createRider } from '@/lib/db/riders'
+import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
+import { createRider, getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
 
 function parseExertionLevel(raw: FormDataEntryValue | null): number {
@@ -53,6 +53,25 @@ export async function submitLesson(
     horseIds.map(id => [id, parseExertionLevel(formData.get(`exertion_${id}`))])
   )
   const newHorseExertionLevel = parseExertionLevel(formData.get('new_horse_exertion_level'))
+
+  const [barnHorses, barnRiders] = await Promise.all([
+    getHorsesByBarn(barnId),
+    getRidersByBarn(barnId),
+  ])
+
+  if (horseIds.length > 0) {
+    const validHorseIds = new Set(barnHorses.map((h) => h.id))
+    if (horseIds.some((id) => !validHorseIds.has(id))) {
+      return { error: 'horse not found in this barn' }
+    }
+  }
+
+  if (riderId) {
+    const validRiderIds = new Set(barnRiders.map((r) => r.id))
+    if (!validRiderIds.has(riderId)) {
+      return { error: 'rider not found in this barn' }
+    }
+  }
 
   try {
     if (newHorseName) {
