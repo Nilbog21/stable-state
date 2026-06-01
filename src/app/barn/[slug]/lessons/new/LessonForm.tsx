@@ -86,38 +86,41 @@ export function LessonForm({
           </div>
         ))}
         {isManager && (
-          <div className="flex items-center gap-3">
-            <input
-              type="text"
-              name="new_horse_name"
-              placeholder="Add new horse…"
-              value={newHorseName}
-              onChange={(e) => setNewHorseName(e.target.value)}
-              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-            {newHorseName && (
+          <>
+            <label htmlFor="new_horse_name" className="sr-only">Add new horse</label>
+            <div className="flex items-center gap-3">
               <input
-                type="number"
-                name="new_horse_exertion_level"
-                aria-label="Exertion level for new horse"
-                min="1"
-                max="5"
-                defaultValue={3}
-                required
-                className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                id="new_horse_name"
+                type="text"
+                name="new_horse_name"
+                placeholder="Add new horse…"
+                value={newHorseName}
+                onChange={(e) => setNewHorseName(e.target.value)}
+                className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
-            )}
-          </div>
+              {newHorseName && (
+                <input
+                  type="number"
+                  name="new_horse_exertion_level"
+                  aria-label="Exertion level for new horse"
+                  min="1"
+                  max="5"
+                  defaultValue={3}
+                  required
+                  className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              )}
+            </div>
+          </>
         )}
       </fieldset>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="rider_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+      <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+        <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Rider
-        </label>
+        </legend>
         <select
           id="rider_id"
           name="rider_id"
-          required
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           <option value="">Select a rider</option>
@@ -125,7 +128,19 @@ export function LessonForm({
             <option key={r.id} value={r.id}>{r.name}</option>
           ))}
         </select>
-      </div>
+        {isManager && (
+          <>
+            <label htmlFor="new_rider_name" className="sr-only">Add new rider</label>
+            <input
+              id="new_rider_name"
+              type="text"
+              name="new_rider_name"
+              placeholder="Add new rider…"
+              className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+          </>
+        )}
+      </fieldset>
       <div className="flex flex-col gap-1">
         <label htmlFor="lesson_at" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Date &amp; time

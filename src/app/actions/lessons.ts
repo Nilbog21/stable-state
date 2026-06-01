@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson, deleteLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
-import { getRidersByBarn } from '@/lib/db/riders'
+import { createRider, getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
 
 function parseExertionLevel(raw: FormDataEntryValue | null): number {
@@ -20,13 +20,16 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const horseIds = formData.getAll('horse_id') as string[]
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
-  const riderId = formData.get('rider_id') as string | null
+  let riderId = (formData.get('rider_id') as string | null) || null
+  const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
 
-  if (!riderId) return { error: 'rider required' }
+  if (!riderId && !newRiderName) return { error: 'rider required' }
+  if (riderId && newRiderName) return { error: 'select a rider or add a new one, not both' }
   if (!lessonAt) return { error: 'date and time required' }
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
+  if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
 
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
@@ -63,14 +66,15 @@ export async function submitLesson(
     }
   }
 
-  const validRiderIds = new Set(barnRiders.map((r) => r.id))
-  if (!validRiderIds.has(riderId)) {
-    return { error: 'rider not found in this barn' }
+  if (riderId) {
+    const validRiderIds = new Set(barnRiders.map((r) => r.id))
+    if (!validRiderIds.has(riderId)) {
+      return { error: 'rider not found in this barn' }
+    }
   }
 
   try {
     if (newHorseName) {
-      const membership = await getUserMembership(user.id, barnId)
       if (membership?.role !== 'manager') {
         return { error: 'not authorized to add horses' }
       }
@@ -79,15 +83,22 @@ export async function submitLesson(
       exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
+    if (newRiderName) {
+      if (membership?.role !== 'manager') {
+        return { error: 'not authorized to add riders' }
+      }
+      const rider = await createRider(barnId, newRiderName)
+      riderId = rider.id
+    }
+
     const lesson = await createLesson({
       barnId,
       instructorId,
       fee,
       lessonAt,
     })
-
     await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId, exertionLevels.get(id) ?? 3)))
-    await addRiderToLesson(lesson.id, riderId, barnId)
+    await addRiderToLesson(lesson.id, riderId!, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }
   }
