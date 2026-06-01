@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { createMockHorse } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -8,15 +9,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getHorsesByBarn, createHorse } from '../horses'
 
 const mockHorses = [
-  { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
-  { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
+  createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+  createMockHorse({ id: 'horse-2', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' }),
 ]
 
 describe('getHorsesByBarn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_return_horses_for_barn', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
@@ -65,11 +62,7 @@ describe('getHorsesByBarn', () => {
 })
 
 describe('createHorse', () => {
-  const newHorse = { id: 'horse-3', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-03', updated_at: '2026-01-03' }
-
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
+  const newHorse = createMockHorse({ id: 'horse-3', name: 'Blaze', created_at: '2026-01-03', updated_at: '2026-01-03' })
 
   it('should_create_horse_in_barn', async () => {
     vi.mocked(createClient).mockResolvedValue({

@@ -1,6 +1,29 @@
 import { createClient } from '@/lib/supabase/server'
 import type { Lesson, LessonHorse, LessonRider } from './types'
 
+export async function getLessonsByBarn(barnId: string): Promise<Lesson[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .order('lesson_at', { ascending: false })
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('lessons')
+    .delete()
+    .eq('id', lessonId)
+    .eq('barn_id', barnId)
+
+  if (error) throw error
+}
+
 export async function createLesson({
   barnId,
   instructorId,

@@ -1,11 +1,16 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
+import { createLesson, addHorseToLesson, addRiderToLesson, deleteLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse } from '@/lib/db/horses'
 import { createRider } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
+
+function parseExertionLevel(raw: FormDataEntryValue | null): number {
+  const n = parseInt(raw as string ?? '', 10)
+  return Number.isNaN(n) ? 3 : Math.max(1, Math.min(5, n))
+}
 
 export async function submitLesson(
   barnId: string,
@@ -44,6 +49,11 @@ export async function submitLesson(
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
 
+  const exertionLevels = new Map<string, number>(
+    horseIds.map(id => [id, parseExertionLevel(formData.get(`exertion_${id}`))])
+  )
+  const newHorseExertionLevel = parseExertionLevel(formData.get('new_horse_exertion_level'))
+
   try {
     if (newHorseName) {
       const membership = await getUserMembership(user.id, barnId)
@@ -52,6 +62,7 @@ export async function submitLesson(
       }
       const horse = await createHorse(barnId, newHorseName)
       horseIds.push(horse.id)
+      exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
     if (newRiderName) {
@@ -68,11 +79,34 @@ export async function submitLesson(
       fee,
       lessonAt,
     })
-
-    await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId)))
-    await addRiderToLesson(lesson.id, riderId!, barnId)
+    await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId, exertionLevels.get(id) ?? 3)))
+    await addRiderToLesson(lesson.id, riderId, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }
+  }
+
+  redirect(`/barn/${barnSlug}/lessons`)
+}
+
+export async function deleteLessonAction(
+  barnId: string,
+  barnSlug: string,
+  lessonId: string
+): Promise<{ error: string }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'not authenticated' }
+
+  const membership = await getUserMembership(user.id, barnId)
+  if (membership?.role !== 'manager' && membership?.role !== 'admin') {
+    return { error: 'not authorized' }
+  }
+
+  try {
+    await deleteLesson(lessonId, barnId)
+  } catch {
+    return { error: 'Failed to delete lesson' }
   }
 
   redirect(`/barn/${barnSlug}/lessons`)

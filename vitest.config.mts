@@ -7,6 +7,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    setupFiles: ['./vitest.setup.ts'],
     environment: 'jsdom',
     coverage: {
       provider: 'v8',
@@ -16,6 +17,7 @@ export default defineConfig({
         'src/app/layout.tsx',
         'src/lib/supabase/client.ts',
         'src/lib/supabase/server.ts',
+        'src/test/**',
       ],
     },
   },

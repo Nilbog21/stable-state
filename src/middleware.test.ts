@@ -35,7 +35,6 @@ const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] } }
 
 describe('middleware', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockNextResponseNext.mockReturnValue(mockResponse)
     mockNextResponseRedirect.mockReturnValue(mockResponse)
     mockCreateServerClient.mockImplementation((_url: string, _key: string, _config: any) => ({
