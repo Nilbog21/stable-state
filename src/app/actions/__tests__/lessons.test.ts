@@ -19,6 +19,10 @@ vi.mock('@/lib/db/horses', () => ({
   createHorse: vi.fn(),
 }))
 
+vi.mock('@/lib/db/riders', () => ({
+  createRider: vi.fn(),
+}))
+
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
 }))
@@ -27,6 +31,7 @@ import { createClient } from '@/lib/supabase/server'
 import { createLesson, addHorseToLesson, addRiderToLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse } from '@/lib/db/horses'
+import { createRider } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
 import { submitLesson } from '../lessons'
 
@@ -81,6 +86,7 @@ describe('submitLesson', () => {
     vi.mocked(createLesson).mockResolvedValue(mockLesson)
     vi.mocked(addHorseToLesson).mockResolvedValue({} as any)
     vi.mocked(addRiderToLesson).mockResolvedValue({} as any)
+    vi.mocked(createRider).mockResolvedValue({} as any)
   })
 
   it('should_return_error_when_no_horse_selected', async () => {
@@ -236,5 +242,29 @@ describe('submitLesson', () => {
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized to add horses' })
     expect(createHorse).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_no_rider_selected_and_no_new_rider_name', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'rider required' })
+  })
+
+  it('should_create_new_rider_and_add_to_lesson_when_new_rider_name_is_provided', async () => {
+    const newRider = { id: 'rider-new', barn_id: 'barn-1', name: 'Carol', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    vi.mocked(createRider).mockResolvedValue(newRider)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createRider).toHaveBeenCalledWith('barn-1', 'Carol')
+    expect(addRiderToLesson).toHaveBeenCalledWith('lesson-1', 'rider-new', 'barn-1')
+  })
+
+  it('should_return_error_when_non_manager_tries_to_create_new_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockTrainerMembership, role: 'trainer' })
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized to add riders' })
+    expect(createRider).not.toHaveBeenCalled()
   })
 })
