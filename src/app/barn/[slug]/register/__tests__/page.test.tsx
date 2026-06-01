@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-
-afterEach(cleanup)
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
@@ -15,26 +15,18 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 }))
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
-import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import BarnRegisterPage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = createMockBarn()
 
 function makeUser(meta: Record<string, string> = {}) {
   return { id: 'user-1', user_metadata: meta }
 }
 
-function setupAuth(user: ReturnType<typeof makeUser> | null) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
-}
-
 describe('BarnRegisterPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth(makeUser({ full_name: 'Jane Doe' }))
     vi.mocked(getUserMembership).mockResolvedValue(null)
@@ -53,19 +45,13 @@ describe('BarnRegisterPage', () => {
   })
 
   it('should_redirect_to_barn_home_when_user_has_active_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1',
-      role: 'trainer' as const, status: 'active' as const, created_at: '',
-    })
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership())
     await expect(BarnRegisterPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/')
   })
 
   it('should_redirect_to_pending_when_user_has_pending_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1',
-      role: 'trainer' as const, status: 'pending' as const, created_at: '',
-    })
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'pending' }))
     await expect(BarnRegisterPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
   })

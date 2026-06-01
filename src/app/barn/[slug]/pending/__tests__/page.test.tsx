@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-
-afterEach(cleanup)
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
@@ -13,28 +13,15 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 }))
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
-import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import BarnPendingPage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
-const mockUser = { id: 'user-1' }
-
-const pendingMembership = {
-  id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1',
-  role: 'trainer' as const, status: 'pending' as const, created_at: '',
-}
-
-function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
-}
+const mockBarn = createMockBarn()
+const pendingMembership = createMockMembership({ status: 'pending' })
 
 describe('BarnPendingPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(pendingMembership)
@@ -59,7 +46,7 @@ describe('BarnPendingPage', () => {
   })
 
   it('should_redirect_to_login_when_membership_is_active', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...pendingMembership, status: 'active' as const })
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'active' }))
     await expect(BarnPendingPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })

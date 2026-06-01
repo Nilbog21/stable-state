@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createMockLesson, createMockMembership } from '@/test/fixtures'
+import { makeFormData } from '@/test/utils/forms'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -30,44 +32,12 @@ import { createHorse } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 import { submitLesson } from '../lessons'
 
-const mockLesson = {
-  id: 'lesson-1',
-  barn_id: 'barn-1',
-  instructor_id: 'user-1',
-  fee: null,
-  lesson_at: '2026-05-17T10:00',
-  submitted_at: '2026-05-17T10:05:00Z',
-}
-
-const mockTrainerMembership = {
-  id: 'mem-1',
-  user_id: 'user-1',
-  barn_id: 'barn-1',
-  role: 'trainer' as const,
-  status: 'active' as const,
-  created_at: '2026-01-01T00:00:00Z',
-}
-
-const mockManagerMembership = {
-  ...mockTrainerMembership,
-  role: 'manager' as const,
-}
-
-function makeFormData(fields: Record<string, string | string[]>): FormData {
-  const fd = new FormData()
-  for (const [k, v] of Object.entries(fields)) {
-    if (Array.isArray(v)) {
-      for (const val of v) fd.append(k, val)
-    } else {
-      fd.append(k, v)
-    }
-  }
-  return fd
-}
+const mockLesson = createMockLesson({ fee: null, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
+const mockTrainerMembership = createMockMembership({ created_at: '2026-01-01T00:00:00Z' })
+const mockManagerMembership = createMockMembership({ role: 'manager', created_at: '2026-01-01T00:00:00Z' })
 
 describe('submitLesson', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({
@@ -152,7 +122,7 @@ describe('submitLesson', () => {
   it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
-      { ...mockTrainerMembership, id: 'mem-99', user_id: 'trainer-99' },
+      createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
     ])
     const fd = makeFormData({
       horse_id: 'horse-1',
@@ -252,7 +222,7 @@ describe('submitLesson', () => {
   })
 
   it('should_return_error_when_non_manager_tries_to_create_new_horse', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockTrainerMembership, role: 'trainer' })
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'trainer', created_at: '2026-01-01T00:00:00Z' }))
     const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized to add horses' })

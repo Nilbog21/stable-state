@@ -1,7 +1,7 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-
-afterEach(cleanup)
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
+import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
@@ -24,7 +24,6 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 }))
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
-import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import {
   getUserMembership,
@@ -35,40 +34,19 @@ import {
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import ApprovalsPage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
-const mockUser = { id: 'user-1' }
-
-const managerMembership = {
-  id: 'mem-mgr', user_id: 'user-1', barn_id: 'barn-1',
-  role: 'manager' as const, status: 'active' as const, created_at: '2026-01-01T00:00:00Z',
-}
-const adminMembership = {
-  id: 'mem-adm', user_id: 'user-1', barn_id: null,
-  role: 'admin' as const, status: 'active' as const, created_at: '2026-01-01T00:00:00Z',
-}
-const pendingMembership = {
-  id: 'mem-pending', user_id: 'user-2', barn_id: 'barn-1',
-  role: 'trainer' as const, status: 'pending' as const, created_at: '2026-01-02T00:00:00Z',
-}
-const activeMembership = {
-  id: 'mem-active', user_id: 'user-3', barn_id: 'barn-1',
-  role: 'trainer' as const, status: 'active' as const, created_at: '2026-01-03T00:00:00Z',
-}
+const mockBarn = createMockBarn()
+const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager', created_at: '2026-01-01T00:00:00Z' })
+const adminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin', created_at: '2026-01-01T00:00:00Z' })
+const pendingMembership = createMockMembership({ id: 'mem-pending', user_id: 'user-2', status: 'pending', created_at: '2026-01-02T00:00:00Z' })
+const activeMembership = createMockMembership({ id: 'mem-active', user_id: 'user-3', created_at: '2026-01-03T00:00:00Z' })
 
 const mockProfiles = [
-  { user_id: 'user-2', first_name: 'Jane', last_name: 'Doe', created_at: '' },
-  { user_id: 'user-3', first_name: 'Bob', last_name: 'Smith', created_at: '' },
+  createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' }),
+  createMockProfile({ user_id: 'user-3', first_name: 'Bob', last_name: 'Smith' }),
 ]
-
-function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
-}
 
 describe('ApprovalsPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)

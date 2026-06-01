@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { createMockRider } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -8,15 +9,11 @@ import { createClient } from '@/lib/supabase/server'
 import { getRidersByBarn } from '../riders'
 
 const mockRiders = [
-  { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', created_at: '2026-01-01', updated_at: '2026-01-01' },
-  { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', created_at: '2026-01-02', updated_at: '2026-01-02' },
+  createMockRider({ id: 'rider-1', name: 'Alice', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+  createMockRider({ id: 'rider-2', name: 'Bob', created_at: '2026-01-02', updated_at: '2026-01-02' }),
 ]
 
 describe('getRidersByBarn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_return_riders_for_barn', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
