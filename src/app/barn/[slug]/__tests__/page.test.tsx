@@ -184,6 +184,15 @@ describe('BarnDashboardPage', () => {
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons')
   })
 
+  it('should_render_riders_link_for_manager', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /riders/i })
+    expect(link).toBeDefined()
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/riders')
+  })
+
   it('should_render_approvals_link_for_admin', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
