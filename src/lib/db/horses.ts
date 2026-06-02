@@ -24,3 +24,16 @@ export async function createHorse(barnId: string, name: string): Promise<Horse> 
   if (error) throw error
   return data
 }
+
+export async function updateHorse(horseId: string, name: string): Promise<Horse> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('horses')
+    .update({ name })
+    .eq('id', horseId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
