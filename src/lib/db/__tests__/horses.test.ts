@@ -224,6 +224,22 @@ describe('getHorseExertionSummary', () => {
 
     await expect(getHorseExertionSummary('barn-1', since)).rejects.toThrow('lh error')
   })
+
+  it('should_treat_null_lesson_horses_data_as_empty', async () => {
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorsesChain([horse1])
+      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1' }])
+      if (table === 'lesson_horses') return makeLessonHorsesChain(null)
+      return makeLessonHorsesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getHorseExertionSummary('barn-1', since)
+
+    expect(result).toEqual([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0 },
+    ])
+  })
 })
 
 describe('updateHorse', () => {
