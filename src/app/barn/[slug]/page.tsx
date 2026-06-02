@@ -30,7 +30,12 @@ export default async function BarnDashboardPage({
   const navLinks =
     membership.role === 'admin'
       ? [{ href: `/barn/${slug}/approvals`, label: 'Approvals' }]
-      : [{ href: `/barn/${slug}/lessons`, label: 'Lessons' }]
+      : membership.role === 'manager' || membership.role === 'trainer'
+        ? [
+            { href: `/barn/${slug}/lessons`, label: 'Lessons' },
+            { href: `/barn/${slug}/riders`, label: 'Riders' },
+          ]
+        : [{ href: `/barn/${slug}/lessons`, label: 'Lessons' }]
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">

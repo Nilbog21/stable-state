@@ -50,6 +50,7 @@ const mockManagerMembership = {
   role: 'manager' as const,
   status: 'active' as const,
   created_at: '',
+  default_fee: null,
 }
 
 const mockTrainerMembership = {
@@ -59,6 +60,7 @@ const mockTrainerMembership = {
   role: 'trainer' as const,
   status: 'active' as const,
   created_at: '',
+  default_fee: null,
 }
 
 const mockRiderMembership = {
@@ -68,6 +70,7 @@ const mockRiderMembership = {
   role: 'rider' as const,
   status: 'active' as const,
   created_at: '',
+  default_fee: null,
 }
 
 const mockAdminMembership = {
@@ -77,6 +80,7 @@ const mockAdminMembership = {
   role: 'admin' as const,
   status: 'active' as const,
   created_at: '',
+  default_fee: null,
 }
 
 function setupAuth(user: typeof mockUser | null = mockUser) {
@@ -172,8 +176,6 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_lessons_link_for_rider', async () => {
-    // Rider has no distinct nav destination yet; falls through to the same Lessons link as trainer/manager.
-    // Update this test when rider-specific pages are introduced.
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -182,6 +184,24 @@ describe('BarnDashboardPage', () => {
     const link = screen.getByRole('link', { name: /lessons/i })
     expect(link).toBeDefined()
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons')
+  })
+
+  it('should_not_render_riders_link_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByRole('link', { name: /riders/i })).toBeNull()
+  })
+
+  it('should_render_riders_link_for_manager', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /riders/i })
+    expect(link).toBeDefined()
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/riders')
   })
 
   it('should_render_approvals_link_for_admin', async () => {

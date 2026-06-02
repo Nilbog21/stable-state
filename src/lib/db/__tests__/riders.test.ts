@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getRidersByBarn, createRider } from '../riders'
+import { getRidersByBarn, createRider, updateRider } from '../riders'
 
 const mockRiders = [
   createMockRider({ id: 'rider-1', name: 'Alice', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -126,5 +126,51 @@ describe('createRider', () => {
     await createRider('barn-1', 'Carol')
 
     expect(mockInsert).toHaveBeenCalledWith({ barn_id: 'barn-1', name: 'Carol' })
+  })
+})
+
+const mockUpdatedRider = createMockRider({ id: 'rider-1', name: 'Alice Updated' })
+
+describe('updateRider', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_update_rider_name_and_return_updated_row', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockUpdatedRider, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await updateRider('rider-1', 'barn-1', 'Alice Updated')
+
+    expect(result).toEqual(mockUpdatedRider)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(updateRider('rider-1', 'barn-1', 'Alice Updated')).rejects.toThrow('db error')
   })
 })
