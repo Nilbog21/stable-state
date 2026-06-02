@@ -44,7 +44,7 @@ describe('LessonForm', () => {
     render(<LessonForm {...baseProps} horses={[horse]} />)
     const checkbox = screen.getByRole('checkbox', { name: /Thunder/i }) as HTMLInputElement
     fireEvent.click(checkbox)
-    expect(screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i })).toBeDefined()
+    expect(screen.queryByRole('spinbutton', { name: /Exertion level for Thunder/i })).not.toBeNull()
     fireEvent.click(checkbox)
     expect(screen.queryByRole('spinbutton', { name: /Exertion level for Thunder/i })).toBeNull()
   })
@@ -57,7 +57,7 @@ describe('LessonForm', () => {
   it('should_render_instructor_select_when_isManager_is_true', () => {
     const instructors = [{ userId: 'user-1', name: 'Jane Doe' }]
     render(<LessonForm {...baseProps} isManager={true} instructors={instructors} />)
-    expect(screen.getByLabelText(/instructor/i)).toBeDefined()
+    expect(screen.queryByLabelText(/instructor/i)).not.toBeNull()
   })
 
   it('should_default_instructor_select_to_currentUserId', () => {
@@ -73,7 +73,7 @@ describe('LessonForm', () => {
       { userId: 'user-2', name: 'John Smith' },
     ]
     render(<LessonForm {...baseProps} isManager={true} instructors={instructors} />)
-    expect(screen.getByRole('option', { name: 'Jane Doe' })).toBeDefined()
-    expect(screen.getByRole('option', { name: 'John Smith' })).toBeDefined()
+    expect(screen.queryByRole('option', { name: 'Jane Doe' })).not.toBeNull()
+    expect(screen.queryByRole('option', { name: 'John Smith' })).not.toBeNull()
   })
 })
