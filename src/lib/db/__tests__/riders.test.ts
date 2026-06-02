@@ -97,4 +97,34 @@ describe('createRider', () => {
 
     await expect(createRider('barn-1', 'Carol')).rejects.toThrow('db error')
   })
+
+  it('should_include_user_id_in_insert_when_provided', async () => {
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { ...mockNewRider, user_id: 'user-1' }, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: mockInsert }),
+    } as any)
+
+    await createRider('barn-1', 'Carol', 'user-1')
+
+    expect(mockInsert).toHaveBeenCalledWith({ barn_id: 'barn-1', name: 'Carol', user_id: 'user-1' })
+  })
+
+  it('should_omit_user_id_from_insert_when_not_provided', async () => {
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: mockNewRider, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: mockInsert }),
+    } as any)
+
+    await createRider('barn-1', 'Carol')
+
+    expect(mockInsert).toHaveBeenCalledWith({ barn_id: 'barn-1', name: 'Carol' })
+  })
 })

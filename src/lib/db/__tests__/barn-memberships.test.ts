@@ -17,6 +17,7 @@ import {
   approveMembership,
   deleteMembership,
   getActiveTrainerMembershipsByBarn,
+  getMembershipById,
 } from '../barn-memberships'
 
 const mockMembership = createMockMembership()
@@ -595,5 +596,54 @@ describe('getActiveTrainerMembershipsByBarn', () => {
     } as any)
 
     await expect(getActiveTrainerMembershipsByBarn('barn-1')).rejects.toThrow('query failed')
+  })
+})
+
+describe('getMembershipById', () => {
+  it('should_return_membership_when_found', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockMembership, error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getMembershipById('mem-1')
+
+    expect(result).toEqual(mockMembership)
+  })
+
+  it('should_return_null_when_not_found', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getMembershipById('mem-1')
+
+    expect(result).toBeNull()
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: dbError }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getMembershipById('mem-1')).rejects.toThrow('query failed')
   })
 })
