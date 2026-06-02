@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { LessonForm } from '../LessonForm'
 
 afterEach(cleanup)
@@ -75,5 +75,25 @@ describe('LessonForm', () => {
     render(<LessonForm {...baseProps} isManager={true} instructors={instructors} />)
     expect(screen.queryByRole('option', { name: 'Jane Doe' })).not.toBeNull()
     expect(screen.queryByRole('option', { name: 'John Smith' })).not.toBeNull()
+  })
+
+  it('should_render_error_message_when_action_returns_error', async () => {
+    const errorAction = vi.fn().mockResolvedValue({ error: 'Something went wrong' })
+    render(<LessonForm {...baseProps} action={errorAction} />)
+    const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
+    fireEvent.submit(form)
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeDefined()
+    })
+  })
+
+  it('should_display_submitting_text_while_form_action_is_pending', async () => {
+    const pendingAction = vi.fn().mockImplementation(() => new Promise(() => {}))
+    render(<LessonForm {...baseProps} action={pendingAction} />)
+    const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
+    fireEvent.submit(form)
+    await waitFor(() => {
+      expect(screen.getByRole('button', { name: /submitting/i })).toBeDefined()
+    })
   })
 })

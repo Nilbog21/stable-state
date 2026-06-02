@@ -90,6 +90,20 @@ describe('GET /auth/callback', () => {
     expect(applySeededMembership).toHaveBeenCalledWith('user-1', 'admin@example.com')
   })
 
+  it('should_not_call_applySeededMembership_when_user_has_no_email', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
+      },
+    } as any)
+
+    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
+    await GET(request as any)
+
+    expect(applySeededMembership).not.toHaveBeenCalled()
+  })
+
   it('should_redirect_to_error_page_when_no_code_is_present', async () => {
     const request = new Request('http://localhost:3000/auth/callback')
     await GET(request as any)
@@ -193,6 +207,22 @@ describe('GET /auth/callback', () => {
       expect(mockRedirect).toHaveBeenCalledWith(
         'http://localhost:3000/login?error=auth_callback_failed'
       )
+    })
+
+    it('should_treat_membership_as_null_when_user_is_null_after_exchange', async () => {
+      vi.mocked(createClient).mockResolvedValue({
+        auth: {
+          exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+          getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+        },
+      } as any)
+      vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+      await GET(request as any)
+
+      expect(getUserMembership).not.toHaveBeenCalled()
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres/register')
     })
   })
 })

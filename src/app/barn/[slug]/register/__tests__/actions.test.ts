@@ -106,8 +106,20 @@ describe('registerForBarn', () => {
     expect(result).toEqual({ error: 'First name is required.' })
   })
 
+  it('should_return_error_when_firstName_is_missing_from_form', async () => {
+    const fd = makeFormData({ lastName: 'Doe', role: 'trainer' })
+    const result = await registerForBarn('green-acres', null, fd)
+    expect(result).toEqual({ error: 'First name is required.' })
+  })
+
   it('should_return_error_for_blank_last_name', async () => {
     const fd = makeFormData({ firstName: 'Jane', lastName: '', role: 'trainer' })
+    const result = await registerForBarn('green-acres', null, fd)
+    expect(result).toEqual({ error: 'Last name is required.' })
+  })
+
+  it('should_return_error_when_lastName_is_missing_from_form', async () => {
+    const fd = makeFormData({ firstName: 'Jane', role: 'trainer' })
     const result = await registerForBarn('green-acres', null, fd)
     expect(result).toEqual({ error: 'Last name is required.' })
   })

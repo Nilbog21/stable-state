@@ -159,4 +159,39 @@ describe('LessonDetailPage', () => {
     render(jsx)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
+
+  it('should_render_dash_in_horses_section_when_lesson_has_no_horses', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_horses: [] })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByRole('list')).toBeNull()
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_dash_for_horse_name_when_horses_relation_is_null', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_horses: [{ exertion_level: 3, horses: null }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_dash_in_riders_section_when_lesson_has_no_riders', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_riders: [] })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_dash_for_rider_name_when_riders_relation_is_null', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_riders: [{ riders: null }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
 })
