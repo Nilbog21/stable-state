@@ -28,7 +28,7 @@ export default async function LessonDetailPage({
     getUserMembership(user.id, barn.id),
   ])
 
-  if (!membership) {
+  if (!membership || membership.status !== 'active') {
     notFound()
   }
 
@@ -66,9 +66,9 @@ export default async function LessonDetailPage({
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
               {lesson.lesson_horses.length === 0 ? '—' : (
                 <ul className="flex flex-col gap-1">
-                  {lesson.lesson_horses.map((lh) => (
-                    <li key={lh.horses.id}>
-                      {lh.horses.name}{' '}
+                  {lesson.lesson_horses.map((lh, i) => (
+                    <li key={lh.horses?.id ?? i}>
+                      {lh.horses?.name ?? '—'}{' '}
                       <span className="text-zinc-500">(exertion {lh.exertion_level})</span>
                     </li>
                   ))}
@@ -79,7 +79,7 @@ export default async function LessonDetailPage({
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Rider</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-              {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_riders.map((lr) => lr.riders.name).join(', ')}
+              {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_riders.map((lr) => lr.riders?.name ?? '—').join(', ')}
             </dd>
           </div>
           <div className="flex flex-col gap-1 py-4">

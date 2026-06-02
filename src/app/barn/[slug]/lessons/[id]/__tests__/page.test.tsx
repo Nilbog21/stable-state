@@ -113,6 +113,17 @@ describe('LessonDetailPage', () => {
     expect(notFound).toHaveBeenCalled()
   })
 
+  it('should_call_notFound_when_membership_is_not_active', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'pending' as const })
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+
+    await expect(
+      LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    ).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(notFound).toHaveBeenCalled()
+  })
+
   it('should_call_notFound_when_lesson_not_found', async () => {
     vi.mocked(getLessonById).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
@@ -127,8 +138,10 @@ describe('LessonDetailPage', () => {
   it('should_render_date_instructor_horse_exertion_rider_and_fee', async () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
+    expect(screen.getByText(/may 17, 2026/i)).toBeDefined()
     expect(screen.getByText(/jane smith/i)).toBeDefined()
     expect(screen.getByText(/thunderbolt/i)).toBeDefined()
+    expect(screen.getByText(/exertion 3/i)).toBeDefined()
     expect(screen.getByText(/alice/i)).toBeDefined()
     expect(screen.getByText(/\$75/)).toBeDefined()
   })
