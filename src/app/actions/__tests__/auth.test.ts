@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('next/navigation', () => ({
   redirect: vi.fn(),
@@ -13,10 +13,6 @@ import { createClient } from '@/lib/supabase/server'
 import { signInWithGoogle, signOut, signInWithGoogleForBarn } from '../auth'
 
 describe('signInWithGoogle', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_call_signInWithOAuth_with_google_provider', async () => {
     const mockSignInWithOAuth = vi.fn().mockResolvedValue({
       data: { url: 'https://accounts.google.com/oauth' },
@@ -66,10 +62,6 @@ describe('signInWithGoogle', () => {
 })
 
 describe('signInWithGoogleForBarn', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_include_barn_slug_in_callback_redirect_url', async () => {
     const mockSignInWithOAuth = vi.fn().mockResolvedValue({
       data: { url: 'https://accounts.google.com/oauth' },
@@ -124,10 +116,6 @@ describe('signInWithGoogleForBarn', () => {
 })
 
 describe('signOut', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_call_supabase_signOut', async () => {
     const mockSignOut = vi.fn().mockResolvedValue({ error: null })
     vi.mocked(createClient).mockResolvedValue({

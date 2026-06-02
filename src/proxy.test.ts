@@ -3,11 +3,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 const mockGetUser = vi.hoisted(() => vi.fn())
 const mockNextResponseNext = vi.hoisted(() => vi.fn())
 const mockNextResponseRedirect = vi.hoisted(() => vi.fn())
+const mockCreateServerClient = vi.hoisted(() => vi.fn())
 
 vi.mock('@supabase/ssr', () => ({
-  createServerClient: vi.fn(() => ({
-    auth: { getUser: mockGetUser },
-  })),
+  createServerClient: mockCreateServerClient,
 }))
 
 vi.mock('next/server', () => ({
@@ -36,9 +35,11 @@ const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] } }
 
 describe('proxy', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     mockNextResponseNext.mockReturnValue(mockResponse)
     mockNextResponseRedirect.mockReturnValue(mockResponse)
+    mockCreateServerClient.mockImplementation((_url: string, _key: string, _config: any) => ({
+      auth: { getUser: mockGetUser },
+    }))
   })
 
   describe('non-barn routes', () => {
@@ -115,6 +116,40 @@ describe('proxy', () => {
       await proxy(request)
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('cookie handlers', () => {
+    it('should_return_request_cookies_via_getAll_handler', async () => {
+      let capturedConfig: any
+      mockCreateServerClient.mockImplementationOnce((_url: string, _key: string, config: any) => {
+        capturedConfig = config
+        return { auth: { getUser: mockGetUser } }
+      })
+      mockGetUser.mockResolvedValue({ data: { user: null } })
+
+      const request = makeRequest('http://localhost:3000/login', { session: 'abc123' })
+      await proxy(request)
+
+      const cookies = capturedConfig.cookies.getAll()
+      expect(cookies).toContainEqual({ name: 'session', value: 'abc123' })
+    })
+
+    it('should_propagate_cookies_to_request_and_response_via_setAll_handler', async () => {
+      let capturedConfig: any
+      mockCreateServerClient.mockImplementationOnce((_url: string, _key: string, config: any) => {
+        capturedConfig = config
+        return { auth: { getUser: mockGetUser } }
+      })
+      mockGetUser.mockResolvedValue({ data: { user: null } })
+
+      const request = makeRequest('http://localhost:3000/login')
+      await proxy(request)
+
+      capturedConfig.cookies.setAll([{ name: 'token', value: 'xyz', options: { httpOnly: true } }])
+
+      expect(request.cookies.set).toHaveBeenCalledWith('token', 'xyz')
+      expect(mockResponse.cookies.set).toHaveBeenCalledWith('token', 'xyz', { httpOnly: true })
     })
   })
 })

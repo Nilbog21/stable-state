@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -30,7 +32,6 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import {
   getUserMembership,
@@ -45,34 +46,12 @@ import {
   removeMembershipAction,
 } from '../actions'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
-const mockUser = { id: 'user-1', email: 'manager@example.com' }
-const mockManagerMembership = {
-  id: 'mem-mgr',
-  user_id: 'user-1',
-  barn_id: 'barn-1',
-  role: 'manager' as const,
-  status: 'active' as const,
-  created_at: '',
-}
-const mockAdminMembership = {
-  id: 'mem-adm',
-  user_id: 'user-1',
-  barn_id: null,
-  role: 'admin' as const,
-  status: 'active' as const,
-  created_at: '',
-}
-
-function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
-}
+const mockBarn = createMockBarn()
+const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
+const mockAdminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin' })
 
 describe('approveMembershipAction', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
@@ -82,6 +61,15 @@ describe('approveMembershipAction', () => {
 
   it('should_redirect_to_login_when_unauthenticated', async () => {
     setupAuth(null)
+
+    await expect(approveMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(approveMembership).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_login_when_barn_is_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
     await expect(approveMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 
@@ -100,10 +88,7 @@ describe('approveMembershipAction', () => {
   })
 
   it('should_redirect_when_user_is_trainer_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      ...mockManagerMembership,
-      role: 'trainer',
-    })
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-mgr', role: 'trainer' }))
 
     await expect(approveMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 
@@ -135,7 +120,6 @@ describe('approveMembershipAction', () => {
 
 describe('rejectMembershipAction', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
@@ -145,6 +129,15 @@ describe('rejectMembershipAction', () => {
 
   it('should_redirect_to_login_when_unauthenticated', async () => {
     setupAuth(null)
+
+    await expect(rejectMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(deleteMembership).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_login_when_barn_is_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
     await expect(rejectMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 
@@ -186,7 +179,6 @@ describe('rejectMembershipAction', () => {
 
 describe('removeMembershipAction', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(null)
@@ -196,6 +188,15 @@ describe('removeMembershipAction', () => {
 
   it('should_redirect_to_login_when_unauthenticated', async () => {
     setupAuth(null)
+
+    await expect(removeMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(deleteMembership).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_login_when_barn_is_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
     await expect(removeMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 

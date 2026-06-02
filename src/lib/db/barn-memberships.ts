@@ -101,6 +101,22 @@ export async function approveMembership(membershipId: string): Promise<void> {
   if (error) throw error
 }
 
+export async function getActiveTrainerMembershipsByBarn(
+  barnId: string
+): Promise<BarnMembership[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .select('*')
+    .eq('barn_id', barnId)
+    .eq('role', 'trainer')
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+  return data ?? []
+}
+
 export async function deleteMembership(membershipId: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase

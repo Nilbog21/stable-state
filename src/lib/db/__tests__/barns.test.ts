@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
+import { createMockBarn } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -7,18 +8,9 @@ vi.mock('@/lib/supabase/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '../barns'
 
-const mockBarn = {
-  id: 'barn-1',
-  name: 'Green Acres',
-  slug: 'green-acres',
-  created_at: '2026-05-16T00:00:00Z',
-}
+const mockBarn = createMockBarn()
 
 describe('getBarnBySlug', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_return_barn_when_slug_exists', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
@@ -55,5 +47,20 @@ describe('getBarnBySlug', () => {
     const result = await getBarnBySlug('unknown-slug')
 
     expect(result).toBeNull()
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: dbError }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getBarnBySlug('some-slug')).rejects.toThrow('query failed')
   })
 })

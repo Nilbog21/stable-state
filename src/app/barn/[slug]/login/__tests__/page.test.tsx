@@ -1,7 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-
-afterEach(cleanup)
+import { describe, it, expect, vi } from 'vitest'
+import { render, screen } from '@testing-library/react'
+import { createMockBarn } from '@/test/fixtures'
 
 vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
@@ -19,18 +18,9 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { notFound } from 'next/navigation'
 import BarnLoginPage from '../page'
 
-const mockBarn = {
-  id: 'barn-1',
-  name: 'Green Acres',
-  slug: 'green-acres',
-  created_at: '2026-05-16T00:00:00Z',
-}
+const mockBarn = createMockBarn()
 
 describe('BarnLoginPage', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_render_login_page_with_barn_name_when_slug_is_valid', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
 

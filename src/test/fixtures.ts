@@ -1,0 +1,60 @@
+import type { Barn, BarnMembership, Horse, Lesson, Profile, Rider } from '@/lib/db/types'
+
+export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
+  return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', ...overrides }
+}
+
+export function createMockUser(overrides: Record<string, unknown> = {}) {
+  return { id: 'user-1', email: 'user@example.com', ...overrides }
+}
+
+export function createMockMembership(overrides: Partial<BarnMembership> = {}): BarnMembership {
+  return {
+    id: 'mem-1',
+    user_id: 'user-1',
+    barn_id: 'barn-1',
+    role: 'trainer',
+    status: 'active',
+    created_at: '',
+    default_fee: null,
+    ...overrides,
+  }
+}
+
+export function createMockProfile(overrides: Partial<Profile> = {}): Profile {
+  return { user_id: 'user-1', first_name: 'Jane', last_name: 'Doe', created_at: '', ...overrides }
+}
+
+export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
+  return {
+    id: 'horse-1',
+    barn_id: 'barn-1',
+    name: 'Thunderbolt',
+    created_at: '',
+    updated_at: '',
+    ...overrides,
+  }
+}
+
+export function createMockRider(overrides: Partial<Rider> = {}): Rider {
+  return {
+    id: 'rider-1',
+    barn_id: 'barn-1',
+    name: 'Jane Doe',
+    created_at: '',
+    updated_at: '',
+    ...overrides,
+  }
+}
+
+export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
+  return {
+    id: 'lesson-1',
+    barn_id: 'barn-1',
+    instructor_id: 'user-1',
+    fee: null,
+    lesson_at: '2026-05-19T10:00:00Z',
+    submitted_at: '2026-05-19T09:00:00Z',
+    ...overrides,
+  }
+}
