@@ -25,6 +25,7 @@ make_repo() {
   local coverage_test_exit="${3:-0}"
   local dir
   dir="$(mktemp -d)"
+  git -C "$dir" init -q
   mkdir -p "$dir/scripts" "$dir/bin"
 
   cat > "$dir/bin/npm" <<NPMEOF
@@ -36,7 +37,7 @@ NPMEOF
 
   cat > "$dir/scripts/check-coverage.sh" <<COVEOF
 #!/usr/bin/env bash
-printf 'called\n' >> "$dir/coverage.log"
+printf 'SKIP_COVERAGE_RUN=%s\n' "\${SKIP_COVERAGE_RUN:-}" >> "$dir/coverage.log"
 exit $coverage_exit
 COVEOF
   chmod +x "$dir/scripts/check-coverage.sh"
@@ -51,31 +52,36 @@ COVTEOF
   echo "$dir"
 }
 
-# Test 1: all steps pass — ci.sh exits 0 and all three steps are called
+# Test 1: all steps pass — ci.sh exits 0, all three steps are called, SKIP_COVERAGE_RUN=1 passed to check-coverage.sh
 REPO="$(make_repo 0 0 0)"
 (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 exit_code=$?
-if [ "$exit_code" -eq 0 ] && [ -f "$REPO/npm.log" ] && [ -f "$REPO/coverage.log" ] && [ -f "$REPO/coverage-test.log" ]; then
-  assert_pass "all steps pass: exits 0 and all steps run"
+skip_val="$(grep 'SKIP_COVERAGE_RUN=' "$REPO/coverage.log" 2>/dev/null | head -1 | cut -d= -f2)"
+if [ "$exit_code" -eq 0 ] && [ -f "$REPO/npm.log" ] && [ -f "$REPO/coverage.log" ] && [ -f "$REPO/coverage-test.log" ] && [ "$skip_val" = "1" ]; then
+  assert_pass "all steps pass: exits 0, all steps run, SKIP_COVERAGE_RUN=1 passed"
 elif [ "$exit_code" -ne 0 ]; then
-  assert_fail "all steps pass: exits 0 and all steps run" "ci.sh exited non-zero ($exit_code)"
+  assert_fail "all steps pass: exits 0, all steps run, SKIP_COVERAGE_RUN=1 passed" "ci.sh exited non-zero ($exit_code)"
+elif [ "$skip_val" != "1" ]; then
+  assert_fail "all steps pass: exits 0, all steps run, SKIP_COVERAGE_RUN=1 passed" "SKIP_COVERAGE_RUN not set to 1 (got '$skip_val')"
 else
-  assert_fail "all steps pass: exits 0 and all steps run" "one or more steps were not called"
+  assert_fail "all steps pass: exits 0, all steps run, SKIP_COVERAGE_RUN=1 passed" "one or more steps were not called"
 fi
 rm -rf "$REPO"
 
-# Test 2: npm fails — ci.sh exits non-zero, check-coverage.sh not called
+# Test 2: npm fails — ci.sh exits non-zero, neither check-coverage.sh nor check-coverage.test.sh called
 REPO="$(make_repo 1 0 0)"
 (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 exit_code=$?
-if [ "$exit_code" -ne 0 ] && [ -f "$REPO/npm.log" ] && [ ! -f "$REPO/coverage.log" ]; then
-  assert_pass "npm fails: exits non-zero, check-coverage.sh not called"
+if [ "$exit_code" -ne 0 ] && [ -f "$REPO/npm.log" ] && [ ! -f "$REPO/coverage.log" ] && [ ! -f "$REPO/coverage-test.log" ]; then
+  assert_pass "npm fails: exits non-zero, check-coverage.sh and check-coverage.test.sh not called"
 elif [ "$exit_code" -eq 0 ]; then
-  assert_fail "npm fails: exits non-zero, check-coverage.sh not called" "ci.sh exited 0 (expected non-zero)"
+  assert_fail "npm fails: exits non-zero, check-coverage.sh and check-coverage.test.sh not called" "ci.sh exited 0 (expected non-zero)"
 elif [ ! -f "$REPO/npm.log" ]; then
-  assert_fail "npm fails: exits non-zero, check-coverage.sh not called" "npm was not called"
+  assert_fail "npm fails: exits non-zero, check-coverage.sh and check-coverage.test.sh not called" "npm was not called"
+elif [ -f "$REPO/coverage.log" ]; then
+  assert_fail "npm fails: exits non-zero, check-coverage.sh and check-coverage.test.sh not called" "check-coverage.sh was unexpectedly called"
 else
-  assert_fail "npm fails: exits non-zero, check-coverage.sh not called" "check-coverage.sh was unexpectedly called"
+  assert_fail "npm fails: exits non-zero, check-coverage.sh and check-coverage.test.sh not called" "check-coverage.test.sh was unexpectedly called"
 fi
 rm -rf "$REPO"
 
