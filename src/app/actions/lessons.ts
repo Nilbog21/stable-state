@@ -100,7 +100,7 @@ export async function submitLesson(
       fee,
       lessonAt,
       horseIds,
-      exertionLevels: horseIds.map(id => exertionLevels.get(id) ?? 3),
+      exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
       riderId: riderId!,
     })
   } catch {
