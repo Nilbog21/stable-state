@@ -66,6 +66,7 @@ const mockTrainerMembership = {
   role: 'trainer' as const,
   status: 'active' as const,
   created_at: '2026-01-01T00:00:00Z',
+  default_fee: null,
 }
 
 const mockManagerMembership = {
@@ -227,5 +228,15 @@ describe('LessonsPage', () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Alice')).toBeDefined()
+  })
+
+  it('should_link_each_lesson_row_to_its_detail_page', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const links = screen.getAllByRole('link')
+    const detailLinks = links.filter(
+      (l) => (l as HTMLAnchorElement).href?.includes('/barn/green-acres/lessons/lesson-1')
+    )
+    expect(detailLinks.length).toBeGreaterThan(0)
   })
 })

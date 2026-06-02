@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Lesson, LessonHorse, LessonRider, LessonWithDetails } from './types'
+import type { Lesson, LessonDetail, LessonHorse, LessonRider, LessonWithDetails } from './types'
 
 export async function createLessonWithParticipants(params: {
   barnId: string
@@ -87,6 +87,24 @@ export async function getLessonsByBarn(barnId: string): Promise<LessonWithDetail
       rider_name: riderName,
     }
   })
+}
+
+export async function getLessonById(lessonId: string, barnId: string): Promise<LessonDetail | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lessons')
+    .select(`
+      *,
+      profiles ( first_name, last_name ),
+      lesson_horses ( exertion_level, horses ( id, name ) ),
+      lesson_riders ( riders ( id, name ) )
+    `)
+    .eq('id', lessonId)
+    .eq('barn_id', barnId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
 }
 
 export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
