@@ -85,3 +85,10 @@ export interface LessonRider {
   lesson_id: string
   rider_id: string
 }
+
+export interface HorseExertionSummary {
+  id: string
+  name: string
+  lessonCount: number
+  totalExertion: number
+}
