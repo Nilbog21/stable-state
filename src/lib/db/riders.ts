@@ -26,3 +26,16 @@ export async function createRider(barnId: string, name: string, userId?: string)
   if (error) throw error
   return data
 }
+
+export async function updateRider(riderId: string, name: string): Promise<Rider> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('riders')
+    .update({ name })
+    .eq('id', riderId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
