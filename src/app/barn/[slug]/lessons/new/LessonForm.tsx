@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import type { Horse, Rider } from '@/lib/db/types'
+import { DateHourPicker } from './DateHourPicker'
 
 export function LessonForm({
   horses,
@@ -143,18 +144,7 @@ export function LessonForm({
           </>
         )}
       </fieldset>
-      <div className="flex flex-col gap-1">
-        <label htmlFor="lesson_at" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Date &amp; time
-        </label>
-        <input
-          id="lesson_at"
-          name="lesson_at"
-          type="datetime-local"
-          required
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-      </div>
+      <DateHourPicker />
       <div className="flex flex-col gap-1">
         <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Fee (optional)

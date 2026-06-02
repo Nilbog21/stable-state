@@ -38,4 +38,14 @@ describe('LessonForm', () => {
     fireEvent.change(feeInput, { target: { value: '100' } })
     expect(feeInput.value).toBe('100')
   })
+
+  it('should_hide_exertion_input_when_horse_checkbox_is_unchecked', () => {
+    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', active: true }
+    render(<LessonForm {...baseProps} horses={[horse]} />)
+    const checkbox = screen.getByRole('checkbox', { name: /Thunder/i }) as HTMLInputElement
+    fireEvent.click(checkbox)
+    expect(screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i })).toBeDefined()
+    fireEvent.click(checkbox)
+    expect(screen.queryByRole('spinbutton', { name: /Exertion level for Thunder/i })).toBeNull()
+  })
 })
