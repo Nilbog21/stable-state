@@ -90,3 +90,10 @@ export interface FinancialSummary {
   totalIncome: number
   breakdown: { fee: number; lessonCount: number; subtotal: number }[]
 }
+
+export interface HorseExertionSummary {
+  id: string
+  name: string
+  lessonCount: number
+  totalExertion: number
+}
