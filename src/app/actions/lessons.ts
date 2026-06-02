@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createLesson, addHorseToLesson, addRiderToLesson, deleteLesson } from '@/lib/db/lessons'
+import { createLessonWithParticipants, deleteLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { createRider, getRidersByBarn } from '@/lib/db/riders'
@@ -94,14 +94,15 @@ export async function submitLesson(
       riderId = rider.id
     }
 
-    const lesson = await createLesson({
+    await createLessonWithParticipants({
       barnId,
       instructorId,
       fee,
       lessonAt,
+      horseIds,
+      exertionLevels: horseIds.map(id => exertionLevels.get(id) ?? 3),
+      riderId: riderId!,
     })
-    await Promise.all(horseIds.map(id => addHorseToLesson(lesson.id, id, barnId, exertionLevels.get(id) ?? 3)))
-    await addRiderToLesson(lesson.id, riderId!, barnId)
   } catch {
     return { error: 'Failed to submit lesson' }
   }
