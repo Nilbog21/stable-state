@@ -98,8 +98,8 @@ describe('FinancesPage', () => {
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('$50')).toBeDefined()
-    expect(screen.getByText('$75')).toBeDefined()
+    expect(screen.getByText('$50.00')).toBeDefined()
+    expect(screen.getByText('$75.00')).toBeDefined()
   })
 
   it('should_display_empty_state_when_no_income', async () => {

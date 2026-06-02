@@ -46,7 +46,7 @@ export default async function FinancesPage({
           Total income (past 30 days)
         </p>
         <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          ${totalIncome}
+          {totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
         </p>
       </section>
 
@@ -62,9 +62,9 @@ export default async function FinancesPage({
           <tbody>
             {breakdown.map((tier) => (
               <tr key={tier.fee} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">${tier.fee}</td>
+                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
                 <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
-                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">${tier.subtotal}</td>
+                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
               </tr>
             ))}
           </tbody>
