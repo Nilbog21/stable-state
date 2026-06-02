@@ -80,7 +80,7 @@ describe('OlderLessonsToggle', () => {
     expect(screen.getByText('Comet')).toBeDefined()
   })
 
-  it('should_display_horse_names_in_older_lessons', () => {
+  it('should_show_hide_older_lessons_button_label_after_expanding', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
@@ -90,7 +90,21 @@ describe('OlderLessonsToggle', () => {
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
-    expect(screen.getByText('Comet')).toBeDefined()
+    expect(screen.getByRole('button', { name: /hide older lessons/i })).toBeDefined()
+  })
+
+  it('should_collapse_older_lessons_after_clicking_button_again', () => {
+    render(
+      <OlderLessonsToggle
+        lessons={[mockLesson]}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={mockDeleteAction}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
+    fireEvent.click(screen.getByRole('button', { name: /hide older lessons/i }))
+    expect(screen.queryByText('Comet')).toBeNull()
   })
 
   it('should_display_rider_name_in_older_lessons', () => {

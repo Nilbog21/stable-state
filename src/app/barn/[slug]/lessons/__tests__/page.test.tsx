@@ -271,4 +271,16 @@ describe('LessonsPage', () => {
     render(jsx)
     expect(screen.queryByText('OldHorse')).toBeNull()
   })
+
+  it('should_not_render_recent_list_when_all_lessons_are_older_than_cutoff', async () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonsByBarn).mockResolvedValue([{
+      ...mockLesson,
+      id: 'lesson-old',
+      lesson_at: tenDaysAgo,
+    }])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('list')).toBeNull()
+  })
 })
