@@ -40,7 +40,7 @@ export async function submitLesson(
   if (!membership || !['admin', 'manager', 'trainer'].includes(membership.role)) {
     return { error: 'not authorized' }
   }
-  const isManager = membership.role === 'manager'
+  const isManager = membership.role === 'manager' || membership.role === 'admin'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
 
