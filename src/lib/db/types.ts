@@ -45,6 +45,7 @@ export interface Rider {
   id: string
   barn_id: string
   name: string
+  user_id?: string | null
   created_at: string
   updated_at: string
 }

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockProfile, createMockRider } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -15,6 +15,15 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getAdminMembership: vi.fn(),
   approveMembership: vi.fn(),
   deleteMembership: vi.fn(),
+  getMembershipById: vi.fn(),
+}))
+
+vi.mock('@/lib/db/riders', () => ({
+  createRider: vi.fn(),
+}))
+
+vi.mock('@/lib/db/profiles', () => ({
+  getProfilesByUserIds: vi.fn(),
 }))
 
 const mockRedirect = vi.hoisted(() =>
@@ -38,7 +47,10 @@ import {
   getAdminMembership,
   approveMembership,
   deleteMembership,
+  getMembershipById,
 } from '@/lib/db/barn-memberships'
+import { createRider } from '@/lib/db/riders'
+import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { revalidatePath } from 'next/cache'
 import {
   approveMembershipAction,
@@ -57,6 +69,9 @@ describe('approveMembershipAction', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(approveMembership).mockResolvedValue(undefined)
+    vi.mocked(getMembershipById).mockResolvedValue(createMockMembership({ role: 'trainer' }))
+    vi.mocked(createRider).mockResolvedValue(createMockRider())
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
   })
 
   it('should_redirect_to_login_when_unauthenticated', async () => {
@@ -115,6 +130,44 @@ describe('approveMembershipAction', () => {
     await approveMembershipAction('green-acres', 'mem-1')
 
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/approvals')
+  })
+
+  it('should_create_rider_record_when_approved_membership_is_rider_role', async () => {
+    const riderMembership = createMockMembership({ id: 'mem-1', role: 'rider', user_id: 'rider-user-1', barn_id: 'barn-1' })
+    const profile = createMockProfile({ user_id: 'rider-user-1', first_name: 'Jane', last_name: 'Doe' })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+
+    await approveMembershipAction('green-acres', 'mem-1')
+
+    expect(createRider).toHaveBeenCalledWith('barn-1', 'Jane Doe', 'rider-user-1')
+  })
+
+  it('should_not_create_rider_record_when_approved_membership_is_trainer_role', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(createMockMembership({ role: 'trainer' }))
+
+    await approveMembershipAction('green-acres', 'mem-1')
+
+    expect(createRider).not.toHaveBeenCalled()
+  })
+
+  it('should_not_create_rider_record_when_profile_is_not_found', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(createMockMembership({ role: 'rider' }))
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+
+    await approveMembershipAction('green-acres', 'mem-1')
+
+    expect(createRider).not.toHaveBeenCalled()
+  })
+
+  it('should_not_throw_when_rider_record_already_exists_for_user', async () => {
+    const riderMembership = createMockMembership({ id: 'mem-1', role: 'rider', user_id: 'rider-user-1', barn_id: 'barn-1' })
+    const profile = createMockProfile({ user_id: 'rider-user-1', first_name: 'Jane', last_name: 'Doe' })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+    vi.mocked(createRider).mockRejectedValue(Object.assign(new Error('duplicate'), { code: '23505' }))
+
+    await expect(approveMembershipAction('green-acres', 'mem-1')).resolves.toBeUndefined()
   })
 })
 
