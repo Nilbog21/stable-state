@@ -17,7 +17,7 @@ vi.mock('next/server', () => ({
   },
 }))
 
-import { middleware } from './middleware'
+import { proxy } from './proxy'
 
 function makeRequest(url: string, cookies: Record<string, string> = {}) {
   const cookieEntries = Object.entries(cookies).map(([name, value]) => ({ name, value }))
@@ -34,7 +34,7 @@ function makeRequest(url: string, cookies: Record<string, string> = {}) {
 
 const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] } }
 
-describe('middleware', () => {
+describe('proxy', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockNextResponseNext.mockReturnValue(mockResponse)
@@ -45,7 +45,7 @@ describe('middleware', () => {
     it('should_pass_through_requests_to_non_barn_routes', async () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
 
-      await middleware(makeRequest('http://localhost:3000/login'))
+      await proxy(makeRequest('http://localhost:3000/login'))
 
       expect(mockNextResponseNext).toHaveBeenCalled()
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
@@ -60,7 +60,7 @@ describe('middleware', () => {
         'http://localhost:3000/barn/green-acres/dashboard',
         { 'barn_session_green-acres': 'user-1' }
       )
-      await middleware(request)
+      await proxy(request)
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
@@ -69,7 +69,7 @@ describe('middleware', () => {
       mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
 
       const request = makeRequest('http://localhost:3000/barn/green-acres/dashboard')
-      await middleware(request)
+      await proxy(request)
 
       expect(mockNextResponseRedirect).toHaveBeenCalledWith(
         expect.objectContaining({ href: expect.stringContaining('/barn/green-acres/login') })
@@ -83,7 +83,7 @@ describe('middleware', () => {
         'http://localhost:3000/barn/green-acres/dashboard',
         { 'barn_session_green-acres': 'other-user' }
       )
-      await middleware(request)
+      await proxy(request)
 
       expect(mockNextResponseRedirect).toHaveBeenCalledWith(
         expect.objectContaining({ href: expect.stringContaining('/barn/green-acres/login') })
@@ -94,7 +94,7 @@ describe('middleware', () => {
       mockGetUser.mockResolvedValue({ data: { user: null } })
 
       const request = makeRequest('http://localhost:3000/barn/green-acres/login')
-      await middleware(request)
+      await proxy(request)
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
@@ -103,7 +103,7 @@ describe('middleware', () => {
       mockGetUser.mockResolvedValue({ data: { user: null } })
 
       const request = makeRequest('http://localhost:3000/barn/green-acres/register')
-      await middleware(request)
+      await proxy(request)
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
@@ -112,7 +112,7 @@ describe('middleware', () => {
       mockGetUser.mockResolvedValue({ data: { user: null } })
 
       const request = makeRequest('http://localhost:3000/barn/green-acres/pending')
-      await middleware(request)
+      await proxy(request)
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
