@@ -83,6 +83,9 @@ export default async function BarnDashboardPage({
                   <span className="font-medium">
                     {new Date(lesson.lesson_at).toLocaleString()}
                   </span>
+                  {lesson.instructor_name && (
+                    <span className="ml-2">{lesson.instructor_name}</span>
+                  )}
                   {lesson.horse_names.length > 0 && (
                     <span className="ml-2">{lesson.horse_names.join(', ')}</span>
                   )}

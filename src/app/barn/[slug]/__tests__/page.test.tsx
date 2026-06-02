@@ -270,6 +270,21 @@ describe('BarnDashboardPage', () => {
     expect(screen.getByText('Alice')).toBeDefined()
   })
 
+  it('should_show_instructor_name_when_present', async () => {
+    const lesson = {
+      ...createMockLesson(),
+      instructor_name: 'Jane Smith',
+      horse_names: [],
+      rider_name: null,
+    }
+    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('Jane Smith')).toBeDefined()
+  })
+
   it('should_not_show_upcoming_lessons_section_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
 
