@@ -78,7 +78,10 @@ describe('FinancesPage', () => {
   it('should_display_total_income', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       totalIncome: 225,
-      breakdown: [{ fee: 75, lessonCount: 3, subtotal: 225 }],
+      breakdown: [
+        { fee: 75, lessonCount: 1, subtotal: 75 },
+        { fee: 50, lessonCount: 3, subtotal: 150 },
+      ],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -87,10 +90,10 @@ describe('FinancesPage', () => {
 
   it('should_display_breakdown_table_rows', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
-      totalIncome: 275,
+      totalIncome: 350,
       breakdown: [
-        { fee: 50, lessonCount: 1, subtotal: 50 },
-        { fee: 75, lessonCount: 3, subtotal: 225 },
+        { fee: 50, lessonCount: 2, subtotal: 100 },
+        { fee: 75, lessonCount: 2, subtotal: 150 },
       ],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })

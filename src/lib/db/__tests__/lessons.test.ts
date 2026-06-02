@@ -719,6 +719,20 @@ describe('getFinancialSummary', () => {
     ])
   })
 
+  it('should_treat_null_data_as_empty', async () => {
+    const mockLt = vi.fn().mockResolvedValue({ data: null, error: null })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: mockSelect }),
+    } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual({ totalIncome: 0, breakdown: [] })
+  })
+
   it('should_throw_when_supabase_returns_an_error', async () => {
     const { select } = makeSummaryChain([], new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({

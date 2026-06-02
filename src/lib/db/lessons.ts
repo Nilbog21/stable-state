@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Lesson, LessonDetail, LessonHorse, LessonRider, LessonWithDetails } from './types'
+import type { FinancialSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonWithDetails } from './types'
 
 export async function createLessonWithParticipants(params: {
   barnId: string
@@ -171,4 +171,35 @@ export async function addRiderToLesson(
 
   if (error) throw error
   return data
+}
+
+export async function getFinancialSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<FinancialSummary> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('fee')
+    .eq('barn_id', barnId)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+
+  if (error) throw error
+
+  const fees = (data ?? []).map((row) => row.fee).filter((fee): fee is number => fee !== null)
+
+  const tierMap = new Map<number, number>()
+  for (const fee of fees) {
+    tierMap.set(fee, (tierMap.get(fee) ?? 0) + 1)
+  }
+
+  const breakdown = Array.from(tierMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([fee, lessonCount]) => ({ fee, lessonCount, subtotal: fee * lessonCount }))
+
+  const totalIncome = breakdown.reduce((sum, tier) => sum + tier.subtotal, 0)
+
+  return { totalIncome, breakdown }
 }
