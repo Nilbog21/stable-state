@@ -16,6 +16,10 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getAdminMembership: vi.fn(),
 }))
 
+vi.mock('@/lib/db/lessons', () => ({
+  getUpcomingLessons: vi.fn(),
+}))
+
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
@@ -38,6 +42,8 @@ vi.mock('next/navigation', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getUpcomingLessons } from '@/lib/db/lessons'
+import { createMockLesson } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
 const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
@@ -96,6 +102,7 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getAdminMembership).mockResolvedValue(null)
+    vi.mocked(getUpcomingLessons).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -214,5 +221,71 @@ describe('BarnDashboardPage', () => {
     const link = screen.getByRole('link', { name: /approvals/i })
     expect(link).toBeDefined()
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/approvals')
+  })
+
+  it('should_render_four_nav_links_for_manager', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const horses = screen.getByRole('link', { name: /horses/i })
+    const lessons = screen.getByRole('link', { name: /lessons/i })
+    const finances = screen.getByRole('link', { name: /finances/i })
+    const riders = screen.getByRole('link', { name: /riders/i })
+
+    expect((horses as HTMLAnchorElement).href).toContain('/barn/green-acres/horses')
+    expect((lessons as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons')
+    expect((finances as HTMLAnchorElement).href).toContain('/barn/green-acres/finances')
+    expect((riders as HTMLAnchorElement).href).toContain('/barn/green-acres/riders')
+  })
+
+  it('should_show_upcoming_lessons_section_for_manager', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /upcoming lessons/i })).toBeDefined()
+  })
+
+  it('should_show_empty_state_when_no_upcoming_lessons', async () => {
+    vi.mocked(getUpcomingLessons).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('No upcoming lessons this week')).toBeDefined()
+  })
+
+  it('should_show_lesson_horse_names_and_rider_for_manager', async () => {
+    const lesson = {
+      ...createMockLesson(),
+      instructor_name: null,
+      horse_names: ['Thunderbolt'],
+      rider_name: 'Alice',
+    }
+    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('Thunderbolt')).toBeDefined()
+    expect(screen.getByText('Alice')).toBeDefined()
+  })
+
+  it('should_not_show_upcoming_lessons_section_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/upcoming lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_upcoming_lessons_section_for_admin', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/upcoming lessons/i)).toBeNull()
   })
 })
