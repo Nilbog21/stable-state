@@ -43,6 +43,7 @@ import { submitLesson, deleteLessonAction } from '../lessons'
 const mockLesson = createMockLesson({ fee: null, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
 const mockTrainerMembership = createMockMembership({ created_at: '2026-01-01T00:00:00Z' })
 const mockManagerMembership = createMockMembership({ role: 'manager', created_at: '2026-01-01T00:00:00Z' })
+const mockAdminMembership = createMockMembership({ role: 'admin', created_at: '2026-01-01T00:00:00Z' })
 
 describe('submitLesson', () => {
   beforeEach(() => {
@@ -127,6 +128,22 @@ describe('submitLesson', () => {
     expect(result).toEqual({ error: 'not authenticated' })
   })
 
+  it('should_return_error_when_user_has_no_membership', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized' })
+    expect(createLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_user_is_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized' })
+    expect(createLesson).not.toHaveBeenCalled()
+  })
+
   it('should_return_error_when_createLesson_throws', async () => {
     vi.mocked(createLesson).mockRejectedValue(new Error('db error'))
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
@@ -137,6 +154,23 @@ describe('submitLesson', () => {
 
   it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
+      createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
+    ])
+    const fd = makeFormData({
+      horse_id: 'horse-1',
+      rider_id: 'rider-1',
+      lesson_at: '2026-05-17T10:00',
+      instructor_id: 'trainer-99',
+    })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLesson).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorId: 'trainer-99' })
+    )
+  })
+
+  it('should_use_instructor_id_from_formData_when_user_is_an_admin', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockAdminMembership)
     vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
       createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
     ])

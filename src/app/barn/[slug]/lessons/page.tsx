@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -35,13 +36,24 @@ export default async function LessonsPage({
   }
 
   const isManager = membership.role === 'manager' || membership.role === 'admin'
+  const canCreateLesson = membership.role === 'admin' || membership.role === 'manager' || membership.role === 'trainer'
   const deleteAction = deleteLessonAction.bind(null, barn.id, slug)
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
-      <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        Lessons
-      </h1>
+      <div className="flex w-full max-w-2xl items-center justify-between">
+        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          Lessons
+        </h1>
+        {canCreateLesson && (
+          <Link
+            href={`/barn/${slug}/lessons/new`}
+            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            New Lesson
+          </Link>
+        )}
+      </div>
       {lessons.length === 0 ? (
         <p className="text-zinc-500">No lessons recorded yet.</p>
       ) : (
@@ -52,6 +64,15 @@ export default async function LessonsPage({
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
                   {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(lesson.lesson_at))}
                 </span>
+                {lesson.instructor_name && (
+                  <span className="text-sm text-zinc-700 dark:text-zinc-300">{lesson.instructor_name}</span>
+                )}
+                {lesson.horse_names.length > 0 && (
+                  <span className="text-sm text-zinc-500">{lesson.horse_names.join(', ')}</span>
+                )}
+                {lesson.rider_name && (
+                  <span className="text-sm text-zinc-500">{lesson.rider_name}</span>
+                )}
                 {lesson.fee != null && (
                   <span className="text-sm text-zinc-500">${lesson.fee}</span>
                 )}

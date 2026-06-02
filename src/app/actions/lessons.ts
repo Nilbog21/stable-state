@@ -37,7 +37,10 @@ export async function submitLesson(
   if (!user) return { error: 'not authenticated' }
 
   const membership = await getUserMembership(user.id, barnId)
-  const isManager = membership?.role === 'manager'
+  if (!membership || !['admin', 'manager', 'trainer'].includes(membership.role)) {
+    return { error: 'not authorized' }
+  }
+  const isManager = membership.role === 'manager' || membership.role === 'admin'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
 

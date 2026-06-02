@@ -54,6 +54,9 @@ const mockLesson = {
   fee: 75,
   lesson_at: '2026-05-17T10:00:00Z',
   submitted_at: '2026-05-17T10:05:00Z',
+  instructor_name: 'John Doe',
+  horse_names: ['Thunderbolt'],
+  rider_name: 'Alice',
 }
 
 const mockTrainerMembership = {
@@ -73,6 +76,11 @@ const mockManagerMembership = {
 const mockAdminMembership = {
   ...mockTrainerMembership,
   role: 'admin' as const,
+}
+
+const mockRiderMembership = {
+  ...mockTrainerMembership,
+  role: 'rider' as const,
 }
 
 function mockSupabaseUser(userId = 'user-1') {
@@ -167,5 +175,57 @@ describe('LessonsPage', () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+  })
+
+  it('should_show_new_lesson_link_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /new lesson/i })
+    expect(link).toBeDefined()
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons/new')
+  })
+
+  it('should_show_new_lesson_link_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /new lesson/i })
+    expect(link).toBeDefined()
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons/new')
+  })
+
+  it('should_show_new_lesson_link_for_admin', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockAdminMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /new lesson/i })
+    expect(link).toBeDefined()
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons/new')
+  })
+
+  it('should_not_show_new_lesson_link_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /new lesson/i })).toBeNull()
+  })
+
+  it('should_display_instructor_name', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('John Doe')).toBeDefined()
+  })
+
+  it('should_display_horse_names', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Thunderbolt')).toBeDefined()
+  })
+
+  it('should_display_rider_name', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Alice')).toBeDefined()
   })
 })
