@@ -33,6 +33,10 @@ vi.mock('../DeleteLessonButton', () => ({
   ),
 }))
 
+vi.mock('../OlderLessonsToggle', () => ({
+  OlderLessonsToggle: () => null,
+}))
+
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonsByBarn } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
@@ -52,8 +56,8 @@ const mockLesson = {
   barn_id: 'barn-1',
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:00:00Z',
-  submitted_at: '2026-05-17T10:05:00Z',
+  lesson_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  submitted_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   instructor_name: 'John Doe',
   horse_names: ['Thunderbolt'],
   rider_name: 'Alice',
@@ -238,5 +242,45 @@ describe('LessonsPage', () => {
       (l) => (l as HTMLAnchorElement).href?.includes('/barn/green-acres/lessons/lesson-1')
     )
     expect(detailLinks.length).toBeGreaterThan(0)
+  })
+
+  it('should_show_recent_lesson_by_default', async () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonsByBarn).mockResolvedValue([{
+      ...mockLesson,
+      id: 'lesson-recent',
+      lesson_at: threeDaysAgo,
+      horse_names: ['RecentHorse'],
+      rider_name: 'RecentRider',
+    }])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('RecentHorse')).toBeDefined()
+  })
+
+  it('should_not_show_older_lesson_by_default', async () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonsByBarn).mockResolvedValue([{
+      ...mockLesson,
+      id: 'lesson-old',
+      lesson_at: tenDaysAgo,
+      horse_names: ['OldHorse'],
+      rider_name: 'OldRider',
+    }])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('OldHorse')).toBeNull()
+  })
+
+  it('should_not_render_recent_list_when_all_lessons_are_older_than_cutoff', async () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonsByBarn).mockResolvedValue([{
+      ...mockLesson,
+      id: 'lesson-old',
+      lesson_at: tenDaysAgo,
+    }])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('list')).toBeNull()
   })
 })
