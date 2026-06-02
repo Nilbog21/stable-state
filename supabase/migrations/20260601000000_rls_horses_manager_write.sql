@@ -1,4 +1,4 @@
-DROP POLICY "horses_barn_member" ON public.horses;
+DROP POLICY IF EXISTS "horses_barn_member" ON public.horses;
 
 -- SELECT: all active barn members (lesson form needs this)
 CREATE POLICY "horses_member_read" ON public.horses

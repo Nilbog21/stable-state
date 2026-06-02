@@ -112,6 +112,14 @@ describe('addHorseAction', () => {
     expect(createHorse).toHaveBeenCalledWith(mockBarn.id, 'Thunderbolt')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
   })
+
+  it('should_not_call_createHorse_when_name_is_empty', async () => {
+    formData.set('name', '   ')
+
+    await addHorseAction('green-acres', formData)
+
+    expect(createHorse).not.toHaveBeenCalled()
+  })
 })
 
 describe('updateHorseAction', () => {
@@ -179,5 +187,13 @@ describe('updateHorseAction', () => {
 
     expect(updateHorse).toHaveBeenCalledWith('horse-1', 'Thunderbolt Updated')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
+  })
+
+  it('should_not_call_updateHorse_when_name_is_empty', async () => {
+    formData.set('name', '   ')
+
+    await updateHorseAction('green-acres', 'horse-1', formData)
+
+    expect(updateHorse).not.toHaveBeenCalled()
   })
 })
