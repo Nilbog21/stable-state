@@ -49,8 +49,8 @@ export default async function HorsesPage({
           <tbody>
             {horses.map((horse) => (
               <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6">
-                  <form action={updateHorseAction.bind(null, slug, horse.id)} className="flex gap-2">
+                <form action={updateHorseAction.bind(null, slug, horse.id)} className="contents">
+                  <td className="py-3 pr-6">
                     <input
                       type="text"
                       name="name"
@@ -58,14 +58,16 @@ export default async function HorsesPage({
                       required
                       className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
                     />
+                  </td>
+                  <td className="py-3">
                     <button
                       type="submit"
                       className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                     >
                       Save
                     </button>
-                  </form>
-                </td>
+                  </td>
+                </form>
               </tr>
             ))}
           </tbody>

@@ -32,7 +32,8 @@ export async function addHorseAction(barnSlug: string, formData: FormData): Prom
     redirect(`/barn/${barnSlug}/login`)
   }
 
-  const name = formData.get('name') as string
+  const name = (formData.get('name') as string | null)?.trim()
+  if (!name) return
   await createHorse(barn.id, name)
   revalidatePath(`/barn/${barnSlug}/horses`)
 }
@@ -58,7 +59,8 @@ export async function updateHorseAction(
     redirect(`/barn/${barnSlug}/login`)
   }
 
-  const name = formData.get('name') as string
+  const name = (formData.get('name') as string | null)?.trim()
+  if (!name) return
   await updateHorse(horseId, name)
   revalidatePath(`/barn/${barnSlug}/horses`)
 }
