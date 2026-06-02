@@ -9,7 +9,10 @@ import {
   getAdminMembership,
   approveMembership,
   deleteMembership,
+  getMembershipById,
 } from '@/lib/db/barn-memberships'
+import { createRider } from '@/lib/db/riders'
+import { getProfilesByUserIds } from '@/lib/db/profiles'
 import type { BarnMembership } from '@/lib/db/types'
 
 async function getManagerOrAdminMembership(
@@ -39,7 +42,22 @@ export async function approveMembershipAction(
     redirect(`/barn/${barnSlug}/login`)
   }
 
+  const toApprove = await getMembershipById(membershipId)
   await approveMembership(membershipId)
+
+  if (toApprove?.role === 'rider' && toApprove.barn_id) {
+    const profiles = await getProfilesByUserIds([toApprove.user_id])
+    const profile = profiles[0]
+    if (profile) {
+      const name = `${profile.first_name} ${profile.last_name}`.trim()
+      try {
+        await createRider(toApprove.barn_id, name, toApprove.user_id)
+      } catch (err) {
+        if ((err as { code?: string }).code !== '23505') throw err
+      }
+    }
+  }
+
   revalidatePath(`/barn/${barnSlug}/approvals`)
 }
 

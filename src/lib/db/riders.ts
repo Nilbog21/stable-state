@@ -13,11 +13,13 @@ export async function getRidersByBarn(barnId: string): Promise<Rider[]> {
   return data
 }
 
-export async function createRider(barnId: string, name: string): Promise<Rider> {
+export async function createRider(barnId: string, name: string, userId?: string): Promise<Rider> {
   const supabase = await createClient()
+  const payload: Record<string, unknown> = { barn_id: barnId, name }
+  if (userId !== undefined) payload.user_id = userId
   const { data, error } = await supabase
     .from('riders')
-    .insert({ barn_id: barnId, name })
+    .insert(payload)
     .select()
     .single()
 

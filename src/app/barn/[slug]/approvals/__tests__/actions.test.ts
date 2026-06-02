@@ -169,6 +169,16 @@ describe('approveMembershipAction', () => {
 
     await expect(approveMembershipAction('green-acres', 'mem-1')).resolves.toBeUndefined()
   })
+
+  it('should_rethrow_when_rider_creation_fails_with_non_duplicate_error', async () => {
+    const riderMembership = createMockMembership({ id: 'mem-1', role: 'rider', user_id: 'rider-user-1', barn_id: 'barn-1' })
+    const profile = createMockProfile({ user_id: 'rider-user-1', first_name: 'Jane', last_name: 'Doe' })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+    vi.mocked(createRider).mockRejectedValue(new Error('database connection error'))
+
+    await expect(approveMembershipAction('green-acres', 'mem-1')).rejects.toThrow('database connection error')
+  })
 })
 
 describe('rejectMembershipAction', () => {

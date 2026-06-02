@@ -127,6 +127,18 @@ export async function deleteMembership(membershipId: string): Promise<void> {
   if (error) throw error
 }
 
+export async function getMembershipById(id: string): Promise<BarnMembership | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .select('*')
+    .eq('id', id)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
 export async function applySeededMembership(
   userId: string,
   email: string
