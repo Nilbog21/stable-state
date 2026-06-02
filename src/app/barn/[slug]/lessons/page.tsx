@@ -60,7 +60,7 @@ export default async function LessonsPage({
         <ul className="w-full max-w-2xl divide-y divide-zinc-200 dark:divide-zinc-800">
           {lessons.map((lesson) => (
             <li key={lesson.id} className="flex items-center justify-between py-4">
-              <div className="flex flex-col gap-1">
+              <Link href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 hover:underline">
                 <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
                   {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(lesson.lesson_at))}
                 </span>
@@ -76,7 +76,7 @@ export default async function LessonsPage({
                 {lesson.fee != null && (
                   <span className="text-sm text-zinc-500">${lesson.fee}</span>
                 )}
-              </div>
+              </Link>
               {isManager && (
                 <DeleteLessonButton action={deleteAction.bind(null, lesson.id)} />
               )}

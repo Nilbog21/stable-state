@@ -12,6 +12,7 @@ import {
   addRiderToLesson,
   deleteLesson,
   getLessonsByBarn,
+  getLessonById,
   createLessonWithParticipants,
 } from '../lessons'
 
@@ -421,6 +422,70 @@ describe('getLessonsByBarn', () => {
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     await expect(getLessonsByBarn('barn-1')).rejects.toThrow('profiles error')
+  })
+})
+
+describe('getLessonById', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const mockLessonDetail = {
+    ...createMockLesson(),
+    profiles: { first_name: 'Jane', last_name: 'Smith' },
+    lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
+    lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
+  }
+
+  function makeLessonByIdChain(data: unknown, error: Error | null = null) {
+    const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
+    return { select: mockSelect, mockEq1, mockEq2, mockMaybeSingle }
+  }
+
+  it('should_return_lesson_with_joined_profiles_horses_and_riders', async () => {
+    const { select } = makeLessonByIdChain(mockLessonDetail)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1')
+
+    expect(result).toEqual(mockLessonDetail)
+  })
+
+  it('should_query_by_lesson_id_and_barn_id', async () => {
+    const { select, mockEq1, mockEq2 } = makeLessonByIdChain(mockLessonDetail)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getLessonById('lesson-1', 'barn-1')
+
+    expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_return_null_when_lesson_not_found', async () => {
+    const { select } = makeLessonByIdChain(null)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('nonexistent', 'barn-1')
+
+    expect(result).toBeNull()
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { select } = makeLessonByIdChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await expect(getLessonById('lesson-1', 'barn-1')).rejects.toThrow('db error')
   })
 })
 
