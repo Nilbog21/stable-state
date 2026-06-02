@@ -61,6 +61,15 @@ const mockTrainerMembership = {
   created_at: '',
 }
 
+const mockRiderMembership = {
+  id: 'mem-rdr',
+  user_id: 'user-1',
+  barn_id: 'barn-1',
+  role: 'rider' as const,
+  status: 'active' as const,
+  created_at: '',
+}
+
 const mockAdminMembership = {
   id: 'mem-adm',
   user_id: 'user-1',
@@ -153,6 +162,19 @@ describe('BarnDashboardPage', () => {
 
   it('should_render_lessons_link_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /lessons/i })
+    expect(link).toBeDefined()
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons')
+  })
+
+  it('should_render_lessons_link_for_rider', async () => {
+    // Rider has no distinct nav destination yet; falls through to the same Lessons link as trainer/manager.
+    // Update this test when rider-specific pages are introduced.
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

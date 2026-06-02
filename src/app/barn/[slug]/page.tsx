@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -26,10 +27,10 @@ export default async function BarnDashboardPage({
 
   if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
 
-  const navLink =
+  const navLinks =
     membership.role === 'admin'
-      ? { href: `/barn/${slug}/approvals`, label: 'Approvals' }
-      : { href: `/barn/${slug}/lessons`, label: 'Lessons' }
+      ? [{ href: `/barn/${slug}/approvals`, label: 'Approvals' }]
+      : [{ href: `/barn/${slug}/lessons`, label: 'Lessons' }]
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -37,12 +38,15 @@ export default async function BarnDashboardPage({
         {barn.name}
       </h1>
       <nav>
-        <a
-          href={navLink.href}
-          className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-        >
-          {navLink.label}
-        </a>
+        {navLinks.map((link) => (
+          <Link
+            key={link.href}
+            href={link.href}
+            className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+          >
+            {link.label}
+          </Link>
+        ))}
       </nav>
     </main>
   )
