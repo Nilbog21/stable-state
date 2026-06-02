@@ -16,6 +16,7 @@ export function createMockMembership(overrides: Partial<BarnMembership> = {}): B
     role: 'trainer',
     status: 'active',
     created_at: '',
+    default_fee: null,
     ...overrides,
   }
 }

@@ -246,4 +246,20 @@ describe('LessonNewPage', () => {
     await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getRidersByBarn).mock.calls[0][0]).toBe('barn-1')
   })
+
+  it('should_pre_populate_fee_when_instructor_has_default_fee', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ default_fee: 75 }))
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.defaultValue).toBe('75')
+  })
+
+  it('should_leave_fee_blank_when_instructor_has_no_default_fee', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ default_fee: null }))
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.defaultValue).toBe('')
+  })
 })
