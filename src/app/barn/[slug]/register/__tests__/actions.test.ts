@@ -106,6 +106,7 @@ describe('registerForBarn', () => {
     expect(result).toEqual({ error: 'First name is required.' })
   })
 
+  // covers the null branch of ?.trim() — fd.get() returns null when key is absent
   it('should_return_error_when_firstName_is_missing_from_form', async () => {
     const fd = makeFormData({ lastName: 'Doe', role: 'trainer' })
     const result = await registerForBarn('green-acres', null, fd)
@@ -118,6 +119,7 @@ describe('registerForBarn', () => {
     expect(result).toEqual({ error: 'Last name is required.' })
   })
 
+  // covers the null branch of ?.trim() — fd.get() returns null when key is absent
   it('should_return_error_when_lastName_is_missing_from_form', async () => {
     const fd = makeFormData({ firstName: 'Jane', role: 'trainer' })
     const result = await registerForBarn('green-acres', null, fd)

@@ -87,6 +87,7 @@ describe('LessonForm', () => {
     })
   })
 
+  // relies on useTransition reporting isPending before the never-resolving promise settles — may be flaky under load
   it('should_display_submitting_text_while_form_action_is_pending', async () => {
     const pendingAction = vi.fn().mockImplementation(() => new Promise(() => {}))
     render(<LessonForm {...baseProps} action={pendingAction} />)

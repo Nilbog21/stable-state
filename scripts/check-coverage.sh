@@ -55,6 +55,8 @@ for (const [filePath, data] of Object.entries(coverage)) {
     const branchInfo = data.branchMap[branchId];
     counts.forEach((count, i) => {
       if (count === 0) {
+        // Istanbul uses locations[] for if/switch arms and loc for ternary/logical;
+        // the fallback reports the branch origin line, which may be off for some arm styles.
         const loc = branchInfo?.locations?.[i] ?? branchInfo?.loc;
         if (loc?.start?.line) uncoveredBranchLines.add(loc.start.line);
       }
