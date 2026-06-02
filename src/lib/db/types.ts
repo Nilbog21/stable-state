@@ -22,6 +22,7 @@ export interface BarnMembership {
   role: Role
   status: MembershipStatus
   created_at: string
+  default_fee: number | null
 }
 
 export interface SeededAccount {
