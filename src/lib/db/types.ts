@@ -58,6 +58,12 @@ export interface Lesson {
   submitted_at: string
 }
 
+export interface LessonWithDetails extends Lesson {
+  instructor_name: string | null
+  horse_names: string[]
+  rider_name: string | null
+}
+
 export interface LessonHorse {
   id: string
   barn_id: string

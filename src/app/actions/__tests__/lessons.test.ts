@@ -127,6 +127,22 @@ describe('submitLesson', () => {
     expect(result).toEqual({ error: 'not authenticated' })
   })
 
+  it('should_return_error_when_user_has_no_membership', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized' })
+    expect(createLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_user_is_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized' })
+    expect(createLesson).not.toHaveBeenCalled()
+  })
+
   it('should_return_error_when_createLesson_throws', async () => {
     vi.mocked(createLesson).mockRejectedValue(new Error('db error'))
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
