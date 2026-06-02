@@ -34,8 +34,7 @@ NPMEOF
 
 # Test 1: default behavior — calls npm run test:coverage
 REPO="$(make_repo)"
-cd "$REPO"
-PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1 || true
+(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1) || true
 if grep -q "run test:coverage" "$REPO/npm.log" 2>/dev/null; then
   assert_pass "default behavior: calls npm run test:coverage"
 else
@@ -45,9 +44,8 @@ rm -rf "$REPO"
 
 # Test 2: SKIP_COVERAGE_RUN=1 with valid JSON — exits 0, npm not called
 REPO="$(make_repo)"
-cd "$REPO"
-printf '{}' > "coverage/coverage-final.json"
-if SKIP_COVERAGE_RUN=1 PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1; then
+printf '{}' > "$REPO/coverage/coverage-final.json"
+if (cd "$REPO" && SKIP_COVERAGE_RUN=1 PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1); then
   if [ ! -f "$REPO/npm.log" ]; then
     assert_pass "SKIP_COVERAGE_RUN=1 with valid JSON: exits 0, npm not called"
   else
@@ -60,14 +58,23 @@ rm -rf "$REPO"
 
 # Test 3: SKIP_COVERAGE_RUN=1 with missing JSON — exits non-zero, clear error
 REPO="$(make_repo)"
-cd "$REPO"
-err_output="$(SKIP_COVERAGE_RUN=1 PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
+err_output="$(cd "$REPO" && SKIP_COVERAGE_RUN=1 PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
 if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -qi "coverage-final.json"; then
   assert_pass "SKIP_COVERAGE_RUN=1 with missing JSON: exits non-zero with clear error"
 elif [ "$script_exit" -eq 0 ]; then
   assert_fail "SKIP_COVERAGE_RUN=1 with missing JSON: exits non-zero with clear error" "script exited 0 (expected non-zero)"
 else
   assert_fail "SKIP_COVERAGE_RUN=1 with missing JSON: exits non-zero with clear error" "exit was non-zero but error message didn't mention coverage-final.json"
+fi
+rm -rf "$REPO"
+
+# Test 4: SKIP_COVERAGE_RUN=yes — not "1", falls through to default, calls npm run test:coverage
+REPO="$(make_repo)"
+(cd "$REPO" && SKIP_COVERAGE_RUN=yes PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1) || true
+if grep -q "run test:coverage" "$REPO/npm.log" 2>/dev/null; then
+  assert_pass "SKIP_COVERAGE_RUN=yes: falls through to default, calls npm run test:coverage"
+else
+  assert_fail "SKIP_COVERAGE_RUN=yes: falls through to default, calls npm run test:coverage" "npm.log absent or missing 'run test:coverage'"
 fi
 rm -rf "$REPO"
 
