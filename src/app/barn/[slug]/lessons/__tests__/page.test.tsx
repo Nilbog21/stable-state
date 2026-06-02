@@ -239,4 +239,32 @@ describe('LessonsPage', () => {
     )
     expect(detailLinks.length).toBeGreaterThan(0)
   })
+
+  it('should_show_recent_lesson_by_default', async () => {
+    const threeDaysAgo = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonsByBarn).mockResolvedValue([{
+      ...mockLesson,
+      id: 'lesson-recent',
+      lesson_at: threeDaysAgo,
+      horse_names: ['RecentHorse'],
+      rider_name: 'RecentRider',
+    }])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('RecentHorse')).toBeDefined()
+  })
+
+  it('should_not_show_older_lesson_by_default', async () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonsByBarn).mockResolvedValue([{
+      ...mockLesson,
+      id: 'lesson-old',
+      lesson_at: tenDaysAgo,
+      horse_names: ['OldHorse'],
+      rider_name: 'OldRider',
+    }])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('OldHorse')).toBeNull()
+  })
 })
