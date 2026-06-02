@@ -50,7 +50,7 @@ export function DateHourPicker() {
           ))}
         </select>
       </div>
-      <input type="hidden" name="lesson_at" value={combinedValue} />
+      {date && <input type="hidden" name="lesson_at" value={combinedValue} />}
     </div>
   )
 }

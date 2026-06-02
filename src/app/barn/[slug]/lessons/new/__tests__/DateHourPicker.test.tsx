@@ -58,4 +58,11 @@ describe('DateHourPicker', () => {
     const hidden = container.querySelector('input[name="lesson_at"]') as HTMLInputElement
     expect(hidden.value).toBe('2026-06-01T09:00')
   })
+
+  it('should_omit_hidden_input_when_date_is_cleared', () => {
+    const { container } = render(<DateHourPicker />)
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    fireEvent.change(dateInput, { target: { value: '' } })
+    expect(container.querySelector('input[name="lesson_at"]')).toBeNull()
+  })
 })
