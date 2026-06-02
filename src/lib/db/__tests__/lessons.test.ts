@@ -12,6 +12,7 @@ import {
   addRiderToLesson,
   deleteLesson,
   getLessonsByBarn,
+  createLessonWithParticipants,
 } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -420,5 +421,68 @@ describe('getLessonsByBarn', () => {
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     await expect(getLessonsByBarn('barn-1')).rejects.toThrow('profiles error')
+  })
+})
+
+describe('createLessonWithParticipants', () => {
+  it('should_call_rpc_with_correct_parameters', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1', 'horse-2'],
+      exertionLevels: [3, 5],
+      riderId: 'rider-1',
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants', {
+      p_barn_id: 'barn-1',
+      p_instructor_id: 'user-1',
+      p_lesson_at: '2026-05-16T10:00:00Z',
+      p_fee: 75,
+      p_horse_ids: ['horse-1', 'horse-2'],
+      p_exertion_levels: [3, 5],
+      p_rider_id: 'rider-1',
+    })
+  })
+
+  it('should_return_the_created_lesson', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }),
+    } as any)
+
+    const result = await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderId: 'rider-1',
+    })
+
+    expect(result).toEqual(mockLesson)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: new Error('rpc error') }),
+    } as any)
+
+    await expect(
+      createLessonWithParticipants({
+        barnId: 'barn-1',
+        instructorId: 'user-1',
+        lessonAt: '2026-05-16T10:00:00Z',
+        fee: null,
+        horseIds: ['horse-1'],
+        exertionLevels: [3],
+        riderId: 'rider-1',
+      })
+    ).rejects.toThrow('rpc error')
   })
 })
