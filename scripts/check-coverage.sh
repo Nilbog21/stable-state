@@ -28,7 +28,8 @@ if (!fs.existsSync(coverageFile)) {
 }
 
 const coverage = JSON.parse(fs.readFileSync(coverageFile, 'utf8'));
-const uncoveredFiles = [];
+const uncoveredLineFiles = [];
+const uncoveredBranchFiles = [];
 
 for (const [filePath, data] of Object.entries(coverage)) {
   const relPath = filePath.startsWith(cwd) ? filePath.slice(cwd.length + 1) : filePath;
@@ -44,20 +45,46 @@ for (const [filePath, data] of Object.entries(coverage)) {
       }
     }
   }
-
   if (uncoveredLines.size > 0) {
     const lines = [...uncoveredLines].sort((a, b) => a - b).join(', ');
-    uncoveredFiles.push({ relPath, lines });
+    uncoveredLineFiles.push({ relPath, lines });
+  }
+
+  const uncoveredBranchLines = new Set();
+  for (const [branchId, counts] of Object.entries(data.b)) {
+    const branchInfo = data.branchMap[branchId];
+    counts.forEach((count, i) => {
+      if (count === 0) {
+        const loc = branchInfo?.locations?.[i] ?? branchInfo?.loc;
+        if (loc?.start?.line) uncoveredBranchLines.add(loc.start.line);
+      }
+    });
+  }
+  if (uncoveredBranchLines.size > 0) {
+    const lines = [...uncoveredBranchLines].sort((a, b) => a - b).join(', ');
+    uncoveredBranchFiles.push({ relPath, lines });
   }
 }
 
-if (uncoveredFiles.length > 0) {
+let failed = false;
+
+if (uncoveredLineFiles.length > 0) {
   console.error('Coverage check FAILED — uncovered lines:');
-  for (const { relPath, lines } of uncoveredFiles) {
+  for (const { relPath, lines } of uncoveredLineFiles) {
     console.error(\`  \${relPath}: lines \${lines}\`);
   }
-  process.exit(1);
+  failed = true;
 }
 
-console.log('Coverage check PASSED — all src lines are covered.');
+if (uncoveredBranchFiles.length > 0) {
+  console.error('Coverage check FAILED — uncovered branches:');
+  for (const { relPath, lines } of uncoveredBranchFiles) {
+    console.error(\`  \${relPath}: lines \${lines}\`);
+  }
+  failed = true;
+}
+
+if (failed) process.exit(1);
+
+console.log('Coverage check PASSED — all src lines and branches are covered.');
 "
