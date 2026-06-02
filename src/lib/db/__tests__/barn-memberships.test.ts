@@ -405,6 +405,24 @@ describe('getPendingMemberships', () => {
 
     await expect(getPendingMemberships('barn-1')).rejects.toThrow('query failed')
   })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getPendingMemberships('barn-1')
+
+    expect(result).toEqual([])
+  })
 })
 
 describe('getActiveMemberships', () => {
@@ -459,6 +477,24 @@ describe('getActiveMemberships', () => {
     } as any)
 
     await expect(getActiveMemberships('barn-1')).rejects.toThrow('query failed')
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getActiveMemberships('barn-1')
+
+    expect(result).toEqual([])
   })
 })
 
@@ -596,6 +632,26 @@ describe('getActiveTrainerMembershipsByBarn', () => {
     } as any)
 
     await expect(getActiveTrainerMembershipsByBarn('barn-1')).rejects.toThrow('query failed')
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                order: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getActiveTrainerMembershipsByBarn('barn-1')
+
+    expect(result).toEqual([])
   })
 })
 

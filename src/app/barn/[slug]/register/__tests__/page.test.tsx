@@ -82,4 +82,11 @@ describe('BarnRegisterPage', () => {
     render(jsx)
     expect(screen.getByRole('heading', { name: /join green acres/i })).toBeDefined()
   })
+
+  it('should_render_correctly_when_user_metadata_is_null', async () => {
+    setupAuth({ id: 'user-1', user_metadata: null })
+    const jsx = await BarnRegisterPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /join green acres/i })).toBeDefined()
+  })
 })

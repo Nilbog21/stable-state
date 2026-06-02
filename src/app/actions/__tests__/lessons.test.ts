@@ -358,6 +358,14 @@ describe('submitLesson', () => {
     expect(result).toEqual({ error: 'rider not found in this barn' })
     expect(createLessonWithParticipants).not.toHaveBeenCalled()
   })
+
+  it('should_pass_parsed_fee_to_createLessonWithParticipants_when_fee_is_provided', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', fee: '75.50' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ fee: 75.5 })
+    )
+  })
 })
 
 describe('deleteLessonAction', () => {
