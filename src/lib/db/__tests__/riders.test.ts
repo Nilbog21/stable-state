@@ -141,15 +141,17 @@ describe('updateRider', () => {
       from: vi.fn().mockReturnValue({
         update: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: mockUpdatedRider, error: null }),
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: mockUpdatedRider, error: null }),
+              }),
             }),
           }),
         }),
       }),
     } as any)
 
-    const result = await updateRider('rider-1', 'Alice Updated')
+    const result = await updateRider('rider-1', 'barn-1', 'Alice Updated')
 
     expect(result).toEqual(mockUpdatedRider)
   })
@@ -159,14 +161,16 @@ describe('updateRider', () => {
       from: vi.fn().mockReturnValue({
         update: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+              }),
             }),
           }),
         }),
       }),
     } as any)
 
-    await expect(updateRider('rider-1', 'Alice Updated')).rejects.toThrow('db error')
+    await expect(updateRider('rider-1', 'barn-1', 'Alice Updated')).rejects.toThrow('db error')
   })
 })

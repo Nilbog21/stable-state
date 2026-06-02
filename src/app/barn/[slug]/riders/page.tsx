@@ -25,7 +25,7 @@ export default async function RidersPage({
   if (
     !actorMembership ||
     actorMembership.status !== 'active' ||
-    (actorMembership.role !== 'manager' && actorMembership.role !== 'admin')
+    (actorMembership.role !== 'manager' && actorMembership.role !== 'admin' && actorMembership.role !== 'trainer')
   ) {
     redirect(`/barn/${slug}/login`)
   }

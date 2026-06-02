@@ -86,8 +86,8 @@ describe('updateRiderAction', () => {
     expect(updateRider).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_when_user_is_trainer_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
+  it('should_redirect_when_user_is_rider_not_manager_or_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-rd', role: 'rider' }))
 
     await expect(updateRiderAction('green-acres', 'rider-1', formData)).rejects.toThrow('NEXT_REDIRECT')
 
@@ -98,7 +98,16 @@ describe('updateRiderAction', () => {
   it('should_call_updateRider_and_revalidate_when_manager', async () => {
     await updateRiderAction('green-acres', 'rider-1', formData)
 
-    expect(updateRider).toHaveBeenCalledWith('rider-1', 'Jane Doe Updated')
+    expect(updateRider).toHaveBeenCalledWith('rider-1', 'barn-1', 'Jane Doe Updated')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/riders')
+  })
+
+  it('should_call_updateRider_and_revalidate_when_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
+
+    await updateRiderAction('green-acres', 'rider-1', formData)
+
+    expect(updateRider).toHaveBeenCalledWith('rider-1', 'barn-1', 'Jane Doe Updated')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/riders')
   })
 
@@ -108,7 +117,7 @@ describe('updateRiderAction', () => {
 
     await updateRiderAction('green-acres', 'rider-1', formData)
 
-    expect(updateRider).toHaveBeenCalledWith('rider-1', 'Jane Doe Updated')
+    expect(updateRider).toHaveBeenCalledWith('rider-1', 'barn-1', 'Jane Doe Updated')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/riders')
   })
 

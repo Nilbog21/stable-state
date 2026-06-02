@@ -8,7 +8,7 @@ import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships
 import { updateRider } from '@/lib/db/riders'
 import type { BarnMembership } from '@/lib/db/types'
 
-async function getManagerOrAdminMembership(
+async function getAuthorizedMembership(
   userId: string,
   barnId: string
 ): Promise<BarnMembership | null> {
@@ -27,17 +27,17 @@ export async function updateRiderAction(
   const barn = await getBarnBySlug(barnSlug)
   if (!barn) redirect(`/barn/${barnSlug}/login`)
 
-  const membership = await getManagerOrAdminMembership(data.user.id, barn.id)
+  const membership = await getAuthorizedMembership(data.user.id, barn.id)
   if (
     !membership ||
     membership.status !== 'active' ||
-    (membership.role !== 'manager' && membership.role !== 'admin')
+    (membership.role !== 'manager' && membership.role !== 'admin' && membership.role !== 'trainer')
   ) {
     redirect(`/barn/${barnSlug}/login`)
   }
 
   const name = (formData.get('name') as string | null)?.trim()
   if (!name) return
-  await updateRider(riderId, name)
+  await updateRider(riderId, barn.id, name)
   revalidatePath(`/barn/${barnSlug}/riders`)
 }

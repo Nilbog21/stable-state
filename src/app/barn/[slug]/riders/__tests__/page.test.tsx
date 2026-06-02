@@ -55,9 +55,15 @@ describe('RidersPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_redirect_to_login_when_user_is_not_manager_or_admin', async () => {
+  it('should_redirect_to_login_when_user_has_no_authorized_role', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(getAdminMembership).mockResolvedValue(null)
+    await expect(RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+
+  it('should_redirect_to_login_when_user_is_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-rd', role: 'rider' }))
     await expect(RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
@@ -82,6 +88,13 @@ describe('RidersPage', () => {
     const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getAllByRole('button', { name: /save/i })).toHaveLength(2)
+  })
+
+  it('should_render_page_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
+    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/green acres/i)).toBeDefined()
   })
 
   it('should_render_page_for_admin', async () => {

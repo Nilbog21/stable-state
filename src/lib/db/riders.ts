@@ -27,12 +27,13 @@ export async function createRider(barnId: string, name: string, userId?: string)
   return data
 }
 
-export async function updateRider(riderId: string, name: string): Promise<Rider> {
+export async function updateRider(riderId: string, barnId: string, name: string): Promise<Rider> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('riders')
     .update({ name })
     .eq('id', riderId)
+    .eq('barn_id', barnId)
     .select()
     .single()
 
