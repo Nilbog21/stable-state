@@ -1,2 +1,2 @@
 ALTER TABLE public.barn_memberships
-  ADD COLUMN default_fee NUMERIC;
+  ADD COLUMN default_fee NUMERIC(10,2);

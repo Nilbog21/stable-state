@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { LessonForm } from '../LessonForm'
 
 afterEach(cleanup)
@@ -24,5 +24,18 @@ describe('LessonForm', () => {
     render(<LessonForm {...baseProps} defaultFee={null} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.defaultValue).toBe('')
+  })
+
+  it('should_render_fee_input_with_empty_value_when_defaultFee_prop_is_omitted', () => {
+    render(<LessonForm {...baseProps} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.defaultValue).toBe('')
+  })
+
+  it('should_allow_user_to_override_default_fee_value', () => {
+    render(<LessonForm {...baseProps} defaultFee={75} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '100' } })
+    expect(feeInput.value).toBe('100')
   })
 })
