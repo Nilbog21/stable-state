@@ -14,6 +14,7 @@ import {
   getLessonsByBarn,
   getLessonById,
   createLessonWithParticipants,
+  getFinancialSummary,
 } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -627,5 +628,103 @@ describe('createLessonWithParticipants', () => {
         riderId: 'rider-1',
       })
     ).rejects.toThrow('rpc error')
+  })
+})
+
+describe('getFinancialSummary', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  const startDate = new Date('2026-05-01T00:00:00Z')
+  const endDate = new Date('2026-06-01T00:00:00Z')
+
+  function makeSummaryChain(data: { fee: number | null }[], error: Error | null = null) {
+    const mockLt = vi.fn().mockResolvedValue({ data, error })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockEq, mockGte, mockLt }
+  }
+
+  it('should_return_zero_total_and_empty_breakdown_when_no_lessons', async () => {
+    const { select } = makeSummaryChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual({ totalIncome: 0, breakdown: [] })
+  })
+
+  it('should_return_correct_total_income_for_single_fee_tier', async () => {
+    const { select } = makeSummaryChain([{ fee: 75 }, { fee: 75 }])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.totalIncome).toBe(150)
+  })
+
+  it('should_return_breakdown_sorted_ascending_by_fee', async () => {
+    const { select } = makeSummaryChain([{ fee: 100 }, { fee: 50 }, { fee: 75 }])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.breakdown.map((b) => b.fee)).toEqual([50, 75, 100])
+  })
+
+  it('should_exclude_lessons_with_null_fee_from_income', async () => {
+    const { select } = makeSummaryChain([{ fee: 75 }, { fee: null }, { fee: 75 }])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.totalIncome).toBe(150)
+    expect(result.breakdown).toHaveLength(1)
+  })
+
+  it('should_filter_lessons_by_date_range', async () => {
+    const { select, mockEq, mockGte, mockLt } = makeSummaryChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockGte).toHaveBeenCalledWith('lesson_at', startDate.toISOString())
+    expect(mockLt).toHaveBeenCalledWith('lesson_at', endDate.toISOString())
+  })
+
+  it('should_calculate_correct_subtotal_per_tier', async () => {
+    const { select } = makeSummaryChain([{ fee: 50 }, { fee: 50 }, { fee: 100 }])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.breakdown).toEqual([
+      { fee: 50, lessonCount: 2, subtotal: 100 },
+      { fee: 100, lessonCount: 1, subtotal: 100 },
+    ])
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { select } = makeSummaryChain([], new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('db error')
   })
 })

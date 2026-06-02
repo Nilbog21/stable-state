@@ -85,3 +85,8 @@ export interface LessonRider {
   lesson_id: string
   rider_id: string
 }
+
+export interface FinancialSummary {
+  totalIncome: number
+  breakdown: { fee: number; lessonCount: number; subtotal: number }[]
+}
