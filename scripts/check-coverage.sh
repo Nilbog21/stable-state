@@ -3,8 +3,16 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-echo "Running coverage..."
-npm run test:coverage
+if [ "${SKIP_COVERAGE_RUN:-0}" = "1" ]; then
+  echo "Skipping test run (SKIP_COVERAGE_RUN=1). Ensure coverage JSON is current."
+  if [ ! -f "coverage/coverage-final.json" ]; then
+    echo "Error: coverage/coverage-final.json not found. Run tests first." >&2
+    exit 1
+  fi
+else
+  echo "Running coverage..."
+  npm run test:coverage
+fi
 
 echo ""
 node -e "
