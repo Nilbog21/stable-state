@@ -40,42 +40,43 @@ export default async function HorseOverviewPage({
         {barn.name} — Horse Overview
       </h1>
 
-      <div className="mb-4 flex gap-3 text-sm">
-        <Link
-          href={`/barn/${slug}/horses/overview?sort=desc`}
-          className="font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-        >
-          Exertion ↓
-        </Link>
-        <Link
-          href={`/barn/${slug}/horses/overview?sort=asc`}
-          className="font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-        >
-          Exertion ↑
-        </Link>
-      </div>
-
       {horses.length === 0 ? (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No horses in this barn.</p>
       ) : (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Horse</th>
-              <th className="pb-2 pr-6">Lessons (7d)</th>
-              <th className="pb-2">Total Exertion (7d)</th>
-            </tr>
-          </thead>
-          <tbody>
-            {sorted.map((horse) => (
-              <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{horse.name}</td>
-                <td className="py-3 pr-6 text-sm text-zinc-700 dark:text-zinc-300">{horse.lessonCount}</td>
-                <td className="py-3 text-sm text-zinc-700 dark:text-zinc-300">{horse.totalExertion}</td>
+        <>
+          <div className="mb-4 flex gap-3 text-sm">
+            <Link
+              href={`/barn/${slug}/horses/overview?sort=desc`}
+              className="font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+            >
+              Exertion ↓
+            </Link>
+            <Link
+              href={`/barn/${slug}/horses/overview?sort=asc`}
+              className="font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+            >
+              Exertion ↑
+            </Link>
+          </div>
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                <th className="pb-2 pr-6">Horse</th>
+                <th className="pb-2 pr-6">Lessons (7d)</th>
+                <th className="pb-2">Total Exertion (7d)</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {sorted.map((horse) => (
+                <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{horse.name}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-700 dark:text-zinc-300">{horse.lessonCount}</td>
+                  <td className="py-3 text-sm text-zinc-700 dark:text-zinc-300">{horse.totalExertion}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       )}
     </main>
   )

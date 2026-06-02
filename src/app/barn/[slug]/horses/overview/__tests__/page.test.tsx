@@ -84,9 +84,13 @@ describe('HorseOverviewPage', () => {
   it('should_render_lesson_count_and_total_exertion_per_horse', async () => {
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     render(jsx)
-    // Thunderbolt: lessonCount=3, totalExertion=12; Shadow: lessonCount=1, totalExertion=3
-    expect(screen.getAllByText('3').length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText('12')).toBeDefined()
+    // Default sort is desc; Thunderbolt (exertion=12) before Shadow (exertion=3)
+    // Each row: [name, lessonCount, totalExertion]
+    const cells = screen.getAllByRole('cell')
+    expect(cells[1].textContent).toBe('3')   // Thunderbolt lessonCount
+    expect(cells[2].textContent).toBe('12')  // Thunderbolt totalExertion
+    expect(cells[4].textContent).toBe('1')   // Shadow lessonCount
+    expect(cells[5].textContent).toBe('3')   // Shadow totalExertion
   })
 
   it('should_render_empty_state_when_no_horses', async () => {
@@ -94,6 +98,16 @@ describe('HorseOverviewPage', () => {
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     render(jsx)
     expect(screen.getByText(/no horses/i)).toBeDefined()
+  })
+
+  it('should_not_render_sort_links_when_no_horses', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
+    render(jsx)
+    const sortLinks = screen.queryAllByRole('link').filter(
+      (l) => (l as HTMLAnchorElement).href?.includes('sort=')
+    )
+    expect(sortLinks).toHaveLength(0)
   })
 
   it('should_sort_descending_by_total_exertion_by_default', async () => {
