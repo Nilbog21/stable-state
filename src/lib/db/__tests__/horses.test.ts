@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getHorsesByBarn, createHorse } from '../horses'
+import { getHorsesByBarn, createHorse, updateHorse } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -92,5 +92,43 @@ describe('createHorse', () => {
     } as any)
 
     await expect(createHorse('barn-1', 'Blaze')).rejects.toThrow('db error')
+  })
+})
+
+describe('updateHorse', () => {
+  const updatedHorse = createMockHorse({ id: 'horse-1', name: 'Blaze Updated' })
+
+  it('should_return_updated_horse_on_success', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: updatedHorse, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await updateHorse('horse-1', 'Blaze Updated')
+
+    expect(result).toEqual(updatedHorse)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            select: vi.fn().mockReturnValue({
+              single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(updateHorse('horse-1', 'Blaze Updated')).rejects.toThrow('db error')
   })
 })
