@@ -45,7 +45,7 @@ export async function approveMembershipAction(
   const toApprove = await getMembershipById(membershipId)
   await approveMembership(membershipId)
 
-  if (toApprove?.role === 'rider' && toApprove.barn_id) {
+  if (toApprove?.role === 'rider' && toApprove.barn_id && toApprove.user_id) {
     const profiles = await getProfilesByUserIds([toApprove.user_id])
     const profile = profiles[0]
     if (profile) {

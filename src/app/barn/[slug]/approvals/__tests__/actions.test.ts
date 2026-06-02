@@ -151,6 +151,16 @@ describe('approveMembershipAction', () => {
     expect(createRider).not.toHaveBeenCalled()
   })
 
+  it('should_not_create_rider_record_when_membership_user_id_is_null', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ role: 'rider', user_id: null as unknown as string })
+    )
+
+    await approveMembershipAction('green-acres', 'mem-1')
+
+    expect(createRider).not.toHaveBeenCalled()
+  })
+
   it('should_not_create_rider_record_when_profile_is_not_found', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(createMockMembership({ role: 'rider' }))
     vi.mocked(getProfilesByUserIds).mockResolvedValue([])
