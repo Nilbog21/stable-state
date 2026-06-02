@@ -1,6 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
@@ -68,8 +67,7 @@ describe('OlderLessonsToggle', () => {
     expect(screen.queryByText('Comet')).toBeNull()
   })
 
-  it('should_show_older_lessons_after_clicking_button', async () => {
-    const user = userEvent.setup()
+  it('should_show_older_lessons_after_clicking_button', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
@@ -78,12 +76,11 @@ describe('OlderLessonsToggle', () => {
         deleteAction={mockDeleteAction}
       />
     )
-    await user.click(screen.getByRole('button', { name: /show older lessons/i }))
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.getByText('Comet')).toBeDefined()
   })
 
-  it('should_display_horse_names_in_older_lessons', async () => {
-    const user = userEvent.setup()
+  it('should_display_horse_names_in_older_lessons', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
@@ -92,12 +89,11 @@ describe('OlderLessonsToggle', () => {
         deleteAction={mockDeleteAction}
       />
     )
-    await user.click(screen.getByRole('button', { name: /show older lessons/i }))
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.getByText('Comet')).toBeDefined()
   })
 
-  it('should_display_rider_name_in_older_lessons', async () => {
-    const user = userEvent.setup()
+  it('should_display_rider_name_in_older_lessons', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
@@ -106,12 +102,11 @@ describe('OlderLessonsToggle', () => {
         deleteAction={mockDeleteAction}
       />
     )
-    await user.click(screen.getByRole('button', { name: /show older lessons/i }))
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.getByText('Bob')).toBeDefined()
   })
 
-  it('should_not_show_delete_button_when_not_manager', async () => {
-    const user = userEvent.setup()
+  it('should_not_show_delete_button_when_not_manager', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
@@ -120,12 +115,11 @@ describe('OlderLessonsToggle', () => {
         deleteAction={mockDeleteAction}
       />
     )
-    await user.click(screen.getByRole('button', { name: /show older lessons/i }))
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
-  it('should_show_delete_button_for_manager', async () => {
-    const user = userEvent.setup()
+  it('should_show_delete_button_for_manager', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
@@ -134,7 +128,7 @@ describe('OlderLessonsToggle', () => {
         deleteAction={mockDeleteAction}
       />
     )
-    await user.click(screen.getByRole('button', { name: /show older lessons/i }))
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
   })
 })

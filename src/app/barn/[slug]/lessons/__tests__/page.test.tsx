@@ -33,6 +33,10 @@ vi.mock('../DeleteLessonButton', () => ({
   ),
 }))
 
+vi.mock('../OlderLessonsToggle', () => ({
+  OlderLessonsToggle: () => null,
+}))
+
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonsByBarn } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
@@ -52,8 +56,8 @@ const mockLesson = {
   barn_id: 'barn-1',
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:00:00Z',
-  submitted_at: '2026-05-17T10:05:00Z',
+  lesson_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  submitted_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   instructor_name: 'John Doe',
   horse_names: ['Thunderbolt'],
   rider_name: 'Alice',
