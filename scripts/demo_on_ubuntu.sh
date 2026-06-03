@@ -19,8 +19,16 @@ trap cleanup EXIT INT TERM
 sudo ufw allow 3000/tcp
 
 LAN_IP=$(hostname -I | awk '{print $1}')
+if [[ -z "$LAN_IP" ]]; then
+  read -rp "Could not detect LAN IP. Enter the IP address to use: " LAN_IP
+  if [[ -z "$LAN_IP" ]]; then
+    echo "Error: no IP address provided." >&2
+    exit 1
+  fi
+fi
 echo "Demo will be available at: http://${LAN_IP}:3000"
 
+export NEXT_PUBLIC_SITE_URL="http://${LAN_IP}:3000"
 npm run build
 
 systemd-inhibit --what=idle:sleep --why="Demo in progress" \
