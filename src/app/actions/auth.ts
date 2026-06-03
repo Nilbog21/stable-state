@@ -2,13 +2,23 @@
 
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+import { headers } from 'next/headers'
+
+async function getSiteUrl(): Promise<string> {
+  const headersList = await headers()
+  const host = headersList.get('host')
+  if (!host) return 'http://localhost:3000'
+  const proto = headersList.get('x-forwarded-proto') ?? 'http'
+  return `${proto}://${host}`
+}
 
 export async function signInWithGoogle() {
   const supabase = await createClient()
+  const siteUrl = await getSiteUrl()
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${siteUrl}/auth/callback`,
     },
   })
 
@@ -25,7 +35,7 @@ export async function signInWithGoogleForBarn(barnSlug: string) {
   }
 
   const supabase = await createClient()
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
+  const siteUrl = await getSiteUrl()
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {

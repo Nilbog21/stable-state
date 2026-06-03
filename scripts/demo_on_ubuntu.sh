@@ -27,8 +27,11 @@ if [[ -z "$LAN_IP" ]]; then
   fi
 fi
 echo "Demo will be available at: http://${LAN_IP}:3000"
+echo ""
+echo "NOTE: Ensure http://${LAN_IP}:3000 (or http://192.168.*) is listed in your"
+echo "Supabase dashboard under Auth → URL Configuration → Redirect URLs."
+echo ""
 
-export NEXT_PUBLIC_SITE_URL="http://${LAN_IP}:3000"
 npm run build
 
 systemd-inhibit --what=idle:sleep --why="Demo in progress" \
