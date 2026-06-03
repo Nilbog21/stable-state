@@ -110,8 +110,18 @@ CREATE POLICY "lesson_riders_delete" ON public.lesson_riders
 -- horses: INSERT/UPDATE/DELETE (managers only, barn-scoped)
 DROP POLICY "horses_manager_write" ON public.horses;
 
-CREATE POLICY "horses_manager_write" ON public.horses
-  FOR INSERT UPDATE DELETE TO authenticated
+CREATE POLICY "horses_manager_insert" ON public.horses
+  FOR INSERT TO authenticated
+  WITH CHECK (EXISTS (
+    SELECT 1 FROM public.barn_memberships mgr
+    WHERE mgr.user_id = auth.uid()
+      AND mgr.status = 'active'
+      AND mgr.role = 'manager'
+      AND mgr.barn_id = horses.barn_id
+  ));
+
+CREATE POLICY "horses_manager_update" ON public.horses
+  FOR UPDATE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.barn_memberships mgr
     WHERE mgr.user_id = auth.uid()
@@ -120,6 +130,16 @@ CREATE POLICY "horses_manager_write" ON public.horses
       AND mgr.barn_id = horses.barn_id
   ))
   WITH CHECK (EXISTS (
+    SELECT 1 FROM public.barn_memberships mgr
+    WHERE mgr.user_id = auth.uid()
+      AND mgr.status = 'active'
+      AND mgr.role = 'manager'
+      AND mgr.barn_id = horses.barn_id
+  ));
+
+CREATE POLICY "horses_manager_delete" ON public.horses
+  FOR DELETE TO authenticated
+  USING (EXISTS (
     SELECT 1 FROM public.barn_memberships mgr
     WHERE mgr.user_id = auth.uid()
       AND mgr.status = 'active'
