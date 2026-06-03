@@ -3,7 +3,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonsByBarn } from '@/lib/db/lessons'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { deleteLessonAction } from '@/app/actions/lessons'
 import { OlderLessonsToggle } from './OlderLessonsToggle'
 import { LessonListItem } from './LessonListItem'
@@ -31,7 +31,7 @@ export default async function LessonsPage({
 
   const [lessons, membership] = await Promise.all([
     getLessonsByBarn(barn.id),
-    getUserMembership(user.id, barn.id),
+    getEffectiveMembership(user.id, barn.id),
   ])
 
   if (!membership) {

@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import type { LessonWithDetails } from '@/lib/db/types'
 
@@ -19,9 +19,7 @@ export default async function BarnDashboardPage({
   const { data } = await supabase.auth.getUser()
   if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const membership =
-    (await getUserMembership(data.user.id, barn.id)) ??
-    (await getAdminMembership(data.user.id))
+  const membership = await getEffectiveMembership(data.user.id, barn.id)
 
   if (!membership) redirect(`/barn/${slug}/login`)
 
