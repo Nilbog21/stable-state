@@ -1,7 +1,7 @@
 'use server'
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import type { Role } from '@/lib/db/types'
 
 const OVERRIDE_COOKIE = 'dev_role_override'

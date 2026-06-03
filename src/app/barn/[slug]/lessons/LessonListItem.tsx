@@ -6,7 +6,7 @@ interface Props {
   lesson: LessonWithDetails
   slug: string
   isManager: boolean
-  deleteAction: (lessonId: string) => Promise<void>
+  deleteAction: (lessonId: string) => Promise<{ error: string } | void>
 }
 
 export function LessonListItem({ lesson, slug, isManager, deleteAction }: Props) {
