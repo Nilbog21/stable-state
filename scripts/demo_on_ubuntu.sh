@@ -3,7 +3,7 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-for cmd in ufw node npx; do
+for cmd in ufw node npx systemd-inhibit; do
   if ! command -v "$cmd" &>/dev/null; then
     echo "Error: '$cmd' is required but not found." >&2
     exit 1
@@ -23,5 +23,5 @@ echo "Demo will be available at: http://${LAN_IP}:3000"
 
 npm run build
 
-systemd-inhibit --what=idle --why="Demo in progress" \
+systemd-inhibit --what=idle:sleep --why="Demo in progress" \
   npx next start -H 0.0.0.0 -p 3000
