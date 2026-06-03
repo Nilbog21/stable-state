@@ -4,16 +4,8 @@ import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { updateRider } from '@/lib/db/riders'
-import type { BarnMembership } from '@/lib/db/types'
-
-async function getAuthorizedMembership(
-  userId: string,
-  barnId: string
-): Promise<BarnMembership | null> {
-  return (await getUserMembership(userId, barnId)) ?? (await getAdminMembership(userId))
-}
 
 export async function updateRiderAction(
   barnSlug: string,
@@ -27,11 +19,11 @@ export async function updateRiderAction(
   const barn = await getBarnBySlug(barnSlug)
   if (!barn) redirect(`/barn/${barnSlug}/login`)
 
-  const membership = await getAuthorizedMembership(data.user.id, barn.id)
+  const membership = await getUserMembership(data.user.id, barn.id)
   if (
     !membership ||
     membership.status !== 'active' ||
-    (membership.role !== 'manager' && membership.role !== 'admin' && membership.role !== 'trainer')
+    (membership.role !== 'manager' && membership.role !== 'trainer')
   ) {
     redirect(`/barn/${barnSlug}/login`)
   }

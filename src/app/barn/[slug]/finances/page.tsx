@@ -22,7 +22,7 @@ export default async function FinancesPage({
   if (
     !actorMembership ||
     actorMembership.status !== 'active' ||
-    (actorMembership.role !== 'manager' && actorMembership.role !== 'admin')
+    actorMembership.role !== 'manager'
   ) {
     redirect(`/barn/${slug}/login`)
   }

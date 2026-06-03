@@ -44,8 +44,6 @@ import { submitLesson, deleteLessonAction } from '../lessons'
 const mockLesson = createMockLesson({ fee: null, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
 const mockTrainerMembership = createMockMembership({ created_at: '2026-01-01T00:00:00Z' })
 const mockManagerMembership = createMockMembership({ role: 'manager', created_at: '2026-01-01T00:00:00Z' })
-const mockAdminMembership = createMockMembership({ role: 'admin', created_at: '2026-01-01T00:00:00Z' })
-
 describe('submitLesson', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockResolvedValue({
@@ -172,8 +170,8 @@ describe('submitLesson', () => {
     )
   })
 
-  it('should_use_instructor_id_from_formData_when_user_is_an_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockAdminMembership)
+  it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
       createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
     ])
@@ -412,12 +410,6 @@ describe('deleteLessonAction', () => {
   })
 
   it('should_call_deleteLesson_when_user_is_manager', async () => {
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
-    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
-  })
-
-  it('should_call_deleteLesson_when_user_is_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'admin' as const })
     await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
     expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
   })

@@ -46,21 +46,6 @@ export async function seedManagerAccount(
   if (error) throw error
 }
 
-export async function getAdminMembership(
-  userId: string
-): Promise<BarnMembership | null> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('barn_memberships')
-    .select('*')
-    .eq('user_id', userId)
-    .is('barn_id', null)
-    .maybeSingle()
-
-  if (error) throw error
-  return data
-}
-
 export async function getPendingMemberships(
   barnId: string
 ): Promise<BarnMembership[]> {

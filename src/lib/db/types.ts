@@ -1,4 +1,4 @@
-export type Role = 'admin' | 'manager' | 'trainer' | 'rider'
+export type Role = 'manager' | 'trainer' | 'rider'
 export type MembershipStatus = 'active' | 'pending'
 
 export interface Profile {
@@ -18,7 +18,7 @@ export interface Barn {
 export interface BarnMembership {
   id: string
   user_id: string
-  barn_id: string | null
+  barn_id: string
   role: Role
   status: MembershipStatus
   created_at: string
@@ -29,7 +29,7 @@ export interface SeededAccount {
   id: string
   email: string
   role: Role
-  barn_id: string | null
+  barn_id: string
   created_at: string
 }
 

@@ -30,14 +30,13 @@ export default async function BarnDashboardPage({
   let navLinks: { href: string; label: string }[]
   let upcomingLessons: LessonWithDetails[] | null = null
 
-  if (membership.role === 'admin') {
-    navLinks = [{ href: `/barn/${slug}/approvals`, label: 'Approvals' }]
-  } else if (membership.role === 'manager') {
+  if (membership.role === 'manager') {
     navLinks = [
       { href: `/barn/${slug}/horses`, label: 'Horses' },
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/finances`, label: 'Finances' },
       { href: `/barn/${slug}/riders`, label: 'Riders' },
+      { href: `/barn/${slug}/approvals`, label: 'Approvals' },
     ]
     const now = new Date()
     const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)

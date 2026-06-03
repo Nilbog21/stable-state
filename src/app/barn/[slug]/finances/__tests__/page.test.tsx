@@ -7,7 +7,6 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getAdminMembership: vi.fn(),
 }))
 vi.mock('@/lib/db/lessons', () => ({ getFinancialSummary: vi.fn() }))
 
@@ -18,13 +17,12 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary } from '@/lib/db/lessons'
 import FinancesPage from '../page'
 
 const mockBarn = createMockBarn()
 const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
-const adminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin' })
 const trainerMembership = createMockMembership({ id: 'mem-trn', role: 'trainer' })
 
 describe('FinancesPage', () => {
@@ -32,7 +30,6 @@ describe('FinancesPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(getFinancialSummary).mockResolvedValue({ totalIncome: 0, breakdown: [] })
   })
 
@@ -50,7 +47,6 @@ describe('FinancesPage', () => {
 
   it('should_redirect_to_login_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
@@ -62,14 +58,6 @@ describe('FinancesPage', () => {
   })
 
   it('should_render_page_for_manager', async () => {
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByText(/green acres/i)).toBeDefined()
-  })
-
-  it('should_render_page_for_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(adminMembership)
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText(/green acres/i)).toBeDefined()

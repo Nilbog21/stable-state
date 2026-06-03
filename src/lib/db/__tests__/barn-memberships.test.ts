@@ -11,7 +11,6 @@ import {
   createPendingMembership,
   seedManagerAccount,
   applySeededMembership,
-  getAdminMembership,
   getPendingMemberships,
   getActiveMemberships,
   approveMembership,
@@ -192,7 +191,7 @@ describe('seedManagerAccount', () => {
 
 describe('applySeededMembership', () => {
   it('should_upsert_active_membership_when_email_is_in_seeded_accounts', async () => {
-    const seeded = { email: 'admin@example.com', role: 'admin', barn_id: null }
+    const seeded = { email: 'manager@example.com', role: 'manager', barn_id: 'barn-1' }
     const mockUpsert = vi.fn().mockResolvedValue({ error: null })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
@@ -209,10 +208,10 @@ describe('applySeededMembership', () => {
       }),
     } as any)
 
-    await applySeededMembership('user-1', 'admin@example.com')
+    await applySeededMembership('user-1', 'manager@example.com')
 
     expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'user-1', role: 'admin', status: 'active' }),
+      expect.objectContaining({ user_id: 'user-1', role: 'manager', status: 'active' }),
       expect.anything()
     )
   })
@@ -241,7 +240,7 @@ describe('applySeededMembership', () => {
 
   it('should_throw_when_upsert_returns_error', async () => {
     const dbError = new Error('upsert failed')
-    const seeded = { email: 'admin@example.com', role: 'admin', barn_id: null }
+    const seeded = { email: 'manager@example.com', role: 'manager', barn_id: 'barn-1' }
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'seeded_accounts') {
@@ -258,79 +257,6 @@ describe('applySeededMembership', () => {
     } as any)
 
     await expect(applySeededMembership('user-1', 'admin@example.com')).rejects.toThrow('upsert failed')
-  })
-})
-
-describe('getAdminMembership', () => {
-  it('should_return_membership_when_user_has_admin_role', async () => {
-    const adminMembership = createMockMembership({ barn_id: null, role: 'admin' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            is: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: adminMembership, error: null }),
-            }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await getAdminMembership('user-1')
-
-    expect(result).toEqual(adminMembership)
-  })
-
-  it('should_return_null_when_no_admin_membership_exists', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            is: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-            }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await getAdminMembership('user-1')
-
-    expect(result).toBeNull()
-  })
-
-  it('should_query_for_null_barn_id', async () => {
-    const mockIs = vi.fn().mockReturnValue({
-      maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-    })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ is: mockIs }),
-        }),
-      }),
-    } as any)
-
-    await getAdminMembership('user-1')
-
-    expect(mockIs).toHaveBeenCalledWith('barn_id', null)
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('query failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            is: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: dbError }),
-            }),
-          }),
-        }),
-      }),
-    } as any)
-
-    await expect(getAdminMembership('user-1')).rejects.toThrow('query failed')
   })
 })
 
