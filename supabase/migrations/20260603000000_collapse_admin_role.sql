@@ -1,10 +1,12 @@
--- Convert any seeded admin accounts to barn-scoped manager of the sme barn.
+-- Convert any seeded admin accounts to barn-scoped manager of the barn with slug 'sme'.
+-- TODO(#96): replace this hardcoded slug with a safe, environment-agnostic lookup.
 UPDATE public.seeded_accounts
   SET role = 'manager',
       barn_id = (SELECT id FROM public.barns WHERE slug = 'sme')
   WHERE role = 'admin';
 
--- Convert any existing admin barn_memberships (barn_id IS NULL) to manager of the sme barn.
+-- Convert any existing admin barn_memberships (barn_id IS NULL) to manager of the barn with slug 'sme'.
+-- TODO(#96): replace this hardcoded slug with a safe, environment-agnostic lookup.
 UPDATE public.barn_memberships
   SET role = 'manager',
       barn_id = (SELECT id FROM public.barns WHERE slug = 'sme')

@@ -111,7 +111,7 @@ CREATE POLICY "lesson_riders_delete" ON public.lesson_riders
 DROP POLICY "horses_manager_write" ON public.horses;
 
 CREATE POLICY "horses_manager_write" ON public.horses
-  FOR ALL TO authenticated
+  FOR INSERT UPDATE DELETE TO authenticated
   USING (EXISTS (
     SELECT 1 FROM public.barn_memberships mgr
     WHERE mgr.user_id = auth.uid()
