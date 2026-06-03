@@ -4,7 +4,7 @@ import { usePathname } from 'next/navigation'
 import { setDevRoleOverride, clearDevRoleOverride } from '@/app/actions/dev-role'
 import type { Role } from '@/lib/db/types'
 
-const ROLES: Role[] = ['manager', 'trainer', 'rider']
+const ROLES: Role[] = ['trainer', 'rider']
 
 export function DevRoleSwitcher({ currentOverride }: { currentOverride: Role | null }) {
   const pathname = usePathname()
@@ -12,7 +12,7 @@ export function DevRoleSwitcher({ currentOverride }: { currentOverride: Role | n
   return (
     <div className="fixed bottom-4 right-4 z-50 flex items-center gap-2 rounded-lg border border-amber-400 bg-amber-50 px-3 py-2 text-xs shadow-lg dark:border-amber-500 dark:bg-amber-950">
       <span className="font-semibold text-amber-800 dark:text-amber-300">
-        Dev: {currentOverride ?? 'admin'}
+        Dev: {currentOverride ?? 'manager'}
       </span>
       {ROLES.map((role) => (
         <button

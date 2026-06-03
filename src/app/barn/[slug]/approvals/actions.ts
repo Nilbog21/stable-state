@@ -6,21 +6,12 @@ import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import {
   getUserMembership,
-  getAdminMembership,
   approveMembership,
   deleteMembership,
   getMembershipById,
 } from '@/lib/db/barn-memberships'
 import { createRider } from '@/lib/db/riders'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
-import type { BarnMembership } from '@/lib/db/types'
-
-async function getManagerOrAdminMembership(
-  userId: string,
-  barnId: string
-): Promise<BarnMembership | null> {
-  return (await getUserMembership(userId, barnId)) ?? (await getAdminMembership(userId))
-}
 
 export async function approveMembershipAction(
   barnSlug: string,
@@ -33,12 +24,8 @@ export async function approveMembershipAction(
   const barn = await getBarnBySlug(barnSlug)
   if (!barn) redirect(`/barn/${barnSlug}/login`)
 
-  const membership = await getManagerOrAdminMembership(data.user.id, barn.id)
-  if (
-    !membership ||
-    membership.status !== 'active' ||
-    (membership.role !== 'manager' && membership.role !== 'admin')
-  ) {
+  const membership = await getUserMembership(data.user.id, barn.id)
+  if (!membership || membership.status !== 'active' || membership.role !== 'manager') {
     redirect(`/barn/${barnSlug}/login`)
   }
 
@@ -72,12 +59,8 @@ export async function rejectMembershipAction(
   const barn = await getBarnBySlug(barnSlug)
   if (!barn) redirect(`/barn/${barnSlug}/login`)
 
-  const membership = await getManagerOrAdminMembership(data.user.id, barn.id)
-  if (
-    !membership ||
-    membership.status !== 'active' ||
-    (membership.role !== 'manager' && membership.role !== 'admin')
-  ) {
+  const membership = await getUserMembership(data.user.id, barn.id)
+  if (!membership || membership.status !== 'active' || membership.role !== 'manager') {
     redirect(`/barn/${barnSlug}/login`)
   }
 
@@ -96,8 +79,8 @@ export async function removeMembershipAction(
   const barn = await getBarnBySlug(barnSlug)
   if (!barn) redirect(`/barn/${barnSlug}/login`)
 
-  const membership = await getManagerOrAdminMembership(data.user.id, barn.id)
-  if (!membership || membership.status !== 'active' || membership.role !== 'admin') {
+  const membership = await getUserMembership(data.user.id, barn.id)
+  if (!membership || membership.status !== 'active' || membership.role !== 'manager') {
     redirect(`/barn/${barnSlug}/login`)
   }
 

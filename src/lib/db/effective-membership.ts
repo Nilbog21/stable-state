@@ -1,21 +1,19 @@
 import { cookies } from 'next/headers'
-import { getUserMembership, getAdminMembership } from './barn-memberships'
+import { getUserMembership } from './barn-memberships'
 import type { BarnMembership, Role } from './types'
 
 const OVERRIDE_COOKIE = 'dev_role_override'
-const OVERRIDABLE_ROLES: Role[] = ['manager', 'trainer', 'rider']
+const OVERRIDABLE_ROLES: Role[] = ['trainer', 'rider']
 
 export async function getEffectiveMembership(
   userId: string,
   barnId: string
 ): Promise<BarnMembership | null> {
-  const membership =
-    (await getUserMembership(userId, barnId)) ??
-    (await getAdminMembership(userId))
+  const membership = await getUserMembership(userId, barnId)
 
   if (
     process.env.NODE_ENV === 'development' &&
-    membership?.role === 'admin'
+    membership?.role === 'manager'
   ) {
     const cookieStore = await cookies()
     const override = cookieStore.get(OVERRIDE_COOKIE)?.value as Role | undefined

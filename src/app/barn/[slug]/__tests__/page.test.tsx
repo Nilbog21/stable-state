@@ -78,16 +78,6 @@ const mockRiderMembership = {
   default_fee: null,
 }
 
-const mockAdminMembership = {
-  id: 'mem-adm',
-  user_id: 'user-1',
-  barn_id: null,
-  role: 'admin' as const,
-  status: 'active' as const,
-  created_at: '',
-  default_fee: null,
-}
-
 function setupAuth(user: typeof mockUser | null = mockUser) {
   vi.mocked(createClient).mockResolvedValue({
     auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
@@ -208,9 +198,7 @@ describe('BarnDashboardPage', () => {
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/riders')
   })
 
-  it('should_render_approvals_link_for_admin', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockAdminMembership)
-
+  it('should_render_approvals_link_for_manager', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
@@ -219,7 +207,7 @@ describe('BarnDashboardPage', () => {
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/approvals')
   })
 
-  it('should_render_four_nav_links_for_manager', async () => {
+  it('should_render_five_nav_links_for_manager', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
@@ -227,11 +215,13 @@ describe('BarnDashboardPage', () => {
     const lessons = screen.getByRole('link', { name: /lessons/i })
     const finances = screen.getByRole('link', { name: /finances/i })
     const riders = screen.getByRole('link', { name: /riders/i })
+    const approvals = screen.getByRole('link', { name: /approvals/i })
 
     expect((horses as HTMLAnchorElement).href).toContain('/barn/green-acres/horses')
     expect((lessons as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons')
     expect((finances as HTMLAnchorElement).href).toContain('/barn/green-acres/finances')
     expect((riders as HTMLAnchorElement).href).toContain('/barn/green-acres/riders')
+    expect((approvals as HTMLAnchorElement).href).toContain('/barn/green-acres/approvals')
   })
 
   it('should_show_upcoming_lessons_section_for_manager', async () => {
@@ -290,12 +280,4 @@ describe('BarnDashboardPage', () => {
     expect(screen.queryByText(/upcoming lessons/i)).toBeNull()
   })
 
-  it('should_not_show_upcoming_lessons_section_for_admin', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockAdminMembership)
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.queryByText(/upcoming lessons/i)).toBeNull()
-  })
 })

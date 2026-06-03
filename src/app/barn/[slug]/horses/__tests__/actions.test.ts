@@ -12,7 +12,6 @@ vi.mock('@/lib/db/barns', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getAdminMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/db/horses', () => ({
@@ -36,14 +35,13 @@ vi.mock('next/cache', () => ({
 }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { createHorse, updateHorse } from '@/lib/db/horses'
 import { revalidatePath } from 'next/cache'
 import { addHorseAction, updateHorseAction } from '../actions'
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
-const mockAdminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin' })
 const mockHorse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt' })
 
 describe('addHorseAction', () => {
@@ -53,7 +51,6 @@ describe('addHorseAction', () => {
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(createHorse).mockResolvedValue(mockHorse)
     formData = new FormData()
     formData.set('name', 'Thunderbolt')
@@ -79,7 +76,6 @@ describe('addHorseAction', () => {
 
   it('should_redirect_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
 
     await expect(addHorseAction('green-acres', formData)).rejects.toThrow('NEXT_REDIRECT')
 
@@ -103,16 +99,6 @@ describe('addHorseAction', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
   })
 
-  it('should_call_createHorse_and_revalidate_when_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
-
-    await addHorseAction('green-acres', formData)
-
-    expect(createHorse).toHaveBeenCalledWith(mockBarn.id, 'Thunderbolt')
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
-  })
-
   it('should_not_call_createHorse_when_name_is_empty', async () => {
     formData.set('name', '   ')
 
@@ -129,7 +115,6 @@ describe('updateHorseAction', () => {
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(updateHorse).mockResolvedValue(mockHorse)
     formData = new FormData()
     formData.set('name', 'Thunderbolt Updated')
@@ -155,7 +140,6 @@ describe('updateHorseAction', () => {
 
   it('should_redirect_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
 
     await expect(updateHorseAction('green-acres', 'horse-1', formData)).rejects.toThrow('NEXT_REDIRECT')
 
@@ -173,16 +157,6 @@ describe('updateHorseAction', () => {
   })
 
   it('should_call_updateHorse_and_revalidate_when_manager', async () => {
-    await updateHorseAction('green-acres', 'horse-1', formData)
-
-    expect(updateHorse).toHaveBeenCalledWith('horse-1', 'Thunderbolt Updated')
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
-  })
-
-  it('should_call_updateHorse_and_revalidate_when_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
-
     await updateHorseAction('green-acres', 'horse-1', formData)
 
     expect(updateHorse).toHaveBeenCalledWith('horse-1', 'Thunderbolt Updated')

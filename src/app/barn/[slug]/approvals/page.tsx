@@ -68,16 +68,14 @@ export default async function ApprovalsPage({
   if (
     !actorMembership ||
     actorMembership.status !== 'active' ||
-    (actorMembership.role !== 'manager' && actorMembership.role !== 'admin')
+    actorMembership.role !== 'manager'
   ) {
     redirect(`/barn/${slug}/login`)
   }
 
-  const isAdmin = actorMembership.role === 'admin'
-
   const [pending, active] = await Promise.all([
     getPendingMemberships(barn.id),
-    isAdmin ? getActiveMemberships(barn.id) : Promise.resolve([] as BarnMembership[]),
+    getActiveMemberships(barn.id),
   ])
 
   const removable = active.filter((m) => m.user_id !== data.user!.id)
@@ -140,8 +138,7 @@ export default async function ApprovalsPage({
         )}
       </section>
 
-      {isAdmin && (
-        <section>
+      <section>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
             Active Members
           </h2>
@@ -178,8 +175,7 @@ export default async function ApprovalsPage({
               </tbody>
             </table>
           )}
-        </section>
-      )}
+      </section>
     </main>
   )
 }

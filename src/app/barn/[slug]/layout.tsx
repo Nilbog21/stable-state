@@ -1,11 +1,11 @@
 import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { DevRoleSwitcher } from './DevRoleSwitcher'
 import type { Role } from '@/lib/db/types'
 
-const OVERRIDABLE_ROLES: Role[] = ['manager', 'trainer', 'rider']
+const OVERRIDABLE_ROLES: Role[] = ['trainer', 'rider']
 
 export default async function BarnLayout({
   children,
@@ -26,11 +26,10 @@ export default async function BarnLayout({
     if (data.user) {
       const barn = await getBarnBySlug(slug)
       const membership = barn
-        ? (await getUserMembership(data.user.id, barn.id)) ??
-          (await getAdminMembership(data.user.id))
-        : await getAdminMembership(data.user.id)
+        ? await getUserMembership(data.user.id, barn.id)
+        : null
 
-      if (membership?.role === 'admin') {
+      if (membership?.role === 'manager') {
         showSwitcher = true
         const cookieStore = await cookies()
         const override = cookieStore.get('dev_role_override')?.value as Role | undefined

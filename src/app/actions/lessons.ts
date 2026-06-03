@@ -37,10 +37,10 @@ export async function submitLesson(
   if (!user) return { error: 'not authenticated' }
 
   const membership = await getUserMembership(user.id, barnId)
-  if (!membership || !['admin', 'manager', 'trainer'].includes(membership.role)) {
+  if (!membership || !['manager', 'trainer'].includes(membership.role)) {
     return { error: 'not authorized' }
   }
-  const isManager = membership.role === 'manager' || membership.role === 'admin'
+  const isManager = membership.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
 
@@ -121,7 +121,7 @@ export async function deleteLessonAction(
   if (!user) return { error: 'not authenticated' }
 
   const membership = await getUserMembership(user.id, barnId)
-  if (membership?.role !== 'manager' && membership?.role !== 'admin') {
+  if (membership?.role !== 'manager') {
     return { error: 'not authorized' }
   }
 
