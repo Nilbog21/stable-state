@@ -4,12 +4,12 @@ vi.mock('next/headers', () => ({
   cookies: vi.fn(),
 }))
 
-vi.mock('next/navigation', () => ({
+vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
 import { cookies } from 'next/headers'
-import { revalidatePath } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { setDevRoleOverride, clearDevRoleOverride } from '../dev-role'
 
 function mockCookieStore() {

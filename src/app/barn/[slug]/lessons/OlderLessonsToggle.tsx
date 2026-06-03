@@ -8,7 +8,7 @@ interface Props {
   lessons: LessonWithDetails[]
   slug: string
   isManager: boolean
-  deleteAction: (lessonId: string) => Promise<void>
+  deleteAction: (lessonId: string) => Promise<{ error: string } | void>
 }
 
 export function OlderLessonsToggle({ lessons, slug, isManager, deleteAction }: Props) {
