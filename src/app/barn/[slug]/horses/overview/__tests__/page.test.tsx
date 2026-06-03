@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
+vi.mock('@/lib/db/effective-membership', () => ({
+  getEffectiveMembership: vi.fn(),
 }))
 vi.mock('@/lib/db/horses', () => ({ getHorseExertionSummary: vi.fn() }))
 
@@ -12,7 +12,7 @@ const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FO
 vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getHorseExertionSummary } from '@/lib/db/horses'
 import { createClient } from '@/lib/supabase/server'
 import HorseOverviewPage from '../page'
@@ -38,7 +38,7 @@ describe('HorseOverviewPage', () => {
     vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     mockAuth()
-    vi.mocked(getUserMembership).mockResolvedValue(mockMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockMembership)
     vi.mocked(getHorseExertionSummary).mockResolvedValue(mockSummary)
   })
 
@@ -59,7 +59,7 @@ describe('HorseOverviewPage', () => {
   })
 
   it('should_call_notFound_when_user_has_no_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
     await expect(
       HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
@@ -67,7 +67,7 @@ describe('HorseOverviewPage', () => {
   })
 
   it('should_call_notFound_when_membership_is_not_active', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'pending' })
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, status: 'pending' })
     await expect(
       HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     ).rejects.toThrow('NEXT_NOT_FOUND')

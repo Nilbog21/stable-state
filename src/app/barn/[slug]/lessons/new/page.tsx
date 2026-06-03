@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
-import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
+import { getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { submitLesson } from '@/app/actions/lessons'
 import { LessonForm } from './LessonForm'
@@ -30,7 +31,7 @@ export default async function LessonNewPage({
   const [horses, riders, membership] = await Promise.all([
     getHorsesByBarn(barn.id),
     getRidersByBarn(barn.id),
-    getUserMembership(user.id, barn.id),
+    getEffectiveMembership(user.id, barn.id),
   ])
 
   const isManager = membership?.role === 'manager'

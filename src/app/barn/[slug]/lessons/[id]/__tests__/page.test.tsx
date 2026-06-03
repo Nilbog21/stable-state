@@ -11,8 +11,8 @@ vi.mock('@/lib/db/lessons', () => ({
   getLessonById: vi.fn(),
 }))
 
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
+vi.mock('@/lib/db/effective-membership', () => ({
+  getEffectiveMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -25,7 +25,7 @@ vi.mock('next/navigation', () => ({
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import LessonDetailPage from '../page'
@@ -72,7 +72,7 @@ describe('LessonDetailPage', () => {
     vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getLessonById).mockResolvedValue(mockLessonDetail)
-    vi.mocked(getUserMembership).mockResolvedValue(mockMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockMembership)
     mockSupabaseUser()
   })
 
@@ -103,7 +103,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_call_notFound_when_user_has_no_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
 
     await expect(
@@ -114,7 +114,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_call_notFound_when_membership_is_not_active', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'pending' as const })
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, status: 'pending' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
 
     await expect(

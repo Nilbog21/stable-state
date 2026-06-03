@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getFinancialSummary } from '@/lib/db/lessons'
 
 export default async function FinancesPage({
@@ -17,9 +17,7 @@ export default async function FinancesPage({
   const { data } = await supabase.auth.getUser()
   if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const barnMembership = await getUserMembership(data.user.id, barn.id)
-  const adminMembership = barnMembership ? null : await getAdminMembership(data.user.id)
-  const actorMembership = barnMembership ?? adminMembership
+  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
 
   if (
     !actorMembership ||

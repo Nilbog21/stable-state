@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getHorseExertionSummary } from '@/lib/db/horses'
 
 export default async function HorseOverviewPage({
@@ -22,7 +22,7 @@ export default async function HorseOverviewPage({
   const { data } = await supabase.auth.getUser()
   if (!data.user) notFound()
 
-  const membership = await getUserMembership(data.user.id, barn.id)
+  const membership = await getEffectiveMembership(data.user.id, barn.id)
   if (!membership || membership.status !== 'active') notFound()
 
   const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)

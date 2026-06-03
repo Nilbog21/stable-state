@@ -11,9 +11,8 @@ vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
 }))
 
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
-  getAdminMembership: vi.fn(),
+vi.mock('@/lib/db/effective-membership', () => ({
+  getEffectiveMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/db/lessons', () => ({
@@ -41,7 +40,7 @@ vi.mock('next/navigation', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { createMockLesson } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
@@ -100,8 +99,7 @@ describe('BarnDashboardPage', () => {
     vi.clearAllMocks()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
   })
 
@@ -126,8 +124,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_redirect_to_login_when_no_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
 
     await expect(
       BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -137,7 +134,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_redirect_to_pending_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
+    vi.mocked(getEffectiveMembership).mockResolvedValue({
       ...mockManagerMembership,
       status: 'pending',
     })
@@ -150,7 +147,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_redirect_to_login_when_membership_is_not_active', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
+    vi.mocked(getEffectiveMembership).mockResolvedValue({
       ...mockManagerMembership,
       status: 'rejected' as any,
     })
@@ -172,7 +169,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_lessons_link_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -183,7 +180,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_lessons_link_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -194,7 +191,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_not_render_riders_link_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -212,8 +209,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_approvals_link_for_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockAdminMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -286,7 +282,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_not_show_upcoming_lessons_section_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -295,8 +291,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_not_show_upcoming_lessons_section_for_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockAdminMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

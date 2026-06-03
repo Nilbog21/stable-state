@@ -2,11 +2,10 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import {
-  getUserMembership,
-  getAdminMembership,
   getPendingMemberships,
   getActiveMemberships,
 } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import {
   approveMembershipAction,
@@ -64,9 +63,7 @@ export default async function ApprovalsPage({
   const { data } = await supabase.auth.getUser()
   if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const barnMembership = await getUserMembership(data.user.id, barn.id)
-  const adminMembership = barnMembership ? null : await getAdminMembership(data.user.id)
-  const actorMembership = barnMembership ?? adminMembership
+  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
 
   if (
     !actorMembership ||
