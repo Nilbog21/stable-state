@@ -12,7 +12,6 @@ vi.mock('@/lib/db/barns', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getAdminMembership: vi.fn(),
   approveMembership: vi.fn(),
   deleteMembership: vi.fn(),
   getMembershipById: vi.fn(),
@@ -44,7 +43,6 @@ vi.mock('next/cache', () => ({
 import { getBarnBySlug } from '@/lib/db/barns'
 import {
   getUserMembership,
-  getAdminMembership,
   approveMembership,
   deleteMembership,
   getMembershipById,
@@ -60,14 +58,12 @@ import {
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
-const mockAdminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin' })
 
 describe('approveMembershipAction', () => {
   beforeEach(() => {
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(approveMembership).mockResolvedValue(undefined)
     vi.mocked(getMembershipById).mockResolvedValue(createMockMembership({ role: 'trainer' }))
     vi.mocked(createRider).mockResolvedValue(createMockRider())
@@ -94,7 +90,6 @@ describe('approveMembershipAction', () => {
 
   it('should_redirect_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
 
     await expect(approveMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 
@@ -103,7 +98,7 @@ describe('approveMembershipAction', () => {
   })
 
   it('should_redirect_when_user_is_trainer_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-mgr', role: 'trainer' }))
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-trn', role: 'trainer' }))
 
     await expect(approveMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 
@@ -112,15 +107,6 @@ describe('approveMembershipAction', () => {
   })
 
   it('should_call_approve_helper_when_manager', async () => {
-    await approveMembershipAction('green-acres', 'mem-1')
-
-    expect(approveMembership).toHaveBeenCalledWith('mem-1')
-  })
-
-  it('should_call_approve_helper_when_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
-
     await approveMembershipAction('green-acres', 'mem-1')
 
     expect(approveMembership).toHaveBeenCalledWith('mem-1')
@@ -196,7 +182,6 @@ describe('rejectMembershipAction', () => {
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(deleteMembership).mockResolvedValue(undefined)
   })
 
@@ -218,9 +203,8 @@ describe('rejectMembershipAction', () => {
     expect(deleteMembership).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_when_user_is_not_manager_or_admin', async () => {
+  it('should_redirect_when_user_is_not_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
 
     await expect(rejectMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 
@@ -229,15 +213,6 @@ describe('rejectMembershipAction', () => {
   })
 
   it('should_call_delete_helper_when_manager', async () => {
-    await rejectMembershipAction('green-acres', 'mem-1')
-
-    expect(deleteMembership).toHaveBeenCalledWith('mem-1')
-  })
-
-  it('should_call_delete_helper_when_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
-
     await rejectMembershipAction('green-acres', 'mem-1')
 
     expect(deleteMembership).toHaveBeenCalledWith('mem-1')
@@ -254,8 +229,7 @@ describe('removeMembershipAction', () => {
   beforeEach(() => {
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(deleteMembership).mockResolvedValue(undefined)
   })
 
@@ -277,9 +251,8 @@ describe('removeMembershipAction', () => {
     expect(deleteMembership).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_when_user_is_manager_not_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
+  it('should_redirect_when_user_is_not_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'trainer' }))
 
     await expect(removeMembershipAction('green-acres', 'mem-1')).rejects.toThrow('NEXT_REDIRECT')
 
@@ -287,7 +260,7 @@ describe('removeMembershipAction', () => {
     expect(deleteMembership).not.toHaveBeenCalled()
   })
 
-  it('should_call_delete_helper_when_admin', async () => {
+  it('should_call_delete_helper_when_manager', async () => {
     await removeMembershipAction('green-acres', 'mem-1')
 
     expect(deleteMembership).toHaveBeenCalledWith('mem-1')

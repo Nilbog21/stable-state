@@ -7,7 +7,6 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getAdminMembership: vi.fn(),
   getPendingMemberships: vi.fn(),
   getActiveMemberships: vi.fn(),
 }))
@@ -27,7 +26,6 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 import { getBarnBySlug } from '@/lib/db/barns'
 import {
   getUserMembership,
-  getAdminMembership,
   getPendingMemberships,
   getActiveMemberships,
 } from '@/lib/db/barn-memberships'
@@ -36,7 +34,6 @@ import ApprovalsPage from '../page'
 
 const mockBarn = createMockBarn()
 const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager', created_at: '2026-01-01T00:00:00Z' })
-const adminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin', created_at: '2026-01-01T00:00:00Z' })
 const pendingMembership = createMockMembership({ id: 'mem-pending', user_id: 'user-2', status: 'pending', created_at: '2026-01-02T00:00:00Z' })
 const activeMembership = createMockMembership({ id: 'mem-active', user_id: 'user-3', created_at: '2026-01-03T00:00:00Z' })
 
@@ -50,7 +47,6 @@ describe('ApprovalsPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(getActiveMemberships).mockResolvedValue([])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([])
@@ -68,9 +64,8 @@ describe('ApprovalsPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_redirect_to_login_when_user_is_not_manager_or_admin', async () => {
+  it('should_redirect_to_login_when_user_is_not_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     await expect(ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
@@ -105,15 +100,7 @@ describe('ApprovalsPage', () => {
     expect(screen.getByText('Unknown')).toBeDefined()
   })
 
-  it('should_not_render_active_members_section_for_manager', async () => {
-    const jsx = await ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.queryByText(/active members/i)).toBeNull()
-  })
-
-  it('should_render_active_members_section_for_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(adminMembership)
+  it('should_render_active_members_section_for_manager', async () => {
     vi.mocked(getActiveMemberships).mockResolvedValue([activeMembership])
     vi.mocked(getProfilesByUserIds).mockResolvedValue(mockProfiles)
     const jsx = await ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -122,17 +109,13 @@ describe('ApprovalsPage', () => {
   })
 
   it('should_render_no_active_members_message_when_removable_is_empty', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(adminMembership)
     vi.mocked(getActiveMemberships).mockResolvedValue([])
     const jsx = await ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText(/no active members/i)).toBeDefined()
   })
 
-  it('should_render_remove_button_for_non_self_active_members_as_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(adminMembership)
+  it('should_render_remove_button_for_non_self_active_members', async () => {
     vi.mocked(getActiveMemberships).mockResolvedValue([activeMembership])
     vi.mocked(getProfilesByUserIds).mockResolvedValue(mockProfiles)
     const jsx = await ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })

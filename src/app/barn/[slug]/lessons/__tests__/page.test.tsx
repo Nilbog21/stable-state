@@ -78,11 +78,6 @@ const mockManagerMembership = {
   role: 'manager' as const,
 }
 
-const mockAdminMembership = {
-  ...mockTrainerMembership,
-  role: 'admin' as const,
-}
-
 const mockRiderMembership = {
   ...mockTrainerMembership,
   role: 'rider' as const,
@@ -175,13 +170,6 @@ describe('LessonsPage', () => {
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
   })
 
-  it('should_show_delete_button_for_admin', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockAdminMembership)
-    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
-  })
-
   it('should_show_new_lesson_link_for_trainer', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -193,15 +181,6 @@ describe('LessonsPage', () => {
 
   it('should_show_new_lesson_link_for_manager', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
-    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    const link = screen.getByRole('link', { name: /new lesson/i })
-    expect(link).toBeDefined()
-    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons/new')
-  })
-
-  it('should_show_new_lesson_link_for_admin', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockAdminMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const link = screen.getByRole('link', { name: /new lesson/i })

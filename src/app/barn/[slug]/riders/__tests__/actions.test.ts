@@ -12,7 +12,6 @@ vi.mock('@/lib/db/barns', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getAdminMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/db/riders', () => ({
@@ -35,14 +34,13 @@ vi.mock('next/cache', () => ({
 }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { updateRider } from '@/lib/db/riders'
 import { revalidatePath } from 'next/cache'
 import { updateRiderAction } from '../actions'
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
-const mockAdminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin' })
 const mockRider = createMockRider({ id: 'rider-1', name: 'Jane Doe' })
 
 describe('updateRiderAction', () => {
@@ -52,7 +50,6 @@ describe('updateRiderAction', () => {
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(updateRider).mockResolvedValue(mockRider)
     formData = new FormData()
     formData.set('name', 'Jane Doe Updated')
@@ -78,7 +75,6 @@ describe('updateRiderAction', () => {
 
   it('should_redirect_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
 
     await expect(updateRiderAction('green-acres', 'rider-1', formData)).rejects.toThrow('NEXT_REDIRECT')
 
@@ -104,16 +100,6 @@ describe('updateRiderAction', () => {
 
   it('should_call_updateRider_and_revalidate_when_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
-
-    await updateRiderAction('green-acres', 'rider-1', formData)
-
-    expect(updateRider).toHaveBeenCalledWith('rider-1', 'barn-1', 'Jane Doe Updated')
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/riders')
-  })
-
-  it('should_call_updateRider_and_revalidate_when_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(mockAdminMembership)
 
     await updateRiderAction('green-acres', 'rider-1', formData)
 

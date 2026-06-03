@@ -38,8 +38,8 @@ export default async function LessonsPage({
     notFound()
   }
 
-  const isManager = membership.role === 'manager' || membership.role === 'admin'
-  const canCreateLesson = membership.role === 'admin' || membership.role === 'manager' || membership.role === 'trainer'
+  const isManager = membership.role === 'manager'
+  const canCreateLesson = membership.role === 'manager' || membership.role === 'trainer'
   const deleteAction = deleteLessonAction.bind(null, barn.id, slug)
 
   const cutoff = new Date(Date.now() - OLDER_LESSON_CUTOFF_MS)

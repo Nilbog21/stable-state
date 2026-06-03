@@ -7,7 +7,6 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getAdminMembership: vi.fn(),
 }))
 vi.mock('@/lib/db/riders', () => ({ getRidersByBarn: vi.fn() }))
 vi.mock('../actions', () => ({
@@ -21,13 +20,12 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getAdminMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getRidersByBarn } from '@/lib/db/riders'
 import RidersPage from '../page'
 
 const mockBarn = createMockBarn()
 const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
-const adminMembership = createMockMembership({ id: 'mem-adm', barn_id: null, role: 'admin' })
 
 const mockRiders = [
   createMockRider({ id: 'rider-1', name: 'Jane Doe' }),
@@ -39,7 +37,6 @@ describe('RidersPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     vi.mocked(getRidersByBarn).mockResolvedValue([])
   })
 
@@ -57,7 +54,6 @@ describe('RidersPage', () => {
 
   it('should_redirect_to_login_when_user_has_no_authorized_role', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(null)
     await expect(RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
@@ -97,13 +93,6 @@ describe('RidersPage', () => {
     expect(screen.getByText(/green acres/i)).toBeDefined()
   })
 
-  it('should_render_page_for_admin', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(getAdminMembership).mockResolvedValue(adminMembership)
-    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByText(/green acres/i)).toBeDefined()
-  })
 
   it('should_render_empty_state_when_no_riders', async () => {
     vi.mocked(getRidersByBarn).mockResolvedValue([])
