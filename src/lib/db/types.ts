@@ -50,6 +50,8 @@ export interface Rider {
   updated_at: string
 }
 
+export type LessonType = 'normal' | 'group'
+
 export interface Lesson {
   id: string
   barn_id: string
@@ -57,6 +59,7 @@ export interface Lesson {
   fee: number | null
   lesson_at: string
   submitted_at: string
+  lesson_type: LessonType
 }
 
 export interface LessonWithDetails extends Lesson {
