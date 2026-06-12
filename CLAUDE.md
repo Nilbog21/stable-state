@@ -1,3 +1,4 @@
+@ARCHITECTURE.md
 @AGENTS.md
 
 ## Testing Conventions
@@ -12,3 +13,11 @@
 - When I ask for a feature, write tests first
 - Tests should FAIL initially (no implementation exists)
 - Only after tests are written, implement minimal code to pass
+
+## Architecture Docs
+
+Update `ARCHITECTURE.md` whenever a migration or role change is committed.
+
+## Working Directory
+
+`specs/` is a personal, gitignored working directory. Ignore its contents.
