@@ -1,6 +1,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockLesson } from '@/test/fixtures'
 
+describe('createMockLesson', () => {
+  it('should_default_jumping_to_false', () => {
+    const lesson = createMockLesson()
+    expect(lesson.jumping).toBe(false)
+  })
+})
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
