@@ -252,6 +252,18 @@ describe('deleteLesson', () => {
   })
 })
 
+describe('lesson_type field', () => {
+  it('should_default_lesson_type_to_normal', () => {
+    const lesson = createMockLesson()
+    expect(lesson.lesson_type).toBe('normal')
+  })
+
+  it('should_accept_group_as_lesson_type', () => {
+    const lesson = createMockLesson({ lesson_type: 'group' })
+    expect(lesson.lesson_type).toBe('group')
+  })
+})
+
 describe('getLessonsByBarn', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -347,6 +359,19 @@ describe('getLessonsByBarn', () => {
     const result = await getLessonsByBarn('barn-1')
 
     expect(result[0].horse_names).toEqual([])
+  })
+
+  it('should_include_lesson_type_in_results', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([lesson])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonsByBarn('barn-1')
+
+    expect(result[0].lesson_type).toBe('normal')
   })
 
   it('should_throw_when_supabase_returns_an_error_on_lessons_fetch', async () => {
