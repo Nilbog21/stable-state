@@ -1,0 +1,2 @@
+ALTER TABLE lessons
+  ADD COLUMN jumping BOOLEAN NOT NULL DEFAULT false;

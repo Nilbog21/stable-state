@@ -57,6 +57,7 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
     lesson_at: '2026-05-19T10:00:00Z',
     submitted_at: '2026-05-19T09:00:00Z',
     lesson_type: 'normal',
+    jumping: false,
     ...overrides,
   }
 }
