@@ -51,6 +51,7 @@ export interface Rider {
 }
 
 export type LessonType = 'normal' | 'group'
+export type PaymentType = 'venmo' | 'zelle' | 'cash' | 'check' | 'freshbooks'
 
 export interface Lesson {
   id: string
@@ -61,6 +62,7 @@ export interface Lesson {
   submitted_at: string
   lesson_type: LessonType
   jumping: boolean
+  payment_type: PaymentType | null
 }
 
 export interface LessonWithDetails extends Lesson {
