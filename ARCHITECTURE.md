@@ -76,7 +76,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | File | Domain |
 |---|---|
 | `barns.ts` | Barn lookups |
-| `barn-memberships.ts` | Membership reads and writes |
+| `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
 | `lessons.ts` | Lesson + participant queries; financial summary (`getFinancialSummary`); upcoming lessons preview (`getUpcomingLessons`) |
