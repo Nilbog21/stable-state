@@ -17,6 +17,7 @@ import {
   deleteMembership,
   getActiveTrainerMembershipsByBarn,
   getMembershipById,
+  getBarnMembershipsForUser,
 } from '../barn-memberships'
 
 const mockMembership = createMockMembership()
@@ -627,5 +628,109 @@ describe('getMembershipById', () => {
     } as any)
 
     await expect(getMembershipById('mem-1')).rejects.toThrow('query failed')
+  })
+})
+
+describe('getBarnMembershipsForUser', () => {
+  const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+  const mockRow = { ...mockMembership, barns: mockBarn }
+  const expectedEntry = { barn: mockBarn, membership: mockMembership }
+
+  function makeClient(data: unknown, error: unknown = null) {
+    return {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data, error }),
+          }),
+        }),
+      }),
+    } as any
+  }
+
+  it('should_return_empty_array_when_user_has_no_memberships', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient([]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_single_active_membership_with_barn', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient([mockRow]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([expectedEntry])
+  })
+
+  it('should_return_multiple_active_memberships_with_barns', async () => {
+    const barn2 = { id: 'barn-2', name: 'Sunny Stables', slug: 'sunny-stables', created_at: '' }
+    const mem2 = createMockMembership({ id: 'mem-2', barn_id: 'barn-2' })
+    const row2 = { ...mem2, barns: barn2 }
+    vi.mocked(createClient).mockResolvedValue(makeClient([mockRow, row2]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([expectedEntry, { barn: barn2, membership: mem2 }])
+  })
+
+  it('should_return_pending_only_membership_with_barn', async () => {
+    const pendingMem = createMockMembership({ status: 'pending' })
+    const pendingRow = { ...pendingMem, barns: mockBarn }
+    vi.mocked(createClient).mockResolvedValue(makeClient([pendingRow]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([{ barn: mockBarn, membership: pendingMem }])
+  })
+
+  it('should_return_mixed_active_and_pending_memberships', async () => {
+    const pendingMem = createMockMembership({ id: 'mem-2', status: 'pending' })
+    const pendingRow = { ...pendingMem, barns: mockBarn }
+    vi.mocked(createClient).mockResolvedValue(makeClient([mockRow, pendingRow]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([expectedEntry, { barn: mockBarn, membership: pendingMem }])
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    vi.mocked(createClient).mockResolvedValue(makeClient(null, dbError))
+
+    await expect(getBarnMembershipsForUser('user-1')).rejects.toThrow('query failed')
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient(null))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_query_by_user_id', async () => {
+    const mockEq = vi.fn().mockReturnValue({
+      order: vi.fn().mockResolvedValue({ data: [], error: null }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: mockEq }),
+      }),
+    } as any)
+
+    await getBarnMembershipsForUser('user-42')
+
+    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-42')
+  })
+
+  it('should_exclude_rows_where_barns_is_null', async () => {
+    const rowWithNullBarn = { ...mockMembership, barns: null }
+    vi.mocked(createClient).mockResolvedValue(makeClient([rowWithNullBarn]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([])
   })
 })

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { BarnMembership, Role } from './types'
+import type { Barn, BarnMembership, Role } from './types'
 
 export async function getUserMembership(
   userId: string,
@@ -122,6 +122,26 @@ export async function getMembershipById(id: string): Promise<BarnMembership | nu
 
   if (error) throw error
   return data
+}
+
+export async function getBarnMembershipsForUser(
+  userId: string
+): Promise<{ barn: Barn; membership: BarnMembership }[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .select('*, barns(*)')
+    .eq('user_id', userId)
+    .order('created_at', { ascending: true })
+
+  if (error) throw error
+
+  return (data ?? [])
+    .filter(({ barns }) => barns !== null)
+    .map(({ barns, ...membership }) => ({
+      barn: barns as Barn,
+      membership: membership as BarnMembership,
+    }))
 }
 
 export async function applySeededMembership(
