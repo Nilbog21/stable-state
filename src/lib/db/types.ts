@@ -60,6 +60,7 @@ export interface Lesson {
   lesson_at: string
   submitted_at: string
   lesson_type: LessonType
+  jumping: boolean
 }
 
 export interface LessonWithDetails extends Lesson {

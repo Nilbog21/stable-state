@@ -362,6 +362,19 @@ describe('getLessonsByBarn', () => {
     expect(result[0].lesson_type).toBe('normal')
   })
 
+  it('should_include_jumping_in_results', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([lesson])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonsByBarn('barn-1')
+
+    expect(result[0].jumping).toBe(false)
+  })
+
   it('should_throw_when_supabase_returns_an_error_on_lessons_fetch', async () => {
     const { select } = makeLessonsChain([], new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({
