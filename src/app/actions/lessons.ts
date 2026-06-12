@@ -24,6 +24,10 @@ export async function submitLesson(
   const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
+  const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
+
+  if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
+  const lessonType = lessonTypeRaw as 'normal' | 'group'
 
   if (!riderId && !newRiderName) return { error: 'rider required' }
   if (riderId && newRiderName) return { error: 'select a rider or add a new one, not both' }
@@ -102,6 +106,7 @@ export async function submitLesson(
       horseIds,
       exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
       riderId: riderId!,
+      lessonType,
     })
   } catch {
     return { error: 'Failed to submit lesson' }

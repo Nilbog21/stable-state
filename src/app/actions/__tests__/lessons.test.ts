@@ -364,6 +364,29 @@ describe('submitLesson', () => {
       expect.objectContaining({ fee: 75.5 })
     )
   })
+
+  it('should_pass_lesson_type_to_createLessonWithParticipants', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ lessonType: 'group' })
+    )
+  })
+
+  it('should_default_lesson_type_to_normal_when_not_provided', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ lessonType: 'normal' })
+    )
+  })
+
+  it('should_return_error_when_lesson_type_is_invalid', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'advanced' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'invalid lesson type' })
+    expect(createLessonWithParticipants).not.toHaveBeenCalled()
+  })
 })
 
 describe('deleteLessonAction', () => {
