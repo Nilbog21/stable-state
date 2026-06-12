@@ -1177,20 +1177,6 @@ describe('getHorseIncomeSummary', () => {
 
   it('should_sort_descending_by_total_income', async () => {
     const lesson = createMockLesson({ fee: 90 })
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 90 }])
-      if (table === 'lesson_horses') return makeInChain([
-        { lesson_id: lesson.id, horse_id: 'horse-1' },
-        { lesson_id: lesson.id, horse_id: 'horse-2' },
-        { lesson_id: lesson.id, horse_id: 'horse-3' },
-      ])
-      if (table === 'horses') return makeInChain([
-        { id: 'horse-1', name: 'Thunderbolt' },
-        { id: 'horse-2', name: 'Shadow' },
-        { id: 'horse-3', name: 'Blaze' },
-      ])
-      return makeInChain([])
-    })
     const lesson2 = createMockLesson({ id: 'lesson-x', fee: 60 })
     const fromFn2 = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([

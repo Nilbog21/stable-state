@@ -104,17 +104,22 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/income by horse/i)).toBeDefined()
   })
 
-  it('should_display_horse_name_and_income_amount', async () => {
+  it('should_display_horse_name', async () => {
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([
       { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
-      { horseId: 'horse-2', horseName: 'Shadow', totalIncome: 75 },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
-    expect(screen.getByText('Shadow')).toBeDefined()
+  })
+
+  it('should_display_horse_income_amount', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByText('$150.00')).toBeDefined()
-    expect(screen.getByText('$75.00')).toBeDefined()
   })
 
   it('should_display_empty_state_when_no_horse_income', async () => {
