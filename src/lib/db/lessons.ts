@@ -236,7 +236,7 @@ export async function getHorseIncomeSummary(
 
   if (!(lessonHorses ?? []).length) return []
 
-  const horseIds = [...new Set((lessonHorses ?? []).map((lh) => lh.horse_id))]
+  const horseIds = [...new Set(lessonHorses.map((lh) => lh.horse_id))]
 
   const { data: horses, error: horsesError } = await supabase
     .from('horses')
@@ -248,7 +248,7 @@ export async function getHorseIncomeSummary(
   const incomeMap = new Map<string, number>()
 
   for (const lesson of paidLessons) {
-    const participants = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
+    const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
     if (!participants.length) continue
     const split = lesson.fee / participants.length
     for (const { horse_id } of participants) {
