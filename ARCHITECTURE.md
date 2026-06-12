@@ -79,7 +79,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
-| `lessons.ts` | Lesson + participant queries; financial summary (`getFinancialSummary`); upcoming lessons preview (`getUpcomingLessons`) |
+| `lessons.ts` | Lesson + participant queries; financial summary (`getFinancialSummary`); per-horse income breakdown (`getHorseIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
 | `profiles.ts` | User profiles |
 | `effective-membership.ts` | Dev-only role override (see below) |
 | `types.ts` | Shared TypeScript types |

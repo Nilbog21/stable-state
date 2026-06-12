@@ -8,7 +8,7 @@ vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/lessons', () => ({ getFinancialSummary: vi.fn() }))
+vi.mock('@/lib/db/lessons', () => ({ getFinancialSummary: vi.fn(), getHorseIncomeSummary: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
@@ -18,7 +18,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary } from '@/lib/db/lessons'
+import { getFinancialSummary, getHorseIncomeSummary } from '@/lib/db/lessons'
 import FinancesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -31,6 +31,7 @@ describe('FinancesPage', () => {
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getFinancialSummary).mockResolvedValue({ totalIncome: 0, breakdown: [] })
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -95,5 +96,36 @@ describe('FinancesPage', () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText(/no lessons/i)).toBeDefined()
+  })
+
+  it('should_display_income_by_horse_heading', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/income by horse/i)).toBeDefined()
+  })
+
+  it('should_display_horse_name', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Thunderbolt')).toBeDefined()
+  })
+
+  it('should_display_horse_income_amount', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('$150.00')).toBeDefined()
+  })
+
+  it('should_display_empty_state_when_no_horse_income', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/no horse income/i)).toBeDefined()
   })
 })

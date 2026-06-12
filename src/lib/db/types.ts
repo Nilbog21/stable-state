@@ -103,3 +103,9 @@ export interface HorseExertionSummary {
   lessonCount: number
   totalExertion: number
 }
+
+export interface HorseIncomeSummary {
+  horseId: string
+  horseName: string
+  totalIncome: number
+}
