@@ -375,13 +375,16 @@ describe('getLessonsByBarn', () => {
     expect(result[0].jumping).toBe(false)
   })
 
-  it('should_include_payment_type_in_results', async () => {
-    const lesson = createMockLesson({ instructor_id: null, payment_type: null })
+  function mockClientWithLesson(lesson: ReturnType<typeof createMockLesson>) {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([lesson])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
+  }
+
+  it('should_include_payment_type_in_results', async () => {
+    mockClientWithLesson(createMockLesson({ instructor_id: null }))
 
     const result = await getLessonsByBarn('barn-1')
 
@@ -389,12 +392,7 @@ describe('getLessonsByBarn', () => {
   })
 
   it('should_pass_through_non_null_payment_type', async () => {
-    const lesson = createMockLesson({ instructor_id: null, payment_type: 'venmo' })
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'lessons') return makeLessonsChain([lesson])
-      return makeInChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    mockClientWithLesson(createMockLesson({ instructor_id: null, payment_type: 'venmo' }))
 
     const result = await getLessonsByBarn('barn-1')
 
