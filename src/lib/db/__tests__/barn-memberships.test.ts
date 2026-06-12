@@ -724,4 +724,13 @@ describe('getBarnMembershipsForUser', () => {
 
     expect(mockEq).toHaveBeenCalledWith('user_id', 'user-42')
   })
+
+  it('should_exclude_rows_where_barns_is_null', async () => {
+    const rowWithNullBarn = { ...mockMembership, barns: null }
+    vi.mocked(createClient).mockResolvedValue(makeClient([rowWithNullBarn]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([])
+  })
 })

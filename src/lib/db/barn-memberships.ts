@@ -136,10 +136,12 @@ export async function getBarnMembershipsForUser(
 
   if (error) throw error
 
-  return (data ?? []).map(({ barns, ...membership }) => ({
-    barn: barns as Barn,
-    membership: membership as BarnMembership,
-  }))
+  return (data ?? [])
+    .filter(({ barns }) => barns !== null)
+    .map(({ barns, ...membership }) => ({
+      barn: barns as Barn,
+      membership: membership as BarnMembership,
+    }))
 }
 
 export async function applySeededMembership(
