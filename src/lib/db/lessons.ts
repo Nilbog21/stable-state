@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { FinancialSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonWithDetails } from './types'
+import type { FinancialSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonType, LessonWithDetails } from './types'
 
 export async function createLessonWithParticipants(params: {
   barnId: string
@@ -9,6 +9,7 @@ export async function createLessonWithParticipants(params: {
   horseIds: string[]
   exertionLevels: number[]
   riderId: string
+  lessonType: LessonType
 }): Promise<Lesson> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('create_lesson_with_participants', {
@@ -19,6 +20,7 @@ export async function createLessonWithParticipants(params: {
     p_horse_ids: params.horseIds,
     p_exertion_levels: params.exertionLevels,
     p_rider_id: params.riderId,
+    p_lesson_type: params.lessonType,
   })
   if (error) throw error
   return data as Lesson

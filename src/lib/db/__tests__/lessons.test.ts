@@ -252,18 +252,6 @@ describe('deleteLesson', () => {
   })
 })
 
-describe('lesson_type field', () => {
-  it('should_default_lesson_type_to_normal', () => {
-    const lesson = createMockLesson()
-    expect(lesson.lesson_type).toBe('normal')
-  })
-
-  it('should_accept_group_as_lesson_type', () => {
-    const lesson = createMockLesson({ lesson_type: 'group' })
-    expect(lesson.lesson_type).toBe('group')
-  })
-})
-
 describe('getLessonsByBarn', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -607,6 +595,7 @@ describe('createLessonWithParticipants', () => {
       horseIds: ['horse-1', 'horse-2'],
       exertionLevels: [3, 5],
       riderId: 'rider-1',
+      lessonType: 'normal',
     })
 
     expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants', {
@@ -617,6 +606,7 @@ describe('createLessonWithParticipants', () => {
       p_horse_ids: ['horse-1', 'horse-2'],
       p_exertion_levels: [3, 5],
       p_rider_id: 'rider-1',
+      p_lesson_type: 'normal',
     })
   })
 
@@ -633,6 +623,7 @@ describe('createLessonWithParticipants', () => {
       horseIds: ['horse-1'],
       exertionLevels: [3],
       riderId: 'rider-1',
+      lessonType: 'normal',
     })
 
     expect(result).toEqual(mockLesson)
@@ -652,6 +643,7 @@ describe('createLessonWithParticipants', () => {
         horseIds: ['horse-1'],
         exertionLevels: [3],
         riderId: 'rider-1',
+        lessonType: 'normal',
       })
     ).rejects.toThrow('rpc error')
   })

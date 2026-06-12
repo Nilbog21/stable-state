@@ -93,7 +93,7 @@ No API routes. All mutations go through Next.js Server Actions.
 
 ## Supabase RPC
 
-`create_lesson_with_participants(p_barn_id, p_instructor_id, p_lesson_at, p_fee, p_horse_ids[], p_exertion_levels[], p_rider_id)` — atomically inserts a lesson, its horse assignments (`lesson_horses`), and its single rider (`lesson_riders`) in one transaction. Used by lesson submission to avoid partial writes.
+`create_lesson_with_participants(p_barn_id, p_instructor_id, p_lesson_at, p_fee, p_horse_ids[], p_exertion_levels[], p_rider_id, p_lesson_type)` — atomically inserts a lesson, its horse assignments (`lesson_horses`), and its single rider (`lesson_riders`) in one transaction. Used by lesson submission to avoid partial writes.
 
 ## effective-membership.ts
 
