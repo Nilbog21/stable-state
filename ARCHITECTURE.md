@@ -52,6 +52,23 @@ All tables are in the `public` schema with RLS enabled.
 
 RLS policies always go in a **separate migration file** from schema changes.
 
+## Routes
+
+All barn-scoped routes enforce access in the route handler via `getEffectiveMembership`. An absent or pending membership redirects to `/barn/[slug]/login`.
+
+| Route | Roles | Notes |
+|---|---|---|
+| `/barn/[slug]` | All active members | Manager sees upcoming-lessons preview (next 7 days) and full nav; trainer and rider see a role-filtered nav |
+| `/barn/[slug]/lessons` | All active members | Lessons split at 7-day cutoff: recent shown immediately, older behind `OlderLessonsToggle`; manager can delete |
+| `/barn/[slug]/lessons/new` | manager, trainer | |
+| `/barn/[slug]/lessons/[id]` | All active members | |
+| `/barn/[slug]/horses` | manager | |
+| `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days, sortable asc/desc |
+| `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
+| `/barn/[slug]/finances` | manager | 30-day income summary broken down by fee tier |
+| `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
+| `/barn/[slug]/register` | unauthenticated | Membership sign-up flow |
+
 ## Data access layer
 
 `src/lib/db/` — one file per domain. Never query Supabase directly from components or actions; always go through these modules.
@@ -60,9 +77,9 @@ RLS policies always go in a **separate migration file** from schema changes.
 |---|---|
 | `barns.ts` | Barn lookups |
 | `barn-memberships.ts` | Membership reads and writes |
-| `horses.ts` | Horse registry |
-| `riders.ts` | Rider registry |
-| `lessons.ts` | Lesson + participant queries |
+| `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
+| `riders.ts` | Rider registry; name updates (`updateRider`) |
+| `lessons.ts` | Lesson + participant queries; financial summary (`getFinancialSummary`); upcoming lessons preview (`getUpcomingLessons`) |
 | `profiles.ts` | User profiles |
 | `effective-membership.ts` | Dev-only role override (see below) |
 | `types.ts` | Shared TypeScript types |
@@ -85,6 +102,7 @@ No API routes. All mutations go through Next.js Server Actions.
 - Only active when `NODE_ENV === 'development'` and the authenticated user is a manager
 - Reads a `dev_role_override` cookie; overridable to `trainer` or `rider`
 - Returns the overridden membership in place of the real one so the caller sees trainer/rider permissions without a separate test account
+- `src/app/barn/[slug]/DevRoleSwitcher.tsx` renders a floating toolbar in `BarnLayout` (dev mode only, manager only) to set/clear the cookie
 
 ## Feature anatomy
 
