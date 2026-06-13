@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { FinancialSummary, HorseIncomeSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonType, LessonWithDetails } from './types'
+import type { FinancialSummary, HorseIncomeSummary, RiderIncomeSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonType, LessonWithDetails } from './types'
 
 export async function createLessonWithParticipants(params: {
   barnId: string
@@ -260,6 +260,65 @@ export async function getHorseIncomeSummary(
     .map(([horseId, totalIncome]) => ({
       horseId,
       horseName: (horses ?? []).find((h) => h.id === horseId)?.name ?? horseId,
+      totalIncome,
+    }))
+    .sort((a, b) => b.totalIncome - a.totalIncome)
+}
+
+export async function getRiderIncomeSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<RiderIncomeSummary[]> {
+  const supabase = await createClient()
+
+  const { data: lessons, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('id, fee')
+    .eq('barn_id', barnId)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+
+  if (lessonsError) throw lessonsError
+
+  const paidLessons = (lessons ?? []).filter((l): l is { id: string; fee: number } => l.fee !== null)
+  if (!paidLessons.length) return []
+
+  const lessonIds = paidLessons.map((l) => l.id)
+
+  const { data: lessonRiders, error: lrError } = await supabase
+    .from('lesson_riders')
+    .select('lesson_id, rider_id')
+    .in('lesson_id', lessonIds)
+
+  if (lrError) throw lrError
+
+  if (!(lessonRiders ?? []).length) return []
+
+  const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
+
+  const { data: riders, error: ridersError } = await supabase
+    .from('riders')
+    .select('id, name')
+    .in('id', riderIds)
+
+  if (ridersError) throw ridersError
+
+  const incomeMap = new Map<string, number>()
+
+  for (const lesson of paidLessons) {
+    const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
+    if (!participants.length) continue
+    const split = lesson.fee / participants.length
+    for (const { rider_id } of participants) {
+      incomeMap.set(rider_id, (incomeMap.get(rider_id) ?? 0) + split)
+    }
+  }
+
+  return Array.from(incomeMap.entries())
+    .map(([riderId, totalIncome]) => ({
+      riderId,
+      riderName: (riders ?? []).find((r) => r.id === riderId)?.name ?? riderId,
       totalIncome,
     }))
     .sort((a, b) => b.totalIncome - a.totalIncome)
