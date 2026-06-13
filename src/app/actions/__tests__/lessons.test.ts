@@ -379,6 +379,27 @@ describe('submitLesson', () => {
     )
   })
 
+  it('should_return_error_when_normal_lesson_has_multiple_riders', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'normal' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'normal lesson requires exactly 1 rider' })
+    expect(createLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_group_lesson_has_fewer_than_two_riders', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'group lesson requires at least 2 riders' })
+    expect(createLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_group_lesson_uses_new_rider_name', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'group lesson requires at least 2 riders' })
+    expect(createLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
   it('should_return_error_when_rider_does_not_belong_to_barn_on_new_horse_path', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getRidersByBarn).mockResolvedValue([
@@ -399,7 +420,11 @@ describe('submitLesson', () => {
   })
 
   it('should_pass_lesson_type_to_createLessonWithParticipants', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
+    vi.mocked(getRidersByBarn).mockResolvedValue([
+      { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ lessonType: 'group' })

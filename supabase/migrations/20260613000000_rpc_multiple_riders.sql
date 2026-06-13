@@ -24,12 +24,16 @@ BEGIN
     RAISE EXCEPTION 'p_horse_ids and p_exertion_levels must have equal length';
   END IF;
 
-  IF v_rider_count IS NULL OR v_rider_count = 0 THEN
+  IF v_rider_count IS NULL THEN
     RAISE EXCEPTION 'at least one rider is required';
   END IF;
 
   IF p_lesson_type = 'normal' AND v_rider_count <> 1 THEN
     RAISE EXCEPTION 'Normal lesson must have exactly 1 rider (got %)', v_rider_count;
+  END IF;
+
+  IF p_lesson_type = 'normal' AND array_length(p_horse_ids, 1) IS DISTINCT FROM 1 THEN
+    RAISE EXCEPTION 'Normal lesson must have exactly 1 horse (got %)', COALESCE(array_length(p_horse_ids, 1), 0);
   END IF;
 
   IF p_lesson_type = 'group' AND v_rider_count < 2 THEN

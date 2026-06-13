@@ -31,6 +31,8 @@ export async function submitLesson(
 
   if (riderIds.length === 0 && !newRiderName) return { error: 'rider required' }
   if (riderIds.length > 0 && newRiderName) return { error: 'select a rider or add a new one, not both' }
+  if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
+  if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
   if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
