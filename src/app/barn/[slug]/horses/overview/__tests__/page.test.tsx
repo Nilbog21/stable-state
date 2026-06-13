@@ -18,7 +18,7 @@ import { createClient } from '@/lib/supabase/server'
 import HorseOverviewPage from '../page'
 
 const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
-const mockMembership = { id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer' as const, status: 'active' as const, created_at: '', default_fee: null }
+const mockMembership = { id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer' as const, status: 'active' as const, created_at: '' }
 
 const mockSummary = [
   { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12 },

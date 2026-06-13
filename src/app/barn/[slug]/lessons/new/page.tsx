@@ -69,7 +69,7 @@ export default async function LessonNewPage({
         isManager={isManager}
         instructors={instructors}
         currentUserId={user.id}
-        defaultFee={membership?.default_fee}
+
       />
     </main>
   )

@@ -56,7 +56,6 @@ const mockMembership = {
   role: 'trainer' as const,
   status: 'active' as const,
   created_at: '2026-01-01T00:00:00Z',
-  default_fee: null,
 }
 
 function mockSupabaseUser(userId = 'user-1') {

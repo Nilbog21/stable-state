@@ -55,7 +55,7 @@ const mockManagerMembership = {
   role: 'manager' as const,
   status: 'active' as const,
   created_at: '',
-  default_fee: null,
+
 }
 
 const mockTrainerMembership = {
@@ -65,7 +65,7 @@ const mockTrainerMembership = {
   role: 'trainer' as const,
   status: 'active' as const,
   created_at: '',
-  default_fee: null,
+
 }
 
 const mockRiderMembership = {
@@ -75,7 +75,7 @@ const mockRiderMembership = {
   role: 'rider' as const,
   status: 'active' as const,
   created_at: '',
-  default_fee: null,
+
 }
 
 function setupAuth(user: typeof mockUser | null = mockUser) {

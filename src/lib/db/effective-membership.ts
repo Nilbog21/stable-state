@@ -26,7 +26,6 @@ export async function getEffectiveMembership(
         role: override,
         status: 'active',
         created_at: '',
-        default_fee: null,
       }
     }
   }
