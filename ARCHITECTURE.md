@@ -67,7 +67,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | `/barn/[slug]/horses` | manager | |
 | `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days, sortable asc/desc |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
-| `/barn/[slug]/finances` | manager | Current calendar month income summary broken down by fee tier |
+| `/barn/[slug]/finances` | manager | Current calendar month income summary: fee-tier breakdown, income by horse, income by rider |
 | `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
 | `/barn/[slug]/register` | unauthenticated | Membership sign-up flow |
 
@@ -81,7 +81,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
-| `lessons.ts` | Lesson + participant queries; financial summary (`getFinancialSummary`); per-horse income breakdown (`getHorseIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
+| `lessons.ts` | Lesson + participant queries; financial summary (`getFinancialSummary`); per-horse income breakdown (`getHorseIncomeSummary`); per-rider income breakdown (`getRiderIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier` |
 | `profiles.ts` | User profiles |
 | `effective-membership.ts` | Dev-only role override (see below) |
