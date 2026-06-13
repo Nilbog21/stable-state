@@ -23,7 +23,9 @@ describe('getTiersByBarn', () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: [mockTier], error: null }),
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: [mockTier], error: null }),
+            }),
           }),
         }),
       }),
@@ -39,7 +41,9 @@ describe('getTiersByBarn', () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: [], error: null }),
+            }),
           }),
         }),
       }),
@@ -55,7 +59,9 @@ describe('getTiersByBarn', () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: null, error: null }),
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
           }),
         }),
       }),
@@ -71,7 +77,9 @@ describe('getTiersByBarn', () => {
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+            }),
           }),
         }),
       }),
@@ -149,6 +157,20 @@ describe('createTier', () => {
 
     await expect(createTier('barn-1', 'Standard', 50)).rejects.toThrow('db error')
   })
+
+  it('should_throw_when_data_is_null_and_no_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(createTier('barn-1', 'Standard', 50)).rejects.toThrow('No data returned')
+  })
 })
 
 describe('updateTier', () => {
@@ -194,6 +216,24 @@ describe('updateTier', () => {
 
     await expect(updateTier('tier-1', 'barn-1', { name: 'Premium' })).rejects.toThrow('db error')
   })
+
+  it('should_throw_when_data_is_null_and_no_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(updateTier('tier-1', 'barn-1', { name: 'Premium' })).rejects.toThrow('No data returned')
+  })
 })
 
 describe('deactivateTier', () => {
@@ -236,49 +276,18 @@ describe('setDefaultTier', () => {
     vi.clearAllMocks()
   })
 
-  it('should_unset_all_defaults_then_set_target_as_default', async () => {
-    const mockEqBarnUnset = vi.fn().mockResolvedValue({ error: null })
-    const mockUpdateUnset = vi.fn().mockReturnValue({ eq: mockEqBarnUnset })
-
-    const mockEqBarnSet = vi.fn().mockResolvedValue({ error: null })
-    const mockEqIdSet = vi.fn().mockReturnValue({ eq: mockEqBarnSet })
-    const mockUpdateSet = vi.fn().mockReturnValue({ eq: mockEqIdSet })
-
-    const mockFrom = vi.fn()
-      .mockReturnValueOnce({ update: mockUpdateUnset })
-      .mockReturnValueOnce({ update: mockUpdateSet })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+  it('should_call_rpc_with_correct_arguments', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await setDefaultTier('tier-1', 'barn-1')
 
-    expect(mockUpdateUnset).toHaveBeenCalledWith({ is_default: false })
-    expect(mockEqBarnUnset).toHaveBeenCalledWith('barn_id', 'barn-1')
-    expect(mockUpdateSet).toHaveBeenCalledWith({ is_default: true })
-    expect(mockEqIdSet).toHaveBeenCalledWith('id', 'tier-1')
-    expect(mockEqBarnSet).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockRpc).toHaveBeenCalledWith('set_default_tier', { p_tier_id: 'tier-1', p_barn_id: 'barn-1' })
   })
 
-  it('should_throw_when_first_update_returns_an_error', async () => {
-    const mockEqBarnUnset = vi.fn().mockResolvedValue({ error: new Error('db error') })
-    const mockUpdateUnset = vi.fn().mockReturnValue({ eq: mockEqBarnUnset })
-    const mockFrom = vi.fn().mockReturnValue({ update: mockUpdateUnset })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
-
-    await expect(setDefaultTier('tier-1', 'barn-1')).rejects.toThrow('db error')
-  })
-
-  it('should_throw_when_second_update_returns_an_error', async () => {
-    const mockEqBarnUnset = vi.fn().mockResolvedValue({ error: null })
-    const mockUpdateUnset = vi.fn().mockReturnValue({ eq: mockEqBarnUnset })
-
-    const mockEqBarnSet = vi.fn().mockResolvedValue({ error: new Error('db error') })
-    const mockEqIdSet = vi.fn().mockReturnValue({ eq: mockEqBarnSet })
-    const mockUpdateSet = vi.fn().mockReturnValue({ eq: mockEqIdSet })
-
-    const mockFrom = vi.fn()
-      .mockReturnValueOnce({ update: mockUpdateUnset })
-      .mockReturnValueOnce({ update: mockUpdateSet })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(setDefaultTier('tier-1', 'barn-1')).rejects.toThrow('db error')
   })

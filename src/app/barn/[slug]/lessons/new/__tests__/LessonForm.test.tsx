@@ -14,29 +14,10 @@ const baseProps = {
 }
 
 describe('LessonForm', () => {
-  it('should_render_fee_input_with_default_value_when_defaultFee_prop_provided', () => {
-    render(<LessonForm {...baseProps} defaultFee={75} />)
-    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
-    expect(feeInput.defaultValue).toBe('75')
-  })
-
-  it('should_render_fee_input_with_empty_value_when_defaultFee_prop_is_null', () => {
-    render(<LessonForm {...baseProps} defaultFee={null} />)
-    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
-    expect(feeInput.defaultValue).toBe('')
-  })
-
-  it('should_render_fee_input_with_empty_value_when_defaultFee_prop_is_omitted', () => {
+  it('should_render_fee_input_with_empty_value_by_default', () => {
     render(<LessonForm {...baseProps} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.defaultValue).toBe('')
-  })
-
-  it('should_allow_user_to_override_default_fee_value', () => {
-    render(<LessonForm {...baseProps} defaultFee={75} />)
-    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
-    fireEvent.change(feeInput, { target: { value: '100' } })
-    expect(feeInput.value).toBe('100')
   })
 
   it('should_hide_exertion_input_when_horse_checkbox_is_unchecked', () => {

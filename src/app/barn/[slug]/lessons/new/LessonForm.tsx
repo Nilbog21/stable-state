@@ -11,7 +11,6 @@ export function LessonForm({
   action,
   instructors,
   currentUserId,
-  defaultFee,
 }: {
   horses: Horse[]
   riders: Rider[]
@@ -19,7 +18,6 @@ export function LessonForm({
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   instructors: { userId: string; name: string }[]
   currentUserId: string
-  defaultFee?: number | null
 }) {
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
@@ -155,7 +153,7 @@ export function LessonForm({
           type="number"
           min="0"
           step="0.01"
-          defaultValue={defaultFee ?? ''}
+          defaultValue=""
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         />
       </div>
