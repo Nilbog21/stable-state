@@ -29,8 +29,8 @@ export default async function FinancesPage({
   }
 
   const endDate = new Date()
-  const startDate = new Date(endDate)
-  startDate.setDate(endDate.getDate() - 30)
+  const startDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1))
+  const monthLabel = endDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
 
   const [{ totalIncome, breakdown }, horseIncome] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
@@ -45,7 +45,7 @@ export default async function FinancesPage({
 
       <section className="mb-10">
         <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Total income (past 30 days)
+          {`Total income (${monthLabel})`}
         </p>
         <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
           {totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
@@ -72,7 +72,7 @@ export default async function FinancesPage({
           </tbody>
         </table>
       ) : (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No lessons in the past 30 days.</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
       )}
 
       <section className="mt-12">
@@ -106,7 +106,7 @@ export default async function FinancesPage({
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No horse income in the past 30 days.</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No horse income in ${monthLabel}.`}</p>
         )}
       </section>
     </main>
