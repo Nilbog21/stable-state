@@ -1,14 +1,22 @@
 'use server'
 
+import { headers } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
+
+async function getOrigin(): Promise<string> {
+  const h = await headers()
+  const proto = h.get('x-forwarded-proto')?.split(',')[0].trim() ?? 'http'
+  const host = h.get('host') ?? 'localhost:3000'
+  return `${proto}://${host}`
+}
 
 export async function signInWithGoogle() {
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'}/auth/callback`,
+      redirectTo: `${await getOrigin()}/auth/callback`,
     },
   })
 
@@ -25,11 +33,10 @@ export async function signInWithGoogleForBarn(barnSlug: string) {
   }
 
   const supabase = await createClient()
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000'
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${siteUrl}/auth/callback?barn=${barnSlug}`,
+      redirectTo: `${await getOrigin()}/auth/callback?barn=${barnSlug}`,
     },
   })
 
