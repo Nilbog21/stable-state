@@ -50,6 +50,22 @@ describe('getTiersByBarn', () => {
     expect(result).toEqual([])
   })
 
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getTiersByBarn('barn-1')
+
+    expect(result).toEqual([])
+  })
+
   it('should_throw_when_supabase_returns_an_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
