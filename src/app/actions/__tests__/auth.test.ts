@@ -94,6 +94,48 @@ describe('signInWithGoogle', () => {
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toMatch(/^https:\/\/myapp\.vercel\.app/)
   })
+
+  it('should_default_to_http_when_proto_header_is_missing', async () => {
+    vi.mocked(headers).mockResolvedValue({
+      get: (name: string) => {
+        if (name === 'host') return 'localhost:3000'
+        return null
+      },
+    } as any)
+    const mockSignInWithOAuth = vi.fn().mockResolvedValue({
+      data: { url: 'https://accounts.google.com/oauth' },
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { signInWithOAuth: mockSignInWithOAuth },
+    } as any)
+
+    await signInWithGoogle()
+
+    const callArgs = mockSignInWithOAuth.mock.calls[0][0]
+    expect(callArgs.options.redirectTo).toMatch(/^http:\/\//)
+  })
+
+  it('should_default_to_localhost_when_host_header_is_missing', async () => {
+    vi.mocked(headers).mockResolvedValue({
+      get: (name: string) => {
+        if (name === 'x-forwarded-proto') return 'https'
+        return null
+      },
+    } as any)
+    const mockSignInWithOAuth = vi.fn().mockResolvedValue({
+      data: { url: 'https://accounts.google.com/oauth' },
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { signInWithOAuth: mockSignInWithOAuth },
+    } as any)
+
+    await signInWithGoogle()
+
+    const callArgs = mockSignInWithOAuth.mock.calls[0][0]
+    expect(callArgs.options.redirectTo).toContain('localhost:3000')
+  })
 })
 
 describe('signInWithGoogleForBarn', () => {
