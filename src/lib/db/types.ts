@@ -22,7 +22,16 @@ export interface BarnMembership {
   role: Role
   status: MembershipStatus
   created_at: string
-  default_fee: number | null
+}
+
+export interface LessonTier {
+  id: string
+  barn_id: string
+  name: string
+  price: number | null
+  is_default: boolean
+  is_active: boolean
+  created_at: string
 }
 
 export interface SeededAccount {
@@ -63,6 +72,7 @@ export interface Lesson {
   lesson_type: LessonType
   jumping: boolean
   payment_type: PaymentType | null
+  tier_name: string
 }
 
 export interface LessonWithDetails extends Lesson {
