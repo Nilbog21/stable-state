@@ -21,7 +21,9 @@ const mockLesson: LessonWithDetails = {
   lesson_at: '2026-01-01T10:00:00Z',
   submitted_at: '2026-01-01T10:05:00Z',
   horse_names: ['Comet'],
-  rider_name: 'Bob',
+  horse_count: 1,
+  rider_names: ['Bob'],
+  rider_count: 1,
 }
 
 const mockDeleteAction = vi.fn()
