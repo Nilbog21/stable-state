@@ -20,7 +20,7 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const horseIds = formData.getAll('horse_id') as string[]
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
-  let riderId = (formData.get('rider_id') as string | null) || null
+  let riderIds = formData.getAll('rider_id') as string[]
   const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
@@ -29,8 +29,10 @@ export async function submitLesson(
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
 
-  if (!riderId && !newRiderName) return { error: 'rider required' }
-  if (riderId && newRiderName) return { error: 'select a rider or add a new one, not both' }
+  if (riderIds.length === 0 && !newRiderName) return { error: 'rider required' }
+  if (riderIds.length > 0 && newRiderName) return { error: 'select a rider or add a new one, not both' }
+  if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
+  if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
   if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
@@ -73,9 +75,9 @@ export async function submitLesson(
     }
   }
 
-  if (riderId) {
+  if (riderIds.length > 0) {
     const validRiderIds = new Set(barnRiders.map((r) => r.id))
-    if (!validRiderIds.has(riderId)) {
+    if (riderIds.some((id) => !validRiderIds.has(id))) {
       return { error: 'rider not found in this barn' }
     }
   }
@@ -95,7 +97,7 @@ export async function submitLesson(
         return { error: 'not authorized to add riders' }
       }
       const rider = await createRider(barnId, newRiderName)
-      riderId = rider.id
+      riderIds = [rider.id]
     }
 
     await createLessonWithParticipants({
@@ -105,7 +107,7 @@ export async function submitLesson(
       lessonAt,
       horseIds,
       exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
-      riderId: riderId!,
+      riderIds,
       lessonType,
     })
   } catch {

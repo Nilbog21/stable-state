@@ -8,7 +8,7 @@ export async function createLessonWithParticipants(params: {
   fee: number | null
   horseIds: string[]
   exertionLevels: number[]
-  riderId: string
+  riderIds: string[]
   lessonType: LessonType
 }): Promise<Lesson> {
   const supabase = await createClient()
@@ -19,7 +19,7 @@ export async function createLessonWithParticipants(params: {
     p_fee: params.fee,
     p_horse_ids: params.horseIds,
     p_exertion_levels: params.exertionLevels,
-    p_rider_id: params.riderId,
+    p_rider_ids: params.riderIds,
     p_lesson_type: params.lessonType,
   })
   if (error) throw error
