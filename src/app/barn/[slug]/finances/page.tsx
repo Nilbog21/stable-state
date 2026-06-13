@@ -30,7 +30,7 @@ export default async function FinancesPage({
 
   const endDate = new Date()
   const startDate = new Date(Date.UTC(endDate.getUTCFullYear(), endDate.getUTCMonth(), 1))
-  const monthLabel = endDate.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+  const monthLabel = `${endDate.toLocaleString('en-US', { month: 'long', timeZone: 'UTC' })} ${endDate.getUTCFullYear()}`
 
   const [{ totalIncome, breakdown }, horseIncome] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
