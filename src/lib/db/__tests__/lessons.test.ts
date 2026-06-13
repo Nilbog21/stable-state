@@ -632,7 +632,7 @@ describe('createLessonWithParticipants', () => {
       fee: 75,
       horseIds: ['horse-1', 'horse-2'],
       exertionLevels: [3, 5],
-      riderId: 'rider-1',
+      riderIds: ['rider-1'],
       lessonType: 'normal',
     })
 
@@ -643,7 +643,7 @@ describe('createLessonWithParticipants', () => {
       p_fee: 75,
       p_horse_ids: ['horse-1', 'horse-2'],
       p_exertion_levels: [3, 5],
-      p_rider_id: 'rider-1',
+      p_rider_ids: ['rider-1'],
       p_lesson_type: 'normal',
     })
   })
@@ -660,7 +660,7 @@ describe('createLessonWithParticipants', () => {
       fee: 75,
       horseIds: ['horse-1'],
       exertionLevels: [3],
-      riderId: 'rider-1',
+      riderIds: ['rider-1'],
       lessonType: 'normal',
     })
 
@@ -680,10 +680,37 @@ describe('createLessonWithParticipants', () => {
         fee: null,
         horseIds: ['horse-1'],
         exertionLevels: [3],
-        riderId: 'rider-1',
+        riderIds: ['rider-1'],
         lessonType: 'normal',
       })
     ).rejects.toThrow('rpc error')
+  })
+
+  it('should_call_rpc_with_multiple_rider_ids', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1', 'rider-2'],
+      lessonType: 'group',
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants', {
+      p_barn_id: 'barn-1',
+      p_instructor_id: 'user-1',
+      p_lesson_at: '2026-05-16T10:00:00Z',
+      p_fee: 75,
+      p_horse_ids: ['horse-1'],
+      p_exertion_levels: [3],
+      p_rider_ids: ['rider-1', 'rider-2'],
+      p_lesson_type: 'group',
+    })
   })
 })
 
