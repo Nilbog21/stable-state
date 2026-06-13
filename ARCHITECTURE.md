@@ -65,7 +65,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | `/barn/[slug]/horses` | manager | |
 | `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days, sortable asc/desc |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
-| `/barn/[slug]/finances` | manager | 30-day income summary broken down by fee tier |
+| `/barn/[slug]/finances` | manager | Current calendar month income summary broken down by fee tier |
 | `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
 | `/barn/[slug]/register` | unauthenticated | Membership sign-up flow |
 

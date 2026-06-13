@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
@@ -32,6 +32,10 @@ describe('FinancesPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getFinancialSummary).mockResolvedValue({ totalIncome: 0, breakdown: [] })
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -127,5 +131,42 @@ describe('FinancesPage', () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText(/no horse income/i)).toBeDefined()
+  })
+
+  it('should_display_total_income_label_with_current_month_and_year', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/total income \(june 2026\)/i)).toBeDefined()
+  })
+
+  it('should_call_getFinancialSummary_with_first_day_of_current_month_as_start_date', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
+      mockBarn.id,
+      new Date('2026-06-01T00:00:00.000Z'),
+      expect.any(Date)
+    )
+  })
+
+  it('should_display_empty_state_with_current_month_and_year', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getFinancialSummary).mockResolvedValue({ totalIncome: 0, breakdown: [] })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No lessons in June 2026.')).toBeDefined()
+  })
+
+  it('should_display_horse_income_empty_state_with_current_month_and_year', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No horse income in June 2026.')).toBeDefined()
   })
 })
