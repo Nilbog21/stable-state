@@ -119,3 +119,9 @@ export interface HorseIncomeSummary {
   horseName: string
   totalIncome: number
 }
+
+export interface RiderIncomeSummary {
+  riderId: string
+  riderName: string
+  totalIncome: number
+}
