@@ -58,14 +58,14 @@ describe('LoginPage', () => {
     expect(screen.getByRole('button', { name: /sign in with google/i })).toBeDefined()
   })
 
-  it('should_show_sign_out_button_when_showGuidance_is_true', async () => {
+  it('should_show_sign_out_button_when_no_barns_param_is_true', async () => {
     setupAuth()
     const jsx = await LoginPage({ searchParams: Promise.resolve({ no_barns: 'true' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
   })
 
-  it('should_not_show_sign_out_button_when_showGuidance_is_false', async () => {
+  it('should_not_show_sign_out_button_when_no_barns_param_is_absent', async () => {
     setupAuth()
     const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
     render(jsx)
