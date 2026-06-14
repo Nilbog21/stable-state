@@ -12,6 +12,7 @@ import {
   rejectMembershipAction,
   removeMembershipAction,
 } from './actions'
+import InviteLink from './InviteLink'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
 function profileName(profiles: Profile[], userId: string): string {
@@ -88,6 +89,8 @@ export default async function ApprovalsPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {barn.name} — Approvals
       </h1>
+
+      <InviteLink slug={slug} />
 
       <section className="mb-12">
         <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">

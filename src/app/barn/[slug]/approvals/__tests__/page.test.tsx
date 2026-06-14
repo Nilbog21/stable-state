@@ -6,10 +6,10 @@ import { setupAuth } from '@/test/mocks/auth'
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
   getPendingMemberships: vi.fn(),
   getActiveMemberships: vi.fn(),
 }))
+vi.mock('@/lib/db/effective-membership', () => ({ getEffectiveMembership: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
 vi.mock('../actions', () => ({
   approveMembershipAction: vi.fn(),
@@ -25,10 +25,10 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import {
-  getUserMembership,
   getPendingMemberships,
   getActiveMemberships,
 } from '@/lib/db/barn-memberships'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import ApprovalsPage from '../page'
 
@@ -46,10 +46,15 @@ describe('ApprovalsPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
-    vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(managerMembership)
     vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(getActiveMemberships).mockResolvedValue([])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    Object.defineProperty(window, 'location', {
+      value: { origin: 'https://example.com' },
+      writable: true,
+      configurable: true,
+    })
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -65,7 +70,7 @@ describe('ApprovalsPage', () => {
   })
 
   it('should_redirect_to_login_when_user_is_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
     await expect(ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
@@ -122,5 +127,11 @@ describe('ApprovalsPage', () => {
     render(jsx)
     expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
     expect(screen.getByText('Bob Smith')).toBeDefined()
+  })
+
+  it('should_render_invite_link_section', async () => {
+    const jsx = await ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/invite link/i)).toBeDefined()
   })
 })
