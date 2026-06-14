@@ -25,6 +25,7 @@ export async function submitLesson(
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
   const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
+  const jumping = formData.get('jumping') === 'true'
 
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
@@ -109,6 +110,7 @@ export async function submitLesson(
       exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
       riderIds,
       lessonType,
+      jumping,
     })
   } catch {
     return { error: 'Failed to submit lesson' }
