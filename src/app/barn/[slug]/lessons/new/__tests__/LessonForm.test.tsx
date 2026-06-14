@@ -78,4 +78,65 @@ describe('LessonForm', () => {
       expect(screen.getByRole('button', { name: /submitting/i })).toBeDefined()
     })
   })
+
+  it('should_render_normal_and_group_toggle_buttons', () => {
+    render(<LessonForm {...baseProps} />)
+    expect(screen.queryByRole('button', { name: 'Normal' })).not.toBeNull()
+    expect(screen.queryByRole('button', { name: 'Group' })).not.toBeNull()
+  })
+
+  it('should_default_lesson_type_hidden_input_to_normal', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    const hiddenInput = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
+    expect(hiddenInput).not.toBeNull()
+    expect(hiddenInput.value).toBe('normal')
+  })
+
+  it('should_show_single_rider_select_in_normal_mode', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    expect(container.querySelector('select[name="rider_id"]')).not.toBeNull()
+  })
+
+  it('should_not_show_rider_checkboxes_in_normal_mode', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    expect(container.querySelector('input[type="checkbox"][name="rider_id"]')).toBeNull()
+  })
+
+  it('should_switch_to_group_mode_when_group_button_clicked', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    const hiddenInput = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
+    expect(hiddenInput.value).toBe('group')
+  })
+
+  it('should_show_rider_checkboxes_in_group_mode', () => {
+    const riders = [
+      { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ]
+    const { container } = render(<LessonForm {...baseProps} riders={riders} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]')
+    expect(checkboxes).toHaveLength(2)
+  })
+
+  it('should_hide_single_rider_select_in_group_mode', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    expect(container.querySelector('select[name="rider_id"]')).toBeNull()
+  })
+
+  it('should_show_error_and_not_submit_when_group_mode_has_fewer_than_two_riders', () => {
+    const riders = [
+      { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ]
+    render(<LessonForm {...baseProps} riders={riders} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
+    fireEvent.submit(form)
+    const alert = screen.getByRole('alert')
+    expect(alert.textContent).toContain('group lesson requires at least 2 riders')
+    expect(baseProps.action).not.toHaveBeenCalled()
+  })
 })
