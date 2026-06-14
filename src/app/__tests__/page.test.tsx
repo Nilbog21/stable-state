@@ -18,6 +18,7 @@ import Home from '../page'
 describe('Home', () => {
   beforeEach(() => {
     mockRedirect.mockClear()
+    vi.mocked(createClient).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
   })
 
@@ -97,6 +98,16 @@ describe('Home', () => {
       vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
       await expect(Home()).rejects.toThrow('NEXT_REDIRECT')
       expect(mockRedirect).toHaveBeenCalledWith('/login?no_barns=true')
+    })
+
+    it('should_redirect_to_active_barn_when_user_has_mixed_active_and_pending_memberships', async () => {
+      setupAuth()
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'active-barn' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'pending-barn' }), membership: createMockMembership({ id: 'm2', status: 'pending' }) },
+      ])
+      await expect(Home()).rejects.toThrow('NEXT_REDIRECT')
+      expect(mockRedirect).toHaveBeenCalledWith('/barn/active-barn')
     })
   })
 })
