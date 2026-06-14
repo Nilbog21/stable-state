@@ -60,4 +60,32 @@ describe('InviteLink', () => {
     })
     expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined()
   })
+
+  it('should_reset_timer_on_rapid_second_click', async () => {
+    vi.useFakeTimers()
+    render(<InviteLink slug="green-acres" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copied!' }))
+    })
+    await act(async () => {
+      vi.advanceTimersByTime(2000)
+    })
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined()
+  })
+
+  it('should_not_show_copied_when_clipboard_write_fails', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      writable: true,
+      configurable: true,
+    })
+    render(<InviteLink slug="green-acres" />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: 'Copy' }))
+    })
+    expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined()
+  })
 })
