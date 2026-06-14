@@ -65,18 +65,41 @@ function mustSucceed(result, label) {
 }
 
 async function run() {
+  if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required');
+  if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required');
+  if (!MANAGER_EMAIL) throw new Error('DEV_MANAGER_EMAIL is required');
+
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
   console.log('Tearing down existing dev fixtures…');
 
-  // Collect dev user IDs before deleting memberships
+  // Collect dev user IDs via barn_memberships
   const memberships = mustSucceed(
     await supabase.from('barn_memberships').select('user_id').eq('barn_id', DEV_BARN_ID),
     'fetch memberships'
   );
-  const devUserIds = (memberships ?? []).map((m) => m.user_id);
+  const devUserIdSet = new Set((memberships ?? []).map((m) => m.user_id));
+
+  // Also sweep for orphaned dev auth users not captured via barn_memberships
+  // (left behind if a previous run failed after creating auth users but before inserting memberships)
+  const devEmails = new Set([
+    ...DEV_TRAINERS.map((t) => t.email),
+    ...DEV_RIDERS.map((r) => r.email),
+  ]);
+  let listPage = 1;
+  let hasMore = true;
+  while (hasMore) {
+    const { data: listData, error: listErr } = await supabase.auth.admin.listUsers({ page: listPage, perPage: 50 });
+    if (listErr) throw new Error(`list auth users: ${listErr.message}`);
+    for (const user of listData.users) {
+      if (devEmails.has(user.email)) devUserIdSet.add(user.id);
+    }
+    hasMore = listData.users.length === 50;
+    listPage++;
+  }
+  const devUserIds = [...devUserIdSet];
 
   mustSucceed(await supabase.from('lesson_riders').delete().eq('barn_id', DEV_BARN_ID), 'delete lesson_riders');
   mustSucceed(await supabase.from('lesson_horses').delete().eq('barn_id', DEV_BARN_ID), 'delete lesson_horses');
@@ -267,7 +290,11 @@ async function run() {
   console.log(`  Lessons:  25 (10 older than 1 week, 10 within past week, 5 next week)`);
 }
 
-run().catch((err) => {
-  console.error('reset-db failed:', err.message);
-  process.exit(1);
-});
+if (require.main === module) {
+  run().catch((err) => {
+    console.error('reset-db failed:', err.message);
+    process.exit(1);
+  });
+} else {
+  module.exports = { buildLessonDates, mustSucceed };
+}

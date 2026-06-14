@@ -12,9 +12,9 @@ parse_var() {
   grep -m1 "^$1=" .env.local | cut -d= -f2- | sed 's/^"//;s/"$//'
 }
 
-DEV_MANAGER_EMAIL="$(parse_var DEV_MANAGER_EMAIL)"
-NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL)"
-SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY)"
+DEV_MANAGER_EMAIL="$(parse_var DEV_MANAGER_EMAIL || true)"
+NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
+SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 
 for var_name in DEV_MANAGER_EMAIL NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
   if [ -z "${!var_name}" ]; then
