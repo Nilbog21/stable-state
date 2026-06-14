@@ -120,8 +120,11 @@ describe('proxy', () => {
   })
 
   describe('config', () => {
-    it('should_export_config_with_matcher', () => {
+    it('should_define_route_matcher_as_an_array', () => {
       expect(Array.isArray(config.matcher)).toBe(true)
+    })
+
+    it('should_define_at_least_one_route_matcher_pattern', () => {
       expect(config.matcher.length).toBeGreaterThan(0)
     })
   })
