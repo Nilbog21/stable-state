@@ -420,5 +420,6 @@ export async function updateLesson(
     .single()
 
   if (error) throw error
+  if (!data) throw new Error('lesson not found')
   return data
 }

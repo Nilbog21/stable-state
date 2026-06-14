@@ -1859,4 +1859,31 @@ describe('updateLesson', () => {
 
     await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('rls denied')
   })
+
+  it('should_throw_when_no_row_is_returned', async () => {
+    const { mockUpdate } = makeUpdateChain(null)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('lesson not found')
+  })
+
+  it('should_throw_when_trainer_is_denied_by_rls', async () => {
+    const { mockUpdate } = makeUpdateChain(null, new Error('new row violates row-level security policy'))
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('row-level security policy')
+  })
+
+  it('should_throw_when_rider_is_denied_by_rls', async () => {
+    const { mockUpdate } = makeUpdateChain(null, new Error('new row violates row-level security policy'))
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('row-level security policy')
+  })
 })
