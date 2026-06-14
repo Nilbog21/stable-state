@@ -39,6 +39,7 @@ const mockMembership = createMockMembership({ id: 'm1' })
 
 describe('GET /auth/callback', () => {
   beforeEach(() => {
+    mockCookiesSet.mockReset()
     mockRedirect.mockImplementation((url: string | URL) => ({
       url: url.toString(),
       status: 302,
@@ -197,6 +198,18 @@ describe('GET /auth/callback', () => {
       await GET(request as any)
 
       expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/login?no_barns=true')
+    })
+
+    it('should_redirect_to_active_barn_when_user_has_mixed_active_and_pending_memberships', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'active-barn' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'pending-barn' }), membership: createMockMembership({ id: 'm2', status: 'pending' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/active-barn')
     })
   })
 
