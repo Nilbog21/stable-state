@@ -123,4 +123,10 @@ describe('ApprovalsPage', () => {
     expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
     expect(screen.getByText('Bob Smith')).toBeDefined()
   })
+
+  it('should_render_invite_link_section', async () => {
+    const jsx = await ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/invite link/i)).toBeDefined()
+  })
 })
