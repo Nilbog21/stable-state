@@ -229,6 +229,18 @@ describe('LessonDetailPage', () => {
     expect(riderItems.length).toBe(2)
   })
 
+  it('should_render_dash_for_rider_name_in_group_lesson_when_riders_relation_is_null', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [{ riders: null }, { riders: { id: 'rider-2', name: 'Bob' } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+    expect(screen.getByText('Bob')).toBeDefined()
+  })
+
   it('should_show_riders_inline_for_normal_lesson', async () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
