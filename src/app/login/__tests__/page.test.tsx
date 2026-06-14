@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
+import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/app/actions/auth', () => ({
   signInWithGoogle: vi.fn(),
@@ -9,20 +10,10 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase/server'
 import LoginPage from '../page'
-
-const mockUser = { id: 'user-1', email: 'user@example.com' }
-
-function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
-}
 
 describe('LoginPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
     setupAuth(null)
   })
 
@@ -39,14 +30,14 @@ describe('LoginPage', () => {
   })
 
   it('should_show_no_barns_guidance_when_param_true_and_user_authenticated', async () => {
-    setupAuth(mockUser)
+    setupAuth()
     const jsx = await LoginPage({ searchParams: Promise.resolve({ no_barns: 'true' }) })
     render(jsx)
     expect(screen.getByText(/not a member of any barn/i)).toBeDefined()
   })
 
   it('should_hide_sign_in_button_when_no_barns_param_true_and_user_authenticated', async () => {
-    setupAuth(mockUser)
+    setupAuth()
     const jsx = await LoginPage({ searchParams: Promise.resolve({ no_barns: 'true' }) })
     render(jsx)
     expect(screen.queryByRole('button', { name: /sign in/i })).toBeNull()
@@ -60,7 +51,7 @@ describe('LoginPage', () => {
   })
 
   it('should_show_sign_in_button_when_no_barns_param_absent', async () => {
-    setupAuth(mockUser)
+    setupAuth()
     const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
     render(jsx)
     expect(screen.getByRole('button', { name: /sign in with google/i })).toBeDefined()
