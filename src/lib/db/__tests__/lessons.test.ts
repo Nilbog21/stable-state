@@ -716,6 +716,7 @@ describe('createLessonWithParticipants', () => {
       p_exertion_levels: [3, 5],
       p_rider_ids: ['rider-1'],
       p_lesson_type: 'normal',
+      p_jumping: false,
     })
   })
 
@@ -781,7 +782,50 @@ describe('createLessonWithParticipants', () => {
       p_exertion_levels: [3],
       p_rider_ids: ['rider-1', 'rider-2'],
       p_lesson_type: 'group',
+      p_jumping: false,
     })
+  })
+
+  it('should_call_rpc_with_jumping_true_when_jumping_is_true', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+      jumping: true,
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
+      expect.objectContaining({ p_jumping: true })
+    )
+  })
+
+  it('should_call_rpc_with_jumping_false_when_jumping_is_false', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+      jumping: false,
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
+      expect.objectContaining({ p_jumping: false })
+    )
   })
 })
 

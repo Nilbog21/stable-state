@@ -445,6 +445,22 @@ describe('submitLesson', () => {
     expect(result).toEqual({ error: 'invalid lesson type' })
     expect(createLessonWithParticipants).not.toHaveBeenCalled()
   })
+
+  it('should_pass_jumping_true_to_createLessonWithParticipants_when_jumping_form_field_is_true', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', jumping: 'true' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ jumping: true })
+    )
+  })
+
+  it('should_pass_jumping_false_to_createLessonWithParticipants_when_jumping_form_field_is_absent', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ jumping: false })
+    )
+  })
 })
 
 describe('deleteLessonAction', () => {
