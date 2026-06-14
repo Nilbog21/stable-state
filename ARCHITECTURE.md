@@ -60,6 +60,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 
 | Route | Roles | Notes |
 |---|---|---|
+| `/` | All | Unauthenticated users see the public landing page; authenticated users are redirected server-side using barn membership logic: single active → `/barn/[slug]`, multiple active → `/barns`, pending-only single → `/barn/[slug]/pending`, pending-only multiple → `/barns`, no memberships → `/login?no_barns=true` |
 | `/barn/[slug]` | All active members | Manager sees upcoming-lessons preview (next 7 days) and full nav; trainer and rider see a role-filtered nav |
 | `/barn/[slug]/lessons` | All active members | Lessons split at 7-day cutoff: recent shown immediately, older behind `OlderLessonsToggle`; manager can delete |
 | `/barn/[slug]/lessons/new` | manager, trainer | |
