@@ -404,3 +404,22 @@ export async function getUpcomingLessons(
     }
   })
 }
+
+export async function updateLesson(
+  lessonId: string,
+  barnId: string,
+  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'payment_type' | 'tier_name'>>
+): Promise<Lesson> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lessons')
+    .update(updates)
+    .eq('id', lessonId)
+    .eq('barn_id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('lesson not found')
+  return data
+}
