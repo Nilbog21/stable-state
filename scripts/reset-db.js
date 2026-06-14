@@ -24,6 +24,9 @@ const DEV_RIDERS = [
 
 const DEV_HORSES = ['Apple', 'Butter', 'Clover'];
 
+const DEV_TIER_NAME = 'Normal Tier';
+const DEV_TIER_PRICE = 100;
+
 // Returns a Date set to the given hour (UTC) offset by `days` days from `base`.
 function dayOffset(base, days, hour = 10) {
   const d = new Date(base);
@@ -101,14 +104,16 @@ async function run() {
   }
   const devUserIds = [...devUserIdSet];
 
-  mustSucceed(await supabase.from('lesson_riders').delete().eq('barn_id', DEV_BARN_ID), 'delete lesson_riders');
-  mustSucceed(await supabase.from('lesson_horses').delete().eq('barn_id', DEV_BARN_ID), 'delete lesson_horses');
+  mustSucceed(
+    await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: DEV_BARN_ID }),
+    'delete lessons and participants'
+  );
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', DEV_BARN_ID), 'delete lesson_tiers');
-  mustSucceed(await supabase.from('lessons').delete().eq('barn_id', DEV_BARN_ID), 'delete lessons');
   mustSucceed(await supabase.from('riders').delete().eq('barn_id', DEV_BARN_ID), 'delete riders');
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', DEV_BARN_ID), 'delete horses');
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', DEV_BARN_ID), 'delete barn_memberships');
   mustSucceed(await supabase.from('seeded_accounts').delete().eq('barn_id', DEV_BARN_ID), 'delete seeded_accounts');
+  mustSucceed(await supabase.from('seeded_accounts').delete().eq('email', MANAGER_EMAIL), 'delete manager seeded_account');
   mustSucceed(await supabase.from('barns').delete().eq('id', DEV_BARN_ID), 'delete barn');
 
   if (devUserIds.length > 0) {
@@ -136,6 +141,17 @@ async function run() {
       barn_id: DEV_BARN_ID,
     }),
     'insert seeded_account'
+  );
+
+  mustSucceed(
+    await supabase.from('lesson_tiers').insert({
+      barn_id: DEV_BARN_ID,
+      name: DEV_TIER_NAME,
+      price: DEV_TIER_PRICE,
+      is_default: true,
+      is_active: true,
+    }),
+    'insert lesson tier'
   );
 
   // Create trainer auth users
@@ -246,40 +262,26 @@ async function run() {
     const horseId = horseIds[i % horseIds.length];
     const riderRowId = riderRowIds[i % riderRowIds.length];
 
-    const lesson = mustSucceed(
-      await supabase
-        .from('lessons')
-        .insert({
-          barn_id: DEV_BARN_ID,
-          instructor_id: instructorId,
-          lesson_at: lessonDates[i].toISOString(),
-          lesson_type: 'normal',
-          tier_name: 'Custom',
-        })
-        .select('id')
-        .single(),
+    mustSucceed(
+      await supabase.rpc('create_lesson_with_participants', {
+        p_barn_id: DEV_BARN_ID,
+        p_instructor_id: instructorId,
+        p_lesson_at: lessonDates[i].toISOString(),
+        p_fee: DEV_TIER_PRICE,
+        p_horse_ids: [horseId],
+        p_exertion_levels: [3],
+        p_rider_ids: [riderRowId],
+        p_lesson_type: 'normal',
+        p_jumping: false,
+      }),
       `insert lesson ${i}`
     );
-
-    mustSucceed(
-      await supabase.from('lesson_horses').insert({
-        barn_id: DEV_BARN_ID,
-        lesson_id: lesson.id,
-        horse_id: horseId,
-        exertion_level: 3,
-      }),
-      `insert lesson_horse ${i}`
-    );
-
-    mustSucceed(
-      await supabase.from('lesson_riders').insert({
-        barn_id: DEV_BARN_ID,
-        lesson_id: lesson.id,
-        rider_id: riderRowId,
-      }),
-      `insert lesson_rider ${i}`
-    );
   }
+
+  mustSucceed(
+    await supabase.from('lessons').update({ tier_name: DEV_TIER_NAME }).eq('barn_id', DEV_BARN_ID),
+    'update lesson tier names'
+  );
 
   console.log('Done. Dev database reset to known state:');
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`);
@@ -287,7 +289,8 @@ async function run() {
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`);
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`);
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}`);
-  console.log(`  Lessons:  25 (10 older than 1 week, 10 within past week, 5 next week)`);
+  console.log(`  Tier:     ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default)`);
+  console.log(`  Lessons:  25 (10 older than 1 week, 10 within past week, 5 next week) — each $${DEV_TIER_PRICE}`);
 }
 
 if (require.main === module) {
