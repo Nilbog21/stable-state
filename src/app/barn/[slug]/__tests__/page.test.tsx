@@ -19,6 +19,10 @@ vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
 }))
 
+vi.mock('@/app/actions/auth', () => ({
+  signOut: vi.fn(),
+}))
+
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
@@ -282,6 +286,26 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     expect(screen.queryByText(/upcoming lessons/i)).toBeNull()
+  })
+
+  it('should_render_sign_out_button_for_manager', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
+  })
+
+  it('should_render_sign_out_button_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
+  })
+
+  it('should_render_sign_out_button_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
   })
 
 })
