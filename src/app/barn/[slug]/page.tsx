@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getUpcomingLessons } from '@/lib/db/lessons'
+import { signOut } from '@/app/actions/auth'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 export default async function BarnDashboardPage({
@@ -66,6 +67,14 @@ export default async function BarnDashboardPage({
           </Link>
         ))}
       </nav>
+      <form action={signOut} className="mb-8">
+        <button
+          type="submit"
+          className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+        >
+          Sign out
+        </button>
+      </form>
       {upcomingLessons !== null && (
         <section>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">

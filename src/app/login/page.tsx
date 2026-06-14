@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { signInWithGoogle } from '@/app/actions/auth'
+import { signInWithGoogle, signOut } from '@/app/actions/auth'
 
 export default async function LoginPage({
   searchParams,
@@ -20,9 +20,19 @@ export default async function LoginPage({
         Lesson &amp; horse management
       </p>
       {showGuidance ? (
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">
-          You&apos;re not a member of any barn yet. Ask your barn manager for an invite link.
-        </p>
+        <>
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">
+            You&apos;re not a member of any barn yet. Ask your barn manager for an invite link.
+          </p>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
+            >
+              Sign out
+            </button>
+          </form>
+        </>
       ) : (
         <form action={signInWithGoogle}>
           <button
