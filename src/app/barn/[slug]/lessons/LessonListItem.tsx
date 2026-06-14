@@ -19,11 +19,17 @@ export function LessonListItem({ lesson, slug, isManager, deleteAction }: Props)
         {lesson.instructor_name && (
           <span className="text-sm text-zinc-700 dark:text-zinc-300">{lesson.instructor_name}</span>
         )}
-        {lesson.horse_names.length > 0 && (
-          <span className="text-sm text-zinc-500">{lesson.horse_names.join(', ')}</span>
-        )}
-        {lesson.rider_names.length > 0 && (
-          <span className="text-sm text-zinc-500">{lesson.rider_names.join(', ')}</span>
+        {lesson.lesson_type === 'group' ? (
+          <span className="text-sm text-zinc-500">{lesson.rider_count} riders, {lesson.horse_count} horses</span>
+        ) : (
+          <>
+            {lesson.horse_names.length > 0 && (
+              <span className="text-sm text-zinc-500">{lesson.horse_names.join(', ')}</span>
+            )}
+            {lesson.rider_names.length > 0 && (
+              <span className="text-sm text-zinc-500">{lesson.rider_names.join(', ')}</span>
+            )}
+          </>
         )}
         {lesson.fee != null && (
           <span className="text-sm text-zinc-500">${lesson.fee}</span>

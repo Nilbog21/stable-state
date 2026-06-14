@@ -49,9 +49,14 @@ export default async function LessonDetailPage({
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
       <div className="w-full max-w-2xl">
-        <h1 className="mb-6 text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Lesson Detail
-        </h1>
+        <div className="mb-6 flex items-center gap-4">
+          <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+            Lesson Detail
+          </h1>
+          <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+            {lesson.lesson_type === 'group' ? 'Group' : 'Normal'}
+          </span>
+        </div>
         <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Date &amp; Time</dt>
@@ -77,9 +82,17 @@ export default async function LessonDetailPage({
             </dd>
           </div>
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Rider</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Rider(s)</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-              {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_riders.map((lr) => lr.riders?.name ?? '—').join(', ')}
+              {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_type === 'group' ? (
+                <ul className="flex flex-col gap-1">
+                  {lesson.lesson_riders.map((lr, i) => (
+                    <li key={lr.riders?.id ?? i}>{lr.riders?.name ?? '—'}</li>
+                  ))}
+                </ul>
+              ) : (
+                lesson.lesson_riders.map((lr) => lr.riders?.name ?? '—').join(', ')
+              )}
             </dd>
           </div>
           <div className="flex flex-col gap-1 py-4">
