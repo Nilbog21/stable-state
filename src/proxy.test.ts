@@ -16,7 +16,7 @@ vi.mock('next/server', () => ({
   },
 }))
 
-import { proxy } from './proxy'
+import { proxy, config } from './proxy'
 
 function makeRequest(url: string, cookies: Record<string, string> = {}) {
   const cookieEntries = Object.entries(cookies).map(([name, value]) => ({ name, value }))
@@ -116,6 +116,13 @@ describe('proxy', () => {
       await proxy(request)
 
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('config', () => {
+    it('should_export_config_with_matcher', () => {
+      expect(Array.isArray(config.matcher)).toBe(true)
+      expect(config.matcher.length).toBeGreaterThan(0)
     })
   })
 
