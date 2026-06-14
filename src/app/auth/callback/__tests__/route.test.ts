@@ -44,6 +44,7 @@ describe('GET /auth/callback', () => {
       status: 302,
       cookies: { set: mockCookiesSet },
     }))
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
   })
 
   it('should_exchange_code_for_session_when_code_is_present', async () => {
