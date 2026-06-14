@@ -8,6 +8,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('@/lib/db/barn-memberships', () => ({
   applySeededMembership: vi.fn().mockResolvedValue(undefined),
   getUserMembership: vi.fn(),
+  getBarnMembershipsForUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barns', () => ({
@@ -29,7 +30,7 @@ vi.mock('next/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { applySeededMembership, getUserMembership } from '@/lib/db/barn-memberships'
+import { applySeededMembership, getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { GET } from '../route'
 
@@ -58,20 +59,6 @@ describe('GET /auth/callback', () => {
     await GET(request as any)
 
     expect(mockExchange).toHaveBeenCalledWith('test-code')
-  })
-
-  it('should_redirect_to_home_on_successful_code_exchange', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
-        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1', email: 'a@b.com' } } }),
-      },
-    } as any)
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    await GET(request as any)
-
-    expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/')
   })
 
   it('should_apply_seeded_membership_after_successful_session_exchange', async () => {
@@ -128,6 +115,88 @@ describe('GET /auth/callback', () => {
     expect(mockRedirect).toHaveBeenCalledWith(
       'http://localhost:3000/login?error=auth_callback_failed'
     )
+  })
+
+  describe('without barn param', () => {
+    beforeEach(() => {
+      vi.mocked(createClient).mockResolvedValue({
+        auth: {
+          exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+          getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1', email: 'user@barn.com' } } }),
+        },
+      } as any)
+    })
+
+    it('should_redirect_to_barn_home_when_single_active_membership', async () => {
+      const barn = createMockBarn({ slug: 'green-acres' })
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn, membership: createMockMembership({ status: 'active' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres')
+    })
+
+    it('should_redirect_to_barns_when_multiple_active_memberships', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'active' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barns')
+    })
+
+    it('should_redirect_to_barn_pending_when_single_pending_membership', async () => {
+      const barn = createMockBarn({ slug: 'green-acres' })
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn, membership: createMockMembership({ status: 'pending' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres/pending')
+    })
+
+    it('should_redirect_to_barns_when_multiple_pending_memberships', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'pending' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'pending' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barns')
+    })
+
+    it('should_redirect_to_login_no_barns_when_no_memberships', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/login?no_barns=true')
+    })
+
+    it('should_redirect_to_login_no_barns_when_user_is_null', async () => {
+      vi.mocked(createClient).mockResolvedValue({
+        auth: {
+          exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+          getUser: vi.fn().mockResolvedValue({ data: { user: null } }),
+        },
+      } as any)
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/login?no_barns=true')
+    })
   })
 
   describe('with barn param', () => {
