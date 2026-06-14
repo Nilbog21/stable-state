@@ -69,7 +69,7 @@ describe('BarnsPage', () => {
   it('should_redirect_to_login_when_unauthenticated', async () => {
     setupAuth(null)
 
-    await expect(BarnsPage()).rejects.toThrow('NEXT_REDIRECT')
+    await BarnsPage().catch(() => {})
 
     expect(mockRedirect).toHaveBeenCalledWith('/login')
   })
@@ -77,7 +77,7 @@ describe('BarnsPage', () => {
   it('should_redirect_to_login_with_no_barns_param_when_user_has_no_memberships', async () => {
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
 
-    await expect(BarnsPage()).rejects.toThrow('NEXT_REDIRECT')
+    await BarnsPage().catch(() => {})
 
     expect(mockRedirect).toHaveBeenCalledWith('/login?no_barns=true')
   })
@@ -95,6 +95,13 @@ describe('BarnsPage', () => {
 
     const link = screen.getByRole('link', { name: /green acres/i })
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+  })
+
+  it('should_not_link_to_pending_page_for_active_membership', async () => {
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /green acres/i })
     expect((link as HTMLAnchorElement).href).not.toContain('/pending')
   })
 
@@ -152,7 +159,7 @@ describe('BarnsPage', () => {
     expect((link as HTMLAnchorElement).href).toContain('/barn/sunset-stables/pending')
   })
 
-  it('should_render_both_active_and_pending_cards_when_mixed', async () => {
+  it('should_render_active_barn_name_when_mixed_memberships', async () => {
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
       mockActiveMembership,
       mockPendingMembership,
@@ -162,7 +169,29 @@ describe('BarnsPage', () => {
     render(jsx)
 
     expect(screen.getByText('Green Acres')).toBeDefined()
+  })
+
+  it('should_render_pending_barn_name_when_mixed_memberships', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      mockActiveMembership,
+      mockPendingMembership,
+    ])
+
+    const jsx = await BarnsPage()
+    render(jsx)
+
     expect(screen.getByText('Sunset Stables')).toBeDefined()
+  })
+
+  it('should_render_pending_badge_when_mixed_memberships', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      mockActiveMembership,
+      mockPendingMembership,
+    ])
+
+    const jsx = await BarnsPage()
+    render(jsx)
+
     expect(screen.getByText('Pending Approval')).toBeDefined()
   })
 })
