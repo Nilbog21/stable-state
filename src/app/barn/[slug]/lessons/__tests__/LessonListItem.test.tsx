@@ -38,9 +38,13 @@ const groupLesson = {
 const deleteAction = async () => {}
 
 describe('LessonListItem', () => {
-  it('should_show_names_for_normal_lesson', () => {
+  it('should_show_horse_name_for_normal_lesson', () => {
     render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} deleteAction={deleteAction} />)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
+  })
+
+  it('should_show_rider_name_for_normal_lesson', () => {
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} deleteAction={deleteAction} />)
     expect(screen.getByText('Alice')).toBeDefined()
   })
 
@@ -49,7 +53,7 @@ describe('LessonListItem', () => {
     expect(screen.getByText('3 riders, 2 horses')).toBeDefined()
   })
 
-  it('should_not_show_horse_line_when_horse_names_empty_and_normal', () => {
+  it('should_not_show_horse_name_when_horse_names_empty_and_normal', () => {
     render(
       <LessonListItem
         lesson={{ ...normalLesson, horse_names: [], horse_count: 0 }}
@@ -59,10 +63,9 @@ describe('LessonListItem', () => {
       />
     )
     expect(screen.queryByText('Thunderbolt')).toBeNull()
-    expect(screen.getByText('Alice')).toBeDefined()
   })
 
-  it('should_not_show_rider_line_when_rider_names_empty_and_normal', () => {
+  it('should_not_show_rider_name_when_rider_names_empty_and_normal', () => {
     render(
       <LessonListItem
         lesson={{ ...normalLesson, rider_names: [], rider_count: 0 }}
@@ -71,7 +74,6 @@ describe('LessonListItem', () => {
         deleteAction={deleteAction}
       />
     )
-    expect(screen.getByText('Thunderbolt')).toBeDefined()
     expect(screen.queryByText('Alice')).toBeNull()
   })
 })

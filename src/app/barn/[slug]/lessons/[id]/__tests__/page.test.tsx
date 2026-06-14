@@ -211,7 +211,7 @@ describe('LessonDetailPage', () => {
     expect(screen.getByText('Normal')).toBeDefined()
   })
 
-  it('should_list_riders_as_list_items_for_group_lesson', async () => {
+  it('should_show_rider_names_for_group_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -224,12 +224,25 @@ describe('LessonDetailPage', () => {
     render(jsx)
     expect(screen.getByText('Alice')).toBeDefined()
     expect(screen.getByText('Bob')).toBeDefined()
+  })
+
+  it('should_render_riders_as_list_items_for_group_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { riders: { id: 'rider-1', name: 'Alice' } },
+        { riders: { id: 'rider-2', name: 'Bob' } },
+      ],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
     const listItems = screen.getAllByRole('listitem')
     const riderItems = listItems.filter((li) => li.textContent === 'Alice' || li.textContent === 'Bob')
     expect(riderItems.length).toBe(2)
   })
 
-  it('should_render_dash_for_rider_name_in_group_lesson_when_riders_relation_is_null', async () => {
+  it('should_render_dash_for_null_rider_in_group_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -238,13 +251,39 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_show_name_for_non_null_rider_when_other_rider_is_null', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [{ riders: null }, { riders: { id: 'rider-2', name: 'Bob' } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
     expect(screen.getByText('Bob')).toBeDefined()
   })
 
-  it('should_show_riders_inline_for_normal_lesson', async () => {
+  it('should_render_dash_in_riders_section_when_group_lesson_has_no_riders', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_show_rider_name_inline_for_normal_lesson', async () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('Alice')).toBeDefined()
+  })
+
+  it('should_not_render_rider_names_as_list_items_for_normal_lesson', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
     const listItems = screen.queryAllByRole('listitem')
     const riderItems = listItems.filter((li) => li.textContent === 'Alice')
     expect(riderItems.length).toBe(0)
