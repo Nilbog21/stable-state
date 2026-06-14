@@ -24,9 +24,9 @@ Three roles: `manager`, `trainer`, `rider`.
 | barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE approve pending in barn; DELETE any in barn | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own |
 | horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT |
 | riders | SELECT, INSERT | SELECT | SELECT |
-| lessons | SELECT, INSERT, DELETE | SELECT, INSERT | SELECT, INSERT |
-| lesson_horses | SELECT, INSERT, DELETE | SELECT, INSERT | SELECT, INSERT |
-| lesson_riders | SELECT, INSERT, DELETE | SELECT, INSERT | SELECT, INSERT |
+| lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
+| lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
+| lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
 | profiles | SELECT own + barn members; ALL own | SELECT/ALL own | SELECT/ALL own |
 
@@ -85,7 +85,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
-| `lessons.ts` | Lesson + participant queries; financial summary (`getFinancialSummary`); per-horse income breakdown (`getHorseIncomeSummary`); per-rider income breakdown (`getRiderIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
+| `lessons.ts` | Lesson + participant queries; `updateLesson`; financial summary (`getFinancialSummary`); per-horse income breakdown (`getHorseIncomeSummary`); per-rider income breakdown (`getRiderIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier` |
 | `profiles.ts` | User profiles |
 | `effective-membership.ts` | Dev-only role override (see below) |
