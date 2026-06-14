@@ -1,0 +1,77 @@
+import { describe, it, expect, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
+import { LessonListItem } from '../LessonListItem'
+
+afterEach(cleanup)
+
+const baseLesson = {
+  id: 'lesson-1',
+  barn_id: 'barn-1',
+  instructor_id: 'user-1',
+  fee: 75,
+  lesson_at: '2026-05-17T10:00:00Z',
+  submitted_at: '2026-05-17T10:05:00Z',
+  instructor_name: 'Jane Smith',
+  jumping: false as const,
+  payment_type: null,
+  tier_name: 'Custom',
+}
+
+const normalLesson = {
+  ...baseLesson,
+  lesson_type: 'normal' as const,
+  horse_names: ['Thunderbolt'],
+  horse_count: 1,
+  rider_names: ['Alice'],
+  rider_count: 1,
+}
+
+const groupLesson = {
+  ...baseLesson,
+  lesson_type: 'group' as const,
+  horse_names: ['Thunderbolt', 'Shadow'],
+  horse_count: 2,
+  rider_names: ['Alice', 'Bob', 'Carol'],
+  rider_count: 3,
+}
+
+const deleteAction = async () => {}
+
+describe('LessonListItem', () => {
+  it('should_show_names_for_normal_lesson', () => {
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} deleteAction={deleteAction} />)
+    expect(screen.getByText('Thunderbolt')).toBeDefined()
+    expect(screen.getByText('Alice')).toBeDefined()
+  })
+
+  it('should_show_counts_for_group_lesson', () => {
+    render(<LessonListItem lesson={groupLesson} slug="green-acres" isManager={false} deleteAction={deleteAction} />)
+    expect(screen.getByText('3 riders, 2 horses')).toBeDefined()
+  })
+
+  it('should_not_show_horse_line_when_horse_names_empty_and_normal', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, horse_names: [], horse_count: 0 }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.queryByText('Thunderbolt')).toBeNull()
+    expect(screen.getByText('Alice')).toBeDefined()
+  })
+
+  it('should_not_show_rider_line_when_rider_names_empty_and_normal', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, rider_names: [], rider_count: 0 }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.getByText('Thunderbolt')).toBeDefined()
+    expect(screen.queryByText('Alice')).toBeNull()
+  })
+})
