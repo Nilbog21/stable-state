@@ -208,7 +208,7 @@ describe('LessonsPage', () => {
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
-  it('should_display_rider_name', async () => {
+  it('should_display_rider_names', async () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Alice')).toBeDefined()

@@ -603,7 +603,7 @@ describe('getLessonsByBarn', () => {
     const result = await getLessonsByBarn('barn-1')
 
     expect(result[0].rider_names).toEqual([])
-    expect(result[0].rider_count).toBe(0)
+    expect(result[0].rider_count).toBe(1)
   })
 })
 
@@ -636,6 +636,26 @@ describe('getLessonById', () => {
     const result = await getLessonById('lesson-1', 'barn-1')
 
     expect(result).toEqual(mockLessonDetail)
+  })
+
+  it('should_return_all_riders_for_group_lesson', async () => {
+    const groupLessonDetail = {
+      ...createMockLesson({ lesson_type: 'group' }),
+      profiles: null,
+      lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
+      lesson_riders: [
+        { riders: { id: 'rider-1', name: 'Alice' } },
+        { riders: { id: 'rider-2', name: 'Bob' } },
+      ],
+    }
+    const { select } = makeLessonByIdChain(groupLessonDetail)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1')
+
+    expect(result?.lesson_riders).toHaveLength(2)
   })
 
   it('should_query_by_lesson_id_and_barn_id', async () => {
@@ -1149,7 +1169,7 @@ describe('getUpcomingLessons', () => {
     const result = await getUpcomingLessons('barn-1', from, to)
 
     expect(result[0].rider_names).toEqual([])
-    expect(result[0].rider_count).toBe(0)
+    expect(result[0].rider_count).toBe(1)
   })
 
   it('should_return_null_instructor_name_when_no_profile_exists', async () => {
