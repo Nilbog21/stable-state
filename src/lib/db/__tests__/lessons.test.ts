@@ -18,6 +18,7 @@ import {
   getUpcomingLessons,
   getHorseIncomeSummary,
   getRiderIncomeSummary,
+  updateLesson,
 } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -1809,5 +1810,53 @@ describe('getRiderIncomeSummary', () => {
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
     expect(result).toEqual([{ riderId: 'rider-1', riderName: 'rider-1', totalIncome: 100 }])
+  })
+})
+
+describe('updateLesson', () => {
+  function makeUpdateChain(data: unknown, error: Error | null = null) {
+    const mockSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEq2 = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
+    return { mockUpdate, mockEq1, mockEq2, mockSelect, mockSingle }
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_call_update_with_the_provided_fields', async () => {
+    const updated = createMockLesson({ fee: 90 })
+    const { mockUpdate } = makeUpdateChain(updated)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateLesson('lesson-1', 'barn-1', { fee: 90 })
+
+    expect(mockUpdate).toHaveBeenCalledWith({ fee: 90 })
+  })
+
+  it('should_return_the_updated_lesson', async () => {
+    const updated = createMockLesson({ fee: 90 })
+    const { mockUpdate } = makeUpdateChain(updated)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    const result = await updateLesson('lesson-1', 'barn-1', { fee: 90 })
+
+    expect(result).toEqual(updated)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { mockUpdate } = makeUpdateChain(null, new Error('rls denied'))
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('rls denied')
   })
 })
