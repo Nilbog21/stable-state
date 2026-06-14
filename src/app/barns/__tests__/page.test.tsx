@@ -1,0 +1,168 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
+
+afterEach(cleanup)
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
+}))
+
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getBarnMembershipsForUser: vi.fn(),
+}))
+
+const mockRedirect = vi.hoisted(() =>
+  vi.fn((url: string) => {
+    throw Object.assign(new Error('NEXT_REDIRECT'), {
+      digest: `NEXT_REDIRECT;replace;${url}`,
+    })
+  })
+)
+
+vi.mock('next/navigation', () => ({
+  redirect: mockRedirect,
+}))
+
+import { createClient } from '@/lib/supabase/server'
+import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import BarnsPage from '../page'
+
+const mockUser = { id: 'user-1', email: 'user@example.com' }
+
+const mockActiveMembership = {
+  barn: { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' },
+  membership: {
+    id: 'mem-1',
+    user_id: 'user-1',
+    barn_id: 'barn-1',
+    role: 'manager' as const,
+    status: 'active' as const,
+    created_at: '',
+  },
+}
+
+const mockPendingMembership = {
+  barn: { id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', created_at: '' },
+  membership: {
+    id: 'mem-2',
+    user_id: 'user-1',
+    barn_id: 'barn-2',
+    role: 'rider' as const,
+    status: 'pending' as const,
+    created_at: '',
+  },
+}
+
+function setupAuth(user: typeof mockUser | null = mockUser) {
+  vi.mocked(createClient).mockResolvedValue({
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+  } as any)
+}
+
+describe('BarnsPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+    setupAuth()
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockActiveMembership])
+  })
+
+  it('should_redirect_to_login_when_unauthenticated', async () => {
+    setupAuth(null)
+
+    await expect(BarnsPage()).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/login')
+  })
+
+  it('should_redirect_to_login_with_no_barns_param_when_user_has_no_memberships', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+
+    await expect(BarnsPage()).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/login?no_barns=true')
+  })
+
+  it('should_render_barn_name_for_active_membership', async () => {
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    expect(screen.getByText('Green Acres')).toBeDefined()
+  })
+
+  it('should_render_link_to_barn_dashboard_for_active_membership', async () => {
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /green acres/i })
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+    expect((link as HTMLAnchorElement).href).not.toContain('/pending')
+  })
+
+  it('should_render_capitalized_role_for_manager', async () => {
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    expect(screen.getByText('Manager')).toBeDefined()
+  })
+
+  it('should_render_capitalized_role_for_trainer', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      {
+        ...mockActiveMembership,
+        membership: { ...mockActiveMembership.membership, role: 'trainer' as const },
+      },
+    ])
+
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    expect(screen.getByText('Trainer')).toBeDefined()
+  })
+
+  it('should_render_capitalized_role_for_rider', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      {
+        ...mockActiveMembership,
+        membership: { ...mockActiveMembership.membership, role: 'rider' as const },
+      },
+    ])
+
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    expect(screen.getByText('Rider')).toBeDefined()
+  })
+
+  it('should_render_pending_approval_badge_for_pending_membership', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockPendingMembership])
+
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    expect(screen.getByText('Pending Approval')).toBeDefined()
+  })
+
+  it('should_render_link_to_pending_page_for_pending_membership', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockPendingMembership])
+
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /sunset stables/i })
+    expect((link as HTMLAnchorElement).href).toContain('/barn/sunset-stables/pending')
+  })
+
+  it('should_render_both_active_and_pending_cards_when_mixed', async () => {
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      mockActiveMembership,
+      mockPendingMembership,
+    ])
+
+    const jsx = await BarnsPage()
+    render(jsx)
+
+    expect(screen.getByText('Green Acres')).toBeDefined()
+    expect(screen.getByText('Sunset Stables')).toBeDefined()
+    expect(screen.getByText('Pending Approval')).toBeDefined()
+  })
+})
