@@ -24,6 +24,25 @@ Stable State is a multi-tenant lesson-tracking application for equestrian barns.
 
 Open [http://localhost:3000](http://localhost:3000).
 
+### `.env.local` variables
+
+| Variable | Required for | Description |
+|---|---|---|
+| `NEXT_PUBLIC_SUPABASE_URL` | App + reset script | Supabase project URL |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App | Supabase anon (public) key |
+| `SUPABASE_SERVICE_ROLE_KEY` | Reset script only | Service role key — bypasses RLS; never expose client-side |
+| `DEV_MANAGER_EMAIL` | Reset script only | Google email to pre-authorize as dev barn manager via `seeded_accounts` |
+
+### Dev database reset
+
+To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 3 trainers, 3 riders, 3 horses, 25 lessons):
+
+```bash
+bash scripts/reset-db.sh
+```
+
+Requires `SUPABASE_SERVICE_ROLE_KEY` and `DEV_MANAGER_EMAIL` in `.env.local`. The script is idempotent — safe to re-run between branches.
+
 ## Database setup
 
 ### Apply migrations
