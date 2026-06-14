@@ -60,7 +60,9 @@ const mockLesson = {
   submitted_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   instructor_name: 'John Doe',
   horse_names: ['Thunderbolt'],
-  rider_name: 'Alice',
+  horse_count: 1,
+  rider_names: ['Alice'],
+  rider_count: 1,
 }
 
 const mockTrainerMembership = {
@@ -206,7 +208,7 @@ describe('LessonsPage', () => {
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
-  it('should_display_rider_name', async () => {
+  it('should_display_rider_names', async () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Alice')).toBeDefined()
@@ -229,7 +231,9 @@ describe('LessonsPage', () => {
       id: 'lesson-recent',
       lesson_at: threeDaysAgo,
       horse_names: ['RecentHorse'],
-      rider_name: 'RecentRider',
+      horse_count: 1,
+      rider_names: ['RecentRider'],
+      rider_count: 1,
     }])
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -243,7 +247,9 @@ describe('LessonsPage', () => {
       id: 'lesson-old',
       lesson_at: tenDaysAgo,
       horse_names: ['OldHorse'],
-      rider_name: 'OldRider',
+      horse_count: 1,
+      rider_names: ['OldRider'],
+      rider_count: 1,
     }])
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

@@ -86,8 +86,8 @@ export default async function BarnDashboardPage({
                   {lesson.horse_names.length > 0 && (
                     <span className="ml-2">{lesson.horse_names.join(', ')}</span>
                   )}
-                  {lesson.rider_name && (
-                    <span className="ml-2">{lesson.rider_name}</span>
+                  {lesson.rider_names.length > 0 && (
+                    <span className="ml-2">{lesson.rider_names.join(', ')}</span>
                   )}
                 </li>
               ))}

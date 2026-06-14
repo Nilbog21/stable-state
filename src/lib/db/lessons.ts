@@ -76,17 +76,21 @@ export async function getLessonsByBarn(barnId: string): Promise<LessonWithDetail
 
   return lessons.map((lesson) => {
     const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
-    const horseNames = (lessonHorses ?? [])
-      .filter((lh) => lh.lesson_id === lesson.id)
+    const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
+    const horseNames = horseJunctionRows
       .map((lh) => (horses ?? []).find((h) => h.id === lh.horse_id)?.name)
       .filter((name): name is string => Boolean(name))
-    const riderRow = (lessonRiders ?? []).find((lr) => lr.lesson_id === lesson.id)
-    const riderName = riderRow ? ((riders ?? []).find((r) => r.id === riderRow.rider_id)?.name ?? null) : null
+    const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
+    const riderNames = riderJunctionRows
+      .map((lr) => (riders ?? []).find((r) => r.id === lr.rider_id)?.name)
+      .filter((name): name is string => Boolean(name))
     return {
       ...lesson,
       instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
       horse_names: horseNames,
-      rider_name: riderName,
+      horse_count: horseJunctionRows.length,
+      rider_names: riderNames,
+      rider_count: riderJunctionRows.length,
     }
   })
 }
@@ -380,17 +384,21 @@ export async function getUpcomingLessons(
 
   return lessons.map((lesson) => {
     const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
-    const horseNames = (lessonHorses ?? [])
-      .filter((lh) => lh.lesson_id === lesson.id)
+    const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
+    const horseNames = horseJunctionRows
       .map((lh) => (horses ?? []).find((h) => h.id === lh.horse_id)?.name)
       .filter((name): name is string => Boolean(name))
-    const riderRow = (lessonRiders ?? []).find((lr) => lr.lesson_id === lesson.id)
-    const riderName = riderRow ? ((riders ?? []).find((r) => r.id === riderRow.rider_id)?.name ?? null) : null
+    const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
+    const riderNames = riderJunctionRows
+      .map((lr) => (riders ?? []).find((r) => r.id === lr.rider_id)?.name)
+      .filter((name): name is string => Boolean(name))
     return {
       ...lesson,
       instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
       horse_names: horseNames,
-      rider_name: riderName,
+      horse_count: horseJunctionRows.length,
+      rider_names: riderNames,
+      rider_count: riderJunctionRows.length,
     }
   })
 }

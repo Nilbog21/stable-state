@@ -245,7 +245,9 @@ describe('BarnDashboardPage', () => {
       ...createMockLesson(),
       instructor_name: null,
       horse_names: ['Thunderbolt'],
-      rider_name: 'Alice',
+      horse_count: 1,
+      rider_names: ['Alice'],
+      rider_count: 1,
     }
     vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
 
@@ -261,7 +263,9 @@ describe('BarnDashboardPage', () => {
       ...createMockLesson(),
       instructor_name: 'Jane Smith',
       horse_names: [],
-      rider_name: null,
+      horse_count: 0,
+      rider_names: [],
+      rider_count: 0,
     }
     vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
 

@@ -22,8 +22,8 @@ export function LessonListItem({ lesson, slug, isManager, deleteAction }: Props)
         {lesson.horse_names.length > 0 && (
           <span className="text-sm text-zinc-500">{lesson.horse_names.join(', ')}</span>
         )}
-        {lesson.rider_name && (
-          <span className="text-sm text-zinc-500">{lesson.rider_name}</span>
+        {lesson.rider_names.length > 0 && (
+          <span className="text-sm text-zinc-500">{lesson.rider_names.join(', ')}</span>
         )}
         {lesson.fee != null && (
           <span className="text-sm text-zinc-500">${lesson.fee}</span>
