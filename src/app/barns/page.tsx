@@ -3,10 +3,8 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 
-const ROLE_LABELS: Record<string, string> = {
-  manager: 'Manager',
-  trainer: 'Trainer',
-  rider: 'Rider',
+function capitalizeRole(role: string): string {
+  return role.charAt(0).toUpperCase() + role.slice(1)
 }
 
 export default async function BarnsPage() {
@@ -41,7 +39,7 @@ export default async function BarnsPage() {
                   </span>
                 ) : (
                   <span className="ml-3 text-sm text-zinc-500 dark:text-zinc-400">
-                    {ROLE_LABELS[membership.role] ?? membership.role}
+                    {capitalizeRole(membership.role)}
                   </span>
                 )}
               </Link>
