@@ -33,6 +33,7 @@ export function LessonForm({
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    setClientError(null)
     if (lessonType === 'group' && checkedRiderIds.size < 2) {
       e.preventDefault()
       setClientError('group lesson requires at least 2 riders')

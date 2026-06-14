@@ -79,9 +79,13 @@ describe('LessonForm', () => {
     })
   })
 
-  it('should_render_normal_and_group_toggle_buttons', () => {
+  it('should_render_normal_toggle_button', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByRole('button', { name: 'Normal' })).not.toBeNull()
+  })
+
+  it('should_render_group_toggle_button', () => {
+    render(<LessonForm {...baseProps} />)
     expect(screen.queryByRole('button', { name: 'Group' })).not.toBeNull()
   })
 
@@ -126,7 +130,7 @@ describe('LessonForm', () => {
     expect(container.querySelector('select[name="rider_id"]')).toBeNull()
   })
 
-  it('should_show_error_and_not_submit_when_group_mode_has_fewer_than_two_riders', () => {
+  it('should_show_error_when_group_mode_submitted_with_fewer_than_two_riders', () => {
     const riders = [
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
@@ -135,8 +139,18 @@ describe('LessonForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
-    const alert = screen.getByRole('alert')
-    expect(alert.textContent).toContain('group lesson requires at least 2 riders')
+    expect(screen.getByRole('alert').textContent).toContain('group lesson requires at least 2 riders')
+  })
+
+  it('should_not_call_action_when_group_mode_submitted_with_fewer_than_two_riders', () => {
+    const riders = [
+      { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ]
+    render(<LessonForm {...baseProps} riders={riders} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
+    fireEvent.submit(form)
     expect(baseProps.action).not.toHaveBeenCalled()
   })
 
@@ -145,11 +159,17 @@ describe('LessonForm', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     expect(container.querySelector('select[name="rider_id"]')).not.toBeNull()
+  })
+
+  it('should_set_lesson_type_to_normal_when_normal_button_clicked_from_group_mode', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     const hiddenInput = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
     expect(hiddenInput.value).toBe('normal')
   })
 
-  it('should_track_checked_rider_ids_in_group_mode', () => {
+  it('should_mark_rider_checkbox_checked_when_clicked_in_group_mode', () => {
     const riders = [
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
@@ -159,6 +179,17 @@ describe('LessonForm', () => {
     const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]') as NodeListOf<HTMLInputElement>
     fireEvent.click(checkboxes[0])
     expect(checkboxes[0].checked).toBe(true)
+  })
+
+  it('should_unmark_rider_checkbox_when_clicked_again_in_group_mode', () => {
+    const riders = [
+      { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ]
+    const { container } = render(<LessonForm {...baseProps} riders={riders} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]') as NodeListOf<HTMLInputElement>
+    fireEvent.click(checkboxes[0])
     fireEvent.click(checkboxes[0])
     expect(checkboxes[0].checked).toBe(false)
   })
