@@ -139,4 +139,27 @@ describe('LessonForm', () => {
     expect(alert.textContent).toContain('group lesson requires at least 2 riders')
     expect(baseProps.action).not.toHaveBeenCalled()
   })
+
+  it('should_restore_single_rider_select_when_normal_button_clicked_from_group_mode', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
+    expect(container.querySelector('select[name="rider_id"]')).not.toBeNull()
+    const hiddenInput = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
+    expect(hiddenInput.value).toBe('normal')
+  })
+
+  it('should_track_checked_rider_ids_in_group_mode', () => {
+    const riders = [
+      { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ]
+    const { container } = render(<LessonForm {...baseProps} riders={riders} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]') as NodeListOf<HTMLInputElement>
+    fireEvent.click(checkboxes[0])
+    expect(checkboxes[0].checked).toBe(true)
+    fireEvent.click(checkboxes[0])
+    expect(checkboxes[0].checked).toBe(false)
+  })
 })

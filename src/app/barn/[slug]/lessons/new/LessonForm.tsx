@@ -22,14 +22,47 @@ export function LessonForm({
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
   const [newHorseName, setNewHorseName] = useState('')
+  const [lessonType, setLessonType] = useState<'normal' | 'group'>('normal')
+  const [checkedRiderIds, setCheckedRiderIds] = useState<Set<string>>(new Set())
+  const [clientError, setClientError] = useState<string | null>(null)
+
+  function handleLessonTypeSwitch(type: 'normal' | 'group') {
+    setLessonType(type)
+    setClientError(null)
+    setCheckedRiderIds(new Set())
+  }
+
+  function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    if (lessonType === 'group' && checkedRiderIds.size < 2) {
+      e.preventDefault()
+      setClientError('group lesson requires at least 2 riders')
+    }
+  }
 
   return (
-    <form action={formAction} className="flex w-full max-w-sm flex-col gap-4">
-      {state.error && (
+    <form action={formAction} onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
+      <input type="hidden" name="lesson_type" value={lessonType} />
+      {(clientError || state.error) && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {state.error}
+          {clientError || state.error}
         </p>
       )}
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={() => handleLessonTypeSwitch('normal')}
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${lessonType === 'normal' ? 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900' : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'}`}
+        >
+          Normal
+        </button>
+        <button
+          type="button"
+          onClick={() => handleLessonTypeSwitch('group')}
+          className={`flex-1 rounded-lg border px-3 py-2 text-sm font-medium ${lessonType === 'group' ? 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900' : 'border-zinc-200 bg-white text-zinc-700 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300'}`}
+        >
+          Group
+        </button>
+      </div>
       {isManager && (
         <div className="flex flex-col gap-1">
           <label htmlFor="instructor_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -117,28 +150,58 @@ export function LessonForm({
       </fieldset>
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
         <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Rider
+          Rider{lessonType === 'group' ? 's' : ''}
+          {lessonType === 'group' && (
+            <span className="font-normal text-zinc-500"> (select at least 2)</span>
+          )}
         </legend>
-        <select
-          id="rider_id"
-          name="rider_id"
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        >
-          <option value="">Select a rider</option>
-          {riders.map((r) => (
-            <option key={r.id} value={r.id}>{r.name}</option>
-          ))}
-        </select>
-        {isManager && (
+        {lessonType === 'normal' ? (
           <>
-            <label htmlFor="new_rider_name" className="sr-only">Add new rider</label>
-            <input
-              id="new_rider_name"
-              type="text"
-              name="new_rider_name"
-              placeholder="Add new rider…"
+            <select
+              id="rider_id"
+              name="rider_id"
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-            />
+            >
+              <option value="">Select a rider</option>
+              {riders.map((r) => (
+                <option key={r.id} value={r.id}>{r.name}</option>
+              ))}
+            </select>
+            {isManager && (
+              <>
+                <label htmlFor="new_rider_name" className="sr-only">Add new rider</label>
+                <input
+                  id="new_rider_name"
+                  type="text"
+                  name="new_rider_name"
+                  placeholder="Add new rider…"
+                  className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </>
+            )}
+          </>
+        ) : (
+          <>
+            {riders.map((r) => (
+              <label key={r.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+                <input
+                  type="checkbox"
+                  name="rider_id"
+                  value={r.id}
+                  checked={checkedRiderIds.has(r.id)}
+                  onChange={(e) => {
+                    setCheckedRiderIds(prev => {
+                      const next = new Set(prev)
+                      if (e.target.checked) next.add(r.id)
+                      else next.delete(r.id)
+                      return next
+                    })
+                  }}
+                  className="rounded border-zinc-300 dark:border-zinc-600"
+                />
+                {r.name}
+              </label>
+            ))}
           </>
         )}
       </fieldset>
