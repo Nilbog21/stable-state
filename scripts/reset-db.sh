@@ -9,7 +9,7 @@ if [ ! -f ".env.local" ]; then
 fi
 
 parse_var() {
-  grep -m1 "^$1=" .env.local | cut -d= -f2- | sed 's/^"//;s/"$//'
+  grep -m1 "^$1=" .env.local | cut -d= -f2- | sed 's/[[:space:]]*#.*$//;s/^"//;s/"$//'
 }
 
 DEV_MANAGER_EMAIL="$(parse_var DEV_MANAGER_EMAIL || true)"

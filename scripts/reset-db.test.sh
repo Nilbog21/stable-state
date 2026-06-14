@@ -102,7 +102,7 @@ else
 fi
 rm -rf "$REPO"
 
-# Tests 5–6: all vars present (shared Arrange + Act)
+# Test 5: should_exit_zero_when_all_required_vars_present
 # Arrange
 REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
 NEXT_PUBLIC_SUPABASE_URL=http://localhost
@@ -110,16 +110,21 @@ SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
 # Act
 (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 exit_code=$?
-
-# Test 5: should_exit_zero_when_all_required_vars_present
 # Assert
 if [ "$exit_code" -eq 0 ]; then
   assert_pass "should_exit_zero_when_all_required_vars_present"
 else
   assert_fail "should_exit_zero_when_all_required_vars_present" "script exited non-zero ($exit_code)"
 fi
+rm -rf "$REPO"
 
 # Test 6: should_invoke_node_when_all_required_vars_present
+# Arrange
+REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
+# Act
+(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 # Assert
 if [ -f "$REPO/node.log" ]; then
   assert_pass "should_invoke_node_when_all_required_vars_present"

@@ -96,6 +96,7 @@ async function run() {
   while (hasMore) {
     const { data: listData, error: listErr } = await supabase.auth.admin.listUsers({ page: listPage, perPage: 50 });
     if (listErr) throw new Error(`list auth users: ${listErr.message}`);
+    if (!listData) throw new Error('list auth users: no data returned');
     for (const user of listData.users) {
       if (devEmails.has(user.email)) devUserIdSet.add(user.id);
     }
