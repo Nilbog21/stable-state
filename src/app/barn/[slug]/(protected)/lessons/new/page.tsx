@@ -6,6 +6,7 @@ import { getRidersByBarn } from '@/lib/db/riders'
 import { getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { submitLesson } from '@/app/actions/lessons'
 import { LessonForm } from './LessonForm'
 
@@ -28,10 +29,11 @@ export default async function LessonNewPage({
     notFound()
   }
 
-  const [horses, riders, membership] = await Promise.all([
+  const [horses, riders, membership, tiers] = await Promise.all([
     getHorsesByBarn(barn.id),
     getRidersByBarn(barn.id),
     getEffectiveMembership(user.id, barn.id),
+    getTiersByBarn(barn.id),
   ])
 
   const isManager = membership?.role === 'manager'
@@ -69,7 +71,7 @@ export default async function LessonNewPage({
         isManager={isManager}
         instructors={instructors}
         currentUserId={user.id}
-
+        tiers={tiers}
       />
     </main>
   )

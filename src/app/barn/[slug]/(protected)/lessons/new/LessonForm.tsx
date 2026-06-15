@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import type { Horse, Rider } from '@/lib/db/types'
+import type { Horse, LessonTier, Rider } from '@/lib/db/types'
 import { DateHourPicker } from './DateHourPicker'
 
 export function LessonForm({
@@ -11,6 +11,7 @@ export function LessonForm({
   action,
   instructors,
   currentUserId,
+  tiers,
 }: {
   horses: Horse[]
   riders: Rider[]
@@ -18,7 +19,10 @@ export function LessonForm({
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   instructors: { userId: string; name: string }[]
   currentUserId: string
+  tiers: LessonTier[]
 }) {
+  const CUSTOM_ID = '__custom__'
+  const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
   const [exertionLevels, setExertionLevels] = useState<Map<string, number>>(new Map())
@@ -28,6 +32,18 @@ export function LessonForm({
   const [checkedRiderIds, setCheckedRiderIds] = useState<Set<string>>(new Set())
   const [clientError, setClientError] = useState<string | null>(null)
   const [jumping, setJumping] = useState(false)
+  const [selectedId, setSelectedId] = useState<string>(defaultTier?.id ?? CUSTOM_ID)
+
+  if (tiers.length === 0) {
+    return (
+      <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+        No lesson tiers have been configured. A manager must add at least one tier in Settings before lessons can be created.
+      </p>
+    )
+  }
+
+  const isCustom = selectedId === CUSTOM_ID
+  const selectedTier = tiers.find(t => t.id === selectedId) ?? null
 
   function handleJumpingToggle(e: React.ChangeEvent<HTMLInputElement>) {
     const checked = e.target.checked
@@ -266,19 +282,43 @@ export function LessonForm({
       </fieldset>
       <DateHourPicker />
       <div className="flex flex-col gap-1">
-        <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Fee (optional)
+        <label htmlFor="tier_name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Tier
         </label>
-        <input
-          id="fee"
-          name="fee"
-          type="number"
-          min="0"
-          step="0.01"
-          defaultValue=""
+        <select
+          id="tier_name"
+          value={selectedId}
+          onChange={e => setSelectedId(e.target.value)}
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        />
+        >
+          {tiers.map(t => (
+            <option key={t.id} value={t.id}>
+              {t.price != null ? `${t.name} - $${t.price}` : t.name}
+            </option>
+          ))}
+          <option value={CUSTOM_ID}>Custom</option>
+        </select>
+        <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
+        {isCustom && <input type="hidden" name="is_custom" value="true" />}
       </div>
+      {isCustom ? (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Fee
+          </label>
+          <input
+            id="fee"
+            name="fee"
+            type="number"
+            min="0"
+            step="0.01"
+            required
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        </div>
+      ) : (
+        <input type="hidden" name="fee" value={selectedTier?.price ?? ''} />
+      )}
       <button
         type="submit"
         disabled={pending}

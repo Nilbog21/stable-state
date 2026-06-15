@@ -25,6 +25,7 @@ export async function submitLesson(
   const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
+  const tierName = (formData.get('tier_name') as string | null) ?? 'Custom'
   const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
   const jumping = formData.get('jumping') === 'true'
 
@@ -84,6 +85,8 @@ export async function submitLesson(
     }
   }
 
+  if (formData.get('is_custom') === 'true' && !feeRaw) return { error: 'fee required for custom tier' }
+
   try {
     if (newHorseName) {
       if (membership?.role !== 'manager') {
@@ -112,6 +115,7 @@ export async function submitLesson(
       riderIds,
       lessonType,
       jumping,
+      tierName,
     })
   } catch {
     return { error: 'Failed to submit lesson' }
