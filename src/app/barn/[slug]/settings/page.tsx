@@ -44,6 +44,16 @@ export default async function SettingsPage({
         {barn.name} — Settings
       </h1>
 
+      {/* <form> cannot be a valid child of <tr>, so save forms live here and
+          are associated to their row controls via the HTML `form` attribute. */}
+      {tiers.map((tier) => (
+        <form
+          key={`update-${tier.id}`}
+          id={`update-tier-${tier.id}`}
+          action={updateTierAction.bind(null, slug, tier.id)}
+        />
+      ))}
+
       <section className="mb-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           Lesson Tiers
@@ -63,60 +73,56 @@ export default async function SettingsPage({
             <tbody>
               {tiers.map((tier) => (
                 <tr key={tier.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <form
-                    action={updateTierAction.bind(null, slug, tier.id)}
-                    className="contents"
-                  >
-                    <td className="py-3 pr-4 align-top">
-                      <input
-                        type="text"
-                        name="name"
-                        defaultValue={tier.name}
-                        required
-                        className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-                      />
-                      {tier.is_default && (
-                        <span className="ml-2 rounded bg-zinc-900 px-1.5 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
-                          Default
-                        </span>
-                      )}
-                      <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                        Renaming will not update past lessons
+                  <td className="py-3 pr-4 align-top">
+                    <input
+                      type="text"
+                      name="name"
+                      form={`update-tier-${tier.id}`}
+                      defaultValue={tier.name}
+                      required
+                      className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+                    />
+                    {tier.is_default && (
+                      <span className="ml-2 rounded bg-zinc-900 px-1.5 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
+                        Default
+                      </span>
+                    )}
+                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
+                      Renaming will not update past lessons
+                    </p>
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <input
+                      type="number"
+                      name="price"
+                      form={`update-tier-${tier.id}`}
+                      defaultValue={tier.price ?? ''}
+                      step="0.01"
+                      min="0"
+                      className="w-24 rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+                    />
+                  </td>
+                  <td className="py-3 pr-4 align-top text-sm">
+                    {tier.is_active ? (
+                      <span className="text-zinc-700 dark:text-zinc-300">Active</span>
+                    ) : (
+                      <span className="text-zinc-400 dark:text-zinc-500">Inactive</span>
+                    )}
+                    {error && errorTierId === tier.id && (
+                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">
+                        Cannot deactivate the default tier
                       </p>
-                    </td>
-                    <td className="py-3 pr-4 align-top">
-                      <input
-                        type="number"
-                        name="price"
-                        defaultValue={tier.price ?? ''}
-                        step="0.01"
-                        min="0"
-                        className="w-24 rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-                      />
-                    </td>
-                    <td className="py-3 pr-4 align-top text-sm">
-                      {tier.is_active ? (
-                        <span className="text-zinc-700 dark:text-zinc-300">Active</span>
-                      ) : (
-                        <span className="text-zinc-400 dark:text-zinc-500">Inactive</span>
-                      )}
-                      {error && errorTierId === tier.id && (
-                        <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                          Cannot deactivate the default tier
-                        </p>
-                      )}
-                    </td>
-                    <td className="py-3 align-top">
-                      <div className="flex flex-wrap gap-2">
-                        <button
-                          type="submit"
-                          className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                        >
-                          Save
-                        </button>
-                      </div>
-                    </td>
-                  </form>
+                    )}
+                  </td>
+                  <td className="py-3 pr-4 align-top">
+                    <button
+                      type="submit"
+                      form={`update-tier-${tier.id}`}
+                      className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                    >
+                      Save
+                    </button>
+                  </td>
                   <td className="py-3 align-top">
                     <div className="flex flex-wrap gap-2">
                       {tier.is_active && !tier.is_default && (
