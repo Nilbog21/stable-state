@@ -305,6 +305,22 @@ else
   assert_fail "should_return_jumping_false_for_odd_index" "getLessonVariation(1) did not return jumping false"
 fi
 
+# Test 17: should_export_DEV_PENDING_RIDER_with_email_first_name_last_name
+# Act + Assert
+node -e "
+const { DEV_PENDING_RIDER } = require('$SCRIPT_DIR/reset-db.js');
+if (!DEV_PENDING_RIDER || typeof DEV_PENDING_RIDER.email !== 'string' || !DEV_PENDING_RIDER.firstName || !DEV_PENDING_RIDER.lastName) {
+  process.stderr.write('DEV_PENDING_RIDER missing or malformed\n');
+  process.exit(1);
+}
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_export_DEV_PENDING_RIDER_with_email_first_name_last_name"
+else
+  assert_fail "should_export_DEV_PENDING_RIDER_with_email_first_name_last_name" "DEV_PENDING_RIDER not exported or missing fields"
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
