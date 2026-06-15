@@ -275,9 +275,9 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const prevLink = screen.queryByText('←')
+    const prevLink = screen.queryByRole('link', { name: '←' })
     expect(prevLink).not.toBeNull()
-    expect(prevLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-05')
+    expect(prevLink?.getAttribute('href')).toBe('?month=2026-05')
   })
 
   it('should_not_show_prev_link_at_barn_creation_month', async () => {
@@ -297,9 +297,9 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-05' }),
     })
     render(jsx)
-    const nextLink = screen.queryByText('→')
+    const nextLink = screen.queryByRole('link', { name: '→' })
     expect(nextLink).not.toBeNull()
-    expect(nextLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-06')
+    expect(nextLink?.getAttribute('href')).toBe('?month=2026-06')
   })
 
   it('should_not_show_next_link_at_current_month', async () => {
@@ -355,9 +355,9 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-01' }),
     })
     render(jsx)
-    const prevLink = screen.queryByText('←')
+    const prevLink = screen.queryByRole('link', { name: '←' })
     expect(prevLink).not.toBeNull()
-    expect(prevLink?.closest('a')?.getAttribute('href')).toBe('?month=2025-12')
+    expect(prevLink?.getAttribute('href')).toBe('?month=2025-12')
   })
 
   it('should_link_next_to_next_year_when_viewing_december', async () => {
@@ -368,14 +368,15 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2025-12' }),
     })
     render(jsx)
-    const nextLink = screen.queryByText('→')
+    const nextLink = screen.queryByRole('link', { name: '→' })
     expect(nextLink).not.toBeNull()
-    expect(nextLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-01')
+    expect(nextLink?.getAttribute('href')).toBe('?month=2026-01')
   })
 
   it('should_style_prev_arrow_link_with_border_when_present', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-01-01T00:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const prevLink = screen.queryByRole('link', { name: '←' })
@@ -394,22 +395,37 @@ describe('FinancesPage', () => {
     expect(nextLink?.className).toContain('border')
   })
 
-  it('should_render_invisible_placeholder_when_prev_arrow_absent', async () => {
+  it('should_render_prev_placeholder_text_when_prev_arrow_absent', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByText('←')).not.toBeNull()
+  })
+
+  it('should_not_render_prev_placeholder_as_link_when_prev_arrow_absent', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.queryByRole('link', { name: '←' })).toBeNull()
   })
 
-  it('should_render_invisible_placeholder_when_next_arrow_absent', async () => {
+  it('should_render_next_placeholder_text_when_next_arrow_absent', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByText('→')).not.toBeNull()
+  })
+
+  it('should_not_render_next_placeholder_as_link_when_next_arrow_absent', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.queryByRole('link', { name: '→' })).toBeNull()
   })
 })
