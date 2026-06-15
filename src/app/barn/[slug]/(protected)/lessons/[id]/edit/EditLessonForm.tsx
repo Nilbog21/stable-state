@@ -2,7 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import type { Horse, LessonDetail, LessonType, Rider } from '@/lib/db/types'
-import { DateHourPicker } from '@/app/barn/[slug]/lessons/new/DateHourPicker'
+import { DateHourPicker } from '@/app/barn/[slug]/(protected)/lessons/new/DateHourPicker'
 
 function parseInitialDate(lessonAt: string): string {
   return lessonAt.slice(0, 10)
