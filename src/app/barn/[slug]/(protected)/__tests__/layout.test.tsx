@@ -214,10 +214,37 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByRole('link', { name: /lessons/i })).toBeDefined()
   })
 
-  it('should_render_horses_link_for_manager', async () => {
+  it('should_render_horses_overview_link_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.getByRole('link', { name: /horses/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
+  })
+
+  it('should_render_horses_overview_link_pointing_to_overview_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toContain('/horses/overview')
+  })
+
+  it('should_render_manage_horses_link_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'Manage Horses' })).toBeDefined()
+  })
+
+  it('should_render_manage_horses_link_pointing_to_horses_page_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect((screen.getByRole('link', { name: 'Manage Horses' }) as HTMLAnchorElement).href).toContain('/barn/green-acres/horses')
+  })
+
+  it('should_render_manage_horses_link_before_settings_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    const links = screen.getAllByRole('link')
+    const manageHorsesIdx = links.findIndex((l) => l.textContent === 'Manage Horses')
+    const settingsIdx = links.findIndex((l) => l.textContent === 'Settings')
+    expect(manageHorsesIdx).toBeLessThan(settingsIdx)
   })
 
   it('should_render_riders_link_for_manager', async () => {
@@ -281,11 +308,25 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByRole('link', { name: /riders/i })).toBeDefined()
   })
 
-  it('should_not_render_horses_link_for_trainer', async () => {
+  it('should_render_horses_overview_link_for_trainer', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.queryByRole('link', { name: /horses/i })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
+  })
+
+  it('should_render_horses_overview_link_pointing_to_overview_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toContain('/horses/overview')
+  })
+
+  it('should_not_render_manage_horses_link_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: 'Manage Horses' })).toBeNull()
   })
 
   it('should_not_render_finances_link_for_trainer', async () => {
@@ -317,11 +358,25 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByRole('link', { name: /lessons/i })).toBeDefined()
   })
 
-  it('should_not_render_horses_link_for_rider', async () => {
+  it('should_render_horses_overview_link_for_rider', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.queryByRole('link', { name: /horses/i })).toBeNull()
+    expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
+  })
+
+  it('should_render_horses_overview_link_pointing_to_overview_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toContain('/horses/overview')
+  })
+
+  it('should_not_render_manage_horses_link_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: 'Manage Horses' })).toBeNull()
   })
 
   it('should_not_render_finances_link_for_rider', async () => {
