@@ -13,6 +13,8 @@ vi.mock('@/lib/db/lessons', () => ({
   deleteLesson: vi.fn(),
   createLessonWithParticipants: vi.fn(),
   updateLessonWithParticipants: vi.fn(),
+  getLessonById: vi.fn(),
+  updateLesson: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -35,12 +37,12 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createLessonWithParticipants, deleteLesson, updateLessonWithParticipants } from '@/lib/db/lessons'
+import { createLessonWithParticipants, deleteLesson, updateLessonWithParticipants, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { createRider, getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
-import { submitLesson, deleteLessonAction, updateLessonAction } from '../lessons'
+import { submitLesson, deleteLessonAction, updateLessonAction, updatePaymentTypeAction } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: null, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
 const mockTrainerMembership = createMockMembership({ created_at: '2026-01-01T00:00:00Z' })
@@ -803,5 +805,75 @@ describe('updateLessonAction', () => {
     expect(updateLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ tierName: 'Custom' })
     )
+  })
+})
+
+describe('updatePaymentTypeAction', () => {
+  beforeEach(() => {
+    vi.mocked(getLessonById).mockReset()
+    vi.mocked(updateLesson).mockReset()
+    vi.mocked(getUserMembership).mockReset()
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
+      },
+    } as any)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(updateLesson).mockResolvedValue(mockLesson)
+  })
+
+  it('should_return_error_when_not_authenticated', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }) },
+    } as any)
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
+    expect(result).toEqual({ error: 'not authenticated' })
+  })
+
+  it('should_return_error_when_no_membership', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_return_error_when_user_is_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider' }))
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_return_error_when_trainer_lesson_not_found', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(null)
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
+    expect(result).toEqual({ error: 'lesson not found' })
+  })
+
+  it('should_return_error_when_trainer_is_not_instructor', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: 'other-trainer' }))
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_update_payment_type_when_trainer_is_instructor', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: 'user-1' }))
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
+    expect(result).toEqual({ error: null })
+    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'venmo' })
+  })
+
+  it('should_update_payment_type_when_user_is_manager', async () => {
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'cash')
+    expect(result).toEqual({ error: null })
+    expect(getLessonById).not.toHaveBeenCalled()
+    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'cash' })
+  })
+
+  it('should_return_error_when_update_throws', async () => {
+    vi.mocked(updateLesson).mockRejectedValue(new Error('db error'))
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'cash')
+    expect(result).toEqual({ error: 'Failed to update payment type' })
   })
 })
