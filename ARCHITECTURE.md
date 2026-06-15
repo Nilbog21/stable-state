@@ -62,7 +62,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 
 | Route | Roles | Notes |
 |---|---|---|
-| `/` | All | Unauthenticated users see the public landing page; authenticated users are redirected server-side using barn membership logic: single active → `/barn/[slug]`, multiple active → `/barns`, pending-only single → `/barn/[slug]/pending`, pending-only multiple → `/barns`, no memberships → `/login?no_barns=true` |
+| `/` | All | Unauthenticated users are redirected to `/login`; authenticated users are redirected server-side using barn membership logic: single active → `/barn/[slug]`, multiple active → `/barns`, pending-only single → `/barn/[slug]/pending`, pending-only multiple → `/barns`, no memberships → `/login?no_barns=true` |
 | `/barns` | Authenticated users | Barn selector: one card per membership; active shows role + link to `/barn/[slug]`; pending shows badge + link to `/barn/[slug]/pending`; no memberships redirects to `/login?no_barns=true` |
 | `/barn/[slug]` | All active members | Manager sees upcoming-lessons preview (next 7 days) and full nav; trainer and rider see a role-filtered nav |
 | `/barn/[slug]/lessons` | All active members | Lessons split at 7-day cutoff: recent shown immediately, older behind `OlderLessonsToggle`; manager can delete |
@@ -73,6 +73,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
 | `/barn/[slug]/finances` | manager | Current calendar month income summary: fee-tier breakdown, income by horse, income by rider |
 | `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
+| `/login` | All | Sign-in page; displays Supabase connection status dot (green = `NEXT_PUBLIC_SUPABASE_URL` set, yellow = not set); shows no-barn guidance when `?no_barns=true` and user is authenticated |
 | `/barn/[slug]/register` | unauthenticated | Membership sign-up flow |
 
 ## Data access layer
