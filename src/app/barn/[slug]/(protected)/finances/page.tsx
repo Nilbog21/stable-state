@@ -152,16 +152,20 @@ export default async function FinancesPage({
 
       <div className="mb-8 flex items-center gap-4">
         {prevMonthUrl ? (
-          <Link href={prevMonthUrl} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50">
-            ←
+          <Link href={prevMonthUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+            &lt;
           </Link>
-        ) : null}
+        ) : (
+          <span aria-hidden="true" className="invisible flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300">&lt;</span>
+        )}
         <span className="font-medium text-zinc-900 dark:text-zinc-50">{monthLabel}</span>
         {nextMonthUrl ? (
-          <Link href={nextMonthUrl} className="text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-50">
-            →
+          <Link href={nextMonthUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+            &gt;
           </Link>
-        ) : null}
+        ) : (
+          <span aria-hidden="true" className="invisible flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300">&gt;</span>
+        )}
       </div>
 
       <section className="mb-10">
