@@ -402,7 +402,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 60, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/pending income/i)).toBeDefined()
+    expect(screen.getByText('Pending income (from scheduled lessons)')).toBeDefined()
   })
 
   it('should_display_pending_income_amount', async () => {

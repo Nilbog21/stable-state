@@ -197,7 +197,7 @@ export default async function FinancesPage({
 
       <section className="mt-10">
         <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Pending income
+          Pending income (from scheduled lessons)
         </p>
         <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
