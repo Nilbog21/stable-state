@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { applySeededMembership, getUserMembership } from '@/lib/db/barn-memberships'
+import { applySeededMembership, getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -46,7 +46,43 @@ export async function GET(request: NextRequest) {
         return response
       }
 
-      return NextResponse.redirect(`${origin}/`)
+      const memberships = data?.user
+        ? await getBarnMembershipsForUser(data.user.id)
+        : []
+
+      const active = memberships.filter(m => m.membership.status === 'active')
+      const pending = memberships.filter(m => m.membership.status === 'pending')
+
+      if (active.length === 1) {
+        const slug = active[0].barn.slug
+        const response = NextResponse.redirect(`${origin}/barn/${slug}`)
+        response.cookies.set(`barn_session_${slug}`, data.user!.id, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          path: `/barn/${slug}/`,
+        })
+        return response
+      }
+      if (active.length > 1) {
+        const response = NextResponse.redirect(`${origin}/barns`)
+        for (const { barn } of active) {
+          response.cookies.set(`barn_session_${barn.slug}`, data.user!.id, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            path: `/barn/${barn.slug}/`,
+          })
+        }
+        return response
+      }
+      if (pending.length === 1) {
+        return NextResponse.redirect(`${origin}/barn/${pending[0].barn.slug}/pending`)
+      }
+      if (pending.length > 1) {
+        return NextResponse.redirect(`${origin}/barns`)
+      }
+      return NextResponse.redirect(`${origin}/login?no_barns=true`)
     }
   }
 

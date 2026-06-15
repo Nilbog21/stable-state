@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Lesson, LessonDetail, LessonHorse, LessonRider, LessonWithDetails } from './types'
+import type { FinancialSummary, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
 
 export async function createLessonWithParticipants(params: {
   barnId: string
@@ -8,7 +8,10 @@ export async function createLessonWithParticipants(params: {
   fee: number | null
   horseIds: string[]
   exertionLevels: number[]
-  riderId: string
+  riderIds: string[]
+  lessonType: LessonType
+  jumping?: boolean
+  tierName?: string
 }): Promise<Lesson> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('create_lesson_with_participants', {
@@ -18,7 +21,10 @@ export async function createLessonWithParticipants(params: {
     p_fee: params.fee,
     p_horse_ids: params.horseIds,
     p_exertion_levels: params.exertionLevels,
-    p_rider_id: params.riderId,
+    p_rider_ids: params.riderIds,
+    p_lesson_type: params.lessonType,
+    p_jumping: params.jumping ?? false,
+    p_tier_name: params.tierName ?? 'Custom',
   })
   if (error) throw error
   return data as Lesson
@@ -30,7 +36,7 @@ export async function getLessonsByBarn(barnId: string): Promise<LessonWithDetail
     .from('lessons')
     .select('*')
     .eq('barn_id', barnId)
-    .order('lesson_at', { ascending: true })
+    .order('lesson_at', { ascending: false })
 
   if (lessonsError) throw lessonsError
   if (!lessons.length) return []
@@ -74,17 +80,21 @@ export async function getLessonsByBarn(barnId: string): Promise<LessonWithDetail
 
   return lessons.map((lesson) => {
     const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
-    const horseNames = (lessonHorses ?? [])
-      .filter((lh) => lh.lesson_id === lesson.id)
+    const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
+    const horseNames = horseJunctionRows
       .map((lh) => (horses ?? []).find((h) => h.id === lh.horse_id)?.name)
       .filter((name): name is string => Boolean(name))
-    const riderRow = (lessonRiders ?? []).find((lr) => lr.lesson_id === lesson.id)
-    const riderName = riderRow ? ((riders ?? []).find((r) => r.id === riderRow.rider_id)?.name ?? null) : null
+    const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
+    const riderNames = riderJunctionRows
+      .map((lr) => (riders ?? []).find((r) => r.id === lr.rider_id)?.name)
+      .filter((name): name is string => Boolean(name))
     return {
       ...lesson,
       instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
       horse_names: horseNames,
-      rider_name: riderName,
+      horse_count: horseJunctionRows.length,
+      rider_names: riderNames,
+      rider_count: riderJunctionRows.length,
     }
   })
 }
@@ -95,7 +105,6 @@ export async function getLessonById(lessonId: string, barnId: string): Promise<L
     .from('lessons')
     .select(`
       *,
-      profiles ( first_name, last_name ),
       lesson_horses ( exertion_level, horses ( id, name ) ),
       lesson_riders ( riders ( id, name ) )
     `)
@@ -104,7 +113,20 @@ export async function getLessonById(lessonId: string, barnId: string): Promise<L
     .maybeSingle()
 
   if (error) throw error
-  return data
+  if (!data) return null
+
+  let instructor_name: string | null = null
+  if (data.instructor_id) {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('user_id', data.instructor_id)
+      .maybeSingle()
+    if (profileError) throw profileError
+    if (profile) instructor_name = `${profile.first_name} ${profile.last_name}`
+  }
+
+  return { ...data, instructor_name }
 }
 
 export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
@@ -170,5 +192,350 @@ export async function addRiderToLesson(
     .single()
 
   if (error) throw error
+  return data
+}
+
+export async function getFinancialSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<FinancialSummary> {
+  const supabase = await createClient()
+  const now = new Date()
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+
+  if (error) throw error
+
+  const lessons = data ?? []
+
+  const tierMap = new Map<number, number>()
+  let collectedIncome = 0
+  let pendingIncome = 0
+
+  for (const lesson of lessons) {
+    if (lesson.payment_type !== null) {
+      if (lesson.fee !== null) {
+        collectedIncome += lesson.fee
+        tierMap.set(lesson.fee, (tierMap.get(lesson.fee) ?? 0) + 1)
+      }
+    } else if (new Date(lesson.lesson_at) > now) {
+      if (lesson.fee !== null) pendingIncome += lesson.fee
+    }
+  }
+
+  const breakdown = Array.from(tierMap.entries())
+    .sort(([a], [b]) => a - b)
+    .map(([fee, lessonCount]) => ({ fee, lessonCount, subtotal: fee * lessonCount }))
+
+  return { collectedIncome, pendingIncome, breakdown }
+}
+
+export async function getOutstandingLessons(barnId: string): Promise<OutstandingLesson[]> {
+  const supabase = await createClient()
+  const now = new Date()
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .is('payment_type', null)
+    .lt('lesson_at', now.toISOString())
+    .order('lesson_at', { ascending: true })
+
+  if (error) throw error
+
+  const outstandingRaw = (data ?? []).filter((l) => l.fee !== 0)
+
+  if (outstandingRaw.length === 0) return []
+
+  const outstandingIds = outstandingRaw.map((l) => l.id)
+  const instructorIds = [...new Set(outstandingRaw.map((l) => l.instructor_id).filter((id): id is string => id !== null))]
+
+  const [
+    { data: lessonRiders, error: lrError },
+    { data: profiles, error: profError },
+  ] = await Promise.all([
+    supabase.from('lesson_riders').select('lesson_id, rider_id').in('lesson_id', outstandingIds),
+    instructorIds.length
+      ? supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
+      : Promise.resolve({ data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }),
+  ])
+
+  if (lrError) throw lrError
+  if (profError) throw profError
+
+  const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
+
+  const { data: riders, error: ridersError } = riderIds.length
+    ? await supabase.from('riders').select('id, name').in('id', riderIds)
+    : { data: [] as { id: string; name: string }[], error: null }
+
+  if (ridersError) throw ridersError
+
+  return outstandingRaw.map((lesson) => {
+    const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
+    const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
+    const rider_names = riderJunctionRows
+      .map((lr) => (riders ?? []).find((r) => r.id === lr.rider_id)?.name)
+      .filter((name): name is string => Boolean(name))
+    return {
+      id: lesson.id,
+      barn_id: lesson.barn_id,
+      lesson_at: lesson.lesson_at,
+      instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
+      rider_names,
+      fee: lesson.fee,
+    }
+  })
+}
+
+export async function getHorseIncomeSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<HorseIncomeSummary[]> {
+  const supabase = await createClient()
+
+  const { data: lessons, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('id, fee')
+    .eq('barn_id', barnId)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+
+  if (lessonsError) throw lessonsError
+
+  const paidLessons = (lessons ?? []).filter((l): l is { id: string; fee: number } => l.fee !== null)
+  if (!paidLessons.length) return []
+
+  const lessonIds = paidLessons.map((l) => l.id)
+
+  const { data: lessonHorses, error: lhError } = await supabase
+    .from('lesson_horses')
+    .select('lesson_id, horse_id')
+    .in('lesson_id', lessonIds)
+
+  if (lhError) throw lhError
+
+  if (!(lessonHorses ?? []).length) return []
+
+  const horseIds = [...new Set(lessonHorses.map((lh) => lh.horse_id))]
+
+  const { data: horses, error: horsesError } = await supabase
+    .from('horses')
+    .select('id, name')
+    .in('id', horseIds)
+
+  if (horsesError) throw horsesError
+
+  const incomeMap = new Map<string, number>()
+
+  for (const lesson of paidLessons) {
+    const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
+    if (!participants.length) continue
+    const split = lesson.fee / participants.length
+    for (const { horse_id } of participants) {
+      incomeMap.set(horse_id, (incomeMap.get(horse_id) ?? 0) + split)
+    }
+  }
+
+  return Array.from(incomeMap.entries())
+    .map(([horseId, totalIncome]) => ({
+      horseId,
+      horseName: (horses ?? []).find((h) => h.id === horseId)?.name ?? horseId,
+      totalIncome,
+    }))
+    .sort((a, b) => b.totalIncome - a.totalIncome)
+}
+
+export async function getRiderIncomeSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<RiderIncomeSummary[]> {
+  const supabase = await createClient()
+
+  const { data: lessons, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('id, fee')
+    .eq('barn_id', barnId)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+
+  if (lessonsError) throw lessonsError
+
+  const paidLessons = (lessons ?? []).filter((l): l is { id: string; fee: number } => l.fee !== null)
+  if (!paidLessons.length) return []
+
+  const lessonIds = paidLessons.map((l) => l.id)
+
+  const { data: lessonRiders, error: lrError } = await supabase
+    .from('lesson_riders')
+    .select('lesson_id, rider_id')
+    .in('lesson_id', lessonIds)
+
+  if (lrError) throw lrError
+
+  if (!(lessonRiders ?? []).length) return []
+
+  const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
+
+  const { data: riders, error: ridersError } = await supabase
+    .from('riders')
+    .select('id, name')
+    .in('id', riderIds)
+
+  if (ridersError) throw ridersError
+
+  const incomeMap = new Map<string, number>()
+
+  for (const lesson of paidLessons) {
+    const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
+    if (!participants.length) continue
+    const split = lesson.fee / participants.length
+    for (const { rider_id } of participants) {
+      incomeMap.set(rider_id, (incomeMap.get(rider_id) ?? 0) + split)
+    }
+  }
+
+  return Array.from(incomeMap.entries())
+    .map(([riderId, totalIncome]) => ({
+      riderId,
+      riderName: (riders ?? []).find((r) => r.id === riderId)?.name ?? riderId,
+      totalIncome,
+    }))
+    .sort((a, b) => b.totalIncome - a.totalIncome)
+}
+
+export async function getUpcomingLessons(
+  barnId: string,
+  from: string,
+  to: string
+): Promise<LessonWithDetails[]> {
+  const supabase = await createClient()
+  const { data: lessons, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .gte('lesson_at', from)
+    .lt('lesson_at', to)
+    .order('lesson_at', { ascending: true })
+
+  if (lessonsError) throw lessonsError
+  if (!lessons.length) return []
+
+  const lessonIds = lessons.map((l) => l.id)
+  const instructorIds = [...new Set(lessons.map((l) => l.instructor_id).filter(Boolean))] as string[]
+
+  const [
+    { data: lessonHorses, error: lessonHorsesError },
+    { data: lessonRiders, error: lessonRidersError },
+  ] = await Promise.all([
+    supabase.from('lesson_horses').select('lesson_id, horse_id').in('lesson_id', lessonIds),
+    supabase.from('lesson_riders').select('lesson_id, rider_id').in('lesson_id', lessonIds),
+  ])
+
+  if (lessonHorsesError) throw lessonHorsesError
+  if (lessonRidersError) throw lessonRidersError
+
+  const horseIds = [...new Set((lessonHorses ?? []).map((lh) => lh.horse_id))]
+  const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
+
+  const [
+    { data: horses, error: horsesError },
+    { data: riders, error: ridersError },
+    { data: profiles, error: profilesError },
+  ] = await Promise.all([
+    horseIds.length
+      ? supabase.from('horses').select('id, name').in('id', horseIds)
+      : Promise.resolve({ data: [], error: null }),
+    riderIds.length
+      ? supabase.from('riders').select('id, name').in('id', riderIds)
+      : Promise.resolve({ data: [], error: null }),
+    instructorIds.length
+      ? supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  if (horsesError) throw horsesError
+  if (ridersError) throw ridersError
+  if (profilesError) throw profilesError
+
+  return lessons.map((lesson) => {
+    const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
+    const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
+    const horseNames = horseJunctionRows
+      .map((lh) => (horses ?? []).find((h) => h.id === lh.horse_id)?.name)
+      .filter((name): name is string => Boolean(name))
+    const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
+    const riderNames = riderJunctionRows
+      .map((lr) => (riders ?? []).find((r) => r.id === lr.rider_id)?.name)
+      .filter((name): name is string => Boolean(name))
+    return {
+      ...lesson,
+      instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
+      horse_names: horseNames,
+      horse_count: horseJunctionRows.length,
+      rider_names: riderNames,
+      rider_count: riderJunctionRows.length,
+    }
+  })
+}
+
+export async function updateLessonWithParticipants(params: {
+  lessonId: string
+  barnId: string
+  lessonAt: string
+  instructorId: string | null
+  fee: number | null
+  lessonType: LessonType
+  jumping: boolean
+  paymentType: PaymentType | null
+  tierName: string
+  horseIds: string[]
+  exertionLevels: number[]
+  riderIds: string[]
+}): Promise<Lesson> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('update_lesson_with_participants', {
+    p_lesson_id: params.lessonId,
+    p_barn_id: params.barnId,
+    p_lesson_at: params.lessonAt,
+    p_instructor_id: params.instructorId,
+    p_fee: params.fee,
+    p_lesson_type: params.lessonType,
+    p_jumping: params.jumping,
+    p_payment_type: params.paymentType,
+    p_tier_name: params.tierName,
+    p_horse_ids: params.horseIds,
+    p_exertion_levels: params.exertionLevels,
+    p_rider_ids: params.riderIds,
+  })
+  if (error) throw error
+  return data as Lesson
+}
+
+export async function updateLesson(
+  lessonId: string,
+  barnId: string,
+  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'payment_type' | 'tier_name'>>
+): Promise<Lesson> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lessons')
+    .update(updates)
+    .eq('id', lessonId)
+    .eq('barn_id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  if (!data) throw new Error('lesson not found')
   return data
 }
