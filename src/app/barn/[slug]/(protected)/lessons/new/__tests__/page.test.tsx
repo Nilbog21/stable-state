@@ -146,6 +146,16 @@ describe('LessonNewPage', () => {
     expect(screen.queryByLabelText(/instructor/i)).toBeNull()
   })
 
+  it('should_display_trainer_full_name_when_profile_is_found', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([
+      { user_id: 'user-1', first_name: 'John', last_name: 'Trainer', created_at: '2026-01-01' },
+    ])
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('John Trainer')).toBeDefined()
+  })
+
   it('should_render_instructor_select_when_user_is_a_manager', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
