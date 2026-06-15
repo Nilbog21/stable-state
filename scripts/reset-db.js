@@ -26,6 +26,8 @@ const DEV_HORSES = ['Apple', 'Butter', 'Clover'];
 
 const DEV_TIER_NAME = 'Normal Tier';
 const DEV_TIER_PRICE = 100;
+const DEV_TIER_2_NAME = 'Premium Tier';
+const DEV_TIER_2_PRICE = 150;
 
 // Returns a Date set to the given hour (UTC) offset by `days` days from `base`.
 function dayOffset(base, days, hour = 10) {
@@ -65,6 +67,16 @@ function buildLessonDates(now) {
     dates.push(dayOffset(now, i));
   }
   return dates;
+}
+
+function getLessonVariation(i, tier1, tier2) {
+  const useTier1 = i % 2 === 0;
+  return {
+    fee: useTier1 ? tier1.price : tier2.price,
+    tierName: useTier1 ? tier1.name : tier2.name,
+    jumping: useTier1,
+    exertionLevel: (i % 5) + 1,
+  };
 }
 
 function mustSucceed(result, label) {
@@ -163,6 +175,17 @@ async function run() {
       is_active: true,
     }),
     'insert lesson tier'
+  );
+
+  mustSucceed(
+    await supabase.from('lesson_tiers').insert({
+      barn_id: DEV_BARN_ID,
+      name: DEV_TIER_2_NAME,
+      price: DEV_TIER_2_PRICE,
+      is_default: false,
+      is_active: true,
+    }),
+    'insert lesson tier 2'
   );
 
   // Create trainer auth users
@@ -267,31 +290,40 @@ async function run() {
 
   // 34 lessons
   const lessonDates = buildLessonDates(now);
+  const tier1 = { name: DEV_TIER_NAME, price: DEV_TIER_PRICE };
+  const tier2 = { name: DEV_TIER_2_NAME, price: DEV_TIER_2_PRICE };
 
   for (let i = 0; i < lessonDates.length; i++) {
     const instructorId = trainerIds[i % trainerIds.length];
     const horseId = horseIds[i % horseIds.length];
     const riderRowId = riderRowIds[i % riderRowIds.length];
+    const { fee, jumping, exertionLevel } = getLessonVariation(i, tier1, tier2);
 
     mustSucceed(
       await supabase.rpc('create_lesson_with_participants', {
         p_barn_id: DEV_BARN_ID,
         p_instructor_id: instructorId,
         p_lesson_at: lessonDates[i].toISOString(),
-        p_fee: DEV_TIER_PRICE,
+        p_fee: fee,
         p_horse_ids: [horseId],
-        p_exertion_levels: [3],
+        p_exertion_levels: [exertionLevel],
         p_rider_ids: [riderRowId],
         p_lesson_type: 'normal',
-        p_jumping: false,
+        p_jumping: jumping,
       }),
       `insert lesson ${i}`
     );
   }
 
   mustSucceed(
-    await supabase.from('lessons').update({ tier_name: DEV_TIER_NAME }).eq('barn_id', DEV_BARN_ID),
-    'update lesson tier names'
+    await supabase.from('lessons').update({ tier_name: DEV_TIER_NAME })
+      .eq('barn_id', DEV_BARN_ID).eq('fee', DEV_TIER_PRICE),
+    'update lesson tier names tier 1'
+  );
+  mustSucceed(
+    await supabase.from('lessons').update({ tier_name: DEV_TIER_2_NAME })
+      .eq('barn_id', DEV_BARN_ID).eq('fee', DEV_TIER_2_PRICE),
+    'update lesson tier names tier 2'
   );
 
   console.log('Done. Dev database reset to known state:');
@@ -300,8 +332,8 @@ async function run() {
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`);
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`);
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}`);
-  console.log(`  Tier:     ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default)`);
-  console.log(`  Lessons:  34 (9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — each $${DEV_TIER_PRICE}`);
+  console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`);
+  console.log(`  Lessons:  34 (9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5`);
 }
 
 if (require.main === module) {
@@ -310,5 +342,5 @@ if (require.main === module) {
     process.exit(1);
   });
 } else {
-  module.exports = { buildLessonDates, mustSucceed };
+  module.exports = { buildLessonDates, mustSucceed, getLessonVariation };
 }
