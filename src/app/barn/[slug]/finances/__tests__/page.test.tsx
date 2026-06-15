@@ -343,4 +343,31 @@ describe('FinancesPage', () => {
     render(jsx)
     expect(screen.getByText('April 2026')).toBeDefined()
   })
+
+  it('should_link_prev_to_previous_year_when_viewing_january', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2025-12-01T00:00:00Z' }))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-01' }),
+    })
+    render(jsx)
+    const prevLink = screen.queryByText('←')
+    expect(prevLink).not.toBeNull()
+    expect(prevLink?.closest('a')?.getAttribute('href')).toBe('?month=2025-12')
+  })
+
+  it('should_link_next_to_next_year_when_viewing_december', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2025-12' }),
+    })
+    render(jsx)
+    const nextLink = screen.queryByText('→')
+    expect(nextLink).not.toBeNull()
+    expect(nextLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-01')
+  })
 })
