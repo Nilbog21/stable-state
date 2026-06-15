@@ -117,7 +117,8 @@ export async function submitLesson(
       jumping,
       tierName,
     })
-  } catch {
+  } catch (err) {
+    console.error('[submitLesson] createLessonWithParticipants failed:', err)
     return { error: 'Failed to submit lesson' }
   }
 
