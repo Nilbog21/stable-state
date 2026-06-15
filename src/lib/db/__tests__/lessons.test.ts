@@ -790,6 +790,7 @@ describe('createLessonWithParticipants', () => {
       p_rider_ids: ['rider-1'],
       p_lesson_type: 'normal',
       p_jumping: false,
+      p_tier_name: 'Custom',
     })
   })
 
@@ -856,6 +857,7 @@ describe('createLessonWithParticipants', () => {
       p_rider_ids: ['rider-1', 'rider-2'],
       p_lesson_type: 'group',
       p_jumping: false,
+      p_tier_name: 'Custom',
     })
   })
 

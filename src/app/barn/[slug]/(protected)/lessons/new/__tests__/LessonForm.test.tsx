@@ -376,4 +376,11 @@ describe('LessonForm', () => {
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.required).toBe(true)
   })
+
+  it('should_submit_empty_fee_when_non_custom_tier_has_null_price', () => {
+    const tier = createMockLessonTier({ name: 'Comp', price: null, is_default: true })
+    const { container } = render(<LessonForm {...baseProps} tiers={[tier]} />)
+    const hiddenFee = container.querySelector('input[name="fee"][type="hidden"]') as HTMLInputElement
+    expect(hiddenFee.value).toBe('')
+  })
 })

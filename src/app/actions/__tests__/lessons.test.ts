@@ -83,7 +83,7 @@ describe('submitLesson', () => {
   })
 
   it('should_create_lesson_with_instructor_set_to_current_user', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ barnId: 'barn-1', instructorId: 'user-1' })
@@ -91,7 +91,7 @@ describe('submitLesson', () => {
   })
 
   it('should_add_horse_to_lesson', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ horseIds: ['horse-1'], exertionLevels: [3] })
@@ -99,7 +99,7 @@ describe('submitLesson', () => {
   })
 
   it('should_add_rider_to_lesson', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ riderIds: ['rider-1'] })
@@ -107,7 +107,7 @@ describe('submitLesson', () => {
   })
 
   it('should_redirect_after_successful_submission', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
   })
@@ -150,7 +150,7 @@ describe('submitLesson', () => {
 
   it('should_return_error_when_createLessonWithParticipants_throws', async () => {
     vi.mocked(createLessonWithParticipants).mockRejectedValue(new Error('db error'))
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'Failed to submit lesson' })
     expect(redirect).not.toHaveBeenCalled()
@@ -166,6 +166,7 @@ describe('submitLesson', () => {
       rider_id: 'rider-1',
       lesson_at: '2026-05-17T10:00',
       instructor_id: 'trainer-99',
+      tier_name: 'Standard',
     })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
@@ -183,6 +184,7 @@ describe('submitLesson', () => {
       rider_id: 'rider-1',
       lesson_at: '2026-05-17T10:00',
       instructor_id: 'trainer-99',
+      tier_name: 'Standard',
     })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
@@ -196,6 +198,7 @@ describe('submitLesson', () => {
       rider_id: 'rider-1',
       lesson_at: '2026-05-17T10:00',
       instructor_id: 'trainer-99',
+      tier_name: 'Standard',
     })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
@@ -223,6 +226,7 @@ describe('submitLesson', () => {
       horse_id: 'horse-1',
       rider_id: 'rider-1',
       lesson_at: '2026-05-17T10:00',
+      tier_name: 'Standard',
     })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
@@ -231,7 +235,7 @@ describe('submitLesson', () => {
   })
 
   it('should_add_horse_to_lesson_for_each_selected_horse', async () => {
-    const fd = makeFormData({ horse_id: ['horse-1', 'horse-2'], rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: ['horse-1', 'horse-2'], rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ horseIds: ['horse-1', 'horse-2'], exertionLevels: [3, 3] })
@@ -242,7 +246,7 @@ describe('submitLesson', () => {
     const newHorse = { id: 'horse-new', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' }
     vi.mocked(createHorse).mockResolvedValue(newHorse)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createHorse).toHaveBeenCalledWith('barn-1', 'Blaze')
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
@@ -251,7 +255,7 @@ describe('submitLesson', () => {
   })
 
   it('should_pass_exertion_level_when_provided', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', 'exertion_horse-1': '5', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', 'exertion_horse-1': '5', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ horseIds: ['horse-1'], exertionLevels: [5] })
@@ -259,7 +263,7 @@ describe('submitLesson', () => {
   })
 
   it('should_default_exertion_level_to_3_when_not_provided_in_form', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ exertionLevels: [3] })
@@ -270,7 +274,7 @@ describe('submitLesson', () => {
     const newHorse = { id: 'horse-new', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' }
     vi.mocked(createHorse).mockResolvedValue(newHorse)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    const fd = makeFormData({ new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ exertionLevels: [4] })
@@ -285,7 +289,7 @@ describe('submitLesson', () => {
 
   it('should_return_error_when_non_manager_tries_to_create_new_horse', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'trainer', created_at: '2026-01-01T00:00:00Z' }))
-    const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ new_horse_name: 'Blaze', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized to add horses' })
     expect(createHorse).not.toHaveBeenCalled()
@@ -313,7 +317,7 @@ describe('submitLesson', () => {
     const newRider = { id: 'rider-new', barn_id: 'barn-1', name: 'Carol', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
     vi.mocked(createRider).mockResolvedValue(newRider)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createRider).toHaveBeenCalledWith('barn-1', 'Carol')
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
@@ -323,7 +327,7 @@ describe('submitLesson', () => {
 
   it('should_return_error_when_non_manager_tries_to_create_new_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockTrainerMembership, role: 'trainer' })
-    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized to add riders' })
     expect(createRider).not.toHaveBeenCalled()
@@ -354,7 +358,7 @@ describe('submitLesson', () => {
       { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ])
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'group', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ riderIds: ['rider-1', 'rider-2'] })
@@ -375,7 +379,7 @@ describe('submitLesson', () => {
     const newRider = { id: 'rider-new', barn_id: 'barn-1', name: 'Carol', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
     vi.mocked(createRider).mockResolvedValue(newRider)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ riderIds: ['rider-new'] })
@@ -427,7 +431,7 @@ describe('submitLesson', () => {
       { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ])
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'group', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ lessonType: 'group' })
@@ -435,7 +439,7 @@ describe('submitLesson', () => {
   })
 
   it('should_default_lesson_type_to_normal_when_not_provided', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ lessonType: 'normal' })
@@ -450,7 +454,7 @@ describe('submitLesson', () => {
   })
 
   it('should_pass_jumping_true_to_createLessonWithParticipants_when_jumping_form_field_is_true', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', jumping: 'true' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', jumping: 'true', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ jumping: true })
@@ -458,7 +462,7 @@ describe('submitLesson', () => {
   })
 
   it('should_pass_jumping_false_to_createLessonWithParticipants_when_jumping_form_field_is_absent', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ jumping: false })

@@ -11,6 +11,7 @@ export async function createLessonWithParticipants(params: {
   riderIds: string[]
   lessonType: LessonType
   jumping?: boolean
+  tierName?: string
 }): Promise<Lesson> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('create_lesson_with_participants', {
@@ -23,6 +24,7 @@ export async function createLessonWithParticipants(params: {
     p_rider_ids: params.riderIds,
     p_lesson_type: params.lessonType,
     p_jumping: params.jumping ?? false,
+    p_tier_name: params.tierName ?? 'Custom',
   })
   if (error) throw error
   return data as Lesson
