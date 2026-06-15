@@ -85,7 +85,7 @@ export async function submitLesson(
     }
   }
 
-  if (tierName === 'Custom' && !feeRaw) return { error: 'fee required for custom tier' }
+  if (formData.get('is_custom') === 'true' && !feeRaw) return { error: 'fee required for custom tier' }
 
   try {
     if (newHorseName) {

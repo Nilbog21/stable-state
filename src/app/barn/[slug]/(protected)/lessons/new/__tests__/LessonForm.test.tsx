@@ -353,7 +353,7 @@ describe('LessonForm', () => {
     const tier = createMockLessonTier({ name: 'Default Tier', is_default: true })
     render(<LessonForm {...baseProps} tiers={[tier]} />)
     const select = screen.getByRole('combobox', { name: /tier/i }) as HTMLSelectElement
-    expect(select.value).toBe('Default Tier')
+    expect(select.value).toBe(tier.id)
   })
 
   it('should_hide_fee_input_when_non_custom_tier_is_selected', () => {
@@ -365,14 +365,14 @@ describe('LessonForm', () => {
   it('should_show_fee_input_when_custom_tier_is_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
     render(<LessonForm {...baseProps} tiers={[tier]} />)
-    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 'Custom' } })
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     expect(screen.getByRole('spinbutton', { name: /fee/i })).toBeDefined()
   })
 
   it('should_require_fee_input_when_custom_tier_is_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
     render(<LessonForm {...baseProps} tiers={[tier]} />)
-    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 'Custom' } })
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.required).toBe(true)
   })

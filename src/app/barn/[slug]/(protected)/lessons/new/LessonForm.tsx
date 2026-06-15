@@ -21,6 +21,7 @@ export function LessonForm({
   currentUserId: string
   tiers: LessonTier[]
 }) {
+  const CUSTOM_ID = '__custom__'
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
@@ -31,7 +32,7 @@ export function LessonForm({
   const [checkedRiderIds, setCheckedRiderIds] = useState<Set<string>>(new Set())
   const [clientError, setClientError] = useState<string | null>(null)
   const [jumping, setJumping] = useState(false)
-  const [selectedTierName, setSelectedTierName] = useState<string>(defaultTier?.name ?? 'Custom')
+  const [selectedId, setSelectedId] = useState<string>(defaultTier?.id ?? CUSTOM_ID)
 
   if (tiers.length === 0) {
     return (
@@ -41,7 +42,8 @@ export function LessonForm({
     )
   }
 
-  const selectedTier = tiers.find(t => t.name === selectedTierName) ?? null
+  const isCustom = selectedId === CUSTOM_ID
+  const selectedTier = tiers.find(t => t.id === selectedId) ?? null
 
   function handleJumpingToggle(e: React.ChangeEvent<HTMLInputElement>) {
     const checked = e.target.checked
@@ -285,18 +287,19 @@ export function LessonForm({
         </label>
         <select
           id="tier_name"
-          name="tier_name"
-          value={selectedTierName}
-          onChange={e => setSelectedTierName(e.target.value)}
+          value={selectedId}
+          onChange={e => setSelectedId(e.target.value)}
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           {tiers.map(t => (
-            <option key={t.id} value={t.name}>{t.name}</option>
+            <option key={t.id} value={t.id}>{t.name}</option>
           ))}
-          <option value="Custom">Custom</option>
+          <option value={CUSTOM_ID}>Custom</option>
         </select>
+        <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
+        {isCustom && <input type="hidden" name="is_custom" value="true" />}
       </div>
-      {selectedTierName === 'Custom' ? (
+      {isCustom ? (
         <div className="flex flex-col gap-1">
           <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Fee
