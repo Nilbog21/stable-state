@@ -1,10 +1,21 @@
 'use client'
 
 import { useActionState, useState } from 'react'
-import type { Horse, LessonTier, Rider } from '@/lib/db/types'
-import { DateHourPicker } from './DateHourPicker'
+import type { Horse, LessonDetail, LessonTier, LessonType, Rider } from '@/lib/db/types'
+import { DateHourPicker } from './new/DateHourPicker'
+
+const CUSTOM_ID = '__custom__'
+
+function parseInitialDate(lessonAt: string): string {
+  return lessonAt.slice(0, 10)
+}
+
+function parseInitialHour(lessonAt: string): number {
+  return parseInt(lessonAt.slice(11, 13), 10)
+}
 
 export function LessonForm({
+  mode,
   horses,
   riders,
   isManager,
@@ -12,7 +23,9 @@ export function LessonForm({
   instructors,
   currentUserId,
   tiers,
+  initialLesson,
 }: {
+  mode: 'new' | 'edit'
   horses: Horse[]
   riders: Rider[]
   isManager: boolean
@@ -20,19 +33,55 @@ export function LessonForm({
   instructors: { userId: string; name: string }[]
   currentUserId: string
   tiers: LessonTier[]
+  initialLesson?: LessonDetail
 }) {
-  const CUSTOM_ID = '__custom__'
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
+
+  const initialTierByName =
+    mode === 'edit' && initialLesson
+      ? tiers.find(t => t.name === initialLesson.tier_name) ?? null
+      : null
+
+  const computedInitialSelectedId =
+    mode === 'edit'
+      ? (initialTierByName?.id ?? CUSTOM_ID)
+      : (defaultTier?.id ?? CUSTOM_ID)
+
+  const initialJumping = initialLesson?.jumping ?? false
+  const initialLessonType: LessonType = initialLesson?.lesson_type ?? 'normal'
+
+  const initialHorseIds = new Set(
+    (initialLesson?.lesson_horses ?? [])
+      .map(lh => lh.horses?.id)
+      .filter((id): id is string => Boolean(id))
+  )
+
+  const initialExertionMap = new Map(
+    (initialLesson?.lesson_horses ?? []).map(lh => [lh.horses?.id ?? '', lh.exertion_level])
+  )
+
+  const initialRiderIds = new Set(
+    (initialLesson?.lesson_riders ?? [])
+      .map(lr => lr.riders?.id)
+      .filter((id): id is string => Boolean(id))
+  )
+
+  const initialNormalRiderId =
+    mode === 'edit' ? (initialLesson?.lesson_riders[0]?.riders?.id ?? '') : ''
+
   const [state, formAction, pending] = useActionState(action, { error: null })
-  const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
-  const [exertionLevels, setExertionLevels] = useState<Map<string, number>>(new Map())
-  const [newHorseName, setNewHorseName] = useState('')
-  const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(3)
-  const [lessonType, setLessonType] = useState<'normal' | 'group'>('normal')
-  const [checkedRiderIds, setCheckedRiderIds] = useState<Set<string>>(new Set())
+  const [lessonType, setLessonType] = useState<LessonType>(initialLessonType)
+  const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(initialHorseIds)
+  const [exertionMap, setExertionMap] = useState<Map<string, number>>(initialExertionMap)
+  const [checkedRiderIds, setCheckedRiderIds] = useState<Set<string>>(initialRiderIds)
+  const [normalRiderId, setNormalRiderId] = useState(initialNormalRiderId)
   const [clientError, setClientError] = useState<string | null>(null)
-  const [jumping, setJumping] = useState(false)
-  const [selectedId, setSelectedId] = useState<string>(defaultTier?.id ?? CUSTOM_ID)
+  const [jumping, setJumping] = useState(initialJumping)
+  const [selectedId, setSelectedId] = useState<string>(computedInitialSelectedId)
+  const [newHorseName, setNewHorseName] = useState('')
+  const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
+  const [newRiderName, setNewRiderName] = useState('')
+  const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
 
   if (tiers.length === 0) {
     return (
@@ -49,7 +98,7 @@ export function LessonForm({
     const checked = e.target.checked
     setJumping(checked)
     if (checked) {
-      setExertionLevels(prev => {
+      setExertionMap(prev => {
         const next = new Map(prev)
         for (const [id, val] of next) {
           if (val < 4) next.set(id, 4)
@@ -60,29 +109,69 @@ export function LessonForm({
     }
   }
 
-  function handleLessonTypeSwitch(type: 'normal' | 'group') {
+  function handleLessonTypeSwitch(type: LessonType) {
     setLessonType(type)
     setClientError(null)
-    setCheckedRiderIds(new Set())
+    if (type === 'normal') {
+      setCheckedRiderIds(new Set())
+      if (mode === 'edit' && lessonType === 'group') setCheckedHorseIds(new Set())
+      if (mode === 'edit' && initialLessonType === 'group') setShowDowngradeWarning(true)
+    } else {
+      setShowDowngradeWarning(false)
+      setCheckedRiderIds(new Set())
+    }
   }
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setClientError(null)
+    const hasNewHorse = newHorseName.trim() !== ''
+    const hasNewRider = newRiderName.trim() !== ''
+    if (hasNewHorse && checkedHorseIds.size > 0) {
+      e.preventDefault()
+      setClientError('select a horse or add a new one, not both')
+      return
+    }
+    if (lessonType === 'normal' && !hasNewHorse && checkedHorseIds.size !== 1) {
+      e.preventDefault()
+      setClientError('normal lesson requires exactly 1 horse')
+      return
+    }
+    if (lessonType === 'normal' && normalRiderId === '' && !hasNewRider) {
+      e.preventDefault()
+      setClientError('a rider is required')
+      return
+    }
+    if (lessonType === 'normal' && normalRiderId !== '' && hasNewRider) {
+      e.preventDefault()
+      setClientError('select a rider or add a new one, not both')
+      return
+    }
+    if (lessonType === 'group' && !hasNewHorse && checkedHorseIds.size < 1) {
+      e.preventDefault()
+      setClientError('group lesson requires at least 1 horse')
+      return
+    }
     if (lessonType === 'group' && checkedRiderIds.size < 2) {
       e.preventDefault()
       setClientError('group lesson requires at least 2 riders')
     }
   }
 
+  const displayError = clientError || state.error
+
   return (
     <form action={formAction} onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
       <input type="hidden" name="lesson_type" value={lessonType} />
       <input type="hidden" name="jumping" value={jumping ? 'true' : 'false'} />
-      {(clientError || state.error) && (
+
+      {(showDowngradeWarning || displayError) && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
-          {clientError || state.error}
+          {showDowngradeWarning && !displayError
+            ? 'Switching to Normal will remove extra riders and horses. Select one rider and one horse to keep.'
+            : displayError}
         </p>
       )}
+
       <div className="flex gap-2">
         <button
           type="button"
@@ -99,6 +188,7 @@ export function LessonForm({
           Group
         </button>
       </div>
+
       <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
         <input
           type="checkbox"
@@ -109,7 +199,8 @@ export function LessonForm({
         />
         Jumping
       </label>
-      {isManager && (
+
+      {isManager ? (
         <div className="flex flex-col gap-1">
           <label htmlFor="instructor_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Instructor
@@ -118,7 +209,7 @@ export function LessonForm({
             id="instructor_id"
             name="instructor_id"
             required
-            defaultValue={currentUserId}
+            defaultValue={initialLesson?.instructor_id ?? currentUserId}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           >
             {instructors.map((i) => (
@@ -126,7 +217,16 @@ export function LessonForm({
             ))}
           </select>
         </div>
+      ) : (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Instructor</span>
+          <input type="hidden" name="instructor_id" value={currentUserId} />
+          <span className="text-sm text-zinc-900 dark:text-zinc-50">
+            {instructors.find(i => i.userId === currentUserId)?.name ?? currentUserId}
+          </span>
+        </div>
       )}
+
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
         <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Horse{' '}
@@ -139,21 +239,22 @@ export function LessonForm({
                 type="checkbox"
                 name="horse_id"
                 value={h.id}
+                checked={checkedHorseIds.has(h.id)}
                 onChange={(e) => {
+                  setCheckedHorseIds(prev => {
+                    const next = new Set(prev)
+                    if (e.target.checked) next.add(h.id)
+                    else next.delete(h.id)
+                    return next
+                  })
                   if (e.target.checked) {
-                    setCheckedHorseIds(prev => new Set(prev).add(h.id))
-                    setExertionLevels(prev => {
+                    setExertionMap(prev => {
                       const next = new Map(prev)
                       next.set(h.id, jumping ? 4 : 3)
                       return next
                     })
                   } else {
-                    setCheckedHorseIds(prev => {
-                      const next = new Set(prev)
-                      next.delete(h.id)
-                      return next
-                    })
-                    setExertionLevels(prev => {
+                    setExertionMap(prev => {
                       const next = new Map(prev)
                       next.delete(h.id)
                       return next
@@ -174,11 +275,12 @@ export function LessonForm({
                   aria-label={`Exertion level for ${h.name}`}
                   min="1"
                   max="5"
-                  value={exertionLevels.get(h.id) as number}
+                  value={exertionMap.get(h.id) as number}
                   onChange={(e) => {
-                    setExertionLevels(prev => {
+                    const val = parseInt(e.target.value, 10)
+                    setExertionMap(prev => {
                       const next = new Map(prev)
-                      next.set(h.id, parseInt(e.target.value, 10))
+                      next.set(h.id, Number.isNaN(val) ? 3 : val)
                       return next
                     })
                   }}
@@ -223,6 +325,7 @@ export function LessonForm({
           </>
         )}
       </fieldset>
+
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
         <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Rider{lessonType === 'group' ? 's' : ''}
@@ -235,6 +338,8 @@ export function LessonForm({
             <select
               id="rider_id"
               name="rider_id"
+              value={normalRiderId}
+              onChange={e => setNormalRiderId(e.target.value)}
               className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             >
               <option value="">Select a rider</option>
@@ -250,37 +355,42 @@ export function LessonForm({
                   type="text"
                   name="new_rider_name"
                   placeholder="Add new rider…"
+                  value={newRiderName}
+                  onChange={e => setNewRiderName(e.target.value)}
                   className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                 />
               </>
             )}
           </>
         ) : (
-          <>
-            {riders.map((r) => (
-              <label key={r.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-                <input
-                  type="checkbox"
-                  name="rider_id"
-                  value={r.id}
-                  checked={checkedRiderIds.has(r.id)}
-                  onChange={(e) => {
-                    setCheckedRiderIds(prev => {
-                      const next = new Set(prev)
-                      if (e.target.checked) next.add(r.id)
-                      else next.delete(r.id)
-                      return next
-                    })
-                  }}
-                  className="rounded border-zinc-300 dark:border-zinc-600"
-                />
-                {r.name}
-              </label>
-            ))}
-          </>
+          riders.map((r) => (
+            <label key={r.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+              <input
+                type="checkbox"
+                name="rider_id"
+                value={r.id}
+                checked={checkedRiderIds.has(r.id)}
+                onChange={(e) => {
+                  setCheckedRiderIds(prev => {
+                    const next = new Set(prev)
+                    if (e.target.checked) next.add(r.id)
+                    else next.delete(r.id)
+                    return next
+                  })
+                }}
+                className="rounded border-zinc-300 dark:border-zinc-600"
+              />
+              {r.name}
+            </label>
+          ))
         )}
       </fieldset>
-      <DateHourPicker />
+
+      <DateHourPicker
+        initialDate={mode === 'edit' && initialLesson ? parseInitialDate(initialLesson.lesson_at) : undefined}
+        initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
+      />
+
       <div className="flex flex-col gap-1">
         <label htmlFor="tier_name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Tier
@@ -301,10 +411,11 @@ export function LessonForm({
         <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
         {isCustom && <input type="hidden" name="is_custom" value="true" />}
       </div>
+
       {isCustom ? (
         <div className="flex flex-col gap-1">
           <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Fee
+            Fee{mode === 'edit' ? ' (optional)' : ''}
           </label>
           <input
             id="fee"
@@ -312,19 +423,44 @@ export function LessonForm({
             type="number"
             min="0"
             step="0.01"
-            required
+            required={mode === 'new'}
+            defaultValue={initialLesson?.fee ?? ''}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
       ) : (
         <input type="hidden" name="fee" value={selectedTier?.price ?? ''} />
       )}
+
+      {mode === 'edit' && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Payment type
+          </label>
+          <select
+            id="payment_type"
+            name="payment_type"
+            defaultValue={initialLesson?.payment_type ?? ''}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            <option value="">Unpaid</option>
+            <option value="venmo">Venmo</option>
+            <option value="zelle">Zelle</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="freshbooks">FreshBooks Invoice</option>
+          </select>
+        </div>
+      )}
+
       <button
         type="submit"
         disabled={pending}
         className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
-        {pending ? 'Submitting…' : 'Submit'}
+        {pending
+          ? (mode === 'edit' ? 'Saving…' : 'Submitting…')
+          : (mode === 'edit' ? 'Save' : 'Submit')}
       </button>
     </form>
   )

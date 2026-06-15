@@ -10,11 +10,12 @@ vi.mock('@/lib/db/barn-memberships', () => ({ getActiveTrainerMembershipsByBarn:
 vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
 vi.mock('@/lib/db/riders', () => ({ getRidersByBarn: vi.fn() }))
+vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn() }))
-vi.mock('../EditLessonForm', () => ({
-  EditLessonForm: () => <div data-testid="edit-lesson-form" />,
+vi.mock('../../../LessonForm', () => ({
+  LessonForm: () => <div data-testid="edit-lesson-form" />,
 }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -24,6 +25,7 @@ import { getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
+import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import EditLessonPage from '../page'
@@ -62,6 +64,7 @@ function setupDefaults() {
   vi.mocked(getProfilesByUserIds).mockResolvedValue([])
   vi.mocked(getHorsesByBarn).mockResolvedValue([])
   vi.mocked(getRidersByBarn).mockResolvedValue([])
+  vi.mocked(getAllTiersByBarn).mockResolvedValue([])
 }
 
 const params = Promise.resolve({ slug: 'green-acres', id: 'lesson-1' })
@@ -76,6 +79,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getProfilesByUserIds).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getRidersByBarn).mockReset()
+    vi.mocked(getAllTiersByBarn).mockReset()
     vi.mocked(createClient).mockReset()
     setupDefaults()
   })
@@ -179,6 +183,11 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
+
+  it('should_fetch_all_tiers_including_inactive', async () => {
+    await EditLessonPage({ params })
+    expect(getAllTiersByBarn).toHaveBeenCalledWith('barn-1')
   })
 
   it('should_include_trainer_names_in_instructor_list', async () => {

@@ -8,7 +8,7 @@ import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { submitLesson } from '@/app/actions/lessons'
-import { LessonForm } from './LessonForm'
+import { LessonForm } from '../LessonForm'
 
 export default async function LessonNewPage({
   params,
@@ -38,7 +38,7 @@ export default async function LessonNewPage({
 
   const isManager = membership?.role === 'manager'
 
-  let instructors: { userId: string; name: string }[] = []
+  let instructors: { userId: string; name: string }[]
 
   if (isManager) {
     const trainerMemberships = await getActiveTrainerMembershipsByBarn(barn.id)
@@ -55,6 +55,13 @@ export default async function LessonNewPage({
       { userId: user.id, name: nameOf(user.id) },
       ...trainerMemberships.map((m) => ({ userId: m.user_id, name: nameOf(m.user_id) })),
     ]
+  } else {
+    const profiles = await getProfilesByUserIds([user.id])
+    const nameOf = (userId: string) => {
+      const p = profiles.find((p) => p.user_id === userId)
+      return p ? `${p.first_name} ${p.last_name}` : userId
+    }
+    instructors = [{ userId: user.id, name: nameOf(user.id) }]
   }
 
   const submit = submitLesson.bind(null, barn.id, barn.slug)
@@ -65,6 +72,7 @@ export default async function LessonNewPage({
         New Lesson
       </h1>
       <LessonForm
+        mode="new"
         horses={horses}
         riders={riders}
         action={submit}

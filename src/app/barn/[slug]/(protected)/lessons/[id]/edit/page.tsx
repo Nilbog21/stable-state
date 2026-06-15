@@ -7,8 +7,9 @@ import { getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
+import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { updateLessonAction } from '@/app/actions/lessons'
-import { EditLessonForm } from './EditLessonForm'
+import { LessonForm } from '../../LessonForm'
 
 export default async function EditLessonPage({
   params,
@@ -49,9 +50,10 @@ export default async function EditLessonPage({
     ...trainerMemberships.map((m) => ({ userId: m.user_id, name: nameOf(m.user_id) })),
   ]
 
-  const [horses, riders] = await Promise.all([
+  const [horses, riders, tiers] = await Promise.all([
     getHorsesByBarn(barn.id),
     getRidersByBarn(barn.id),
+    getAllTiersByBarn(barn.id),
   ])
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
@@ -61,12 +63,15 @@ export default async function EditLessonPage({
       <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Edit Lesson
       </h1>
-      <EditLessonForm
-        lesson={lesson}
+      <LessonForm
+        mode="edit"
+        initialLesson={lesson}
         horses={horses}
         riders={riders}
+        isManager={true}
         instructors={instructors}
         currentUserId={user.id}
+        tiers={tiers}
         action={update}
       />
     </main>
