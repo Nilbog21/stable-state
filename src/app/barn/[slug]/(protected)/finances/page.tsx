@@ -3,7 +3,8 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
+import { OutstandingTable } from './OutstandingTable'
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -25,6 +26,7 @@ export function resolveFinancesMonth(
   startDate: Date
   endDate: Date
   monthLabel: string
+  isCurrentMonth: boolean
   prevMonthUrl: string | null
   nextMonthUrl: string | null
 } {
@@ -65,9 +67,7 @@ export function resolveFinancesMonth(
 
   const startDate = new Date(Date.UTC(year, month, 1))
   const isCurrentMonth = year === nowYear && month === nowMonth
-  const endDate = isCurrentMonth
-    ? now
-    : new Date(Date.UTC(year, month + 1, 1))
+  const endDate = new Date(Date.UTC(year, month + 1, 1))
 
   const monthLabel =
     new Date(Date.UTC(year, month, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' }) +
@@ -89,7 +89,7 @@ export function resolveFinancesMonth(
     nextMonthUrl = `?month=${pad4(nextYear)}-${pad2(nextMonth + 1)}`
   }
 
-  return { startDate, endDate, monthLabel, prevMonthUrl, nextMonthUrl }
+  return { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl }
 }
 
 export default async function FinancesPage({
@@ -118,20 +118,37 @@ export default async function FinancesPage({
   }
 
   const { month: monthParam } = await searchParams
-  const { startDate, endDate, monthLabel, prevMonthUrl, nextMonthUrl } =
+  const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ totalIncome, breakdown }, horseIncome, riderIncome] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, outstandingLessons] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
+    getOutstandingLessons(barn.id),
   ])
+
+  const outstandingTotal = outstandingLessons.reduce((sum, l) => sum + (l.fee ?? 0), 0)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {barn.name} — Finances
       </h1>
+
+      {outstandingLessons.length > 0 && (
+        <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
+          <p className="text-sm font-medium uppercase tracking-wide">
+            Outstanding
+          </p>
+          <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
+            {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          </p>
+          <div className="mt-4">
+            <OutstandingTable outstandingLessons={outstandingLessons} barnId={barn.id} />
+          </div>
+        </section>
+      )}
 
       <div className="mb-8 flex items-center gap-4">
         {prevMonthUrl ? (
@@ -149,10 +166,10 @@ export default async function FinancesPage({
 
       <section className="mb-10">
         <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          {`Total income (${monthLabel})`}
+          {`Collected income (${monthLabel})`}
         </p>
         <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          {totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
         </p>
       </section>
 
@@ -179,9 +196,20 @@ export default async function FinancesPage({
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
       )}
 
+      {isCurrentMonth && (
+        <section className="mt-10">
+          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Pending income (from scheduled lessons)
+          </p>
+          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          </p>
+        </section>
+      )}
+
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Income by Horse
+          {`Income by Horse (${monthLabel}) (Collected, Pending, Outstanding)`}
         </h2>
         {horseIncome.length > 0 ? (
           <table className="w-full">
@@ -216,7 +244,7 @@ export default async function FinancesPage({
 
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Income by Rider
+          {`Income by Rider (${monthLabel}) (Collected, Pending, Outstanding)`}
         </h2>
         {riderIncome.length > 0 ? (
           <table className="w-full">
