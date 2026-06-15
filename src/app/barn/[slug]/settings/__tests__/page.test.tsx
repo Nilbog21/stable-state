@@ -13,6 +13,11 @@ vi.mock('../actions', () => ({
   setDefaultTierAction: vi.fn(),
   deactivateTierAction: vi.fn(),
 }))
+vi.mock('../DeactivateButton', () => ({
+  DeactivateButton: ({ action }: { action: () => Promise<void> }) => (
+    <form action={action}><button type="submit">Deactivate</button></form>
+  ),
+}))
 
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => { throw new Error('NEXT_NOT_FOUND') })
@@ -166,6 +171,49 @@ describe('SettingsPage', () => {
       .getAllByDisplayValue('')
       .filter((el) => (el as HTMLInputElement).name === 'price' && !(el as HTMLInputElement).id)
     expect(priceInputs.length).toBe(1)
+  })
+
+  it('should_render_save_button_for_active_tier', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /^save$/i })).toBeDefined()
+  })
+
+  it('should_not_render_save_button_for_inactive_tier', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: false }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull()
+  })
+
+  it('should_render_disabled_name_input_for_inactive_tier', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: false }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const input = screen.getByDisplayValue('Standard') as HTMLInputElement
+    expect(input.disabled).toBe(true)
   })
 
   it('should_display_error_message_when_error_search_param_matches_tier_id', async () => {
