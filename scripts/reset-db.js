@@ -37,6 +37,13 @@ function dayOffset(base, days, hour = 10) {
 
 function buildLessonDates(now) {
   const dates = [];
+  // 3 lessons each in the 3 months prior to the current month
+  for (let m = 3; m >= 1; m--) {
+    const monthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - m, 1));
+    dates.push(dayOffset(monthStart, 4));
+    dates.push(dayOffset(monthStart, 11));
+    dates.push(dayOffset(monthStart, 18));
+  }
   // 10 older than one week: T-17 through T-8
   for (let i = 17; i >= 8; i--) {
     dates.push(dayOffset(now, -i));
@@ -130,8 +137,11 @@ async function run() {
 
   console.log('Re-seeding dev fixtures…');
 
+  const now = new Date();
+  const barnCreatedAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1)).toISOString();
+
   mustSucceed(
-    await supabase.from('barns').insert({ id: DEV_BARN_ID, name: DEV_BARN_NAME, slug: DEV_BARN_SLUG }),
+    await supabase.from('barns').insert({ id: DEV_BARN_ID, name: DEV_BARN_NAME, slug: DEV_BARN_SLUG, created_at: barnCreatedAt }),
     'insert barn'
   );
 
@@ -255,8 +265,8 @@ async function run() {
     horseIds.push(result.id);
   }
 
-  // 25 lessons
-  const lessonDates = buildLessonDates(new Date());
+  // 34 lessons
+  const lessonDates = buildLessonDates(now);
 
   for (let i = 0; i < lessonDates.length; i++) {
     const instructorId = trainerIds[i % trainerIds.length];
@@ -291,7 +301,7 @@ async function run() {
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`);
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}`);
   console.log(`  Tier:     ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default)`);
-  console.log(`  Lessons:  25 (10 older than 1 week, 10 within past week, 5 next week) — each $${DEV_TIER_PRICE}`);
+  console.log(`  Lessons:  34 (9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — each $${DEV_TIER_PRICE}`);
 }
 
 if (require.main === module) {
