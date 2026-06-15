@@ -113,10 +113,8 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_show_client_error_when_group_submitted_with_fewer_than_two_riders', () => {
     const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
-    // switch to normal then back to group so no riders are checked; horses also get cleared
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
-    // re-check horse to satisfy group horse requirement
     const horseCheckbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     fireEvent.click(horseCheckbox)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
@@ -313,8 +311,6 @@ describe('LessonForm (edit mode)', () => {
     expect(screen.queryByText('Exertion (1–5)')).toBeNull()
   })
 
-  // — new tests for edit-mode behaviors previously untested —
-
   it('should_render_jumping_checkbox_in_edit_mode', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByRole('checkbox', { name: /jumping/i })).not.toBeNull()
@@ -362,7 +358,6 @@ describe('LessonForm (edit mode)', () => {
   })
 
   it('should_show_fee_input_when_custom_tier_selected_in_edit_mode', () => {
-    // normalLesson.tier_name = 'Custom' does not match mockTier.name = 'Standard' → CUSTOM_ID
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByRole('spinbutton', { name: /fee/i })).not.toBeNull()
   })
@@ -384,7 +379,6 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_show_saving_text_while_pending_in_edit_mode', async () => {
     const pendingAction = vi.fn().mockImplementation(() => new Promise(() => {}))
-    // normalLesson has 1 horse and 1 rider pre-populated, so validation passes
     render(<LessonForm {...baseProps} action={pendingAction} />)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
     fireEvent.submit(form)

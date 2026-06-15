@@ -7,7 +7,7 @@ import { getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
-import { getTiersByBarn } from '@/lib/db/lesson-tiers'
+import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { updateLessonAction } from '@/app/actions/lessons'
 import { LessonForm } from '../../LessonForm'
 
@@ -53,7 +53,7 @@ export default async function EditLessonPage({
   const [horses, riders, tiers] = await Promise.all([
     getHorsesByBarn(barn.id),
     getRidersByBarn(barn.id),
-    getTiersByBarn(barn.id),
+    getAllTiersByBarn(barn.id),
   ])
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)

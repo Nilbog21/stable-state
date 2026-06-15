@@ -131,8 +131,10 @@ export async function updateLessonAction(
   prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const horseIds = formData.getAll('horse_id') as string[]
-  const riderIds = formData.getAll('rider_id') as string[]
+  let horseIds = formData.getAll('horse_id') as string[]
+  let riderIds = formData.getAll('rider_id') as string[]
+  const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
+  const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
   const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
@@ -143,8 +145,10 @@ export async function updateLessonAction(
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
 
-  if (horseIds.length === 0) return { error: 'horse required' }
-  if (lessonType === 'normal' && riderIds.length === 0) return { error: 'rider required' }
+  if (horseIds.length === 0 && !newHorseName) return { error: 'horse required' }
+  if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
+  if (lessonType === 'normal' && riderIds.length === 0 && !newRiderName) return { error: 'rider required' }
+  if (newRiderName && riderIds.length > 0) return { error: 'select a rider or add a new one, not both' }
   if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
@@ -172,6 +176,7 @@ export async function updateLessonAction(
   const exertionLevels = new Map<string, number>(
     horseIds.map(id => [id, parseExertionLevel(formData.get(`exertion_${id}`))])
   )
+  const newHorseExertionLevel = parseExertionLevel(formData.get('new_horse_exertion_level'))
 
   const [barnHorses, barnRiders] = await Promise.all([
     getHorsesByBarn(barnId),
@@ -189,6 +194,17 @@ export async function updateLessonAction(
   }
 
   try {
+    if (newHorseName) {
+      const horse = await createHorse(barnId, newHorseName)
+      horseIds = [...horseIds, horse.id]
+      exertionLevels.set(horse.id, newHorseExertionLevel)
+    }
+
+    if (newRiderName) {
+      const rider = await createRider(barnId, newRiderName)
+      riderIds = [rider.id]
+    }
+
     await updateLessonWithParticipants({
       lessonId,
       barnId,
