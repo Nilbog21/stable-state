@@ -57,7 +57,7 @@ describe('OutstandingTable', () => {
 
   it('should_show_dash_for_null_fee', () => {
     render(<OutstandingTable outstandingLessons={[lessonNullFee]} barnId="barn-1" />)
-    expect(screen.getByText('—')).toBeDefined()
+    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
   })
 
   it('should_call_updatePaymentTypeAction_on_payment_type_change', async () => {
@@ -89,5 +89,11 @@ describe('OutstandingTable', () => {
   it('should_render_empty_state_when_no_outstanding_lessons', () => {
     render(<OutstandingTable outstandingLessons={[]} barnId="barn-1" />)
     expect(screen.queryByRole('combobox')).toBeNull()
+  })
+
+  it('should_show_dash_when_rider_names_is_empty', () => {
+    const lessonNoRiders = { ...lesson, rider_names: [] }
+    render(<OutstandingTable outstandingLessons={[lessonNoRiders]} barnId="barn-1" />)
+    expect(screen.getByText('—')).toBeDefined()
   })
 })

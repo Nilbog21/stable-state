@@ -4,6 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
+import { OutstandingTable } from './OutstandingTable'
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -121,11 +122,13 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ totalIncome, breakdown }, horseIncome, riderIncome] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, outstandingLessons, breakdown }, horseIncome, riderIncome] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
   ])
+
+  const outstandingTotal = outstandingLessons.reduce((sum, l) => sum + (l.fee ?? 0), 0)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -149,10 +152,10 @@ export default async function FinancesPage({
 
       <section className="mb-10">
         <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          {`Total income (${monthLabel})`}
+          {`Collected income (${monthLabel})`}
         </p>
         <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          {totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
         </p>
       </section>
 
@@ -178,6 +181,27 @@ export default async function FinancesPage({
       ) : (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
       )}
+
+      <section className="mt-10">
+        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Pending income
+        </p>
+        <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+        </p>
+      </section>
+
+      <section className={`mt-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
+        <p className="text-sm font-medium uppercase tracking-wide">
+          Outstanding
+        </p>
+        <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
+          {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+        </p>
+        <div className="mt-4">
+          <OutstandingTable outstandingLessons={outstandingLessons} barnId={barn.id} />
+        </div>
+      </section>
 
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">

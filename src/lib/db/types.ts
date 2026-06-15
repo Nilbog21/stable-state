@@ -104,8 +104,19 @@ export interface LessonRider {
   rider_id: string
 }
 
+export interface OutstandingLesson {
+  id: string
+  barn_id: string
+  lesson_at: string
+  instructor_name: string | null
+  rider_names: string[]
+  fee: number | null
+}
+
 export interface FinancialSummary {
-  totalIncome: number
+  collectedIncome: number
+  pendingIncome: number
+  outstandingLessons: OutstandingLesson[]
   breakdown: { fee: number; lessonCount: number; subtotal: number }[]
 }
 

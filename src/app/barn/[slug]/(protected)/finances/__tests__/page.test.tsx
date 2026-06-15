@@ -9,12 +9,13 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
 vi.mock('@/lib/db/lessons', () => ({ getFinancialSummary: vi.fn(), getHorseIncomeSummary: vi.fn(), getRiderIncomeSummary: vi.fn() }))
+vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
 }))
-vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
+vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect, useRouter: vi.fn(() => ({ refresh: vi.fn() })) }))
 
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -32,7 +33,7 @@ describe('FinancesPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
-    vi.mocked(getFinancialSummary).mockResolvedValue({ totalIncome: 0, breakdown: [] })
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, outstandingLessons: [], breakdown: [] })
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([])
   })
@@ -71,9 +72,11 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/green acres/i)).toBeDefined()
   })
 
-  it('should_display_total_income', async () => {
+  it('should_display_collected_income', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
-      totalIncome: 225,
+      collectedIncome: 225,
+      pendingIncome: 0,
+      outstandingLessons: [],
       breakdown: [
         { fee: 75, lessonCount: 1, subtotal: 75 },
         { fee: 50, lessonCount: 3, subtotal: 150 },
@@ -86,7 +89,9 @@ describe('FinancesPage', () => {
 
   it('should_display_breakdown_table_rows', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
-      totalIncome: 350,
+      collectedIncome: 350,
+      pendingIncome: 0,
+      outstandingLessons: [],
       breakdown: [
         { fee: 50, lessonCount: 2, subtotal: 100 },
         { fee: 75, lessonCount: 2, subtotal: 150 },
@@ -99,7 +104,7 @@ describe('FinancesPage', () => {
   })
 
   it('should_display_empty_state_when_no_income', async () => {
-    vi.mocked(getFinancialSummary).mockResolvedValue({ totalIncome: 0, breakdown: [] })
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, outstandingLessons: [], breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText(/no lessons/i)).toBeDefined()
@@ -136,12 +141,12 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/no horse income/i)).toBeDefined()
   })
 
-  it('should_display_total_income_label_with_current_month_and_year', async () => {
+  it('should_display_collected_income_label_with_current_month_and_year', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/total income \(june 2026\)/i)).toBeDefined()
+    expect(screen.getByText(/collected income \(june 2026\)/i)).toBeDefined()
   })
 
   it('should_call_getFinancialSummary_with_first_day_of_current_month_as_start_date', async () => {
@@ -158,7 +163,7 @@ describe('FinancesPage', () => {
   it('should_display_empty_state_with_current_month_and_year', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
-    vi.mocked(getFinancialSummary).mockResolvedValue({ totalIncome: 0, breakdown: [] })
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, outstandingLessons: [], breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('No lessons in June 2026.')).toBeDefined()
@@ -453,6 +458,21 @@ describe('FinancesPage', () => {
       collectedIncome: 0,
       pendingIncome: 0,
       outstandingLessons: [],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const container = screen.getByText(/outstanding/i).closest('section')
+    expect(container?.className).not.toMatch(/amber/)
+  })
+
+  it('should_treat_null_fee_as_zero_in_outstanding_total', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      outstandingLessons: [
+        { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: null },
+      ],
       breakdown: [],
     } as any)
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
