@@ -275,4 +275,30 @@ describe('EditLessonForm', () => {
     fireEvent.submit(form)
     expect(action).not.toHaveBeenCalled()
   })
+
+  it('should_show_exertion_label_when_horse_is_pre_checked', () => {
+    render(<EditLessonForm {...baseProps} />)
+    expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
+  })
+
+  it('should_not_show_exertion_label_when_no_horse_is_checked', () => {
+    const lesson = { ...normalLesson, lesson_horses: [] }
+    render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    expect(screen.queryByText('Exertion (1–5)')).toBeNull()
+  })
+
+  it('should_show_exertion_label_when_unchecked_horse_is_checked', () => {
+    const lesson = { ...normalLesson, lesson_horses: [] }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
+    fireEvent.click(checkbox)
+    expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
+  })
+
+  it('should_hide_exertion_label_when_horse_is_unchecked', () => {
+    const { container } = render(<EditLessonForm {...baseProps} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
+    fireEvent.click(checkbox)
+    expect(screen.queryByText('Exertion (1–5)')).toBeNull()
+  })
 })
