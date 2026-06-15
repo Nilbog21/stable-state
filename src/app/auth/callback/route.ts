@@ -54,10 +54,27 @@ export async function GET(request: NextRequest) {
       const pending = memberships.filter(m => m.membership.status === 'pending')
 
       if (active.length === 1) {
-        return NextResponse.redirect(`${origin}/barn/${active[0].barn.slug}`)
+        const slug = active[0].barn.slug
+        const response = NextResponse.redirect(`${origin}/barn/${slug}`)
+        response.cookies.set(`barn_session_${slug}`, data.user!.id, {
+          httpOnly: true,
+          sameSite: 'lax',
+          secure: process.env.NODE_ENV === 'production',
+          path: `/barn/${slug}/`,
+        })
+        return response
       }
       if (active.length > 1) {
-        return NextResponse.redirect(`${origin}/barns`)
+        const response = NextResponse.redirect(`${origin}/barns`)
+        for (const { barn } of active) {
+          response.cookies.set(`barn_session_${barn.slug}`, data.user!.id, {
+            httpOnly: true,
+            sameSite: 'lax',
+            secure: process.env.NODE_ENV === 'production',
+            path: `/barn/${barn.slug}/`,
+          })
+        }
+        return response
       }
       if (pending.length === 1) {
         return NextResponse.redirect(`${origin}/barn/${pending[0].barn.slug}/pending`)
