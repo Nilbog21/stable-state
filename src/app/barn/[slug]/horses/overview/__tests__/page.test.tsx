@@ -21,8 +21,8 @@ const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', creat
 const mockMembership = { id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer' as const, status: 'active' as const, created_at: '' }
 
 const mockSummary = [
-  { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12 },
-  { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3 },
+  { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 0 },
+  { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
 ]
 
 function mockAuth(userId: string | null = 'user-1') {
@@ -112,8 +112,8 @@ describe('HorseOverviewPage', () => {
 
   it('should_sort_descending_by_total_exertion_by_default', async () => {
     vi.mocked(getHorseExertionSummary).mockResolvedValue([
-      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3 },
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 0 },
     ])
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     render(jsx)
@@ -125,8 +125,8 @@ describe('HorseOverviewPage', () => {
 
   it('should_sort_ascending_by_total_exertion_when_sort_is_asc', async () => {
     vi.mocked(getHorseExertionSummary).mockResolvedValue([
-      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3 },
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 0 },
     ])
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({ sort: 'asc' }) })
     render(jsx)

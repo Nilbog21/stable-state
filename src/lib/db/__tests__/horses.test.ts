@@ -128,11 +128,11 @@ describe('getHorseExertionSummary', () => {
   it('should_return_aggregated_lesson_count_and_total_exertion_per_horse', async () => {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorsesChain([horse1, horse2])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1' }, { id: 'lesson-2' }])
+      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }, { id: 'lesson-2', jumping: false }])
       if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { horse_id: 'horse-1', exertion_level: 4 },
-        { horse_id: 'horse-1', exertion_level: 2 },
-        { horse_id: 'horse-2', exertion_level: 3 },
+        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 4 },
+        { lesson_id: 'lesson-2', horse_id: 'horse-1', exertion_level: 2 },
+        { lesson_id: 'lesson-1', horse_id: 'horse-2', exertion_level: 3 },
       ])
       return makeLessonHorsesChain([])
     })
@@ -164,9 +164,9 @@ describe('getHorseExertionSummary', () => {
   it('should_include_horses_with_no_lesson_horses_entries_even_when_lessons_exist', async () => {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorsesChain([horse1, horse2])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1' }])
+      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }])
       if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { horse_id: 'horse-1', exertion_level: 5 },
+        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 5 },
       ])
       return makeLessonHorsesChain([])
     })
