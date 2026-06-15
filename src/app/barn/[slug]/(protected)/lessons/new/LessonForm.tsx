@@ -21,10 +21,26 @@ export function LessonForm({
 }) {
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
+  const [exertionLevels, setExertionLevels] = useState<Map<string, number>>(new Map())
   const [newHorseName, setNewHorseName] = useState('')
   const [lessonType, setLessonType] = useState<'normal' | 'group'>('normal')
   const [checkedRiderIds, setCheckedRiderIds] = useState<Set<string>>(new Set())
   const [clientError, setClientError] = useState<string | null>(null)
+  const [jumping, setJumping] = useState(false)
+
+  function handleJumpingToggle(e: React.ChangeEvent<HTMLInputElement>) {
+    const checked = e.target.checked
+    setJumping(checked)
+    if (checked) {
+      setExertionLevels(prev => {
+        const next = new Map(prev)
+        for (const [id, val] of next) {
+          if (val < 4) next.set(id, 4)
+        }
+        return next
+      })
+    }
+  }
 
   function handleLessonTypeSwitch(type: 'normal' | 'group') {
     setLessonType(type)
@@ -43,6 +59,7 @@ export function LessonForm({
   return (
     <form action={formAction} onSubmit={handleSubmit} className="flex w-full max-w-sm flex-col gap-4">
       <input type="hidden" name="lesson_type" value={lessonType} />
+      <input type="hidden" name="jumping" value={jumping ? 'true' : 'false'} />
       {(clientError || state.error) && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {clientError || state.error}
@@ -64,6 +81,16 @@ export function LessonForm({
           Group
         </button>
       </div>
+      <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+        <input
+          type="checkbox"
+          aria-label="Jumping"
+          checked={jumping}
+          onChange={handleJumpingToggle}
+          className="rounded border-zinc-300 dark:border-zinc-600"
+        />
+        Jumping
+      </label>
       {isManager && (
         <div className="flex flex-col gap-1">
           <label htmlFor="instructor_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -95,12 +122,25 @@ export function LessonForm({
                 name="horse_id"
                 value={h.id}
                 onChange={(e) => {
-                  setCheckedHorseIds(prev => {
-                    const next = new Set(prev)
-                    if (e.target.checked) next.add(h.id)
-                    else next.delete(h.id)
-                    return next
-                  })
+                  if (e.target.checked) {
+                    setCheckedHorseIds(prev => new Set(prev).add(h.id))
+                    setExertionLevels(prev => {
+                      const next = new Map(prev)
+                      next.set(h.id, jumping ? 4 : 3)
+                      return next
+                    })
+                  } else {
+                    setCheckedHorseIds(prev => {
+                      const next = new Set(prev)
+                      next.delete(h.id)
+                      return next
+                    })
+                    setExertionLevels(prev => {
+                      const next = new Map(prev)
+                      next.delete(h.id)
+                      return next
+                    })
+                  }
                 }}
                 className="rounded border-zinc-300 dark:border-zinc-600"
               />
@@ -113,7 +153,14 @@ export function LessonForm({
                 aria-label={`Exertion level for ${h.name}`}
                 min="1"
                 max="5"
-                defaultValue={3}
+                value={exertionLevels.get(h.id) as number}
+                onChange={(e) => {
+                  setExertionLevels(prev => {
+                    const next = new Map(prev)
+                    next.set(h.id, parseInt(e.target.value, 10))
+                    return next
+                  })
+                }}
                 required
                 className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
