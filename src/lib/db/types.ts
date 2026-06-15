@@ -116,7 +116,6 @@ export interface OutstandingLesson {
 export interface FinancialSummary {
   collectedIncome: number
   pendingIncome: number
-  outstandingLessons: OutstandingLesson[]
   breakdown: { fee: number; lessonCount: number; subtotal: number }[]
 }
 

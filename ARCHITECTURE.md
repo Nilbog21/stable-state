@@ -79,7 +79,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `/barn/[slug]/horses` | manager | |
 | `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days, sortable asc/desc |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
-| `/barn/[slug]/finances` | manager | Income summary with `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); three sections: **Collected income** (`payment_type IS NOT NULL`), **Pending income** (future unpaid lessons with fee), **Outstanding** (past unpaid lessons with non-zero fee — inline payment-type dropdown via `OutstandingTable` Client Component); includes fee-tier breakdown, income by horse, income by rider |
+| `/barn/[slug]/finances` | manager | **Outstanding** section (all-time past unpaid lessons with non-zero fee — inline payment-type dropdown via `OutstandingTable` Client Component) appears above the month selector and is hidden entirely when there are no outstanding lessons. Below it: `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); **Collected income** (`payment_type IS NOT NULL`), **Pending income** (future unpaid lessons with fee); fee-tier breakdown, income by horse, income by rider |
 | `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
 | `/barn/[slug]/settings` | manager | Tier CRUD: list all tiers (active + inactive), add tier, edit name/price, set default, deactivate (blocked if default) |
 | `/login` | All | Sign-in page; displays Supabase connection status dot (green = `NEXT_PUBLIC_SUPABASE_URL` set, yellow = not set); shows no-barn guidance when `?no_barns=true` and user is authenticated |
@@ -95,7 +95,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
-| `lessons.ts` | Lesson + participant queries; `updateLesson`; financial summary (`getFinancialSummary` — returns `collectedIncome`, `pendingIncome`, `outstandingLessons[]`, `breakdown`); per-horse income breakdown (`getHorseIncomeSummary`); per-rider income breakdown (`getRiderIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
+| `lessons.ts` | Lesson + participant queries; `updateLesson`; financial summary (`getFinancialSummary` — returns `collectedIncome`, `pendingIncome`, `breakdown`); all-time outstanding lessons (`getOutstandingLessons` — returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); per-horse income breakdown (`getHorseIncomeSummary`); per-rider income breakdown (`getRiderIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
 | `profiles.ts` | User profiles |
 | `effective-membership.ts` | Dev-only role override (see below) |

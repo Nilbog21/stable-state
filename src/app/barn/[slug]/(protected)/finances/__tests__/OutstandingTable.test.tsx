@@ -36,6 +36,7 @@ const lessonNullFee = {
 beforeEach(() => {
   vi.mocked(updatePaymentTypeAction).mockReset()
   vi.mocked(updatePaymentTypeAction).mockResolvedValue({ error: null })
+  vi.mocked(useRouter).mockReset()
   vi.mocked(useRouter).mockReturnValue({ refresh: vi.fn() } as any)
 })
 

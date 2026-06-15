@@ -231,13 +231,25 @@ export async function getFinancialSummary(
     .sort(([a], [b]) => a - b)
     .map(([fee, lessonCount]) => ({ fee, lessonCount, subtotal: fee * lessonCount }))
 
-  const outstandingRaw = lessons.filter(
-    (l) => l.payment_type === null && new Date(l.lesson_at) <= now && l.fee !== 0
-  )
+  return { collectedIncome, pendingIncome, breakdown }
+}
 
-  if (outstandingRaw.length === 0) {
-    return { collectedIncome, pendingIncome, outstandingLessons: [], breakdown }
-  }
+export async function getOutstandingLessons(barnId: string): Promise<OutstandingLesson[]> {
+  const supabase = await createClient()
+  const now = new Date()
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .is('payment_type', null)
+    .lt('lesson_at', now.toISOString())
+
+  if (error) throw error
+
+  const outstandingRaw = (data ?? []).filter((l) => l.fee !== 0)
+
+  if (outstandingRaw.length === 0) return []
 
   const outstandingIds = outstandingRaw.map((l) => l.id)
   const instructorIds = [...new Set(outstandingRaw.map((l) => l.instructor_id).filter((id): id is string => id !== null))]
@@ -263,7 +275,7 @@ export async function getFinancialSummary(
 
   if (ridersError) throw ridersError
 
-  const outstandingLessons: OutstandingLesson[] = outstandingRaw.map((lesson) => {
+  return outstandingRaw.map((lesson) => {
     const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
     const rider_names = riderJunctionRows
@@ -278,8 +290,6 @@ export async function getFinancialSummary(
       fee: lesson.fee,
     }
   })
-
-  return { collectedIncome, pendingIncome, outstandingLessons, breakdown }
 }
 
 export async function getHorseIncomeSummary(

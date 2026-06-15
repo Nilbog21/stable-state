@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
 import { OutstandingTable } from './OutstandingTable'
 
 function pad2(n: number): string {
@@ -122,10 +122,11 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, outstandingLessons, breakdown }, horseIncome, riderIncome] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, outstandingLessons] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
+    getOutstandingLessons(barn.id),
   ])
 
   const outstandingTotal = outstandingLessons.reduce((sum, l) => sum + (l.fee ?? 0), 0)
@@ -135,6 +136,20 @@ export default async function FinancesPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {barn.name} — Finances
       </h1>
+
+      {outstandingLessons.length > 0 && (
+        <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
+          <p className="text-sm font-medium uppercase tracking-wide">
+            Outstanding
+          </p>
+          <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
+            {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          </p>
+          <div className="mt-4">
+            <OutstandingTable outstandingLessons={outstandingLessons} barnId={barn.id} />
+          </div>
+        </section>
+      )}
 
       <div className="mb-8 flex items-center gap-4">
         {prevMonthUrl ? (
@@ -189,18 +204,6 @@ export default async function FinancesPage({
         <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
           {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
         </p>
-      </section>
-
-      <section className={`mt-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
-        <p className="text-sm font-medium uppercase tracking-wide">
-          Outstanding
-        </p>
-        <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
-          {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-        </p>
-        <div className="mt-4">
-          <OutstandingTable outstandingLessons={outstandingLessons} barnId={barn.id} />
-        </div>
       </section>
 
       <section className="mt-12">
