@@ -48,7 +48,7 @@ const mockLessonDetail = {
   jumping: false,
   payment_type: null,
   tier_name: 'Custom',
-  profiles: { first_name: 'Jane', last_name: 'Smith' },
+  instructor_name: 'Jane Smith',
   lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
   lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
 }
@@ -150,7 +150,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_dash_when_instructor_is_null', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, profiles: null })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, instructor_name: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)

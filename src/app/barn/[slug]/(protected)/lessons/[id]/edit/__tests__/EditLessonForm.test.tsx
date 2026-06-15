@@ -20,7 +20,7 @@ const normalLesson: LessonDetail = {
   jumping: false,
   payment_type: null,
   tier_name: 'Custom',
-  profiles: { first_name: 'Jane', last_name: 'Smith' },
+  instructor_name: 'Jane Smith',
   lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
   lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
 }

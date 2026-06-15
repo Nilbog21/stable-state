@@ -36,9 +36,7 @@ export default async function LessonDetailPage({
     notFound()
   }
 
-  const instructorName = lesson.profiles
-    ? `${lesson.profiles.first_name} ${lesson.profiles.last_name}`
-    : '—'
+  const instructorName = lesson.instructor_name ?? '—'
 
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',

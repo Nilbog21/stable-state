@@ -103,7 +103,6 @@ export async function getLessonById(lessonId: string, barnId: string): Promise<L
     .from('lessons')
     .select(`
       *,
-      profiles ( first_name, last_name ),
       lesson_horses ( exertion_level, horses ( id, name ) ),
       lesson_riders ( riders ( id, name ) )
     `)
@@ -112,7 +111,20 @@ export async function getLessonById(lessonId: string, barnId: string): Promise<L
     .maybeSingle()
 
   if (error) throw error
-  return data
+  if (!data) return null
+
+  let instructor_name: string | null = null
+  if (data.instructor_id) {
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('user_id', data.instructor_id)
+      .maybeSingle()
+    if (profileError) throw profileError
+    if (profile) instructor_name = `${profile.first_name} ${profile.last_name}`
+  }
+
+  return { ...data, instructor_name }
 }
 
 export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
