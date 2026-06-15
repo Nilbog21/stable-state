@@ -210,4 +210,137 @@ describe('FinancesPage', () => {
     render(jsx)
     expect(screen.getByText('No rider income in June 2026.')).toBeDefined()
   })
+
+  it('should_use_explicit_valid_month_param', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-04' }),
+    })
+    expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
+      mockBarn.id,
+      new Date('2026-04-01T00:00:00.000Z'),
+      expect.any(Date)
+    )
+  })
+
+  it('should_default_to_current_month_when_month_param_is_invalid', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: 'garbage' }),
+    })
+    expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
+      mockBarn.id,
+      new Date('2026-06-01T00:00:00.000Z'),
+      expect.any(Date)
+    )
+  })
+
+  it('should_clamp_to_barn_creation_month_when_param_is_before_it', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-03-01T00:00:00Z' }))
+    await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2025-01' }),
+    })
+    expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
+      'barn-1',
+      new Date('2026-03-01T00:00:00.000Z'),
+      expect.any(Date)
+    )
+  })
+
+  it('should_clamp_to_current_month_when_param_is_in_future', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2030-01' }),
+    })
+    expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
+      mockBarn.id,
+      new Date('2026-06-01T00:00:00.000Z'),
+      expect.any(Date)
+    )
+  })
+
+  it('should_show_prev_link_when_not_at_barn_creation_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const prevLink = screen.queryByText('←')
+    expect(prevLink).not.toBeNull()
+    expect(prevLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-05')
+  })
+
+  it('should_not_show_prev_link_at_barn_creation_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('←')).toBeNull()
+  })
+
+  it('should_show_next_link_when_not_at_current_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-05' }),
+    })
+    render(jsx)
+    const nextLink = screen.queryByText('→')
+    expect(nextLink).not.toBeNull()
+    expect(nextLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-06')
+  })
+
+  it('should_not_show_next_link_at_current_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('→')).toBeNull()
+  })
+
+  it('should_set_endDate_to_now_for_current_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
+      mockBarn.id,
+      expect.any(Date),
+      new Date('2026-06-15T12:00:00.000Z')
+    )
+  })
+
+  it('should_set_endDate_to_last_moment_of_month_for_past_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-05' }),
+    })
+    expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
+      mockBarn.id,
+      expect.any(Date),
+      new Date('2026-05-31T23:59:59.999Z')
+    )
+  })
+
+  it('should_display_month_label_in_navigation', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-04' }),
+    })
+    render(jsx)
+    expect(screen.getByText('April 2026')).toBeDefined()
+  })
 })
