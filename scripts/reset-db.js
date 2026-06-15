@@ -24,6 +24,8 @@ const DEV_RIDERS = [
 
 const DEV_HORSES = ['Apple', 'Butter', 'Clover'];
 
+const DEV_PENDING_RIDER = { email: 'pending1@dev.local', firstName: 'Quinn', lastName: 'Pending' };
+
 const DEV_TIER_NAME = 'Normal Tier';
 const DEV_TIER_PRICE = 100;
 const DEV_TIER_2_NAME = 'Premium Tier';
@@ -109,6 +111,7 @@ async function run() {
   const devEmails = new Set([
     ...DEV_TRAINERS.map((t) => t.email),
     ...DEV_RIDERS.map((r) => r.email),
+    DEV_PENDING_RIDER.email,
   ]);
   let listPage = 1;
   let hasMore = true;
@@ -260,6 +263,33 @@ async function run() {
     'insert rider memberships'
   );
 
+  // Pending member (no seeded_accounts row — must not auto-activate)
+  const { data: pendingData, error: pendingErr } = await supabase.auth.admin.createUser({
+    email: DEV_PENDING_RIDER.email,
+    email_confirm: true,
+  });
+  if (pendingErr) throw new Error(`create pending rider: ${pendingErr.message}`);
+  const pendingUserId = pendingData.user.id;
+
+  mustSucceed(
+    await supabase.from('profiles').insert({
+      user_id: pendingUserId,
+      first_name: DEV_PENDING_RIDER.firstName,
+      last_name: DEV_PENDING_RIDER.lastName,
+    }),
+    'insert pending rider profile'
+  );
+
+  mustSucceed(
+    await supabase.from('barn_memberships').insert({
+      user_id: pendingUserId,
+      barn_id: DEV_BARN_ID,
+      role: 'rider',
+      status: 'pending',
+    }),
+    'insert pending rider membership'
+  );
+
   // Riders table rows (rider_id stored for lesson linking)
   const riderRowIds = [];
   for (let i = 0; i < DEV_RIDERS.length; i++) {
@@ -331,6 +361,7 @@ async function run() {
   console.log(`  Manager:  ${MANAGER_EMAIL} (via seeded_accounts — sign in with Google to activate)`);
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`);
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`);
+  console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`);
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}`);
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`);
   console.log(`  Lessons:  34 (9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5`);
@@ -342,5 +373,5 @@ if (require.main === module) {
     process.exit(1);
   });
 } else {
-  module.exports = { buildLessonDates, mustSucceed, getLessonVariation };
+  module.exports = { buildLessonDates, mustSucceed, getLessonVariation, DEV_PENDING_RIDER };
 }
