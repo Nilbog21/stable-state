@@ -66,9 +66,7 @@ export function resolveFinancesMonth(
 
   const startDate = new Date(Date.UTC(year, month, 1))
   const isCurrentMonth = year === nowYear && month === nowMonth
-  const endDate = isCurrentMonth
-    ? now
-    : new Date(Date.UTC(year, month + 1, 1))
+  const endDate = new Date(Date.UTC(year, month + 1, 1))
 
   const monthLabel =
     new Date(Date.UTC(year, month, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' }) +

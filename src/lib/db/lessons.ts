@@ -244,6 +244,7 @@ export async function getOutstandingLessons(barnId: string): Promise<Outstanding
     .eq('barn_id', barnId)
     .is('payment_type', null)
     .lt('lesson_at', now.toISOString())
+    .order('lesson_at', { ascending: true })
 
   if (error) throw error
 

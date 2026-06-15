@@ -2164,11 +2164,12 @@ describe('getOutstandingLessons', () => {
   })
 
   function makeOutstandingChain(data: unknown[] | null, error: Error | null = null) {
-    const mockLt = vi.fn().mockResolvedValue({ data, error })
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
     const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
     const mockEq = vi.fn().mockReturnValue({ is: mockIs })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockIs, mockLt }
+    return { select: mockSelect, mockEq, mockIs, mockLt, mockOrder }
   }
 
   function makeInChain(data: unknown[] | null, error: Error | null = null) {
@@ -2214,6 +2215,19 @@ describe('getOutstandingLessons', () => {
     await getOutstandingLessons('barn-1')
 
     expect(mockLt).toHaveBeenCalledWith('lesson_at', new Date('2026-06-15T12:00:00Z').toISOString())
+  })
+
+  it('should_sort_outstanding_lessons_by_lesson_at_ascending', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const { select, mockOrder } = makeOutstandingChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getOutstandingLessons('barn-1')
+
+    expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
   })
 
   it('should_return_empty_array_when_no_lessons_match', async () => {

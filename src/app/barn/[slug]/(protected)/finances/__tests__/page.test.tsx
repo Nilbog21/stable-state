@@ -314,14 +314,14 @@ describe('FinancesPage', () => {
     expect(screen.queryByText('→')).toBeNull()
   })
 
-  it('should_set_endDate_to_now_for_current_month', async () => {
+  it('should_set_endDate_to_end_of_month_for_current_month', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-06-15T12:00:00.000Z')
+      new Date('2026-07-01T00:00:00.000Z')
     )
   })
 
