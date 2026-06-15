@@ -83,10 +83,11 @@ function getLessonVariation(i, tier1, tier2) {
   };
 }
 
+// ~80% paid: every 5th lesson is unpaid; distribute paid slots evenly across all payment types
 function getPaymentType(i, isPast) {
   if (!isPast) return null;
   if (i % 5 === 4) return null;
-  return PAYMENT_TYPES[Math.floor(i / 5) % PAYMENT_TYPES.length];
+  return PAYMENT_TYPES[(i - Math.floor(i / 5)) % PAYMENT_TYPES.length];
 }
 
 function mustSucceed(result, label) {
@@ -381,7 +382,7 @@ async function run() {
   }
   for (const [pt, ids] of Object.entries(ptGroups)) {
     mustSucceed(
-      await supabase.from('lessons').update({ payment_type: pt }).in('id', ids),
+      await supabase.from('lessons').update({ payment_type: pt }).eq('barn_id', DEV_BARN_ID).in('id', ids),
       `update payment_type ${pt}`
     );
   }
