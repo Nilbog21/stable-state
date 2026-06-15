@@ -39,6 +39,7 @@ export default async function ProtectedBarnLayout({
       { href: `/barn/${slug}/riders`, label: 'Riders' },
       { href: `/barn/${slug}/finances`, label: 'Finances' },
       { href: `/barn/${slug}/approvals`, label: 'Approvals' },
+      { href: `/barn/${slug}/settings`, label: 'Settings' },
     ]
   } else if (membership.role === 'trainer') {
     navLinks = [
