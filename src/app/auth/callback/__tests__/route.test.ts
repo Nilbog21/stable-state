@@ -212,6 +212,38 @@ describe('GET /auth/callback', () => {
       expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/active-barn')
     })
 
+    it('should_set_barn_session_cookie_for_active_barn_when_mixed_active_and_pending_memberships', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'active-barn' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'pending-barn' }), membership: createMockMembership({ id: 'm2', status: 'pending' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith(
+        'barn_session_active-barn',
+        'user-1',
+        expect.objectContaining({ httpOnly: true, path: '/barn/active-barn/' })
+      )
+    })
+
+    it('should_not_set_barn_session_cookie_for_pending_barn_when_mixed_active_and_pending_memberships', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'active-barn' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'pending-barn' }), membership: createMockMembership({ id: 'm2', status: 'pending' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockCookiesSet).not.toHaveBeenCalledWith(
+        'barn_session_pending-barn',
+        expect.any(String),
+        expect.any(Object)
+      )
+    })
+
     it('should_set_barn_session_cookie_when_single_active_membership', async () => {
       vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
         { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
@@ -227,7 +259,7 @@ describe('GET /auth/callback', () => {
       )
     })
 
-    it('should_set_barn_session_cookies_for_all_barns_when_multiple_active_memberships', async () => {
+    it('should_set_barn_session_cookie_for_first_barn_when_multiple_active_memberships', async () => {
       vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
         { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
         { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'active' }) },
@@ -241,6 +273,17 @@ describe('GET /auth/callback', () => {
         'user-1',
         expect.objectContaining({ httpOnly: true, path: '/barn/barn-one/' })
       )
+    })
+
+    it('should_set_barn_session_cookie_for_second_barn_when_multiple_active_memberships', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'active' }) },
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
       expect(mockCookiesSet).toHaveBeenCalledWith(
         'barn_session_barn-two',
         'user-1',
