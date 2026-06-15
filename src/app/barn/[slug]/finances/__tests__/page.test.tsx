@@ -16,6 +16,7 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 }))
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
+import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
@@ -27,6 +28,7 @@ const trainerMembership = createMockMembership({ id: 'mem-trn', role: 'trainer' 
 
 describe('FinancesPage', () => {
   beforeEach(() => {
+    vi.mocked(createClient).mockReset()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
@@ -329,7 +331,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-05-31T23:59:59.999Z')
+      new Date('2026-06-01T00:00:00.000Z')
     )
   })
 
