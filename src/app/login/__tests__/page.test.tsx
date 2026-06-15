@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { setupAuth } from '@/test/mocks/auth'
 
@@ -70,5 +70,25 @@ describe('LoginPage', () => {
     const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
     render(jsx)
     expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull()
+  })
+
+  describe('connection status', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    it('should_show_connected_indicator_when_supabase_url_is_set', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
+      const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
+      render(jsx)
+      expect(screen.getByText(/supabase connected/i)).toBeDefined()
+    })
+
+    it('should_show_env_vars_not_set_when_supabase_url_is_missing', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '')
+      const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
+      render(jsx)
+      expect(screen.getByText(/supabase env vars not set/i)).toBeDefined()
+    })
   })
 })
