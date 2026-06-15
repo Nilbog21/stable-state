@@ -89,16 +89,16 @@ describe('LessonListItem', () => {
     expect(screen.getByText('$75 · Premium')).toBeDefined()
   })
 
-  it('should_show_custom_tier_name', () => {
+  it('should_show_custom_tier_name_when_fee_is_null', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, tier_name: 'Custom' }}
+        lesson={{ ...normalLesson, fee: null, tier_name: 'Custom' }}
         slug="green-acres"
         isManager={false}
         deleteAction={deleteAction}
       />
     )
-    expect(screen.getByText('$75 · Custom')).toBeDefined()
+    expect(screen.getByText('Custom')).toBeDefined()
   })
 
   it('should_show_tier_name_when_fee_is_null', () => {
