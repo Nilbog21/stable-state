@@ -73,6 +73,7 @@ function getLessonVariation(i, tier1, tier2) {
   const useTier1 = i % 2 === 0;
   return {
     fee: useTier1 ? tier1.price : tier2.price,
+    tierName: useTier1 ? tier1.name : tier2.name,
     jumping: useTier1,
     exertionLevel: (i % 5) + 1,
   };
