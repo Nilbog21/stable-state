@@ -141,8 +141,8 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 6 },
-      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 6, jumpingCount: 0 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
     ])
   })
 
@@ -157,7 +157,7 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
     ])
   })
 
@@ -175,8 +175,8 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 5 },
-      { id: 'horse-2', name: 'Shadow', lessonCount: 0, totalExertion: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 5, jumpingCount: 0 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
     ])
   })
 
