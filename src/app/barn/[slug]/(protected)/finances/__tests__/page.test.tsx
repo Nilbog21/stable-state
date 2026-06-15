@@ -110,9 +110,11 @@ describe('FinancesPage', () => {
   })
 
   it('should_display_income_by_horse_heading', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/income by horse/i)).toBeDefined()
+    expect(screen.getByText('Income by Horse (June 2026) (Collected, Pending, Outstanding)')).toBeDefined()
   })
 
   it('should_display_horse_name', async () => {
@@ -178,9 +180,11 @@ describe('FinancesPage', () => {
   })
 
   it('should_display_income_by_rider_heading', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/income by rider/i)).toBeDefined()
+    expect(screen.getByText('Income by Rider (June 2026) (Collected, Pending, Outstanding)')).toBeDefined()
   })
 
   it('should_display_rider_name', async () => {
@@ -411,7 +415,7 @@ describe('FinancesPage', () => {
   it('should_not_show_outstanding_section_when_no_outstanding_lessons', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText(/outstanding/i)).toBeNull()
+    expect(screen.queryByText('Outstanding')).toBeNull()
   })
 
   it('should_show_outstanding_section_when_outstanding_lessons_exist', async () => {
@@ -420,7 +424,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/outstanding/i)).toBeDefined()
+    expect(screen.getByText('Outstanding')).toBeDefined()
   })
 
   it('should_highlight_outstanding_section_when_total_is_greater_than_zero', async () => {
@@ -429,7 +433,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText(/outstanding/i).closest('section')
+    const container = screen.getByText('Outstanding').closest('section')
     expect(container?.className).toMatch(/amber/)
   })
 
@@ -439,7 +443,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText(/outstanding/i).closest('section')
+    const container = screen.getByText('Outstanding').closest('section')
     expect(container?.className).not.toMatch(/amber/)
   })
 
@@ -449,7 +453,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText(/outstanding/i).closest('section')
+    const container = screen.getByText('Outstanding').closest('section')
     expect(container?.className).not.toMatch(/amber/)
   })
 })
