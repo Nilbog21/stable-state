@@ -76,4 +76,40 @@ describe('LessonListItem', () => {
     )
     expect(screen.queryByText('Alice')).toBeNull()
   })
+
+  it('should_show_tier_name_alongside_fee', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, fee: 75, tier_name: 'Premium' }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.getByText('$75 · Premium')).toBeDefined()
+  })
+
+  it('should_show_custom_tier_name', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, tier_name: 'Custom' }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.getByText('$75 · Custom')).toBeDefined()
+  })
+
+  it('should_show_tier_name_when_fee_is_null', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, fee: null, tier_name: 'Group Rate' }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.getByText('Group Rate')).toBeDefined()
+  })
 })
