@@ -275,7 +275,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const prevLink = screen.queryByRole('link', { name: '←' })
+    const prevLink = screen.queryByRole('link', { name: '<' })
     expect(prevLink).not.toBeNull()
     expect(prevLink?.getAttribute('href')).toBe('?month=2026-05')
   })
@@ -286,7 +286,7 @@ describe('FinancesPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('link', { name: '←' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '<' })).toBeNull()
   })
 
   it('should_show_next_link_when_not_at_current_month', async () => {
@@ -297,7 +297,7 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-05' }),
     })
     render(jsx)
-    const nextLink = screen.queryByRole('link', { name: '→' })
+    const nextLink = screen.queryByRole('link', { name: '>' })
     expect(nextLink).not.toBeNull()
     expect(nextLink?.getAttribute('href')).toBe('?month=2026-06')
   })
@@ -307,7 +307,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('link', { name: '→' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '>' })).toBeNull()
   })
 
   it('should_set_endDate_to_now_for_current_month', async () => {
@@ -355,7 +355,7 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-01' }),
     })
     render(jsx)
-    const prevLink = screen.queryByRole('link', { name: '←' })
+    const prevLink = screen.queryByRole('link', { name: '<' })
     expect(prevLink).not.toBeNull()
     expect(prevLink?.getAttribute('href')).toBe('?month=2025-12')
   })
@@ -368,7 +368,7 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2025-12' }),
     })
     render(jsx)
-    const nextLink = screen.queryByRole('link', { name: '→' })
+    const nextLink = screen.queryByRole('link', { name: '>' })
     expect(nextLink).not.toBeNull()
     expect(nextLink?.getAttribute('href')).toBe('?month=2026-01')
   })
@@ -379,7 +379,7 @@ describe('FinancesPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-01-01T00:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const prevLink = screen.queryByRole('link', { name: '←' })
+    const prevLink = screen.queryByRole('link', { name: '<' })
     expect(prevLink?.className).toContain('border')
   })
 
@@ -391,7 +391,7 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-05' }),
     })
     render(jsx)
-    const nextLink = screen.queryByRole('link', { name: '→' })
+    const nextLink = screen.queryByRole('link', { name: '>' })
     expect(nextLink?.className).toContain('border')
   })
 
@@ -401,7 +401,7 @@ describe('FinancesPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText('←')).not.toBeNull()
+    expect(screen.queryByText('<')).not.toBeNull()
   })
 
   it('should_not_render_prev_placeholder_as_link_when_prev_arrow_absent', async () => {
@@ -410,7 +410,7 @@ describe('FinancesPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('link', { name: '←' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '<' })).toBeNull()
   })
 
   it('should_render_next_placeholder_text_when_next_arrow_absent', async () => {
@@ -418,7 +418,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText('→')).not.toBeNull()
+    expect(screen.queryByText('>')).not.toBeNull()
   })
 
   it('should_not_render_next_placeholder_as_link_when_next_arrow_absent', async () => {
@@ -426,6 +426,6 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('link', { name: '→' })).toBeNull()
+    expect(screen.queryByRole('link', { name: '>' })).toBeNull()
   })
 })
