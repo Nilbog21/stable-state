@@ -1,13 +1,14 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { createMockLessonTier } from '@/test/fixtures'
-import { LessonForm } from '../LessonForm'
+import { LessonForm } from '../../LessonForm'
 
 afterEach(cleanup)
 
 const sampleTier = createMockLessonTier({ is_default: true })
 
 const baseProps = {
+  mode: 'new' as const,
   horses: [],
   riders: [],
   isManager: false,
@@ -31,6 +32,12 @@ describe('LessonForm', () => {
   it('should_not_render_instructor_select_when_isManager_is_false', () => {
     render(<LessonForm {...baseProps} isManager={false} />)
     expect(screen.queryByLabelText(/instructor/i)).toBeNull()
+  })
+
+  it('should_render_instructor_name_read_only_when_is_manager_is_false', () => {
+    const instructors = [{ userId: 'user-1', name: 'Jane Doe' }]
+    render(<LessonForm {...baseProps} isManager={false} instructors={instructors} />)
+    expect(screen.queryByText('Jane Doe')).not.toBeNull()
   })
 
   it('should_render_instructor_select_when_isManager_is_true', () => {
@@ -69,7 +76,12 @@ describe('LessonForm', () => {
   // relies on useTransition reporting isPending before the never-resolving promise settles — may be flaky under load
   it('should_display_submitting_text_while_form_action_is_pending', async () => {
     const pendingAction = vi.fn().mockImplementation(() => new Promise(() => {}))
-    render(<LessonForm {...baseProps} action={pendingAction} />)
+    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const { container } = render(<LessonForm {...baseProps} action={pendingAction} horses={[horse]} riders={[rider]} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
+    const riderSelect = container.querySelector('select[name="rider_id"]') as HTMLSelectElement
+    fireEvent.change(riderSelect, { target: { value: 'r1' } })
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
     await waitFor(() => {
@@ -129,27 +141,32 @@ describe('LessonForm', () => {
   })
 
   it('should_show_error_when_group_mode_submitted_with_fewer_than_two_riders', () => {
+    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
     const riders = [
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    render(<LessonForm {...baseProps} riders={riders} />)
+    render(<LessonForm {...baseProps} horses={[horse]} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
     expect(screen.getByRole('alert').textContent).toContain('group lesson requires at least 2 riders')
   })
 
   it('should_not_call_action_when_group_mode_submitted_with_fewer_than_two_riders', () => {
+    const action = vi.fn().mockResolvedValue({ error: null })
+    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
     const riders = [
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    render(<LessonForm {...baseProps} riders={riders} />)
+    render(<LessonForm {...baseProps} action={action} horses={[horse]} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
-    expect(baseProps.action).not.toHaveBeenCalled()
+    expect(action).not.toHaveBeenCalled()
   })
 
   it('should_restore_single_rider_select_when_normal_button_clicked_from_group_mode', () => {
@@ -388,5 +405,29 @@ describe('LessonForm', () => {
     const { container } = render(<LessonForm {...baseProps} tiers={[tier]} />)
     const hiddenFee = container.querySelector('input[name="fee"][type="hidden"]') as HTMLInputElement
     expect(hiddenFee.value).toBe('')
+  })
+
+  it('should_show_error_when_normal_mode_submitted_with_no_horse_selected', () => {
+    render(<LessonForm {...baseProps} />)
+    const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
+    fireEvent.submit(form)
+    expect(screen.getByRole('alert').textContent).toContain('normal lesson requires exactly 1 horse')
+  })
+
+  it('should_not_call_action_when_normal_submitted_with_no_horse_selected', () => {
+    const action = vi.fn().mockResolvedValue({ error: null })
+    render(<LessonForm {...baseProps} action={action} />)
+    const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
+    fireEvent.submit(form)
+    expect(action).not.toHaveBeenCalled()
+  })
+
+  it('should_show_error_when_normal_mode_submitted_with_no_rider_selected', () => {
+    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    render(<LessonForm {...baseProps} horses={[horse]} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
+    const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
+    fireEvent.submit(form)
+    expect(screen.getByRole('alert').textContent).toContain('a rider is required')
   })
 })
