@@ -235,15 +235,15 @@ describe('ProtectedBarnLayout - nav links', () => {
   it('should_render_manage_horses_link_pointing_to_horses_page_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect((screen.getByRole('link', { name: 'Manage Horses' }) as HTMLAnchorElement).href).toContain('/barn/green-acres/horses')
+    expect((screen.getByRole('link', { name: 'Manage Horses' }) as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/horses$/)
   })
 
   it('should_render_manage_horses_link_before_settings_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
     const links = screen.getAllByRole('link')
-    const manageHorsesIdx = links.findIndex((l) => l.textContent === 'Manage Horses')
-    const settingsIdx = links.findIndex((l) => l.textContent === 'Settings')
+    const manageHorsesIdx = links.indexOf(screen.getByRole('link', { name: 'Manage Horses' }))
+    const settingsIdx = links.indexOf(screen.getByRole('link', { name: 'Settings' }))
     expect(manageHorsesIdx).toBeLessThan(settingsIdx)
   })
 
