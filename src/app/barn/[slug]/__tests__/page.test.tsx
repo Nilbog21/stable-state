@@ -211,7 +211,7 @@ describe('BarnDashboardPage', () => {
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/approvals')
   })
 
-  it('should_render_five_nav_links_for_manager', async () => {
+  it('should_render_six_nav_links_for_manager', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
@@ -220,12 +220,31 @@ describe('BarnDashboardPage', () => {
     const finances = screen.getByRole('link', { name: /finances/i })
     const riders = screen.getByRole('link', { name: /riders/i })
     const approvals = screen.getByRole('link', { name: /approvals/i })
+    const settings = screen.getByRole('link', { name: /settings/i })
 
     expect((horses as HTMLAnchorElement).href).toContain('/barn/green-acres/horses')
     expect((lessons as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons')
     expect((finances as HTMLAnchorElement).href).toContain('/barn/green-acres/finances')
     expect((riders as HTMLAnchorElement).href).toContain('/barn/green-acres/riders')
     expect((approvals as HTMLAnchorElement).href).toContain('/barn/green-acres/approvals')
+    expect((settings as HTMLAnchorElement).href).toContain('/barn/green-acres/settings')
+  })
+
+  it('should_render_settings_link_for_manager', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /settings/i })
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/settings')
+  })
+
+  it('should_not_render_settings_link_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByRole('link', { name: /settings/i })).toBeNull()
   })
 
   it('should_show_upcoming_lessons_section_for_manager', async () => {

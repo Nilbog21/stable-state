@@ -67,3 +67,28 @@ export async function setDefaultTier(tierId: string, barnId: string): Promise<vo
   const { error } = await supabase.rpc('set_default_tier', { p_tier_id: tierId, p_barn_id: barnId })
   if (error) throw error
 }
+
+export async function getAllTiersByBarn(barnId: string): Promise<LessonTier[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lesson_tiers')
+    .select('*')
+    .eq('barn_id', barnId)
+    .order('name')
+
+  if (error) throw error
+  return data ?? []
+}
+
+export async function getTierById(tierId: string, barnId: string): Promise<LessonTier | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lesson_tiers')
+    .select('*')
+    .eq('id', tierId)
+    .eq('barn_id', barnId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
