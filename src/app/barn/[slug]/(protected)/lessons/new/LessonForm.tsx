@@ -23,6 +23,7 @@ export function LessonForm({
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
   const [exertionLevels, setExertionLevels] = useState<Map<string, number>>(new Map())
   const [newHorseName, setNewHorseName] = useState('')
+  const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(3)
   const [lessonType, setLessonType] = useState<'normal' | 'group'>('normal')
   const [checkedRiderIds, setCheckedRiderIds] = useState<Set<string>>(new Set())
   const [clientError, setClientError] = useState<string | null>(null)
@@ -39,6 +40,7 @@ export function LessonForm({
         }
         return next
       })
+      if (newHorseExertionLevel < 4) setNewHorseExertionLevel(4)
     }
   }
 
@@ -187,7 +189,8 @@ export function LessonForm({
                   aria-label="Exertion level for new horse"
                   min="1"
                   max="5"
-                  defaultValue={3}
+                  value={newHorseExertionLevel}
+                  onChange={(e) => setNewHorseExertionLevel(parseInt(e.target.value, 10))}
                   required
                   className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                 />

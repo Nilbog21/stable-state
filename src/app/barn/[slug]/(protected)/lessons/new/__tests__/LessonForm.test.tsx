@@ -286,4 +286,28 @@ describe('LessonForm', () => {
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
     expect(exertionInput.value).toBe('4')
   })
+
+  it('should_default_new_horse_exertion_to_4_when_jumping_is_on_before_name_entered', () => {
+    render(<LessonForm {...baseProps} isManager={true} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
+    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
+    const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
+    expect(exertionInput.value).toBe('4')
+  })
+
+  it('should_snap_new_horse_exertion_to_4_when_jumping_toggled_on_with_name_already_entered', () => {
+    render(<LessonForm {...baseProps} isManager={true} />)
+    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
+    const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
+    expect(exertionInput.value).toBe('4')
+  })
+
+  it('should_update_new_horse_exertion_when_changed_by_user', () => {
+    render(<LessonForm {...baseProps} isManager={true} />)
+    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
+    const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
+    fireEvent.change(exertionInput, { target: { value: '5' } })
+    expect(exertionInput.value).toBe('5')
+  })
 })
