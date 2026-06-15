@@ -71,7 +71,7 @@ All barn-scoped routes enforce access in the route handler via `getEffectiveMemb
 | `/barn/[slug]/horses` | manager | |
 | `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days, sortable asc/desc |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
-| `/barn/[slug]/finances` | manager | Current calendar month income summary: fee-tier breakdown, income by horse, income by rider |
+| `/barn/[slug]/finances` | manager | Income summary with `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); includes fee-tier breakdown, income by horse, income by rider |
 | `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
 | `/login` | All | Sign-in page; displays Supabase connection status dot (green = `NEXT_PUBLIC_SUPABASE_URL` set, yellow = not set); shows no-barn guidance when `?no_barns=true` and user is authenticated |
 | `/barn/[slug]/register` | unauthenticated | Membership sign-up flow |

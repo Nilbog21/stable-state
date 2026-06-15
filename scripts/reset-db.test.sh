@@ -135,23 +135,23 @@ rm -rf "$REPO"
 
 # --- Pure JS functions ---
 
-# Test 7: should_return_25_dates_from_buildLessonDates
+# Test 7: should_return_34_dates_from_buildLessonDates
 # Arrange
 NOW="2024-06-15T10:00:00.000Z"
 # Act + Assert
 node -e "
 const { buildLessonDates } = require('$SCRIPT_DIR/reset-db.js');
 const dates = buildLessonDates(new Date('$NOW'));
-if (dates.length !== 25) { process.stderr.write('expected 25, got ' + dates.length + '\n'); process.exit(1); }
+if (dates.length !== 34) { process.stderr.write('expected 34, got ' + dates.length + '\n'); process.exit(1); }
 " 2>/dev/null
 exit_code=$?
 if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_return_25_dates_from_buildLessonDates"
+  assert_pass "should_return_34_dates_from_buildLessonDates"
 else
-  assert_fail "should_return_25_dates_from_buildLessonDates" "buildLessonDates did not return 25 dates"
+  assert_fail "should_return_34_dates_from_buildLessonDates" "buildLessonDates did not return 34 dates"
 fi
 
-# Test 8: should_bucket_dates_into_older_recent_and_future_groups
+# Test 8: should_bucket_dates_into_historical_older_recent_and_future_groups
 # Arrange
 NOW="2024-06-15T10:00:00.000Z"
 # Act + Assert
@@ -160,18 +160,20 @@ const { buildLessonDates } = require('$SCRIPT_DIR/reset-db.js');
 const now = new Date('$NOW');
 const dates = buildLessonDates(now);
 const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
-const older = dates.slice(0, 10);
-const recent = dates.slice(10, 20);
-const future = dates.slice(20, 25);
+const historical = dates.slice(0, 9);
+const older = dates.slice(9, 19);
+const recent = dates.slice(19, 29);
+const future = dates.slice(29, 34);
+if (!historical.every(d => d < sevenDaysAgo)) { process.stderr.write('historical bucket has recent dates\n'); process.exit(1); }
 if (!older.every(d => d < sevenDaysAgo)) { process.stderr.write('older bucket has dates within past week\n'); process.exit(1); }
 if (!recent.every(d => d >= sevenDaysAgo && d < now)) { process.stderr.write('recent bucket out of expected range\n'); process.exit(1); }
 if (!future.every(d => d > now)) { process.stderr.write('future bucket has past dates\n'); process.exit(1); }
 " 2>/dev/null
 exit_code=$?
 if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_bucket_dates_into_older_recent_and_future_groups"
+  assert_pass "should_bucket_dates_into_historical_older_recent_and_future_groups"
 else
-  assert_fail "should_bucket_dates_into_older_recent_and_future_groups" "date buckets out of expected range"
+  assert_fail "should_bucket_dates_into_historical_older_recent_and_future_groups" "date buckets out of expected range"
 fi
 
 # Test 9: should_throw_with_label_when_mustSucceed_receives_error
