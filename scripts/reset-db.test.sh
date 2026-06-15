@@ -305,20 +305,56 @@ else
   assert_fail "should_return_jumping_false_for_odd_index" "getLessonVariation(1) did not return jumping false"
 fi
 
-# Test 17: should_export_DEV_PENDING_RIDER_with_email_first_name_last_name
+# Test 17: should_export_DEV_PENDING_RIDER
 # Act + Assert
 node -e "
 const { DEV_PENDING_RIDER } = require('$SCRIPT_DIR/reset-db.js');
-if (!DEV_PENDING_RIDER || typeof DEV_PENDING_RIDER.email !== 'string' || !DEV_PENDING_RIDER.firstName || !DEV_PENDING_RIDER.lastName) {
-  process.stderr.write('DEV_PENDING_RIDER missing or malformed\n');
-  process.exit(1);
-}
+if (!DEV_PENDING_RIDER) { process.stderr.write('DEV_PENDING_RIDER not exported\n'); process.exit(1); }
 " 2>/dev/null
 exit_code=$?
 if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_export_DEV_PENDING_RIDER_with_email_first_name_last_name"
+  assert_pass "should_export_DEV_PENDING_RIDER"
 else
-  assert_fail "should_export_DEV_PENDING_RIDER_with_email_first_name_last_name" "DEV_PENDING_RIDER not exported or missing fields"
+  assert_fail "should_export_DEV_PENDING_RIDER" "DEV_PENDING_RIDER not exported"
+fi
+
+# Test 18: should_export_DEV_PENDING_RIDER_with_email_as_string
+# Act + Assert
+node -e "
+const { DEV_PENDING_RIDER } = require('$SCRIPT_DIR/reset-db.js');
+if (typeof DEV_PENDING_RIDER.email !== 'string') { process.stderr.write('expected email to be a string, got ' + typeof DEV_PENDING_RIDER.email + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_export_DEV_PENDING_RIDER_with_email_as_string"
+else
+  assert_fail "should_export_DEV_PENDING_RIDER_with_email_as_string" "DEV_PENDING_RIDER.email is not a string"
+fi
+
+# Test 19: should_export_DEV_PENDING_RIDER_with_firstName
+# Act + Assert
+node -e "
+const { DEV_PENDING_RIDER } = require('$SCRIPT_DIR/reset-db.js');
+if (!DEV_PENDING_RIDER.firstName) { process.stderr.write('expected firstName to be present\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_export_DEV_PENDING_RIDER_with_firstName"
+else
+  assert_fail "should_export_DEV_PENDING_RIDER_with_firstName" "DEV_PENDING_RIDER.firstName is missing"
+fi
+
+# Test 20: should_export_DEV_PENDING_RIDER_with_lastName
+# Act + Assert
+node -e "
+const { DEV_PENDING_RIDER } = require('$SCRIPT_DIR/reset-db.js');
+if (!DEV_PENDING_RIDER.lastName) { process.stderr.write('expected lastName to be present\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_export_DEV_PENDING_RIDER_with_lastName"
+else
+  assert_fail "should_export_DEV_PENDING_RIDER_with_lastName" "DEV_PENDING_RIDER.lastName is missing"
 fi
 
 echo ""
