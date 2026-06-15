@@ -85,12 +85,18 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
   })
 
-  it('should_call_notFound_when_barn_does_not_exist', async () => {
+  it('should_throw_when_barn_does_not_exist', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
     await expect(
       BarnDashboardPage({ params: Promise.resolve({ slug: 'unknown' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_call_notFound_when_barn_does_not_exist', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+
+    try { await BarnDashboardPage({ params: Promise.resolve({ slug: 'unknown' }) }) } catch {}
 
     expect(mockNotFound).toHaveBeenCalled()
   })
@@ -111,7 +117,7 @@ describe('BarnDashboardPage', () => {
     expect(screen.getByText('No upcoming lessons this week')).toBeDefined()
   })
 
-  it('should_show_lesson_horse_names_and_rider_for_manager', async () => {
+  it('should_show_horse_names_for_manager', async () => {
     const lesson = {
       ...createMockLesson(),
       instructor_name: null,
@@ -126,6 +132,22 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     expect(screen.getByText('Thunderbolt')).toBeDefined()
+  })
+
+  it('should_show_rider_names_for_manager', async () => {
+    const lesson = {
+      ...createMockLesson(),
+      instructor_name: null,
+      horse_names: ['Thunderbolt'],
+      horse_count: 1,
+      rider_names: ['Alice'],
+      rider_count: 1,
+    }
+    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
     expect(screen.getByText('Alice')).toBeDefined()
   })
 

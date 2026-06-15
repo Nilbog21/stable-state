@@ -4,7 +4,6 @@ import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getUserMembership } from '@/lib/db/barn-memberships'
 import { DevRoleSwitcher } from '../DevRoleSwitcher'
 import type { Role } from '@/lib/db/types'
 
@@ -58,13 +57,11 @@ export default async function ProtectedBarnLayout({
   let currentOverride: Role | null = null
 
   if (process.env.NODE_ENV === 'development') {
-    const actualMembership = await getUserMembership(data.user.id, barn.id)
-    if (actualMembership?.role === 'manager') {
-      showSwitcher = true
-      const cookieStore = await cookies()
-      const override = cookieStore.get('dev_role_override')?.value as Role | undefined
-      currentOverride = override && OVERRIDABLE_ROLES.includes(override) ? override : null
-    }
+    const cookieStore = await cookies()
+    const override = cookieStore.get('dev_role_override')?.value as Role | undefined
+    currentOverride = override && OVERRIDABLE_ROLES.includes(override) ? override : null
+    // manager with an active override has a non-manager effective role but a non-null override
+    showSwitcher = membership.role === 'manager' || currentOverride !== null
   }
 
   return (
