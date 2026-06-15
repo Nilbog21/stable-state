@@ -72,7 +72,8 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `/barn/[slug]` | All active members | Manager sees upcoming-lessons preview (next 7 days); nav links rendered by layout |
 | `/barn/[slug]/lessons` | All active members | Lessons split at 7-day cutoff: recent shown immediately, older behind `OlderLessonsToggle`; manager can delete |
 | `/barn/[slug]/lessons/new` | manager, trainer | |
-| `/barn/[slug]/lessons/[id]` | All active members | |
+| `/barn/[slug]/lessons/[id]` | All active members | Edit link visible to managers |
+| `/barn/[slug]/lessons/[id]/edit` | manager | Pre-filled edit form; group→normal downgrade shows warning and requires manager to select one rider/horse to keep; updates are atomic via `update_lesson_with_participants` RPC |
 | `/barn/[slug]/horses` | manager | |
 | `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days, sortable asc/desc |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
@@ -110,6 +111,8 @@ No API routes. All mutations go through Next.js Server Actions.
 `create_lesson_with_participants(p_barn_id, p_instructor_id, p_lesson_at, p_fee, p_horse_ids[], p_exertion_levels[], p_rider_ids[], p_lesson_type, p_jumping)` — atomically inserts a lesson, its horse assignments (`lesson_horses`), and one or more riders (`lesson_riders`) in one transaction. Validates participant counts inline: normal lessons require exactly 1 horse and exactly 1 rider; group lessons require ≥ 2 riders. `p_jumping` defaults to `false`. Used by lesson submission to avoid partial writes.
 
 `set_default_tier(p_tier_id, p_barn_id)` — atomically clears `is_default` on all barn tiers then sets `is_default=true` on the target tier in one transaction. Used by `setDefaultTier` in `lesson-tiers.ts`.
+
+`update_lesson_with_participants(p_lesson_id, p_barn_id, p_lesson_at, p_instructor_id, p_fee, p_lesson_type, p_jumping, p_payment_type, p_tier_name, p_horse_ids[], p_exertion_levels[], p_rider_ids[])` — atomically updates the `lessons` row and replaces `lesson_horses` + `lesson_riders` (delete then insert) in one transaction. The deferred `enforce_lesson_participant_counts` trigger sees the final state at commit. Used by the lesson edit page.
 
 `teardown_dev_barn_lessons(p_barn_id uuid)` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows for a barn in a single transaction, so the deferred participant-count triggers see the lesson rows gone at commit and skip enforcement. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called exclusively by `scripts/reset-db.js`.
 
