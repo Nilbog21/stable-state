@@ -139,6 +139,23 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('button', { name: /add tier/i })).toBeDefined()
   })
 
+  it('should_render_empty_price_input_when_tier_price_is_null', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', price: null }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const priceInputs = screen
+      .getAllByDisplayValue('')
+      .filter((el) => (el as HTMLInputElement).name === 'price' && !(el as HTMLInputElement).id)
+    expect(priceInputs.length).toBe(1)
+  })
+
   it('should_display_error_message_when_error_search_param_matches_tier_id', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
       createMockLessonTier({ id: 'tier-1', name: 'Standard', is_default: true }),

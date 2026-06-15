@@ -128,6 +128,12 @@ describe('createTierAction', () => {
 
     expect(createTier).not.toHaveBeenCalled()
   })
+
+  it('should_pass_null_price_when_price_is_non_numeric_string', async () => {
+    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: 'abc' }))
+
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', null)
+  })
 })
 
 describe('updateTierAction', () => {

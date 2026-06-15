@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getTiersByBarn, createTier, updateTier, deactivateTier, setDefaultTier } from '../lesson-tiers'
+import { getTiersByBarn, createTier, updateTier, deactivateTier, setDefaultTier, getAllTiersByBarn, getTierById } from '../lesson-tiers'
 
 const mockTier = {
   id: 'tier-1',
@@ -290,5 +290,116 @@ describe('setDefaultTier', () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(setDefaultTier('tier-1', 'barn-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('getAllTiersByBarn', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_return_all_tiers_including_inactive', async () => {
+    const inactiveTier = { ...mockTier, id: 'tier-2', is_active: false }
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [mockTier, inactiveTier], error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getAllTiersByBarn('barn-1')
+
+    expect(result).toEqual([mockTier, inactiveTier])
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getAllTiersByBarn('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getAllTiersByBarn('barn-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('getTierById', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_return_tier_when_found', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: mockTier, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getTierById('tier-1', 'barn-1')
+
+    expect(result).toEqual(mockTier)
+  })
+
+  it('should_return_null_when_tier_not_found', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getTierById('tier-1', 'barn-1')
+
+    expect(result).toBeNull()
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getTierById('tier-1', 'barn-1')).rejects.toThrow('db error')
   })
 })
