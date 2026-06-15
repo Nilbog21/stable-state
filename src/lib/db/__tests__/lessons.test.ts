@@ -426,6 +426,19 @@ describe('getLessonsByBarn', () => {
     expect(result[0].jumping).toBe(false)
   })
 
+  it('should_include_jumping_true_in_results', async () => {
+    const lesson = createMockLesson({ instructor_id: null, jumping: true })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([lesson])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonsByBarn('barn-1')
+
+    expect(result[0].jumping).toBe(true)
+  })
+
   function mockClientWithLesson(lesson: ReturnType<typeof createMockLesson>) {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([lesson])
@@ -689,6 +702,23 @@ describe('getLessonById', () => {
     } as any)
 
     await expect(getLessonById('lesson-1', 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_include_jumping_true_in_result', async () => {
+    const jumpingDetail = {
+      ...createMockLesson({ jumping: true }),
+      profiles: null,
+      lesson_horses: [],
+      lesson_riders: [],
+    }
+    const { select } = makeLessonByIdChain(jumpingDetail)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1')
+
+    expect(result?.jumping).toBe(true)
   })
 })
 
