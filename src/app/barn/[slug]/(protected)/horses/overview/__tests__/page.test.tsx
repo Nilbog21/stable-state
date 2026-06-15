@@ -85,12 +85,12 @@ describe('HorseOverviewPage', () => {
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     render(jsx)
     // Default sort is desc; Thunderbolt (exertion=12) before Shadow (exertion=3)
-    // Each row: [name, lessonCount, totalExertion]
+    // Each row: [name, lessonCount, jumpingCount, totalExertion]
     const cells = screen.getAllByRole('cell')
     expect(cells[1].textContent).toBe('3')   // Thunderbolt lessonCount
-    expect(cells[2].textContent).toBe('12')  // Thunderbolt totalExertion
-    expect(cells[4].textContent).toBe('1')   // Shadow lessonCount
-    expect(cells[5].textContent).toBe('3')   // Shadow totalExertion
+    expect(cells[3].textContent).toBe('12')  // Thunderbolt totalExertion
+    expect(cells[5].textContent).toBe('1')   // Shadow lessonCount
+    expect(cells[7].textContent).toBe('3')   // Shadow totalExertion
   })
 
   it('should_render_empty_state_when_no_horses', async () => {
@@ -142,5 +142,97 @@ describe('HorseOverviewPage', () => {
     const links = screen.getAllByRole('link')
     const sortLinks = links.filter((l) => (l as HTMLAnchorElement).href?.includes('sort='))
     expect(sortLinks.length).toBeGreaterThanOrEqual(2)
+  })
+
+  it('should_render_jumping_column_header', async () => {
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
+    render(jsx)
+    expect(screen.getByText('# Jumping (7d)')).toBeDefined()
+  })
+
+  it('should_render_jumping_count_as_zero_when_no_jumping_lessons', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 0 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
+    render(jsx)
+    const cells = screen.getAllByRole('cell')
+    expect(cells[2].textContent).toBe('0')
+  })
+
+  it('should_render_jumping_count_when_horse_has_jumping_lessons', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 2 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
+    render(jsx)
+    const cells = screen.getAllByRole('cell')
+    expect(cells[2].textContent).toBe('2')
+  })
+
+  it('should_render_jumping_count_of_one_when_horse_has_one_jumping_lesson', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 8, jumpingCount: 1 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
+    render(jsx)
+    const cells = screen.getAllByRole('cell')
+    expect(cells[2].textContent).toBe('1')
+  })
+
+  it('should_list_highest_jumping_count_first_when_sort_is_jumping_desc', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 1 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 2, totalExertion: 8, jumpingCount: 3 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({ sort: 'jumping-desc' }) })
+    render(jsx)
+    const cells = screen.getAllByRole('cell')
+    const names = cells.filter((c) => c.textContent === 'Thunderbolt' || c.textContent === 'Shadow')
+    expect(names[0].textContent).toBe('Shadow')
+  })
+
+  it('should_list_lowest_jumping_count_last_when_sort_is_jumping_desc', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 1 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 2, totalExertion: 8, jumpingCount: 3 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({ sort: 'jumping-desc' }) })
+    render(jsx)
+    const cells = screen.getAllByRole('cell')
+    const names = cells.filter((c) => c.textContent === 'Thunderbolt' || c.textContent === 'Shadow')
+    expect(names[1].textContent).toBe('Thunderbolt')
+  })
+
+  it('should_list_lowest_jumping_count_first_when_sort_is_jumping_asc', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 3 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 2, totalExertion: 8, jumpingCount: 1 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({ sort: 'jumping-asc' }) })
+    render(jsx)
+    const cells = screen.getAllByRole('cell')
+    const names = cells.filter((c) => c.textContent === 'Thunderbolt' || c.textContent === 'Shadow')
+    expect(names[0].textContent).toBe('Shadow')
+  })
+
+  it('should_list_highest_jumping_count_last_when_sort_is_jumping_asc', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 3 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 2, totalExertion: 8, jumpingCount: 1 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({ sort: 'jumping-asc' }) })
+    render(jsx)
+    const cells = screen.getAllByRole('cell')
+    const names = cells.filter((c) => c.textContent === 'Thunderbolt' || c.textContent === 'Shadow')
+    expect(names[1].textContent).toBe('Thunderbolt')
+  })
+
+  it('should_render_jumping_sort_links', async () => {
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
+    render(jsx)
+    const links = screen.getAllByRole('link')
+    const jumpingLinks = links.filter((l) => (l as HTMLAnchorElement).href?.includes('sort=jumping-'))
+    expect(jumpingLinks.length).toBeGreaterThanOrEqual(2)
   })
 })
