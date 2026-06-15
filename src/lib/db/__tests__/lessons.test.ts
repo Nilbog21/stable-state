@@ -19,6 +19,7 @@ import {
   getHorseIncomeSummary,
   getRiderIncomeSummary,
   updateLesson,
+  updateLessonWithParticipants,
 } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -626,9 +627,8 @@ describe('getLessonById', () => {
     vi.clearAllMocks()
   })
 
-  const mockLessonDetail = {
+  const rawLessonData = {
     ...createMockLesson(),
-    profiles: { first_name: 'Jane', last_name: 'Smith' },
     lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
     lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
   }
@@ -641,28 +641,63 @@ describe('getLessonById', () => {
     return { select: mockSelect, mockEq1, mockEq2, mockMaybeSingle }
   }
 
-  it('should_return_lesson_with_joined_profiles_horses_and_riders', async () => {
-    const { select } = makeLessonByIdChain(mockLessonDetail)
+  function makeProfileChain(data: unknown, error: Error | null = null) {
+    const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeFrom(lessonData: unknown, profileData: unknown = null, lessonError: Error | null = null, profileError: Error | null = null) {
+    const lessonChain = makeLessonByIdChain(lessonData, lessonError)
+    const profileChain = makeProfileChain(profileData, profileError)
+    return vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return { select: lessonChain.select }
+      if (table === 'profiles') return profileChain
+      return makeProfileChain(null)
+    })
+  }
+
+  it('should_return_lesson_with_instructor_name', async () => {
+    const from = makeFrom(rawLessonData, { first_name: 'Jane', last_name: 'Smith' })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1')
+
+    expect(result?.instructor_name).toBe('Jane Smith')
+  })
+
+  it('should_return_null_instructor_name_when_instructor_id_is_null', async () => {
+    const lessonWithoutInstructor = { ...rawLessonData, instructor_id: null }
+    const { select } = makeLessonByIdChain(lessonWithoutInstructor)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1')
 
-    expect(result).toEqual(mockLessonDetail)
+    expect(result?.instructor_name).toBeNull()
+  })
+
+  it('should_return_null_instructor_name_when_profile_not_found', async () => {
+    const from = makeFrom(rawLessonData, null)
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1')
+
+    expect(result?.instructor_name).toBeNull()
   })
 
   it('should_return_all_riders_for_group_lesson', async () => {
-    const groupLessonDetail = {
-      ...createMockLesson({ lesson_type: 'group' }),
-      profiles: null,
+    const groupLessonData = {
+      ...createMockLesson({ lesson_type: 'group', instructor_id: null }),
       lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
       lesson_riders: [
         { riders: { id: 'rider-1', name: 'Alice' } },
         { riders: { id: 'rider-2', name: 'Bob' } },
       ],
     }
-    const { select } = makeLessonByIdChain(groupLessonDetail)
+    const { select } = makeLessonByIdChain(groupLessonData)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -673,7 +708,8 @@ describe('getLessonById', () => {
   })
 
   it('should_query_by_lesson_id_and_barn_id', async () => {
-    const { select, mockEq1, mockEq2 } = makeLessonByIdChain(mockLessonDetail)
+    const lessonDataNoInstructor = { ...rawLessonData, instructor_id: null }
+    const { select, mockEq1, mockEq2 } = makeLessonByIdChain(lessonDataNoInstructor)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -704,14 +740,20 @@ describe('getLessonById', () => {
     await expect(getLessonById('lesson-1', 'barn-1')).rejects.toThrow('db error')
   })
 
+  it('should_throw_when_profiles_query_returns_error', async () => {
+    const from = makeFrom(rawLessonData, null, null, new Error('profiles error'))
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    await expect(getLessonById('lesson-1', 'barn-1')).rejects.toThrow('profiles error')
+  })
+
   it('should_include_jumping_true_in_result', async () => {
-    const jumpingDetail = {
-      ...createMockLesson({ jumping: true }),
-      profiles: null,
+    const jumpingData = {
+      ...createMockLesson({ jumping: true, instructor_id: null }),
       lesson_horses: [],
       lesson_riders: [],
     }
-    const { select } = makeLessonByIdChain(jumpingDetail)
+    const { select } = makeLessonByIdChain(jumpingData)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -1915,5 +1957,64 @@ describe('updateLesson', () => {
     } as any)
 
     await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('row-level security policy')
+  })
+})
+
+describe('updateLessonWithParticipants', () => {
+  it('should_call_rpc_update_lesson_with_participants_with_correct_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateLessonWithParticipants({
+      lessonId: 'lesson-1',
+      barnId: 'barn-1',
+      lessonAt: '2026-05-17T10:00:00Z',
+      instructorId: 'user-1',
+      fee: 75,
+      lessonType: 'normal',
+      jumping: false,
+      paymentType: null,
+      tierName: 'Custom',
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('update_lesson_with_participants', {
+      p_lesson_id: 'lesson-1',
+      p_barn_id: 'barn-1',
+      p_lesson_at: '2026-05-17T10:00:00Z',
+      p_instructor_id: 'user-1',
+      p_fee: 75,
+      p_lesson_type: 'normal',
+      p_jumping: false,
+      p_payment_type: null,
+      p_tier_name: 'Custom',
+      p_horse_ids: ['horse-1'],
+      p_exertion_levels: [3],
+      p_rider_ids: ['rider-1'],
+    })
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('rpc failed') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await expect(
+      updateLessonWithParticipants({
+        lessonId: 'lesson-1',
+        barnId: 'barn-1',
+        lessonAt: '2026-05-17T10:00:00Z',
+        instructorId: 'user-1',
+        fee: null,
+        lessonType: 'normal',
+        jumping: false,
+        paymentType: null,
+        tierName: 'Custom',
+        horseIds: ['horse-1'],
+        exertionLevels: [3],
+        riderIds: ['rider-1'],
+      })
+    ).rejects.toThrow('rpc failed')
   })
 })

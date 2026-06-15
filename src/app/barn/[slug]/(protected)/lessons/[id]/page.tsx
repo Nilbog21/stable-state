@@ -36,9 +36,7 @@ export default async function LessonDetailPage({
     notFound()
   }
 
-  const instructorName = lesson.profiles
-    ? `${lesson.profiles.first_name} ${lesson.profiles.last_name}`
-    : '—'
+  const instructorName = lesson.instructor_name ?? '—'
 
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',
@@ -56,6 +54,14 @@ export default async function LessonDetailPage({
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
             {lesson.lesson_type === 'group' ? 'Group' : 'Normal'}
           </span>
+          {membership.role === 'manager' && (
+            <a
+              href={`/barn/${slug}/lessons/${lesson.id}/edit`}
+              className="rounded-lg border border-zinc-200 px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"
+            >
+              Edit
+            </a>
+          )}
         </div>
         <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">
