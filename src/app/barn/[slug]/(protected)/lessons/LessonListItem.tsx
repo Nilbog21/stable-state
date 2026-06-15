@@ -20,11 +20,11 @@ export function LessonListItem({ lesson, slug, isManager, deleteAction }: Props)
           <span className="text-sm text-zinc-700 dark:text-zinc-300">{lesson.instructor_name}</span>
         )}
         {lesson.lesson_type === 'group' ? (
-          <span className="text-sm text-zinc-500">{lesson.rider_count} riders, {lesson.horse_count} horses</span>
+          <span className="text-sm text-zinc-500">{lesson.rider_count} riders, {lesson.horse_count} horses{lesson.jumping ? ' · Jumping' : ''}</span>
         ) : (
           <>
             {lesson.horse_names.length > 0 && (
-              <span className="text-sm text-zinc-500">{lesson.horse_names.join(', ')}</span>
+              <span className="text-sm text-zinc-500">{lesson.horse_names.join(', ')}{lesson.jumping ? ' · Jumping' : ''}</span>
             )}
             {lesson.rider_names.length > 0 && (
               <span className="text-sm text-zinc-500">{lesson.rider_names.join(', ')}</span>

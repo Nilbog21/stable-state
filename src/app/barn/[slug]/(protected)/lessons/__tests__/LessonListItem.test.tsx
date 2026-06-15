@@ -112,4 +112,52 @@ describe('LessonListItem', () => {
     )
     expect(screen.getByText('Group Rate')).toBeDefined()
   })
+
+  it('should_show_jumping_after_horse_name_for_jumping_normal_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, jumping: true }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.getByText('Thunderbolt · Jumping')).toBeDefined()
+  })
+
+  it('should_not_show_jumping_for_non_jumping_normal_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={normalLesson}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.queryByText(/Jumping/)).toBeNull()
+  })
+
+  it('should_show_jumping_after_counts_for_jumping_group_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...groupLesson, jumping: true }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.getByText('3 riders, 2 horses · Jumping')).toBeDefined()
+  })
+
+  it('should_not_show_jumping_for_non_jumping_group_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={groupLesson}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.queryByText(/Jumping/)).toBeNull()
+  })
 })
