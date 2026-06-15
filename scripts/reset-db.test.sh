@@ -209,6 +209,74 @@ else
   assert_fail "should_return_data_when_mustSucceed_receives_success" "mustSucceed did not return data"
 fi
 
+# Test 11: should_return_tier1_fee_for_even_index
+# Act + Assert
+node -e "
+const { getLessonVariation } = require('$SCRIPT_DIR/reset-db.js');
+const t1 = { name: 'T1', price: 100 };
+const t2 = { name: 'T2', price: 150 };
+const v = getLessonVariation(0, t1, t2);
+if (v.fee !== 100) { process.stderr.write('expected fee 100, got ' + v.fee + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_tier1_fee_for_even_index"
+else
+  assert_fail "should_return_tier1_fee_for_even_index" "getLessonVariation(0) did not return tier 1 fee"
+fi
+
+# Test 12: should_return_tier2_fee_for_odd_index
+# Act + Assert
+node -e "
+const { getLessonVariation } = require('$SCRIPT_DIR/reset-db.js');
+const t1 = { name: 'T1', price: 100 };
+const t2 = { name: 'T2', price: 150 };
+const v = getLessonVariation(1, t1, t2);
+if (v.fee !== 150) { process.stderr.write('expected fee 150, got ' + v.fee + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_tier2_fee_for_odd_index"
+else
+  assert_fail "should_return_tier2_fee_for_odd_index" "getLessonVariation(1) did not return tier 2 fee"
+fi
+
+# Test 13: should_cycle_exertion_1_through_5
+# Act + Assert
+node -e "
+const { getLessonVariation } = require('$SCRIPT_DIR/reset-db.js');
+const t1 = { name: 'T1', price: 100 };
+const t2 = { name: 'T2', price: 150 };
+const v4 = getLessonVariation(4, t1, t2);
+const v5 = getLessonVariation(5, t1, t2);
+if (v4.exertionLevel !== 5) { process.stderr.write('expected exertionLevel 5 at i=4, got ' + v4.exertionLevel + '\n'); process.exit(1); }
+if (v5.exertionLevel !== 1) { process.stderr.write('expected exertionLevel 1 at i=5, got ' + v5.exertionLevel + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_cycle_exertion_1_through_5"
+else
+  assert_fail "should_cycle_exertion_1_through_5" "getLessonVariation exertion did not cycle correctly"
+fi
+
+# Test 14: should_return_jumping_true_for_even_false_for_odd
+# Act + Assert
+node -e "
+const { getLessonVariation } = require('$SCRIPT_DIR/reset-db.js');
+const t1 = { name: 'T1', price: 100 };
+const t2 = { name: 'T2', price: 150 };
+const v0 = getLessonVariation(0, t1, t2);
+const v1 = getLessonVariation(1, t1, t2);
+if (v0.jumping !== true) { process.stderr.write('expected jumping true at i=0, got ' + v0.jumping + '\n'); process.exit(1); }
+if (v1.jumping !== false) { process.stderr.write('expected jumping false at i=1, got ' + v1.jumping + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_jumping_true_for_even_false_for_odd"
+else
+  assert_fail "should_return_jumping_true_for_even_false_for_odd" "getLessonVariation jumping did not alternate correctly"
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
