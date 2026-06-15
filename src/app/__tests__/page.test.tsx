@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
@@ -23,29 +23,36 @@ describe('Home', () => {
   })
 
   describe('unauthenticated', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
     it('should_render_landing_page_when_unauthenticated', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
       setupAuth(null)
       const jsx = await Home()
       render(jsx)
       expect(screen.getByRole('heading', { name: /stable state/i })).toBeDefined()
     })
 
-    it('should_show_connected_status_when_supabase_has_no_error', async () => {
-      setupAuth(null)
+    it('should_show_connected_when_supabase_url_env_var_is_set', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
+      vi.mocked(createClient).mockResolvedValue({
+        auth: {
+          getUser: vi.fn().mockResolvedValue({
+            data: { user: null },
+            error: new Error('Auth session missing'),
+          }),
+        },
+      } as any)
       const jsx = await Home()
       render(jsx)
       expect(screen.getByText(/supabase connected/i)).toBeDefined()
     })
 
-    it('should_show_env_vars_message_when_supabase_returns_error', async () => {
-      vi.mocked(createClient).mockResolvedValue({
-        auth: {
-          getUser: vi.fn().mockResolvedValue({
-            data: { user: null },
-            error: new Error('not configured'),
-          }),
-        },
-      } as any)
+    it('should_show_env_vars_message_when_supabase_url_env_var_is_missing', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '')
+      setupAuth(null)
       const jsx = await Home()
       render(jsx)
       expect(screen.getByText(/supabase env vars not set/i)).toBeDefined()

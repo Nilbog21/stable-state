@@ -4,8 +4,8 @@ import { redirect } from "next/navigation";
 
 export default async function Home() {
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.getUser();
-  const connected = !error;
+  const connected = !!process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const { data } = await supabase.auth.getUser();
 
   if (data?.user) {
     const memberships = await getBarnMembershipsForUser(data.user.id);
