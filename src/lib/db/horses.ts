@@ -55,20 +55,22 @@ export async function getHorseExertionSummary(
 
   const { data: lessons, error: lessonsError } = await supabase
     .from('lessons')
-    .select('id')
+    .select('id, jumping')
     .eq('barn_id', barnId)
     .gte('lesson_at', since.toISOString())
 
   if (lessonsError) throw lessonsError
 
   if (!lessons.length) {
-    return horses.map((h) => ({ id: h.id, name: h.name, lessonCount: 0, totalExertion: 0 }))
+    return horses.map((h) => ({ id: h.id, name: h.name, lessonCount: 0, totalExertion: 0, jumpingCount: 0 }))
   }
 
   const lessonIds = lessons.map((l) => l.id)
+  const jumpingLessonIds = new Set(lessons.filter((l) => l.jumping).map((l) => l.id))
+
   const { data: lessonHorses, error: lessonHorsesError } = await supabase
     .from('lesson_horses')
-    .select('horse_id, exertion_level')
+    .select('lesson_id, horse_id, exertion_level')
     .in('lesson_id', lessonIds)
 
   if (lessonHorsesError) throw lessonHorsesError
@@ -80,6 +82,7 @@ export async function getHorseExertionSummary(
       name: h.name,
       lessonCount: entries.length,
       totalExertion: entries.reduce((sum, e) => sum + e.exertion_level, 0),
+      jumpingCount: entries.filter((e) => jumpingLessonIds.has(e.lesson_id)).length,
     }
   })
 }

@@ -114,6 +114,7 @@ export interface HorseExertionSummary {
   name: string
   lessonCount: number
   totalExertion: number
+  jumpingCount: number
 }
 
 export interface HorseIncomeSummary {

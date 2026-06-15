@@ -128,11 +128,11 @@ describe('getHorseExertionSummary', () => {
   it('should_return_aggregated_lesson_count_and_total_exertion_per_horse', async () => {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorsesChain([horse1, horse2])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1' }, { id: 'lesson-2' }])
+      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }, { id: 'lesson-2', jumping: false }])
       if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { horse_id: 'horse-1', exertion_level: 4 },
-        { horse_id: 'horse-1', exertion_level: 2 },
-        { horse_id: 'horse-2', exertion_level: 3 },
+        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 4 },
+        { lesson_id: 'lesson-2', horse_id: 'horse-1', exertion_level: 2 },
+        { lesson_id: 'lesson-1', horse_id: 'horse-2', exertion_level: 3 },
       ])
       return makeLessonHorsesChain([])
     })
@@ -141,8 +141,8 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 6 },
-      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 6, jumpingCount: 0 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
     ])
   })
 
@@ -157,16 +157,16 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
     ])
   })
 
   it('should_include_horses_with_no_lesson_horses_entries_even_when_lessons_exist', async () => {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorsesChain([horse1, horse2])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1' }])
+      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }])
       if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { horse_id: 'horse-1', exertion_level: 5 },
+        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 5 },
       ])
       return makeLessonHorsesChain([])
     })
@@ -175,8 +175,8 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 5 },
-      { id: 'horse-2', name: 'Shadow', lessonCount: 0, totalExertion: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 5, jumpingCount: 0 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
     ])
   })
 
@@ -237,7 +237,49 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
+    ])
+  })
+
+  it('should_count_jumping_lessons_per_horse', async () => {
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorsesChain([horse1, horse2])
+      if (table === 'lessons') return makeLessonsChain([
+        { id: 'lesson-1', jumping: true },
+        { id: 'lesson-2', jumping: false },
+      ])
+      if (table === 'lesson_horses') return makeLessonHorsesChain([
+        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 4 },
+        { lesson_id: 'lesson-2', horse_id: 'horse-1', exertion_level: 2 },
+        { lesson_id: 'lesson-1', horse_id: 'horse-2', exertion_level: 3 },
+      ])
+      return makeLessonHorsesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getHorseExertionSummary('barn-1', since)
+
+    expect(result).toEqual([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 6, jumpingCount: 1 },
+      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 1 },
+    ])
+  })
+
+  it('should_return_jumping_count_zero_for_non_jumping_lessons', async () => {
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorsesChain([horse1])
+      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }])
+      if (table === 'lesson_horses') return makeLessonHorsesChain([
+        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 3 },
+      ])
+      return makeLessonHorsesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getHorseExertionSummary('barn-1', since)
+
+    expect(result).toEqual([
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
     ])
   })
 })
