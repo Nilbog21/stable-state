@@ -31,9 +31,9 @@ export function LessonListItem({ lesson, slug, isManager, deleteAction }: Props)
             )}
           </>
         )}
-        {lesson.fee != null && (
-          <span className="text-sm text-zinc-500">${lesson.fee}</span>
-        )}
+        <span className="text-sm text-zinc-500">
+          {lesson.fee != null ? `$${lesson.fee} · ${lesson.tier_name}` : lesson.tier_name}
+        </span>
       </Link>
       {isManager && (
         <DeleteLessonButton action={deleteAction.bind(null, lesson.id)} />
