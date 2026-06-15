@@ -310,4 +310,25 @@ describe('LessonForm', () => {
     fireEvent.change(exertionInput, { target: { value: '5' } })
     expect(exertionInput.value).toBe('5')
   })
+
+  it('should_show_exertion_label_when_existing_horse_is_checked', () => {
+    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    render(<LessonForm {...baseProps} horses={[horse]} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
+    expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
+  })
+
+  it('should_not_show_exertion_label_when_existing_horse_is_unchecked', () => {
+    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    render(<LessonForm {...baseProps} horses={[horse]} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
+    expect(screen.queryByText('Exertion (1–5)')).toBeNull()
+  })
+
+  it('should_show_exertion_label_for_new_horse_when_name_is_entered', () => {
+    render(<LessonForm {...baseProps} isManager={true} />)
+    fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
+    expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
+  })
 })
