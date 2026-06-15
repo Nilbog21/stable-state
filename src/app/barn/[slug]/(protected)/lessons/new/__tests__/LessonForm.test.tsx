@@ -1,8 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { createMockLessonTier } from '@/test/fixtures'
 import { LessonForm } from '../LessonForm'
 
 afterEach(cleanup)
+
+const sampleTier = createMockLessonTier({ is_default: true })
 
 const baseProps = {
   horses: [],
@@ -11,15 +14,10 @@ const baseProps = {
   action: vi.fn().mockResolvedValue({ error: null }),
   instructors: [],
   currentUserId: 'user-1',
+  tiers: [sampleTier],
 }
 
 describe('LessonForm', () => {
-  it('should_render_fee_input_with_empty_value_by_default', () => {
-    render(<LessonForm {...baseProps} />)
-    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
-    expect(feeInput.defaultValue).toBe('')
-  })
-
   it('should_hide_exertion_input_when_horse_checkbox_is_unchecked', () => {
     const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
     render(<LessonForm {...baseProps} horses={[horse]} />)
@@ -328,5 +326,54 @@ describe('LessonForm', () => {
     render(<LessonForm {...baseProps} isManager={true} />)
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
+  })
+
+  it('should_show_blocked_state_when_tiers_is_empty', () => {
+    render(<LessonForm {...baseProps} tiers={[]} />)
+    expect(screen.getByRole('alert').textContent).toContain('No lesson tiers have been configured')
+  })
+
+  it('should_not_render_submit_button_when_tiers_is_empty', () => {
+    render(<LessonForm {...baseProps} tiers={[]} />)
+    expect(screen.queryByRole('button', { name: /submit/i })).toBeNull()
+  })
+
+  it('should_show_tier_dropdown_with_tier_options', () => {
+    const tier = createMockLessonTier({ name: 'Premium', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    expect(screen.getByRole('option', { name: 'Premium' })).toBeDefined()
+  })
+
+  it('should_show_custom_option_in_tier_dropdown', () => {
+    render(<LessonForm {...baseProps} />)
+    expect(screen.getByRole('option', { name: 'Custom' })).toBeDefined()
+  })
+
+  it('should_pre_select_default_tier_in_dropdown', () => {
+    const tier = createMockLessonTier({ name: 'Default Tier', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    const select = screen.getByRole('combobox', { name: /tier/i }) as HTMLSelectElement
+    expect(select.value).toBe('Default Tier')
+  })
+
+  it('should_hide_fee_input_when_non_custom_tier_is_selected', () => {
+    const tier = createMockLessonTier({ name: 'Standard', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    expect(screen.queryByRole('spinbutton', { name: /fee/i })).toBeNull()
+  })
+
+  it('should_show_fee_input_when_custom_tier_is_selected', () => {
+    const tier = createMockLessonTier({ name: 'Standard', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 'Custom' } })
+    expect(screen.getByRole('spinbutton', { name: /fee/i })).toBeDefined()
+  })
+
+  it('should_require_fee_input_when_custom_tier_is_selected', () => {
+    const tier = createMockLessonTier({ name: 'Standard', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 'Custom' } })
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.required).toBe(true)
   })
 })

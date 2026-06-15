@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockLessonTier } from '@/test/fixtures'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -38,16 +38,22 @@ vi.mock('@/app/actions/lessons', () => ({
   submitLesson: vi.fn(),
 }))
 
+vi.mock('@/lib/db/lesson-tiers', () => ({
+  getTiersByBarn: vi.fn(),
+}))
+
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import LessonNewPage from '../page'
 
 const mockBarn = createMockBarn()
+const mockTier = createMockLessonTier({ is_default: true })
 
 const mockHorses = [
   { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
@@ -76,6 +82,7 @@ describe('LessonNewPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
     vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    vi.mocked(getTiersByBarn).mockResolvedValue([mockTier])
     mockSupabaseUser()
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
@@ -245,6 +252,18 @@ describe('LessonNewPage', () => {
   it('should_call_getRidersByBarn_with_barn_id', async () => {
     await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getRidersByBarn).mock.calls[0][0]).toBe('barn-1')
+  })
+
+  it('should_call_getTiersByBarn_with_barn_id', async () => {
+    await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getTiersByBarn).mock.calls[0][0]).toBe('barn-1')
+  })
+
+  it('should_show_blocked_state_when_no_tiers_configured', async () => {
+    vi.mocked(getTiersByBarn).mockResolvedValue([])
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('alert').textContent).toContain('No lesson tiers have been configured')
   })
 
 })

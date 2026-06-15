@@ -464,6 +464,13 @@ describe('submitLesson', () => {
       expect.objectContaining({ jumping: false })
     )
   })
+
+  it('should_return_error_when_custom_tier_selected_with_no_fee', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'fee required for custom tier' })
+    expect(createLessonWithParticipants).not.toHaveBeenCalled()
+  })
 })
 
 describe('deleteLessonAction', () => {
