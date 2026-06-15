@@ -24,7 +24,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE approve pending in barn; DELETE any in barn | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own |
 | horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT |
 | riders | SELECT, INSERT | SELECT | SELECT |
-| lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
+| lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (payment_type only) | SELECT, INSERT |
 | lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
 | lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
@@ -103,7 +103,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 
 No API routes. All mutations go through Next.js Server Actions.
 
-- **Global actions:** `src/app/actions/` — auth (`auth.ts`), dev role switching (`dev-role.ts`), lesson submission (`lessons.ts`)
+- **Global actions:** `src/app/actions/` — auth (`auth.ts`), dev role switching (`dev-role.ts`), lesson submission and payment-type update (`lessons.ts`)
 - **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`barn/[slug]/approvals/`, `barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`)
 
 ## Supabase RPC
