@@ -274,7 +274,7 @@ describe('getLessonsByBarn', () => {
     return { select: mockSelect }
   }
 
-  it('should_return_lessons_for_the_barn_ordered_by_lesson_at_asc', async () => {
+  it('should_return_lessons_for_the_barn_ordered_by_lesson_at_desc', async () => {
     const { select, mockEq, mockOrder } = makeLessonsChain([])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
@@ -283,7 +283,7 @@ describe('getLessonsByBarn', () => {
     await getLessonsByBarn('barn-1')
 
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-    expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
+    expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: false })
   })
 
   it('should_return_empty_array_when_no_lessons', async () => {
