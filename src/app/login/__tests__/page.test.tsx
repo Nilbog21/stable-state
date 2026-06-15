@@ -11,10 +11,12 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
+import { createClient } from '@/lib/supabase/server'
 import LoginPage from '../page'
 
 describe('LoginPage', () => {
   beforeEach(() => {
+    vi.mocked(createClient).mockReset()
     setupAuth(null)
   })
 
