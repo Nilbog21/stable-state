@@ -26,6 +26,8 @@ const DEV_HORSES = ['Apple', 'Butter', 'Clover'];
 
 const DEV_PENDING_RIDER = { email: 'pending1@dev.local', firstName: 'Quinn', lastName: 'Pending' };
 
+const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'];
+
 const DEV_TIER_NAME = 'Normal Tier';
 const DEV_TIER_PRICE = 100;
 const DEV_TIER_2_NAME = 'Premium Tier';
@@ -79,6 +81,13 @@ function getLessonVariation(i, tier1, tier2) {
     jumping: useTier1,
     exertionLevel: (i % 5) + 1,
   };
+}
+
+// ~80% paid: every 5th lesson is unpaid; distribute paid slots evenly across all payment types
+function getPaymentType(i, isPast) {
+  if (!isPast) return null;
+  if (i % 5 === 4) return null;
+  return PAYMENT_TYPES[(i - Math.floor(i / 5)) % PAYMENT_TYPES.length];
 }
 
 function mustSucceed(result, label) {
@@ -356,6 +365,30 @@ async function run() {
     'update lesson tier names tier 2'
   );
 
+  const pastLessons = mustSucceed(
+    await supabase
+      .from('lessons')
+      .select('id')
+      .eq('barn_id', DEV_BARN_ID)
+      .lt('lesson_at', now.toISOString())
+      .order('lesson_at', { ascending: true }),
+    'fetch past lessons'
+  );
+
+  const ptGroups = {};
+  for (let i = 0; i < pastLessons.length; i++) {
+    const pt = getPaymentType(i, true);
+    if (pt) { (ptGroups[pt] ??= []).push(pastLessons[i].id); }
+  }
+  for (const [pt, ids] of Object.entries(ptGroups)) {
+    mustSucceed(
+      await supabase.from('lessons').update({ payment_type: pt }).eq('barn_id', DEV_BARN_ID).in('id', ids),
+      `update payment_type ${pt}`
+    );
+  }
+
+  const paidCount = pastLessons.filter((_, i) => getPaymentType(i, true) !== null).length;
+
   console.log('Done. Dev database reset to known state:');
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`);
   console.log(`  Manager:  ${MANAGER_EMAIL} (via seeded_accounts — sign in with Google to activate)`);
@@ -364,7 +397,7 @@ async function run() {
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`);
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}`);
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`);
-  console.log(`  Lessons:  34 (9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5`);
+  console.log(`  Lessons:  34 (9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid`);
 }
 
 if (require.main === module) {
@@ -373,5 +406,5 @@ if (require.main === module) {
     process.exit(1);
   });
 } else {
-  module.exports = { buildLessonDates, mustSucceed, getLessonVariation, DEV_PENDING_RIDER };
+  module.exports = { buildLessonDates, mustSucceed, getLessonVariation, DEV_PENDING_RIDER, getPaymentType, PAYMENT_TYPES };
 }

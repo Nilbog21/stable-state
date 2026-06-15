@@ -357,6 +357,124 @@ else
   assert_fail "should_export_DEV_PENDING_RIDER_with_lastName" "DEV_PENDING_RIDER.lastName is missing"
 fi
 
+# Test 21: should_return_null_for_future_lesson
+# Act + Assert
+node -e "
+const { getPaymentType } = require('$SCRIPT_DIR/reset-db.js');
+const result = getPaymentType(0, false);
+if (result !== null) { process.stderr.write('expected null for future lesson, got ' + result + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_null_for_future_lesson"
+else
+  assert_fail "should_return_null_for_future_lesson" "getPaymentType(0, false) did not return null"
+fi
+
+# Test 22: should_return_null_for_unpaid_slot_at_index_4
+# Act + Assert
+node -e "
+const { getPaymentType } = require('$SCRIPT_DIR/reset-db.js');
+const result = getPaymentType(4, true);
+if (result !== null) { process.stderr.write('expected null at i=4, got ' + result + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_null_for_unpaid_slot_at_index_4"
+else
+  assert_fail "should_return_null_for_unpaid_slot_at_index_4" "getPaymentType(4, true) did not return null"
+fi
+
+# Test 23: should_return_null_for_unpaid_slot_at_index_9
+# Act + Assert
+node -e "
+const { getPaymentType } = require('$SCRIPT_DIR/reset-db.js');
+const result = getPaymentType(9, true);
+if (result !== null) { process.stderr.write('expected null at i=9, got ' + result + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_null_for_unpaid_slot_at_index_9"
+else
+  assert_fail "should_return_null_for_unpaid_slot_at_index_9" "getPaymentType(9, true) did not return null"
+fi
+
+# Test 24: should_return_null_for_unpaid_slot_at_index_14
+# Act + Assert
+node -e "
+const { getPaymentType } = require('$SCRIPT_DIR/reset-db.js');
+const result = getPaymentType(14, true);
+if (result !== null) { process.stderr.write('expected null at i=14, got ' + result + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_null_for_unpaid_slot_at_index_14"
+else
+  assert_fail "should_return_null_for_unpaid_slot_at_index_14" "getPaymentType(14, true) did not return null"
+fi
+
+# Test 25: should_return_null_for_unpaid_slot_at_index_19
+# Act + Assert
+node -e "
+const { getPaymentType } = require('$SCRIPT_DIR/reset-db.js');
+const result = getPaymentType(19, true);
+if (result !== null) { process.stderr.write('expected null at i=19, got ' + result + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_null_for_unpaid_slot_at_index_19"
+else
+  assert_fail "should_return_null_for_unpaid_slot_at_index_19" "getPaymentType(19, true) did not return null"
+fi
+
+# Test 26: should_return_null_for_unpaid_slot_at_index_24
+# Act + Assert
+node -e "
+const { getPaymentType } = require('$SCRIPT_DIR/reset-db.js');
+const result = getPaymentType(24, true);
+if (result !== null) { process.stderr.write('expected null at i=24, got ' + result + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_null_for_unpaid_slot_at_index_24"
+else
+  assert_fail "should_return_null_for_unpaid_slot_at_index_24" "getPaymentType(24, true) did not return null"
+fi
+
+# Test 27: should_return_a_valid_payment_type_for_paid_past_lesson
+# Act + Assert
+node -e "
+const { getPaymentType, PAYMENT_TYPES } = require('$SCRIPT_DIR/reset-db.js');
+const result = getPaymentType(0, true);
+if (!PAYMENT_TYPES.includes(result)) { process.stderr.write('expected a valid payment type, got ' + result + '\n'); process.exit(1); }
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_return_a_valid_payment_type_for_paid_past_lesson"
+else
+  assert_fail "should_return_a_valid_payment_type_for_paid_past_lesson" "getPaymentType(0, true) did not return a valid payment type"
+fi
+
+# Test 28: should_cover_all_five_payment_types_across_past_lessons
+# Act + Assert
+node -e "
+const { getPaymentType, PAYMENT_TYPES } = require('$SCRIPT_DIR/reset-db.js');
+const seen = new Set();
+for (let i = 0; i < 29; i++) {
+  const pt = getPaymentType(i, true);
+  if (pt !== null) seen.add(pt);
+}
+for (const pt of PAYMENT_TYPES) {
+  if (!seen.has(pt)) { process.stderr.write('payment type not covered: ' + pt + '\n'); process.exit(1); }
+}
+" 2>/dev/null
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_cover_all_five_payment_types_across_past_lessons"
+else
+  assert_fail "should_cover_all_five_payment_types_across_past_lessons" "not all 5 payment types covered across past lessons"
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
