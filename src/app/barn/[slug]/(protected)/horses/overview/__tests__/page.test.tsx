@@ -235,4 +235,10 @@ describe('HorseOverviewPage', () => {
     const jumpingLinks = links.filter((l) => (l as HTMLAnchorElement).href?.includes('sort=jumping-'))
     expect(jumpingLinks.length).toBeGreaterThanOrEqual(2)
   })
+
+  it('should_render_horses_heading', async () => {
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /green acres — horses$/i })).toBeDefined()
+  })
 })

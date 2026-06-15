@@ -108,4 +108,10 @@ describe('HorsesPage', () => {
     expect(screen.getAllByRole('button', { name: /save/i })[0].getAttribute('form')).toBe('update-horse-horse-1')
   })
 
+  it('should_render_manage_horses_heading', async () => {
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /manage horses/i })).toBeDefined()
+  })
+
 })
