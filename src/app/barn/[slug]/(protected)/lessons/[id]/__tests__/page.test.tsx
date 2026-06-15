@@ -316,4 +316,17 @@ describe('LessonDetailPage', () => {
     render(jsx)
     expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
   })
+
+  it('should_show_jumping_badge_when_lesson_is_jumping', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, jumping: true })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Jumping')).toBeDefined()
+  })
+
+  it('should_not_show_jumping_badge_when_lesson_is_not_jumping', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Jumping')).toBeNull()
+  })
 })

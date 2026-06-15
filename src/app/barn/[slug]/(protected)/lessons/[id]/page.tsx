@@ -54,6 +54,11 @@ export default async function LessonDetailPage({
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
             {lesson.lesson_type === 'group' ? 'Group' : 'Normal'}
           </span>
+          {lesson.jumping && (
+            <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+              Jumping
+            </span>
+          )}
           {membership.role === 'manager' && (
             <a
               href={`/barn/${slug}/lessons/${lesson.id}/edit`}
