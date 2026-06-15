@@ -14,9 +14,15 @@ function padHour(h: number) {
   return String(h).padStart(2, '0')
 }
 
-export function DateHourPicker() {
-  const [date, setDate] = useState(todayString)
-  const [hour, setHour] = useState(() => new Date().getHours())
+export function DateHourPicker({
+  initialDate,
+  initialHour,
+}: {
+  initialDate?: string
+  initialHour?: number
+} = {}) {
+  const [date, setDate] = useState(initialDate ?? todayString)
+  const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
 
   const combinedValue = `${date}T${padHour(hour)}:00`
 

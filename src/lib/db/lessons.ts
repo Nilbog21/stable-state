@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { FinancialSummary, HorseIncomeSummary, RiderIncomeSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonType, LessonWithDetails } from './types'
+import type { FinancialSummary, HorseIncomeSummary, RiderIncomeSummary, Lesson, LessonDetail, LessonHorse, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
 
 export async function createLessonWithParticipants(params: {
   barnId: string
@@ -403,6 +403,39 @@ export async function getUpcomingLessons(
       rider_count: riderJunctionRows.length,
     }
   })
+}
+
+export async function updateLessonWithParticipants(params: {
+  lessonId: string
+  barnId: string
+  lessonAt: string
+  instructorId: string | null
+  fee: number | null
+  lessonType: LessonType
+  jumping: boolean
+  paymentType: PaymentType | null
+  tierName: string
+  horseIds: string[]
+  exertionLevels: number[]
+  riderIds: string[]
+}): Promise<Lesson> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('update_lesson_with_participants', {
+    p_lesson_id: params.lessonId,
+    p_barn_id: params.barnId,
+    p_lesson_at: params.lessonAt,
+    p_instructor_id: params.instructorId,
+    p_fee: params.fee,
+    p_lesson_type: params.lessonType,
+    p_jumping: params.jumping,
+    p_payment_type: params.paymentType,
+    p_tier_name: params.tierName,
+    p_horse_ids: params.horseIds,
+    p_exertion_levels: params.exertionLevels,
+    p_rider_ids: params.riderIds,
+  })
+  if (error) throw error
+  return data as Lesson
 }
 
 export async function updateLesson(
