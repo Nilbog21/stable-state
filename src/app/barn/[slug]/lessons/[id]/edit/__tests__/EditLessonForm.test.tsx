@@ -72,15 +72,23 @@ describe('EditLessonForm', () => {
   it('should_preselect_current_rider_in_dropdown_for_normal_lesson', () => {
     const { container } = render(<EditLessonForm {...baseProps} />)
     const select = container.querySelector('select[name="rider_id"]') as HTMLSelectElement
-    expect(select).not.toBeNull()
     expect(select.value).toBe('rider-1')
   })
 
-  it('should_precheck_current_riders_for_group_lesson', () => {
+  it('should_render_rider_dropdown_for_normal_lesson', () => {
+    const { container } = render(<EditLessonForm {...baseProps} />)
+    expect(container.querySelector('select[name="rider_id"]')).not.toBeNull()
+  })
+
+  it('should_precheck_rider_1_for_group_lesson', () => {
     const { container } = render(<EditLessonForm {...baseProps} lesson={groupLesson} riders={[mockRider, mockRider2]} />)
     const r1 = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-1"]') as HTMLInputElement
-    const r2 = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-2"]') as HTMLInputElement
     expect(r1.checked).toBe(true)
+  })
+
+  it('should_precheck_rider_2_for_group_lesson', () => {
+    const { container } = render(<EditLessonForm {...baseProps} lesson={groupLesson} riders={[mockRider, mockRider2]} />)
+    const r2 = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-2"]') as HTMLInputElement
     expect(r2.checked).toBe(true)
   })
 
@@ -127,12 +135,28 @@ describe('EditLessonForm', () => {
     })
   })
 
-  it('should_render_payment_type_options', () => {
+  it('should_render_venmo_payment_type_option', () => {
     render(<EditLessonForm {...baseProps} />)
     expect(screen.queryByRole('option', { name: /venmo/i })).not.toBeNull()
+  })
+
+  it('should_render_zelle_payment_type_option', () => {
+    render(<EditLessonForm {...baseProps} />)
     expect(screen.queryByRole('option', { name: /zelle/i })).not.toBeNull()
+  })
+
+  it('should_render_cash_payment_type_option', () => {
+    render(<EditLessonForm {...baseProps} />)
     expect(screen.queryByRole('option', { name: /cash/i })).not.toBeNull()
+  })
+
+  it('should_render_check_payment_type_option', () => {
+    render(<EditLessonForm {...baseProps} />)
     expect(screen.queryByRole('option', { name: /check/i })).not.toBeNull()
+  })
+
+  it('should_render_freshbooks_payment_type_option', () => {
+    render(<EditLessonForm {...baseProps} />)
     expect(screen.queryByRole('option', { name: /freshbooks/i })).not.toBeNull()
   })
 
@@ -212,5 +236,43 @@ describe('EditLessonForm', () => {
     const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horses: null }] }
     const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} />)
     expect(container.querySelector('form')).not.toBeNull()
+  })
+
+  it('should_clear_horse_checkboxes_when_switching_from_group_to_normal', () => {
+    const groupLessonTwoHorses: LessonDetail = {
+      ...groupLesson,
+      lesson_horses: [
+        { exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } },
+        { exertion_level: 3, horses: { id: 'horse-2', name: 'Storm' } },
+      ],
+    }
+    const horse2: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Storm', created_at: '', updated_at: '' }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={groupLessonTwoHorses} horses={[mockHorse, horse2]} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
+    const checkbox1 = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
+    expect(checkbox1.checked).toBe(false)
+  })
+
+  it('should_show_downgrade_warning_mentioning_horses_when_switching_group_to_normal', () => {
+    render(<EditLessonForm {...baseProps} lesson={groupLesson} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
+    expect(screen.getByRole('alert').textContent).toContain('horse')
+  })
+
+  it('should_show_client_error_when_normal_submitted_with_no_horses_selected', () => {
+    const lesson = { ...normalLesson, lesson_horses: [] }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
+    fireEvent.submit(form)
+    expect(screen.getByRole('alert').textContent).toContain('normal lesson requires exactly 1 horse')
+  })
+
+  it('should_not_call_action_when_normal_submitted_with_no_horses_selected', () => {
+    const action = vi.fn().mockResolvedValue({ error: null })
+    const lesson = { ...normalLesson, lesson_horses: [] }
+    render(<EditLessonForm {...baseProps} lesson={lesson} action={action} />)
+    const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
+    fireEvent.submit(form)
+    expect(action).not.toHaveBeenCalled()
   })
 })

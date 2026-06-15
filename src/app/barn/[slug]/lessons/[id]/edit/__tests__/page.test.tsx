@@ -69,6 +69,14 @@ const params = Promise.resolve({ slug: 'green-acres', id: 'lesson-1' })
 describe('EditLessonPage', () => {
   beforeEach(() => {
     vi.mocked(notFound).mockReset()
+    vi.mocked(getBarnBySlug).mockReset()
+    vi.mocked(getLessonById).mockReset()
+    vi.mocked(getEffectiveMembership).mockReset()
+    vi.mocked(getActiveTrainerMembershipsByBarn).mockReset()
+    vi.mocked(getProfilesByUserIds).mockReset()
+    vi.mocked(getHorsesByBarn).mockReset()
+    vi.mocked(getRidersByBarn).mockReset()
+    vi.mocked(createClient).mockReset()
     setupDefaults()
   })
 
@@ -76,6 +84,12 @@ describe('EditLessonPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_barn_does_not_exist', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
@@ -85,6 +99,14 @@ describe('EditLessonPage', () => {
     } as any)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_user_is_not_authenticated', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
+    } as any)
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
@@ -92,6 +114,12 @@ describe('EditLessonPage', () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_membership_is_missing', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
@@ -99,6 +127,12 @@ describe('EditLessonPage', () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_membership_is_pending', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
@@ -106,6 +140,12 @@ describe('EditLessonPage', () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_user_is_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
@@ -113,6 +153,12 @@ describe('EditLessonPage', () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_user_is_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const })
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
@@ -120,6 +166,12 @@ describe('EditLessonPage', () => {
     vi.mocked(getLessonById).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_lesson_not_found', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(null)
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 

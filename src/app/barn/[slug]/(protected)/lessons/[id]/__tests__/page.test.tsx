@@ -293,9 +293,15 @@ describe('LessonDetailPage', () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
-    const link = screen.getByRole('link', { name: /edit/i })
-    expect(link).toBeDefined()
-    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons/lesson-1/edit')
+    expect(screen.getByRole('link', { name: /edit/i })).toBeDefined()
+  })
+
+  it('should_edit_link_point_to_edit_page_for_manager', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /edit/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/lessons/lesson-1/edit')
   })
 
   it('should_not_show_edit_link_for_trainer', async () => {

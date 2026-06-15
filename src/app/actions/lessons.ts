@@ -139,6 +139,8 @@ export async function updateLessonAction(
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
 
+  if (horseIds.length === 0) return { error: 'horse required' }
+  if (lessonType === 'normal' && riderIds.length === 0) return { error: 'rider required' }
   if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }

@@ -558,6 +558,12 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_no_membership', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -566,6 +572,12 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_user_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -574,6 +586,36 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_user_is_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_horse_id_is_missing', async () => {
+    const fd = makeFormData({ rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'horse required' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_horse_id_is_missing', async () => {
+    const fd = makeFormData({ rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_rider_id_is_missing_for_normal_lesson', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'rider required' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_rider_id_is_missing_for_normal_lesson', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -587,6 +629,11 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'advanced', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'invalid lesson type' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_lesson_type_is_invalid', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'advanced', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -594,6 +641,11 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'normal', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'normal lesson requires exactly 1 rider' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_normal_lesson_has_multiple_riders', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: ['rider-1', 'rider-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'normal', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -601,6 +653,11 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'group', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'group lesson requires at least 2 riders' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_group_lesson_has_fewer_than_2_riders', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', lesson_type: 'group', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -611,6 +668,14 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'horse not found in this barn' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_horse_not_in_barn', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      { id: 'other-horse', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -621,6 +686,14 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'rider not found in this barn' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_rider_not_in_barn', async () => {
+    vi.mocked(getRidersByBarn).mockResolvedValue([
+      { id: 'other-rider', barn_id: 'barn-1', name: 'Other', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -629,6 +702,12 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', instructor_id: 'not-a-trainer', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'Invalid instructor' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_instructor_is_invalid', async () => {
+    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', instructor_id: 'not-a-trainer', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -658,6 +737,12 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'Failed to update lesson' })
+  })
+
+  it('should_not_redirect_when_updateLessonWithParticipants_throws', async () => {
+    vi.mocked(updateLessonWithParticipants).mockRejectedValue(new Error('db error'))
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(redirect).not.toHaveBeenCalled()
   })
 

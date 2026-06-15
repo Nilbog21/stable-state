@@ -53,6 +53,7 @@ export function EditLessonForm({
     setClientError(null)
     if (type === 'normal') {
       setCheckedRiderIds(new Set())
+      if (lessonType === 'group') setCheckedHorseIds(new Set())
       if (initialLessonType === 'group') setShowDowngradeWarning(true)
     } else {
       setShowDowngradeWarning(false)
@@ -62,6 +63,11 @@ export function EditLessonForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setClientError(null)
+    if (lessonType === 'normal' && checkedHorseIds.size !== 1) {
+      e.preventDefault()
+      setClientError('normal lesson requires exactly 1 horse')
+      return
+    }
     if (lessonType === 'group' && checkedRiderIds.size < 2) {
       e.preventDefault()
       setClientError('group lesson requires at least 2 riders')
@@ -79,7 +85,7 @@ export function EditLessonForm({
       {(showDowngradeWarning || displayError) && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {showDowngradeWarning && !displayError
-            ? 'Switching to Normal will remove extra riders. Select one rider to keep.'
+            ? 'Switching to Normal will remove extra riders and horses. Select one rider and one horse to keep.'
             : displayError}
         </p>
       )}
