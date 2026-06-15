@@ -36,7 +36,7 @@ export async function getLessonsByBarn(barnId: string): Promise<LessonWithDetail
     .from('lessons')
     .select('*')
     .eq('barn_id', barnId)
-    .order('lesson_at', { ascending: true })
+    .order('lesson_at', { ascending: false })
 
   if (lessonsError) throw lessonsError
   if (!lessons.length) return []
