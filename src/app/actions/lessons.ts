@@ -21,7 +21,7 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const horseIds = formData.getAll('horse_id') as string[]
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
-  let riderIds = formData.getAll('rider_id') as string[]
+  let riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
   const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
@@ -117,8 +117,7 @@ export async function submitLesson(
       jumping,
       tierName,
     })
-  } catch (err) {
-    console.error('[submitLesson] createLessonWithParticipants failed:', err)
+  } catch {
     return { error: 'Failed to submit lesson' }
   }
 
@@ -133,7 +132,7 @@ export async function updateLessonAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
   let horseIds = formData.getAll('horse_id') as string[]
-  let riderIds = formData.getAll('rider_id') as string[]
+  let riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
   const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null

@@ -80,6 +80,7 @@ export function LessonForm({
   const [selectedId, setSelectedId] = useState<string>(computedInitialSelectedId)
   const [newHorseName, setNewHorseName] = useState('')
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
+  const [newRiderName, setNewRiderName] = useState('')
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
 
   if (tiers.length === 0) {
@@ -123,17 +124,29 @@ export function LessonForm({
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setClientError(null)
-    if (lessonType === 'normal' && checkedHorseIds.size !== 1) {
+    const hasNewHorse = newHorseName.trim() !== ''
+    const hasNewRider = newRiderName.trim() !== ''
+    if (hasNewHorse && checkedHorseIds.size > 0) {
+      e.preventDefault()
+      setClientError('select a horse or add a new one, not both')
+      return
+    }
+    if (lessonType === 'normal' && !hasNewHorse && checkedHorseIds.size !== 1) {
       e.preventDefault()
       setClientError('normal lesson requires exactly 1 horse')
       return
     }
-    if (lessonType === 'normal' && normalRiderId === '') {
+    if (lessonType === 'normal' && normalRiderId === '' && !hasNewRider) {
       e.preventDefault()
       setClientError('a rider is required')
       return
     }
-    if (lessonType === 'group' && checkedHorseIds.size < 1) {
+    if (lessonType === 'normal' && normalRiderId !== '' && hasNewRider) {
+      e.preventDefault()
+      setClientError('select a rider or add a new one, not both')
+      return
+    }
+    if (lessonType === 'group' && !hasNewHorse && checkedHorseIds.size < 1) {
       e.preventDefault()
       setClientError('group lesson requires at least 1 horse')
       return
@@ -342,6 +355,8 @@ export function LessonForm({
                   type="text"
                   name="new_rider_name"
                   placeholder="Add new rider…"
+                  value={newRiderName}
+                  onChange={e => setNewRiderName(e.target.value)}
                   className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                 />
               </>

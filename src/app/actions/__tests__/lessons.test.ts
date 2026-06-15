@@ -483,6 +483,16 @@ describe('submitLesson', () => {
       expect.objectContaining({ tierName: 'Standard' })
     )
   })
+
+  it('should_treat_empty_string_rider_id_as_no_rider_when_new_rider_name_is_provided', async () => {
+    const newRider = { id: 'rider-new', barn_id: 'barn-1', name: 'Carol', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
+    vi.mocked(createRider).mockResolvedValue(newRider)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: '', new_rider_name: 'Carol', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).not.toEqual({ error: 'select a rider or add a new one, not both' })
+    expect(createRider).toHaveBeenCalledWith('barn-1', 'Carol')
+  })
 })
 
 describe('deleteLessonAction', () => {
@@ -880,6 +890,14 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', new_rider_name: 'Charlie', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'select a rider or add a new one, not both' })
+  })
+
+  it('should_treat_empty_string_rider_id_as_no_rider_when_new_rider_name_is_provided', async () => {
+    vi.mocked(createRider).mockResolvedValue({ id: 'new-rider-1', barn_id: 'barn-1', name: 'Charlie', user_id: null, created_at: '', updated_at: '' })
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: '', new_rider_name: 'Charlie', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).not.toEqual({ error: 'select a rider or add a new one, not both' })
+    expect(createRider).toHaveBeenCalledWith('barn-1', 'Charlie')
   })
 })
 
