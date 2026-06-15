@@ -34,22 +34,25 @@ export default async function ProtectedBarnLayout({
     navLinks = [
       { href: `/barn/${slug}`, label: 'Dashboard' },
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
-      { href: `/barn/${slug}/horses`, label: 'Horses' },
+      { href: `/barn/${slug}/horses/overview`, label: 'Horses' },
       { href: `/barn/${slug}/riders`, label: 'Riders' },
       { href: `/barn/${slug}/finances`, label: 'Finances' },
       { href: `/barn/${slug}/approvals`, label: 'Approvals' },
+      { href: `/barn/${slug}/horses`, label: 'Manage Horses' },
       { href: `/barn/${slug}/settings`, label: 'Settings' },
     ]
   } else if (membership.role === 'trainer') {
     navLinks = [
       { href: `/barn/${slug}`, label: 'Dashboard' },
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
+      { href: `/barn/${slug}/horses/overview`, label: 'Horses' },
       { href: `/barn/${slug}/riders`, label: 'Riders' },
     ]
   } else {
     navLinks = [
       { href: `/barn/${slug}`, label: 'Dashboard' },
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
+      { href: `/barn/${slug}/horses/overview`, label: 'Horses' },
     ]
   }
 
