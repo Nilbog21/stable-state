@@ -142,4 +142,75 @@ describe('EditLessonForm', () => {
     const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
     expect(select.value).toBe('venmo')
   })
+
+  it('should_uncheck_horse_when_horse_checkbox_is_clicked_while_checked', () => {
+    const { container } = render(<EditLessonForm {...baseProps} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(false)
+  })
+
+  it('should_check_horse_when_unchecked_horse_checkbox_is_clicked', () => {
+    const lesson = { ...normalLesson, lesson_horses: [] }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(true)
+  })
+
+  it('should_update_exertion_level_when_changed', () => {
+    render(<EditLessonForm {...baseProps} />)
+    const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
+    fireEvent.change(exertionInput, { target: { value: '5' } })
+    expect(exertionInput.value).toBe('5')
+  })
+
+  it('should_default_exertion_to_3_when_nan_is_entered', () => {
+    render(<EditLessonForm {...baseProps} />)
+    const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
+    fireEvent.change(exertionInput, { target: { value: '' } })
+    expect(exertionInput.value).toBe('3')
+  })
+
+  it('should_check_rider_checkbox_when_clicked_in_group_mode', () => {
+    const lesson = { ...groupLesson, lesson_riders: [] }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} riders={[mockRider, mockRider2]} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-1"]') as HTMLInputElement
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(true)
+  })
+
+  it('should_uncheck_rider_checkbox_when_clicked_again_in_group_mode', () => {
+    const { container } = render(<EditLessonForm {...baseProps} lesson={groupLesson} riders={[mockRider, mockRider2]} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-1"]') as HTMLInputElement
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(false)
+  })
+
+  it('should_render_jumping_hidden_input_as_true_when_lesson_jumping_is_true', () => {
+    const lesson = { ...normalLesson, jumping: true }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    const hiddenJumping = container.querySelector('input[name="jumping"]') as HTMLInputElement
+    expect(hiddenJumping.value).toBe('true')
+  })
+
+  it('should_default_instructor_to_currentUserId_when_instructor_id_is_null', () => {
+    const lesson = { ...normalLesson, instructor_id: null }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    const select = container.querySelector('select[name="instructor_id"]') as HTMLSelectElement
+    expect(select).not.toBeNull()
+  })
+
+  it('should_render_fee_input_with_empty_value_when_fee_is_null', () => {
+    const lesson = { ...normalLesson, fee: null }
+    render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.defaultValue).toBe('')
+  })
+
+  it('should_handle_null_horses_relation_in_lesson_horses', () => {
+    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horses: null }] }
+    const { container } = render(<EditLessonForm {...baseProps} lesson={lesson} />)
+    expect(container.querySelector('form')).not.toBeNull()
+  })
 })

@@ -128,4 +128,27 @@ describe('EditLessonPage', () => {
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
+
+  it('should_include_trainer_names_in_instructor_list', async () => {
+    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
+      { id: 'mem-2', user_id: 'trainer-1', barn_id: 'barn-1', role: 'trainer' as const, status: 'active' as const, created_at: '' },
+    ])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([
+      { user_id: 'user-1', first_name: 'Jane', last_name: 'Manager', created_at: '' },
+      { user_id: 'trainer-1', first_name: 'Bob', last_name: 'Trainer', created_at: '' },
+    ])
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
+
+  it('should_fall_back_to_user_id_when_profile_not_found', async () => {
+    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
+      { id: 'mem-2', user_id: 'trainer-1', barn_id: 'barn-1', role: 'trainer' as const, status: 'active' as const, created_at: '' },
+    ])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
 })

@@ -700,4 +700,23 @@ describe('updateLessonAction', () => {
       expect.objectContaining({ fee: null })
     )
   })
+
+  it('should_use_valid_trainer_instructor_when_manager_selects_one', async () => {
+    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
+      createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
+    ])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', instructor_id: 'trainer-99', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorId: 'trainer-99' })
+    )
+  })
+
+  it('should_use_custom_tier_name_fallback_when_tier_name_not_in_form', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ tierName: 'Custom' })
+    )
+  })
 })
