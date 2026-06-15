@@ -1,7 +1,7 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createLessonWithParticipants, deleteLesson, updateLessonWithParticipants } from '@/lib/db/lessons'
+import { createLessonWithParticipants, deleteLesson, updateLessonWithParticipants, getLessonById, updateLesson } from '@/lib/db/lessons'
 import type { PaymentType } from '@/lib/db/types'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
@@ -228,4 +228,34 @@ export async function deleteLessonAction(
   }
 
   redirect(`/barn/${barnSlug}/lessons`)
+}
+
+export async function updatePaymentTypeAction(
+  lessonId: string,
+  barnId: string,
+  paymentType: string | null
+): Promise<{ error: string | null }> {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) return { error: 'not authenticated' }
+
+  const membership = await getUserMembership(user.id, barnId)
+  if (!membership || membership.status !== 'active' || !['manager', 'trainer'].includes(membership.role)) {
+    return { error: 'not authorized' }
+  }
+
+  if (membership.role === 'trainer') {
+    const lesson = await getLessonById(lessonId, barnId)
+    if (!lesson) return { error: 'lesson not found' }
+    if (lesson.instructor_id !== user.id) return { error: 'not authorized' }
+  }
+
+  try {
+    await updateLesson(lessonId, barnId, { payment_type: paymentType as PaymentType | null })
+  } catch {
+    return { error: 'Failed to update payment type' }
+  }
+
+  return { error: null }
 }
