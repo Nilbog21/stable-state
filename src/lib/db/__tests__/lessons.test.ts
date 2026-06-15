@@ -19,6 +19,7 @@ import {
   getHorseIncomeSummary,
   getRiderIncomeSummary,
   updateLesson,
+  updateLessonWithParticipants,
 } from '../lessons'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -1915,5 +1916,64 @@ describe('updateLesson', () => {
     } as any)
 
     await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('row-level security policy')
+  })
+})
+
+describe('updateLessonWithParticipants', () => {
+  it('should_call_rpc_update_lesson_with_participants_with_correct_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateLessonWithParticipants({
+      lessonId: 'lesson-1',
+      barnId: 'barn-1',
+      lessonAt: '2026-05-17T10:00:00Z',
+      instructorId: 'user-1',
+      fee: 75,
+      lessonType: 'normal',
+      jumping: false,
+      paymentType: null,
+      tierName: 'Custom',
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('update_lesson_with_participants', {
+      p_lesson_id: 'lesson-1',
+      p_barn_id: 'barn-1',
+      p_lesson_at: '2026-05-17T10:00:00Z',
+      p_instructor_id: 'user-1',
+      p_fee: 75,
+      p_lesson_type: 'normal',
+      p_jumping: false,
+      p_payment_type: null,
+      p_tier_name: 'Custom',
+      p_horse_ids: ['horse-1'],
+      p_exertion_levels: [3],
+      p_rider_ids: ['rider-1'],
+    })
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('rpc failed') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await expect(
+      updateLessonWithParticipants({
+        lessonId: 'lesson-1',
+        barnId: 'barn-1',
+        lessonAt: '2026-05-17T10:00:00Z',
+        instructorId: 'user-1',
+        fee: null,
+        lessonType: 'normal',
+        jumping: false,
+        paymentType: null,
+        tierName: 'Custom',
+        horseIds: ['horse-1'],
+        exertionLevels: [3],
+        riderIds: ['rider-1'],
+      })
+    ).rejects.toThrow('rpc failed')
   })
 })

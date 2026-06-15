@@ -65,4 +65,16 @@ describe('DateHourPicker', () => {
     fireEvent.change(dateInput, { target: { value: '' } })
     expect(container.querySelector('input[name="lesson_at"]')).toBeNull()
   })
+
+  it('should_use_initialDate_prop_when_provided', () => {
+    const { container } = render(<DateHourPicker initialDate="2026-03-15" />)
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    expect(dateInput.value).toBe('2026-03-15')
+  })
+
+  it('should_use_initialHour_prop_when_provided', () => {
+    render(<DateHourPicker initialHour={9} />)
+    const select = screen.getByLabelText('Hour') as HTMLSelectElement
+    expect(select.value).toBe('9')
+  })
 })

@@ -288,4 +288,26 @@ describe('LessonDetailPage', () => {
     const riderItems = listItems.filter((li) => li.textContent === 'Alice')
     expect(riderItems.length).toBe(0)
   })
+
+  it('should_show_edit_link_for_manager', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /edit/i })
+    expect(link).toBeDefined()
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/lessons/lesson-1/edit')
+  })
+
+  it('should_not_show_edit_link_for_trainer', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
+  })
+
+  it('should_not_show_edit_link_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
+  })
 })
