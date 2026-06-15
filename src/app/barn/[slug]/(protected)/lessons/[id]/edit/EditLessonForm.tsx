@@ -149,23 +149,27 @@ export function EditLessonForm({
               {h.name}
             </label>
             {checkedHorseIds.has(h.id) && (
-              <input
-                type="number"
-                name={`exertion_${h.id}`}
-                aria-label={`Exertion level for ${h.name}`}
-                min="1"
-                max="5"
-                value={exertionMap.get(h.id) ?? 3}
-                onChange={(e) => {
-                  const val = parseInt(e.target.value, 10)
-                  setExertionMap(prev => {
-                    const next = new Map(prev)
-                    next.set(h.id, Number.isNaN(val) ? 3 : val)
-                    return next
-                  })
-                }}
-                className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
+              <>
+                <label htmlFor={`exertion_${h.id}`} className="text-xs text-zinc-500">Exertion (1–5)</label>
+                <input
+                  id={`exertion_${h.id}`}
+                  type="number"
+                  name={`exertion_${h.id}`}
+                  aria-label={`Exertion level for ${h.name}`}
+                  min="1"
+                  max="5"
+                  value={exertionMap.get(h.id) ?? 3}
+                  onChange={(e) => {
+                    const val = parseInt(e.target.value, 10)
+                    setExertionMap(prev => {
+                      const next = new Map(prev)
+                      next.set(h.id, Number.isNaN(val) ? 3 : val)
+                      return next
+                    })
+                  }}
+                  className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </>
             )}
           </div>
         ))}

@@ -149,23 +149,27 @@ export function LessonForm({
               {h.name}
             </label>
             {checkedHorseIds.has(h.id) && (
-              <input
-                type="number"
-                name={`exertion_${h.id}`}
-                aria-label={`Exertion level for ${h.name}`}
-                min="1"
-                max="5"
-                value={exertionLevels.get(h.id) as number}
-                onChange={(e) => {
-                  setExertionLevels(prev => {
-                    const next = new Map(prev)
-                    next.set(h.id, parseInt(e.target.value, 10))
-                    return next
-                  })
-                }}
-                required
-                className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
+              <>
+                <label htmlFor={`exertion_${h.id}`} className="text-xs text-zinc-500">Exertion (1–5)</label>
+                <input
+                  id={`exertion_${h.id}`}
+                  type="number"
+                  name={`exertion_${h.id}`}
+                  aria-label={`Exertion level for ${h.name}`}
+                  min="1"
+                  max="5"
+                  value={exertionLevels.get(h.id) as number}
+                  onChange={(e) => {
+                    setExertionLevels(prev => {
+                      const next = new Map(prev)
+                      next.set(h.id, parseInt(e.target.value, 10))
+                      return next
+                    })
+                  }}
+                  required
+                  className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              </>
             )}
           </div>
         ))}
@@ -183,17 +187,21 @@ export function LessonForm({
                 className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
               {newHorseName && (
-                <input
-                  type="number"
-                  name="new_horse_exertion_level"
-                  aria-label="Exertion level for new horse"
-                  min="1"
-                  max="5"
-                  value={newHorseExertionLevel}
-                  onChange={(e) => setNewHorseExertionLevel(parseInt(e.target.value, 10))}
-                  required
-                  className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
+                <>
+                  <label htmlFor="new_horse_exertion_level" className="text-xs text-zinc-500">Exertion (1–5)</label>
+                  <input
+                    id="new_horse_exertion_level"
+                    type="number"
+                    name="new_horse_exertion_level"
+                    aria-label="Exertion level for new horse"
+                    min="1"
+                    max="5"
+                    value={newHorseExertionLevel}
+                    onChange={(e) => setNewHorseExertionLevel(parseInt(e.target.value, 10))}
+                    required
+                    className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  />
+                </>
               )}
             </div>
           </>
