@@ -60,6 +60,46 @@ VALUES ('<manager-google-email>', 'manager', '<barn-uuid>');
 
 On first Google OAuth sign-in the trigger `on_auth_user_created` fires and creates an active `barn_memberships` row automatically.
 
+## Production bootstrap
+
+One-time steps to bring a new production environment online. Run these after the Supabase project and Vercel deployment are provisioned.
+
+### 1. Apply migrations
+
+Link the Supabase CLI to the production project, then push all migrations:
+
+```bash
+npx supabase link --project-ref <project-ref>
+npx supabase db push
+```
+
+The `<project-ref>` is the string in the Supabase dashboard URL: `https://supabase.com/dashboard/project/<project-ref>`.
+
+### 2. Seed the initial manager account
+
+Pre-authorize the barn manager's Google email before their first sign-in. The barn row must exist first (create it via the Supabase SQL editor or dashboard if needed).
+
+```sql
+INSERT INTO public.seeded_accounts (email, role, barn_id)
+VALUES ('<manager-google-email>', 'manager', '<barn-uuid>');
+```
+
+On first Google OAuth sign-in the trigger `on_auth_user_created` fires and creates an active `barn_memberships` row automatically.
+
+### 3. Add redirect URLs to Supabase
+
+In the Supabase dashboard → **Authentication** → **URL Configuration**, add both URLs to the **Redirect URLs** list:
+
+- `https://<your-vercel-domain>.vercel.app` (production)
+- `https://*.vercel.app/**` (preview deployments)
+
+### 4. Add redirect URIs to Google OAuth
+
+In Google Cloud Console → **APIs & Services** → **Credentials** → your OAuth 2.0 client, add both URLs to **Authorized redirect URIs**:
+
+- `https://<your-vercel-domain>.vercel.app/auth/callback`
+- `https://*.vercel.app/auth/callback`
+
 ## Deployment
 
 TBD — see #116.
