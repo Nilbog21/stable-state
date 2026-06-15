@@ -26,6 +26,7 @@ export function resolveFinancesMonth(
   startDate: Date
   endDate: Date
   monthLabel: string
+  isCurrentMonth: boolean
   prevMonthUrl: string | null
   nextMonthUrl: string | null
 } {
@@ -88,7 +89,7 @@ export function resolveFinancesMonth(
     nextMonthUrl = `?month=${pad4(nextYear)}-${pad2(nextMonth + 1)}`
   }
 
-  return { startDate, endDate, monthLabel, prevMonthUrl, nextMonthUrl }
+  return { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl }
 }
 
 export default async function FinancesPage({
@@ -117,7 +118,7 @@ export default async function FinancesPage({
   }
 
   const { month: monthParam } = await searchParams
-  const { startDate, endDate, monthLabel, prevMonthUrl, nextMonthUrl } =
+  const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
   const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, outstandingLessons] = await Promise.all([
@@ -195,14 +196,16 @@ export default async function FinancesPage({
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
       )}
 
-      <section className="mt-10">
-        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Pending income (from scheduled lessons)
-        </p>
-        <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-          {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-        </p>
-      </section>
+      {isCurrentMonth && (
+        <section className="mt-10">
+          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Pending income (from scheduled lessons)
+          </p>
+          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          </p>
+        </section>
+      )}
 
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">

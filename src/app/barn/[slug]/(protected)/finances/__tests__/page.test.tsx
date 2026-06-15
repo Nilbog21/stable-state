@@ -398,11 +398,25 @@ describe('FinancesPage', () => {
     expect(screen.queryByText(/total income/i)).toBeNull()
   })
 
-  it('should_display_pending_income_section', async () => {
+  it('should_display_pending_income_section_for_current_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 60, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Pending income (from scheduled lessons)')).toBeDefined()
+  })
+
+  it('should_hide_pending_income_section_for_past_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, breakdown: [] })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-05' }),
+    })
+    render(jsx)
+    expect(screen.queryByText('Pending income (from scheduled lessons)')).toBeNull()
   })
 
   it('should_display_pending_income_amount', async () => {
