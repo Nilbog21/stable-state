@@ -339,9 +339,15 @@ describe('LessonForm', () => {
   })
 
   it('should_show_tier_dropdown_with_tier_options', () => {
-    const tier = createMockLessonTier({ name: 'Premium', is_default: true })
+    const tier = createMockLessonTier({ name: 'Premium', price: 100, is_default: true })
     render(<LessonForm {...baseProps} tiers={[tier]} />)
-    expect(screen.getByRole('option', { name: 'Premium' })).toBeDefined()
+    expect(screen.getByRole('option', { name: 'Premium - $100' })).toBeDefined()
+  })
+
+  it('should_show_tier_name_only_when_price_is_null', () => {
+    const tier = createMockLessonTier({ name: 'Comp', price: null, is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    expect(screen.getByRole('option', { name: 'Comp' })).toBeDefined()
   })
 
   it('should_show_custom_option_in_tier_dropdown', () => {

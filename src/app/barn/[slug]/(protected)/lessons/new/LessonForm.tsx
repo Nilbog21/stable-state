@@ -292,7 +292,9 @@ export function LessonForm({
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           {tiers.map(t => (
-            <option key={t.id} value={t.id}>{t.name}</option>
+            <option key={t.id} value={t.id}>
+              {t.price != null ? `${t.name} - $${t.price}` : t.name}
+            </option>
           ))}
           <option value={CUSTOM_ID}>Custom</option>
         </select>
