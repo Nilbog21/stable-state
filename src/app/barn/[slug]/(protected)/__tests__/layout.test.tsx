@@ -1,0 +1,345 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, cleanup } from '@testing-library/react'
+
+afterEach(cleanup)
+
+const mockNotFound = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND')
+  })
+)
+
+const mockRedirect = vi.hoisted(() =>
+  vi.fn((url: string) => {
+    throw Object.assign(new Error('NEXT_REDIRECT'), {
+      digest: `NEXT_REDIRECT;replace;${url}`,
+    })
+  })
+)
+
+vi.mock('next/navigation', () => ({
+  notFound: mockNotFound,
+  redirect: mockRedirect,
+}))
+
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(),
+}))
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
+}))
+
+vi.mock('@/lib/db/barns', () => ({
+  getBarnBySlug: vi.fn(),
+}))
+
+vi.mock('@/lib/db/effective-membership', () => ({
+  getEffectiveMembership: vi.fn(),
+}))
+
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
+}))
+
+vi.mock('../../DevRoleSwitcher', () => ({
+  DevRoleSwitcher: ({ currentOverride }: { currentOverride: string | null }) => (
+    <div data-testid="dev-role-switcher" data-override={currentOverride ?? 'none'} />
+  ),
+}))
+
+import { cookies } from 'next/headers'
+import { createClient } from '@/lib/supabase/server'
+import { getBarnBySlug } from '@/lib/db/barns'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
+import ProtectedBarnLayout from '../layout'
+
+const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockUser = { id: 'user-1', email: 'user@example.com' }
+
+const mockManagerMembership = {
+  id: 'mem-mgr',
+  user_id: 'user-1',
+  barn_id: 'barn-1',
+  role: 'manager' as const,
+  status: 'active' as const,
+  created_at: '',
+}
+
+const mockTrainerMembership = {
+  id: 'mem-trn',
+  user_id: 'user-1',
+  barn_id: 'barn-1',
+  role: 'trainer' as const,
+  status: 'active' as const,
+  created_at: '',
+}
+
+const mockRiderMembership = {
+  id: 'mem-rdr',
+  user_id: 'user-1',
+  barn_id: 'barn-1',
+  role: 'rider' as const,
+  status: 'active' as const,
+  created_at: '',
+}
+
+function setupAuth(user: typeof mockUser | null = mockUser) {
+  vi.mocked(createClient).mockResolvedValue({
+    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
+  } as any)
+}
+
+function setupCookies(value?: string) {
+  const cookieStore = { get: vi.fn().mockReturnValue(value ? { value } : undefined) }
+  vi.mocked(cookies).mockResolvedValue(cookieStore as any)
+}
+
+const children = <div data-testid="child">content</div>
+const params = Promise.resolve({ slug: 'green-acres' })
+
+describe('ProtectedBarnLayout - auth guard', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    setupAuth()
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    setupCookies()
+  })
+
+  it('should_call_notFound_when_barn_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+
+    await expect(
+      ProtectedBarnLayout({ children, params })
+    ).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_login_when_unauthenticated', async () => {
+    setupAuth(null)
+
+    await expect(
+      ProtectedBarnLayout({ children, params })
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+
+  it('should_redirect_to_login_when_no_membership', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+
+    await expect(
+      ProtectedBarnLayout({ children, params })
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+
+  it('should_redirect_to_pending_when_membership_is_pending', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({
+      ...mockManagerMembership,
+      status: 'pending',
+    })
+
+    await expect(
+      ProtectedBarnLayout({ children, params })
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
+  })
+
+  it('should_redirect_to_login_when_membership_is_not_active', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({
+      ...mockManagerMembership,
+      status: 'rejected' as any,
+    })
+
+    await expect(
+      ProtectedBarnLayout({ children, params })
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+})
+
+describe('ProtectedBarnLayout - nav links', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    setupAuth()
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    setupCookies()
+  })
+
+  it('should_render_children', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByTestId('child')).toBeDefined()
+  })
+
+  it('should_render_dashboard_link_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+  })
+
+  it('should_render_all_six_links_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /lessons/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /horses/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /riders/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /finances/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /approvals/i })).toBeDefined()
+  })
+
+  it('should_render_dashboard_link_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+  })
+
+  it('should_render_three_links_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /lessons/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /riders/i })).toBeDefined()
+  })
+
+  it('should_not_render_horses_link_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /horses/i })).toBeNull()
+  })
+
+  it('should_not_render_finances_link_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /finances/i })).toBeNull()
+  })
+
+  it('should_not_render_approvals_link_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /approvals/i })).toBeNull()
+  })
+
+  it('should_render_dashboard_link_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /dashboard/i })
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+  })
+
+  it('should_render_two_links_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /dashboard/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /lessons/i })).toBeDefined()
+  })
+
+  it('should_not_render_horses_link_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /horses/i })).toBeNull()
+  })
+
+  it('should_not_render_finances_link_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /finances/i })).toBeNull()
+  })
+
+  it('should_not_render_approvals_link_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /approvals/i })).toBeNull()
+  })
+})
+
+describe('ProtectedBarnLayout - DevRoleSwitcher outside development', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    setupAuth()
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    setupCookies()
+  })
+
+  it('should_not_show_switcher_outside_development', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByTestId('dev-role-switcher')).toBeNull()
+  })
+})
+
+describe('ProtectedBarnLayout - DevRoleSwitcher in development mode', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.stubEnv('NODE_ENV', 'development')
+    setupAuth()
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    setupCookies()
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('should_not_show_switcher_when_user_is_not_manager_in_dev_mode', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByTestId('dev-role-switcher')).toBeNull()
+  })
+
+  it('should_show_switcher_when_user_is_manager_in_dev_mode', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByTestId('dev-role-switcher')).toBeDefined()
+  })
+
+  it('should_pass_null_override_when_no_cookie', async () => {
+    setupCookies(undefined)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByTestId('dev-role-switcher').getAttribute('data-override')).toBe('none')
+  })
+
+  it('should_pass_null_override_when_cookie_value_is_manager_role', async () => {
+    setupCookies('manager')
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByTestId('dev-role-switcher').getAttribute('data-override')).toBe('none')
+  })
+
+  it('should_pass_valid_override_from_cookie', async () => {
+    setupCookies('trainer')
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByTestId('dev-role-switcher').getAttribute('data-override')).toBe('trainer')
+  })
+})
