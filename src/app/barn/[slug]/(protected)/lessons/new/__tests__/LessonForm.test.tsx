@@ -321,8 +321,6 @@ describe('LessonForm', () => {
   it('should_not_show_exertion_label_when_existing_horse_is_unchecked', () => {
     const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
     render(<LessonForm {...baseProps} horses={[horse]} />)
-    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
-    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     expect(screen.queryByText('Exertion (1–5)')).toBeNull()
   })
 

@@ -150,8 +150,9 @@ export function LessonForm({
             </label>
             {checkedHorseIds.has(h.id) && (
               <>
-                <span className="text-xs text-zinc-500">Exertion (1–5)</span>
+                <label htmlFor={`exertion_${h.id}`} className="text-xs text-zinc-500">Exertion (1–5)</label>
                 <input
+                  id={`exertion_${h.id}`}
                   type="number"
                   name={`exertion_${h.id}`}
                   aria-label={`Exertion level for ${h.name}`}
@@ -187,8 +188,9 @@ export function LessonForm({
               />
               {newHorseName && (
                 <>
-                  <span className="text-xs text-zinc-500">Exertion (1–5)</span>
+                  <label htmlFor="new_horse_exertion_level" className="text-xs text-zinc-500">Exertion (1–5)</label>
                   <input
+                    id="new_horse_exertion_level"
                     type="number"
                     name="new_horse_exertion_level"
                     aria-label="Exertion level for new horse"
