@@ -100,4 +100,25 @@ describe('RidersPage', () => {
     render(jsx)
     expect(screen.getByText(/no riders/i)).toBeDefined()
   })
+
+  it('should_render_update_form_outside_table_per_rider', async () => {
+    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(document.getElementById('update-rider-rider-1')).not.toBeNull()
+  })
+
+  it('should_associate_rider_name_input_with_its_form', async () => {
+    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByDisplayValue('Jane Doe').getAttribute('form')).toBe('update-rider-rider-1')
+  })
+
+  it('should_associate_save_button_with_its_form', async () => {
+    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('button', { name: /save/i })[0].getAttribute('form')).toBe('update-rider-rider-1')
+  })
 })

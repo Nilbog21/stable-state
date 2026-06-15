@@ -87,4 +87,25 @@ describe('HorsesPage', () => {
     expect(screen.getAllByRole('button', { name: /save/i })).toHaveLength(2)
   })
 
+  it('should_render_update_form_outside_table_per_horse', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(document.getElementById('update-horse-horse-1')).not.toBeNull()
+  })
+
+  it('should_associate_horse_name_input_with_its_form', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByDisplayValue('Thunderbolt').getAttribute('form')).toBe('update-horse-horse-1')
+  })
+
+  it('should_associate_save_button_with_its_form', async () => {
+    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('button', { name: /save/i })[0].getAttribute('form')).toBe('update-horse-horse-1')
+  })
+
 })
