@@ -372,4 +372,92 @@ describe('FinancesPage', () => {
     expect(nextLink).not.toBeNull()
     expect(nextLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-01')
   })
+
+  it('should_display_collected_income_label_instead_of_total_income', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 150,
+      pendingIncome: 0,
+      outstandingLessons: [],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/collected income/i)).toBeDefined()
+  })
+
+  it('should_not_display_total_income_label', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      outstandingLessons: [],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText(/total income/i)).toBeNull()
+  })
+
+  it('should_display_pending_income_section', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 60,
+      outstandingLessons: [],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/pending income/i)).toBeDefined()
+  })
+
+  it('should_display_pending_income_amount', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 60,
+      outstandingLessons: [],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('$60.00')).toBeDefined()
+  })
+
+  it('should_display_outstanding_section_heading', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      outstandingLessons: [],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/outstanding/i)).toBeDefined()
+  })
+
+  it('should_highlight_outstanding_section_when_total_is_greater_than_zero', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      outstandingLessons: [
+        { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: 75 },
+      ],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const container = screen.getByText(/outstanding/i).closest('section')
+    expect(container?.className).toMatch(/amber/)
+  })
+
+  it('should_not_highlight_outstanding_section_when_total_is_zero', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      outstandingLessons: [],
+      breakdown: [],
+    } as any)
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const container = screen.getByText(/outstanding/i).closest('section')
+    expect(container?.className).not.toMatch(/amber/)
+  })
 })

@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createMockLesson } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -1011,6 +1011,223 @@ describe('getFinancialSummary', () => {
     } as any)
 
     await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('db error')
+  })
+
+  describe('three-bucket behavior', () => {
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    function makeSummaryChainFull(data: unknown[], error: Error | null = null) {
+      const mockLt = vi.fn().mockResolvedValue({ data, error })
+      const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+      const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      return { select: mockSelect }
+    }
+
+    function makeInChain(data: unknown[] | null, error: Error | null = null) {
+      const mockIn = vi.fn().mockResolvedValue({ data, error })
+      const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
+      return { select: mockSelect }
+    }
+
+    it('should_return_collected_income_for_lessons_with_payment_type', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: 'venmo' })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.collectedIncome).toBe(75)
+    })
+
+    it('should_return_zero_pending_income_when_no_future_unpaid_lessons_with_fee', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: 'venmo' })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.pendingIncome).toBe(0)
+    })
+
+    it('should_return_pending_income_for_future_lessons_without_payment_and_with_fee', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: 60, lesson_at: '2026-06-20T10:00:00Z', payment_type: null })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.pendingIncome).toBe(60)
+    })
+
+    it('should_exclude_pending_lesson_with_null_fee_from_pending_income', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: null, lesson_at: '2026-06-20T10:00:00Z', payment_type: null })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.pendingIncome).toBe(0)
+    })
+
+    it('should_return_outstanding_lessons_for_past_unpaid_lessons_with_nonzero_fee', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
+      const from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeSummaryChainFull([lesson])
+        if (table === 'lesson_riders') return makeInChain([])
+        if (table === 'riders') return makeInChain([])
+        if (table === 'profiles') return makeInChain([])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons).toHaveLength(1)
+      expect(result.outstandingLessons[0].id).toBe('lesson-1')
+    })
+
+    it('should_exclude_fee_zero_lessons_from_outstanding', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: 0, lesson_at: '2026-06-10T10:00:00Z', payment_type: null })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons).toHaveLength(0)
+    })
+
+    it('should_include_fee_null_lessons_in_outstanding', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ id: 'lesson-null-fee', fee: null, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
+      const from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeSummaryChainFull([lesson])
+        if (table === 'lesson_riders') return makeInChain([])
+        if (table === 'riders') return makeInChain([])
+        if (table === 'profiles') return makeInChain([])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons).toHaveLength(1)
+      expect(result.outstandingLessons[0].fee).toBeNull()
+    })
+
+    it('should_not_include_paid_lessons_in_outstanding', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: 'cash' })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons).toHaveLength(0)
+    })
+
+    it('should_not_include_future_lessons_in_outstanding', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: 75, lesson_at: '2026-06-20T10:00:00Z', payment_type: null })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons).toHaveLength(0)
+    })
+
+    it('should_include_rider_names_in_outstanding_lesson', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
+      const from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeSummaryChainFull([lesson])
+        if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'rider-1' }])
+        if (table === 'riders') return makeInChain([{ id: 'rider-1', name: 'Alice' }])
+        if (table === 'profiles') return makeInChain([])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons[0].rider_names).toEqual(['Alice'])
+    })
+
+    it('should_include_instructor_name_in_outstanding_lesson', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: 'user-1' })
+      const from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeSummaryChainFull([lesson])
+        if (table === 'lesson_riders') return makeInChain([])
+        if (table === 'riders') return makeInChain([])
+        if (table === 'profiles') return makeInChain([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Doe' }])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons[0].instructor_name).toBe('Jane Doe')
+    })
+
+    it('should_return_null_instructor_name_when_no_profile_for_outstanding_lesson', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: 'user-1' })
+      const from = vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeSummaryChainFull([lesson])
+        if (table === 'lesson_riders') return makeInChain([])
+        if (table === 'riders') return makeInChain([])
+        if (table === 'profiles') return makeInChain([])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons[0].instructor_name).toBeNull()
+    })
+
+    it('should_return_empty_outstanding_and_correct_collected_when_no_outstanding', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      const lesson = createMockLesson({ fee: 50, lesson_at: '2026-06-10T10:00:00Z', payment_type: 'zelle' })
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue(makeSummaryChainFull([lesson])),
+      } as any)
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.outstandingLessons).toHaveLength(0)
+      expect(result.collectedIncome).toBe(50)
+    })
   })
 })
 
