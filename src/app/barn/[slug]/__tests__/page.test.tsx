@@ -235,7 +235,6 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     const link = screen.getByRole('link', { name: /settings/i })
-    expect(link).toBeDefined()
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/settings')
   })
 

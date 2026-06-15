@@ -85,10 +85,9 @@ describe('SettingsPage', () => {
     expect(screen.getByText(/green acres/i)).toBeDefined()
   })
 
-  it('should_render_all_tiers_including_inactive', async () => {
+  it('should_render_active_tier_in_list', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
       createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
-      createMockLessonTier({ id: 'tier-2', name: 'Premium', is_active: false }),
     ])
 
     const jsx = await SettingsPage({
@@ -98,6 +97,19 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByDisplayValue('Standard')).toBeDefined()
+  })
+
+  it('should_render_inactive_tier_in_list', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-2', name: 'Premium', is_active: false }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
     expect(screen.getByDisplayValue('Premium')).toBeDefined()
   })
 

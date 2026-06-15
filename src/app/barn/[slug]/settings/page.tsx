@@ -56,7 +56,8 @@ export default async function SettingsPage({
                 <th className="pb-2 pr-4">Name</th>
                 <th className="pb-2 pr-4">Price</th>
                 <th className="pb-2 pr-4">Status</th>
-                <th className="pb-2">Actions</th>
+                <th className="pb-2 pr-4">Save</th>
+                <th className="pb-2"></th>
               </tr>
             </thead>
             <tbody>
