@@ -28,6 +28,7 @@ describe('Home', () => {
     })
 
     it('should_render_landing_page_when_unauthenticated', async () => {
+      vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'https://example.supabase.co')
       setupAuth(null)
       const jsx = await Home()
       render(jsx)
