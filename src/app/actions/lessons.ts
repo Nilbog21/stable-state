@@ -241,7 +241,7 @@ export async function updatePaymentTypeAction(
   if (!user) return { error: 'not authenticated' }
 
   const membership = await getUserMembership(user.id, barnId)
-  if (!membership || !['manager', 'trainer'].includes(membership.role)) {
+  if (!membership || membership.status !== 'active' || !['manager', 'trainer'].includes(membership.role)) {
     return { error: 'not authorized' }
   }
 

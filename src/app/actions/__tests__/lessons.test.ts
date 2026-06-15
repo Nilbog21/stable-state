@@ -813,6 +813,7 @@ describe('updatePaymentTypeAction', () => {
     vi.mocked(getLessonById).mockReset()
     vi.mocked(updateLesson).mockReset()
     vi.mocked(getUserMembership).mockReset()
+    vi.mocked(createClient).mockReset()
     vi.mocked(createClient).mockResolvedValue({
       auth: {
         getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } }, error: null }),
@@ -842,6 +843,12 @@ describe('updatePaymentTypeAction', () => {
     expect(result).toEqual({ error: 'not authorized' })
   })
 
+  it('should_return_error_when_trainer_membership_is_pending', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'trainer', status: 'pending' }))
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
   it('should_return_error_when_trainer_lesson_not_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(null)
@@ -856,18 +863,32 @@ describe('updatePaymentTypeAction', () => {
     expect(result).toEqual({ error: 'not authorized' })
   })
 
-  it('should_update_payment_type_when_trainer_is_instructor', async () => {
+  it('should_return_no_error_when_trainer_is_instructor', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: 'user-1' }))
     const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
     expect(result).toEqual({ error: null })
+  })
+
+  it('should_call_updateLesson_with_payment_type_when_trainer_is_instructor', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: 'user-1' }))
+    await updatePaymentTypeAction('lesson-1', 'barn-1', 'venmo')
     expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'venmo' })
   })
 
-  it('should_update_payment_type_when_user_is_manager', async () => {
+  it('should_return_no_error_when_user_is_manager', async () => {
     const result = await updatePaymentTypeAction('lesson-1', 'barn-1', 'cash')
     expect(result).toEqual({ error: null })
+  })
+
+  it('should_not_call_getLessonById_when_user_is_manager', async () => {
+    await updatePaymentTypeAction('lesson-1', 'barn-1', 'cash')
     expect(getLessonById).not.toHaveBeenCalled()
+  })
+
+  it('should_call_updateLesson_with_payment_type_when_user_is_manager', async () => {
+    await updatePaymentTypeAction('lesson-1', 'barn-1', 'cash')
     expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'cash' })
   })
 
