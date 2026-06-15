@@ -286,7 +286,7 @@ describe('FinancesPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText('←')).toBeNull()
+    expect(screen.queryByRole('link', { name: '←' })).toBeNull()
   })
 
   it('should_show_next_link_when_not_at_current_month', async () => {
@@ -307,7 +307,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText('→')).toBeNull()
+    expect(screen.queryByRole('link', { name: '→' })).toBeNull()
   })
 
   it('should_set_endDate_to_now_for_current_month', async () => {
@@ -371,5 +371,45 @@ describe('FinancesPage', () => {
     const nextLink = screen.queryByText('→')
     expect(nextLink).not.toBeNull()
     expect(nextLink?.closest('a')?.getAttribute('href')).toBe('?month=2026-01')
+  })
+
+  it('should_style_prev_arrow_link_with_border_when_present', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const prevLink = screen.queryByRole('link', { name: '←' })
+    expect(prevLink?.className).toContain('border')
+  })
+
+  it('should_style_next_arrow_link_with_border_when_present', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-05' }),
+    })
+    render(jsx)
+    const nextLink = screen.queryByRole('link', { name: '→' })
+    expect(nextLink?.className).toContain('border')
+  })
+
+  it('should_render_invisible_placeholder_when_prev_arrow_absent', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2026-06-01T00:00:00Z' }))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('←')).not.toBeNull()
+    expect(screen.queryByRole('link', { name: '←' })).toBeNull()
+  })
+
+  it('should_render_invisible_placeholder_when_next_arrow_absent', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('→')).not.toBeNull()
+    expect(screen.queryByRole('link', { name: '→' })).toBeNull()
   })
 })
