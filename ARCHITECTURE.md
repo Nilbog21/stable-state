@@ -58,13 +58,18 @@ RLS policies always go in a **separate migration file** from schema changes.
 
 ## Routes
 
-All barn-scoped routes enforce access in the route handler via `getEffectiveMembership`. An absent or pending membership redirects to `/barn/[slug]/login`.
+Protected barn routes (dashboard, lessons, horses, riders, finances, approvals) live in a `(protected)` route group under `src/app/barn/[slug]/(protected)/`. The group layout (`layout.tsx`) centralises auth: absent or pending membership redirects to `/barn/[slug]/login`. Public routes (login, pending, register) stay outside the group and are unaffected.
+
+The `(protected)` layout renders a persistent role-aware nav bar above `{children}` on every barn page:
+- manager: Dashboard, Lessons, Horses, Riders, Finances, Approvals
+- trainer: Dashboard, Lessons, Riders
+- rider: Dashboard, Lessons
 
 | Route | Roles | Notes |
 |---|---|---|
 | `/` | All | Unauthenticated users are redirected to `/login`; authenticated users are redirected server-side using barn membership logic: single active → `/barn/[slug]`, multiple active → `/barns`, pending-only single → `/barn/[slug]/pending`, pending-only multiple → `/barns`, no memberships → `/login?no_barns=true` |
 | `/barns` | Authenticated users | Barn selector: one card per membership; active shows role + link to `/barn/[slug]`; pending shows badge + link to `/barn/[slug]/pending`; no memberships redirects to `/login?no_barns=true` |
-| `/barn/[slug]` | All active members | Manager sees upcoming-lessons preview (next 7 days) and full nav; trainer and rider see a role-filtered nav |
+| `/barn/[slug]` | All active members | Manager sees upcoming-lessons preview (next 7 days); nav links rendered by layout |
 | `/barn/[slug]/lessons` | All active members | Lessons split at 7-day cutoff: recent shown immediately, older behind `OlderLessonsToggle`; manager can delete |
 | `/barn/[slug]/lessons/new` | manager, trainer | |
 | `/barn/[slug]/lessons/[id]` | All active members | |

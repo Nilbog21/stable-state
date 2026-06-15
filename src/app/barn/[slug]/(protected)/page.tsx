@@ -1,5 +1,4 @@
-import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
@@ -18,38 +17,16 @@ export default async function BarnDashboardPage({
 
   const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const membership = await getEffectiveMembership(data.user.id, barn.id)
-
-  if (!membership) redirect(`/barn/${slug}/login`)
-
-  if (membership.status === 'pending') redirect(`/barn/${slug}/pending`)
-
-  if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
-
-  let navLinks: { href: string; label: string }[]
   let upcomingLessons: LessonWithDetails[] | null = null
 
-  if (membership.role === 'manager') {
-    navLinks = [
-      { href: `/barn/${slug}/horses`, label: 'Horses' },
-      { href: `/barn/${slug}/lessons`, label: 'Lessons' },
-      { href: `/barn/${slug}/finances`, label: 'Finances' },
-      { href: `/barn/${slug}/riders`, label: 'Riders' },
-      { href: `/barn/${slug}/approvals`, label: 'Approvals' },
-      { href: `/barn/${slug}/settings`, label: 'Settings' },
-    ]
-    const now = new Date()
-    const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-    upcomingLessons = await getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString())
-  } else if (membership.role === 'trainer') {
-    navLinks = [
-      { href: `/barn/${slug}/lessons`, label: 'Lessons' },
-      { href: `/barn/${slug}/riders`, label: 'Riders' },
-    ]
-  } else {
-    navLinks = [{ href: `/barn/${slug}/lessons`, label: 'Lessons' }]
+  if (data.user) {
+    const membership = await getEffectiveMembership(data.user.id, barn.id)
+    if (membership?.role === 'manager') {
+      const now = new Date()
+      const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+      upcomingLessons = await getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString())
+    }
   }
 
   return (
@@ -57,17 +34,6 @@ export default async function BarnDashboardPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {barn.name}
       </h1>
-      <nav className="mb-8 flex gap-4">
-        {navLinks.map((link) => (
-          <Link
-            key={link.href}
-            href={link.href}
-            className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-          >
-            {link.label}
-          </Link>
-        ))}
-      </nav>
       <form action={signOut} className="mb-8">
         <button
           type="submit"
