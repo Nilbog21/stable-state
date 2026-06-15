@@ -85,12 +85,12 @@ describe('HorseOverviewPage', () => {
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     render(jsx)
     // Default sort is desc; Thunderbolt (exertion=12) before Shadow (exertion=3)
-    // Each row: [name, lessonCount, totalExertion]
+    // Each row: [name, lessonCount, jumpingCount, totalExertion]
     const cells = screen.getAllByRole('cell')
     expect(cells[1].textContent).toBe('3')   // Thunderbolt lessonCount
-    expect(cells[2].textContent).toBe('12')  // Thunderbolt totalExertion
-    expect(cells[4].textContent).toBe('1')   // Shadow lessonCount
-    expect(cells[5].textContent).toBe('3')   // Shadow totalExertion
+    expect(cells[3].textContent).toBe('12')  // Thunderbolt totalExertion
+    expect(cells[5].textContent).toBe('1')   // Shadow lessonCount
+    expect(cells[7].textContent).toBe('3')   // Shadow totalExertion
   })
 
   it('should_render_empty_state_when_no_horses', async () => {
