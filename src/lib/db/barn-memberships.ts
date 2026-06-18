@@ -111,6 +111,33 @@ export async function getMembershipById(id: string): Promise<BarnMembership | nu
   return data
 }
 
+export async function applyPreAuthProfile(userId: string, email: string): Promise<void> {
+  const supabase = await createClient()
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, user_id, barn_id, role')
+    .eq('email', email)
+    .maybeSingle()
+
+  if (!profile?.barn_id || !profile?.role) return
+
+  if (!profile.user_id) {
+    const { error: updateError } = await supabase
+      .from('profiles')
+      .update({ user_id: userId })
+      .eq('id', profile.id)
+    if (updateError) throw updateError
+  }
+
+  const { error } = await supabase
+    .from('barn_memberships')
+    .upsert(
+      { user_id: userId, barn_id: profile.barn_id, role: profile.role, status: 'active' },
+      { onConflict: 'user_id,barn_id' }
+    )
+  if (error) throw error
+}
+
 export async function getBarnMembershipsForUser(
   userId: string
 ): Promise<{ barn: Barn; membership: BarnMembership }[]> {

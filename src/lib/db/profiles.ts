@@ -12,12 +12,13 @@ export async function upsertProfile(
     .from('profiles')
     .upsert(
       { user_id: userId, email, first_name: firstName, last_name: lastName },
-      { onConflict: 'user_id' }
+      { onConflict: 'email' }
     )
     .select()
     .single()
 
   if (error) throw error
+  if (!data) throw new Error('upsert returned no row')
   return data
 }
 

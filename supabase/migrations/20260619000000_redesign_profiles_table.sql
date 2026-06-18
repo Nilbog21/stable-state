@@ -26,10 +26,17 @@ ALTER TABLE public.profiles ALTER COLUMN user_id DROP NOT NULL;
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_user_id_unique UNIQUE (user_id);
 ALTER TABLE public.profiles ADD CONSTRAINT profiles_pkey PRIMARY KEY (id);
 
--- 5. Drop seeded_accounts (its RLS policies drop automatically)
+-- 5. Migrate pre-auth seeded_accounts rows that have no matching profiles row yet
+-- (first_name/last_name unavailable in seeded_accounts; empty strings used as placeholders)
+INSERT INTO public.profiles (email, barn_id, role, first_name, last_name)
+SELECT s.email, s.barn_id, s.role, '', ''
+FROM public.seeded_accounts s
+WHERE NOT EXISTS (SELECT 1 FROM public.profiles p WHERE p.email = s.email);
+
+-- 6. Drop seeded_accounts (its RLS policies drop automatically)
 DROP TABLE public.seeded_accounts;
 
--- 6. Update the trigger to use profiles instead of seeded_accounts
+-- 7. Update the trigger to use profiles instead of seeded_accounts
 CREATE OR REPLACE FUNCTION public.handle_new_user_role_grant()
 RETURNS TRIGGER LANGUAGE plpgsql SECURITY DEFINER AS $$
 DECLARE

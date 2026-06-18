@@ -21,18 +21,41 @@ function makeSupabaseMock(returnData: unknown, returnError: unknown = null) {
 }
 
 describe('upsertProfile', () => {
-  it('should_upsert_profile_with_provided_name', async () => {
+  it('should_call_from_profiles_table', async () => {
+    const mock = makeSupabaseMock(mockProfile)
+    vi.mocked(createClient).mockResolvedValue(mock as any)
+
+    await upsertProfile('user-1', 'test@example.com', 'Jane', 'Doe')
+
+    expect(mock.from).toHaveBeenCalledWith('profiles')
+  })
+
+  it('should_upsert_with_correct_payload', async () => {
+    const mock = makeSupabaseMock(mockProfile)
+    vi.mocked(createClient).mockResolvedValue(mock as any)
+
+    await upsertProfile('user-1', 'test@example.com', 'Jane', 'Doe')
+
+    expect(mock._mocks.upsert).toHaveBeenCalledWith(
+      { user_id: 'user-1', email: 'test@example.com', first_name: 'Jane', last_name: 'Doe' },
+      { onConflict: 'email' }
+    )
+  })
+
+  it('should_return_upserted_profile', async () => {
     const mock = makeSupabaseMock(mockProfile)
     vi.mocked(createClient).mockResolvedValue(mock as any)
 
     const result = await upsertProfile('user-1', 'test@example.com', 'Jane', 'Doe')
 
-    expect(mock.from).toHaveBeenCalledWith('profiles')
-    expect(mock._mocks.upsert).toHaveBeenCalledWith(
-      { user_id: 'user-1', email: 'test@example.com', first_name: 'Jane', last_name: 'Doe' },
-      { onConflict: 'user_id' }
-    )
     expect(result).toEqual(mockProfile)
+  })
+
+  it('should_throw_when_data_is_null', async () => {
+    const mock = makeSupabaseMock(null)
+    vi.mocked(createClient).mockResolvedValue(mock as any)
+
+    await expect(upsertProfile('user-1', 'test@example.com', 'Jane', 'Doe')).rejects.toThrow('upsert returned no row')
   })
 
   it('should_update_existing_profile_on_conflict', async () => {
