@@ -77,7 +77,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `/barn/[slug]/lessons/[id]` | All active members | Edit link visible to managers |
 | `/barn/[slug]/lessons/[id]/edit` | manager | Pre-filled edit form; group→normal downgrade shows warning and requires manager to select one rider/horse to keep; updates are atomic via `update_lesson_with_participants` RPC |
 | `/barn/[slug]/horses` | manager | |
-| `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days, sortable asc/desc |
+| `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days; columns (Horse, Total Exertion, # Jumping, Lessons) are clickable headers that sort client-side; active header shows ↑/↓; default sort: Total Exertion descending |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
 | `/barn/[slug]/finances` | manager | **Outstanding** section (all-time past unpaid lessons with non-zero fee — inline payment-type dropdown via `OutstandingTable` Client Component) appears above the month selector and is hidden entirely when there are no outstanding lessons. Below it: `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); **Collected income** (`payment_type IS NOT NULL`), **Pending income** (future unpaid lessons with fee); fee-tier breakdown, income by horse, income by rider |
 | `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
