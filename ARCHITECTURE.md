@@ -38,15 +38,14 @@ All tables are in the `public` schema with RLS enabled.
 |---|---|---|
 | `roles` | `name TEXT PK CHECK IN ('manager','trainer','rider')` | Lookup table |
 | `barns` | `id UUID PK`, `name TEXT NOT NULL`, `slug TEXT UNIQUE NOT NULL`, `created_at TIMESTAMPTZ` | |
-| `seeded_accounts` | `id UUID PK`, `email TEXT UNIQUE NOT NULL`, `role TEXT→roles`, `barn_id UUID NOT NULL→barns`, `created_at TIMESTAMPTZ` | Pre-reserves a role for a Google email before first OAuth sign-in |
-| `barn_memberships` | `id UUID PK`, `user_id UUID NOT NULL→auth.users`, `barn_id UUID NOT NULL→barns`, `role TEXT→roles`, `status TEXT CHECK('active','pending') DEFAULT 'pending'`, `created_at TIMESTAMPTZ`; `UNIQUE(user_id, barn_id)` | Trigger `on_auth_user_created` auto-creates an active membership from `seeded_accounts` on first sign-in |
+| `barn_memberships` | `id UUID PK`, `user_id UUID NOT NULL→auth.users`, `barn_id UUID NOT NULL→barns`, `role TEXT→roles`, `status TEXT CHECK('active','pending') DEFAULT 'pending'`, `created_at TIMESTAMPTZ`; `UNIQUE(user_id, barn_id)` | Trigger `on_auth_user_created` matches on `profiles.email`, sets `profiles.user_id`, and creates an active membership from `profiles.barn_id + profiles.role` on first sign-in |
 | `horses` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `name TEXT NOT NULL`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | |
 | `riders` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `name TEXT NOT NULL`, `user_id UUID→auth.users`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)`; unique index `(barn_id, user_id) WHERE user_id IS NOT NULL` | |
 | `lessons` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `instructor_id UUID→auth.users`, `fee NUMERIC`, `lesson_at TIMESTAMPTZ NOT NULL`, `submitted_at TIMESTAMPTZ`, `lesson_type lesson_type NOT NULL DEFAULT 'normal'`, `jumping BOOLEAN NOT NULL DEFAULT false`, `payment_type payment_type_enum`, `tier_name TEXT NOT NULL DEFAULT 'Custom'`; `UNIQUE(barn_id, id)` | `lesson_type` enum: `'normal'` or `'group'`; `payment_type` enum: `'venmo'`,`'zelle'`,`'cash'`,`'check'`,`'freshbooks'`; NULL = unpaid |
 | `lesson_tiers` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `name TEXT NOT NULL`, `price NUMERIC(10,2)`, `is_default BOOLEAN NOT NULL DEFAULT false`, `is_active BOOLEAN NOT NULL DEFAULT true`, `created_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | Barn-scoped fee tiers; `is_default` marks the tier pre-selected on new lessons; `is_active=false` soft-deletes a tier |
 | `lesson_horses` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `lesson_id UUID NOT NULL`, `horse_id UUID NOT NULL`, `exertion_level SMALLINT DEFAULT 3 CHECK(1–5)`; `UNIQUE(lesson_id, horse_id)`; `FK(barn_id, lesson_id)→lessons`; `FK(barn_id, horse_id)→horses` | Trigger `lesson_horses_participant_count_check` enforces per-type counts (deferred) |
 | `lesson_riders` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `lesson_id UUID NOT NULL`, `rider_id UUID NOT NULL`; `UNIQUE(lesson_id, rider_id)`; `FK(barn_id, lesson_id)→lessons`; `FK(barn_id, rider_id)→riders` | `UNIQUE(lesson_id)` dropped; trigger `lesson_riders_participant_count_check` enforces normal=1 rider+1 horse, group=≥2 riders (deferred) |
-| `profiles` | `user_id UUID PK→auth.users`, `first_name TEXT NOT NULL`, `last_name TEXT NOT NULL`, `created_at TIMESTAMPTZ` | User-level (not barn-scoped) |
+| `profiles` | `id UUID PK`, `user_id UUID UNIQUE→auth.users` (nullable — null until first sign-in), `email TEXT UNIQUE NOT NULL`, `barn_id UUID→barns` (nullable), `role TEXT→roles` (nullable), `first_name TEXT NOT NULL`, `last_name TEXT NOT NULL`, `created_at TIMESTAMPTZ` | User-level (not barn-scoped). Pre-auth rows (user_id=null, barn_id+role set) are inserted by `seedManagerProfile` before OAuth sign-in; the trigger fills in user_id on first sign-in. Regular users have barn_id=null and role=null. |
 
 ## RLS conventions
 
@@ -97,7 +96,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
 | `lessons.ts` | Lesson + participant queries; `updateLesson`; financial summary (`getFinancialSummary` — returns `collectedIncome`, `pendingIncome`, `breakdown`); all-time outstanding lessons (`getOutstandingLessons` — returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); per-horse income breakdown (`getHorseIncomeSummary`); per-rider income breakdown (`getRiderIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
-| `profiles.ts` | User profiles |
+| `profiles.ts` | User profiles; `upsertProfile` (called at registration); `seedManagerProfile` (inserts pre-auth row before first OAuth sign-in) |
 | `effective-membership.ts` | Dev-only role override (see below) |
 | `types.ts` | Shared TypeScript types |
 

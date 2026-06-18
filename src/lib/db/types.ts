@@ -2,7 +2,11 @@ export type Role = 'manager' | 'trainer' | 'rider'
 export type MembershipStatus = 'active' | 'pending'
 
 export interface Profile {
-  user_id: string
+  id: string
+  user_id: string | null
+  email: string
+  barn_id: string | null
+  role: Role | null
   first_name: string
   last_name: string
   created_at: string
@@ -31,14 +35,6 @@ export interface LessonTier {
   price: number | null
   is_default: boolean
   is_active: boolean
-  created_at: string
-}
-
-export interface SeededAccount {
-  id: string
-  email: string
-  role: Role
-  barn_id: string
   created_at: string
 }
 

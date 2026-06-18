@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/server'
 import {
   getUserMembership,
   createPendingMembership,
-  applySeededMembership,
   getPendingMemberships,
   getActiveMemberships,
   approveMembership,
@@ -17,6 +16,7 @@ import {
   getActiveTrainerMembershipsByBarn,
   getMembershipById,
   getBarnMembershipsForUser,
+  applyPreAuthProfile,
 } from '../barn-memberships'
 
 const mockMembership = createMockMembership()
@@ -147,77 +147,6 @@ describe('createPendingMembership', () => {
     } as any)
 
     await expect(createPendingMembership('user-1', 'barn-1', 'trainer')).rejects.toThrow('insert failed')
-  })
-})
-
-describe('applySeededMembership', () => {
-  it('should_upsert_active_membership_when_email_is_in_seeded_accounts', async () => {
-    const seeded = { email: 'manager@example.com', role: 'manager', barn_id: 'barn-1' }
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'seeded_accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: seeded, error: null }),
-              }),
-            }),
-          }
-        }
-        return { upsert: mockUpsert }
-      }),
-    } as any)
-
-    await applySeededMembership('user-1', 'manager@example.com')
-
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'user-1', role: 'manager', status: 'active' }),
-      expect.anything()
-    )
-  })
-
-  it('should_not_upsert_when_email_is_not_in_seeded_accounts', async () => {
-    const mockUpsert = vi.fn()
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'seeded_accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-              }),
-            }),
-          }
-        }
-        return { upsert: mockUpsert }
-      }),
-    } as any)
-
-    await applySeededMembership('user-1', 'unknown@example.com')
-
-    expect(mockUpsert).not.toHaveBeenCalled()
-  })
-
-  it('should_throw_when_upsert_returns_error', async () => {
-    const dbError = new Error('upsert failed')
-    const seeded = { email: 'manager@example.com', role: 'manager', barn_id: 'barn-1' }
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'seeded_accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: seeded, error: null }),
-              }),
-            }),
-          }
-        }
-        return { upsert: vi.fn().mockResolvedValue({ error: dbError }) }
-      }),
-    } as any)
-
-    await expect(applySeededMembership('user-1', 'admin@example.com')).rejects.toThrow('upsert failed')
   })
 })
 
@@ -692,5 +621,223 @@ describe('getBarnMembershipsForUser', () => {
     const result = await getBarnMembershipsForUser('user-1')
 
     expect(result).toEqual([])
+  })
+})
+
+describe('applyPreAuthProfile', () => {
+  function makeProfileClient(profileData: unknown, upsertError: unknown = null, updateError: unknown = null) {
+    return {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: profileData }),
+              }),
+            }),
+            update: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: updateError }),
+            }),
+          }
+        }
+        return { upsert: vi.fn().mockResolvedValue({ error: upsertError }) }
+      }),
+    } as any
+  }
+
+  it('should_not_upsert_membership_when_no_profile_found', async () => {
+    const mockUpsert = vi.fn()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null }),
+              }),
+            }),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'unknown@example.com')
+
+    expect(mockUpsert).not.toHaveBeenCalled()
+  })
+
+  it('should_not_upsert_membership_when_profile_has_no_barn_id', async () => {
+    const mockUpsert = vi.fn()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: null, barn_id: null, role: 'manager' },
+                }),
+              }),
+            }),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'manager@example.com')
+
+    expect(mockUpsert).not.toHaveBeenCalled()
+  })
+
+  it('should_not_upsert_membership_when_profile_has_no_role', async () => {
+    const mockUpsert = vi.fn()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: null, barn_id: 'barn-1', role: null },
+                }),
+              }),
+            }),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'manager@example.com')
+
+    expect(mockUpsert).not.toHaveBeenCalled()
+  })
+
+  it('should_update_user_id_when_profile_is_pre_auth', async () => {
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error: null }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: null, barn_id: 'barn-1', role: 'manager' },
+                }),
+              }),
+            }),
+            update: mockUpdate,
+          }
+        }
+        return { upsert: vi.fn().mockResolvedValue({ error: null }) }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'manager@example.com')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ user_id: 'user-1' })
+  })
+
+  it('should_not_update_user_id_when_profile_already_has_user_id', async () => {
+    const mockUpdate = vi.fn()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: 'existing-user', barn_id: 'barn-1', role: 'manager' },
+                }),
+              }),
+            }),
+            update: mockUpdate,
+          }
+        }
+        return { upsert: vi.fn().mockResolvedValue({ error: null }) }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'manager@example.com')
+
+    expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it('should_upsert_active_membership_for_pre_auth_profile', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: null, barn_id: 'barn-1', role: 'manager' },
+                }),
+              }),
+            }),
+            update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'manager@example.com')
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ user_id: 'user-1', barn_id: 'barn-1', role: 'manager', status: 'active' }),
+      expect.objectContaining({ onConflict: 'user_id,barn_id' })
+    )
+  })
+
+  it('should_throw_when_profile_update_returns_error', async () => {
+    const dbError = new Error('update failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: null, barn_id: 'barn-1', role: 'manager' },
+                }),
+              }),
+            }),
+            update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: dbError }) }),
+          }
+        }
+        return { upsert: vi.fn() }
+      }),
+    } as any)
+
+    await expect(applyPreAuthProfile('user-1', 'manager@example.com')).rejects.toThrow('update failed')
+  })
+
+  it('should_throw_when_membership_upsert_returns_error', async () => {
+    const dbError = new Error('upsert failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: 'existing-user', barn_id: 'barn-1', role: 'manager' },
+                }),
+              }),
+            }),
+            update: vi.fn(),
+          }
+        }
+        return { upsert: vi.fn().mockResolvedValue({ error: dbError }) }
+      }),
+    } as any)
+
+    await expect(applyPreAuthProfile('user-1', 'manager@example.com')).rejects.toThrow('upsert failed')
   })
 })

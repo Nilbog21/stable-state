@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import { applySeededMembership, getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser, applyPreAuthProfile } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
@@ -15,7 +15,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const { data } = await supabase.auth.getUser()
       if (data?.user?.email) {
-        await applySeededMembership(data.user.id, data.user.email)
+        await applyPreAuthProfile(data.user.id, data.user.email)
       }
 
       if (barnSlug) {

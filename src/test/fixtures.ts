@@ -21,7 +21,17 @@ export function createMockMembership(overrides: Partial<BarnMembership> = {}): B
 }
 
 export function createMockProfile(overrides: Partial<Profile> = {}): Profile {
-  return { user_id: 'user-1', first_name: 'Jane', last_name: 'Doe', created_at: '', ...overrides }
+  return {
+    id: 'profile-1',
+    user_id: 'user-1',
+    email: 'user@example.com',
+    barn_id: null,
+    role: null,
+    first_name: 'Jane',
+    last_name: 'Doe',
+    created_at: '',
+    ...overrides,
+  }
 }
 
 export function createMockHorse(overrides: Partial<Horse> = {}): Horse {

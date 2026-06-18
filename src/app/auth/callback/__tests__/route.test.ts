@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
-  applySeededMembership: vi.fn().mockResolvedValue(undefined),
+  applyPreAuthProfile: vi.fn().mockResolvedValue(undefined),
   getUserMembership: vi.fn(),
   getBarnMembershipsForUser: vi.fn(),
 }))
@@ -30,7 +30,7 @@ vi.mock('next/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { applySeededMembership, getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import { applyPreAuthProfile, getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { GET } from '../route'
 
@@ -39,13 +39,44 @@ const mockMembership = createMockMembership({ id: 'm1' })
 
 describe('GET /auth/callback', () => {
   beforeEach(() => {
+    vi.mocked(applyPreAuthProfile).mockReset()
+    vi.mocked(applyPreAuthProfile).mockResolvedValue(undefined)
+    vi.mocked(getBarnMembershipsForUser).mockReset()
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
     mockCookiesSet.mockReset()
     mockRedirect.mockImplementation((url: string | URL) => ({
       url: url.toString(),
       status: 302,
       cookies: { set: mockCookiesSet },
     }))
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+  })
+
+  it('should_apply_pre_auth_profile_after_successful_session_exchange', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1', email: 'manager@example.com' } } }),
+      },
+    } as any)
+
+    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
+    await GET(request as any)
+
+    expect(applyPreAuthProfile).toHaveBeenCalledWith('user-1', 'manager@example.com')
+  })
+
+  it('should_not_apply_pre_auth_profile_when_user_has_no_email', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1', email: null } } }),
+      },
+    } as any)
+
+    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
+    await GET(request as any)
+
+    expect(applyPreAuthProfile).not.toHaveBeenCalled()
   })
 
   it('should_exchange_code_for_session_when_code_is_present', async () => {
@@ -61,36 +92,6 @@ describe('GET /auth/callback', () => {
     await GET(request as any)
 
     expect(mockExchange).toHaveBeenCalledWith('test-code')
-  })
-
-  it('should_apply_seeded_membership_after_successful_session_exchange', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
-        getUser: vi.fn().mockResolvedValue({
-          data: { user: { id: 'user-1', email: 'admin@example.com' } },
-        }),
-      },
-    } as any)
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    await GET(request as any)
-
-    expect(applySeededMembership).toHaveBeenCalledWith('user-1', 'admin@example.com')
-  })
-
-  it('should_not_call_applySeededMembership_when_user_has_no_email', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
-        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'u1' } } }),
-      },
-    } as any)
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    await GET(request as any)
-
-    expect(applySeededMembership).not.toHaveBeenCalled()
   })
 
   it('should_redirect_to_error_page_when_no_code_is_present', async () => {
@@ -121,6 +122,7 @@ describe('GET /auth/callback', () => {
 
   describe('without barn param', () => {
     beforeEach(() => {
+      vi.mocked(createClient).mockReset()
       vi.mocked(createClient).mockResolvedValue({
         auth: {
           exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
@@ -326,6 +328,7 @@ describe('GET /auth/callback', () => {
 
   describe('with barn param', () => {
     beforeEach(() => {
+      vi.mocked(createClient).mockReset()
       vi.mocked(createClient).mockResolvedValue({
         auth: {
           exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }),
