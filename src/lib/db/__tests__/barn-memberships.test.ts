@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/server'
 import {
   getUserMembership,
   createPendingMembership,
-  seedManagerAccount,
   applySeededMembership,
   getPendingMemberships,
   getActiveMemberships,
@@ -148,45 +147,6 @@ describe('createPendingMembership', () => {
     } as any)
 
     await expect(createPendingMembership('user-1', 'barn-1', 'trainer')).rejects.toThrow('insert failed')
-  })
-})
-
-describe('seedManagerAccount', () => {
-  it('should_insert_email_and_role_into_seeded_accounts', async () => {
-    const mockInsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await seedManagerAccount('manager@example.com', 'barn-1')
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'manager@example.com', role: 'manager' })
-    )
-  })
-
-  it('should_associate_manager_seed_with_barn_id', async () => {
-    const mockInsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await seedManagerAccount('manager@example.com', 'barn-1')
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ barn_id: 'barn-1' })
-    )
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('insert failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockResolvedValue({ error: dbError }),
-      }),
-    } as any)
-
-    await expect(seedManagerAccount('manager@example.com', 'barn-1')).rejects.toThrow('insert failed')
   })
 })
 
