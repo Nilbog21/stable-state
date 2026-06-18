@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Barn, BarnMembership, Role } from './types'
+import type { Barn, BarnMembership } from './types'
 
 export async function getUserMembership(
   userId: string,
@@ -131,25 +131,3 @@ export async function getBarnMembershipsForUser(
     }))
 }
 
-export async function applySeededMembership(
-  userId: string,
-  email: string
-): Promise<void> {
-  const supabase = await createClient()
-
-  const { data: seeded } = await supabase
-    .from('seeded_accounts')
-    .select('*')
-    .eq('email', email)
-    .maybeSingle()
-
-  if (!seeded) return
-
-  const { error } = await supabase
-    .from('barn_memberships')
-    .upsert(
-      { user_id: userId, barn_id: seeded.barn_id, role: seeded.role, status: 'active' },
-      { onConflict: 'user_id,barn_id' }
-    )
-  if (error) throw error
-}

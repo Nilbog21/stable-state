@@ -29,6 +29,10 @@ export async function registerForBarn(
     redirect(`/barn/${barnSlug}/login`)
   }
 
+  if (!data.user.email) {
+    return { error: 'Account email is required.' }
+  }
+
   const barn = await getBarnBySlug(barnSlug)
   if (!barn) {
     redirect('/login?error=auth_callback_failed')
@@ -43,7 +47,7 @@ export async function registerForBarn(
   }
 
   try {
-    await upsertProfile(data.user.id, firstName, lastName)
+    await upsertProfile(data.user.id, data.user.email, firstName, lastName)
     await createPendingMembership(data.user.id, barn.id, role)
   } catch {
     return { error: 'Something went wrong. Please try again.' }

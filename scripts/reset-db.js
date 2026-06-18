@@ -144,8 +144,7 @@ async function run() {
   mustSucceed(await supabase.from('riders').delete().eq('barn_id', DEV_BARN_ID), 'delete riders');
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', DEV_BARN_ID), 'delete horses');
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', DEV_BARN_ID), 'delete barn_memberships');
-  mustSucceed(await supabase.from('seeded_accounts').delete().eq('barn_id', DEV_BARN_ID), 'delete seeded_accounts');
-  mustSucceed(await supabase.from('seeded_accounts').delete().eq('email', MANAGER_EMAIL), 'delete manager seeded_account');
+  mustSucceed(await supabase.from('profiles').delete().eq('email', MANAGER_EMAIL), 'delete manager profile');
   mustSucceed(await supabase.from('barns').delete().eq('id', DEV_BARN_ID), 'delete barn');
 
   if (devUserIds.length > 0) {
@@ -170,12 +169,14 @@ async function run() {
   );
 
   mustSucceed(
-    await supabase.from('seeded_accounts').insert({
+    await supabase.from('profiles').insert({
       email: MANAGER_EMAIL,
+      first_name: 'Dev',
+      last_name: 'Manager',
       role: 'manager',
       barn_id: DEV_BARN_ID,
     }),
-    'insert seeded_account'
+    'insert manager profile'
   );
 
   mustSucceed(
@@ -391,7 +392,7 @@ async function run() {
 
   console.log('Done. Dev database reset to known state:');
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`);
-  console.log(`  Manager:  ${MANAGER_EMAIL} (via seeded_accounts — sign in with Google to activate)`);
+  console.log(`  Manager:  ${MANAGER_EMAIL} (pre-seeded profile — sign in with Google to activate)`);
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`);
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`);
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`);
