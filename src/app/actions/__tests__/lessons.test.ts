@@ -8,13 +8,16 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/db/lessons', () => ({
   createLesson: vi.fn(),
-  addHorseToLesson: vi.fn(),
-  addRiderToLesson: vi.fn(),
   deleteLesson: vi.fn(),
-  createLessonWithParticipants: vi.fn(),
-  updateLessonWithParticipants: vi.fn(),
   getLessonById: vi.fn(),
   updateLesson: vi.fn(),
+}))
+
+vi.mock('@/lib/db/lesson-participants', () => ({
+  addHorseToLesson: vi.fn(),
+  addRiderToLesson: vi.fn(),
+  createLessonWithParticipants: vi.fn(),
+  updateLessonWithParticipants: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -37,7 +40,8 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createLessonWithParticipants, deleteLesson, updateLessonWithParticipants, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { createLessonWithParticipants, updateLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { createRider, getRidersByBarn } from '@/lib/db/riders'

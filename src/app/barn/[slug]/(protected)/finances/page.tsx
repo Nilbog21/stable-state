@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lesson-finances'
 import { OutstandingTable } from './OutstandingTable'
 
 function pad2(n: number): string {

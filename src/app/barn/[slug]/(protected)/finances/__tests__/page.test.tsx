@@ -8,7 +8,7 @@ vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/lessons', () => ({ getFinancialSummary: vi.fn(), getOutstandingLessons: vi.fn(), getHorseIncomeSummary: vi.fn(), getRiderIncomeSummary: vi.fn() }))
+vi.mock('@/lib/db/lesson-finances', () => ({ getFinancialSummary: vi.fn(), getOutstandingLessons: vi.fn(), getHorseIncomeSummary: vi.fn(), getRiderIncomeSummary: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lesson-finances'
 import FinancesPage from '../page'
 
 const mockBarn = createMockBarn()
