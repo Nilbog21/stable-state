@@ -100,10 +100,6 @@ In Google Cloud Console → **APIs & Services** → **Credentials** → your OAu
 - `https://<your-vercel-domain>.vercel.app/auth/callback`
 - `https://*.vercel.app/auth/callback`
 
-## Deployment
-
-TBD — see #116.
-
 ## Known Limitations
 
 - **Single-barn membership per user** — a user (trainer or rider) can only belong to one barn at a time. Multi-barn support is not yet implemented.
