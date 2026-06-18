@@ -8,7 +8,7 @@ import { deleteLessonAction } from '@/app/actions/lessons'
 import { OlderLessonsToggle } from './OlderLessonsToggle'
 import { LessonListItem } from './LessonListItem'
 
-const OLDER_LESSON_CUTOFF_MS = 7 * 24 * 60 * 60 * 1000
+const OLDER_LESSON_CUTOFF_DAYS = 7
 
 export default async function LessonsPage({
   params,
@@ -42,7 +42,8 @@ export default async function LessonsPage({
   const canCreateLesson = membership.role === 'manager' || membership.role === 'trainer'
   const deleteAction = deleteLessonAction.bind(null, barn.id, slug)
 
-  const cutoff = new Date(Date.now() - OLDER_LESSON_CUTOFF_MS)
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - OLDER_LESSON_CUTOFF_DAYS)
   const recentLessons = lessons.filter((l) => new Date(l.lesson_at) >= cutoff)
   const olderLessons = lessons.filter((l) => new Date(l.lesson_at) < cutoff)
 

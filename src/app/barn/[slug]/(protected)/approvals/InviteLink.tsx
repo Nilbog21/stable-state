@@ -3,13 +3,13 @@
 import { useState, useEffect, useRef } from 'react'
 
 export default function InviteLink({ slug }: { slug: string }) {
-  const [url, setUrl] = useState('')
+  const [url] = useState(() =>
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/barn/${slug}/register`
+      : /* v8 ignore next */ ''
+  )
   const [copied, setCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
-
-  useEffect(() => {
-    setUrl(`${window.location.origin}/barn/${slug}/register`)
-  }, [slug])
 
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
@@ -36,6 +36,7 @@ export default function InviteLink({ slug }: { slug: string }) {
           type="text"
           readOnly
           value={url}
+          suppressHydrationWarning
           className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
         />
         <button

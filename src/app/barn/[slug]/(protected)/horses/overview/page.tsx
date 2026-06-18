@@ -22,7 +22,8 @@ export default async function HorseOverviewPage({
   const membership = await getEffectiveMembership(data.user.id, barn.id)
   if (!membership || membership.status !== 'active') notFound()
 
-  const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   const horses = await getHorseExertionSummary(barn.id, sevenDaysAgo)
 
   return (
