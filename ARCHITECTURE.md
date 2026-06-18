@@ -95,7 +95,9 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
-| `lessons.ts` | Lesson + participant queries; `updateLesson`; financial summary (`getFinancialSummary` — returns `collectedIncome`, `pendingIncome`, `breakdown`); all-time outstanding lessons (`getOutstandingLessons` — returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); per-horse income breakdown (`getHorseIncomeSummary`); per-rider income breakdown (`getRiderIncomeSummary`); upcoming lessons preview (`getUpcomingLessons`) |
+| `lessons.ts` | Lesson CRUD: `createLesson`, `getLessonsByBarn`, `getLessonById`, `deleteLesson`, `updateLesson`, `getUpcomingLessons` |
+| `lesson-participants.ts` | Participant management: `createLessonWithParticipants`, `updateLessonWithParticipants`, `addHorseToLesson`, `addRiderToLesson` |
+| `lesson-finances.ts` | Financial reporting: `getFinancialSummary` (returns `collectedIncome`, `pendingIncome`, `breakdown`); `getOutstandingLessons` (returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); `getHorseIncomeSummary`; `getRiderIncomeSummary` |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
 | `profiles.ts` | User profiles |
 | `effective-membership.ts` | Dev-only role override (see below) |
