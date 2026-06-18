@@ -33,7 +33,6 @@ export async function createPendingMembership(
   return data
 }
 
-
 export async function getPendingMemberships(
   barnId: string
 ): Promise<BarnMembership[]> {
