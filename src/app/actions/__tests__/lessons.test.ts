@@ -7,15 +7,12 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 vi.mock('@/lib/db/lessons', () => ({
-  createLesson: vi.fn(),
   deleteLesson: vi.fn(),
   getLessonById: vi.fn(),
   updateLesson: vi.fn(),
 }))
 
 vi.mock('@/lib/db/lesson-participants', () => ({
-  addHorseToLesson: vi.fn(),
-  addRiderToLesson: vi.fn(),
   createLessonWithParticipants: vi.fn(),
   updateLessonWithParticipants: vi.fn(),
 }))
