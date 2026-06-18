@@ -35,7 +35,7 @@ function mockAuth(userId: string | null = 'user-1') {
 
 describe('HorseOverviewPage', () => {
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     mockAuth()
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockMembership)
