@@ -1,6 +1,6 @@
 # SUPABASE_DB_URL secret format:
-#   postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
-# Find it in Supabase dashboard → Project Settings → Database → Connection string (URI, direct — not pooled).
+#   postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres
+# Find it in Supabase dashboard → Connect button (top of project overview) → Direct connection URI (port 5432, not pooled).
 
 name: Nightly DB Backup
 
