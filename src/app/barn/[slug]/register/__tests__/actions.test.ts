@@ -56,7 +56,7 @@ describe('registerForBarn', () => {
 
     await registerForBarn('green-acres', null, fd).catch(() => {})
 
-    expect(upsertProfile).toHaveBeenCalledWith('user-1', 'Jane', 'Doe')
+    expect(upsertProfile).toHaveBeenCalledWith('user-1', 'trainer@example.com', 'Jane', 'Doe')
     expect(createPendingMembership).toHaveBeenCalledWith('user-1', 'barn-1', 'trainer')
   })
 
@@ -147,5 +147,16 @@ describe('registerForBarn', () => {
     const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
     const result = await registerForBarn('green-acres', null, fd)
     expect(result).toEqual({ error: 'Something went wrong. Please try again.' })
+  })
+
+  it('should_return_error_when_user_has_no_email', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      auth: {
+        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1', email: null } } }),
+      },
+    } as any)
+    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
+    const result = await registerForBarn('green-acres', null, fd)
+    expect(result).toEqual({ error: 'Account email is required.' })
   })
 })

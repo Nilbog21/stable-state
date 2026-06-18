@@ -9,7 +9,6 @@ import { createClient } from '@/lib/supabase/server'
 import {
   getUserMembership,
   createPendingMembership,
-  applySeededMembership,
   getPendingMemberships,
   getActiveMemberships,
   approveMembership,
@@ -147,77 +146,6 @@ describe('createPendingMembership', () => {
     } as any)
 
     await expect(createPendingMembership('user-1', 'barn-1', 'trainer')).rejects.toThrow('insert failed')
-  })
-})
-
-describe('applySeededMembership', () => {
-  it('should_upsert_active_membership_when_email_is_in_seeded_accounts', async () => {
-    const seeded = { email: 'manager@example.com', role: 'manager', barn_id: 'barn-1' }
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'seeded_accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: seeded, error: null }),
-              }),
-            }),
-          }
-        }
-        return { upsert: mockUpsert }
-      }),
-    } as any)
-
-    await applySeededMembership('user-1', 'manager@example.com')
-
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ user_id: 'user-1', role: 'manager', status: 'active' }),
-      expect.anything()
-    )
-  })
-
-  it('should_not_upsert_when_email_is_not_in_seeded_accounts', async () => {
-    const mockUpsert = vi.fn()
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'seeded_accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
-              }),
-            }),
-          }
-        }
-        return { upsert: mockUpsert }
-      }),
-    } as any)
-
-    await applySeededMembership('user-1', 'unknown@example.com')
-
-    expect(mockUpsert).not.toHaveBeenCalled()
-  })
-
-  it('should_throw_when_upsert_returns_error', async () => {
-    const dbError = new Error('upsert failed')
-    const seeded = { email: 'manager@example.com', role: 'manager', barn_id: 'barn-1' }
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'seeded_accounts') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: seeded, error: null }),
-              }),
-            }),
-          }
-        }
-        return { upsert: vi.fn().mockResolvedValue({ error: dbError }) }
-      }),
-    } as any)
-
-    await expect(applySeededMembership('user-1', 'admin@example.com')).rejects.toThrow('upsert failed')
   })
 })
 
