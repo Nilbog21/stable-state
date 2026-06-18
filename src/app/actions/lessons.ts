@@ -1,7 +1,8 @@
 'use server'
 
 import { createClient } from '@/lib/supabase/server'
-import { createLessonWithParticipants, deleteLesson, updateLessonWithParticipants, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { createLessonWithParticipants, updateLessonWithParticipants } from '@/lib/db/lesson-participants'
 import type { PaymentType } from '@/lib/db/types'
 import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
