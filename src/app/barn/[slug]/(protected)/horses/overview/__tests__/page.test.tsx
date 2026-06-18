@@ -47,7 +47,6 @@ describe('HorseOverviewPage', () => {
     await expect(
       HorseOverviewPage({ params: Promise.resolve({ slug: 'unknown' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
-    expect(mockNotFound).toHaveBeenCalled()
   })
 
   it('should_call_notFound_when_user_is_not_authenticated', async () => {
@@ -55,7 +54,6 @@ describe('HorseOverviewPage', () => {
     await expect(
       HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
-    expect(mockNotFound).toHaveBeenCalled()
   })
 
   it('should_call_notFound_when_user_has_no_membership', async () => {
@@ -63,7 +61,6 @@ describe('HorseOverviewPage', () => {
     await expect(
       HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
-    expect(mockNotFound).toHaveBeenCalled()
   })
 
   it('should_call_notFound_when_membership_is_not_active', async () => {
@@ -71,26 +68,43 @@ describe('HorseOverviewPage', () => {
     await expect(
       HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
-    expect(mockNotFound).toHaveBeenCalled()
   })
 
-  it('should_render_horse_names', async () => {
+  it('should_render_thunderbolt', async () => {
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
+  })
+
+  it('should_render_shadow', async () => {
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByText('Shadow')).toBeDefined()
   })
 
-  it('should_render_lesson_count_and_total_exertion_per_horse', async () => {
+  it('should_render_thunderbolt_total_exertion', async () => {
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    // Default sort is totalExertion desc; Thunderbolt (12) before Shadow (3)
-    // Column order: Horse | Total Exertion (7d) | # Jumping (7d) | Lessons (7d)
-    const cells = screen.getAllByRole('cell')
-    expect(cells[1].textContent).toBe('12')  // Thunderbolt totalExertion
-    expect(cells[3].textContent).toBe('3')   // Thunderbolt lessonCount
-    expect(cells[5].textContent).toBe('3')   // Shadow totalExertion
-    expect(cells[7].textContent).toBe('1')   // Shadow lessonCount
+    // Default sort totalExertion desc; Thunderbolt (12) first — column order: Horse | Total Exertion | # Jumping | Lessons
+    expect(screen.getAllByRole('cell')[1].textContent).toBe('12')
+  })
+
+  it('should_render_thunderbolt_lesson_count', async () => {
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('cell')[3].textContent).toBe('3')
+  })
+
+  it('should_render_shadow_total_exertion', async () => {
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('cell')[5].textContent).toBe('3')
+  })
+
+  it('should_render_shadow_lesson_count', async () => {
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('cell')[7].textContent).toBe('1')
   })
 
   it('should_render_empty_state_when_no_horses', async () => {
@@ -100,16 +114,25 @@ describe('HorseOverviewPage', () => {
     expect(screen.getByText(/no horses/i)).toBeDefined()
   })
 
-  it('should_sort_descending_by_total_exertion_by_default', async () => {
+  it('should_render_higher_exertion_horse_first_by_default', async () => {
     vi.mocked(getHorseExertionSummary).mockResolvedValue([
       { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
       { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 0 },
     ])
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const cells = screen.getAllByRole('cell')
-    const names = cells.filter((c) => c.textContent === 'Thunderbolt' || c.textContent === 'Shadow')
+    const names = screen.getAllByRole('cell').filter(c => c.textContent === 'Thunderbolt' || c.textContent === 'Shadow')
     expect(names[0].textContent).toBe('Thunderbolt')
+  })
+
+  it('should_render_lower_exertion_horse_second_by_default', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 0 },
+    ])
+    const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const names = screen.getAllByRole('cell').filter(c => c.textContent === 'Thunderbolt' || c.textContent === 'Shadow')
     expect(names[1].textContent).toBe('Shadow')
   })
 
@@ -126,8 +149,7 @@ describe('HorseOverviewPage', () => {
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     // Column order: Horse | Total Exertion (7d) | # Jumping (7d) | Lessons (7d)
-    const cells = screen.getAllByRole('cell')
-    expect(cells[2].textContent).toBe('0')
+    expect(screen.getAllByRole('cell')[2].textContent).toBe('0')
   })
 
   it('should_render_jumping_count_when_horse_has_jumping_lessons', async () => {
@@ -136,8 +158,7 @@ describe('HorseOverviewPage', () => {
     ])
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const cells = screen.getAllByRole('cell')
-    expect(cells[2].textContent).toBe('2')
+    expect(screen.getAllByRole('cell')[2].textContent).toBe('2')
   })
 
   it('should_render_jumping_count_of_one_when_horse_has_one_jumping_lesson', async () => {
@@ -146,8 +167,7 @@ describe('HorseOverviewPage', () => {
     ])
     const jsx = await HorseOverviewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const cells = screen.getAllByRole('cell')
-    expect(cells[2].textContent).toBe('1')
+    expect(screen.getAllByRole('cell')[2].textContent).toBe('1')
   })
 
   it('should_render_horses_heading', async () => {

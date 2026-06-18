@@ -5,11 +5,11 @@ import type { HorseExertionSummary } from '@/lib/db/types'
 
 type SortKey = 'name' | 'totalExertion' | 'jumpingCount' | 'lessonCount'
 
-const COLUMNS: { key: SortKey; label: string }[] = [
-  { key: 'name', label: 'Horse' },
-  { key: 'totalExertion', label: 'Total Exertion (7d)' },
-  { key: 'jumpingCount', label: '# Jumping (7d)' },
-  { key: 'lessonCount', label: 'Lessons (7d)' },
+const COLUMNS: { key: SortKey; label: string; tdClassName: string }[] = [
+  { key: 'name', label: 'Horse', tdClassName: 'py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50' },
+  { key: 'totalExertion', label: 'Total Exertion (7d)', tdClassName: 'py-3 pr-6 text-sm text-zinc-700 dark:text-zinc-300' },
+  { key: 'jumpingCount', label: '# Jumping (7d)', tdClassName: 'py-3 pr-6 text-sm text-zinc-700 dark:text-zinc-300' },
+  { key: 'lessonCount', label: 'Lessons (7d)', tdClassName: 'py-3 text-sm text-zinc-700 dark:text-zinc-300' },
 ]
 
 export function HorseOverviewTable({ horses }: { horses: HorseExertionSummary[] }) {
@@ -46,8 +46,13 @@ export function HorseOverviewTable({ horses }: { horses: HorseExertionSummary[] 
       <thead>
         <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
           {COLUMNS.map(col => (
-            <th key={col.key} className="pb-2 pr-6">
+            <th
+              key={col.key}
+              className="pb-2 pr-6"
+              aria-sort={sort.key === col.key ? (sort.dir === 'desc' ? 'descending' : 'ascending') : 'none'}
+            >
               <button
+                type="button"
                 onClick={() => handleHeaderClick(col.key)}
                 className="flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
               >
@@ -61,10 +66,9 @@ export function HorseOverviewTable({ horses }: { horses: HorseExertionSummary[] 
       <tbody>
         {sorted.map(horse => (
           <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{horse.name}</td>
-            <td className="py-3 pr-6 text-sm text-zinc-700 dark:text-zinc-300">{horse.totalExertion}</td>
-            <td className="py-3 pr-6 text-sm text-zinc-700 dark:text-zinc-300">{horse.jumpingCount}</td>
-            <td className="py-3 text-sm text-zinc-700 dark:text-zinc-300">{horse.lessonCount}</td>
+            {COLUMNS.map(col => (
+              <td key={col.key} className={col.tdClassName}>{horse[col.key]}</td>
+            ))}
           </tr>
         ))}
       </tbody>
