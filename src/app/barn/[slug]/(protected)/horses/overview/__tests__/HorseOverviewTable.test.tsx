@@ -67,22 +67,22 @@ describe('HorseOverviewTable', () => {
 
   it('should_show_down_arrow_on_total_exertion_column_by_default', () => {
     render(<HorseOverviewTable horses={horses} />)
-    expect(screen.getAllByRole('columnheader')[1].textContent).toContain('↓')
+    expect(screen.getAllByRole('columnheader')[1].textContent).toContain('▼')
   })
 
   it('should_show_no_arrow_on_horse_column_by_default', () => {
     render(<HorseOverviewTable horses={horses} />)
-    expect(screen.getAllByRole('columnheader')[0].textContent).not.toMatch(/[↑↓]/)
+    expect(screen.getAllByRole('columnheader')[0].textContent).not.toMatch(/[▲▼]/)
   })
 
   it('should_show_no_arrow_on_jumping_column_by_default', () => {
     render(<HorseOverviewTable horses={horses} />)
-    expect(screen.getAllByRole('columnheader')[2].textContent).not.toMatch(/[↑↓]/)
+    expect(screen.getAllByRole('columnheader')[2].textContent).not.toMatch(/[▲▼]/)
   })
 
   it('should_show_no_arrow_on_lessons_column_by_default', () => {
     render(<HorseOverviewTable horses={horses} />)
-    expect(screen.getAllByRole('columnheader')[3].textContent).not.toMatch(/[↑↓]/)
+    expect(screen.getAllByRole('columnheader')[3].textContent).not.toMatch(/[▲▼]/)
   })
 
   it('should_set_aria_sort_descending_on_total_exertion_by_default', () => {
@@ -116,13 +116,13 @@ describe('HorseOverviewTable', () => {
   it('should_show_up_arrow_on_total_exertion_after_clicking_active_header', () => {
     render(<HorseOverviewTable horses={horses} />)
     fireEvent.click(screen.getByRole('button', { name: /total exertion/i }))
-    expect(screen.getAllByRole('columnheader')[1].textContent).toContain('↑')
+    expect(screen.getAllByRole('columnheader')[1].textContent).toContain('▲')
   })
 
   it('should_not_show_down_arrow_on_total_exertion_after_clicking_active_header', () => {
     render(<HorseOverviewTable horses={horses} />)
     fireEvent.click(screen.getByRole('button', { name: /total exertion/i }))
-    expect(screen.getAllByRole('columnheader')[1].textContent).not.toContain('↓')
+    expect(screen.getAllByRole('columnheader')[1].textContent).not.toContain('▼')
   })
 
   it('should_render_highest_jumping_horse_first_when_jumping_clicked', () => {

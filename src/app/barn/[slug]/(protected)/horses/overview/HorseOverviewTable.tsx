@@ -57,7 +57,7 @@ export function HorseOverviewTable({ horses }: { horses: HorseExertionSummary[] 
                 className="flex items-center gap-1 hover:text-zinc-900 dark:hover:text-zinc-100"
               >
                 {col.label}
-                {sort.key === col.key && (sort.dir === 'desc' ? ' ↓' : ' ↑')}
+                {sort.key === col.key && (sort.dir === 'desc' ? ' ▼' : ' ▲')}
               </button>
             </th>
           ))}
