@@ -3,7 +3,6 @@ import { getUserMembership } from './barn-memberships'
 import type { BarnMembership, Role } from './types'
 
 const OVERRIDE_COOKIE = 'dev_role_override'
-const OVERRIDABLE_ROLES: Role[] = ['trainer', 'rider']
 
 export async function getEffectiveMembership(
   userId: string,
@@ -18,7 +17,7 @@ export async function getEffectiveMembership(
     const cookieStore = await cookies()
     const override = cookieStore.get(OVERRIDE_COOKIE)?.value as Role | undefined
 
-    if (override && OVERRIDABLE_ROLES.includes(override)) {
+    if (override && (['trainer', 'rider'] as Role[]).includes(override)) {
       return {
         id: 'dev-override',
         user_id: userId,

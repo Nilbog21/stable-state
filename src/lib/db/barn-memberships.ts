@@ -33,18 +33,6 @@ export async function createPendingMembership(
   return data
 }
 
-export async function seedManagerAccount(
-  email: string,
-  barnId: string
-): Promise<void> {
-  const supabase = await createClient()
-  const role: Role = 'manager'
-  const { error } = await supabase
-    .from('seeded_accounts')
-    .insert({ email, role, barn_id: barnId })
-
-  if (error) throw error
-}
 
 export async function getPendingMemberships(
   barnId: string
