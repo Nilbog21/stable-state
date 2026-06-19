@@ -21,7 +21,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | Table | manager | trainer | rider |
 |---|---|---|---|
 | barns | SELECT | SELECT | SELECT |
-| barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE approve pending in barn; DELETE any in barn | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own |
+| barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE approve pending in barn; UPDATE `can_instruct` for barn members; DELETE any in barn | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own |
 | horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT |
 | riders | SELECT, INSERT | SELECT | SELECT |
 | lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (any column; instructor_id locked by RLS) | SELECT, INSERT |
@@ -38,7 +38,7 @@ All tables are in the `public` schema with RLS enabled.
 |---|---|---|
 | `roles` | `name TEXT PK CHECK IN ('manager','trainer','rider')` | Lookup table |
 | `barns` | `id UUID PK`, `name TEXT NOT NULL`, `slug TEXT UNIQUE NOT NULL`, `created_at TIMESTAMPTZ` | |
-| `barn_memberships` | `id UUID PK`, `user_id UUID NOT NULL→auth.users`, `barn_id UUID NOT NULL→barns`, `role TEXT→roles`, `status TEXT CHECK('active','pending') DEFAULT 'pending'`, `created_at TIMESTAMPTZ`; `UNIQUE(user_id, barn_id)` | Trigger `on_auth_user_created` matches on `profiles.email`, sets `profiles.user_id`, and creates an active membership from `profiles.barn_id + profiles.role` on first sign-in |
+| `barn_memberships` | `id UUID PK`, `user_id UUID NOT NULL→auth.users`, `barn_id UUID NOT NULL→barns`, `role TEXT→roles`, `status TEXT CHECK('active','pending') DEFAULT 'pending'`, `can_instruct BOOLEAN NOT NULL DEFAULT false`, `created_at TIMESTAMPTZ`; `UNIQUE(user_id, barn_id)` | Trigger `on_auth_user_created` matches on `profiles.email`, sets `profiles.user_id`, and creates an active membership from `profiles.barn_id + profiles.role` on first sign-in; `can_instruct` is set to `true` automatically for trainers |
 | `horses` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `name TEXT NOT NULL`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | |
 | `riders` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `name TEXT NOT NULL`, `user_id UUID→auth.users`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)`; unique index `(barn_id, user_id) WHERE user_id IS NOT NULL` | |
 | `lessons` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `instructor_id UUID→auth.users`, `fee NUMERIC`, `lesson_at TIMESTAMPTZ NOT NULL`, `submitted_at TIMESTAMPTZ`, `lesson_type lesson_type NOT NULL DEFAULT 'normal'`, `jumping BOOLEAN NOT NULL DEFAULT false`, `payment_type payment_type_enum`, `tier_name TEXT NOT NULL DEFAULT 'Custom'`; `UNIQUE(barn_id, id)` | `lesson_type` enum: `'normal'` or `'group'`; `payment_type` enum: `'venmo'`,`'zelle'`,`'cash'`,`'check'`,`'freshbooks'`; NULL = unpaid |
