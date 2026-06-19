@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Horse, HorseExertionSummary } from './types'
 
 export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
@@ -13,8 +14,9 @@ export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
   return data
 }
 
-export async function createHorse(barnId: string, name: string): Promise<Horse> {
-  const supabase = await createClient()
+export async function createHorse(barnId: string, name: string, client?: SupabaseClient): Promise<Horse> {
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('horses')
     .insert({ barn_id: barnId, name })

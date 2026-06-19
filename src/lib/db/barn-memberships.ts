@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Barn, BarnMembership } from './types'
 
 export async function getUserMembership(
@@ -20,9 +21,11 @@ export async function getUserMembership(
 export async function createPendingMembership(
   userId: string,
   barnId: string,
-  role: 'trainer' | 'rider'
+  role: 'trainer' | 'rider',
+  client?: SupabaseClient
 ): Promise<BarnMembership> {
-  const supabase = await createClient()
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
     .insert({ user_id: userId, barn_id: barnId, role, status: 'pending' })

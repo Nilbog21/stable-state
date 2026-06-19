@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Lesson, LessonHorse, LessonRider, LessonType, PaymentType } from './types'
 
 export async function createLessonWithParticipants(params: {
@@ -12,8 +13,9 @@ export async function createLessonWithParticipants(params: {
   lessonType: LessonType
   jumping?: boolean
   tierName?: string
-}): Promise<Lesson> {
-  const supabase = await createClient()
+}, client?: SupabaseClient): Promise<Lesson> {
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase.rpc('create_lesson_with_participants', {
     p_barn_id: params.barnId,
     p_instructor_id: params.instructorId,
