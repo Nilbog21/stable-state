@@ -22,6 +22,14 @@ Update `ARCHITECTURE.md` whenever a migration or role change is committed.
 
 `specs/` is a personal, gitignored working directory. Ignore its contents.
 
+## UI Conventions
+
+### Mobile-first
+Mobile is the primary platform. All interactions must work on touch and small screens. Hover-only patterns are not acceptable — native `title` tooltips, CSS `:hover`-only reveals, and similar desktop-only affordances must not be used.
+
+### View switchers
+Use pill-style segmented controls (tab pills) for switching between data views. This is the standard SaaS pattern (Stripe, Linear, GitHub). Do not use tabs, dropdowns, or radio buttons for view-switching.
+
 ## Release Workflow
 
 - Features branch off `release/release-N`
