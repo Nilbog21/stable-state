@@ -25,6 +25,7 @@ export interface BarnMembership {
   barn_id: string
   role: Role
   status: MembershipStatus
+  can_instruct: boolean
   created_at: string
 }
 

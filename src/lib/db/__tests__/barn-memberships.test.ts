@@ -840,4 +840,60 @@ describe('applyPreAuthProfile', () => {
 
     await expect(applyPreAuthProfile('user-1', 'manager@example.com')).rejects.toThrow('upsert failed')
   })
+
+  it('should_set_can_instruct_true_when_role_is_trainer', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: 'existing-user', barn_id: 'barn-1', role: 'trainer' },
+                }),
+              }),
+            }),
+            update: vi.fn(),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'trainer@example.com')
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ can_instruct: true }),
+      expect.anything()
+    )
+  })
+
+  it('should_set_can_instruct_false_when_role_is_not_trainer', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'profiles') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({
+                  data: { id: 'p1', user_id: 'existing-user', barn_id: 'barn-1', role: 'manager' },
+                }),
+              }),
+            }),
+            update: vi.fn(),
+          }
+        }
+        return { upsert: mockUpsert }
+      }),
+    } as any)
+
+    await applyPreAuthProfile('user-1', 'manager@example.com')
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ can_instruct: false }),
+      expect.anything()
+    )
+  })
 })

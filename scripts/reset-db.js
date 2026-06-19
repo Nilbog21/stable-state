@@ -255,6 +255,7 @@ async function run() {
         barn_id: DEV_BARN_ID,
         role: 'trainer',
         status: 'active',
+        can_instruct: true,
       }))
     ),
     'insert trainer memberships'
