@@ -30,9 +30,11 @@ export async function seedManagerProfile(
   firstName: string,
   lastName: string,
   barnId: string,
-  role: Role
+  role: Role,
+  client?: SupabaseClient
 ): Promise<void> {
-  const supabase = await createClient()
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const { error } = await supabase.from('profiles').insert({
     email,
     first_name: firstName,
