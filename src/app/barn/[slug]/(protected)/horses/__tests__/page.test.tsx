@@ -154,11 +154,17 @@ describe('HorsesPage', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(3)
   })
 
-  it('should_render_update_forms_outside_table_for_manager', async () => {
+  it('should_render_update_form_for_first_horse_outside_table_for_manager', async () => {
     vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(document.getElementById('update-horse-horse-1')).not.toBeNull()
+  })
+
+  it('should_render_update_form_for_second_horse_outside_table_for_manager', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(document.getElementById('update-horse-horse-2')).not.toBeNull()
   })
 

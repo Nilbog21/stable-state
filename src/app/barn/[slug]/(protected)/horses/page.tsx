@@ -34,6 +34,8 @@ export default async function HorsesPage({
         {barn.name} — Horses
       </h1>
 
+      {/* <form> cannot be a valid descendant of <table>, so update forms live here
+          and are linked to their row controls via the HTML `form` attribute. */}
       {isManager && horses.map((horse) => (
         <form
           key={`update-${horse.id}`}
