@@ -74,6 +74,10 @@ export function buildLessonDates(now: Date): Date[] {
   return dates
 }
 
+export function isGroupLesson(i: number): boolean {
+  return i % 5 === 0
+}
+
 export function getLessonVariation(i: number, tier1: { name: string; price: number | null }, tier2: { name: string; price: number | null }) {
   const useTier1 = i % 2 === 0
   return {
@@ -249,19 +253,18 @@ async function run() {
 
   for (let i = 0; i < lessonDates.length; i++) {
     const instructorId = trainerIds[i % trainerIds.length]
-    const horseId = horseIds[i % horseIds.length]
-    const riderRowId = riderRowIds[i % riderRowIds.length]
     const { fee, jumping, exertionLevel, tierName } = getLessonVariation(i, tier1, tier2)
+    const isGroup = isGroupLesson(i)
 
     await createLessonWithParticipants({
       barnId: DEV_BARN_ID,
       instructorId,
       lessonAt: lessonDates[i].toISOString(),
       fee,
-      horseIds: [horseId],
-      exertionLevels: [exertionLevel],
-      riderIds: [riderRowId],
-      lessonType: 'normal',
+      horseIds: isGroup ? horseIds : [horseIds[i % horseIds.length]],
+      exertionLevels: isGroup ? horseIds.map(() => exertionLevel) : [exertionLevel],
+      riderIds: isGroup ? riderRowIds : [riderRowIds[i % riderRowIds.length]],
+      lessonType: isGroup ? 'group' : 'normal',
       jumping,
       tierName,
     }, supabase)
@@ -299,6 +302,7 @@ async function run() {
   }
 
   const paidCount = pastLessons.filter((_: unknown, i: number) => getPaymentType(i, true) !== null).length
+  const groupCount = lessonDates.filter((_, i) => isGroupLesson(i)).length
 
   console.log('Done. Dev database reset to known state:')
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
@@ -309,7 +313,7 @@ async function run() {
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
-  console.log(`  Lessons:  34 (9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid`)
+  console.log(`  Lessons:  34 (${groupCount} group, ${34 - groupCount} normal; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
