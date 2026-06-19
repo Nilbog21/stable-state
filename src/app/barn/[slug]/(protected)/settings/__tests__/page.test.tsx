@@ -1,21 +1,34 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockLessonTier } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockLessonTier, createMockProfile } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getPendingMemberships: vi.fn(),
+  getActiveMemberships: vi.fn(),
+}))
+vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
 vi.mock('../actions', () => ({
   createTierAction: vi.fn(),
   updateTierAction: vi.fn(),
   setDefaultTierAction: vi.fn(),
   deactivateTierAction: vi.fn(),
+  approveMembershipAction: vi.fn(),
+  rejectMembershipAction: vi.fn(),
+  removeMembershipAction: vi.fn(),
 }))
 vi.mock('../DeactivateButton', () => ({
   DeactivateButton: ({ action }: { action: () => Promise<void> }) => (
     <form action={action}><button type="submit">Deactivate</button></form>
+  ),
+}))
+vi.mock('../InviteLink', () => ({
+  default: ({ slug }: { slug: string }) => (
+    <div data-testid="invite-link" data-slug={slug}>Invite Link</div>
   ),
 }))
 
@@ -34,6 +47,8 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
+import { getPendingMemberships, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { getProfilesByUserIds } from '@/lib/db/profiles'
 import SettingsPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -44,10 +59,16 @@ describe('SettingsPage', () => {
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
     vi.mocked(getAllTiersByBarn).mockReset()
+    vi.mocked(getPendingMemberships).mockReset()
+    vi.mocked(getActiveMemberships).mockReset()
+    vi.mocked(getProfilesByUserIds).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getAllTiersByBarn).mockResolvedValue([])
+    vi.mocked(getPendingMemberships).mockResolvedValue([])
+    vi.mocked(getActiveMemberships).mockResolvedValue([])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -231,5 +252,92 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByText(/cannot deactivate the default tier/i)).toBeDefined()
+  })
+
+  it('should_render_invite_link_section', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByTestId('invite-link')).toBeDefined()
+  })
+
+  it('should_render_no_pending_requests_message_when_none_exist', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText(/no pending requests/i)).toBeDefined()
+  })
+
+  it('should_render_pending_member_with_approve_and_reject_buttons', async () => {
+    const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
+    const profile = createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' })
+    vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /approve/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /reject/i })).toBeDefined()
+    expect(screen.getByText('Jane Doe')).toBeDefined()
+  })
+
+  it('should_render_active_members_section', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /active members/i })).toBeDefined()
+  })
+
+  it('should_render_no_active_members_message_when_removable_is_empty', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText(/no active members/i)).toBeDefined()
+  })
+
+  it('should_show_unknown_for_pending_member_with_no_matching_profile', async () => {
+    const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-99', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
+    vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('Unknown')).toBeDefined()
+  })
+
+  it('should_render_remove_button_for_non_self_active_member', async () => {
+    const activeMember = createMockMembership({ id: 'mem-a', user_id: 'user-3', created_at: '2026-01-01T00:00:00Z' })
+    const profile = createMockProfile({ user_id: 'user-3', first_name: 'Bob', last_name: 'Smith' })
+    vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
+    expect(screen.getByText('Bob Smith')).toBeDefined()
   })
 })
