@@ -540,11 +540,9 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 100, pendingIncome: 50, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const pending = screen.getByText(/pending income/i).closest('section')
-    const collected = screen.getByText(/collected income/i).closest('section')
-    expect(pending).not.toBeNull()
-    expect(collected).not.toBeNull()
-    expect(pending!.compareDocumentPosition(collected!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+    const pending = screen.getByText(/pending income/i).closest('section')!
+    const collected = screen.getByText(/collected income/i).closest('section')!
+    expect(pending.compareDocumentPosition(collected)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
   it('should_render_info_button_on_outstanding_label', async () => {
@@ -584,5 +582,13 @@ describe('FinancesPage', () => {
     render(jsx)
     const collected = screen.getByText(/collected income/i).closest('section')
     expect(collected?.nextElementSibling?.tagName).toBe('HR')
+  })
+
+  it('should_not_render_separator_when_no_breakdown', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, breakdown: [] })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const collected = screen.getByText(/collected income/i).closest('section')
+    expect(collected?.nextElementSibling?.tagName).not.toBe('HR')
   })
 })

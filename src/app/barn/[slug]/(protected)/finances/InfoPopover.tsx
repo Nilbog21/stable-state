@@ -14,7 +14,7 @@ export function InfoPopover({ text }: { text: string }) {
         ⓘ
       </button>
       {open && (
-        <span className="absolute left-0 top-6 z-10 w-48 rounded-md border border-zinc-200 bg-white p-2 text-xs text-zinc-700 shadow-md dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
+        <span className="absolute right-0 top-6 z-10 w-48 rounded-md border border-zinc-200 bg-white p-2 text-xs text-zinc-700 shadow-md dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
           {text}
         </span>
       )}

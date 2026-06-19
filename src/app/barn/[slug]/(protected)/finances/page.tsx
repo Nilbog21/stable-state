@@ -192,27 +192,28 @@ export default async function FinancesPage({
         </p>
       </section>
 
-      <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
-
       {breakdown.length > 0 ? (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Tier</th>
-              <th className="pb-2 pr-6">Lessons</th>
-              <th className="pb-2">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {breakdown.map((tier) => (
-              <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}{tier.price != null ? ` (${tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })})` : ''}</td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
-                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+        <>
+          <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                <th className="pb-2 pr-6">Tier</th>
+                <th className="pb-2 pr-6">Lessons</th>
+                <th className="pb-2">Subtotal</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {breakdown.map((tier) => (
+                <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}{tier.price != null ? ` (${tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })})` : ''}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
+                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
       ) : (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
       )}
