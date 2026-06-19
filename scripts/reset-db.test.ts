@@ -5,6 +5,7 @@ import {
   getPaymentType,
   mustSucceed,
   DEV_PENDING_RIDER,
+  DEV_MANAGER_2,
   PAYMENT_TYPES,
 } from './reset-db'
 
@@ -77,6 +78,20 @@ describe('getLessonVariation', () => {
 
   it('should_return_exertion_1_at_index_5', () => {
     expect(getLessonVariation(5, t1, t2).exertionLevel).toBe(1)
+  })
+})
+
+describe('DEV_MANAGER_2', () => {
+  it('should_have_email_as_string', () => {
+    expect(typeof DEV_MANAGER_2.email).toBe('string')
+  })
+
+  it('should_have_firstName', () => {
+    expect(DEV_MANAGER_2.firstName).toBeTruthy()
+  })
+
+  it('should_have_lastName', () => {
+    expect(DEV_MANAGER_2.lastName).toBeTruthy()
   })
 })
 
