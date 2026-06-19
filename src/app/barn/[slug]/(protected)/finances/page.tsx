@@ -181,15 +181,15 @@ export default async function FinancesPage({
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Fee</th>
+              <th className="pb-2 pr-6">Tier</th>
               <th className="pb-2 pr-6">Lessons</th>
               <th className="pb-2">Subtotal</th>
             </tr>
           </thead>
           <tbody>
             {breakdown.map((tier) => (
-              <tr key={tier.fee} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+              <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
+                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}{tier.price != null ? ` (${tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })})` : ''}</td>
                 <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
                 <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
               </tr>
