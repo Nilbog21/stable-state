@@ -149,7 +149,24 @@ describe('createPendingMembership', () => {
     await expect(createPendingMembership('user-1', 'barn-1', 'trainer')).rejects.toThrow('insert failed')
   })
 
-  it('should_use_injected_client_when_provided', async () => {
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = {
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: createMockMembership({ status: 'pending' }), error: null }),
+          }),
+        }),
+      }),
+    } as any
+
+    await createPendingMembership('user-1', 'barn-1', 'trainer', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
     vi.mocked(createClient).mockReset()
     const mockFrom = vi.fn().mockReturnValue({
       insert: vi.fn().mockReturnValue({
@@ -162,7 +179,6 @@ describe('createPendingMembership', () => {
 
     await createPendingMembership('user-1', 'barn-1', 'trainer', injectedClient)
 
-    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
     expect(mockFrom).toHaveBeenCalled()
   })
 })

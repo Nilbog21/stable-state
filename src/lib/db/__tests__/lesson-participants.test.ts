@@ -300,7 +300,19 @@ describe('createLessonWithParticipants', () => {
     )
   })
 
-  it('should_use_injected_client_when_provided', async () => {
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = { rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }) } as any
+
+    await createLessonWithParticipants(
+      { barnId: 'barn-1', instructorId: 'user-1', lessonAt: '2026-05-16T10:00:00Z', fee: 75, horseIds: ['horse-1'], exertionLevels: [3], riderIds: ['rider-1'], lessonType: 'normal' },
+      injectedClient
+    )
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
     vi.mocked(createClient).mockReset()
     const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
     const injectedClient = { rpc: mockRpc } as any
@@ -310,7 +322,6 @@ describe('createLessonWithParticipants', () => {
       injectedClient
     )
 
-    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
     expect(mockRpc).toHaveBeenCalled()
   })
 })
