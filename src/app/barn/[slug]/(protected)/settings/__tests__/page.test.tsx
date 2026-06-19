@@ -274,7 +274,7 @@ describe('SettingsPage', () => {
     expect(screen.getByText(/no pending requests/i)).toBeDefined()
   })
 
-  it('should_render_pending_member_with_approve_and_reject_buttons', async () => {
+  it('should_render_approve_button_for_pending_member', async () => {
     const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
     const profile = createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' })
     vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
@@ -287,7 +287,35 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByRole('button', { name: /approve/i })).toBeDefined()
+  })
+
+  it('should_render_reject_button_for_pending_member', async () => {
+    const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
+    const profile = createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' })
+    vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
     expect(screen.getByRole('button', { name: /reject/i })).toBeDefined()
+  })
+
+  it('should_render_profile_name_for_pending_member', async () => {
+    const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
+    const profile = createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' })
+    vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
     expect(screen.getByText('Jane Doe')).toBeDefined()
   })
 
@@ -338,6 +366,20 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
+  })
+
+  it('should_render_profile_name_for_active_member', async () => {
+    const activeMember = createMockMembership({ id: 'mem-a', user_id: 'user-3', created_at: '2026-01-01T00:00:00Z' })
+    const profile = createMockProfile({ user_id: 'user-3', first_name: 'Bob', last_name: 'Smith' })
+    vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
     expect(screen.getByText('Bob Smith')).toBeDefined()
   })
 })

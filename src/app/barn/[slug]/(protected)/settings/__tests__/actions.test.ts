@@ -344,6 +344,13 @@ describe('deactivateTierAction', () => {
 
 describe('approveMembershipAction', () => {
   beforeEach(() => {
+    vi.mocked(getBarnBySlug).mockReset()
+    vi.mocked(getUserMembership).mockReset()
+    vi.mocked(approveMembership).mockReset()
+    vi.mocked(getMembershipById).mockReset()
+    vi.mocked(createRider).mockReset()
+    vi.mocked(getProfilesByUserIds).mockReset()
+    vi.mocked(revalidatePath).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
@@ -462,6 +469,10 @@ describe('approveMembershipAction', () => {
 
 describe('rejectMembershipAction', () => {
   beforeEach(() => {
+    vi.mocked(getBarnBySlug).mockReset()
+    vi.mocked(getUserMembership).mockReset()
+    vi.mocked(deleteMembership).mockReset()
+    vi.mocked(revalidatePath).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
@@ -510,6 +521,10 @@ describe('rejectMembershipAction', () => {
 
 describe('removeMembershipAction', () => {
   beforeEach(() => {
+    vi.mocked(getBarnBySlug).mockReset()
+    vi.mocked(getUserMembership).mockReset()
+    vi.mocked(deleteMembership).mockReset()
+    vi.mocked(revalidatePath).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
