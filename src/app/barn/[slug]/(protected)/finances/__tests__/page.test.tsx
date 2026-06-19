@@ -742,9 +742,9 @@ describe('FinancesPage', () => {
 
   it('should_show_formatted_price_for_named_tier', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
-      collectedIncome: 75,
+      collectedIncome: 150,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75 }],
+      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 2, subtotal: 150 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
