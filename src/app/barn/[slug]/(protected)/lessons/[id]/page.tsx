@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 
 export default async function LessonDetailPage({
   params,
@@ -25,7 +25,7 @@ export default async function LessonDetailPage({
 
   const [lesson, membership] = await Promise.all([
     getLessonById(id, barn.id),
-    getEffectiveMembership(user.id, barn.id),
+    getUserMembership(user.id, barn.id),
   ])
 
   if (!membership || membership.status !== 'active') {

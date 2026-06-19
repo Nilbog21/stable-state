@@ -3,8 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
-import { getInstructorsByBarn } from '@/lib/db/barn-memberships'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { submitLesson } from '@/app/actions/lessons'
 import { LessonForm } from '../LessonForm'
@@ -31,7 +30,7 @@ export default async function LessonNewPage({
   const [horses, riders, membership, tiers, instructors] = await Promise.all([
     getHorsesByBarn(barn.id),
     getRidersByBarn(barn.id),
-    getEffectiveMembership(user.id, barn.id),
+    getUserMembership(user.id, barn.id),
     getTiersByBarn(barn.id),
     getInstructorsByBarn(barn.id),
   ])

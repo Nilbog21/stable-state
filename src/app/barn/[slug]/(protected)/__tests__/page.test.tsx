@@ -11,8 +11,8 @@ vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
 }))
 
-vi.mock('@/lib/db/effective-membership', () => ({
-  getEffectiveMembership: vi.fn(),
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/db/lessons', () => ({
@@ -35,7 +35,7 @@ vi.mock('next/navigation', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { createMockLesson } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
@@ -81,7 +81,7 @@ describe('BarnDashboardPage', () => {
     vi.mocked(createClient).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
   })
 
@@ -175,7 +175,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_not_show_upcoming_lessons_section_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -190,14 +190,14 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_sign_out_button_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
   })
 
   it('should_render_sign_out_button_for_rider', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()

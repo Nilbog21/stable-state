@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lesson-finances'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
@@ -108,7 +108,7 @@ export default async function FinancesPage({
   const { data } = await supabase.auth.getUser()
   if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
+  const actorMembership = await getUserMembership(data.user.id, barn.id)
 
   if (
     !actorMembership ||
