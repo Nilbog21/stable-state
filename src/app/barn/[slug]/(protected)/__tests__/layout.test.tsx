@@ -361,6 +361,7 @@ describe('ProtectedBarnLayout - nav links', () => {
 describe('generateMetadata', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockReset()
+    mockNotFound.mockReset()
   })
 
   it('should_return_barn_name_and_site_name_as_title', async () => {
@@ -371,11 +372,9 @@ describe('generateMetadata', () => {
     expect(result.title).toBe('Green Acres | Stable State')
   })
 
-  it('should_call_not_found_when_barn_not_found', async () => {
+  it('should_throw_not_found_when_barn_not_found', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
-    try { await generateMetadata({ params }) } catch {}
-
-    expect(mockNotFound).toHaveBeenCalled()
+    await expect(generateMetadata({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 })

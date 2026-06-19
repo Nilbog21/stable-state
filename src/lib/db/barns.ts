@@ -1,7 +1,8 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { Barn } from './types'
 
-export async function getBarnBySlug(slug: string): Promise<Barn | null> {
+export const getBarnBySlug = cache(async function getBarnBySlug(slug: string): Promise<Barn | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('barns')
@@ -11,4 +12,4 @@ export async function getBarnBySlug(slug: string): Promise<Barn | null> {
 
   if (error) throw error
   return data
-}
+})
