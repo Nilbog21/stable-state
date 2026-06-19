@@ -68,7 +68,7 @@ describe('RidersPage', () => {
     vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
     const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/green acres/i)).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Riders' })).toBeDefined()
   })
 
   it('should_render_each_rider_name_in_the_list', async () => {
@@ -90,7 +90,7 @@ describe('RidersPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
     const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/green acres/i)).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Riders' })).toBeDefined()
   })
 
 

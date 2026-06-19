@@ -201,11 +201,10 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByTestId('child')).toBeDefined()
   })
 
-  it('should_render_dashboard_link_for_manager', async () => {
+  it('should_render_barn_name_as_home_link_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    const link = screen.getByRole('link', { name: /dashboard/i })
-    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+    expect((screen.getByRole('link', { name: 'Green Acres' }) as HTMLAnchorElement).href).toContain('/barn/green-acres')
   })
 
   it('should_render_lessons_link_for_manager', async () => {
@@ -244,17 +243,31 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByRole('link', { name: /finances/i })).toBeDefined()
   })
 
-  it('should_render_approvals_link_for_manager', async () => {
+  it('should_not_render_approvals_link_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.getByRole('link', { name: /approvals/i })).toBeDefined()
+    expect(screen.queryByRole('link', { name: /approvals/i })).toBeNull()
   })
 
-  it('should_render_settings_link_for_manager', async () => {
+  it('should_render_manage_barn_link_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    const link = screen.getByRole('link', { name: /settings/i })
+    const link = screen.getByRole('link', { name: /manage barn/i })
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/settings')
+  })
+
+  it('should_not_render_manage_barn_link_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /manage barn/i })).toBeNull()
+  })
+
+  it('should_not_render_manage_barn_link_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /manage barn/i })).toBeNull()
   })
 
   it('should_not_render_settings_link_for_trainer', async () => {
@@ -271,12 +284,11 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.queryByRole('link', { name: /settings/i })).toBeNull()
   })
 
-  it('should_render_dashboard_link_for_trainer', async () => {
+  it('should_render_barn_name_as_home_link_for_trainer', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    const link = screen.getByRole('link', { name: /dashboard/i })
-    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+    expect((screen.getByRole('link', { name: 'Green Acres' }) as HTMLAnchorElement).href).toContain('/barn/green-acres')
   })
 
   it('should_render_lessons_link_for_trainer', async () => {
@@ -328,12 +340,11 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.queryByRole('link', { name: /approvals/i })).toBeNull()
   })
 
-  it('should_render_dashboard_link_for_rider', async () => {
+  it('should_render_barn_name_as_home_link_for_rider', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    const link = screen.getByRole('link', { name: /dashboard/i })
-    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres')
+    expect((screen.getByRole('link', { name: 'Green Acres' }) as HTMLAnchorElement).href).toContain('/barn/green-acres')
   })
 
   it('should_render_lessons_link_for_rider', async () => {
