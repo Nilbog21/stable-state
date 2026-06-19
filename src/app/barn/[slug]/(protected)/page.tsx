@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { signOut } from '@/app/actions/auth'
 import type { LessonWithDetails } from '@/lib/db/types'
@@ -21,7 +21,7 @@ export default async function BarnDashboardPage({
   let upcomingLessons: LessonWithDetails[] | null = null
 
   if (data.user) {
-    const membership = await getEffectiveMembership(data.user.id, barn.id)
+    const membership = await getUserMembership(data.user.id, barn.id)
     if (membership?.role === 'manager') {
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)

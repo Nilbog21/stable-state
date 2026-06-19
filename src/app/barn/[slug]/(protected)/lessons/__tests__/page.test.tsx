@@ -11,8 +11,8 @@ vi.mock('@/lib/db/lessons', () => ({
   getLessonsByBarn: vi.fn(),
 }))
 
-vi.mock('@/lib/db/effective-membership', () => ({
-  getEffectiveMembership: vi.fn(),
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -39,7 +39,7 @@ vi.mock('../OlderLessonsToggle', () => ({
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonsByBarn } from '@/lib/db/lessons'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import LessonsPage from '../page'
@@ -97,7 +97,7 @@ describe('LessonsPage', () => {
     vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson])
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     mockSupabaseUser()
   })
 
@@ -115,7 +115,7 @@ describe('LessonsPage', () => {
   })
 
   it('should_call_notFound_when_user_has_no_membership', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => {
       throw new Error('NEXT_NOT_FOUND')
     })
@@ -158,21 +158,21 @@ describe('LessonsPage', () => {
   })
 
   it('should_not_show_delete_button_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
   it('should_show_delete_button_for_manager', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
   })
 
   it('should_show_new_lesson_link_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const link = screen.getByRole('link', { name: /new lesson/i })
@@ -181,7 +181,7 @@ describe('LessonsPage', () => {
   })
 
   it('should_show_new_lesson_link_for_manager', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const link = screen.getByRole('link', { name: /new lesson/i })
@@ -190,7 +190,7 @@ describe('LessonsPage', () => {
   })
 
   it('should_not_show_new_lesson_link_for_rider', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: /new lesson/i })).toBeNull()

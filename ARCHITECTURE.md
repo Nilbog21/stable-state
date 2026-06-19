@@ -99,14 +99,13 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `lesson-finances.ts` | Financial reporting: `getFinancialSummary` (returns `collectedIncome`, `pendingIncome`, `breakdown` grouped by `tier_name` with `{ tierName, price, lessonCount, subtotal }[]`); `getOutstandingLessons` (returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); `getHorseIncomeSummary` (collected-only); `getRiderIncomeSummary` (collected-only); `getTrainerIncomeSummary` (collected lessons grouped by instructor with full name from profiles) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
 | `profiles.ts` | User profiles; `upsertProfile` (called at registration); `seedManagerProfile` (inserts pre-auth row before first OAuth sign-in) |
-| `effective-membership.ts` | Dev-only role override (see below) |
 | `types.ts` | Shared TypeScript types |
 
 ## Server actions pattern
 
 No API routes. All mutations go through Next.js Server Actions.
 
-- **Global actions:** `src/app/actions/` — auth (`auth.ts`), dev role switching (`dev-role.ts`), lesson submission and payment-type update (`lessons.ts`)
+- **Global actions:** `src/app/actions/` — auth (`auth.ts`), lesson submission and payment-type update (`lessons.ts`)
 - **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`barn/[slug]/approvals/`, `barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`)
 
 ## Supabase RPC
@@ -120,15 +119,6 @@ No API routes. All mutations go through Next.js Server Actions.
 `set_can_instruct(p_membership_id uuid, p_barn_id uuid, p_value boolean)` — sets `can_instruct` on a single `barn_memberships` row. `SECURITY DEFINER`; verifies the caller is a manager of `p_barn_id` then updates only the `can_instruct` column. `EXECUTE` revoked from `PUBLIC` and granted to `authenticated`.
 
 `teardown_dev_barn_lessons(p_barn_id uuid)` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows for a barn in a single transaction, so the deferred participant-count triggers see the lesson rows gone at commit and skip enforcement. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called exclusively by `scripts/reset-db.ts`.
-
-## effective-membership.ts
-
-`src/lib/db/effective-membership.ts` — dev-only role impersonation.
-
-- Only active when `NODE_ENV === 'development'` and the authenticated user is a manager
-- Reads a `dev_role_override` cookie; overridable to `trainer` or `rider`
-- Returns the overridden membership in place of the real one so the caller sees trainer/rider permissions without a separate test account
-- `src/app/barn/[slug]/DevRoleSwitcher.tsx` renders a floating toolbar in `BarnLayout` (dev mode only, manager only) to set/clear the cookie
 
 ## Feature anatomy
 
