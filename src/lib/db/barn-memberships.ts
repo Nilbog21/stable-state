@@ -132,7 +132,7 @@ export async function applyPreAuthProfile(userId: string, email: string): Promis
   const { error } = await supabase
     .from('barn_memberships')
     .upsert(
-      { user_id: userId, barn_id: profile.barn_id, role: profile.role, status: 'active' },
+      { user_id: userId, barn_id: profile.barn_id, role: profile.role, status: 'active', can_instruct: profile.role === 'trainer' },
       { onConflict: 'user_id,barn_id' }
     )
   if (error) throw error
