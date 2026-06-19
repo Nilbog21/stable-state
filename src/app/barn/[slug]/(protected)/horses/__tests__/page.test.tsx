@@ -150,7 +150,8 @@ describe('HorsesPage', () => {
     vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getAllByRole('textbox')).toHaveLength(2)
+    // 2 rename inputs (from mocked HorseOverviewTable) + 1 add-horse input = 3
+    expect(screen.getAllByRole('textbox')).toHaveLength(3)
   })
 
   it('should_render_update_forms_outside_table_for_manager', async () => {
