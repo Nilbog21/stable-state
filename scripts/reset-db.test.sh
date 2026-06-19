@@ -30,6 +30,8 @@ make_repo() {
   cat > "$dir/bin/npx" <<TSXEOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$dir/tsx.log"
+printf 'DEV_TRAINER_EMAIL=%s\n' "\$DEV_TRAINER_EMAIL" >> "$dir/tsx.log"
+printf 'DEV_RIDER_EMAIL=%s\n' "\$DEV_RIDER_EMAIL" >> "$dir/tsx.log"
 exit $tsx_exit
 TSXEOF
   chmod +x "$dir/bin/npx"
@@ -130,6 +132,38 @@ if [ -f "$REPO/tsx.log" ]; then
   assert_pass "should_invoke_tsx_when_all_required_vars_present"
 else
   assert_fail "should_invoke_tsx_when_all_required_vars_present" "tsx was not called"
+fi
+rm -rf "$REPO"
+
+# Test 7: should_forward_DEV_TRAINER_EMAIL_to_tsx_when_set
+# Arrange
+REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret
+DEV_TRAINER_EMAIL=trainer@example.com" 0)"
+# Act
+(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+# Assert
+if grep -q 'trainer@example.com' "$REPO/tsx.log" 2>/dev/null; then
+  assert_pass "should_forward_DEV_TRAINER_EMAIL_to_tsx_when_set"
+else
+  assert_fail "should_forward_DEV_TRAINER_EMAIL_to_tsx_when_set" "DEV_TRAINER_EMAIL not found in tsx.log"
+fi
+rm -rf "$REPO"
+
+# Test 8: should_forward_DEV_RIDER_EMAIL_to_tsx_when_set
+# Arrange
+REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret
+DEV_RIDER_EMAIL=rider@example.com" 0)"
+# Act
+(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+# Assert
+if grep -q 'rider@example.com' "$REPO/tsx.log" 2>/dev/null; then
+  assert_pass "should_forward_DEV_RIDER_EMAIL_to_tsx_when_set"
+else
+  assert_fail "should_forward_DEV_RIDER_EMAIL_to_tsx_when_set" "DEV_RIDER_EMAIL not found in tsx.log"
 fi
 rm -rf "$REPO"
 
