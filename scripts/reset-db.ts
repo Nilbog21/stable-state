@@ -30,6 +30,7 @@ const DEV_RIDERS = [
 const DEV_HORSES = ['Apple', 'Butter', 'Clover']
 
 export const DEV_PENDING_RIDER = { email: 'pending1@dev.local', firstName: 'Quinn', lastName: 'Pending' }
+export const DEV_MANAGER_2 = { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' }
 
 export const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
 
@@ -113,6 +114,7 @@ async function run() {
   const devUserIdSet = new Set((memberships ?? []).map((m: { user_id: string }) => m.user_id))
 
   const devEmails = new Set([
+    DEV_MANAGER_2.email,
     ...DEV_TRAINERS.map((t) => t.email),
     ...DEV_RIDERS.map((r) => r.email),
     DEV_PENDING_RIDER.email,
@@ -164,6 +166,23 @@ async function run() {
   )
 
   await seedManagerProfile(MANAGER_EMAIL, 'Dev', 'Manager', DEV_BARN_ID, 'manager', supabase)
+
+  const { data: m2Data, error: m2Err } = await supabase.auth.admin.createUser({
+    email: DEV_MANAGER_2.email,
+    email_confirm: true,
+  })
+  if (m2Err) throw new Error(`create manager2: ${m2Err.message}`)
+  await upsertProfile(m2Data.user.id, DEV_MANAGER_2.email, DEV_MANAGER_2.firstName, DEV_MANAGER_2.lastName, supabase)
+  mustSucceed(
+    await supabase.from('barn_memberships').insert({
+      user_id: m2Data.user.id,
+      barn_id: DEV_BARN_ID,
+      role: 'manager',
+      status: 'active',
+      can_instruct: true,
+    }),
+    'insert manager2 membership'
+  )
 
   const tier1 = await createTier(DEV_BARN_ID, DEV_TIER_NAME, DEV_TIER_PRICE, true, supabase)
   const tier2 = await createTier(DEV_BARN_ID, DEV_TIER_2_NAME, DEV_TIER_2_PRICE, false, supabase)
@@ -283,7 +302,8 @@ async function run() {
 
   console.log('Done. Dev database reset to known state:')
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
-  console.log(`  Manager:  ${MANAGER_EMAIL} (pre-seeded profile — sign in with Google to activate)`)
+  console.log(`  Manager:  ${MANAGER_EMAIL} (pre-seeded, can_instruct=false — sign in with Google to activate)`)
+  console.log(`  Manager2: ${DEV_MANAGER_2.email} (can_instruct=true — appears in instructor dropdown)`)
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`)
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
