@@ -24,6 +24,7 @@ export async function getEffectiveMembership(
         barn_id: barnId,
         role: override,
         status: 'active',
+        can_instruct: override === 'trainer',
         created_at: '',
       }
     }
