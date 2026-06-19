@@ -1,13 +1,8 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { DevRoleSwitcher } from '../DevRoleSwitcher'
-import type { Role } from '@/lib/db/types'
-
-const OVERRIDABLE_ROLES: Role[] = ['trainer', 'rider']
+import { getUserMembership } from '@/lib/db/barn-memberships'
 
 export default async function ProtectedBarnLayout({
   children,
@@ -24,7 +19,7 @@ export default async function ProtectedBarnLayout({
   const { data } = await supabase.auth.getUser()
   if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const membership = await getEffectiveMembership(data.user.id, barn.id)
+  const membership = await getUserMembership(data.user.id, barn.id)
   if (!membership) redirect(`/barn/${slug}/login`)
   if (membership.status === 'pending') redirect(`/barn/${slug}/pending`)
   if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
@@ -51,17 +46,6 @@ export default async function ProtectedBarnLayout({
     ]
   }
 
-  let showSwitcher = false
-  let currentOverride: Role | null = null
-
-  if (process.env.NODE_ENV === 'development') {
-    const cookieStore = await cookies()
-    const override = cookieStore.get('dev_role_override')?.value as Role | undefined
-    currentOverride = override && OVERRIDABLE_ROLES.includes(override) ? override : null
-    // manager with an active override has a non-manager effective role but a non-null override
-    showSwitcher = membership.role === 'manager' || currentOverride !== null
-  }
-
   return (
     <>
       <nav className="flex gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
@@ -82,7 +66,6 @@ export default async function ProtectedBarnLayout({
         ))}
       </nav>
       {children}
-      {showSwitcher && <DevRoleSwitcher currentOverride={currentOverride} />}
     </>
   )
 }

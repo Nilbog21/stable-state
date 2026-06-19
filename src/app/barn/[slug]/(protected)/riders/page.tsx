@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getRidersByBarn } from '@/lib/db/riders'
 import { updateRiderAction } from './actions'
 
@@ -18,7 +18,7 @@ export default async function RidersPage({
   const { data } = await supabase.auth.getUser()
   if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
+  const actorMembership = await getUserMembership(data.user.id, barn.id)
 
   if (
     !actorMembership ||

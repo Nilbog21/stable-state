@@ -4,8 +4,8 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import {
   getPendingMemberships,
   getActiveMemberships,
+  getUserMembership,
 } from '@/lib/db/barn-memberships'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import {
   approveMembershipAction,
@@ -64,7 +64,7 @@ export default async function ApprovalsPage({
   const { data } = await supabase.auth.getUser()
   if (!data.user) redirect(`/barn/${slug}/login`)
 
-  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
+  const actorMembership = await getUserMembership(data.user.id, barn.id)
 
   if (
     !actorMembership ||

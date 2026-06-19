@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getInstructorsByBarn } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
@@ -27,7 +26,7 @@ export default async function EditLessonPage({
 
   const [lesson, membership] = await Promise.all([
     getLessonById(id, barn.id),
-    getEffectiveMembership(user.id, barn.id),
+    getUserMembership(user.id, barn.id),
   ])
 
   if (!membership || membership.status !== 'active') notFound()
