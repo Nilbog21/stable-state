@@ -80,14 +80,14 @@ describe('SettingsPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_render_barn_name_in_heading', async () => {
+  it('should_render_manage_barn_heading', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({}),
     })
     render(jsx)
 
-    expect(screen.getByText(/green acres/i)).toBeDefined()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Manage Barn')
   })
 
   it('should_render_active_tier_in_list', async () => {

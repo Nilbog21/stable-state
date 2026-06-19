@@ -70,7 +70,7 @@ describe('FinancesPage', () => {
   it('should_render_page_for_manager', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/green acres/i)).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Finances' })).toBeDefined()
   })
 
   it('should_display_collected_income', async () => {

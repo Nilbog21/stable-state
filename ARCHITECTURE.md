@@ -59,12 +59,13 @@ RLS policies always go in a **separate migration file** from schema changes.
 
 Protected barn routes (dashboard, lessons, horses, riders, finances, approvals) live in a `(protected)` route group under `src/app/barn/[slug]/(protected)/`. The group layout (`layout.tsx`) centralises auth: absent or pending membership redirects to `/barn/[slug]/login`. Public routes (login, pending, register) stay outside the group and are unaffected.
 
-The `(protected)` layout renders a persistent role-aware nav bar above `{children}` on every barn page:
-- manager: Dashboard, Lessons, Horses, Riders, Finances, Approvals, Settings
-- trainer: Dashboard, Lessons, Horses, Riders
-- rider: Dashboard, Lessons, Horses
+The `(protected)` layout renders a persistent role-aware nav bar above `{children}` on every barn page. The barn name is rendered as a home link (visually distinct, `font-semibold`) before the section links:
+- manager: {Barn Name} (home), Lessons, Horses, Riders, Finances, Manage Barn — 5 section links
+- trainer: {Barn Name} (home), Lessons, Horses, Riders — 3 section links
+- rider: {Barn Name} (home), Lessons, Horses — 2 section links
 
 "Horses" → `/barn/[slug]/horses` (all roles)
+"Manage Barn" → `/barn/[slug]/settings` (manager only; Approvals accessible directly at `/barn/[slug]/approvals` but not in nav — see #256)
 
 | Route | Roles | Notes |
 |---|---|---|

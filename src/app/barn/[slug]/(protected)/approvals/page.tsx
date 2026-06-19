@@ -87,7 +87,7 @@ export default async function ApprovalsPage({
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {barn.name} — Approvals
+        Approvals
       </h1>
 
       <InviteLink slug={slug} />

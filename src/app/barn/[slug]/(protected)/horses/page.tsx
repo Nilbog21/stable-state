@@ -31,7 +31,7 @@ export default async function HorsesPage({
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {barn.name} — Horses
+        Horses
       </h1>
 
       {/* <form> cannot be a valid descendant of <table>, so update forms live here

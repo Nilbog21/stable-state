@@ -75,10 +75,10 @@ describe('ApprovalsPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_render_barn_name_in_heading', async () => {
+  it('should_render_approvals_heading', async () => {
     const jsx = await ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/green acres/i)).toBeDefined()
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Approvals')
   })
 
   it('should_render_no_pending_requests_message_when_none_exist', async () => {

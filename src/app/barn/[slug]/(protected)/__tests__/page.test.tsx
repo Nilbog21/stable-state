@@ -101,6 +101,12 @@ describe('BarnDashboardPage', () => {
     expect(mockNotFound).toHaveBeenCalled()
   })
 
+  it('should_render_dashboard_heading', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Dashboard')
+  })
+
   it('should_show_upcoming_lessons_section_for_manager', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
