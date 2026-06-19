@@ -5,7 +5,7 @@ import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
-vi.mock('@/lib/db/effective-membership', () => ({ getEffectiveMembership: vi.fn() }))
+vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('../actions', () => ({
   createTierAction: vi.fn(),
@@ -32,7 +32,7 @@ const mockRedirect = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import SettingsPage from '../page'
 
@@ -42,11 +42,11 @@ const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' 
 describe('SettingsPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockReset()
-    vi.mocked(getEffectiveMembership).mockReset()
+    vi.mocked(getUserMembership).mockReset()
     vi.mocked(getAllTiersByBarn).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getEffectiveMembership).mockResolvedValue(managerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getAllTiersByBarn).mockResolvedValue([])
   })
 
@@ -71,7 +71,7 @@ describe('SettingsPage', () => {
   })
 
   it('should_redirect_to_login_when_user_is_not_manager', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    vi.mocked(getUserMembership).mockResolvedValue(null)
 
     await expect(
       SettingsPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })

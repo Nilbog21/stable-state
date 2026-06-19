@@ -11,8 +11,8 @@ vi.mock('@/lib/db/lessons', () => ({
   getLessonById: vi.fn(),
 }))
 
-vi.mock('@/lib/db/effective-membership', () => ({
-  getEffectiveMembership: vi.fn(),
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -25,7 +25,7 @@ vi.mock('next/navigation', () => ({
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 import LessonDetailPage from '../page'
@@ -75,7 +75,7 @@ describe('LessonDetailPage', () => {
     vi.clearAllMocks()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getLessonById).mockResolvedValue(mockLessonDetail)
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockMembership)
     mockSupabaseUser()
   })
 
@@ -106,7 +106,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_call_notFound_when_user_has_no_membership', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
 
     await expect(
@@ -117,7 +117,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_call_notFound_when_membership_is_not_active', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, status: 'pending' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'pending' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
 
     await expect(
@@ -290,14 +290,14 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_edit_link_for_manager', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByRole('link', { name: /edit/i })).toBeDefined()
   })
 
   it('should_edit_link_point_to_edit_page_for_manager', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     const link = screen.getByRole('link', { name: /edit/i }) as HTMLAnchorElement
@@ -311,7 +311,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_not_show_edit_link_for_rider', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()

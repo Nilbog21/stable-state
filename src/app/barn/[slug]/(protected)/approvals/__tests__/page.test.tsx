@@ -8,8 +8,8 @@ vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getPendingMemberships: vi.fn(),
   getActiveMemberships: vi.fn(),
+  getUserMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/effective-membership', () => ({ getEffectiveMembership: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
 vi.mock('../actions', () => ({
   approveMembershipAction: vi.fn(),
@@ -27,8 +27,8 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import {
   getPendingMemberships,
   getActiveMemberships,
+  getUserMembership,
 } from '@/lib/db/barn-memberships'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import ApprovalsPage from '../page'
 
@@ -46,7 +46,7 @@ describe('ApprovalsPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
-    vi.mocked(getEffectiveMembership).mockResolvedValue(managerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(getActiveMemberships).mockResolvedValue([])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([])
@@ -70,7 +70,7 @@ describe('ApprovalsPage', () => {
   })
 
   it('should_redirect_to_login_when_user_is_not_manager', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    vi.mocked(getUserMembership).mockResolvedValue(null)
     await expect(ApprovalsPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })

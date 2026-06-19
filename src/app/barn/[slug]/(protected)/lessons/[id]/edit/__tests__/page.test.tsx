@@ -5,8 +5,7 @@ afterEach(cleanup)
 
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/lessons', () => ({ getLessonById: vi.fn() }))
-vi.mock('@/lib/db/effective-membership', () => ({ getEffectiveMembership: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn() }))
+vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn(), getUserMembership: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
 vi.mock('@/lib/db/riders', () => ({ getRidersByBarn: vi.fn() }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
@@ -19,8 +18,7 @@ vi.mock('../../../LessonForm', () => ({
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getInstructorsByBarn } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
@@ -57,7 +55,7 @@ function setupDefaults() {
   } as any)
   vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
   vi.mocked(getLessonById).mockResolvedValue(mockLesson)
-  vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+  vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
   vi.mocked(getInstructorsByBarn).mockResolvedValue([])
   vi.mocked(getHorsesByBarn).mockResolvedValue([])
   vi.mocked(getRidersByBarn).mockResolvedValue([])
@@ -71,7 +69,7 @@ describe('EditLessonPage', () => {
     vi.mocked(notFound).mockReset()
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getLessonById).mockReset()
-    vi.mocked(getEffectiveMembership).mockReset()
+    vi.mocked(getUserMembership).mockReset()
     vi.mocked(getInstructorsByBarn).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getRidersByBarn).mockReset()
@@ -111,52 +109,52 @@ describe('EditLessonPage', () => {
   })
 
   it('should_call_notFound_when_membership_is_missing', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
   it('should_invoke_notFound_when_membership_is_missing', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
   it('should_call_notFound_when_membership_is_pending', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
   it('should_invoke_notFound_when_membership_is_pending', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
   it('should_call_notFound_when_user_is_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
   it('should_invoke_notFound_when_user_is_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
   })
 
   it('should_call_notFound_when_user_is_rider', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
   it('should_invoke_notFound_when_user_is_rider', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()
