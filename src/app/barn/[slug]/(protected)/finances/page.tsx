@@ -213,7 +213,7 @@ export default async function FinancesPage({
 
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {`Income by Horse (${monthLabel}) (Collected, Pending, Outstanding)`}
+          {`Income by Horse (${monthLabel}) (Collected)`}
         </h2>
         {horseIncome.length > 0 ? (
           <table className="w-full">
@@ -248,7 +248,7 @@ export default async function FinancesPage({
 
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {`Income by Rider (${monthLabel}) (Collected, Pending, Outstanding)`}
+          {`Income by Rider (${monthLabel}) (Collected)`}
         </h2>
         {riderIncome.length > 0 ? (
           <table className="w-full">

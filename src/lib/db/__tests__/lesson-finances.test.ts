@@ -26,7 +26,7 @@ describe('getFinancialSummary', () => {
   const startDate = new Date('2026-05-01T00:00:00Z')
   const endDate = new Date('2026-06-01T00:00:00Z')
 
-  function makeSummaryChain(data: { fee: number | null }[], error: Error | null = null) {
+  function makeSummaryChain(data: { fee: number | null; [key: string]: unknown }[], error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
     const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
@@ -72,7 +72,7 @@ describe('getFinancialSummary', () => {
   })
 
   it('should_return_correct_collected_income_for_single_fee_tier', async () => {
-    const { select } = makeSummaryChain([{ fee: 75 }, { fee: 75 }])
+    const { select } = makeSummaryChain([{ fee: 75, payment_type: 'venmo' }, { fee: 75, payment_type: 'venmo' }])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -97,7 +97,7 @@ describe('getFinancialSummary', () => {
   })
 
   it('should_exclude_null_fee_lessons_from_collected_income', async () => {
-    const { select } = makeSummaryChain([{ fee: 75 }, { fee: null }, { fee: 75 }])
+    const { select } = makeSummaryChain([{ fee: 75, payment_type: 'venmo' }, { fee: null, payment_type: 'venmo' }, { fee: 75, payment_type: 'venmo' }])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -108,7 +108,7 @@ describe('getFinancialSummary', () => {
   })
 
   it('should_exclude_null_fee_lessons_from_breakdown', async () => {
-    const { select } = makeSummaryChain([{ fee: 75 }, { fee: null }, { fee: 75 }])
+    const { select } = makeSummaryChain([{ fee: 75, payment_type: 'venmo' }, { fee: null, payment_type: 'venmo' }, { fee: 75, payment_type: 'venmo' }])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -704,7 +704,6 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_exclude_unpaid_lessons_from_income', async () => {
-    const lesson = createMockLesson({ fee: 100, payment_type: null })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue(makeLessonsChain([])),
     } as any)
@@ -1059,7 +1058,6 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_exclude_unpaid_lessons_from_income', async () => {
-    const lesson = createMockLesson({ fee: 100, payment_type: null })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue(makeLessonsChain([])),
     } as any)
