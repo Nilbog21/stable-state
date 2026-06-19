@@ -121,7 +121,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Income by Horse (June 2026) (Collected)')).toBeDefined()
+    expect(screen.getByText('Income by Horse (June 2026)')).toBeDefined()
   })
 
   it('should_display_horse_name', async () => {
@@ -191,7 +191,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Income by Rider (June 2026) (Collected)')).toBeDefined()
+    expect(screen.getByText('Income by Rider (June 2026)')).toBeDefined()
   })
 
   it('should_display_rider_name', async () => {
@@ -532,5 +532,57 @@ describe('FinancesPage', () => {
     render(jsx)
     const container = screen.getByText('Outstanding').closest('section')
     expect(container?.className).not.toMatch(/amber/)
+  })
+
+  it('should_render_pending_income_before_collected_income', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 100, pendingIncome: 50, breakdown: [] })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const pending = screen.getByText(/pending income/i).closest('section')
+    const collected = screen.getByText(/collected income/i).closest('section')
+    expect(pending).not.toBeNull()
+    expect(collected).not.toBeNull()
+    expect(pending!.compareDocumentPosition(collected!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+  })
+
+  it('should_render_info_button_on_outstanding_label', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([
+      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: 75 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const outstandingSection = screen.getByText('Outstanding').closest('section')
+    expect(outstandingSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_render_info_button_on_pending_label', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 50, breakdown: [] })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const pendingSection = screen.getByText(/pending income/i).closest('section')
+    expect(pendingSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_render_info_button_on_collected_label', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const collectedSection = screen.getByText(/collected income/i).closest('section')
+    expect(collectedSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_render_separator_between_collected_and_breakdown', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 100,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Standard', price: 100, lessonCount: 1, subtotal: 100 }],
+    })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const collected = screen.getByText(/collected income/i).closest('section')
+    expect(collected?.nextElementSibling?.tagName).toBe('HR')
   })
 })
