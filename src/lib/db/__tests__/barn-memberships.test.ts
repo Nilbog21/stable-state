@@ -17,6 +17,7 @@ import {
   getMembershipById,
   getBarnMembershipsForUser,
   applyPreAuthProfile,
+  getInstructorsByBarn,
 } from '../barn-memberships'
 
 const mockMembership = createMockMembership()
@@ -895,5 +896,105 @@ describe('applyPreAuthProfile', () => {
       expect.objectContaining({ can_instruct: false }),
       expect.anything()
     )
+  })
+})
+
+describe('getInstructorsByBarn', () => {
+  function makeClient(membershipsData: unknown, membershipsError: unknown, profilesData: unknown, profilesError: unknown) {
+    return {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'barn_memberships') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                eq: vi.fn().mockReturnValue({
+                  eq: vi.fn().mockReturnValue({
+                    order: vi.fn().mockResolvedValue({ data: membershipsData, error: membershipsError }),
+                  }),
+                }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: profilesData, error: profilesError }),
+          }),
+        }
+      }),
+    } as any
+  }
+
+  it('should_return_empty_array_when_no_can_instruct_members', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null))
+
+    const result = await getInstructorsByBarn('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_empty_array_when_memberships_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient(null, null, null, null))
+
+    const result = await getInstructorsByBarn('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_instructors_with_names_joined_from_profiles', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient(
+        [{ user_id: 'trainer-1' }],
+        null,
+        [{ user_id: 'trainer-1', first_name: 'Bob', last_name: 'Smith' }],
+        null
+      )
+    )
+
+    const result = await getInstructorsByBarn('barn-1')
+
+    expect(result).toEqual([{ userId: 'trainer-1', name: 'Bob Smith' }])
+  })
+
+  it('should_fall_back_to_unknown_instructor_when_profile_not_found', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ user_id: 'trainer-1' }], null, [], null)
+    )
+
+    const result = await getInstructorsByBarn('barn-1')
+
+    expect(result).toEqual([{ userId: 'trainer-1', name: 'Unknown Instructor' }])
+  })
+
+  it('should_query_active_and_can_instruct_true_members_only', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
+    const mockCanInstructEq = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockStatusEq = vi.fn().mockReturnValue({ eq: mockCanInstructEq })
+    const mockBarnEq = vi.fn().mockReturnValue({ eq: mockStatusEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: mockBarnEq }),
+      }),
+    } as any)
+
+    await getInstructorsByBarn('barn-1')
+
+    expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockStatusEq).toHaveBeenCalledWith('status', 'active')
+    expect(mockCanInstructEq).toHaveBeenCalledWith('can_instruct', true)
+  })
+
+  it('should_throw_when_memberships_query_fails', async () => {
+    const dbError = new Error('memberships query failed')
+    vi.mocked(createClient).mockResolvedValue(makeClient(null, dbError, null, null))
+
+    await expect(getInstructorsByBarn('barn-1')).rejects.toThrow('memberships query failed')
+  })
+
+  it('should_throw_when_profiles_query_fails', async () => {
+    const dbError = new Error('profiles query failed')
+    vi.mocked(createClient).mockResolvedValue(makeClient([{ user_id: 'trainer-1' }], null, null, dbError))
+
+    await expect(getInstructorsByBarn('barn-1')).rejects.toThrow('profiles query failed')
   })
 })
