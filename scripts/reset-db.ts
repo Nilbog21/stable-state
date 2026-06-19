@@ -73,7 +73,7 @@ export function buildLessonDates(now: Date): Date[] {
   return dates
 }
 
-export function getLessonVariation(i: number, tier1: { name: string; price: number }, tier2: { name: string; price: number }) {
+export function getLessonVariation(i: number, tier1: { name: string; price: number | null }, tier2: { name: string; price: number | null }) {
   const useTier1 = i % 2 === 0
   return {
     fee: useTier1 ? tier1.price : tier2.price,
