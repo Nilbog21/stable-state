@@ -4,6 +4,7 @@ import {
   getLessonVariation,
   getPaymentType,
   mustSucceed,
+  isGroupLesson,
   DEV_PENDING_RIDER,
   DEV_MANAGER_2,
   PAYMENT_TYPES,
@@ -106,6 +107,33 @@ describe('DEV_PENDING_RIDER', () => {
 
   it('should_have_lastName', () => {
     expect(DEV_PENDING_RIDER.lastName).toBeTruthy()
+  })
+})
+
+describe('isGroupLesson', () => {
+  it('should_return_true_at_index_0', () => {
+    expect(isGroupLesson(0)).toBe(true)
+  })
+
+  it('should_return_true_at_index_5', () => {
+    expect(isGroupLesson(5)).toBe(true)
+  })
+
+  it('should_return_true_at_index_10', () => {
+    expect(isGroupLesson(10)).toBe(true)
+  })
+
+  it('should_return_false_at_index_1', () => {
+    expect(isGroupLesson(1)).toBe(false)
+  })
+
+  it('should_return_false_at_index_4', () => {
+    expect(isGroupLesson(4)).toBe(false)
+  })
+
+  it('should_produce_7_group_lessons_across_34_dates', () => {
+    const count = Array.from({ length: 34 }, (_, i) => i).filter(isGroupLesson).length
+    expect(count).toBe(7)
   })
 })
 
