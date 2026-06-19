@@ -262,7 +262,7 @@ async function run() {
       lessonAt: lessonDates[i].toISOString(),
       fee,
       horseIds: isGroup ? horseIds : [horseIds[i % horseIds.length]],
-      exertionLevels: isGroup ? horseIds.map(() => exertionLevel) : [exertionLevel],
+      exertionLevels: isGroup ? horseIds.map((_, hi) => ((Math.floor(i / 5) + hi) % 5) + 1) : [exertionLevel],
       riderIds: isGroup ? riderRowIds : [riderRowIds[i % riderRowIds.length]],
       lessonType: isGroup ? 'group' : 'normal',
       jumping,
