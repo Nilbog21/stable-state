@@ -37,7 +37,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import ProtectedBarnLayout from '../layout'
+import ProtectedBarnLayout, { generateMetadata } from '../layout'
 
 const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
 const mockUser = { id: 'user-1', email: 'user@example.com' }
@@ -355,5 +355,26 @@ describe('ProtectedBarnLayout - nav links', () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
     expect(screen.queryByRole('link', { name: /approvals/i })).toBeNull()
+  })
+})
+
+describe('generateMetadata', () => {
+  beforeEach(() => {
+    vi.mocked(getBarnBySlug).mockReset()
+    mockNotFound.mockReset()
+  })
+
+  it('should_return_barn_name_and_site_name_as_title', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+
+    const result = await generateMetadata({ params })
+
+    expect(result.title).toBe('Green Acres | Stable State')
+  })
+
+  it('should_throw_not_found_when_barn_not_found', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+
+    await expect(generateMetadata({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 })
