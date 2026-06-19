@@ -93,6 +93,23 @@ describe('createHorse', () => {
 
     await expect(createHorse('barn-1', 'Blaze')).rejects.toThrow('db error')
   })
+
+  it('should_use_injected_client_when_provided', async () => {
+    vi.clearAllMocks()
+    const mockFrom = vi.fn().mockReturnValue({
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: newHorse, error: null }),
+        }),
+      }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await createHorse('barn-1', 'Blaze', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+    expect(mockFrom).toHaveBeenCalled()
+  })
 })
 
 describe('getHorseExertionSummary', () => {
