@@ -1,8 +1,20 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}): Promise<Metadata> {
+  const { slug } = await params
+  const barn = await getBarnBySlug(slug)
+  if (!barn) notFound()
+  return { title: `${barn.name} | Stable State` }
+}
 
 export default async function ProtectedBarnLayout({
   children,
