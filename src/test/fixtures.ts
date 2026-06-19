@@ -15,7 +15,7 @@ export function createMockMembership(overrides: Partial<BarnMembership> = {}): B
     barn_id: 'barn-1',
     role: 'trainer',
     status: 'active',
-    can_instruct: false,
+    can_instruct: true,
     created_at: '',
     ...overrides,
   }

@@ -117,6 +117,8 @@ No API routes. All mutations go through Next.js Server Actions.
 
 `update_lesson_with_participants(p_lesson_id, p_barn_id, p_lesson_at, p_instructor_id, p_fee, p_lesson_type, p_jumping, p_payment_type, p_tier_name, p_horse_ids[], p_exertion_levels[], p_rider_ids[])` — atomically updates the `lessons` row and replaces `lesson_horses` + `lesson_riders` (delete then insert) in one transaction. The deferred `enforce_lesson_participant_counts` trigger sees the final state at commit. Used by the lesson edit page.
 
+`set_can_instruct(p_membership_id uuid, p_barn_id uuid, p_value boolean)` — sets `can_instruct` on a single `barn_memberships` row. `SECURITY DEFINER`; verifies the caller is a manager of `p_barn_id` then updates only the `can_instruct` column. `EXECUTE` revoked from `PUBLIC` and granted to `authenticated`.
+
 `teardown_dev_barn_lessons(p_barn_id uuid)` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows for a barn in a single transaction, so the deferred participant-count triggers see the lesson rows gone at commit and skip enforcement. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called exclusively by `scripts/reset-db.js`.
 
 ## effective-membership.ts
