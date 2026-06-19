@@ -124,7 +124,7 @@ async function run() {
     if (listErr) throw new Error(`list auth users: ${listErr.message}`)
     if (!listData) throw new Error('list auth users: no data returned')
     for (const user of listData.users) {
-      if (devEmails.has(user.email)) devUserIdSet.add(user.id)
+      if (user.email && devEmails.has(user.email)) devUserIdSet.add(user.id)
     }
     hasMore = listData.users.length === 50
     listPage++
