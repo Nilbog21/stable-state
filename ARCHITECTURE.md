@@ -57,7 +57,7 @@ RLS policies always go in a **separate migration file** from schema changes.
 
 ## Routes
 
-Protected barn routes (dashboard, lessons, horses, riders, finances, approvals) live in a `(protected)` route group under `src/app/barn/[slug]/(protected)/`. The group layout (`layout.tsx`) centralises auth: absent or pending membership redirects to `/barn/[slug]/login`. Public routes (login, pending, register) stay outside the group and are unaffected.
+Protected barn routes (dashboard, lessons, horses, riders, finances, settings) live in a `(protected)` route group under `src/app/barn/[slug]/(protected)/`. The group layout (`layout.tsx`) centralises auth: absent or pending membership redirects to `/barn/[slug]/login`. Public routes (login, pending, register) stay outside the group and are unaffected.
 
 The `(protected)` layout renders a persistent role-aware nav bar above `{children}` on every barn page. The barn name is rendered as a home link (visually distinct, `font-semibold`) before the section links:
 - manager: {Barn Name} (home), Lessons, Horses, Riders, Finances, Manage Barn — 5 section links
@@ -65,13 +65,13 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 - rider: {Barn Name} (home), Lessons, Horses — 2 section links
 
 "Horses" → `/barn/[slug]/horses` (all roles)
-"Manage Barn" → `/barn/[slug]/settings` (manager only; Approvals accessible directly at `/barn/[slug]/approvals` but not in nav — see #256)
+"Manage Barn" → `/barn/[slug]/settings` (manager only)
 
 | Route | Roles | Notes |
 |---|---|---|
 | `/` | All | Unauthenticated users are redirected to `/login`; authenticated users are redirected server-side using barn membership logic: single active → `/barn/[slug]`, multiple active → `/barns`, pending-only single → `/barn/[slug]/pending`, pending-only multiple → `/barns`, no memberships → `/login?no_barns=true` |
 | `/barns` | Authenticated users | Barn selector: one card per membership; active shows role + link to `/barn/[slug]`; pending shows badge + link to `/barn/[slug]/pending`; no memberships redirects to `/login?no_barns=true` |
-| `/barn/[slug]` | All active members | Manager sees upcoming-lessons preview (next 7 days); nav links rendered by layout |
+| `/barn/[slug]` | All active members | Manager sees pending-requests badge (links to `/settings`; hidden when zero) and upcoming-lessons preview (next 7 days); nav links rendered by layout |
 | `/barn/[slug]/lessons` | All active members | Lessons split at 7-day cutoff: recent shown immediately, older behind `OlderLessonsToggle`; manager can delete |
 | `/barn/[slug]/lessons/new` | manager, trainer | |
 | `/barn/[slug]/lessons/[id]` | All active members | Edit link visible to managers |
@@ -79,8 +79,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `/barn/[slug]/horses` | All active members | Per-horse exertion summary over the last 7 days; columns (Horse, Total Exertion, # Jumping, Lessons) are clickable headers that sort client-side; active header shows ↑/↓; default sort: Total Exertion descending; manager sees Add Horse form at top and inline rename + Save per row |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
 | `/barn/[slug]/finances` | manager | **Outstanding** section (all-time past unpaid lessons with non-zero fee — inline payment-type dropdown via `OutstandingTable` Client Component) appears above the month selector and is hidden entirely when there are no outstanding lessons. Below it: `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); **Collected income** (`payment_type IS NOT NULL`), **Pending income** (future unpaid lessons with fee); pill-style tab switcher (`?tab=tier\|horse\|rider\|trainer`, defaults to `tier`) with four views: **By Tier** (tier name, price or `—` for Custom, lesson count, subtotal), **By Horse** (horse name, collected income), **By Rider** (rider name, collected income), **By Trainer** (trainer full name, collected income) |
-| `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
-| `/barn/[slug]/settings` | manager | Tier CRUD: list all tiers (active + inactive), add tier, edit name/price, set default, deactivate (blocked if default) |
+| `/barn/[slug]/settings` | manager | **Manage Barn** page: Invite Link, Pending Requests (approve/reject; approving `rider` auto-creates a `riders` row, duplicate suppressed), Active Members (remove), Tier CRUD |
 | `/login` | All | Sign-in page; displays Supabase connection status dot (green = `NEXT_PUBLIC_SUPABASE_URL` set, yellow = not set); shows no-barn guidance when `?no_barns=true` and user is authenticated |
 | `/barn/[slug]/register` | unauthenticated | Membership sign-up flow |
 
@@ -106,7 +105,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 No API routes. All mutations go through Next.js Server Actions.
 
 - **Global actions:** `src/app/actions/` — auth (`auth.ts`), lesson submission and payment-type update (`lessons.ts`)
-- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`barn/[slug]/approvals/`, `barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`)
+- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`, `barn/[slug]/settings/`)
 
 ## Supabase RPC
 

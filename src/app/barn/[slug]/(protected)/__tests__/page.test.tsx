@@ -19,6 +19,10 @@ vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
 }))
 
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getPendingMemberships: vi.fn(),
+}))
+
 vi.mock('@/app/actions/auth', () => ({
   signOut: vi.fn(),
 }))
@@ -37,6 +41,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
+import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { createMockLesson } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
@@ -83,6 +88,7 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
+    vi.mocked(getPendingMemberships).mockResolvedValue([])
   })
 
   it('should_throw_when_barn_does_not_exist', async () => {
@@ -201,5 +207,58 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
+  })
+
+  it('should_render_pending_approvals_badge_when_count_is_nonzero', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText(/pending request/i)).toBeDefined()
+  })
+
+  it('should_not_render_pending_approvals_badge_when_count_is_zero', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/pending request/i)).toBeNull()
+  })
+
+  it('should_render_pending_approvals_badge_with_link_to_settings', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /pending request/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/settings')
+  })
+
+  it('should_not_render_pending_approvals_badge_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/pending request/i)).toBeNull()
+  })
+
+  it('should_use_plural_pending_requests_when_count_is_greater_than_one', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+      { id: 'p2', user_id: 'u2', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText(/2 pending requests/i)).toBeDefined()
   })
 })

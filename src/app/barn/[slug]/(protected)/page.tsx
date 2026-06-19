@@ -1,8 +1,10 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
+import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { signOut } from '@/app/actions/auth'
 import type { LessonWithDetails } from '@/lib/db/types'
 
@@ -19,13 +21,19 @@ export default async function BarnDashboardPage({
   const { data } = await supabase.auth.getUser()
 
   let upcomingLessons: LessonWithDetails[] | null = null
+  let pendingCount = 0
 
   if (data.user) {
     const membership = await getUserMembership(data.user.id, barn.id)
     if (membership?.role === 'manager') {
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      upcomingLessons = await getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString())
+      const [lessons, pending] = await Promise.all([
+        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString()),
+        getPendingMemberships(barn.id),
+      ])
+      upcomingLessons = lessons
+      pendingCount = pending.length
     }
   }
 
@@ -42,6 +50,16 @@ export default async function BarnDashboardPage({
           Sign out
         </button>
       </form>
+      {pendingCount > 0 && (
+        <div className="mb-8">
+          <Link
+            href={`/barn/${slug}/settings`}
+            className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300 dark:hover:bg-amber-900"
+          >
+            {pendingCount} pending request{pendingCount !== 1 ? 's' : ''}
+          </Link>
+        </div>
+      )}
       {upcomingLessons !== null && (
         <section>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
