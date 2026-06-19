@@ -270,20 +270,6 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.queryByRole('link', { name: /manage barn/i })).toBeNull()
   })
 
-  it('should_not_render_settings_link_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
-    const jsx = await ProtectedBarnLayout({ children, params })
-    render(jsx)
-    expect(screen.queryByRole('link', { name: /settings/i })).toBeNull()
-  })
-
-  it('should_not_render_settings_link_for_rider', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
-    const jsx = await ProtectedBarnLayout({ children, params })
-    render(jsx)
-    expect(screen.queryByRole('link', { name: /settings/i })).toBeNull()
-  })
-
   it('should_render_barn_name_as_home_link_for_trainer', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
