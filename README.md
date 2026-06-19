@@ -51,14 +51,13 @@ Run all migration files in `supabase/migrations/` against your Supabase project 
 
 ### Seed a manager account
 
-Pre-authorize a manager's Google email before their first sign-in. The barn row must exist first.
+Pre-authorize a manager's Google email before their first sign-in. The barn row must exist first. Requires `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`.
 
-```sql
-INSERT INTO public.seeded_accounts (email, role, barn_id)
-VALUES ('<manager-google-email>', 'manager', '<barn-uuid>');
+```bash
+bash scripts/seed-account.sh
 ```
 
-On first Google OAuth sign-in the trigger `on_auth_user_created` fires and creates an active `barn_memberships` row automatically.
+The script prompts for email, name, barn slug, and whether the manager teaches. On first Google OAuth sign-in the trigger `on_auth_user_created` fires and creates an active `barn_memberships` row automatically. To grant instructor access afterward, toggle "Can instruct" in barn Settings → Members.
 
 ## Production bootstrap
 
