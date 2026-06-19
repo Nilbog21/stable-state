@@ -37,7 +37,10 @@ async function seedProfile(supabase, { email, firstName, lastName, barnId }) {
 }
 
 function prompt(rl, question) {
-  return new Promise((resolve) => rl.question(question, resolve));
+  return new Promise((resolve, reject) => {
+    rl.question(question, resolve);
+    rl.once('close', () => reject(new Error('Input closed unexpectedly')));
+  });
 }
 
 async function run() {
@@ -54,7 +57,6 @@ async function run() {
   const firstName = (await prompt(rl, 'First name: ')).trim();
   const lastName = (await prompt(rl, 'Last name: ')).trim();
   const slug = (await prompt(rl, 'Barn slug: ')).trim();
-  const canInstruct = (await prompt(rl, 'Can this manager instruct lessons? (y/n): ')).trim().toLowerCase();
 
   rl.close();
 
@@ -63,9 +65,7 @@ async function run() {
 
   console.log(`\nSeeded ${firstName} ${lastName} <${email}> as manager for barn "${slug}".`);
   console.log('They can sign in with Google to activate their account.');
-  if (canInstruct === 'y') {
-    console.log('Note: to enable instructor access after sign-in, toggle "Can instruct" in barn Settings → Members.');
-  }
+  console.log('Note: to enable instructor access after sign-in, toggle "Can instruct" in barn Settings → Members.');
 }
 
 if (require.main === module) {
