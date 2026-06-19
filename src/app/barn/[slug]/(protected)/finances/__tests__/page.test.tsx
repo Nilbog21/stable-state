@@ -8,7 +8,13 @@ vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/lesson-finances', () => ({ getFinancialSummary: vi.fn(), getOutstandingLessons: vi.fn(), getHorseIncomeSummary: vi.fn(), getRiderIncomeSummary: vi.fn() }))
+vi.mock('@/lib/db/lesson-finances', () => ({
+  getFinancialSummary: vi.fn(),
+  getOutstandingLessons: vi.fn(),
+  getHorseIncomeSummary: vi.fn(),
+  getRiderIncomeSummary: vi.fn(),
+  getTrainerIncomeSummary: vi.fn(),
+}))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -20,7 +26,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary } from '@/lib/db/lesson-finances'
 import FinancesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -37,6 +43,7 @@ describe('FinancesPage', () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([])
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([])
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -116,19 +123,14 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/no lessons/i)).toBeDefined()
   })
 
-  it('should_display_income_by_horse_heading', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByText('Income by Horse (June 2026)')).toBeDefined()
-  })
-
   it('should_display_horse_name', async () => {
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([
       { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
     ])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
     render(jsx)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
@@ -137,14 +139,20 @@ describe('FinancesPage', () => {
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([
       { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
     ])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
     render(jsx)
     expect(screen.getByText('$150.00')).toBeDefined()
   })
 
   it('should_display_empty_state_when_no_horse_income', async () => {
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
     render(jsx)
     expect(screen.getByText(/no horse income/i)).toBeDefined()
   })
@@ -181,24 +189,22 @@ describe('FinancesPage', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
     render(jsx)
     expect(screen.getByText('No horse income in June 2026.')).toBeDefined()
-  })
-
-  it('should_display_income_by_rider_heading', async () => {
-    vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByText('Income by Rider (June 2026)')).toBeDefined()
   })
 
   it('should_display_rider_name', async () => {
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([
       { riderId: 'rider-1', riderName: 'Alice', totalIncome: 75 },
     ])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
     render(jsx)
     expect(screen.getByText('Alice')).toBeDefined()
   })
@@ -207,14 +213,20 @@ describe('FinancesPage', () => {
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([
       { riderId: 'rider-1', riderName: 'Alice', totalIncome: 75 },
     ])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
     render(jsx)
     expect(screen.getByText('$75.00')).toBeDefined()
   })
 
   it('should_display_empty_state_when_no_rider_income', async () => {
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
     render(jsx)
     expect(screen.getByText(/no rider income/i)).toBeDefined()
   })
@@ -223,7 +235,10 @@ describe('FinancesPage', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
     render(jsx)
     expect(screen.getByText('No rider income in June 2026.')).toBeDefined()
   })
@@ -572,23 +587,254 @@ describe('FinancesPage', () => {
     expect(collectedSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
-  it('should_render_separator_between_collected_and_breakdown', async () => {
-    vi.mocked(getFinancialSummary).mockResolvedValue({
-      collectedIncome: 100,
-      pendingIncome: 0,
-      breakdown: [{ tierName: 'Standard', price: 100, lessonCount: 1, subtotal: 100 }],
-    })
+  it('should_render_separator_between_collected_and_tab_bar', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const collected = screen.getByText(/collected income/i).closest('section')
     expect(collected?.nextElementSibling?.tagName).toBe('HR')
   })
 
-  it('should_not_render_separator_when_no_breakdown', async () => {
-    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, breakdown: [] })
+  // Tab bar
+
+  it('should_render_tab_bar_with_by_tier_tab', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const collected = screen.getByText(/collected income/i).closest('section')
-    expect(collected?.nextElementSibling?.tagName).not.toBe('HR')
+    expect(screen.getByRole('link', { name: 'By Tier' })).toBeDefined()
+  })
+
+  it('should_render_tab_bar_with_by_horse_tab', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'By Horse' })).toBeDefined()
+  })
+
+  it('should_render_tab_bar_with_by_rider_tab', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'By Rider' })).toBeDefined()
+  })
+
+  it('should_render_tab_bar_with_by_trainer_tab', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'By Trainer' })).toBeDefined()
+  })
+
+  it('should_default_to_tier_tab_when_no_tab_param', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75 }],
+    })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Standard')).toBeDefined()
+  })
+
+  it('should_show_tier_tab_content_when_tab_is_tier', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 100,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100 }],
+    })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Premium')).toBeDefined()
+  })
+
+  it('should_show_horse_tab_content_when_tab_is_horse', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'h-1', horseName: 'Shadowfax', totalIncome: 200 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Shadowfax')).toBeDefined()
+  })
+
+  it('should_show_rider_tab_content_when_tab_is_rider', async () => {
+    vi.mocked(getRiderIncomeSummary).mockResolvedValue([
+      { riderId: 'r-1', riderName: 'Bob', totalIncome: 100 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Bob')).toBeDefined()
+  })
+
+  it('should_show_trainer_tab_content_when_tab_is_trainer', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Jane Smith')).toBeDefined()
+  })
+
+  it('should_show_empty_state_on_tier_tab_when_no_breakdown', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, breakdown: [] })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.getByText('No lessons in June 2026.')).toBeDefined()
+  })
+
+  it('should_show_empty_state_on_horse_tab_when_no_horse_income', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    expect(screen.getByText('No horse income in June 2026.')).toBeDefined()
+  })
+
+  it('should_show_empty_state_on_rider_tab_when_no_rider_income', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getRiderIncomeSummary).mockResolvedValue([])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
+    render(jsx)
+    expect(screen.getByText('No rider income in June 2026.')).toBeDefined()
+  })
+
+  it('should_show_empty_state_on_trainer_tab_when_no_trainer_income', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByText('No trainer income in June 2026.')).toBeDefined()
+  })
+
+  it('should_show_dash_for_custom_tier_price', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 100,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100 }],
+    })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('—')).toBeDefined()
+  })
+
+  it('should_show_formatted_price_for_named_tier', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 75,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75 }],
+    })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('$75.00')).toBeDefined()
+  })
+
+  it('should_display_trainer_name', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Jane Smith')).toBeDefined()
+  })
+
+  it('should_display_trainer_income_amount', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByText('$300.00')).toBeDefined()
+  })
+
+  it('should_call_getTrainerIncomeSummary', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getTrainerIncomeSummary)).toHaveBeenCalledWith(
+      mockBarn.id,
+      new Date('2026-06-01T00:00:00.000Z'),
+      new Date('2026-07-01T00:00:00.000Z')
+    )
+  })
+
+  it('should_preserve_month_param_in_tab_links_when_viewing_past_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-05' }),
+    })
+    render(jsx)
+    const horseTab = screen.getByRole('link', { name: 'By Horse' })
+    expect(horseTab.getAttribute('href')).toContain('month=2026-05')
+  })
+
+  it('should_preserve_tab_param_in_prev_month_link', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    const prevLink = screen.queryByRole('link', { name: '<' })
+    expect(prevLink?.getAttribute('href')).toContain('tab=horse')
+  })
+
+  it('should_preserve_tab_param_in_next_month_link', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider', month: '2026-05' }),
+    })
+    render(jsx)
+    const nextLink = screen.queryByRole('link', { name: '>' })
+    expect(nextLink?.getAttribute('href')).toContain('tab=rider')
+  })
+
+  it('should_not_include_tab_param_in_month_links_for_default_tier_tab', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const prevLink = screen.queryByRole('link', { name: '<' })
+    expect(prevLink?.getAttribute('href')).not.toContain('tab=')
+  })
+
+  it('should_mark_active_tab_with_filled_background', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const tierTab = screen.getByRole('link', { name: 'By Tier' })
+    expect(tierTab.className).toContain('bg-zinc-900')
   })
 })
