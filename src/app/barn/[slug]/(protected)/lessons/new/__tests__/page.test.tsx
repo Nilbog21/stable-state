@@ -18,11 +18,7 @@ vi.mock('@/lib/db/riders', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getActiveTrainerMembershipsByBarn: vi.fn(),
-}))
-
-vi.mock('@/lib/db/profiles', () => ({
-  getProfilesByUserIds: vi.fn(),
+  getInstructorsByBarn: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -45,8 +41,7 @@ vi.mock('@/lib/db/lesson-tiers', () => ({
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
-import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getUserMembership, getInstructorsByBarn } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
@@ -85,8 +80,7 @@ describe('LessonNewPage', () => {
     vi.mocked(getTiersByBarn).mockResolvedValue([mockTier])
     mockSupabaseUser()
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([])
   })
 
   it('should_render_form_when_barn_exists', async () => {
@@ -148,8 +142,8 @@ describe('LessonNewPage', () => {
 
   it('should_display_trainer_full_name_when_profile_is_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'user-1', first_name: 'John', last_name: 'Trainer', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'user-1', name: 'John Trainer' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -159,8 +153,8 @@ describe('LessonNewPage', () => {
   it('should_render_instructor_select_when_user_is_a_manager', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -170,10 +164,9 @@ describe('LessonNewPage', () => {
   it('should_render_trainer_options_in_instructor_select_for_manager', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([mockTrainerBarnMembership])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
-      { user_id: 'trainer-2', first_name: 'John', last_name: 'Smith', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'manager-1', name: 'Jane Doe' },
+      { userId: 'trainer-2', name: 'John Smith' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -183,8 +176,8 @@ describe('LessonNewPage', () => {
   it('should_pre_select_current_user_in_instructor_select', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
