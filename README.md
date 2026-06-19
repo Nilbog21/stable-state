@@ -31,7 +31,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_SUPABASE_URL` | App + reset script | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App | Supabase anon (public) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Reset script only | Service role key — bypasses RLS; never expose client-side |
-| `DEV_MANAGER_EMAIL` | Reset script only | Google email to pre-authorize as dev barn manager via `seeded_accounts` |
+| `DEV_MANAGER_EMAIL` | Reset script only | Google email to pre-authorize as dev barn manager |
 
 ### Dev database reset
 
@@ -51,14 +51,17 @@ Run all migration files in `supabase/migrations/` against your Supabase project 
 
 ### Seed a manager account
 
-Pre-authorize a manager's Google email before their first sign-in. The barn row must exist first.
+Pre-authorize a Google account to sign in as a barn manager. The script inserts a row into `profiles`; the trigger `on_auth_user_created` reads it on first sign-in and creates an active `barn_memberships` row automatically.
 
-```sql
-INSERT INTO public.seeded_accounts (email, role, barn_id)
-VALUES ('<manager-google-email>', 'manager', '<barn-uuid>');
+**Prerequisites:**
+- The barn slug must already exist (create via the Supabase dashboard if needed)
+- `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`
+
+```bash
+bash scripts/seed-account.sh
 ```
 
-On first Google OAuth sign-in the trigger `on_auth_user_created` fires and creates an active `barn_memberships` row automatically.
+The script prompts for email, first name, last name, and barn slug. Once the manager signs in with Google, their account is immediately active. To enable instructor access (so the manager can be assigned as a lesson instructor), toggle "Can instruct" in barn Settings → Members.
 
 ## Production bootstrap
 
@@ -77,11 +80,10 @@ The `<project-ref>` is the string in the Supabase dashboard URL: `https://supaba
 
 ### 2. Seed the initial manager account
 
-Pre-authorize the barn manager's Google email before their first sign-in. The barn row must exist first (create it via the Supabase SQL editor or dashboard if needed).
+Pre-authorize the barn manager's Google email before their first sign-in. The barn slug must exist first (create it via the Supabase SQL editor or dashboard if needed).
 
-```sql
-INSERT INTO public.seeded_accounts (email, role, barn_id)
-VALUES ('<manager-google-email>', 'manager', '<barn-uuid>');
+```bash
+bash scripts/seed-account.sh
 ```
 
 On first Google OAuth sign-in the trigger `on_auth_user_created` fires and creates an active `barn_memberships` row automatically.
