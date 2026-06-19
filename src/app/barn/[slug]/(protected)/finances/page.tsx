@@ -5,6 +5,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lesson-finances'
 import { OutstandingTable } from './OutstandingTable'
+import { InfoPopover } from './InfoPopover'
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -140,6 +141,7 @@ export default async function FinancesPage({
         <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
           <p className="text-sm font-medium uppercase tracking-wide">
             Outstanding
+            <InfoPopover text="All-time unpaid lessons with a fee set" />
           </p>
           <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
             {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
@@ -168,42 +170,11 @@ export default async function FinancesPage({
         )}
       </div>
 
-      <section className="mb-10">
-        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          {`Collected income (${monthLabel})`}
-        </p>
-        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-        </p>
-      </section>
-
-      {breakdown.length > 0 ? (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Tier</th>
-              <th className="pb-2 pr-6">Lessons</th>
-              <th className="pb-2">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {breakdown.map((tier) => (
-              <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}{tier.price != null ? ` (${tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })})` : ''}</td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
-                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
-      )}
-
       {isCurrentMonth && (
-        <section className="mt-10">
+        <section className="mb-6">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Pending income (from scheduled lessons)
+            <InfoPopover text="Lessons scheduled this month that haven't been paid yet" />
           </p>
           <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
@@ -211,9 +182,45 @@ export default async function FinancesPage({
         </section>
       )}
 
+      <section className="mb-4">
+        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          {`Collected income (${monthLabel})`}
+          <InfoPopover text="Lessons paid this month" />
+        </p>
+        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+        </p>
+      </section>
+
+      {breakdown.length > 0 ? (
+        <>
+          <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                <th className="pb-2 pr-6">Tier</th>
+                <th className="pb-2 pr-6">Lessons</th>
+                <th className="pb-2">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {breakdown.map((tier) => (
+                <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}{tier.price != null ? ` (${tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' })})` : ''}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
+                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </>
+      ) : (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
+      )}
+
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {`Income by Horse (${monthLabel}) (Collected)`}
+          {`Income by Horse (${monthLabel})`}
         </h2>
         {horseIncome.length > 0 ? (
           <table className="w-full">
@@ -248,7 +255,7 @@ export default async function FinancesPage({
 
       <section className="mt-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {`Income by Rider (${monthLabel}) (Collected)`}
+          {`Income by Rider (${monthLabel})`}
         </h2>
         {riderIncome.length > 0 ? (
           <table className="w-full">
