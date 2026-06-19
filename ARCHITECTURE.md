@@ -60,11 +60,11 @@ RLS policies always go in a **separate migration file** from schema changes.
 Protected barn routes (dashboard, lessons, horses, riders, finances, approvals) live in a `(protected)` route group under `src/app/barn/[slug]/(protected)/`. The group layout (`layout.tsx`) centralises auth: absent or pending membership redirects to `/barn/[slug]/login`. Public routes (login, pending, register) stay outside the group and are unaffected.
 
 The `(protected)` layout renders a persistent role-aware nav bar above `{children}` on every barn page:
-- manager: Dashboard, Lessons, Horses, Riders, Finances, Approvals, Manage Horses, Settings
+- manager: Dashboard, Lessons, Horses, Riders, Finances, Approvals, Settings
 - trainer: Dashboard, Lessons, Horses, Riders
 - rider: Dashboard, Lessons, Horses
 
-"Horses" → `/barn/[slug]/horses/overview` (all roles); "Manage Horses" → `/barn/[slug]/horses` (manager only)
+"Horses" → `/barn/[slug]/horses` (all roles)
 
 | Route | Roles | Notes |
 |---|---|---|
@@ -75,8 +75,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `/barn/[slug]/lessons/new` | manager, trainer | |
 | `/barn/[slug]/lessons/[id]` | All active members | Edit link visible to managers |
 | `/barn/[slug]/lessons/[id]/edit` | manager | Pre-filled edit form; group→normal downgrade shows warning and requires manager to select one rider/horse to keep; updates are atomic via `update_lesson_with_participants` RPC |
-| `/barn/[slug]/horses` | manager | |
-| `/barn/[slug]/horses/overview` | All active members | Per-horse exertion summary over the last 7 days; columns (Horse, Total Exertion, # Jumping, Lessons) are clickable headers that sort client-side; active header shows ↑/↓; default sort: Total Exertion descending |
+| `/barn/[slug]/horses` | All active members | Per-horse exertion summary over the last 7 days; columns (Horse, Total Exertion, # Jumping, Lessons) are clickable headers that sort client-side; active header shows ↑/↓; default sort: Total Exertion descending; manager sees Add Horse form at top and inline rename + Save per row |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
 | `/barn/[slug]/finances` | manager | **Outstanding** section (all-time past unpaid lessons with non-zero fee — inline payment-type dropdown via `OutstandingTable` Client Component) appears above the month selector and is hidden entirely when there are no outstanding lessons. Below it: `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); **Collected income** (`payment_type IS NOT NULL`), **Pending income** (future unpaid lessons with fee); fee-tier breakdown, income by horse, income by rider |
 | `/barn/[slug]/approvals` | manager | Approving a `rider`-role membership auto-creates a `riders` row (duplicate suppressed) |
