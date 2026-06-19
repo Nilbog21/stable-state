@@ -50,27 +50,47 @@ describe('FinancesPage', () => {
     vi.useRealTimers()
   })
 
-  it('should_call_notFound_when_barn_does_not_exist', async () => {
+  it('should_throw_when_barn_does_not_exist', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(null)
     await expect(FinancesPage({ params: Promise.resolve({ slug: 'unknown' }) })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_call_notFound_when_barn_does_not_exist', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+    try { await FinancesPage({ params: Promise.resolve({ slug: 'unknown' }) }) } catch {}
     expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_throw_when_user_is_not_authenticated', async () => {
+    setupAuth(null)
+    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
   })
 
   it('should_redirect_to_login_when_user_is_not_authenticated', async () => {
     setupAuth(null)
-    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
+    try { await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+
+  it('should_throw_when_user_has_no_membership', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
   })
 
   it('should_redirect_to_login_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
+    try { await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+
+  it('should_throw_when_user_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
   })
 
   it('should_redirect_to_login_when_user_is_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
-    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
+    try { await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
@@ -305,9 +325,15 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const prevLink = screen.queryByRole('link', { name: '<' })
-    expect(prevLink).not.toBeNull()
-    expect(prevLink?.getAttribute('href')).toBe('?month=2026-05')
+    expect(screen.queryByRole('link', { name: '<' })).not.toBeNull()
+  })
+
+  it('should_link_prev_to_previous_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: '<' })?.getAttribute('href')).toBe('?month=2026-05')
   })
 
   it('should_not_show_prev_link_at_barn_creation_month', async () => {
@@ -327,9 +353,18 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-05' }),
     })
     render(jsx)
-    const nextLink = screen.queryByRole('link', { name: '>' })
-    expect(nextLink).not.toBeNull()
-    expect(nextLink?.getAttribute('href')).toBe('?month=2026-06')
+    expect(screen.queryByRole('link', { name: '>' })).not.toBeNull()
+  })
+
+  it('should_link_next_to_next_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-05' }),
+    })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: '>' })?.getAttribute('href')).toBe('?month=2026-06')
   })
 
   it('should_not_show_next_link_at_current_month', async () => {
@@ -376,6 +411,18 @@ describe('FinancesPage', () => {
     expect(screen.getByText('April 2026')).toBeDefined()
   })
 
+  it('should_show_prev_link_when_viewing_january', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ created_at: '2025-12-01T00:00:00Z' }))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2026-01' }),
+    })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: '<' })).not.toBeNull()
+  })
+
   it('should_link_prev_to_previous_year_when_viewing_january', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
@@ -385,9 +432,18 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-01' }),
     })
     render(jsx)
-    const prevLink = screen.queryByRole('link', { name: '<' })
-    expect(prevLink).not.toBeNull()
-    expect(prevLink?.getAttribute('href')).toBe('?month=2025-12')
+    expect(screen.queryByRole('link', { name: '<' })?.getAttribute('href')).toBe('?month=2025-12')
+  })
+
+  it('should_show_next_link_when_viewing_december', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ month: '2025-12' }),
+    })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: '>' })).not.toBeNull()
   })
 
   it('should_link_next_to_next_year_when_viewing_december', async () => {
@@ -398,9 +454,7 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2025-12' }),
     })
     render(jsx)
-    const nextLink = screen.queryByRole('link', { name: '>' })
-    expect(nextLink).not.toBeNull()
-    expect(nextLink?.getAttribute('href')).toBe('?month=2026-01')
+    expect(screen.queryByRole('link', { name: '>' })?.getAttribute('href')).toBe('?month=2026-01')
   })
 
   it('should_style_prev_arrow_link_with_border_when_present', async () => {

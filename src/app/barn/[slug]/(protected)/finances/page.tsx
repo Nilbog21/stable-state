@@ -141,7 +141,7 @@ export default async function FinancesPage({
 
   const outstandingTotal = outstandingLessons.reduce((sum, l) => sum + (l.fee ?? 0), 0)
 
-  const monthQ = monthParam ? `&month=${monthParam}` : ''
+  const monthQ = isCurrentMonth ? '' : `&month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
   const tabQ = tab !== 'tier' ? `&tab=${tab}` : ''
   const prevUrl = prevMonthUrl ? prevMonthUrl + tabQ : null
   const nextUrl = nextMonthUrl ? nextMonthUrl + tabQ : null
