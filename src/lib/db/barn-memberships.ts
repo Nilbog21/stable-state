@@ -141,6 +141,37 @@ export async function applyPreAuthProfile(userId: string, email: string): Promis
   if (error) throw error
 }
 
+export async function getInstructorsByBarn(
+  barnId: string
+): Promise<{ userId: string; name: string }[]> {
+  const supabase = await createClient()
+
+  const { data: memberships, error: memError } = await supabase
+    .from('barn_memberships')
+    .select('user_id')
+    .eq('barn_id', barnId)
+    .eq('status', 'active')
+    .eq('can_instruct', true)
+    .order('created_at', { ascending: true })
+
+  if (memError) throw memError
+  if (!memberships?.length) return []
+
+  const userIds = memberships.map((m) => m.user_id)
+
+  const { data: profiles, error: profError } = await supabase
+    .from('profiles')
+    .select('user_id, first_name, last_name')
+    .in('user_id', userIds)
+
+  if (profError) throw profError
+
+  return memberships.map((m) => {
+    const p = (profiles ?? []).find((pr) => pr.user_id === m.user_id)
+    return { userId: m.user_id, name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Instructor' }
+  })
+}
+
 export async function getBarnMembershipsForUser(
   userId: string
 ): Promise<{ barn: Barn; membership: BarnMembership }[]> {

@@ -6,8 +6,7 @@ afterEach(cleanup)
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/lessons', () => ({ getLessonById: vi.fn() }))
 vi.mock('@/lib/db/effective-membership', () => ({ getEffectiveMembership: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ getActiveTrainerMembershipsByBarn: vi.fn() }))
-vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
+vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
 vi.mock('@/lib/db/riders', () => ({ getRidersByBarn: vi.fn() }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
@@ -21,8 +20,7 @@ vi.mock('../../../LessonForm', () => ({
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getInstructorsByBarn } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
@@ -60,8 +58,7 @@ function setupDefaults() {
   vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
   vi.mocked(getLessonById).mockResolvedValue(mockLesson)
   vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
-  vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
-  vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+  vi.mocked(getInstructorsByBarn).mockResolvedValue([])
   vi.mocked(getHorsesByBarn).mockResolvedValue([])
   vi.mocked(getRidersByBarn).mockResolvedValue([])
   vi.mocked(getAllTiersByBarn).mockResolvedValue([])
@@ -75,8 +72,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getLessonById).mockReset()
     vi.mocked(getEffectiveMembership).mockReset()
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockReset()
-    vi.mocked(getProfilesByUserIds).mockReset()
+    vi.mocked(getInstructorsByBarn).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getRidersByBarn).mockReset()
     vi.mocked(getAllTiersByBarn).mockReset()
@@ -191,23 +187,26 @@ describe('EditLessonPage', () => {
   })
 
   it('should_include_trainer_names_in_instructor_list', async () => {
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
-      { id: 'mem-2', user_id: 'trainer-1', barn_id: 'barn-1', role: 'trainer' as const, status: 'active' as const, created_at: '' },
-    ])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'user-1', first_name: 'Jane', last_name: 'Manager', created_at: '' },
-      { user_id: 'trainer-1', first_name: 'Bob', last_name: 'Trainer', created_at: '' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'user-1', name: 'Jane Manager' },
+      { userId: 'trainer-1', name: 'Bob Trainer' },
     ])
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
 
-  it('should_fall_back_to_user_id_when_profile_not_found', async () => {
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
-      { id: 'mem-2', user_id: 'trainer-1', barn_id: 'barn-1', role: 'trainer' as const, status: 'active' as const, created_at: '' },
+  it('should_fall_back_to_unknown_instructor_when_profile_not_found', async () => {
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'trainer-1', name: 'Unknown Instructor' },
     ])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
+
+  it('should_not_prepend_former_instructor_when_lesson_has_no_instructor_id', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: null })
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()

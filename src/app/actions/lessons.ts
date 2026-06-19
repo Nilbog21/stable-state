@@ -4,7 +4,7 @@ import { createClient } from '@/lib/supabase/server'
 import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants } from '@/lib/db/lesson-participants'
 import type { PaymentType } from '@/lib/db/types'
-import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
+import { getUserMembership, getInstructorsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { createRider, getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
@@ -55,9 +55,8 @@ export async function submitLesson(
   const instructorId = instructorIdFromForm || user.id
 
   if (isManager && instructorIdFromForm && instructorIdFromForm !== user.id) {
-    const trainerMemberships = await getActiveTrainerMembershipsByBarn(barnId)
-    const validIds = new Set(trainerMemberships.map((m) => m.user_id))
-    if (!validIds.has(instructorIdFromForm)) return { error: 'Invalid instructor' }
+    const instructors = await getInstructorsByBarn(barnId)
+    if (!instructors.some((i) => i.userId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
@@ -166,9 +165,8 @@ export async function updateLessonAction(
   const instructorId = instructorIdFromForm || user.id
 
   if (instructorIdFromForm && instructorIdFromForm !== user.id) {
-    const trainerMemberships = await getActiveTrainerMembershipsByBarn(barnId)
-    const validIds = new Set(trainerMemberships.map((m) => m.user_id))
-    if (!validIds.has(instructorIdFromForm)) return { error: 'Invalid instructor' }
+    const instructors = await getInstructorsByBarn(barnId)
+    if (!instructors.some((i) => i.userId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
   const fee = feeRaw ? parseFloat(feeRaw) : null

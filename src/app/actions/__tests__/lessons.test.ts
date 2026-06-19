@@ -19,7 +19,7 @@ vi.mock('@/lib/db/lesson-participants', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getActiveTrainerMembershipsByBarn: vi.fn(),
+  getInstructorsByBarn: vi.fn(),
 }))
 
 vi.mock('@/lib/db/horses', () => ({
@@ -39,7 +39,7 @@ vi.mock('next/navigation', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants } from '@/lib/db/lesson-participants'
-import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
+import { getUserMembership, getInstructorsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { createRider, getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
@@ -59,7 +59,7 @@ describe('submitLesson', () => {
       },
     } as any)
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     vi.mocked(createLessonWithParticipants).mockResolvedValue(mockLesson)
     vi.mocked(createRider).mockResolvedValue({} as any)
     vi.mocked(getHorsesByBarn).mockResolvedValue([
@@ -159,9 +159,7 @@ describe('submitLesson', () => {
 
   it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
-      createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
-    ])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([{ userId: 'trainer-99', name: 'Bob Trainer' }])
     const fd = makeFormData({
       horse_id: 'horse-1',
       rider_id: 'rider-1',
@@ -175,11 +173,9 @@ describe('submitLesson', () => {
     )
   })
 
-  it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {
+  it('should_accept_manager_as_instructor_when_manager_has_can_instruct', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
-      createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
-    ])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([{ userId: 'trainer-99', name: 'Bob Trainer' }])
     const fd = makeFormData({
       horse_id: 'horse-1',
       rider_id: 'rider-1',
@@ -209,7 +205,7 @@ describe('submitLesson', () => {
 
   it('should_return_error_when_manager_submits_invalid_instructor_id', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     const fd = makeFormData({
       horse_id: 'horse-1',
       rider_id: 'rider-1',
@@ -566,7 +562,7 @@ describe('updateLessonAction', () => {
       },
     } as any)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     vi.mocked(updateLessonWithParticipants).mockResolvedValue(mockLesson)
     vi.mocked(getHorsesByBarn).mockResolvedValue([
       { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
@@ -730,14 +726,14 @@ describe('updateLessonAction', () => {
   })
 
   it('should_return_error_when_instructor_is_invalid', async () => {
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', instructor_id: 'not-a-trainer', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'Invalid instructor' })
   })
 
   it('should_not_call_updateLessonWithParticipants_when_instructor_is_invalid', async () => {
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', instructor_id: 'not-a-trainer', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).not.toHaveBeenCalled()
@@ -818,10 +814,8 @@ describe('updateLessonAction', () => {
     )
   })
 
-  it('should_use_valid_trainer_instructor_when_manager_selects_one', async () => {
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([
-      createMockMembership({ id: 'mem-99', user_id: 'trainer-99', created_at: '2026-01-01T00:00:00Z' }),
-    ])
+  it('should_use_valid_instructor_when_manager_selects_one', async () => {
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([{ userId: 'trainer-99', name: 'Bob Trainer' }])
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', instructor_id: 'trainer-99', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).toHaveBeenCalledWith(
