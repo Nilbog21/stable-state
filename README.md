@@ -32,6 +32,8 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App | Supabase anon (public) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Reset script only | Service role key — bypasses RLS; never expose client-side |
 | `DEV_MANAGER_EMAIL` | Reset script only | Google email to pre-authorize as dev barn manager |
+| `DEV_TRAINER_EMAIL` | Reset script only (optional) | Google email pre-authorized as dev trainer; sign in via incognito to test trainer role |
+| `DEV_RIDER_EMAIL` | Reset script only (optional) | Google email pre-authorized as dev rider; sign in via incognito to test rider role |
 
 ### Dev database reset
 
@@ -42,6 +44,8 @@ bash scripts/reset-db.sh
 ```
 
 Requires `SUPABASE_SERVICE_ROLE_KEY` and `DEV_MANAGER_EMAIL` in `.env.local`. The script is idempotent — safe to re-run between branches.
+
+To test trainer or rider role behaviour, set `DEV_TRAINER_EMAIL` and/or `DEV_RIDER_EMAIL` in `.env.local` to a Google account you control, then re-run the script. Open an incognito window and sign in with that account to experience the app as that role.
 
 ## Database setup
 
