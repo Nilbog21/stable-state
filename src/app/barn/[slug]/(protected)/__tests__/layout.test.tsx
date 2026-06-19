@@ -220,31 +220,16 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
   })
 
-  it('should_render_horses_overview_link_pointing_to_overview_for_manager', async () => {
+  it('should_render_horses_link_pointing_to_horses_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toContain('/horses/overview')
+    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/horses$/)
   })
 
-  it('should_render_manage_horses_link_for_manager', async () => {
+  it('should_not_render_manage_horses_link_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.getByRole('link', { name: 'Manage Horses' })).toBeDefined()
-  })
-
-  it('should_render_manage_horses_link_pointing_to_horses_page_for_manager', async () => {
-    const jsx = await ProtectedBarnLayout({ children, params })
-    render(jsx)
-    expect((screen.getByRole('link', { name: 'Manage Horses' }) as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/horses$/)
-  })
-
-  it('should_render_manage_horses_link_before_settings_for_manager', async () => {
-    const jsx = await ProtectedBarnLayout({ children, params })
-    render(jsx)
-    const links = screen.getAllByRole('link')
-    const manageHorsesIdx = links.indexOf(screen.getByRole('link', { name: 'Manage Horses' }))
-    const settingsIdx = links.indexOf(screen.getByRole('link', { name: 'Settings' }))
-    expect(manageHorsesIdx).toBeLessThan(settingsIdx)
+    expect(screen.queryByRole('link', { name: 'Manage Horses' })).toBeNull()
   })
 
   it('should_render_riders_link_for_manager', async () => {
@@ -315,11 +300,11 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
   })
 
-  it('should_render_horses_overview_link_pointing_to_overview_for_trainer', async () => {
+  it('should_render_horses_link_pointing_to_horses_for_trainer', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toContain('/horses/overview')
+    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/horses$/)
   })
 
   it('should_not_render_manage_horses_link_for_trainer', async () => {
@@ -365,11 +350,11 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
   })
 
-  it('should_render_horses_overview_link_pointing_to_overview_for_rider', async () => {
+  it('should_render_horses_link_pointing_to_horses_for_rider', async () => {
     vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toContain('/horses/overview')
+    expect((screen.getByRole('link', { name: 'Horses' }) as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/horses$/)
   })
 
   it('should_not_render_manage_horses_link_for_rider', async () => {

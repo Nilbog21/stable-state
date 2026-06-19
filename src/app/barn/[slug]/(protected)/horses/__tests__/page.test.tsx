@@ -1,44 +1,59 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockHorse } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockHorseExertionSummary } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
+vi.mock('@/lib/db/effective-membership', () => ({
+  getEffectiveMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
+vi.mock('@/lib/db/horses', () => ({ getHorseExertionSummary: vi.fn() }))
 vi.mock('../actions', () => ({
   addHorseAction: vi.fn(),
   updateHorseAction: vi.fn(),
 }))
+vi.mock('../HorseOverviewTable', () => ({
+  HorseOverviewTable: ({ horses, isManager }: { horses: unknown[]; isManager?: boolean }) => (
+    <div data-testid="horse-overview-table" data-is-manager={String(isManager ?? false)}>
+      {(horses as { name: string; id: string }[]).map((h) => (
+        <span key={h.id}>{h.name}</span>
+      ))}
+      {isManager && horses.map((h) => (
+        <input key={(h as { id: string }).id} name="name" form={`update-horse-${(h as { id: string }).id}`} />
+      ))}
+      {isManager && horses.map((h) => (
+        <button key={(h as { id: string }).id} form={`update-horse-${(h as { id: string }).id}`}>Save</button>
+      ))}
+    </div>
+  ),
+}))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
-const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
-  throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
-}))
-vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
+vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorsesByBarn } from '@/lib/db/horses'
+import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getHorseExertionSummary } from '@/lib/db/horses'
 import HorsesPage from '../page'
 
 const mockBarn = createMockBarn()
-const managerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
+
+const managerMembership = createMockMembership({ role: 'manager', status: 'active' })
+const trainerMembership = createMockMembership({ role: 'trainer', status: 'active' })
+const riderMembership = createMockMembership({ role: 'rider', status: 'active' })
 
 const mockHorses = [
-  createMockHorse({ id: 'horse-1', name: 'Thunderbolt' }),
-  createMockHorse({ id: 'horse-2', name: 'Shadow' }),
+  createMockHorseExertionSummary({ id: 'horse-1', name: 'Thunderbolt' }),
+  createMockHorseExertionSummary({ id: 'horse-2', name: 'Shadow' }),
 ]
 
 describe('HorsesPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
-    vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
-    vi.mocked(getHorsesByBarn).mockResolvedValue([])
+    vi.mocked(getEffectiveMembership).mockResolvedValue(managerMembership)
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -47,71 +62,115 @@ describe('HorsesPage', () => {
     expect(mockNotFound).toHaveBeenCalled()
   })
 
-  it('should_redirect_to_login_when_user_is_not_authenticated', async () => {
+  it('should_call_notFound_when_user_is_not_authenticated', async () => {
     setupAuth(null)
-    await expect(HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    await expect(HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 
-  it('should_redirect_to_login_when_user_is_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    await expect(HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  it('should_call_notFound_when_membership_is_null', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(null)
+    await expect(HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 
-  it('should_render_horse_list_when_barn_exists', async () => {
-    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+  it('should_call_notFound_when_membership_is_not_active', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue({ ...managerMembership, status: 'pending' })
+    await expect(HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_render_exertion_table_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/green acres/i)).toBeDefined()
+    expect(screen.getByTestId('horse-overview-table')).toBeDefined()
   })
 
-  it('should_render_each_horse_name_in_the_list', async () => {
-    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+  it('should_not_render_add_horse_form_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(trainerMembership)
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByDisplayValue('Thunderbolt')).toBeDefined()
-    expect(screen.getByDisplayValue('Shadow')).toBeDefined()
+    expect(screen.queryByRole('button', { name: /add/i })).toBeNull()
   })
 
-  it('should_render_an_add_horse_form', async () => {
+  it('should_not_render_save_buttons_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryAllByRole('button', { name: /save/i })).toHaveLength(0)
+  })
+
+  it('should_render_exertion_table_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(riderMembership)
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByTestId('horse-overview-table')).toBeDefined()
+  })
+
+  it('should_not_render_add_horse_form_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(riderMembership)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /add/i })).toBeNull()
+  })
+
+  it('should_not_render_save_buttons_for_rider', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(riderMembership)
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryAllByRole('button', { name: /save/i })).toHaveLength(0)
+  })
+
+  it('should_render_exertion_table_for_manager', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByTestId('horse-overview-table')).toBeDefined()
+  })
+
+  it('should_render_add_horse_form_for_manager', async () => {
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /add/i })).toBeDefined()
   })
 
-  it('should_render_edit_form_per_horse_with_current_name_prefilled', async () => {
-    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+  it('should_render_save_buttons_for_manager', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getAllByRole('button', { name: /save/i })).toHaveLength(2)
   })
 
-  it('should_render_update_form_outside_table_per_horse', async () => {
-    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+  it('should_render_name_inputs_for_manager', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('textbox')).toHaveLength(2)
+  })
+
+  it('should_render_update_forms_outside_table_for_manager', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue(mockHorses)
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(document.getElementById('update-horse-horse-1')).not.toBeNull()
+    expect(document.getElementById('update-horse-horse-2')).not.toBeNull()
   })
 
-  it('should_associate_horse_name_input_with_its_form', async () => {
-    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+  it('should_pass_isManager_true_to_table_for_manager', async () => {
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByDisplayValue('Thunderbolt').getAttribute('form')).toBe('update-horse-horse-1')
+    expect(screen.getByTestId('horse-overview-table').getAttribute('data-is-manager')).toBe('true')
   })
 
-  it('should_associate_save_button_with_its_form', async () => {
-    vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
+  it('should_pass_isManager_false_to_table_for_trainer', async () => {
+    vi.mocked(getEffectiveMembership).mockResolvedValue(trainerMembership)
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getAllByRole('button', { name: /save/i })[0].getAttribute('form')).toBe('update-horse-horse-1')
+    expect(screen.getByTestId('horse-overview-table').getAttribute('data-is-manager')).toBe('false')
   })
-
-  it('should_render_manage_horses_heading', async () => {
-    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByRole('heading', { name: /manage horses/i })).toBeDefined()
-  })
-
 })
