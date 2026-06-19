@@ -997,4 +997,12 @@ describe('getInstructorsByBarn', () => {
 
     await expect(getInstructorsByBarn('barn-1')).rejects.toThrow('profiles query failed')
   })
+
+  it('should_fall_back_to_unknown_instructor_when_profiles_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient([{ user_id: 'trainer-1' }], null, null, null))
+
+    const result = await getInstructorsByBarn('barn-1')
+
+    expect(result).toEqual([{ userId: 'trainer-1', name: 'Unknown Instructor' }])
+  })
 })
