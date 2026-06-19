@@ -10,6 +10,8 @@ import { createPendingMembership } from '@/lib/db/barn-memberships'
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const MANAGER_EMAIL = process.env.DEV_MANAGER_EMAIL
+const TRAINER_EMAIL = process.env.DEV_TRAINER_EMAIL || null
+const RIDER_EMAIL = process.env.DEV_RIDER_EMAIL || null
 
 const DEV_BARN_ID = '00000000-0000-0000-0000-000000000b41'
 const DEV_BARN_SLUG = 'dev-barn'
@@ -146,6 +148,8 @@ async function run() {
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', DEV_BARN_ID), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', DEV_BARN_ID), 'delete barn_memberships')
   mustSucceed(await supabase.from('profiles').delete().eq('email', MANAGER_EMAIL), 'delete manager profile')
+  if (TRAINER_EMAIL) mustSucceed(await supabase.from('profiles').delete().eq('email', TRAINER_EMAIL), 'delete trainer profile')
+  if (RIDER_EMAIL) mustSucceed(await supabase.from('profiles').delete().eq('email', RIDER_EMAIL), 'delete rider profile')
   mustSucceed(await supabase.from('barns').delete().eq('id', DEV_BARN_ID), 'delete barn')
 
   if (devUserIds.length > 0) {
@@ -170,6 +174,8 @@ async function run() {
   )
 
   await seedManagerProfile(MANAGER_EMAIL, 'Dev', 'Manager', DEV_BARN_ID, 'manager', supabase)
+  if (TRAINER_EMAIL) await seedManagerProfile(TRAINER_EMAIL, 'Dev', 'Trainer', DEV_BARN_ID, 'trainer', supabase)
+  if (RIDER_EMAIL) await seedManagerProfile(RIDER_EMAIL, 'Dev', 'Rider', DEV_BARN_ID, 'rider', supabase)
 
   const { data: m2Data, error: m2Err } = await supabase.auth.admin.createUser({
     email: DEV_MANAGER_2.email,
@@ -308,6 +314,8 @@ async function run() {
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
   console.log(`  Manager:  ${MANAGER_EMAIL} (pre-seeded, can_instruct=false — sign in with Google to activate)`)
   console.log(`  Manager2: ${DEV_MANAGER_2.email} (can_instruct=true — appears in instructor dropdown)`)
+  if (TRAINER_EMAIL) console.log(`  Trainer*: ${TRAINER_EMAIL} (pre-seeded — sign in via incognito to test trainer role)`)
+  if (RIDER_EMAIL) console.log(`  Rider*:   ${RIDER_EMAIL} (pre-seeded — sign in via incognito to test rider role)`)
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`)
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
