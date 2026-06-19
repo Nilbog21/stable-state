@@ -1,8 +1,9 @@
-import { notFound, redirect } from 'next/navigation'
+import { notFound } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getHorsesByBarn } from '@/lib/db/horses'
+import { getHorseExertionSummary } from '@/lib/db/horses'
+import { HorseOverviewTable } from './HorseOverviewTable'
 import { addHorseAction, updateHorseAction } from './actions'
 
 export default async function HorsesPage({
@@ -16,91 +17,55 @@ export default async function HorsesPage({
 
   const supabase = await createClient()
   const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect(`/barn/${slug}/login`)
+  if (!data.user) notFound()
 
-  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
+  const membership = await getEffectiveMembership(data.user.id, barn.id)
+  if (!membership || membership.status !== 'active') notFound()
 
-  if (
-    !actorMembership ||
-    actorMembership.status !== 'active' ||
-    actorMembership.role !== 'manager'
-  ) {
-    redirect(`/barn/${slug}/login`)
-  }
+  const isManager = membership.role === 'manager'
 
-  const horses = await getHorsesByBarn(barn.id)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const horses = await getHorseExertionSummary(barn.id, sevenDaysAgo)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {barn.name} — Manage Horses
+        {barn.name} — Horses
       </h1>
 
-      {horses.length > 0 && (
-        <>
-          {/* <form> cannot be a valid child of <tr>, so update forms live here
-              and are associated to their row controls via the HTML `form` attribute. */}
-          {horses.map((horse) => (
-            <form
-              key={`update-${horse.id}`}
-              id={`update-horse-${horse.id}`}
-              action={updateHorseAction.bind(null, slug, horse.id)}
+      {/* <form> cannot be a valid descendant of <table>, so update forms live here
+          and are linked to their row controls via the HTML `form` attribute. */}
+      {isManager && horses.map((horse) => (
+        <form
+          key={`update-${horse.id}`}
+          id={`update-horse-${horse.id}`}
+          action={updateHorseAction.bind(null, slug, horse.id)}
+        />
+      ))}
+
+      {isManager && (
+        <section className="mb-8">
+          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Add Horse</h2>
+          <form action={addHorseAction.bind(null, slug)} className="flex gap-2">
+            <input
+              type="text"
+              name="name"
+              placeholder="Horse name"
+              required
+              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
             />
-          ))}
-          <table className="mb-12 w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Name</th>
-                <th className="pb-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {horses.map((horse) => (
-                <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6">
-                    <input
-                      type="text"
-                      name="name"
-                      form={`update-horse-${horse.id}`}
-                      defaultValue={horse.name}
-                      required
-                      className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-                    />
-                  </td>
-                  <td className="py-3">
-                    <button
-                      type="submit"
-                      form={`update-horse-${horse.id}`}
-                      className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                    >
-                      Save
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
+            <button
+              type="submit"
+              className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Add
+            </button>
+          </form>
+        </section>
       )}
 
-      <section>
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Add Horse</h2>
-        <form action={addHorseAction.bind(null, slug)} className="flex gap-2">
-          <input
-            type="text"
-            name="name"
-            placeholder="Horse name"
-            required
-            className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-          <button
-            type="submit"
-            className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Add
-          </button>
-        </form>
-      </section>
+      <HorseOverviewTable horses={horses} isManager={isManager} />
     </main>
   )
 }

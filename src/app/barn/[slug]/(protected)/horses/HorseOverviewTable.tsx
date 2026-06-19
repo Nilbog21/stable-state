@@ -12,7 +12,13 @@ const COLUMNS: { key: SortKey; label: string; tdClassName: string }[] = [
   { key: 'lessonCount', label: 'Lessons (7d)', tdClassName: 'py-3 text-sm text-zinc-700 dark:text-zinc-300' },
 ]
 
-export function HorseOverviewTable({ horses }: { horses: HorseExertionSummary[] }) {
+export function HorseOverviewTable({
+  horses,
+  isManager = false,
+}: {
+  horses: HorseExertionSummary[]
+  isManager?: boolean
+}) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({
     key: 'totalExertion',
     dir: 'desc',
@@ -61,14 +67,40 @@ export function HorseOverviewTable({ horses }: { horses: HorseExertionSummary[] 
               </button>
             </th>
           ))}
+          {isManager && <th className="pb-2">Actions</th>}
         </tr>
       </thead>
       <tbody>
         {sorted.map(horse => (
           <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
-            {COLUMNS.map(col => (
+            <td className={COLUMNS[0].tdClassName}>
+              {isManager ? (
+                <input
+                  type="text"
+                  name="name"
+                  form={`update-horse-${horse.id}`}
+                  defaultValue={horse.name}
+                  required
+                  className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+              ) : (
+                horse.name
+              )}
+            </td>
+            {COLUMNS.slice(1).map(col => (
               <td key={col.key} className={col.tdClassName}>{horse[col.key]}</td>
             ))}
+            {isManager && (
+              <td className="py-3">
+                <button
+                  type="submit"
+                  form={`update-horse-${horse.id}`}
+                  className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  Save
+                </button>
+              </td>
+            )}
           </tr>
         ))}
       </tbody>

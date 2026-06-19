@@ -204,4 +204,31 @@ describe('HorseOverviewTable', () => {
     render(<HorseOverviewTable horses={[]} />)
     expect(screen.queryAllByRole('button')).toHaveLength(0)
   })
+
+  it('should_render_static_name_when_not_manager', () => {
+    render(<HorseOverviewTable horses={horses} />)
+    expect(screen.getByText('Thunderbolt').tagName).not.toBe('INPUT')
+  })
+
+  it('should_render_name_input_when_manager', () => {
+    render(<HorseOverviewTable horses={horses} isManager />)
+    const inputs = screen.getAllByRole('textbox')
+    expect(inputs.length).toBeGreaterThan(0)
+  })
+
+  it('should_render_save_button_when_manager', () => {
+    render(<HorseOverviewTable horses={horses} isManager />)
+    expect(screen.getAllByRole('button', { name: /save/i }).length).toBeGreaterThan(0)
+  })
+
+  it('should_not_render_save_button_when_not_manager', () => {
+    render(<HorseOverviewTable horses={horses} />)
+    expect(screen.queryAllByRole('button', { name: /save/i })).toHaveLength(0)
+  })
+
+  it('should_associate_input_with_update_form_when_manager', () => {
+    render(<HorseOverviewTable horses={[horses[0]]} isManager />)
+    const input = screen.getByRole('textbox')
+    expect(input.getAttribute('form')).toBe('update-horse-horse-1')
+  })
 })
