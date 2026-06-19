@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Rider } from './types'
 
 export async function getRidersByBarn(barnId: string): Promise<Rider[]> {
@@ -13,8 +14,9 @@ export async function getRidersByBarn(barnId: string): Promise<Rider[]> {
   return data
 }
 
-export async function createRider(barnId: string, name: string, userId?: string): Promise<Rider> {
-  const supabase = await createClient()
+export async function createRider(barnId: string, name: string, userId?: string, client?: SupabaseClient): Promise<Rider> {
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const payload: Record<string, unknown> = { barn_id: barnId, name }
   if (userId !== undefined) payload.user_id = userId
   const { data, error } = await supabase

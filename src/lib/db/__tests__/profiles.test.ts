@@ -75,6 +75,39 @@ describe('upsertProfile', () => {
 
     await expect(upsertProfile('user-1', 'test@example.com', 'Jane', 'Doe')).rejects.toEqual(dbError)
   })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = {
+      from: vi.fn().mockReturnValue({
+        upsert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+          }),
+        }),
+      }),
+    } as any
+
+    await upsertProfile('user-1', 'test@example.com', 'Jane', 'Doe', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    vi.mocked(createClient).mockReset()
+    const mockFrom = vi.fn().mockReturnValue({
+      upsert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+        }),
+      }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await upsertProfile('user-1', 'test@example.com', 'Jane', 'Doe', injectedClient)
+
+    expect(mockFrom).toHaveBeenCalled()
+  })
 })
 
 const mockProfiles = [

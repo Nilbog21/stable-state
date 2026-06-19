@@ -127,6 +127,39 @@ describe('createRider', () => {
 
     expect(mockInsert).toHaveBeenCalledWith({ barn_id: 'barn-1', name: 'Carol' })
   })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = {
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mockNewRider, error: null }),
+          }),
+        }),
+      }),
+    } as any
+
+    await createRider('barn-1', 'Carol', undefined, injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    vi.mocked(createClient).mockReset()
+    const mockFrom = vi.fn().mockReturnValue({
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: mockNewRider, error: null }),
+        }),
+      }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await createRider('barn-1', 'Carol', undefined, injectedClient)
+
+    expect(mockFrom).toHaveBeenCalled()
+  })
 })
 
 const mockUpdatedRider = createMockRider({ id: 'rider-1', name: 'Alice Updated' })

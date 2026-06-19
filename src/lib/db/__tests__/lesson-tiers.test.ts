@@ -171,6 +171,39 @@ describe('createTier', () => {
 
     await expect(createTier('barn-1', 'Standard', 50)).rejects.toThrow('No data returned')
   })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = {
+      from: vi.fn().mockReturnValue({
+        insert: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mockTier, error: null }),
+          }),
+        }),
+      }),
+    } as any
+
+    await createTier('barn-1', 'Standard', 50, false, injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    vi.mocked(createClient).mockReset()
+    const mockFrom = vi.fn().mockReturnValue({
+      insert: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          single: vi.fn().mockResolvedValue({ data: mockTier, error: null }),
+        }),
+      }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await createTier('barn-1', 'Standard', 50, false, injectedClient)
+
+    expect(mockFrom).toHaveBeenCalled()
+  })
 })
 
 describe('updateTier', () => {

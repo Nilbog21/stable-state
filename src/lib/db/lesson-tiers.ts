@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { LessonTier } from './types'
 
 export async function getTiersByBarn(barnId: string): Promise<LessonTier[]> {
@@ -18,9 +19,11 @@ export async function createTier(
   barnId: string,
   name: string,
   price: number | null,
-  isDefault = false
+  isDefault = false,
+  client?: SupabaseClient
 ): Promise<LessonTier> {
-  const supabase = await createClient()
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('lesson_tiers')
     .insert({ barn_id: barnId, name, price, is_default: isDefault })
