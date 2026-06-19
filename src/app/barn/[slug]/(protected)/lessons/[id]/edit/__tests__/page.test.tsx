@@ -204,4 +204,11 @@ describe('EditLessonPage', () => {
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
+
+  it('should_not_prepend_former_instructor_when_lesson_has_no_instructor_id', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: null })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
 })

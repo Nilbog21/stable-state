@@ -34,12 +34,16 @@ export default async function EditLessonPage({
   if (membership.role !== 'manager') notFound()
   if (!lesson) notFound()
 
-  const [horses, riders, tiers, instructors] = await Promise.all([
+  const [horses, riders, tiers, instructorList] = await Promise.all([
     getHorsesByBarn(barn.id),
     getRidersByBarn(barn.id),
     getAllTiersByBarn(barn.id),
     getInstructorsByBarn(barn.id),
   ])
+
+  const instructors = lesson.instructor_id && instructorList.every((i) => i.userId !== lesson.instructor_id)
+    ? [{ userId: lesson.instructor_id, name: 'Former Instructor' }, ...instructorList]
+    : instructorList
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
 

@@ -966,7 +966,7 @@ describe('getInstructorsByBarn', () => {
     expect(result).toEqual([{ userId: 'trainer-1', name: 'Unknown Instructor' }])
   })
 
-  it('should_query_active_and_can_instruct_true_members_only', async () => {
+  it('should_filter_by_barn_id', async () => {
     const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
     const mockCanInstructEq = vi.fn().mockReturnValue({ order: mockOrder })
     const mockStatusEq = vi.fn().mockReturnValue({ eq: mockCanInstructEq })
@@ -976,11 +976,35 @@ describe('getInstructorsByBarn', () => {
         select: vi.fn().mockReturnValue({ eq: mockBarnEq }),
       }),
     } as any)
-
     await getInstructorsByBarn('barn-1')
-
     expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_by_active_status', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
+    const mockCanInstructEq = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockStatusEq = vi.fn().mockReturnValue({ eq: mockCanInstructEq })
+    const mockBarnEq = vi.fn().mockReturnValue({ eq: mockStatusEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: mockBarnEq }),
+      }),
+    } as any)
+    await getInstructorsByBarn('barn-1')
     expect(mockStatusEq).toHaveBeenCalledWith('status', 'active')
+  })
+
+  it('should_filter_by_can_instruct_true', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
+    const mockCanInstructEq = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockStatusEq = vi.fn().mockReturnValue({ eq: mockCanInstructEq })
+    const mockBarnEq = vi.fn().mockReturnValue({ eq: mockStatusEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: mockBarnEq }),
+      }),
+    } as any)
+    await getInstructorsByBarn('barn-1')
     expect(mockCanInstructEq).toHaveBeenCalledWith('can_instruct', true)
   })
 
