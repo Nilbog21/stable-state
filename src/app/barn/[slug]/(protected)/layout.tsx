@@ -32,24 +32,20 @@ export default async function ProtectedBarnLayout({
   let navLinks: { href: string; label: string }[]
   if (membership.role === 'manager') {
     navLinks = [
-      { href: `/barn/${slug}`, label: 'Dashboard' },
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
       { href: `/barn/${slug}/riders`, label: 'Riders' },
       { href: `/barn/${slug}/finances`, label: 'Finances' },
-      { href: `/barn/${slug}/approvals`, label: 'Approvals' },
-      { href: `/barn/${slug}/settings`, label: 'Settings' },
+      { href: `/barn/${slug}/settings`, label: 'Manage Barn' },
     ]
   } else if (membership.role === 'trainer') {
     navLinks = [
-      { href: `/barn/${slug}`, label: 'Dashboard' },
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
       { href: `/barn/${slug}/riders`, label: 'Riders' },
     ]
   } else {
     navLinks = [
-      { href: `/barn/${slug}`, label: 'Dashboard' },
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
     ]
@@ -69,6 +65,12 @@ export default async function ProtectedBarnLayout({
   return (
     <>
       <nav className="flex gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <Link
+          href={`/barn/${slug}`}
+          className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+        >
+          {barn.name}
+        </Link>
         {navLinks.map((link) => (
           <Link
             key={link.href}

@@ -42,7 +42,7 @@ export default async function SettingsPage({
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {barn.name} — Settings
+        Manage Barn
       </h1>
 
       {/* <form> cannot be a valid child of <tr>, so save forms live here and
