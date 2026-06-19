@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { FinancialSummary, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary } from './types'
+import type { FinancialSummary, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary, TrainerIncomeSummary } from './types'
 
 export async function getFinancialSummary(
   barnId: string,
@@ -20,7 +20,7 @@ export async function getFinancialSummary(
 
   const lessons = data ?? []
 
-  const tierMap = new Map<number, number>()
+  const tierMap = new Map<string, { lessonCount: number; subtotal: number }>()
   let collectedIncome = 0
   let pendingIncome = 0
 
@@ -28,16 +28,35 @@ export async function getFinancialSummary(
     if (lesson.payment_type !== null) {
       if (lesson.fee !== null) {
         collectedIncome += lesson.fee
-        tierMap.set(lesson.fee, (tierMap.get(lesson.fee) ?? 0) + 1)
+        const tierName = lesson.tier_name || 'Custom'
+        const existing = tierMap.get(tierName) ?? { lessonCount: 0, subtotal: 0 }
+        tierMap.set(tierName, { lessonCount: existing.lessonCount + 1, subtotal: existing.subtotal + lesson.fee })
       }
     } else if (new Date(lesson.lesson_at) > now) {
       if (lesson.fee !== null) pendingIncome += lesson.fee
     }
   }
 
+  const nonCustomTierNames = [...tierMap.keys()].filter((n) => n !== 'Custom')
+  const tierPrices = new Map<string, number | null>()
+  if (nonCustomTierNames.length) {
+    const { data: tiers, error: tiersError } = await supabase
+      .from('lesson_tiers')
+      .select('name, price')
+      .eq('barn_id', barnId)
+      .in('name', nonCustomTierNames)
+    if (tiersError) throw tiersError
+    for (const t of tiers ?? []) tierPrices.set(t.name, t.price)
+  }
+
   const breakdown = Array.from(tierMap.entries())
-    .sort(([a], [b]) => a - b)
-    .map(([fee, lessonCount]) => ({ fee, lessonCount, subtotal: fee * lessonCount }))
+    .map(([tierName, { lessonCount, subtotal }]) => ({
+      tierName,
+      price: tierName === 'Custom' ? null : (tierPrices.get(tierName) ?? null),
+      lessonCount,
+      subtotal,
+    }))
+    .sort((a, b) => a.tierName.localeCompare(b.tierName))
 
   return { collectedIncome, pendingIncome, breakdown }
 }
@@ -112,6 +131,7 @@ export async function getHorseIncomeSummary(
     .from('lessons')
     .select('id, fee')
     .eq('barn_id', barnId)
+    .not('payment_type', 'is', null)
     .gte('lesson_at', startDate.toISOString())
     .lt('lesson_at', endDate.toISOString())
 
@@ -171,6 +191,7 @@ export async function getRiderIncomeSummary(
     .from('lessons')
     .select('id, fee')
     .eq('barn_id', barnId)
+    .not('payment_type', 'is', null)
     .gte('lesson_at', startDate.toISOString())
     .lt('lesson_at', endDate.toISOString())
 
@@ -216,5 +237,53 @@ export async function getRiderIncomeSummary(
       riderName: (riders ?? []).find((r) => r.id === riderId)?.name ?? riderId,
       totalIncome,
     }))
+    .sort((a, b) => b.totalIncome - a.totalIncome)
+}
+
+export async function getTrainerIncomeSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<TrainerIncomeSummary[]> {
+  const supabase = await createClient()
+
+  const { data: lessons, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('instructor_id, fee')
+    .eq('barn_id', barnId)
+    .not('payment_type', 'is', null)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+
+  if (lessonsError) throw lessonsError
+
+  const collected = (lessons ?? []).filter(
+    (l): l is { instructor_id: string; fee: number } => l.instructor_id !== null && l.fee !== null
+  )
+  if (!collected.length) return []
+
+  const instructorIds = [...new Set(collected.map((l) => l.instructor_id))]
+
+  const { data: profiles, error: profError } = await supabase
+    .from('profiles')
+    .select('user_id, first_name, last_name')
+    .in('user_id', instructorIds)
+
+  if (profError) throw profError
+
+  const incomeMap = new Map<string, number>()
+  for (const lesson of collected) {
+    incomeMap.set(lesson.instructor_id, (incomeMap.get(lesson.instructor_id) ?? 0) + lesson.fee)
+  }
+
+  return Array.from(incomeMap.entries())
+    .map(([trainerId, totalIncome]) => {
+      const profile = (profiles ?? []).find((p) => p.user_id === trainerId)
+      return {
+        trainerId,
+        trainerName: profile ? `${profile.first_name} ${profile.last_name}` : trainerId,
+        totalIncome,
+      }
+    })
     .sort((a, b) => b.totalIncome - a.totalIncome)
 }

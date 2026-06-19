@@ -78,8 +78,8 @@ describe('FinancesPage', () => {
       collectedIncome: 225,
       pendingIncome: 0,
       breakdown: [
-        { fee: 75, lessonCount: 1, subtotal: 75 },
-        { fee: 50, lessonCount: 3, subtotal: 150 },
+        { tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75 },
+        { tierName: 'Basic', price: 50, lessonCount: 3, subtotal: 150 },
       ],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -87,19 +87,26 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/225/)).toBeDefined()
   })
 
-  it('should_display_breakdown_table_rows', async () => {
+  it('should_display_breakdown_tier_name', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
-      collectedIncome: 350,
+      collectedIncome: 100,
       pendingIncome: 0,
-      breakdown: [
-        { fee: 50, lessonCount: 2, subtotal: 100 },
-        { fee: 75, lessonCount: 2, subtotal: 150 },
-      ],
+      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('$50.00')).toBeDefined()
-    expect(screen.getByText('$75.00')).toBeDefined()
+    expect(screen.getByText(/Premium/)).toBeDefined()
+  })
+
+  it('should_display_breakdown_subtotal', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 125 }],
+    })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('$125.00')).toBeDefined()
   })
 
   it('should_display_empty_state_when_no_income', async () => {
@@ -114,7 +121,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Income by Horse (June 2026) (Collected, Pending, Outstanding)')).toBeDefined()
+    expect(screen.getByText('Income by Horse (June 2026) (Collected)')).toBeDefined()
   })
 
   it('should_display_horse_name', async () => {
@@ -184,7 +191,7 @@ describe('FinancesPage', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Income by Rider (June 2026) (Collected, Pending, Outstanding)')).toBeDefined()
+    expect(screen.getByText('Income by Rider (June 2026) (Collected)')).toBeDefined()
   })
 
   it('should_display_rider_name', async () => {

@@ -11,6 +11,7 @@ import {
   getOutstandingLessons,
   getHorseIncomeSummary,
   getRiderIncomeSummary,
+  getTrainerIncomeSummary,
 } from '../lesson-finances'
 
 describe('getFinancialSummary', () => {
@@ -18,15 +19,34 @@ describe('getFinancialSummary', () => {
     vi.mocked(createClient).mockReset()
   })
 
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   const startDate = new Date('2026-05-01T00:00:00Z')
   const endDate = new Date('2026-06-01T00:00:00Z')
 
-  function makeSummaryChain(data: { fee: number | null }[], error: Error | null = null) {
+  function makeSummaryChain(data: { fee: number | null; [key: string]: unknown }[], error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
     const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect, mockEq, mockGte, mockLt }
+  }
+
+  function makeFullLessonsChain(data: unknown[], error: Error | null = null) {
+    const mockLt = vi.fn().mockResolvedValue({ data, error })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeTiersChain(data: { name: string; price: number | null }[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
   }
 
   it('should_return_zero_collected_income_when_no_lessons', async () => {
@@ -52,7 +72,7 @@ describe('getFinancialSummary', () => {
   })
 
   it('should_return_correct_collected_income_for_single_fee_tier', async () => {
-    const { select } = makeSummaryChain([{ fee: 75 }, { fee: 75 }])
+    const { select } = makeSummaryChain([{ fee: 75, payment_type: 'venmo' }, { fee: 75, payment_type: 'venmo' }])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -62,19 +82,22 @@ describe('getFinancialSummary', () => {
     expect(result.collectedIncome).toBe(150)
   })
 
-  it('should_return_breakdown_sorted_ascending_by_fee', async () => {
-    const { select } = makeSummaryChain([{ fee: 100 }, { fee: 50 }, { fee: 75 }])
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ select }),
-    } as any)
+  it('should_return_breakdown_sorted_ascending_by_tier_name', async () => {
+    const lesson1 = createMockLesson({ fee: 100, payment_type: 'venmo', tier_name: 'Standard', lesson_at: '2026-05-10T10:00:00Z' })
+    const lesson2 = createMockLesson({ id: 'lesson-2', fee: 50, payment_type: 'cash', tier_name: 'Basic', lesson_at: '2026-05-11T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson1, lesson2])
+      return makeTiersChain([{ name: 'Standard', price: 100 }, { name: 'Basic', price: 50 }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getFinancialSummary('barn-1', startDate, endDate)
 
-    expect(result.breakdown.map((b) => b.fee)).toEqual([50, 75, 100])
+    expect(result.breakdown.map((b) => b.tierName)).toEqual(['Basic', 'Standard'])
   })
 
   it('should_exclude_null_fee_lessons_from_collected_income', async () => {
-    const { select } = makeSummaryChain([{ fee: 75 }, { fee: null }, { fee: 75 }])
+    const { select } = makeSummaryChain([{ fee: 75, payment_type: 'venmo' }, { fee: null, payment_type: 'venmo' }, { fee: 75, payment_type: 'venmo' }])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -85,7 +108,7 @@ describe('getFinancialSummary', () => {
   })
 
   it('should_exclude_null_fee_lessons_from_breakdown', async () => {
-    const { select } = makeSummaryChain([{ fee: 75 }, { fee: null }, { fee: 75 }])
+    const { select } = makeSummaryChain([{ fee: 75, payment_type: 'venmo' }, { fee: null, payment_type: 'venmo' }, { fee: 75, payment_type: 'venmo' }])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -129,16 +152,20 @@ describe('getFinancialSummary', () => {
   })
 
   it('should_calculate_correct_subtotal_per_tier', async () => {
-    const { select } = makeSummaryChain([{ fee: 50 }, { fee: 50 }, { fee: 100 }])
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ select }),
-    } as any)
+    const lesson1 = createMockLesson({ fee: 50, payment_type: 'venmo', tier_name: 'Basic', lesson_at: '2026-05-10T10:00:00Z' })
+    const lesson2 = createMockLesson({ id: 'lesson-2', fee: 50, payment_type: 'cash', tier_name: 'Basic', lesson_at: '2026-05-11T10:00:00Z' })
+    const lesson3 = createMockLesson({ id: 'lesson-3', fee: 100, payment_type: 'zelle', tier_name: 'Premium', lesson_at: '2026-05-12T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson1, lesson2, lesson3])
+      return makeTiersChain([{ name: 'Basic', price: 50 }, { name: 'Premium', price: 100 }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getFinancialSummary('barn-1', startDate, endDate)
 
     expect(result.breakdown).toEqual([
-      { fee: 50, lessonCount: 2, subtotal: 100 },
-      { fee: 100, lessonCount: 1, subtotal: 100 },
+      { tierName: 'Basic', price: 50, lessonCount: 2, subtotal: 100 },
+      { tierName: 'Premium', price: 100, lessonCount: 1, subtotal: 100 },
     ])
   })
 
@@ -179,10 +206,84 @@ describe('getFinancialSummary', () => {
     await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('db error')
   })
 
-  describe('collected and pending income classification', () => {
-    afterEach(() => {
-      vi.useRealTimers()
+  it('should_group_breakdown_by_tier_name', async () => {
+    const lesson1 = createMockLesson({ fee: 75, payment_type: 'venmo', tier_name: 'Standard', lesson_at: '2026-05-10T10:00:00Z' })
+    const lesson2 = createMockLesson({ id: 'lesson-2', fee: 75, payment_type: 'cash', tier_name: 'Standard', lesson_at: '2026-05-11T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson1, lesson2])
+      return makeTiersChain([{ name: 'Standard', price: 75 }])
     })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.breakdown).toHaveLength(1)
+  })
+
+  it('should_return_null_price_for_custom_tier', async () => {
+    const lesson = createMockLesson({ fee: 75, payment_type: 'venmo', tier_name: 'Custom', lesson_at: '2026-05-10T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson])
+      return makeTiersChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.breakdown[0].price).toBeNull()
+  })
+
+  it('should_include_price_from_lesson_tiers_for_named_tier', async () => {
+    const lesson = createMockLesson({ fee: 100, payment_type: 'venmo', tier_name: 'Premium', lesson_at: '2026-05-10T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson])
+      return makeTiersChain([{ name: 'Premium', price: 100 }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.breakdown[0].price).toBe(100)
+  })
+
+  it('should_return_null_price_when_tier_not_found_in_lesson_tiers', async () => {
+    const lesson = createMockLesson({ fee: 80, payment_type: 'venmo', tier_name: 'Legacy', lesson_at: '2026-05-10T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson])
+      return makeTiersChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.breakdown[0].price).toBeNull()
+  })
+
+  it('should_treat_null_lesson_tiers_data_as_empty', async () => {
+    const lesson = createMockLesson({ fee: 80, payment_type: 'venmo', tier_name: 'Legacy', lesson_at: '2026-05-10T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson])
+      return makeTiersChain(null)
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result.breakdown[0].price).toBeNull()
+  })
+
+  it('should_throw_when_lesson_tiers_query_fails', async () => {
+    const lesson = createMockLesson({ fee: 100, payment_type: 'venmo', tier_name: 'Premium', lesson_at: '2026-05-10T10:00:00Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeFullLessonsChain([lesson])
+      return makeTiersChain(null, new Error('tiers error'))
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('tiers error')
+  })
+
+  describe('collected and pending income classification', () => {
 
     function makeSummaryChainFull(data: unknown[], error: Error | null = null) {
       const mockLt = vi.fn().mockResolvedValue({ data, error })
@@ -270,7 +371,8 @@ describe('getHorseIncomeSummary', () => {
   function makeLessonsChain(data: { id: string; fee: number | null }[], error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }
@@ -524,7 +626,8 @@ describe('getHorseIncomeSummary', () => {
   it('should_treat_null_lessons_data_as_empty', async () => {
     const mockLt = vi.fn().mockResolvedValue({ data: null, error: null })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select: mockSelect }),
@@ -599,6 +702,16 @@ describe('getHorseIncomeSummary', () => {
 
     expect(result).toEqual([{ horseId: 'horse-1', horseName: 'horse-1', totalIncome: 100 }])
   })
+
+  it('should_exclude_unpaid_lessons_from_income', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeLessonsChain([])),
+    } as any)
+
+    const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
+  })
 })
 
 describe('getRiderIncomeSummary', () => {
@@ -612,7 +725,8 @@ describe('getRiderIncomeSummary', () => {
   function makeLessonsChain(data: { id: string; fee: number | null }[], error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }
@@ -881,7 +995,8 @@ describe('getRiderIncomeSummary', () => {
   it('should_treat_null_lessons_data_as_empty', async () => {
     const mockLt = vi.fn().mockResolvedValue({ data: null, error: null })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select: mockSelect }),
@@ -940,6 +1055,16 @@ describe('getRiderIncomeSummary', () => {
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
     expect(result).toEqual([{ riderId: 'rider-1', riderName: 'rider-1', totalIncome: 100 }])
+  })
+
+  it('should_exclude_unpaid_lessons_from_income', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeLessonsChain([])),
+    } as any)
+
+    const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
   })
 })
 
@@ -1269,5 +1394,195 @@ describe('getOutstandingLessons', () => {
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     await expect(getOutstandingLessons('barn-1')).rejects.toThrow('riders error')
+  })
+})
+
+describe('getTrainerIncomeSummary', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  const startDate = new Date('2026-05-01T00:00:00Z')
+  const endDate = new Date('2026-06-01T00:00:00Z')
+
+  function makeCollectedLessonsChain(data: { instructor_id: string | null; fee: number | null }[], error: Error | null = null) {
+    const mockLt = vi.fn().mockResolvedValue({ data, error })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeProfilesChain(data: { user_id: string; first_name: string; last_name: string }[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
+    return { select: mockSelect }
+  }
+
+  it('should_return_empty_when_no_collected_lessons', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeCollectedLessonsChain([])),
+    } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_empty_when_all_lessons_have_null_instructor', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([{ instructor_id: null, fee: 100 }])
+      return makeProfilesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_empty_when_all_lessons_have_null_fee', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([{ instructor_id: 'user-1', fee: null }])
+      return makeProfilesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_full_fee_for_single_trainer', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([{ instructor_id: 'user-1', fee: 100 }])
+      return makeProfilesChain([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([{ trainerId: 'user-1', trainerName: 'Jane Smith', totalIncome: 100 }])
+  })
+
+  it('should_aggregate_income_across_multiple_lessons_for_same_trainer', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([
+        { instructor_id: 'user-1', fee: 100 },
+        { instructor_id: 'user-1', fee: 75 },
+      ])
+      return makeProfilesChain([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([{ trainerId: 'user-1', trainerName: 'Jane Smith', totalIncome: 175 }])
+  })
+
+  it('should_return_two_entries_for_two_trainers', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([
+        { instructor_id: 'user-1', fee: 100 },
+        { instructor_id: 'user-2', fee: 50 },
+      ])
+      return makeProfilesChain([
+        { user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' },
+        { user_id: 'user-2', first_name: 'Bob', last_name: 'Jones' },
+      ])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toHaveLength(2)
+  })
+
+  it('should_sort_descending_by_total_income', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([
+        { instructor_id: 'user-1', fee: 50 },
+        { instructor_id: 'user-2', fee: 100 },
+      ])
+      return makeProfilesChain([
+        { user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' },
+        { user_id: 'user-2', first_name: 'Bob', last_name: 'Jones' },
+      ])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result[0].totalIncome).toBeGreaterThanOrEqual(result[1].totalIncome)
+  })
+
+  it('should_include_trainer_full_name_from_profiles', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([{ instructor_id: 'user-1', fee: 80 }])
+      return makeProfilesChain([{ user_id: 'user-1', first_name: 'Alice', last_name: 'Walker' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result[0].trainerName).toBe('Alice Walker')
+  })
+
+  it('should_use_trainer_id_as_fallback_when_profile_not_found', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([{ instructor_id: 'user-orphan', fee: 80 }])
+      return makeProfilesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result[0].trainerName).toBe('user-orphan')
+  })
+
+  it('should_treat_null_lessons_data_as_empty', async () => {
+    const mockLt = vi.fn().mockResolvedValue({ data: null, error: null })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: mockSelect }),
+    } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_treat_null_profiles_data_as_empty', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([{ instructor_id: 'user-1', fee: 80 }])
+      return makeProfilesChain(null)
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result[0].trainerName).toBe('user-1')
+  })
+
+  it('should_throw_on_lessons_query_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeCollectedLessonsChain([], new Error('lessons error'))),
+    } as any)
+
+    await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lessons error')
+  })
+
+  it('should_throw_on_profiles_query_error', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeCollectedLessonsChain([{ instructor_id: 'user-1', fee: 80 }])
+      return makeProfilesChain(null, new Error('profiles error'))
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('profiles error')
   })
 })

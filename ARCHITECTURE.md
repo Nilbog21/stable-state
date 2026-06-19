@@ -95,7 +95,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
 | `lessons.ts` | Lesson CRUD: `createLesson`, `getLessonsByBarn`, `getLessonById`, `deleteLesson`, `updateLesson`, `getUpcomingLessons` |
 | `lesson-participants.ts` | Participant management: `createLessonWithParticipants`, `updateLessonWithParticipants`, `addHorseToLesson`, `addRiderToLesson` |
-| `lesson-finances.ts` | Financial reporting: `getFinancialSummary` (returns `collectedIncome`, `pendingIncome`, `breakdown`); `getOutstandingLessons` (returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); `getHorseIncomeSummary`; `getRiderIncomeSummary` |
+| `lesson-finances.ts` | Financial reporting: `getFinancialSummary` (returns `collectedIncome`, `pendingIncome`, `breakdown` grouped by `tier_name` with `{ tierName, price, lessonCount, subtotal }[]`); `getOutstandingLessons` (returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); `getHorseIncomeSummary` (collected-only); `getRiderIncomeSummary` (collected-only); `getTrainerIncomeSummary` (collected lessons grouped by instructor with full name from profiles) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
 | `profiles.ts` | User profiles; `upsertProfile` (called at registration); `seedManagerProfile` (inserts pre-auth row before first OAuth sign-in) |
 | `effective-membership.ts` | Dev-only role override (see below) |
