@@ -124,6 +124,15 @@ describe('ProfileForm - name change confirmation', () => {
     fireEvent.submit(screen.getByRole('form'))
     await waitFor(() => expect(updateProfileAction).not.toHaveBeenCalled())
   })
+
+  it('should_call_action_when_name_change_is_confirmed', async () => {
+    vi.mocked(updateProfileAction).mockResolvedValue({ error: null })
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<ProfileForm profile={mockProfile} heading="Edit Profile" redirectAfterSave={null} />)
+    fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Janet' } })
+    fireEvent.submit(screen.getByRole('form'))
+    await waitFor(() => expect(updateProfileAction).toHaveBeenCalled())
+  })
 })
 
 describe('ProfileForm - null contact fields', () => {
@@ -174,7 +183,14 @@ describe('ProfileForm - after save', () => {
     await waitFor(() => expect(mockRouterPush).toHaveBeenCalledWith('/'))
   })
 
-  it('should_not_redirect_when_redirectAfterSave_is_null', async () => {
+  it('should_call_updateProfileAction_when_redirectAfterSave_is_null', async () => {
+    vi.mocked(updateProfileAction).mockResolvedValue({ error: null })
+    render(<ProfileForm profile={mockProfile} heading="Edit Profile" redirectAfterSave={null} />)
+    fireEvent.submit(screen.getByRole('form'))
+    await waitFor(() => expect(updateProfileAction).toHaveBeenCalled())
+  })
+
+  it('should_not_call_router_push_when_redirectAfterSave_is_null', async () => {
     vi.mocked(updateProfileAction).mockResolvedValue({ error: null })
     render(<ProfileForm profile={mockProfile} heading="Edit Profile" redirectAfterSave={null} />)
     fireEvent.submit(screen.getByRole('form'))
