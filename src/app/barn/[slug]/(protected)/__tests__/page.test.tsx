@@ -3,6 +3,12 @@ import { render, screen, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
+vi.mock('../UpcomingLessonCard', () => ({
+  UpcomingLessonCard: ({ role, slug, lesson }: { role: string; slug: string; lesson: { id: string } }) => (
+    <div data-testid="upcoming-card" data-role={role} data-slug={slug} data-lesson-id={lesson.id} />
+  ),
+}))
+
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
@@ -110,7 +116,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByRole('heading', { name: /upcoming lessons/i })).toBeDefined()
+    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
   it('should_show_empty_state_when_no_upcoming_lessons', async () => {
@@ -119,47 +125,13 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText('No upcoming lessons this week')).toBeDefined()
+    expect(screen.getByText('No lessons scheduled for the next 7 days.')).toBeDefined()
   })
 
-  it('should_show_horse_names_for_manager', async () => {
+  it('should_render_upcoming_lesson_card_with_role', async () => {
     const lesson = {
       ...createMockLesson(),
       instructor_name: null,
-      horse_names: ['Thunderbolt'],
-      horse_count: 1,
-      rider_names: ['Alice'],
-      rider_count: 1,
-    }
-    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByText('Thunderbolt')).toBeDefined()
-  })
-
-  it('should_show_rider_names_for_manager', async () => {
-    const lesson = {
-      ...createMockLesson(),
-      instructor_name: null,
-      horse_names: ['Thunderbolt'],
-      horse_count: 1,
-      rider_names: ['Alice'],
-      rider_count: 1,
-    }
-    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByText('Alice')).toBeDefined()
-  })
-
-  it('should_show_instructor_name_when_present', async () => {
-    const lesson = {
-      ...createMockLesson(),
-      instructor_name: 'Jane Smith',
       horse_names: [],
       horse_count: 0,
       rider_names: [],
@@ -170,7 +142,24 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText('Jane Smith')).toBeDefined()
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-role')).toBe('manager')
+  })
+
+  it('should_render_upcoming_lesson_card_with_slug', async () => {
+    const lesson = {
+      ...createMockLesson(),
+      instructor_name: null,
+      horse_names: [],
+      horse_count: 0,
+      rider_names: [],
+      rider_count: 0,
+    }
+    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-slug')).toBe('green-acres')
   })
 
   it('should_show_upcoming_lessons_section_for_trainer', async () => {
@@ -179,7 +168,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByRole('heading', { name: /upcoming lessons/i })).toBeDefined()
+    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
   it('should_show_upcoming_lessons_section_for_rider', async () => {
@@ -188,7 +177,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByRole('heading', { name: /upcoming lessons/i })).toBeDefined()
+    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
   it('should_call_getUpcomingLessons_with_user_id', async () => {
