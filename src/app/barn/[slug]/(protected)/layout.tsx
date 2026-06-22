@@ -43,9 +43,10 @@ export default async function ProtectedBarnLayout({
     getProfilesByUserIds([data.user.id]),
   ])
   const profile = profileRows[0] ?? null
-  const initials = profile
-    ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
-    : (data.user.email?.[0] ?? '?').toUpperCase()
+  const initials =
+    profile && profile.first_name && profile.last_name
+      ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
+      : (data.user.email?.[0] ?? '?').toUpperCase()
   const fullName = profile ? `${profile.first_name} ${profile.last_name}` : null
   const showSwitchBarn = allMemberships.filter((m) => m.membership.status === 'active').length > 1
   const email = data.user.email ?? ''

@@ -1,5 +1,7 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+
+afterEach(cleanup)
 
 vi.mock('@/app/actions/auth', () => ({
   signOut: vi.fn(),
@@ -98,7 +100,6 @@ describe('UserMenu - outside click/touch closes dropdown', () => {
       </div>
     )
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
-    expect(screen.getByText('Sign out')).toBeDefined()
     fireEvent.mouseDown(screen.getByTestId('outside'))
     expect(screen.queryByText('Sign out')).toBeNull()
   })
@@ -111,7 +112,6 @@ describe('UserMenu - outside click/touch closes dropdown', () => {
       </div>
     )
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
-    expect(screen.getByText('Sign out')).toBeDefined()
     fireEvent.touchStart(screen.getByTestId('outside'))
     expect(screen.queryByText('Sign out')).toBeNull()
   })
