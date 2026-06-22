@@ -28,7 +28,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
 | lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
-| profiles | SELECT own + barn members; UPDATE own + any barn member; INSERT own | SELECT own + barn members | SELECT/INSERT/UPDATE own |
+| profiles | SELECT own + barn members; UPDATE own + any barn member (contact fields only); INSERT own | SELECT own + barn members | SELECT/INSERT/UPDATE own |
 
 ## DB schema
 
