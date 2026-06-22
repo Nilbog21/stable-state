@@ -145,8 +145,8 @@ async function run() {
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', DEV_BARN_ID), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', DEV_BARN_ID), 'delete barn_memberships')
   mustSucceed(
-    await supabase.from('profiles').delete().eq('barn_id', DEV_BARN_ID).is('user_id', null),
-    'delete pre-auth profiles'
+    await supabase.from('profiles').delete().eq('barn_id', DEV_BARN_ID),
+    'delete dev profiles'
   )
   mustSucceed(await supabase.from('barns').delete().eq('id', DEV_BARN_ID), 'delete barn')
 
