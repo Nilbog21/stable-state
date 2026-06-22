@@ -36,14 +36,14 @@ describe('formatLessonDate', () => {
     expect(formatLessonDate(iso, now)).not.toMatch(/^Today/)
   })
 
-  it('should_include_separator_between_date_and_time', () => {
-    const now = new Date('2026-06-22T12:00:00Z')
-    const iso = '2026-05-19T10:00:00Z'
-    expect(formatLessonDate(iso, now)).toContain(' · ')
-  })
 })
 
 describe('UpcomingLessonCard', () => {
+  it('should_render_formatted_date', () => {
+    render(<UpcomingLessonCard lesson={makeLesson({ lesson_at: '2026-06-15T14:00:00Z' })} role="manager" slug="green-acres" />)
+    expect(screen.getByText(/ · /)).toBeDefined()
+  })
+
   it('should_render_horse_names', () => {
     render(<UpcomingLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
