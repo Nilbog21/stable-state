@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { upsertProfile, getProfilesByUserIds, seedManagerProfile } from '../profiles'
+import { upsertProfile, getProfilesByUserIds, seedManagerProfile, updateContactInfo } from '../profiles'
 
 const mockProfile = createMockProfile()
 
@@ -248,5 +248,48 @@ describe('seedManagerProfile', () => {
     await expect(
       seedManagerProfile('manager@example.com', 'Dev', 'Manager', 'barn-1', 'manager')
     ).rejects.toThrow('insert failed')
+  })
+})
+
+describe('updateContactInfo', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_update_with_contact_fields', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateContactInfo('profile-1', { phone: '555-1234' })
+
+    expect(mockUpdate).toHaveBeenCalledWith({ phone: '555-1234' })
+  })
+
+  it('should_filter_by_profile_id', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateContactInfo('profile-99', { emergency_contact_name: 'Jane' })
+
+    expect(mockEq).toHaveBeenCalledWith('id', 'profile-99')
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('update failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: dbError }),
+        }),
+      }),
+    } as any)
+
+    await expect(updateContactInfo('profile-1', { phone: '555-0000' })).rejects.toThrow('update failed')
   })
 })
