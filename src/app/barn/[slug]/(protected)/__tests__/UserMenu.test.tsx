@@ -91,6 +91,27 @@ describe('UserMenu - Switch Barn link', () => {
   })
 })
 
+describe('UserMenu - Profile link', () => {
+  it('should_show_profile_link_when_dropdown_is_open', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: /profile/i })).toBeDefined()
+  })
+
+  it('should_profile_link_point_to_profile_route', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect((screen.getByRole('link', { name: /profile/i }) as HTMLAnchorElement).href).toContain('/profile')
+  })
+
+  it('should_close_dropdown_when_profile_link_is_clicked', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /profile/i }))
+    expect(screen.queryByText('Sign out')).toBeNull()
+  })
+})
+
 describe('UserMenu - outside click/touch closes dropdown', () => {
   it('should_close_dropdown_on_outside_click', () => {
     render(

@@ -11,6 +11,10 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getBarnMembershipsForUser: vi.fn(),
 }))
 
+vi.mock('@/lib/db/profiles', () => ({
+  getProfileByUserId: vi.fn(),
+}))
+
 vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
 }))
@@ -32,10 +36,19 @@ vi.mock('next/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { applyPreAuthProfile, getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
+import { getProfileByUserId } from '@/lib/db/profiles'
 import { GET } from '../route'
 
 const mockBarn = createMockBarn()
 const mockMembership = createMockMembership({ id: 'm1' })
+
+import { createMockProfile } from '@/test/fixtures'
+
+const completeProfile = createMockProfile({
+  phone: '555-1234',
+  emergency_contact_name: 'Bob',
+  emergency_contact_phone: '555-5678',
+})
 
 describe('GET /auth/callback', () => {
   beforeEach(() => {
@@ -43,6 +56,8 @@ describe('GET /auth/callback', () => {
     vi.mocked(applyPreAuthProfile).mockResolvedValue(undefined)
     vi.mocked(getBarnMembershipsForUser).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+    vi.mocked(getProfileByUserId).mockReset()
+    vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
     mockCookiesSet.mockReset()
     mockRedirect.mockImplementation((url: string | URL) => ({
       url: url.toString(),
@@ -324,6 +339,90 @@ describe('GET /auth/callback', () => {
 
       expect(mockCookiesSet).not.toHaveBeenCalled()
     })
+
+    describe('profile completeness check', () => {
+      beforeEach(() => {
+        vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+          { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
+        ])
+      })
+
+      it('should_redirect_to_profile_complete_when_phone_is_null', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+      })
+
+      it('should_redirect_to_profile_complete_when_emergency_contact_name_is_null', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: '555-1234', emergency_contact_name: null, emergency_contact_phone: '555-5678' })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+      })
+
+      it('should_redirect_to_profile_complete_when_emergency_contact_phone_is_null', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: '555-1234', emergency_contact_name: 'Bob', emergency_contact_phone: null })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+      })
+
+      it('should_not_redirect_to_profile_complete_when_all_contact_fields_are_present', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockRedirect).not.toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+      })
+
+      it('should_redirect_to_profile_complete_when_profile_is_null', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(null)
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+      })
+
+      it('should_redirect_to_profile_complete_when_multiple_active_memberships_and_phone_is_null', async () => {
+        vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+          { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+          { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'active' }) },
+        ])
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+      })
+
+      it('should_not_redirect_to_profile_complete_on_db_error_and_proceed_to_barn', async () => {
+        vi.mocked(getProfileByUserId).mockRejectedValue(new Error('db error'))
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockRedirect).not.toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres')
+      })
+    })
   })
 
   describe('with barn param', () => {
@@ -404,6 +503,41 @@ describe('GET /auth/callback', () => {
       expect(mockRedirect).toHaveBeenCalledWith(
         'http://localhost:3000/login?error=auth_callback_failed'
       )
+    })
+
+    it('should_redirect_to_profile_complete_when_barn_login_and_phone_is_null', async () => {
+      vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+      vi.mocked(getUserMembership).mockResolvedValue(mockMembership as any)
+      vi.mocked(getProfileByUserId).mockResolvedValue(
+        createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+      )
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+    })
+
+    it('should_redirect_to_barn_home_when_barn_login_and_profile_is_complete', async () => {
+      vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+      vi.mocked(getUserMembership).mockResolvedValue(mockMembership as any)
+      vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres/')
+    })
+
+    it('should_redirect_to_barn_home_on_profile_db_error_when_barn_login', async () => {
+      vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+      vi.mocked(getUserMembership).mockResolvedValue(mockMembership as any)
+      vi.mocked(getProfileByUserId).mockRejectedValue(new Error('db error'))
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres/')
     })
 
     it('should_treat_membership_as_null_when_user_is_null_after_exchange', async () => {

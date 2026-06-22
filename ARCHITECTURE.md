@@ -66,7 +66,7 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 - trainer: {Barn Name} (home), Lessons, Horses, Riders — 3 section links
 - rider: {Barn Name} (home), Lessons, Horses — 2 section links
 
-A `UserMenu` Client Component sits on the right side of the nav bar. It shows the user's initials (first letter of `first_name` + first letter of `last_name` from `profiles`; falls back to first character of email, then `?`). Clicking it opens a dropdown with: full name + email (non-clickable header), a "Switch Barn" link to `/barns` (only when the user has >1 active barn membership), and a Sign Out button. The dropdown closes on outside click or touch.
+A `UserMenu` Client Component sits on the right side of the nav bar. It shows the user's initials (first letter of `first_name` + first letter of `last_name` from `profiles`; falls back to first character of email, then `?`). Clicking it opens a dropdown with: full name + email (non-clickable header), a "Profile" link to `/profile`, a "Switch Barn" link to `/barns` (only when the user has >1 active barn membership), and a Sign Out button. The dropdown closes on outside click or touch.
 
 "Horses" → `/barn/[slug]/horses` (all roles)
 "Manage Barn" → `/barn/[slug]/settings` (manager only)
@@ -84,6 +84,8 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
 | `/barn/[slug]/finances` | manager | **Outstanding** section (all-time past unpaid lessons with non-zero fee — inline payment-type dropdown via `OutstandingTable` Client Component) appears above the month selector and is hidden entirely when there are no outstanding lessons. Below it: `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); **Collected income** (`payment_type IS NOT NULL`), **Pending income** (future unpaid lessons with fee); pill-style tab switcher (`?tab=tier\|horse\|rider\|trainer`, defaults to `tier`) with four views: **By Tier** (tier name, price or `—` for Custom, lesson count, subtotal), **By Horse** (horse name, collected income), **By Rider** (rider name, collected income), **By Trainer** (trainer full name, collected income) |
 | `/barn/[slug]/settings` | manager | **Manage Barn** page: Invite Link, Pending Requests (approve/reject; approving `rider` auto-creates a `riders` row, duplicate suppressed), Active Members (remove), Tier CRUD |
+| `/profile` | Authenticated | Edit form for first name, last name, phone, emergency contact name, emergency contact phone; name changes prompt user to notify their barn manager; linked from avatar dropdown |
+| `/profile/complete` | Authenticated | Same form with "Complete your profile" heading; post-login destination when any contact field (phone, emergency_contact_name, emergency_contact_phone) is null; redirects to `/` after save |
 | `/login` | All | Sign-in page; displays Supabase connection status dot (green = `NEXT_PUBLIC_SUPABASE_URL` set, yellow = not set); shows no-barn guidance when `?no_barns=true` and user is authenticated |
 | `/barn/[slug]/register` | unauthenticated | Membership sign-up flow |
 
@@ -101,7 +103,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 | `lesson-participants.ts` | Participant management: `createLessonWithParticipants`, `updateLessonWithParticipants`, `addHorseToLesson`, `addRiderToLesson` |
 | `lesson-finances.ts` | Financial reporting: `getFinancialSummary` (returns `collectedIncome`, `pendingIncome`, `breakdown` grouped by `tier_name` with `{ tierName, price, lessonCount, subtotal }[]`); `getOutstandingLessons` (returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); `getHorseIncomeSummary` (collected-only); `getRiderIncomeSummary` (collected-only); `getTrainerIncomeSummary` (collected lessons grouped by instructor with full name from profiles) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
-| `profiles.ts` | User profiles; `upsertProfile` (called at registration); `seedManagerProfile` (inserts pre-auth row before first OAuth sign-in); `updateContactInfo` (updates phone/emergency contact fields; RLS enforces own-row for users, any barn member for managers) |
+| `profiles.ts` | User profiles; `upsertProfile` (called at registration); `seedManagerProfile` (inserts pre-auth row before first OAuth sign-in); `getProfileByUserId` (single-user lookup by auth user ID); `updateProfile` (updates all five editable fields: first_name, last_name, phone, emergency_contact_name, emergency_contact_phone); `updateContactInfo` (updates phone/emergency contact fields; RLS enforces own-row for users, any barn member for managers) |
 | `notifications.ts` | Notification CRUD: `createNotification` (upserts on `user_id,barn_id,type`; resets `read_at` on conflict); `markNotificationRead` (sets `read_at = now()` by id); `markAllNotificationsRead` (sets `read_at = now()` for all unread for a user in a barn) |
 | `types.ts` | Shared TypeScript types |
 
@@ -110,7 +112,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 No API routes. All mutations go through Next.js Server Actions.
 
 - **Global actions:** `src/app/actions/` — auth (`auth.ts`), lesson submission and payment-type update (`lessons.ts`), notification create and mark-read (`notifications.ts`)
-- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`, `barn/[slug]/settings/`)
+- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`profile/`, `barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`, `barn/[slug]/settings/`)
 
 ## Supabase RPC
 
