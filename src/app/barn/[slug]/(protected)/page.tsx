@@ -25,12 +25,12 @@ export default async function BarnDashboardPage({
 
   if (data.user) {
     const membership = await getUserMembership(data.user.id, barn.id)
-    if (membership?.role === 'manager') {
+    if (membership?.role) {
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
       const [lessons, pending] = await Promise.all([
-        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString()),
-        getPendingMemberships(barn.id),
+        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), data.user.id, membership.role),
+        membership.role === 'manager' ? getPendingMemberships(barn.id) : Promise.resolve([]),
       ])
       upcomingLessons = lessons
       pendingCount = pending.length

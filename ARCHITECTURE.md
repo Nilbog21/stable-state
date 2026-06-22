@@ -75,7 +75,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 |---|---|---|
 | `/` | All | Unauthenticated users are redirected to `/login`; authenticated users are redirected server-side using barn membership logic: single active → `/barn/[slug]`, multiple active → `/barns`, pending-only single → `/barn/[slug]/pending`, pending-only multiple → `/barns`, no memberships → `/login?no_barns=true` |
 | `/barns` | Authenticated users | Barn selector: one card per membership; active shows role + link to `/barn/[slug]`; pending shows badge + link to `/barn/[slug]/pending`; no memberships redirects to `/login?no_barns=true` |
-| `/barn/[slug]` | All active members | Manager sees pending-requests badge (links to `/settings`; hidden when zero) and upcoming-lessons preview (next 7 days); nav links rendered by layout |
+| `/barn/[slug]` | All active members | All roles see upcoming-lessons preview (next 7 days; manager/trainer filtered by `instructor_id`, rider by enrollment); manager also sees pending-requests badge (links to `/settings`; hidden when zero); nav links rendered by layout |
 | `/barn/[slug]/lessons` | All active members | Lessons split at 7-day cutoff: recent shown immediately, older behind `OlderLessonsToggle`; manager can delete |
 | `/barn/[slug]/lessons/new` | manager, trainer | |
 | `/barn/[slug]/lessons/[id]` | All active members | Edit link visible to managers |
@@ -97,7 +97,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
-| `lessons.ts` | Lesson CRUD: `createLesson`, `getLessonsByBarn`, `getLessonById`, `deleteLesson`, `updateLesson`, `getUpcomingLessons` |
+| `lessons.ts` | Lesson CRUD: `createLesson`, `getLessonsByBarn`, `getLessonById`, `deleteLesson`, `updateLesson`, `getUpcomingLessons(barnId, from, to, userId, role)` — manager/trainer: filters by `instructor_id`; rider: resolves via `riders → lesson_riders → lessons` |
 | `lesson-participants.ts` | Participant management: `createLessonWithParticipants`, `updateLessonWithParticipants`, `addHorseToLesson`, `addRiderToLesson` |
 | `lesson-finances.ts` | Financial reporting: `getFinancialSummary` (returns `collectedIncome`, `pendingIncome`, `breakdown` grouped by `tier_name` with `{ tierName, price, lessonCount, subtotal }[]`); `getOutstandingLessons` (returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); `getHorseIncomeSummary` (collected-only); `getRiderIncomeSummary` (collected-only); `getTrainerIncomeSummary` (collected lessons grouped by instructor with full name from profiles) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
