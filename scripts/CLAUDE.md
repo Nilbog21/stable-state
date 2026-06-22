@@ -28,11 +28,11 @@ Raw `supabase.from(...)` calls are used only when no db layer equivalent exists 
 
 Each script is split into three files with distinct responsibilities:
 
-- **`.sh`** — env var validation, CLI arg parsing, prompting for missing args, defaulting to `DEV_*` env vars, invoking `npx tsx`
-- **`.ts`** — pure business logic only; no `readline`, no `process.env` reads; all inputs arrive as function arguments
+- **`.sh`** — reads `.env.local`, validates required env vars, CLI arg parsing, prompting for missing args, defaulting to `DEV_*` env vars, invoking `npx tsx`
+- **`.ts`** — pure business logic; reads `process.env` for credentials and values the shell wrapper has already validated; no CLI arg parsing or prompting; no `readline` (exception: interactive numbered-list selection when bash cannot do it cleanly — see `change-user.ts`); pure functions accept business-logic inputs as function arguments
 - **`.test.ts`** — vitest tests for pure functions exported from `.ts`
 
-Add a **`.test.sh`** only when the shell script has non-trivial branching logic (e.g. `change-user.sh`, `check-coverage.sh`). Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage.sh`) need no `.ts` counterpart.
+Add a **`.test.sh`** only when the shell script has non-trivial branching logic (e.g. `change-user.sh`). Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage.sh`) need no `.ts` counterpart.
 
 `reset-db` is the canonical example of the full pattern.
 
