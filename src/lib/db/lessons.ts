@@ -162,18 +162,49 @@ export async function updateLesson(
 export async function getUpcomingLessons(
   barnId: string,
   from: string,
-  to: string
+  to: string,
+  userId: string,
+  role: 'manager' | 'trainer' | 'rider'
 ): Promise<LessonWithDetails[]> {
   const supabase = await createClient()
+
+  if (role === 'rider') {
+    const { data: rider, error: riderError } = await supabase
+      .from('riders')
+      .select('id')
+      .eq('barn_id', barnId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (riderError) throw riderError
+    if (!rider) return []
+
+    const { data: enrollments, error: enrollmentError } = await supabase
+      .from('lesson_riders')
+      .select('lesson_id')
+      .eq('rider_id', rider.id)
+    if (enrollmentError) throw enrollmentError
+    if (!enrollments?.length) return []
+
+    const lessonIds = enrollments.map((e) => e.lesson_id)
+    const { data: lessons, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('*')
+      .in('id', lessonIds)
+      .gte('lesson_at', from)
+      .lt('lesson_at', to)
+      .order('lesson_at', { ascending: true })
+    if (lessonsError) throw lessonsError
+    return hydrateParticipants(supabase, lessons)
+  }
+
   const { data: lessons, error: lessonsError } = await supabase
     .from('lessons')
     .select('*')
     .eq('barn_id', barnId)
+    .eq('instructor_id', userId)
     .gte('lesson_at', from)
     .lt('lesson_at', to)
     .order('lesson_at', { ascending: true })
-
   if (lessonsError) throw lessonsError
-
   return hydrateParticipants(supabase, lessons)
 }

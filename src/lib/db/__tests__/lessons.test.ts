@@ -760,6 +760,39 @@ describe('getUpcomingLessons', () => {
     expect(result[0].id).toBe(lesson.id)
   })
 
+  it('should_throw_when_rider_lookup_returns_an_error', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'riders') return makeRiderLookupChain(null, new Error('rider lookup error'))
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await expect(getUpcomingLessons('barn-1', from, to, 'user-1', 'rider')).rejects.toThrow('rider lookup error')
+  })
+
+  it('should_throw_when_enrollment_lookup_returns_an_error', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'lesson_riders') return makeEnrollmentChain([], new Error('enrollment error'))
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await expect(getUpcomingLessons('barn-1', from, to, 'user-1', 'rider')).rejects.toThrow('enrollment error')
+  })
+
+  it('should_throw_when_rider_lessons_fetch_returns_an_error', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'lesson_riders') return makeEnrollmentChain([{ lesson_id: 'lesson-1' }])
+      if (table === 'lessons') return makeRiderLessonsChain([], new Error('lessons error'))
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await expect(getUpcomingLessons('barn-1', from, to, 'user-1', 'rider')).rejects.toThrow('lessons error')
+  })
+
   it('should_return_empty_array_when_no_lessons_in_range', async () => {
     const { select } = makeInstructorLessonsChain([])
     vi.mocked(createClient).mockResolvedValue({
