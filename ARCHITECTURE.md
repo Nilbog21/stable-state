@@ -28,7 +28,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
 | lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT | SELECT, INSERT |
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
-| profiles | SELECT own + barn members; ALL own | SELECT/ALL own | SELECT/ALL own |
+| profiles | SELECT own + barn members; UPDATE own + any barn member (contact fields only); INSERT own | SELECT own + barn members | SELECT/INSERT/UPDATE own |
 
 ## DB schema
 
@@ -45,7 +45,7 @@ All tables are in the `public` schema with RLS enabled.
 | `lesson_tiers` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `name TEXT NOT NULL`, `price NUMERIC(10,2)`, `is_default BOOLEAN NOT NULL DEFAULT false`, `is_active BOOLEAN NOT NULL DEFAULT true`, `created_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | Barn-scoped fee tiers; `is_default` marks the tier pre-selected on new lessons; `is_active=false` soft-deletes a tier |
 | `lesson_horses` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `lesson_id UUID NOT NULL`, `horse_id UUID NOT NULL`, `exertion_level SMALLINT DEFAULT 3 CHECK(1–5)`; `UNIQUE(lesson_id, horse_id)`; `FK(barn_id, lesson_id)→lessons`; `FK(barn_id, horse_id)→horses` | Trigger `lesson_horses_participant_count_check` enforces per-type counts (deferred) |
 | `lesson_riders` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `lesson_id UUID NOT NULL`, `rider_id UUID NOT NULL`; `UNIQUE(lesson_id, rider_id)`; `FK(barn_id, lesson_id)→lessons`; `FK(barn_id, rider_id)→riders` | `UNIQUE(lesson_id)` dropped; trigger `lesson_riders_participant_count_check` enforces normal=1 rider+1 horse, group=≥2 riders (deferred) |
-| `profiles` | `id UUID PK`, `user_id UUID UNIQUE→auth.users` (nullable — null until first sign-in), `email TEXT UNIQUE NOT NULL`, `barn_id UUID→barns` (nullable), `role TEXT→roles` (nullable), `first_name TEXT NOT NULL`, `last_name TEXT NOT NULL`, `created_at TIMESTAMPTZ` | User-level (not barn-scoped). Pre-auth rows (user_id=null, barn_id+role set) are inserted by `seedManagerProfile` before OAuth sign-in; the trigger fills in user_id on first sign-in. Regular users have barn_id=null and role=null. |
+| `profiles` | `id UUID PK`, `user_id UUID UNIQUE→auth.users` (nullable — null until first sign-in), `email TEXT UNIQUE NOT NULL`, `barn_id UUID→barns` (nullable), `role TEXT→roles` (nullable), `first_name TEXT NOT NULL`, `last_name TEXT NOT NULL`, `phone TEXT` (nullable), `emergency_contact_name TEXT` (nullable), `emergency_contact_phone TEXT` (nullable), `created_at TIMESTAMPTZ` | User-level (not barn-scoped). Pre-auth rows (user_id=null, barn_id+role set) are inserted by `seedManagerProfile` before OAuth sign-in; the trigger fills in user_id on first sign-in. Regular users have barn_id=null and role=null. |
 
 ## RLS conventions
 
@@ -99,7 +99,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 | `lesson-participants.ts` | Participant management: `createLessonWithParticipants`, `updateLessonWithParticipants`, `addHorseToLesson`, `addRiderToLesson` |
 | `lesson-finances.ts` | Financial reporting: `getFinancialSummary` (returns `collectedIncome`, `pendingIncome`, `breakdown` grouped by `tier_name` with `{ tierName, price, lessonCount, subtotal }[]`); `getOutstandingLessons` (returns `OutstandingLesson[]` with past unpaid lessons, fee ≠ 0); `getHorseIncomeSummary` (collected-only); `getRiderIncomeSummary` (collected-only); `getTrainerIncomeSummary` (collected lessons grouped by instructor with full name from profiles) |
 | `lesson-tiers.ts` | Tier CRUD: `getTiersByBarn`, `createTier`, `updateTier`, `deactivateTier`, `setDefaultTier`, `getAllTiersByBarn` (incl. inactive), `getTierById` |
-| `profiles.ts` | User profiles; `upsertProfile` (called at registration); `seedManagerProfile` (inserts pre-auth row before first OAuth sign-in) |
+| `profiles.ts` | User profiles; `upsertProfile` (called at registration); `seedManagerProfile` (inserts pre-auth row before first OAuth sign-in); `updateContactInfo` (updates phone/emergency contact fields; RLS enforces own-row for users, any barn member for managers) |
 | `types.ts` | Shared TypeScript types |
 
 ## Server actions pattern

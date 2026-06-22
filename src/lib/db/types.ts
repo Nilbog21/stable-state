@@ -9,6 +9,9 @@ export interface Profile {
   role: Role | null
   first_name: string
   last_name: string
+  phone: string | null
+  emergency_contact_name: string | null
+  emergency_contact_phone: string | null
   created_at: string
 }
 
