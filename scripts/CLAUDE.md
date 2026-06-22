@@ -24,6 +24,28 @@ await createHorse(barnId, name, supabase)
 
 Raw `supabase.from(...)` calls are used only when no db layer equivalent exists (e.g. barn insert, active membership insert, teardown deletes, `auth.admin.*` calls).
 
+## Responsibility split
+
+Each script is split into three files with distinct responsibilities:
+
+- **`.sh`** — env var validation, CLI arg parsing, prompting for missing args, defaulting to `DEV_*` env vars, invoking `npx tsx`
+- **`.ts`** — pure business logic only; no `readline`, no `process.env` reads; all inputs arrive as function arguments
+- **`.test.ts`** — vitest tests for pure functions exported from `.ts`
+
+Add a **`.test.sh`** only when the shell script has non-trivial branching logic (e.g. `change-user.sh`, `check-coverage.sh`). Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage.sh`) need no `.ts` counterpart.
+
+`reset-db` is the canonical example of the full pattern.
+
+### Audit — release-2
+
+| Script | `.sh` | `.ts` | `.test.ts` | `.test.sh` | Notes |
+|---|---|---|---|---|---|
+| `reset-db` | ✓ | ✓ | ✓ | ✓ | Canonical model |
+| `change-user` | ✓ | ✓ | ✓ | ✓ | `.ts` uses `readline` for numbered-list selection; bash can't do this cleanly |
+| `seed-account` | ✓ | ✓ | — | — | No extractable pure functions (all operations are DB calls); no non-trivial shell branching |
+| `ci` | ✓ | — | — | ✓ | Shell-only |
+| `check-coverage` | ✓ | — | — | ✓ | Shell-only |
+
 ## Testing
 
 Pure function tests live in a vitest test file alongside the script (e.g. `reset-db.test.ts`). Shell wrapper behavior (env validation, tsx invocation) is tested in the corresponding `.test.sh` file.
