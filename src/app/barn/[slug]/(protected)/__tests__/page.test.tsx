@@ -13,14 +13,11 @@ vi.mock('@/lib/db/barns', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
+  getPendingMemberships: vi.fn(),
 }))
 
 vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
-}))
-
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getPendingMemberships: vi.fn(),
 }))
 
 vi.mock('@/app/actions/auth', () => ({
@@ -242,7 +239,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_not_render_pending_approvals_badge_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
