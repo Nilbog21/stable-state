@@ -6,7 +6,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import type { LessonWithDetails } from '@/lib/db/types'
-import { LocalTime } from './LocalTime'
+import { UpcomingLessonCard } from './UpcomingLessonCard'
 
 export default async function BarnDashboardPage({
   params,
@@ -22,10 +22,12 @@ export default async function BarnDashboardPage({
 
   let upcomingLessons: LessonWithDetails[] | null = null
   let pendingCount = 0
+  let userRole: 'manager' | 'trainer' | 'rider' | null = null
 
   if (data.user) {
     const membership = await getUserMembership(data.user.id, barn.id)
     if (membership?.role) {
+      userRole = membership.role as 'manager' | 'trainer' | 'rider'
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
       const [lessons, pending] = await Promise.all([
@@ -52,32 +54,24 @@ export default async function BarnDashboardPage({
           </Link>
         </div>
       )}
-      {upcomingLessons !== null && (
+      {upcomingLessons !== null && userRole !== null && (
         <section>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Upcoming Lessons
+            Your Upcoming Lessons
           </h2>
           {upcomingLessons.length === 0 ? (
-            <p className="text-sm text-zinc-500">No upcoming lessons this week</p>
+            <p className="text-sm text-zinc-500">No lessons scheduled for the next 7 days.</p>
           ) : (
-            <ul className="space-y-2">
+            <div className="space-y-3">
               {upcomingLessons.map((lesson) => (
-                <li key={lesson.id} className="text-sm text-zinc-700 dark:text-zinc-300">
-                  <span className="font-medium">
-                    <LocalTime iso={lesson.lesson_at} />
-                  </span>
-                  {lesson.instructor_name && (
-                    <span className="ml-2">{lesson.instructor_name}</span>
-                  )}
-                  {lesson.horse_names.length > 0 && (
-                    <span className="ml-2">{lesson.horse_names.join(', ')}</span>
-                  )}
-                  {lesson.rider_names.length > 0 && (
-                    <span className="ml-2">{lesson.rider_names.join(', ')}</span>
-                  )}
-                </li>
+                <UpcomingLessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  role={userRole}
+                  slug={slug}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </section>
       )}
