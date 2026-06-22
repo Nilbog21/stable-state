@@ -64,13 +64,18 @@ async function run() {
   const selection = await promptSelection(profiles.length)
   const target = profiles[selection - 1] as { user_id: string | null; email: string; first_name: string; last_name: string }
 
-  const devProfile = mustSucceed(
+  const devProfile = mustSucceed<{ user_id: string | null; barn_id: string | null }>(
     await supabase.from('profiles').select('user_id, barn_id').eq('email', DEV_EMAIL).single(),
     'fetch dev profile'
   )
 
   if (!devProfile.user_id) {
     console.error('sign in to the app first, then run this script')
+    process.exit(1)
+  }
+
+  if (!devProfile.barn_id) {
+    console.error('dev profile has no barn — run reset-db.sh first')
     process.exit(1)
   }
 
@@ -97,7 +102,7 @@ async function run() {
 
   const targetUserId: string = target.user_id
 
-  const targetMembership = mustSucceed(
+  const targetMembership = mustSucceed<{ role: string; can_instruct: boolean }>(
     await supabase
       .from('barn_memberships')
       .select('role, can_instruct')
