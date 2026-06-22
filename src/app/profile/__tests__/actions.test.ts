@@ -61,11 +61,31 @@ describe('updateProfileAction', () => {
     expect(result).toEqual({ error: 'first_name is required' })
   })
 
+  it('should_return_error_when_first_name_is_missing_from_form', async () => {
+    mockAuthUser()
+    const form = new FormData()
+    form.set('last_name', 'Doe')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'first_name is required' })
+  })
+
   it('should_return_error_when_last_name_is_blank', async () => {
     mockAuthUser()
     const form = new FormData()
     form.set('first_name', 'Jane')
     form.set('last_name', '')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'last_name is required' })
+  })
+
+  it('should_return_error_when_last_name_is_missing_from_form', async () => {
+    mockAuthUser()
+    const form = new FormData()
+    form.set('first_name', 'Jane')
 
     const result = await updateProfileAction(form)
 

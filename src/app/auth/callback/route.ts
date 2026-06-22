@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getUserMembership, getBarnMembershipsForUser, applyPreAuthProfile } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
+import { getProfileByUserId } from '@/lib/db/profiles'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
@@ -52,6 +53,13 @@ export async function GET(request: NextRequest) {
 
       const active = memberships.filter(m => m.membership.status === 'active')
       const pending = memberships.filter(m => m.membership.status === 'pending')
+
+      if (active.length >= 1 && data?.user) {
+        const profile = await getProfileByUserId(data.user.id)
+        if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
+          return NextResponse.redirect(`${origin}/profile/complete`)
+        }
+      }
 
       if (active.length === 1) {
         const slug = active[0].barn.slug

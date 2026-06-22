@@ -42,7 +42,7 @@ describe('ProfileForm - rendering', () => {
 
   it('should_render_phone_field', () => {
     render(<ProfileForm profile={mockProfile} heading="Edit Profile" redirectAfterSave={null} />)
-    expect(screen.getByLabelText(/phone/i)).toBeDefined()
+    expect(screen.getByLabelText(/^phone$/i)).toBeDefined()
   })
 
   it('should_render_emergency_contact_name_field', () => {
@@ -111,7 +111,7 @@ describe('ProfileForm - name change confirmation', () => {
   it('should_not_prompt_confirm_when_only_contact_fields_change', async () => {
     vi.mocked(updateProfileAction).mockResolvedValue({ error: null })
     render(<ProfileForm profile={mockProfile} heading="Edit Profile" redirectAfterSave={null} />)
-    fireEvent.change(screen.getByLabelText(/phone/i), { target: { value: '555-9999' } })
+    fireEvent.change(screen.getByLabelText(/^phone$/i), { target: { value: '555-9999' } })
     fireEvent.submit(screen.getByRole('form'))
     expect(window.confirm).not.toHaveBeenCalled()
   })
@@ -123,6 +123,40 @@ describe('ProfileForm - name change confirmation', () => {
     fireEvent.change(screen.getByLabelText(/first name/i), { target: { value: 'Janet' } })
     fireEvent.submit(screen.getByRole('form'))
     await waitFor(() => expect(updateProfileAction).not.toHaveBeenCalled())
+  })
+})
+
+describe('ProfileForm - null contact fields', () => {
+  it('should_initialize_phone_as_empty_string_when_profile_phone_is_null', () => {
+    const profileWithNulls = createMockProfile({ phone: null, emergency_contact_name: null, emergency_contact_phone: null })
+    render(<ProfileForm profile={profileWithNulls} heading="Edit Profile" redirectAfterSave={null} />)
+    expect((screen.getByLabelText(/^phone$/i) as HTMLInputElement).value).toBe('')
+  })
+
+  it('should_initialize_emergency_contact_name_as_empty_string_when_null', () => {
+    const profileWithNulls = createMockProfile({ phone: null, emergency_contact_name: null, emergency_contact_phone: null })
+    render(<ProfileForm profile={profileWithNulls} heading="Edit Profile" redirectAfterSave={null} />)
+    expect((screen.getByLabelText(/emergency contact name/i) as HTMLInputElement).value).toBe('')
+  })
+
+  it('should_initialize_emergency_contact_phone_as_empty_string_when_null', () => {
+    const profileWithNulls = createMockProfile({ phone: null, emergency_contact_name: null, emergency_contact_phone: null })
+    render(<ProfileForm profile={profileWithNulls} heading="Edit Profile" redirectAfterSave={null} />)
+    expect((screen.getByLabelText(/emergency contact phone/i) as HTMLInputElement).value).toBe('')
+  })
+
+  it('should_update_emergency_contact_name_when_changed', () => {
+    const profileWithNulls = createMockProfile({ phone: null, emergency_contact_name: null, emergency_contact_phone: null })
+    render(<ProfileForm profile={profileWithNulls} heading="Edit Profile" redirectAfterSave={null} />)
+    fireEvent.change(screen.getByLabelText(/emergency contact name/i), { target: { value: 'Alice' } })
+    expect((screen.getByLabelText(/emergency contact name/i) as HTMLInputElement).value).toBe('Alice')
+  })
+
+  it('should_update_emergency_contact_phone_when_changed', () => {
+    const profileWithNulls = createMockProfile({ phone: null, emergency_contact_name: null, emergency_contact_phone: null })
+    render(<ProfileForm profile={profileWithNulls} heading="Edit Profile" redirectAfterSave={null} />)
+    fireEvent.change(screen.getByLabelText(/emergency contact phone/i), { target: { value: '555-9999' } })
+    expect((screen.getByLabelText(/emergency contact phone/i) as HTMLInputElement).value).toBe('555-9999')
   })
 })
 
