@@ -1,4 +1,10 @@
 export type Role = 'manager' | 'trainer' | 'rider'
+export type NotificationType =
+  | 'outstanding_payment'
+  | 'pending_approval'
+  | 'lesson_cancelled'
+  | 'incomplete_profile'
+  | 'member_incomplete_profile'
 export type MembershipStatus = 'active' | 'pending'
 
 export interface Profile {
@@ -143,4 +149,16 @@ export interface RiderIncomeSummary {
   riderId: string
   riderName: string
   totalIncome: number
+}
+
+export interface Notification {
+  id: string
+  user_id: string
+  barn_id: string
+  type: NotificationType
+  title: string
+  body: string | null
+  link: string | null
+  read_at: string | null
+  created_at: string
 }
