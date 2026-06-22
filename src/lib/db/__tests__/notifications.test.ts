@@ -128,7 +128,7 @@ describe('markAllNotificationsRead', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  it('should_update_read_at_for_all_unread_in_barn', async () => {
+  it('should_pass_read_at_timestamp_to_update', async () => {
     const mockIsNull = vi.fn().mockResolvedValue({ error: null })
     const mockEq2 = vi.fn().mockReturnValue({ is: mockIsNull })
     const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
@@ -140,8 +140,47 @@ describe('markAllNotificationsRead', () => {
     await markAllNotificationsRead('user-1', 'barn-1')
 
     expect(mockUpdate).toHaveBeenCalledWith({ read_at: expect.any(String) })
+  })
+
+  it('should_filter_by_user_id', async () => {
+    const mockIsNull = vi.fn().mockResolvedValue({ error: null })
+    const mockEq2 = vi.fn().mockReturnValue({ is: mockIsNull })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await markAllNotificationsRead('user-1', 'barn-1')
+
     expect(mockEq1).toHaveBeenCalledWith('user_id', 'user-1')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const mockIsNull = vi.fn().mockResolvedValue({ error: null })
+    const mockEq2 = vi.fn().mockReturnValue({ is: mockIsNull })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await markAllNotificationsRead('user-1', 'barn-1')
+
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_unread_only', async () => {
+    const mockIsNull = vi.fn().mockResolvedValue({ error: null })
+    const mockEq2 = vi.fn().mockReturnValue({ is: mockIsNull })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await markAllNotificationsRead('user-1', 'barn-1')
+
     expect(mockIsNull).toHaveBeenCalledWith('read_at', null)
   })
 

@@ -144,6 +144,7 @@ async function run() {
     'delete lessons and participants'
   )
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', DEV_BARN_ID), 'delete lesson_tiers')
+  mustSucceed(await supabase.from('notifications').delete().eq('barn_id', DEV_BARN_ID), 'delete notifications')
   mustSucceed(await supabase.from('riders').delete().eq('barn_id', DEV_BARN_ID), 'delete riders')
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', DEV_BARN_ID), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', DEV_BARN_ID), 'delete barn_memberships')

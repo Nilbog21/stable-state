@@ -5,7 +5,7 @@ CREATE POLICY "notifications_select_own"
   TO authenticated
   USING (user_id = auth.uid());
 
--- Any authenticated user can INSERT notifications (server action enforces authorization)
+-- Any authenticated user can INSERT notifications; permissive by design so server actions can notify other users
 CREATE POLICY "notifications_insert_authenticated"
   ON notifications
   FOR INSERT
