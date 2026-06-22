@@ -181,6 +181,7 @@ export async function getUpcomingLessons(
     const { data: enrollments, error: enrollmentError } = await supabase
       .from('lesson_riders')
       .select('lesson_id')
+      .eq('barn_id', barnId)
       .eq('rider_id', rider.id)
     if (enrollmentError) throw enrollmentError
     if (!enrollments?.length) return []

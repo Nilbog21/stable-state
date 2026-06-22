@@ -182,6 +182,39 @@ describe('BarnDashboardPage', () => {
     expect(screen.getByRole('heading', { name: /upcoming lessons/i })).toBeDefined()
   })
 
+  it('should_show_upcoming_lessons_section_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /upcoming lessons/i })).toBeDefined()
+  })
+
+  it('should_call_getUpcomingLessons_with_user_id', async () => {
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(vi.mocked(getUpcomingLessons)).toHaveBeenCalledWith(
+      mockBarn.id,
+      expect.any(String),
+      expect.any(String),
+      mockUser.id,
+      expect.any(String)
+    )
+  })
+
+  it('should_call_getUpcomingLessons_with_membership_role', async () => {
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(vi.mocked(getUpcomingLessons)).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      mockManagerMembership.role
+    )
+  })
+
   it('should_not_render_sign_out_button', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
