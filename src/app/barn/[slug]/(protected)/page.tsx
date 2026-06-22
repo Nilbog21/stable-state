@@ -6,6 +6,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import type { LessonWithDetails } from '@/lib/db/types'
+import { LocalTime } from './LocalTime'
 
 export default async function BarnDashboardPage({
   params,
@@ -63,7 +64,7 @@ export default async function BarnDashboardPage({
               {upcomingLessons.map((lesson) => (
                 <li key={lesson.id} className="text-sm text-zinc-700 dark:text-zinc-300">
                   <span className="font-medium">
-                    {new Date(lesson.lesson_at).toLocaleString()}
+                    <LocalTime iso={lesson.lesson_at} />
                   </span>
                   {lesson.instructor_name && (
                     <span className="ml-2">{lesson.instructor_name}</span>
