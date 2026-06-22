@@ -5,6 +5,7 @@ async function hydrateParticipants(
   supabase: Awaited<ReturnType<typeof createClient>>,
   lessons: Lesson[]
 ): Promise<LessonWithDetails[]> {
+  if (!lessons.length) return []
   const lessonIds = lessons.map((l) => l.id)
   const instructorIds = [...new Set(lessons.map((l) => l.instructor_id).filter(Boolean))] as string[]
 
@@ -94,7 +95,6 @@ export async function getLessonsByBarn(barnId: string): Promise<LessonWithDetail
     .order('lesson_at', { ascending: false })
 
   if (lessonsError) throw lessonsError
-  if (!lessons.length) return []
 
   return hydrateParticipants(supabase, lessons)
 }
@@ -174,7 +174,6 @@ export async function getUpcomingLessons(
     .order('lesson_at', { ascending: true })
 
   if (lessonsError) throw lessonsError
-  if (!lessons.length) return []
 
   return hydrateParticipants(supabase, lessons)
 }
