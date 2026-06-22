@@ -46,6 +46,23 @@ export async function seedManagerProfile(
   if (error) throw error
 }
 
+export async function updateContactInfo(
+  profileId: string,
+  fields: {
+    phone?: string | null
+    emergency_contact_name?: string | null
+    emergency_contact_phone?: string | null
+  }
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update(fields)
+    .eq('id', profileId)
+
+  if (error) throw error
+}
+
 export async function getProfilesByUserIds(
   userIds: string[]
 ): Promise<Profile[]> {
