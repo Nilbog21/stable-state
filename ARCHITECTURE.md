@@ -64,6 +64,8 @@ The `(protected)` layout renders a persistent role-aware nav bar above `{childre
 - trainer: {Barn Name} (home), Lessons, Horses, Riders — 3 section links
 - rider: {Barn Name} (home), Lessons, Horses — 2 section links
 
+A `UserMenu` Client Component sits on the right side of the nav bar. It shows the user's initials (first letter of `first_name` + first letter of `last_name` from `profiles`; falls back to first character of email, then `?`). Clicking it opens a dropdown with: full name + email (non-clickable header), a "Switch Barn" link to `/barns` (only when the user has >1 active barn membership), and a Sign Out button. The dropdown closes on outside click or touch.
+
 "Horses" → `/barn/[slug]/horses` (all roles)
 "Manage Barn" → `/barn/[slug]/settings` (manager only)
 

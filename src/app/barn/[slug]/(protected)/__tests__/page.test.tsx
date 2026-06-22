@@ -20,10 +20,6 @@ vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
 }))
 
-vi.mock('@/app/actions/auth', () => ({
-  signOut: vi.fn(),
-}))
-
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')

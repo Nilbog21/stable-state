@@ -80,6 +80,13 @@ describe('UserMenu - Switch Barn link', () => {
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     expect((screen.getByRole('link', { name: /switch barn/i }) as HTMLAnchorElement).href).toContain('/barns')
   })
+
+  it('should_close_dropdown_when_switch_barn_link_is_clicked', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn={true} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /switch barn/i }))
+    expect(screen.queryByText('Sign out')).toBeNull()
+  })
 })
 
 describe('UserMenu - outside click/touch closes dropdown', () => {

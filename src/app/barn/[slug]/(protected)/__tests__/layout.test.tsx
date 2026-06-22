@@ -404,6 +404,14 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     expect(screen.getByRole('button', { name: /user menu/i }).textContent).toBe('U')
   })
 
+  it('should_render_question_mark_when_no_profile_and_no_email', async () => {
+    setupAuth({ id: 'user-1', email: null } as any)
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /user menu/i }).textContent).toBe('?')
+  })
+
   it('should_pass_showSwitchBarn_true_when_user_has_multiple_active_memberships', async () => {
     const secondMembership = {
       barn: { id: 'barn-2', name: 'Other Barn', slug: 'other-barn', created_at: '' },

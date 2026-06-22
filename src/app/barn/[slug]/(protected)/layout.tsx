@@ -3,7 +3,9 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { UserMenu } from './UserMenu'
 
 export async function generateMetadata({
   params,
@@ -36,6 +38,18 @@ export default async function ProtectedBarnLayout({
   if (membership.status === 'pending') redirect(`/barn/${slug}/pending`)
   if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
 
+  const [allMemberships, profileRows] = await Promise.all([
+    getBarnMembershipsForUser(data.user.id),
+    getProfilesByUserIds([data.user.id]),
+  ])
+  const profile = profileRows[0] ?? null
+  const initials = profile
+    ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
+    : (data.user.email?.[0] ?? '?').toUpperCase()
+  const fullName = profile ? `${profile.first_name} ${profile.last_name}` : null
+  const showSwitchBarn = allMemberships.filter((m) => m.membership.status === 'active').length > 1
+  const email = data.user.email ?? ''
+
   let navLinks: { href: string; label: string }[]
   if (membership.role === 'manager') {
     navLinks = [
@@ -60,7 +74,7 @@ export default async function ProtectedBarnLayout({
 
   return (
     <>
-      <nav className="flex gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+      <nav className="flex items-center gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
         <Link
           href={`/barn/${slug}`}
           className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
@@ -76,6 +90,7 @@ export default async function ProtectedBarnLayout({
             {link.label}
           </Link>
         ))}
+        <UserMenu initials={initials} email={email} fullName={fullName} showSwitchBarn={showSwitchBarn} />
       </nav>
       {children}
     </>
