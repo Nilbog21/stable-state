@@ -16,23 +16,23 @@ assert_fail() {
   FAIL=$((FAIL + 1))
 }
 
-# Creates a temp git repo with an optional .env.local and a stubbed node binary.
+# Creates a temp git repo with an optional .env.local and a stubbed npx binary.
 # env_content: contents to write to .env.local (empty string = no file created)
-# node_exit: exit code for the node stub
+# npx_exit: exit code for the npx stub
 make_repo() {
   local env_content="${1:-}"
-  local node_exit="${2:-0}"
+  local npx_exit="${2:-0}"
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
   mkdir -p "$dir/scripts" "$dir/bin"
 
-  cat > "$dir/bin/node" <<NODEEOF
+  cat > "$dir/bin/npx" <<NPXEOF
 #!/usr/bin/env bash
-printf '%s\n' "\$*" >> "$dir/node.log"
-exit $node_exit
-NODEEOF
-  chmod +x "$dir/bin/node"
+printf '%s\n' "\$*" >> "$dir/npx.log"
+exit $npx_exit
+NPXEOF
+  chmod +x "$dir/bin/npx"
 
   if [ -n "$env_content" ]; then
     printf '%s\n' "$env_content" > "$dir/.env.local"
@@ -44,12 +44,9 @@ NODEEOF
 # --- Shell wrapper: env validation ---
 
 # Test 1: should_error_with_env_local_message_when_env_local_missing
-# Arrange
 REPO="$(make_repo "" 0)"
-# Act
 output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
 exit_code=$?
-# Assert
 if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q '\.env\.local'; then
   assert_pass "should_error_with_env_local_message_when_env_local_missing"
 else
@@ -58,12 +55,9 @@ fi
 rm -rf "$REPO"
 
 # Test 2: should_error_with_SUPABASE_URL_message_when_SUPABASE_URL_missing
-# Arrange
 REPO="$(make_repo "SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
-# Act
 output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
 exit_code=$?
-# Assert
 if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'NEXT_PUBLIC_SUPABASE_URL'; then
   assert_pass "should_error_with_SUPABASE_URL_message_when_SUPABASE_URL_missing"
 else
@@ -72,12 +66,9 @@ fi
 rm -rf "$REPO"
 
 # Test 3: should_error_with_SERVICE_KEY_message_when_SERVICE_KEY_missing
-# Arrange
 REPO="$(make_repo "NEXT_PUBLIC_SUPABASE_URL=http://localhost" 0)"
-# Act
 output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
 exit_code=$?
-# Assert
 if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'SUPABASE_SERVICE_ROLE_KEY'; then
   assert_pass "should_error_with_SERVICE_KEY_message_when_SERVICE_KEY_missing"
 else
@@ -85,164 +76,60 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 4: should_exit_zero_when_all_required_vars_present
-# Arrange
+# Test 4: should_exit_zero_when_all_required_and_dev_vars_present
 REPO="$(make_repo "NEXT_PUBLIC_SUPABASE_URL=http://localhost
-SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
-# Act
-(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+SUPABASE_SERVICE_ROLE_KEY=secret
+DEV_EMAIL=dev@example.com
+DEV_NAME=Jane Doe
+DEV_BARN=my-barn" 0)"
+printf '\n\n\n\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 exit_code=$?
-# Assert
 if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_exit_zero_when_all_required_vars_present"
+  assert_pass "should_exit_zero_when_all_required_and_dev_vars_present"
 else
-  assert_fail "should_exit_zero_when_all_required_vars_present" "script exited non-zero ($exit_code)"
+  assert_fail "should_exit_zero_when_all_required_and_dev_vars_present" "script exited non-zero ($exit_code)"
 fi
 rm -rf "$REPO"
 
-# Test 5: should_invoke_node_when_all_required_vars_present
-# Arrange
+# Test 5: should_invoke_npx_when_all_required_and_dev_vars_present
 REPO="$(make_repo "NEXT_PUBLIC_SUPABASE_URL=http://localhost
-SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
-# Act
-(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
-# Assert
-if [ -f "$REPO/node.log" ]; then
-  assert_pass "should_invoke_node_when_all_required_vars_present"
+SUPABASE_SERVICE_ROLE_KEY=secret
+DEV_EMAIL=dev@example.com
+DEV_NAME=Jane Doe
+DEV_BARN=my-barn" 0)"
+printf '\n\n\n\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+if [ -f "$REPO/npx.log" ]; then
+  assert_pass "should_invoke_npx_when_all_required_and_dev_vars_present"
 else
-  assert_fail "should_invoke_node_when_all_required_vars_present" "node was not called"
+  assert_fail "should_invoke_npx_when_all_required_and_dev_vars_present" "npx was not called"
 fi
 rm -rf "$REPO"
 
-# --- Pure JS functions ---
-
-# Test 6: should_throw_when_mustSucceed_receives_error
-# Arrange + Act + Assert
-node -e "
-const { mustSucceed } = require('$SCRIPT_DIR/seed-account.js');
-try {
-  mustSucceed({ error: { message: 'boom' }, data: null }, 'test-label');
-  process.stderr.write('expected throw\n');
-  process.exit(1);
-} catch (_) {}
-" 2>/dev/null
-exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_throw_when_mustSucceed_receives_error"
+# Test 6: should_use_DEV_EMAIL_as_default_when_dev_email_set
+REPO="$(make_repo "NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret
+DEV_EMAIL=default@example.com
+DEV_NAME=Jane Doe
+DEV_BARN=my-barn" 0)"
+printf '\n\n\n\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+if grep -q 'default@example.com' "$REPO/npx.log" 2>/dev/null; then
+  assert_pass "should_use_DEV_EMAIL_as_default_when_dev_email_set"
 else
-  assert_fail "should_throw_when_mustSucceed_receives_error" "mustSucceed did not throw"
+  assert_fail "should_use_DEV_EMAIL_as_default_when_dev_email_set" "DEV_EMAIL not passed to npx"
 fi
+rm -rf "$REPO"
 
-# Test 7: should_include_label_and_message_when_mustSucceed_throws
-# Arrange + Act + Assert
-node -e "
-const { mustSucceed } = require('$SCRIPT_DIR/seed-account.js');
-try {
-  mustSucceed({ error: { message: 'boom' }, data: null }, 'test-label');
-  process.stderr.write('expected throw\n');
-  process.exit(1);
-} catch (e) {
-  if (!e.message.includes('test-label: boom')) { process.stderr.write('wrong message: ' + e.message + '\n'); process.exit(1); }
-}
-" 2>/dev/null
+# Test 7: should_error_when_email_empty_and_no_DEV_EMAIL
+REPO="$(make_repo "NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
+output="$(printf '\n\n\n\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1))"
 exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_include_label_and_message_when_mustSucceed_throws"
+if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'email'; then
+  assert_pass "should_error_when_email_empty_and_no_DEV_EMAIL"
 else
-  assert_fail "should_include_label_and_message_when_mustSucceed_throws" "message did not include label:message"
+  assert_fail "should_error_when_email_empty_and_no_DEV_EMAIL" "exit=$exit_code output=$output"
 fi
-
-# Test 8: should_return_array_when_mustSucceed_receives_success
-# Arrange + Act + Assert
-node -e "
-const { mustSucceed } = require('$SCRIPT_DIR/seed-account.js');
-const result = mustSucceed({ error: null, data: [1, 2, 3] }, 'test-label');
-if (!Array.isArray(result)) { process.stderr.write('not an array\n'); process.exit(1); }
-" 2>/dev/null
-exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_return_array_when_mustSucceed_receives_success"
-else
-  assert_fail "should_return_array_when_mustSucceed_receives_success" "mustSucceed did not return array"
-fi
-
-# Test 9: should_return_data_unchanged_when_mustSucceed_receives_success
-# Arrange + Act + Assert
-node -e "
-const { mustSucceed } = require('$SCRIPT_DIR/seed-account.js');
-const result = mustSucceed({ error: null, data: [1, 2, 3] }, 'test-label');
-if (result.length !== 3) { process.stderr.write('wrong length: ' + result.length + '\n'); process.exit(1); }
-" 2>/dev/null
-exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_return_data_unchanged_when_mustSucceed_receives_success"
-else
-  assert_fail "should_return_data_unchanged_when_mustSucceed_receives_success" "mustSucceed did not return data unchanged"
-fi
-
-# Test 10: should_throw_when_resolveBarnId_receives_error
-# Arrange + Act + Assert
-node -e "
-const { resolveBarnId } = require('$SCRIPT_DIR/seed-account.js');
-const mock = { from: () => ({ select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: null, error: { message: 'not found' } }) }) }) }) };
-resolveBarnId(mock, 'bad-slug')
-  .then(() => { process.exitCode = 1; process.stderr.write('expected throw\n'); })
-  .catch(e => { if (!e.message.includes('bad-slug')) { process.exitCode = 1; process.stderr.write('wrong: ' + e.message + '\n'); } });
-" 2>/dev/null
-exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_throw_when_resolveBarnId_receives_error"
-else
-  assert_fail "should_throw_when_resolveBarnId_receives_error" "resolveBarnId did not throw on error"
-fi
-
-# Test 11: should_return_id_when_resolveBarnId_finds_barn
-# Arrange + Act + Assert
-node -e "
-const { resolveBarnId } = require('$SCRIPT_DIR/seed-account.js');
-const mock = { from: () => ({ select: () => ({ eq: () => ({ single: () => Promise.resolve({ data: { id: 'barn-uuid' }, error: null }) }) }) }) };
-resolveBarnId(mock, 'my-barn')
-  .then(id => { if (id !== 'barn-uuid') { process.exitCode = 1; process.stderr.write('wrong id: ' + id + '\n'); } })
-  .catch(e => { process.exitCode = 1; process.stderr.write('unexpected throw: ' + e.message + '\n'); });
-" 2>/dev/null
-exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_return_id_when_resolveBarnId_finds_barn"
-else
-  assert_fail "should_return_id_when_resolveBarnId_finds_barn" "resolveBarnId did not return barn id"
-fi
-
-# Test 12: should_throw_when_seedProfile_insert_fails
-# Arrange + Act + Assert
-node -e "
-const { seedProfile } = require('$SCRIPT_DIR/seed-account.js');
-const mock = { from: () => ({ insert: () => Promise.resolve({ error: { message: 'db error' }, data: null }) }) };
-seedProfile(mock, { email: 'x@x.com', firstName: 'A', lastName: 'B', barnId: '123' })
-  .then(() => { process.exitCode = 1; process.stderr.write('expected throw\n'); })
-  .catch(e => { if (!e.message.includes('insert profile')) { process.exitCode = 1; process.stderr.write('wrong: ' + e.message + '\n'); } });
-" 2>/dev/null
-exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_throw_when_seedProfile_insert_fails"
-else
-  assert_fail "should_throw_when_seedProfile_insert_fails" "seedProfile did not throw on insert error"
-fi
-
-# Test 13: should_resolve_when_seedProfile_insert_succeeds
-# Arrange + Act + Assert
-node -e "
-const { seedProfile } = require('$SCRIPT_DIR/seed-account.js');
-const mock = { from: () => ({ insert: () => Promise.resolve({ error: null, data: [{}] }) }) };
-seedProfile(mock, { email: 'x@x.com', firstName: 'A', lastName: 'B', barnId: '123' })
-  .then(() => {})
-  .catch(e => { process.exitCode = 1; process.stderr.write('unexpected throw: ' + e.message + '\n'); });
-" 2>/dev/null
-exit_code=$?
-if [ "$exit_code" -eq 0 ]; then
-  assert_pass "should_resolve_when_seedProfile_insert_succeeds"
-else
-  assert_fail "should_resolve_when_seedProfile_insert_succeeds" "seedProfile threw on success"
-fi
+rm -rf "$REPO"
 
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
