@@ -1,19 +1,7 @@
 import { fileURLToPath } from 'url'
 import { createClient } from '@supabase/supabase-js'
+import { getBarnBySlug } from '@/lib/db/barns'
 import { seedManagerProfile } from '@/lib/db/profiles'
-import type { SupabaseClient } from '@supabase/supabase-js'
-
-export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
-  const err = result.error as { message?: string } | null
-  if (err) throw new Error(`${label}: ${err.message}`)
-  return result.data as T
-}
-
-export async function resolveBarnId(supabase: SupabaseClient, slug: string): Promise<string> {
-  const { data, error } = await supabase.from('barns').select('id').eq('slug', slug).single()
-  if (error || !data) throw new Error(`Barn slug not found: "${slug}"`)
-  return (data as { id: string }).id
-}
 
 async function run() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -34,8 +22,10 @@ async function run() {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const barnId = await resolveBarnId(supabase, barnSlug)
-  await seedManagerProfile(email, firstName, lastName, barnId, 'manager', supabase)
+  const barn = await getBarnBySlug(barnSlug, supabase)
+  if (!barn) throw new Error(`Barn slug not found: "${barnSlug}"`)
+
+  await seedManagerProfile(email, firstName, lastName, barn.id, 'manager', supabase)
 
   console.log(`\nSeeded ${firstName} ${lastName} <${email}> as manager for barn "${barnSlug}".`)
   console.log('Log in with Google to activate your account.')

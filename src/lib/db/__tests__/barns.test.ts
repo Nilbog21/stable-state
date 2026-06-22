@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -11,6 +11,10 @@ import { getBarnBySlug } from '../barns'
 const mockBarn = createMockBarn()
 
 describe('getBarnBySlug', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
   it('should_return_barn_when_slug_exists', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
@@ -62,5 +66,21 @@ describe('getBarnBySlug', () => {
     } as any)
 
     await expect(getBarnBySlug('some-slug')).rejects.toThrow('query failed')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockBarn, error: null }),
+          }),
+        }),
+      }),
+    } as any
+
+    const result = await getBarnBySlug('injected-slug', mockClient)
+
+    expect(result).toEqual(mockBarn)
   })
 })
