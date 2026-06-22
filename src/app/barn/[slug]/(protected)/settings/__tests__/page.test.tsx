@@ -5,12 +5,12 @@ import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
-vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
   getPendingMemberships: vi.fn(),
   getActiveMemberships: vi.fn(),
 }))
+vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
 vi.mock('../actions', () => ({
   createTierAction: vi.fn(),

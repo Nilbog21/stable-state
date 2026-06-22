@@ -13,18 +13,11 @@ vi.mock('@/lib/db/barns', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
+  getPendingMemberships: vi.fn(),
 }))
 
 vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
-}))
-
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getPendingMemberships: vi.fn(),
-}))
-
-vi.mock('@/app/actions/auth', () => ({
-  signOut: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() =>
@@ -189,24 +182,10 @@ describe('BarnDashboardPage', () => {
     expect(screen.queryByText(/upcoming lessons/i)).toBeNull()
   })
 
-  it('should_render_sign_out_button_for_manager', async () => {
+  it('should_not_render_sign_out_button', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
-  })
-
-  it('should_render_sign_out_button_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
-  })
-
-  it('should_render_sign_out_button_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
+    expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull()
   })
 
   it('should_render_pending_approvals_badge_when_count_is_nonzero', async () => {
@@ -242,7 +221,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_not_render_pending_approvals_badge_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

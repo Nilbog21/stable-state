@@ -5,7 +5,6 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
-import { signOut } from '@/app/actions/auth'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 export default async function BarnDashboardPage({
@@ -42,14 +41,6 @@ export default async function BarnDashboardPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Dashboard
       </h1>
-      <form action={signOut} className="mb-8">
-        <button
-          type="submit"
-          className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-        >
-          Sign out
-        </button>
-      </form>
       {pendingCount > 0 && (
         <div className="mb-8">
           <Link
