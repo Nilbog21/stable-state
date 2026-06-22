@@ -16,7 +16,8 @@ assert_fail() {
   FAIL=$((FAIL + 1))
 }
 
-# Creates a temp git repo with an optional .env.local and a stubbed tsx binary.
+# Creates a temp git repo with an optional .env.local, a stubbed tsx binary,
+# and stub scripts for seed-account.sh and change-user.sh.
 # env_content: contents to write to .env.local (empty string = no file created)
 # tsx_exit: exit code for the tsx stub
 make_repo() {
@@ -30,11 +31,21 @@ make_repo() {
   cat > "$dir/bin/npx" <<TSXEOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$dir/tsx.log"
-printf 'DEV_TRAINER_EMAIL=%s\n' "\$DEV_TRAINER_EMAIL" >> "$dir/tsx.log"
-printf 'DEV_RIDER_EMAIL=%s\n' "\$DEV_RIDER_EMAIL" >> "$dir/tsx.log"
 exit $tsx_exit
 TSXEOF
   chmod +x "$dir/bin/npx"
+
+  cat > "$dir/scripts/seed-account.sh" <<SEEDEOF
+#!/usr/bin/env bash
+echo "seed-account.sh called" >> "$dir/seed_account.log"
+SEEDEOF
+  chmod +x "$dir/scripts/seed-account.sh"
+
+  cat > "$dir/scripts/change-user.sh" <<CHANGEEOF
+#!/usr/bin/env bash
+echo "change-user.sh called" >> "$dir/change_user.log"
+CHANGEEOF
+  chmod +x "$dir/scripts/change-user.sh"
 
   if [ -n "$env_content" ]; then
     printf '%s\n' "$env_content" > "$dir/.env.local"
@@ -59,24 +70,42 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 2: should_error_with_DEV_MANAGER_EMAIL_message_when_DEV_MANAGER_EMAIL_missing
+# Test 2: should_error_with_DEV_EMAIL_message_when_DEV_EMAIL_missing
 # Arrange
-REPO="$(make_repo "NEXT_PUBLIC_SUPABASE_URL=http://localhost
+REPO="$(make_repo "DEV_NAME=Dev Manager
+NEXT_PUBLIC_SUPABASE_URL=http://localhost
 SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
 # Act
 output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
 exit_code=$?
 # Assert
-if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'DEV_MANAGER_EMAIL'; then
-  assert_pass "should_error_with_DEV_MANAGER_EMAIL_message_when_DEV_MANAGER_EMAIL_missing"
+if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'DEV_EMAIL'; then
+  assert_pass "should_error_with_DEV_EMAIL_message_when_DEV_EMAIL_missing"
 else
-  assert_fail "should_error_with_DEV_MANAGER_EMAIL_message_when_DEV_MANAGER_EMAIL_missing" "exit=$exit_code output=$output"
+  assert_fail "should_error_with_DEV_EMAIL_message_when_DEV_EMAIL_missing" "exit=$exit_code output=$output"
 fi
 rm -rf "$REPO"
 
-# Test 3: should_error_with_SUPABASE_URL_message_when_SUPABASE_URL_missing
+# Test 3: should_error_with_DEV_NAME_message_when_DEV_NAME_missing
 # Arrange
-REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
+# Act
+output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
+exit_code=$?
+# Assert
+if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'DEV_NAME'; then
+  assert_pass "should_error_with_DEV_NAME_message_when_DEV_NAME_missing"
+else
+  assert_fail "should_error_with_DEV_NAME_message_when_DEV_NAME_missing" "exit=$exit_code output=$output"
+fi
+rm -rf "$REPO"
+
+# Test 4: should_error_with_SUPABASE_URL_message_when_SUPABASE_URL_missing
+# Arrange
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+DEV_NAME=Dev Manager
 SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
 # Act
 output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
@@ -89,9 +118,10 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 4: should_error_with_SERVICE_KEY_message_when_SERVICE_KEY_missing
+# Test 5: should_error_with_SERVICE_KEY_message_when_SERVICE_KEY_missing
 # Arrange
-REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+DEV_NAME=Dev Manager
 NEXT_PUBLIC_SUPABASE_URL=http://localhost" 0)"
 # Act
 output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
@@ -104,13 +134,14 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 5: should_exit_zero_when_all_required_vars_present
+# Test 6: should_exit_zero_when_all_required_vars_present
 # Arrange
-REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+DEV_NAME=Dev Manager
 NEXT_PUBLIC_SUPABASE_URL=http://localhost
 SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
-# Act
-(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+# Act (pipe Enter to satisfy keypress prompt)
+printf '\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 exit_code=$?
 # Assert
 if [ "$exit_code" -eq 0 ]; then
@@ -120,13 +151,14 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 6: should_invoke_tsx_when_all_required_vars_present
+# Test 7: should_invoke_tsx_when_all_required_vars_present
 # Arrange
-REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+DEV_NAME=Dev Manager
 NEXT_PUBLIC_SUPABASE_URL=http://localhost
 SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
 # Act
-(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+printf '\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 # Assert
 if [ -f "$REPO/tsx.log" ]; then
   assert_pass "should_invoke_tsx_when_all_required_vars_present"
@@ -135,35 +167,51 @@ else
 fi
 rm -rf "$REPO"
 
-# Test 7: should_forward_DEV_TRAINER_EMAIL_to_tsx_when_set
+# Test 8: should_call_seed_account_sh_after_tsx
 # Arrange
-REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+DEV_NAME=Dev Manager
 NEXT_PUBLIC_SUPABASE_URL=http://localhost
-SUPABASE_SERVICE_ROLE_KEY=secret
-DEV_TRAINER_EMAIL=trainer@example.com" 0)"
+SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
 # Act
-(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+printf '\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 # Assert
-if grep -q 'trainer@example.com' "$REPO/tsx.log" 2>/dev/null; then
-  assert_pass "should_forward_DEV_TRAINER_EMAIL_to_tsx_when_set"
+if [ -f "$REPO/seed_account.log" ]; then
+  assert_pass "should_call_seed_account_sh_after_tsx"
 else
-  assert_fail "should_forward_DEV_TRAINER_EMAIL_to_tsx_when_set" "DEV_TRAINER_EMAIL not found in tsx.log"
+  assert_fail "should_call_seed_account_sh_after_tsx" "seed-account.sh was not called"
 fi
 rm -rf "$REPO"
 
-# Test 8: should_forward_DEV_RIDER_EMAIL_to_tsx_when_set
+# Test 9: should_call_change_user_sh_on_enter
 # Arrange
-REPO="$(make_repo "DEV_MANAGER_EMAIL=manager@dev.local
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+DEV_NAME=Dev Manager
 NEXT_PUBLIC_SUPABASE_URL=http://localhost
-SUPABASE_SERVICE_ROLE_KEY=secret
-DEV_RIDER_EMAIL=rider@example.com" 0)"
-# Act
-(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
+# Act (pipe Enter key)
+printf '\n' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
 # Assert
-if grep -q 'rider@example.com' "$REPO/tsx.log" 2>/dev/null; then
-  assert_pass "should_forward_DEV_RIDER_EMAIL_to_tsx_when_set"
+if [ -f "$REPO/change_user.log" ]; then
+  assert_pass "should_call_change_user_sh_on_enter"
 else
-  assert_fail "should_forward_DEV_RIDER_EMAIL_to_tsx_when_set" "DEV_RIDER_EMAIL not found in tsx.log"
+  assert_fail "should_call_change_user_sh_on_enter" "change-user.sh was not called on Enter"
+fi
+rm -rf "$REPO"
+
+# Test 10: should_not_call_change_user_sh_on_escape
+# Arrange
+REPO="$(make_repo "DEV_EMAIL=dev@example.com
+DEV_NAME=Dev Manager
+NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret" 0)"
+# Act (pipe Escape key)
+printf '\033' | (cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" >/dev/null 2>&1)
+# Assert
+if [ ! -f "$REPO/change_user.log" ]; then
+  assert_pass "should_not_call_change_user_sh_on_escape"
+else
+  assert_fail "should_not_call_change_user_sh_on_escape" "change-user.sh was called on Escape"
 fi
 rm -rf "$REPO"
 
