@@ -167,7 +167,6 @@ describe('LessonDetailPage', () => {
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_horses: [] })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
-    expect(screen.queryByRole('list')).toBeNull()
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
@@ -231,14 +230,14 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { riders: { id: 'rider-1', name: 'Alice' } },
-        { riders: { id: 'rider-2', name: 'Bob' } },
+        { rider_notes: null, private_notes: null, riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, riders: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     const listItems = screen.getAllByRole('listitem')
-    const riderItems = listItems.filter((li) => li.textContent === 'Alice' || li.textContent === 'Bob')
+    const riderItems = listItems.filter((li) => li.textContent?.includes('Alice') || li.textContent?.includes('Bob'))
     expect(riderItems.length).toBe(2)
   })
 
@@ -415,5 +414,43 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('needs work')).toBeNull()
+  })
+
+  it('should_render_dash_for_null_rider_name_in_group_lesson_for_rider_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, riders: null },
+        { rider_notes: 'good position', private_notes: null, riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+      ],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_dash_for_null_rider_name_in_normal_lesson_for_rider_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'normal' as const,
+      lesson_riders: [{ rider_notes: null, private_notes: null, riders: null }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_dash_when_rider_notes_is_null_for_rider_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_riders: [{ rider_notes: null, private_notes: null, riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 })

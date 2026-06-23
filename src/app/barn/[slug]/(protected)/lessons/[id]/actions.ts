@@ -1,0 +1,20 @@
+'use server'
+
+import { revalidatePath } from 'next/cache'
+import { requireMembership } from '@/lib/auth/guard'
+import { updateLessonRiderNotes, updateLessonHorseNotes } from '@/lib/db/lesson-participants'
+
+export async function updateRiderNotesAction(slug: string, lessonId: string, riderId: string, formData: FormData) {
+  const { barn } = await requireMembership(slug, ['trainer', 'manager'])
+  const riderNotes = (formData.get('riderNotes') as string) || null
+  const privateNotes = (formData.get('privateNotes') as string) || null
+  await updateLessonRiderNotes(lessonId, riderId, barn.id, riderNotes, privateNotes)
+  revalidatePath(`/barn/${slug}/lessons/${lessonId}`)
+}
+
+export async function updateHorseNotesAction(slug: string, lessonId: string, horseId: string, formData: FormData) {
+  const { barn } = await requireMembership(slug, ['trainer', 'manager'])
+  const horseNotes = (formData.get('horseNotes') as string) || null
+  await updateLessonHorseNotes(lessonId, horseId, barn.id, horseNotes)
+  revalidatePath(`/barn/${slug}/lessons/${lessonId}`)
+}

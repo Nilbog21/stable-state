@@ -805,7 +805,8 @@ describe('getLessonById', () => {
   })
 
   it('should_select_private_notes_for_trainer_role', async () => {
-    const { select, mockEq1 } = makeLessonByIdChain(rawLessonData)
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = makeLessonByIdChain(noInstructorData)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -816,7 +817,8 @@ describe('getLessonById', () => {
   })
 
   it('should_select_private_notes_for_manager_role', async () => {
-    const { select } = makeLessonByIdChain(rawLessonData)
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = makeLessonByIdChain(noInstructorData)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -827,11 +829,8 @@ describe('getLessonById', () => {
   })
 
   it('should_not_select_private_notes_for_rider_role', async () => {
-    const riderLessonData = {
-      ...rawLessonData,
-      lesson_riders: [{ rider_notes: 'note', riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
-    }
-    const { select } = makeLessonByIdChain(riderLessonData)
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = makeLessonByIdChain(noInstructorData)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
