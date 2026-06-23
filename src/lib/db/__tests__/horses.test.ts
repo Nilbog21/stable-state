@@ -15,12 +15,11 @@ const mockHorses = [
 
 describe('getHorsesByBarn', () => {
   it('should_return_horses_for_barn', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: mockHorses, error: null })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: mockHorses, error: null }),
-          }),
+          eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: mockOrder }) }),
         }),
       }),
     } as any)
@@ -31,12 +30,11 @@ describe('getHorsesByBarn', () => {
   })
 
   it('should_return_empty_array_when_no_horses', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: [], error: null }),
-          }),
+          eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: mockOrder }) }),
         }),
       }),
     } as any)
@@ -47,12 +45,11 @@ describe('getHorsesByBarn', () => {
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
-          }),
+          eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: mockOrder }) }),
         }),
       }),
     } as any)
@@ -149,8 +146,9 @@ describe('getHorseExertionSummary', () => {
 
   function makeHorsesChain(data: unknown[], error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    const mockEqIsActive = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarnId })
     return { select: mockSelect }
   }
 

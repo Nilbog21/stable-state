@@ -91,13 +91,24 @@ export function HorseOverviewTable({
               <td key={col.key} className={col.tdClassName}>{horse[col.key]}</td>
             ))}
             {isManager && (
-              <td className="py-3">
+              <td className="py-3 flex gap-2">
                 <button
                   type="submit"
                   form={`update-horse-${horse.id}`}
                   className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
                   Save
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (confirm(`Remove ${horse.name} from this barn?`)) {
+                      (document.getElementById(`delete-horse-${horse.id}`) as HTMLFormElement)?.requestSubmit()
+                    }
+                  }}
+                  className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
+                >
+                  Remove
                 </button>
               </td>
             )}

@@ -1,8 +1,11 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { HorseOverviewTable } from '../HorseOverviewTable'
 
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  vi.restoreAllMocks()
+})
 
 const horses = [
   { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 1 },
@@ -230,5 +233,46 @@ describe('HorseOverviewTable', () => {
     render(<HorseOverviewTable horses={[horses[0]]} isManager />)
     const input = screen.getByRole('textbox')
     expect(input.getAttribute('form')).toBe('update-horse-horse-1')
+  })
+
+  it('should_render_remove_button_when_manager', () => {
+    render(<HorseOverviewTable horses={horses} isManager />)
+    expect(screen.getAllByRole('button', { name: /remove/i }).length).toBeGreaterThan(0)
+  })
+
+  it('should_not_render_remove_button_when_not_manager', () => {
+    render(<HorseOverviewTable horses={horses} />)
+    expect(screen.queryAllByRole('button', { name: /remove/i })).toHaveLength(0)
+  })
+
+  it('should_call_window_confirm_when_remove_clicked', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<HorseOverviewTable horses={[horses[0]]} isManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /remove/i }))
+
+    expect(window.confirm).toHaveBeenCalledWith('Remove Thunderbolt from this barn?')
+  })
+
+  it('should_not_submit_when_confirm_is_cancelled', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const mockRequestSubmit = vi.fn()
+    vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: mockRequestSubmit } as any)
+    render(<HorseOverviewTable horses={[horses[0]]} isManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /remove/i }))
+
+    expect(mockRequestSubmit).not.toHaveBeenCalled()
+  })
+
+  it('should_call_requestSubmit_on_delete_form_when_confirm_is_accepted', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    const mockRequestSubmit = vi.fn()
+    vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: mockRequestSubmit } as any)
+    render(<HorseOverviewTable horses={[horses[0]]} isManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /remove/i }))
+
+    expect(mockRequestSubmit).toHaveBeenCalledOnce()
   })
 })
