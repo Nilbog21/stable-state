@@ -39,10 +39,15 @@ vi.mock('@/lib/db/profiles', () => ({
   getProfilesByUserIds: vi.fn(),
 }))
 
+vi.mock('@/lib/db/notifications', () => ({
+  getNotifications: vi.fn(),
+}))
+
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getNotifications } from '@/lib/db/notifications'
 import ProtectedBarnLayout, { generateMetadata } from '../layout'
 
 const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
@@ -103,6 +108,7 @@ describe('ProtectedBarnLayout - auth guard', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([mockProfile])
+    vi.mocked(getNotifications).mockResolvedValue([])
   })
 
   it('should_throw_when_barn_not_found', async () => {
@@ -196,6 +202,7 @@ describe('ProtectedBarnLayout - nav links', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([mockProfile])
+    vi.mocked(getNotifications).mockResolvedValue([])
   })
 
   it('should_render_children', async () => {
@@ -387,6 +394,7 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry])
     vi.mocked(getProfilesByUserIds).mockResolvedValue([mockProfile])
+    vi.mocked(getNotifications).mockResolvedValue([])
   })
 
   it('should_render_initials_from_profile_first_and_last_name', async () => {
@@ -461,5 +469,30 @@ describe('generateMetadata', () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
     await expect(generateMetadata({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+})
+
+describe('ProtectedBarnLayout - NotificationBell', () => {
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockReset()
+    setupAuth()
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([mockProfile])
+    vi.mocked(getNotifications).mockResolvedValue([])
+  })
+
+  it('should_fetch_notifications_for_user_and_barn', async () => {
+    await ProtectedBarnLayout({ children, params })
+
+    expect(getNotifications).toHaveBeenCalledWith('user-1', 'barn-1')
+  })
+
+  it('should_render_notification_bell', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /notifications/i })).toBeDefined()
   })
 })
