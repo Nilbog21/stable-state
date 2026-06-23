@@ -34,6 +34,9 @@ fi
 echo "Seeding test barn..."
 bash scripts/seed-test-barn.sh "$TEST_BARN_SLUG"
 
+echo "Ensuring Playwright browsers are installed..."
+npx playwright install --with-deps chromium
+
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
 E2E_BASE_URL="$E2E_BASE_URL" \
