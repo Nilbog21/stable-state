@@ -141,45 +141,21 @@ describe('createHorse', () => {
 describe('getHorseExertionSummary', () => {
   const since = new Date('2026-05-26T00:00:00Z')
 
-  const horse1 = createMockHorse({ id: 'horse-1', name: 'Thunderbolt' })
-  const horse2 = createMockHorse({ id: 'horse-2', name: 'Shadow' })
-
-  function makeHorsesChain(data: unknown[], error: Error | null = null) {
-    const mockOrder = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect }
-  }
-
-  function makeLessonsChain(data: unknown[], error: Error | null = null) {
-    const mockGte = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect }
-  }
-
-  function makeLessonHorsesChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
-    return { select: mockSelect }
+  function makeRpc(data: unknown[] | null, error: Error | null = null) {
+    return vi.fn().mockResolvedValue({ data, error })
   }
 
   beforeEach(() => {
-    vi.clearAllMocks()
+    vi.mocked(createClient).mockReset()
   })
 
   it('should_return_aggregated_lesson_count_and_total_exertion_per_horse', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1, horse2])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }, { id: 'lesson-2', jumping: false }])
-      if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 4 },
-        { lesson_id: 'lesson-2', horse_id: 'horse-1', exertion_level: 2 },
-        { lesson_id: 'lesson-1', horse_id: 'horse-2', exertion_level: 3 },
-      ])
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([
+        { id: 'horse-1', name: 'Thunderbolt', is_active: true, lesson_count: 2, total_exertion: 6, jumping_count: 0 },
+        { id: 'horse-2', name: 'Shadow', is_active: true, lesson_count: 1, total_exertion: 3, jumping_count: 0 },
+      ]),
+    } as any)
 
     const result = await getHorseExertionSummary('barn-1', since)
 
@@ -190,12 +166,11 @@ describe('getHorseExertionSummary', () => {
   })
 
   it('should_return_zero_counts_for_horses_with_no_lessons_in_window', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1])
-      if (table === 'lessons') return makeLessonsChain([])
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([
+        { id: 'horse-1', name: 'Thunderbolt', is_active: true, lesson_count: 0, total_exertion: 0, jumping_count: 0 },
+      ]),
+    } as any)
 
     const result = await getHorseExertionSummary('barn-1', since)
 
@@ -205,15 +180,12 @@ describe('getHorseExertionSummary', () => {
   })
 
   it('should_include_horses_with_no_lesson_horses_entries_even_when_lessons_exist', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1, horse2])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }])
-      if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 5 },
-      ])
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([
+        { id: 'horse-1', name: 'Thunderbolt', is_active: true, lesson_count: 1, total_exertion: 5, jumping_count: 0 },
+        { id: 'horse-2', name: 'Shadow', is_active: true, lesson_count: 0, total_exertion: 0, jumping_count: 0 },
+      ]),
+    } as any)
 
     const result = await getHorseExertionSummary('barn-1', since)
 
@@ -224,81 +196,40 @@ describe('getHorseExertionSummary', () => {
   })
 
   it('should_return_empty_array_when_barn_has_no_horses', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([])
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([]),
+    } as any)
 
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([])
   })
 
-  it('should_throw_when_horses_fetch_returns_an_error', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([], new Error('horses error'))
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc(null, new Error('rpc error')),
+    } as any)
 
-    await expect(getHorseExertionSummary('barn-1', since)).rejects.toThrow('horses error')
+    await expect(getHorseExertionSummary('barn-1', since)).rejects.toThrow('rpc error')
   })
 
-  it('should_throw_when_lessons_fetch_returns_an_error', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1])
-      if (table === 'lessons') return makeLessonsChain([], new Error('lessons error'))
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-
-    await expect(getHorseExertionSummary('barn-1', since)).rejects.toThrow('lessons error')
-  })
-
-  it('should_throw_when_lesson_horses_fetch_returns_an_error', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1' }])
-      if (table === 'lesson_horses') return makeLessonHorsesChain(null, new Error('lh error'))
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-
-    await expect(getHorseExertionSummary('barn-1', since)).rejects.toThrow('lh error')
-  })
-
-  it('should_treat_null_lesson_horses_data_as_empty', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1' }])
-      if (table === 'lesson_horses') return makeLessonHorsesChain(null)
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+  it('should_return_empty_array_when_rpc_returns_null_data', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc(null),
+    } as any)
 
     const result = await getHorseExertionSummary('barn-1', since)
 
-    expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
-    ])
+    expect(result).toEqual([])
   })
 
   it('should_count_jumping_lessons_per_horse', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1, horse2])
-      if (table === 'lessons') return makeLessonsChain([
-        { id: 'lesson-1', jumping: true },
-        { id: 'lesson-2', jumping: false },
-      ])
-      if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 4 },
-        { lesson_id: 'lesson-2', horse_id: 'horse-1', exertion_level: 2 },
-        { lesson_id: 'lesson-1', horse_id: 'horse-2', exertion_level: 3 },
-      ])
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([
+        { id: 'horse-1', name: 'Thunderbolt', is_active: true, lesson_count: 2, total_exertion: 6, jumping_count: 1 },
+        { id: 'horse-2', name: 'Shadow', is_active: true, lesson_count: 1, total_exertion: 3, jumping_count: 1 },
+      ]),
+    } as any)
 
     const result = await getHorseExertionSummary('barn-1', since)
 
@@ -309,15 +240,11 @@ describe('getHorseExertionSummary', () => {
   })
 
   it('should_return_jumping_count_zero_for_non_jumping_lessons', async () => {
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return makeHorsesChain([horse1])
-      if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', jumping: false }])
-      if (table === 'lesson_horses') return makeLessonHorsesChain([
-        { lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 3 },
-      ])
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([
+        { id: 'horse-1', name: 'Thunderbolt', is_active: true, lesson_count: 1, total_exertion: 3, jumping_count: 0 },
+      ]),
+    } as any)
 
     const result = await getHorseExertionSummary('barn-1', since)
 
