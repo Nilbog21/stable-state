@@ -53,6 +53,8 @@ All tables are in the `public` schema with RLS enabled.
 
 `auth_is_barn_manager(p_barn_id uuid)` is a `SECURITY DEFINER` SQL function that bypasses RLS when checking manager status. This breaks the infinite recursion that occurs when a `barn_memberships` policy queries `barn_memberships`. Any policy that must check whether the calling user is a manager uses this helper.
 
+`auth_get_profile_immutable_fields(p_id uuid)` is a `SECURITY DEFINER` SQL function that returns a single `profiles` row's non-editable fields (`user_id`, `email`, `barn_id`, `role`, `first_name`, `last_name`, `created_at`). Used by the `profiles_manager_update` WITH CHECK to verify that a manager update does not change any immutable column. The SECURITY DEFINER is required because a plain `SELECT FROM profiles` inside a `profiles` WITH CHECK clause causes infinite recursion; this function bypasses RLS when fetching the pre-update row, breaking the cycle.
+
 RLS policies always go in a **separate migration file** from schema changes.
 
 `service_role` has `GRANT ALL ON ALL TABLES IN SCHEMA public` plus a default-privileges rule so future tables are covered automatically. Supabase normally applies this at project creation; it was made explicit in migration `20260614000000_service_role_grants.sql`.
