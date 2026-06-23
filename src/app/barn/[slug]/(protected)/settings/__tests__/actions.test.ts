@@ -72,10 +72,15 @@ describe('createTierAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_createTier_and_revalidate_settings_path', async () => {
+  it('should_call_createTier_when_manager', async () => {
     await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75)
+  })
+
+  it('should_revalidate_settings_path_after_createTier', async () => {
+    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
+
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 
@@ -117,10 +122,15 @@ describe('updateTierAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_updateTier_and_revalidate_settings_path', async () => {
+  it('should_call_updateTier_when_manager', async () => {
     await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 90 })
+  })
+
+  it('should_revalidate_settings_path_after_updateTier', async () => {
+    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
+
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 
@@ -156,10 +166,15 @@ describe('setDefaultTierAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_setDefaultTier_and_revalidate_settings_path', async () => {
+  it('should_call_setDefaultTier_when_manager', async () => {
     await setDefaultTierAction('green-acres', 'tier-1')
 
     expect(setDefaultTier).toHaveBeenCalledWith('tier-1', mockBarn.id)
+  })
+
+  it('should_revalidate_settings_path_after_setDefaultTier', async () => {
+    await setDefaultTierAction('green-acres', 'tier-1')
+
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 })
@@ -169,6 +184,7 @@ describe('deactivateTierAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getTierById).mockReset()
     vi.mocked(deactivateTier).mockReset()
+    mockRedirect.mockClear()
     vi.mocked(revalidatePath).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
@@ -185,32 +201,63 @@ describe('deactivateTierAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_redirect_to_login_when_tier_not_found', async () => {
+  it('should_redirect_when_tier_not_found', async () => {
     vi.mocked(getTierById).mockResolvedValue(null)
 
     await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
+  })
 
+  it('should_redirect_to_login_url_when_tier_not_found', async () => {
+    vi.mocked(getTierById).mockResolvedValue(null)
+
+    await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow()
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+  })
+
+  it('should_not_call_deactivateTier_when_tier_not_found', async () => {
+    vi.mocked(getTierById).mockResolvedValue(null)
+
+    await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow()
     expect(deactivateTier).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_with_error_when_tier_is_default', async () => {
+  it('should_redirect_when_tier_is_default', async () => {
     vi.mocked(getTierById).mockResolvedValue(
       createMockLessonTier({ id: 'tier-1', is_default: true })
     )
 
     await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
+  })
 
+  it('should_redirect_to_error_url_when_tier_is_default', async () => {
+    vi.mocked(getTierById).mockResolvedValue(
+      createMockLessonTier({ id: 'tier-1', is_default: true })
+    )
+
+    await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow()
     expect(mockRedirect).toHaveBeenCalledWith(
       '/barn/green-acres/settings?error=cannot_deactivate_default&errorTierId=tier-1'
     )
+  })
+
+  it('should_not_call_deactivateTier_when_tier_is_default', async () => {
+    vi.mocked(getTierById).mockResolvedValue(
+      createMockLessonTier({ id: 'tier-1', is_default: true })
+    )
+
+    await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow()
     expect(deactivateTier).not.toHaveBeenCalled()
   })
 
-  it('should_deactivate_and_revalidate_when_tier_is_not_default', async () => {
+  it('should_call_deactivateTier_when_tier_is_not_default', async () => {
     await deactivateTierAction('green-acres', 'tier-1')
 
     expect(deactivateTier).toHaveBeenCalledWith('tier-1', mockBarn.id)
+  })
+
+  it('should_revalidate_settings_path_after_deactivateTier', async () => {
+    await deactivateTierAction('green-acres', 'tier-1')
+
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 })

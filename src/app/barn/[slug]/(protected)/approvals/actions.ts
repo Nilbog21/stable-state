@@ -14,12 +14,13 @@ export async function approveMembershipAction(
   barnSlug: string,
   membershipId: string
 ): Promise<void> {
-  await requireMembership(barnSlug, ['manager'])
+  const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const toApprove = await getMembershipById(membershipId)
+  if (!toApprove || toApprove.barn_id !== barn.id) return
   await approveMembership(membershipId)
 
-  if (toApprove?.role === 'rider' && toApprove.barn_id && toApprove.user_id) {
+  if (toApprove.role === 'rider' && toApprove.user_id) {
     const profiles = await getProfilesByUserIds([toApprove.user_id])
     const profile = profiles[0]
     if (profile) {
@@ -39,7 +40,9 @@ export async function rejectMembershipAction(
   barnSlug: string,
   membershipId: string
 ): Promise<void> {
-  await requireMembership(barnSlug, ['manager'])
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const target = await getMembershipById(membershipId)
+  if (!target || target.barn_id !== barn.id) return
   await deleteMembership(membershipId)
   revalidatePath(`/barn/${barnSlug}/settings`)
 }
@@ -48,7 +51,9 @@ export async function removeMembershipAction(
   barnSlug: string,
   membershipId: string
 ): Promise<void> {
-  await requireMembership(barnSlug, ['manager'])
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const target = await getMembershipById(membershipId)
+  if (!target || target.barn_id !== barn.id) return
   await deleteMembership(membershipId)
   revalidatePath(`/barn/${barnSlug}/settings`)
 }

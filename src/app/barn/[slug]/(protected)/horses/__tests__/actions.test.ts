@@ -46,10 +46,15 @@ describe('addHorseAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_createHorse_and_revalidate_when_manager', async () => {
+  it('should_call_createHorse_when_manager', async () => {
     await addHorseAction('green-acres', formData)
 
     expect(createHorse).toHaveBeenCalledWith(mockBarn.id, 'Thunderbolt')
+  })
+
+  it('should_revalidate_horses_path_after_createHorse', async () => {
+    await addHorseAction('green-acres', formData)
+
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
   })
 
@@ -85,10 +90,15 @@ describe('updateHorseAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_updateHorse_and_revalidate_when_manager', async () => {
+  it('should_call_updateHorse_when_manager', async () => {
     await updateHorseAction('green-acres', 'horse-1', formData)
 
     expect(updateHorse).toHaveBeenCalledWith('horse-1', 'Thunderbolt Updated')
+  })
+
+  it('should_revalidate_horses_path_after_updateHorse', async () => {
+    await updateHorseAction('green-acres', 'horse-1', formData)
+
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
   })
 
