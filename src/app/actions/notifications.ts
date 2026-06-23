@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import {
   createNotification as dbCreateNotification,
   markNotificationRead as dbMarkNotificationRead,
@@ -16,8 +16,7 @@ export async function createNotificationAction(params: {
   body?: string | null
   link?: string | null
 }): Promise<{ error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) return { error: 'not authenticated' }
 
@@ -33,8 +32,7 @@ export async function createNotificationAction(params: {
 export async function markNotificationReadAction(
   id: string
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) return { error: 'not authenticated' }
 
@@ -50,8 +48,7 @@ export async function markNotificationReadAction(
 export async function markAllNotificationsReadAction(
   barnId: string
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) return { error: 'not authenticated' }
 

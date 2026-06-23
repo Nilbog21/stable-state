@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn } from '@/test/fixtures'
 import { makeFormData } from '@/test/utils/forms'
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barns', () => ({
@@ -25,7 +25,7 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }),
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, createPendingMembership } from '@/lib/db/barn-memberships'
 import { upsertProfile } from '@/lib/db/profiles'
@@ -36,16 +36,12 @@ const mockUser = { id: 'user-1', email: 'trainer@example.com', user_metadata: {}
 
 describe('registerForBarn', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
     vi.mocked(createPendingMembership).mockReset()
     vi.mocked(upsertProfile).mockReset()
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: mockUser } }),
-      },
-    } as any)
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(mockUser as any)
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(null)
     vi.mocked(createPendingMembership).mockResolvedValue({
@@ -165,9 +161,7 @@ describe('registerForBarn', () => {
   })
 
   it('should_redirect_to_barn_login_when_user_is_not_authenticated', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
-    } as any)
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
     const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
     await registerForBarn('green-acres', null, fd).catch(() => {})
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
@@ -181,11 +175,7 @@ describe('registerForBarn', () => {
   })
 
   it('should_return_error_when_user_has_no_email', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1', email: null } } }),
-      },
-    } as any)
+    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: null } as any)
     const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
     const result = await registerForBarn('green-acres', null, fd)
     expect(result).toEqual({ error: 'Account email is required.' })

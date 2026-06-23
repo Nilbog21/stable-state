@@ -1,6 +1,6 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, createPendingMembership } from '@/lib/db/barn-memberships'
 import { upsertProfile } from '@/lib/db/profiles'
@@ -23,13 +23,12 @@ export async function registerForBarn(
     return { error: 'Please select a valid role.' }
   }
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) {
+  const user = await getAuthenticatedUser()
+  if (!user) {
     redirect(`/barn/${barnSlug}/login`)
   }
 
-  if (!data.user.email) {
+  if (!user.email) {
     return { error: 'Account email is required.' }
   }
 
@@ -38,7 +37,7 @@ export async function registerForBarn(
     redirect('/login?error=auth_callback_failed')
   }
 
-  const existing = await getUserMembership(data.user.id, barn.id)
+  const existing = await getUserMembership(user.id, barn.id)
   if (existing?.status === 'active') {
     redirect(`/barn/${barnSlug}/`)
   }
@@ -47,8 +46,8 @@ export async function registerForBarn(
   }
 
   try {
-    await upsertProfile(data.user.id, data.user.email, firstName, lastName)
-    await createPendingMembership(data.user.id, barn.id, role)
+    await upsertProfile(user.id, user.email, firstName, lastName)
+    await createPendingMembership(user.id, barn.id, role)
   } catch {
     return { error: 'Something went wrong. Please try again.' }
   }

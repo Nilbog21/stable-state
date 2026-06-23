@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/notifications', () => ({
@@ -10,7 +10,7 @@ vi.mock('@/lib/db/notifications', () => ({
   markAllNotificationsRead: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { createNotification, markNotificationRead, markAllNotificationsRead } from '@/lib/db/notifications'
 import {
   createNotificationAction,
@@ -19,24 +19,16 @@ import {
 } from '../notifications'
 
 function mockAuthUser(userId = 'user-1') {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }),
-    },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
 }
 
 function mockAuthNoUser() {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-    },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
 }
 
 describe('createNotificationAction', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(createNotification).mockReset()
   })
 
@@ -103,7 +95,7 @@ describe('createNotificationAction', () => {
 
 describe('markNotificationReadAction', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(markNotificationRead).mockReset()
   })
 
@@ -145,7 +137,7 @@ describe('markNotificationReadAction', () => {
 
 describe('markAllNotificationsReadAction', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(markAllNotificationsRead).mockReset()
   })
 

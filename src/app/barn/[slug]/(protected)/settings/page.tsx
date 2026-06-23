@@ -1,5 +1,5 @@
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
@@ -70,11 +70,10 @@ export default async function SettingsPage({
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect(`/barn/${slug}/login`)
+  const user = await getAuthenticatedUser()
+  if (!user) redirect(`/barn/${slug}/login`)
 
-  const actorMembership = await getUserMembership(data.user.id, barn.id)
+  const actorMembership = await getUserMembership(user.id, barn.id)
 
   if (
     !actorMembership ||
@@ -91,7 +90,7 @@ export default async function SettingsPage({
     getActiveMemberships(barn.id),
   ])
 
-  const removable = active.filter((m) => m.user_id !== data.user!.id)
+  const removable = active.filter((m) => m.user_id !== user!.id)
 
   const allUserIds = [...new Set([...pending, ...active].map((m) => m.user_id))]
   const profiles = await getProfilesByUserIds(allUserIds)

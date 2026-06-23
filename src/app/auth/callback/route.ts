@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getUserMembership, getBarnMembershipsForUser, applyPreAuthProfile } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId } from '@/lib/db/profiles'
@@ -14,9 +15,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
-      const { data } = await supabase.auth.getUser()
-      if (data?.user?.email) {
-        await applyPreAuthProfile(data.user.id, data.user.email)
+      const user = await getAuthenticatedUser()
+      if (user?.email) {
+        await applyPreAuthProfile(user.id, user.email)
       }
 
       if (barnSlug) {
@@ -25,8 +26,8 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
         }
 
-        const membership = data?.user
-          ? await getUserMembership(data.user.id, barn.id)
+        const membership = user
+          ? await getUserMembership(user.id, barn.id)
           : null
 
         if (!membership) {
@@ -37,12 +38,12 @@ export async function GET(request: NextRequest) {
           return NextResponse.redirect(`${origin}/barn/${barnSlug}/pending`)
         }
 
-        if (data?.user) {
+        if (user) {
           try {
-            const profile = await getProfileByUserId(data.user.id)
+            const profile = await getProfileByUserId(user.id)
             if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
               const response = NextResponse.redirect(`${origin}/profile/complete`)
-              response.cookies.set(`barn_session_${barnSlug}`, data.user.id, {
+              response.cookies.set(`barn_session_${barnSlug}`, user.id, {
                 httpOnly: true,
                 sameSite: 'lax',
                 secure: process.env.NODE_ENV === 'production',
@@ -56,7 +57,7 @@ export async function GET(request: NextRequest) {
         }
 
         const response = NextResponse.redirect(`${origin}/barn/${barnSlug}/`)
-        response.cookies.set(`barn_session_${barnSlug}`, data.user!.id, {
+        response.cookies.set(`barn_session_${barnSlug}`, user!.id, {
           httpOnly: true,
           sameSite: 'lax',
           secure: process.env.NODE_ENV === 'production',
@@ -65,20 +66,20 @@ export async function GET(request: NextRequest) {
         return response
       }
 
-      const memberships = data?.user
-        ? await getBarnMembershipsForUser(data.user.id)
+      const memberships = user
+        ? await getBarnMembershipsForUser(user.id)
         : []
 
       const active = memberships.filter(m => m.membership.status === 'active')
       const pending = memberships.filter(m => m.membership.status === 'pending')
 
-      if (active.length >= 1 && data?.user) {
+      if (active.length >= 1 && user) {
         try {
-          const profile = await getProfileByUserId(data.user.id)
+          const profile = await getProfileByUserId(user.id)
           if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
             const response = NextResponse.redirect(`${origin}/profile/complete`)
             for (const { barn } of active) {
-              response.cookies.set(`barn_session_${barn.slug}`, data.user!.id, {
+              response.cookies.set(`barn_session_${barn.slug}`, user.id, {
                 httpOnly: true,
                 sameSite: 'lax',
                 secure: process.env.NODE_ENV === 'production',
@@ -95,7 +96,7 @@ export async function GET(request: NextRequest) {
       if (active.length === 1) {
         const slug = active[0].barn.slug
         const response = NextResponse.redirect(`${origin}/barn/${slug}`)
-        response.cookies.set(`barn_session_${slug}`, data.user!.id, {
+        response.cookies.set(`barn_session_${slug}`, user!.id, {
           httpOnly: true,
           sameSite: 'lax',
           secure: process.env.NODE_ENV === 'production',
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
       if (active.length > 1) {
         const response = NextResponse.redirect(`${origin}/barns`)
         for (const { barn } of active) {
-          response.cookies.set(`barn_session_${barn.slug}`, data.user!.id, {
+          response.cookies.set(`barn_session_${barn.slug}`, user!.id, {
             httpOnly: true,
             sameSite: 'lax',
             secure: process.env.NODE_ENV === 'production',

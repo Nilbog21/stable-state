@@ -1,9 +1,7 @@
 import { vi } from 'vitest'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { createMockUser } from '@/test/fixtures'
 
 export function setupAuth(user: Record<string, unknown> | null = createMockUser()) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }

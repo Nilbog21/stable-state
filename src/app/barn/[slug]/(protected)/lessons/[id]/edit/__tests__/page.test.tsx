@@ -9,7 +9,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn(), get
 vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
 vi.mock('@/lib/db/riders', () => ({ getRidersByBarn: vi.fn() }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn() }))
 vi.mock('../../../LessonForm', () => ({
@@ -26,7 +26,7 @@ import { getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-membershi
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRidersByBarn } from '@/lib/db/riders'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import EditLessonPage from '../page'
 
@@ -54,9 +54,7 @@ const mockManagerMembership = {
 }
 
 function setupDefaults() {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'user-1' } } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1' } as any)
   vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
   vi.mocked(getLessonById).mockResolvedValue(mockLesson)
   vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
@@ -78,7 +76,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getRidersByBarn).mockReset()
     vi.mocked(getAllTiersByBarn).mockReset()
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     setupDefaults()
   })
 
@@ -96,17 +94,13 @@ describe('EditLessonPage', () => {
   })
 
   it('should_call_notFound_when_user_is_not_authenticated', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
-    } as any)
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
   it('should_invoke_notFound_when_user_is_not_authenticated', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { getUser: vi.fn().mockResolvedValue({ data: { user: null } }) },
-    } as any)
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()

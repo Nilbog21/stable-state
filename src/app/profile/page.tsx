@@ -1,17 +1,16 @@
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { ProfileForm } from './ProfileForm'
 
 export default async function ProfilePage() {
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect('/login')
+  const user = await getAuthenticatedUser()
+  if (!user) redirect('/login')
 
   const [profile, memberships] = await Promise.all([
-    getProfileByUserId(data.user.id),
-    getBarnMembershipsForUser(data.user.id),
+    getProfileByUserId(user.id),
+    getBarnMembershipsForUser(user.id),
   ])
   if (!profile) redirect('/login')
 

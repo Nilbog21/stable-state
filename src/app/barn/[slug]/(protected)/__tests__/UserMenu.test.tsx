@@ -14,12 +14,12 @@ vi.mock('next/link', () => ({
     onClick?: () => void
     onNavigate?: (e: { preventDefault: () => void }) => void
   }) => (
-    <a href={href} onClick={() => { onClick?.(); onNavigate?.({ preventDefault: vi.fn() }) }}>{children}</a>
+    <a href={href} onClick={(e) => { onNavigate?.({ preventDefault: () => e.preventDefault() }); onClick?.() }}>{children}</a>
   ),
 }))
 
 vi.mock('../NavigationBlocker', () => ({
-  useNavigationBlocker: vi.fn(),
+  useNavigationBlocker: vi.fn(() => ({ dirty: false, setDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
 }))
 
 import { useNavigationBlocker } from '../NavigationBlocker'
@@ -157,24 +157,39 @@ describe('UserMenu - outside click/touch closes dropdown', () => {
   })
 })
 
-describe('UserMenu - dirty navigation intercepted from Profile link', () => {
-  it('should_call_setPendingNav_with_profile_href_when_dirty', () => {
-    const setPendingNav = vi.fn()
-    vi.mocked(useNavigationBlocker).mockReturnValue({ dirty: true, setDirty: vi.fn(), pendingNav: null, setPendingNav })
+describe('UserMenu - dirty navigation blocking', () => {
+  const mockSetPendingNav = vi.fn()
+
+  beforeEach(() => {
+    vi.mocked(useNavigationBlocker).mockReturnValue({
+      dirty: true,
+      setDirty: vi.fn(),
+      pendingNav: null,
+      setPendingNav: mockSetPendingNav,
+    } as any)
+  })
+
+  afterEach(() => {
+    mockSetPendingNav.mockReset()
+    vi.mocked(useNavigationBlocker).mockReturnValue({
+      dirty: false,
+      setDirty: vi.fn(),
+      pendingNav: null,
+      setPendingNav: vi.fn(),
+    } as any)
+  })
+
+  it('should_set_pending_nav_to_profile_when_dirty_and_profile_link_clicked', () => {
     render(<UserMenu {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     fireEvent.click(screen.getByRole('link', { name: /profile/i }))
-    expect(setPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/profile' })
+    expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/profile' })
   })
-})
 
-describe('UserMenu - dirty navigation intercepted from Switch Barn link', () => {
-  it('should_call_setPendingNav_with_barns_href_when_dirty', () => {
-    const setPendingNav = vi.fn()
-    vi.mocked(useNavigationBlocker).mockReturnValue({ dirty: true, setDirty: vi.fn(), pendingNav: null, setPendingNav })
+  it('should_set_pending_nav_to_barns_when_dirty_and_switch_barn_link_clicked', () => {
     render(<UserMenu {...baseProps} showSwitchBarn={true} />)
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     fireEvent.click(screen.getByRole('link', { name: /switch barn/i }))
-    expect(setPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/barns' })
+    expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/barns' })
   })
 })

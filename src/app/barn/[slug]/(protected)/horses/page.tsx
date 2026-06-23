@@ -1,5 +1,5 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseExertionSummary } from '@/lib/db/horses'
@@ -15,11 +15,10 @@ export default async function HorsesPage({
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) notFound()
+  const user = await getAuthenticatedUser()
+  if (!user) notFound()
 
-  const membership = await getUserMembership(data.user.id, barn.id)
+  const membership = await getUserMembership(user.id, barn.id)
   if (!membership || membership.status !== 'active') notFound()
 
   const isManager = membership.role === 'manager'

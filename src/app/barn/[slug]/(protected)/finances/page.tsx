@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary } from '@/lib/db/lesson-finances'
@@ -111,11 +111,10 @@ export default async function FinancesPage({
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect(`/barn/${slug}/login`)
+  const user = await getAuthenticatedUser()
+  if (!user) redirect(`/barn/${slug}/login`)
 
-  const actorMembership = await getUserMembership(data.user.id, barn.id)
+  const actorMembership = await getUserMembership(user.id, barn.id)
 
   if (
     !actorMembership ||

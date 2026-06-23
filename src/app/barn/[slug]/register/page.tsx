@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { registerForBarn } from './actions'
 import { RegisterForm } from './RegisterForm'
 
@@ -17,14 +17,13 @@ export default async function BarnRegisterPage({
     notFound()
   }
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
-  if (!data.user) {
+  if (!user) {
     redirect(`/barn/${slug}/login`)
   }
 
-  const existing = await getUserMembership(data.user.id, barn.id)
+  const existing = await getUserMembership(user.id, barn.id)
   if (existing?.status === 'active') {
     redirect(`/barn/${slug}/`)
   }
@@ -32,7 +31,7 @@ export default async function BarnRegisterPage({
     redirect(`/barn/${slug}/pending`)
   }
 
-  const meta = data.user.user_metadata ?? {}
+  const meta = user.user_metadata ?? {}
   const fullName: string = meta.full_name ?? ''
   const [defaultFirst = '', ...rest] = fullName.split(' ')
   const defaultLastName = rest.join(' ') || (meta.family_name ?? '')

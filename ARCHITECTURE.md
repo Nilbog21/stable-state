@@ -97,6 +97,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 
 | File | Domain |
 |---|---|
+| `auth.ts` | Auth session; `getAuthenticatedUser()` — wraps `supabase.auth.getUser()`, returns `User \| null` |
 | `barns.ts` | Barn lookups |
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
 | `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`); soft-delete (`setHorseActive(horseId, barnId, isActive)` — sets `is_active=false` or `true`); `getHorsesByBarn` filters to active only |

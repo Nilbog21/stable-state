@@ -4,8 +4,8 @@ import { createMockBarn, createMockMembership, createMockProfile } from '@/test/
 
 afterEach(cleanup)
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/profiles', () => ({
@@ -37,7 +37,7 @@ vi.mock('../actions', () => ({
   updateProfileAction: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { ProfileForm } from '../ProfileForm'
@@ -47,14 +47,12 @@ import ProfileCompletePage from '../complete/page'
 const mockProfile = createMockProfile()
 
 function mockAuth(user: { id: string; email: string } | null) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
 
 describe('ProfilePage', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getProfileByUserId).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
     mockRedirect.mockClear()
@@ -86,7 +84,7 @@ describe('ProfilePage', () => {
 
 describe('ProfilePage - redirectAfterSave', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getProfileByUserId).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockReset()
     vi.mocked(ProfileForm).mockClear()
@@ -128,7 +126,7 @@ describe('ProfilePage - redirectAfterSave', () => {
 
 describe('ProfileCompletePage', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getProfileByUserId).mockReset()
     mockRedirect.mockClear()
   })

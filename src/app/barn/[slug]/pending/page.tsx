@@ -1,7 +1,7 @@
 import { notFound, redirect } from 'next/navigation'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 
 export default async function BarnPendingPage({
   params,
@@ -15,14 +15,13 @@ export default async function BarnPendingPage({
     notFound()
   }
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
-  if (!data.user) {
+  if (!user) {
     redirect(`/barn/${slug}/login`)
   }
 
-  const membership = await getUserMembership(data.user.id, barn.id)
+  const membership = await getUserMembership(user.id, barn.id)
   if (!membership) {
     redirect(`/barn/${slug}/register`)
   }

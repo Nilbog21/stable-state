@@ -1,14 +1,13 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 
 export default async function ProfileLayout({ children }: { children: React.ReactNode }) {
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect('/login')
+  const user = await getAuthenticatedUser()
+  if (!user) redirect('/login')
 
-  const memberships = await getBarnMembershipsForUser(data.user.id)
+  const memberships = await getBarnMembershipsForUser(user.id)
   const active = memberships.filter((m) => m.membership.status === 'active')
   const backHref = active.length === 1 ? `/barn/${active[0].barn.slug}` : '/barns'
 

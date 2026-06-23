@@ -1,6 +1,6 @@
 import type { Metadata } from 'next'
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
@@ -29,27 +29,26 @@ export default async function ProtectedBarnLayout({
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect(`/barn/${slug}/login`)
+  const user = await getAuthenticatedUser()
+  if (!user) redirect(`/barn/${slug}/login`)
 
-  const membership = await getUserMembership(data.user.id, barn.id)
+  const membership = await getUserMembership(user.id, barn.id)
   if (!membership) redirect(`/barn/${slug}/login`)
   if (membership.status === 'pending') redirect(`/barn/${slug}/pending`)
   if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
 
   const [allMemberships, profileRows] = await Promise.all([
-    getBarnMembershipsForUser(data.user.id),
-    getProfilesByUserIds([data.user.id]),
+    getBarnMembershipsForUser(user.id),
+    getProfilesByUserIds([user.id]),
   ])
   const profile = profileRows[0] ?? null
   const initials =
     profile && profile.first_name && profile.last_name
       ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
-      : (data.user.email?.[0] ?? '?').toUpperCase()
+      : (user.email?.[0] ?? '?').toUpperCase()
   const fullName = profile ? `${profile.first_name} ${profile.last_name}` : null
   const showSwitchBarn = allMemberships.filter((m) => m.membership.status === 'active').length > 1
-  const email = data.user.email ?? ''
+  const email = user.email ?? ''
 
   let navLinks: { href: string; label: string }[]
   if (membership.role === 'manager') {

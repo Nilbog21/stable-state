@@ -1,14 +1,13 @@
-import { createClient } from "@/lib/supabase/server";
+import { getAuthenticatedUser } from "@/lib/db/auth";
 import { getBarnMembershipsForUser } from "@/lib/db/barn-memberships";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
-  const supabase = await createClient();
-  const { data } = await supabase.auth.getUser();
+  const user = await getAuthenticatedUser();
 
-  if (!data?.user) redirect("/login");
+  if (!user) redirect("/login");
 
-  const memberships = await getBarnMembershipsForUser(data.user.id);
+  const memberships = await getBarnMembershipsForUser(user.id);
   const active = memberships.filter((m) => m.membership.status === "active");
   const pending = memberships.filter((m) => m.membership.status === "pending");
 
