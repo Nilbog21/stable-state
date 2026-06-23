@@ -58,17 +58,20 @@ export default async function ProtectedBarnLayout({
       { href: `/barn/${slug}/riders`, label: 'Riders' },
       { href: `/barn/${slug}/finances`, label: 'Finances' },
       { href: `/barn/${slug}/settings`, label: 'Manage Barn' },
+      { href: `/barn/${slug}/guide`, label: 'Guide' },
     ]
   } else if (membership.role === 'trainer') {
     navLinks = [
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
       { href: `/barn/${slug}/riders`, label: 'Riders' },
+      { href: `/barn/${slug}/guide`, label: 'Guide' },
     ]
   } else {
     navLinks = [
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
+      { href: `/barn/${slug}/guide`, label: 'Guide' },
     ]
   }
 
