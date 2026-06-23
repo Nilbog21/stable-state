@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Notification, NotificationType } from './types'
 
 export async function createNotification(params: {
@@ -8,8 +9,8 @@ export async function createNotification(params: {
   title: string
   body?: string | null
   link?: string | null
-}): Promise<void> {
-  const supabase = await createClient()
+}, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
   const { error } = await supabase.from('notifications').upsert(
     {
       user_id: params.userId,

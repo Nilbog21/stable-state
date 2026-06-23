@@ -78,6 +78,18 @@ describe('createNotification', () => {
       createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'outstanding_payment', title: 'Overdue' })
     ).rejects.toThrow('insert failed')
   })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockFrom = vi.fn().mockReturnValue({
+      upsert: vi.fn().mockResolvedValue({ error: null }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'New request' }, injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(mockFrom).toHaveBeenCalledWith('notifications')
+  })
 })
 
 describe('markNotificationRead', () => {
