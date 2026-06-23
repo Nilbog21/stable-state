@@ -3,7 +3,8 @@ import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getRidersByBarn } from '@/lib/db/riders'
-import { updateRiderAction } from './actions'
+import { updateRiderAction, deleteRiderAction } from './actions'
+import { DeleteRiderButton } from './DeleteRiderButton'
 
 export default async function RidersPage({
   params,
@@ -29,6 +30,7 @@ export default async function RidersPage({
   }
 
   const riders = await getRidersByBarn(barn.id)
+  const isManager = actorMembership.role === 'manager'
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -67,7 +69,7 @@ export default async function RidersPage({
                       className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
                     />
                   </td>
-                  <td className="py-3">
+                  <td className="py-3 flex gap-2">
                     <button
                       type="submit"
                       form={`update-rider-${rider.id}`}
@@ -75,6 +77,9 @@ export default async function RidersPage({
                     >
                       Save
                     </button>
+                    {isManager && (
+                      <DeleteRiderButton action={deleteRiderAction.bind(null, slug, rider.id)} />
+                    )}
                   </td>
                 </tr>
               ))}
