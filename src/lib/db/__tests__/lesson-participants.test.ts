@@ -190,6 +190,7 @@ describe('createLessonWithParticipants', () => {
       p_lesson_type: 'normal',
       p_jumping: false,
       p_tier_name: 'Custom',
+      p_payment_type: null,
     })
   })
 
@@ -257,6 +258,7 @@ describe('createLessonWithParticipants', () => {
       p_lesson_type: 'group',
       p_jumping: false,
       p_tier_name: 'Custom',
+      p_payment_type: null,
     })
   })
 
@@ -325,6 +327,47 @@ describe('createLessonWithParticipants', () => {
     )
 
     expect(mockRpc).toHaveBeenCalled()
+  })
+
+  it('should_pass_payment_type_to_rpc_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+      paymentType: 'venmo',
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
+      expect.objectContaining({ p_payment_type: 'venmo' })
+    )
+  })
+
+  it('should_default_payment_type_to_null_when_not_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
+      expect.objectContaining({ p_payment_type: null })
+    )
   })
 })
 

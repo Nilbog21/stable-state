@@ -446,26 +446,24 @@ export function LessonForm({
         <input type="hidden" name="fee" value={selectedTier?.price ?? ''} />
       )}
 
-      {mode === 'edit' && (
-        <div className="flex flex-col gap-1">
-          <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Payment type
-          </label>
-          <select
-            id="payment_type"
-            name="payment_type"
-            defaultValue={initialLesson?.payment_type ?? ''}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          >
-            <option value="">Unpaid</option>
-            <option value="venmo">Venmo</option>
-            <option value="zelle">Zelle</option>
-            <option value="cash">Cash</option>
-            <option value="check">Check</option>
-            <option value="freshbooks">FreshBooks Invoice</option>
-          </select>
-        </div>
-      )}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Payment type
+        </label>
+        <select
+          id="payment_type"
+          name="payment_type"
+          defaultValue={initialLesson?.payment_type ?? ''}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          <option value="">Unpaid</option>
+          <option value="venmo">Venmo</option>
+          <option value="zelle">Zelle</option>
+          <option value="cash">Cash</option>
+          <option value="check">Check</option>
+          <option value="freshbooks">FreshBooks Invoice</option>
+        </select>
+      </div>
 
       <button
         type="submit"

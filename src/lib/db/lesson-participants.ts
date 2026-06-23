@@ -13,6 +13,7 @@ export async function createLessonWithParticipants(params: {
   lessonType: LessonType
   jumping?: boolean
   tierName?: string
+  paymentType?: PaymentType | null
 }, client?: SupabaseClient): Promise<Lesson> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
@@ -27,6 +28,7 @@ export async function createLessonWithParticipants(params: {
     p_lesson_type: params.lessonType,
     p_jumping: params.jumping ?? false,
     p_tier_name: params.tierName ?? 'Custom',
+    p_payment_type: params.paymentType ?? null,
   })
   if (error) throw error
   return data as Lesson

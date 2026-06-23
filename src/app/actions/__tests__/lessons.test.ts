@@ -559,6 +559,22 @@ describe('submitLesson', () => {
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createRider).toHaveBeenCalledWith('barn-1', 'Carol')
   })
+
+  it('should_pass_payment_type_to_createLessonWithParticipants_when_provided', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', payment_type: 'venmo' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentType: 'venmo' })
+    )
+  })
+
+  it('should_pass_null_payment_type_to_createLessonWithParticipants_when_not_provided', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ paymentType: null })
+    )
+  })
 })
 
 describe('deleteLessonAction', () => {
