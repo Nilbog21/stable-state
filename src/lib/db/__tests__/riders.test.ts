@@ -6,24 +6,29 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getRidersByBarn, createRider, updateRider } from '../riders'
+import { getRidersByBarn, createRider, updateRider, deleteRider } from '../riders'
 
 const mockRiders = [
   createMockRider({ id: 'rider-1', name: 'Alice', created_at: '2026-01-01', updated_at: '2026-01-01' }),
   createMockRider({ id: 'rider-2', name: 'Bob', created_at: '2026-01-02', updated_at: '2026-01-02' }),
 ]
 
-describe('getRidersByBarn', () => {
-  it('should_return_riders_for_barn', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
+const makeGetRidersMock = (result: { data: typeof mockRiders | null; error: Error | null }) =>
+  vi.mocked(createClient).mockResolvedValue({
+    from: vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: mockRiders, error: null }),
+            order: vi.fn().mockResolvedValue(result),
           }),
         }),
       }),
-    } as any)
+    }),
+  } as any)
+
+describe('getRidersByBarn', () => {
+  it('should_return_riders_for_barn', async () => {
+    makeGetRidersMock({ data: mockRiders, error: null })
 
     const result = await getRidersByBarn('barn-1')
 
@@ -31,15 +36,7 @@ describe('getRidersByBarn', () => {
   })
 
   it('should_return_empty_array_when_no_riders', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: [], error: null }),
-          }),
-        }),
-      }),
-    } as any)
+    makeGetRidersMock({ data: [], error: null })
 
     const result = await getRidersByBarn('barn-1')
 
@@ -47,15 +44,7 @@ describe('getRidersByBarn', () => {
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            order: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
-          }),
-        }),
-      }),
-    } as any)
+    makeGetRidersMock({ data: null, error: new Error('db error') })
 
     await expect(getRidersByBarn('barn-1')).rejects.toThrow('db error')
   })
@@ -205,5 +194,47 @@ describe('updateRider', () => {
     } as any)
 
     await expect(updateRider('rider-1', 'barn-1', 'Alice Updated')).rejects.toThrow('db error')
+  })
+})
+
+describe('deleteRider', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_set_is_active_false_for_rider', async () => {
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mockRiders[0], error: null }),
+          }),
+        }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await expect(deleteRider('rider-1', 'barn-1')).resolves.toBeUndefined()
+    expect(mockUpdate).toHaveBeenCalledWith({ is_active: false })
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(deleteRider('rider-1', 'barn-1')).rejects.toThrow('db error')
   })
 })

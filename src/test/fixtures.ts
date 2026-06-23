@@ -55,6 +55,7 @@ export function createMockRider(overrides: Partial<Rider> = {}): Rider {
     barn_id: 'barn-1',
     name: 'Jane Doe',
     user_id: null,
+    is_active: true,
     created_at: '',
     updated_at: '',
     ...overrides,

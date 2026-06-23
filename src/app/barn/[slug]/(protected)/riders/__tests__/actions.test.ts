@@ -7,6 +7,7 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/riders', () => ({
   updateRider: vi.fn(),
+  deleteRider: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -14,9 +15,9 @@ vi.mock('next/cache', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { updateRider } from '@/lib/db/riders'
+import { updateRider, deleteRider } from '@/lib/db/riders'
 import { revalidatePath } from 'next/cache'
-import { updateRiderAction } from '../actions'
+import { updateRiderAction, deleteRiderAction } from '../actions'
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
@@ -71,5 +72,37 @@ describe('updateRiderAction', () => {
     await updateRiderAction('green-acres', 'rider-1', formData)
 
     expect(updateRider).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteRiderAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(deleteRider).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(deleteRider).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await deleteRiderAction('green-acres', 'rider-1')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_deleteRider_with_rider_and_barn_ids', async () => {
+    await deleteRiderAction('green-acres', 'rider-1')
+
+    expect(deleteRider).toHaveBeenCalledWith('rider-1', 'barn-1')
+  })
+
+  it('should_revalidate_riders_path', async () => {
+    await deleteRiderAction('green-acres', 'rider-1')
+
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/riders')
   })
 })

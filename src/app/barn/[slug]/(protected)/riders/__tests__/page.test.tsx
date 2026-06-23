@@ -11,6 +11,13 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 vi.mock('@/lib/db/riders', () => ({ getRidersByBarn: vi.fn() }))
 vi.mock('../actions', () => ({
   updateRiderAction: vi.fn(),
+  deleteRiderAction: vi.fn(),
+}))
+
+vi.mock('../DeleteRiderButton', () => ({
+  DeleteRiderButton: ({ action }: { action: () => Promise<void> }) => (
+    <button type="submit" onClick={action}>Delete</button>
+  ),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -120,5 +127,27 @@ describe('RidersPage', () => {
     const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getAllByRole('button', { name: /save/i })[0].getAttribute('form')).toBe('update-rider-rider-1')
+  })
+
+  it('should_render_delete_button_for_manager', async () => {
+    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('button', { name: /delete/i })).toHaveLength(2)
+  })
+
+  it('should_not_render_delete_button_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
+    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryAllByRole('button', { name: /delete/i })).toHaveLength(0)
+  })
+
+  it('should_render_one_delete_button_per_rider_for_manager', async () => {
+    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('button', { name: /delete/i })).toHaveLength(mockRiders.length)
   })
 })
