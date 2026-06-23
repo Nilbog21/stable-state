@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react'
 import { LessonNotesForm } from '../LessonNotesForm'
 
 afterEach(cleanup)
@@ -139,5 +139,85 @@ describe('LessonNotesForm', () => {
       window.dispatchEvent(event)
       expect(event.defaultPrevented).toBe(true)
     })
+  })
+})
+
+describe('LessonNotesForm - navigation guard', () => {
+  afterEach(() => {
+    cleanup()
+    vi.restoreAllMocks()
+  })
+
+  async function renderDirty() {
+    render(<LessonNotesForm action={vi.fn().mockResolvedValue(undefined)} horses={[mockHorse]} riders={[]} />)
+    await act(async () => {
+      fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    })
+  }
+
+  it('should_prompt_on_pushstate_to_different_path_when_dirty', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await renderDirty()
+
+    window.history.pushState(null, '', '/barn/other')
+
+    expect(confirmSpy).toHaveBeenCalled()
+  })
+
+  it('should_not_navigate_on_different_path_when_user_cancels', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await renderDirty()
+    const before = window.location.pathname
+
+    window.history.pushState(null, '', '/barn/other')
+
+    expect(window.location.pathname).toBe(before)
+  })
+
+  it('should_navigate_on_different_path_when_user_confirms', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await renderDirty()
+
+    window.history.pushState(null, '', '/barn/other')
+
+    expect(window.location.pathname).toBe('/barn/other')
+  })
+
+  it('should_not_prompt_on_pushstate_to_same_path_when_dirty', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await renderDirty()
+
+    window.history.pushState(null, '', `${window.location.pathname}?tab=notes`)
+
+    expect(confirmSpy).not.toHaveBeenCalled()
+  })
+
+  it('should_not_prompt_on_pushstate_when_url_is_null', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+    await renderDirty()
+
+    window.history.pushState(null, '', null)
+
+    expect(confirmSpy).not.toHaveBeenCalled()
+  })
+
+  it('should_prompt_on_popstate_when_dirty', async () => {
+    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+    await renderDirty()
+
+    window.dispatchEvent(new PopStateEvent('popstate'))
+
+    expect(confirmSpy).toHaveBeenCalled()
+  })
+
+  it('should_push_state_back_on_popstate_when_user_cancels', async () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    const pushStateSpy = vi.spyOn(window.history, 'pushState')
+    await renderDirty()
+    pushStateSpy.mockClear()
+
+    window.dispatchEvent(new PopStateEvent('popstate'))
+
+    expect(pushStateSpy).toHaveBeenCalledWith(null, '', window.location.href)
   })
 })

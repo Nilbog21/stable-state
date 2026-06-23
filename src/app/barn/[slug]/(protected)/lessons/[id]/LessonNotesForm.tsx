@@ -26,9 +26,33 @@ export function LessonNotesForm({ action, horses, riders }: Props) {
 
   useEffect(() => {
     if (!dirty) return
-    const handler = (e: BeforeUnloadEvent) => { e.preventDefault() }
-    window.addEventListener('beforeunload', handler)
-    return () => window.removeEventListener('beforeunload', handler)
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault() }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+
+    const originalPushState = window.history.pushState.bind(window.history)
+    window.history.pushState = function(state, title, url) {
+      if (url) {
+        const next = new URL(String(url), window.location.href)
+        if (next.pathname !== window.location.pathname && !window.confirm('You have unsaved changes. Leave without saving?')) {
+          return
+        }
+      }
+      originalPushState(state, title, url)
+    }
+
+    const handlePopState = () => {
+      if (!window.confirm('You have unsaved changes. Leave without saving?')) {
+        originalPushState(null, '', window.location.href)
+      }
+    }
+    window.addEventListener('popstate', handlePopState)
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload)
+      window.history.pushState = originalPushState
+      window.removeEventListener('popstate', handlePopState)
+    }
   }, [dirty])
 
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
