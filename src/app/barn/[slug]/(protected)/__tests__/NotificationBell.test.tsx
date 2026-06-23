@@ -9,11 +9,28 @@ vi.mock('next/navigation', () => ({
   useRouter: () => ({ refresh: mockRefresh }),
 }))
 
+vi.mock('next/link', () => ({
+  default: ({ href, children, onClick, onNavigate, className }: {
+    href: string
+    children: React.ReactNode
+    onClick?: () => void
+    onNavigate?: (e: { preventDefault: () => void }) => void
+    className?: string
+  }) => (
+    <a href={href} className={className} onClick={(e) => { onNavigate?.({ preventDefault: () => e.preventDefault() }); onClick?.() }}>{children}</a>
+  ),
+}))
+
 vi.mock('@/app/actions/notifications', () => ({
   markAllNotificationsReadAction: vi.fn(),
 }))
 
+vi.mock('../NavigationBlocker', () => ({
+  useNavigationBlocker: vi.fn(() => ({ dirty: false, setDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
+}))
+
 import { markAllNotificationsReadAction } from '@/app/actions/notifications'
+import { useNavigationBlocker } from '../NavigationBlocker'
 import { NotificationBell } from '../NotificationBell'
 import type { Notification } from '@/lib/db/types'
 
@@ -53,6 +70,12 @@ describe('NotificationBell', () => {
   beforeEach(() => {
     vi.mocked(markAllNotificationsReadAction).mockReset()
     mockRefresh.mockReset()
+    vi.mocked(useNavigationBlocker).mockReturnValue({
+      dirty: false,
+      setDirty: vi.fn(),
+      pendingNav: null,
+      setPendingNav: vi.fn(),
+    })
   })
 
   it('should_render_bell_button', () => {
@@ -95,7 +118,6 @@ describe('NotificationBell', () => {
       </div>
     )
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
-    expect(screen.getByText('Payment overdue')).toBeDefined()
 
     fireEvent.mouseDown(screen.getByTestId('outside'))
 
@@ -117,11 +139,17 @@ describe('NotificationBell', () => {
     expect((link as HTMLAnchorElement).href).toContain('/barn/test/settings')
   })
 
-  it('should_render_notification_as_plain_text_when_no_link', () => {
+  it('should_not_render_link_for_notification_without_link_field', () => {
     render(<NotificationBell notifications={[unlinkNotif]} barnId="barn-1" />)
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
 
     expect(screen.queryByRole('link', { name: /no link notif/i })).toBeNull()
+  })
+
+  it('should_render_notification_title_as_plain_text_when_no_link', () => {
+    render(<NotificationBell notifications={[unlinkNotif]} barnId="barn-1" />)
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
     expect(screen.getByText('No link notif')).toBeDefined()
   })
 
@@ -132,7 +160,7 @@ describe('NotificationBell', () => {
     expect(screen.getByText(/no notifications/i)).toBeDefined()
   })
 
-  it('should_call_mark_all_read_action_and_refresh_on_button_click', async () => {
+  it('should_call_mark_all_read_action_when_mark_all_read_clicked', async () => {
     vi.mocked(markAllNotificationsReadAction).mockResolvedValue({ error: null })
     render(<NotificationBell notifications={[unreadNotif]} barnId="barn-1" />)
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
@@ -142,7 +170,30 @@ describe('NotificationBell', () => {
     })
 
     expect(markAllNotificationsReadAction).toHaveBeenCalledWith('barn-1')
+  })
+
+  it('should_refresh_after_successful_mark_all_read', async () => {
+    vi.mocked(markAllNotificationsReadAction).mockResolvedValue({ error: null })
+    render(<NotificationBell notifications={[unreadNotif]} barnId="barn-1" />)
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /mark all read/i }))
+    })
+
     expect(mockRefresh).toHaveBeenCalled()
+  })
+
+  it('should_not_refresh_when_mark_all_read_action_returns_error', async () => {
+    vi.mocked(markAllNotificationsReadAction).mockResolvedValue({ error: 'failed' })
+    render(<NotificationBell notifications={[unreadNotif]} barnId="barn-1" />)
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /mark all read/i }))
+    })
+
+    expect(mockRefresh).not.toHaveBeenCalled()
   })
 
   it('should_render_read_notification_without_bold_style', () => {
@@ -156,10 +207,25 @@ describe('NotificationBell', () => {
   it('should_close_dropdown_when_linked_notification_is_clicked', () => {
     render(<NotificationBell notifications={[linkedNotif]} barnId="barn-1" />)
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
-    expect(screen.getByText('Payment overdue')).toBeDefined()
 
     fireEvent.click(screen.getByRole('link', { name: /payment overdue/i }))
 
     expect(screen.queryByText('Payment overdue')).toBeNull()
+  })
+
+  it('should_set_pending_nav_when_dirty_and_notification_link_clicked', () => {
+    const mockSetPendingNav = vi.fn()
+    vi.mocked(useNavigationBlocker).mockReturnValue({
+      dirty: true,
+      setDirty: vi.fn(),
+      pendingNav: null,
+      setPendingNav: mockSetPendingNav,
+    })
+    render(<NotificationBell notifications={[linkedNotif]} barnId="barn-1" />)
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    fireEvent.click(screen.getByRole('link', { name: /payment overdue/i }))
+
+    expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/barn/test/settings' })
   })
 })

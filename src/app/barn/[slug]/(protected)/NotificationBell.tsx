@@ -3,6 +3,7 @@ import { useRef, useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { markAllNotificationsReadAction } from '@/app/actions/notifications'
+import { useNavigationBlocker } from './NavigationBlocker'
 import type { Notification } from '@/lib/db/types'
 
 interface Props {
@@ -14,6 +15,7 @@ export function NotificationBell({ notifications, barnId }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
+  const { dirty, setPendingNav } = useNavigationBlocker()
   const unreadCount = notifications.filter((n) => !n.read_at).length
 
   useEffect(() => {
@@ -29,7 +31,8 @@ export function NotificationBell({ notifications, barnId }: Props) {
   }, [])
 
   async function handleMarkAllRead() {
-    await markAllNotificationsReadAction(barnId)
+    const result = await markAllNotificationsReadAction(barnId)
+    if (result.error) return
     router.refresh()
   }
 
@@ -80,11 +83,10 @@ export function NotificationBell({ notifications, barnId }: Props) {
             ) : (
               notifications.map((n) => {
                 const isUnread = !n.read_at
-                const body = n.title
                 const inner = (
                   <div>
                     <p className={`text-sm ${isUnread ? 'font-semibold text-zinc-900 dark:text-zinc-50' : 'text-zinc-700 dark:text-zinc-300'}`}>
-                      {body}
+                      {n.title}
                     </p>
                     {n.body && (
                       <p className="mt-0.5 text-xs text-zinc-500 line-clamp-2">{n.body}</p>
@@ -100,6 +102,12 @@ export function NotificationBell({ notifications, barnId }: Props) {
                       <Link
                         href={n.link}
                         onClick={() => setOpen(false)}
+                        onNavigate={(e) => {
+                          if (dirty) {
+                            e.preventDefault()
+                            setPendingNav({ type: 'push', href: n.link! })
+                          }
+                        }}
                         className="block hover:opacity-80"
                       >
                         {inner}
