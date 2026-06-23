@@ -19,7 +19,7 @@ import {
   rejectMembershipAction,
   removeMembershipAction,
 } from '../approvals/actions'
-import { DeactivateButton } from './DeactivateButton'
+import { TierRow } from './TierRow'
 import InviteLink from './InviteLink'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
@@ -194,7 +194,7 @@ export default async function SettingsPage({
 
       {/* <form> cannot be a valid child of <tr>, so save forms live here and
           are associated to their row controls via the HTML `form` attribute. */}
-      {tiers.filter((t) => t.is_active).map((tier) => (
+      {tiers.map((tier) => (
         <form
           key={`update-${tier.id}`}
           id={`update-tier-${tier.id}`}
@@ -220,79 +220,14 @@ export default async function SettingsPage({
             </thead>
             <tbody>
               {tiers.map((tier) => (
-                <tr key={tier.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-4 align-top">
-                    <input
-                      type="text"
-                      name="name"
-                      form={tier.is_active ? `update-tier-${tier.id}` : undefined}
-                      defaultValue={tier.name}
-                      required
-                      disabled={!tier.is_active}
-                      className="rounded border border-zinc-300 px-2 py-1 text-sm disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-                    />
-                    {tier.is_default && (
-                      <span className="ml-2 rounded bg-zinc-900 px-1.5 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
-                        Default
-                      </span>
-                    )}
-                    <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">
-                      Renaming will not update past lessons
-                    </p>
-                  </td>
-                  <td className="py-3 pr-4 align-top">
-                    <input
-                      type="number"
-                      name="price"
-                      form={tier.is_active ? `update-tier-${tier.id}` : undefined}
-                      defaultValue={tier.price ?? ''}
-                      step="0.01"
-                      min="0"
-                      disabled={!tier.is_active}
-                      className="w-24 rounded border border-zinc-300 px-2 py-1 text-sm disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-                    />
-                  </td>
-                  <td className="py-3 pr-4 align-top text-sm">
-                    {tier.is_active ? (
-                      <span className="text-zinc-700 dark:text-zinc-300">Active</span>
-                    ) : (
-                      <span className="text-zinc-400 dark:text-zinc-500">Inactive</span>
-                    )}
-                    {error && errorTierId === tier.id && (
-                      <p className="mt-1 text-xs text-red-600 dark:text-red-400">
-                        Cannot deactivate the default tier
-                      </p>
-                    )}
-                  </td>
-                  <td className="py-3 pr-4 align-top">
-                    {tier.is_active && (
-                      <button
-                        type="submit"
-                        form={`update-tier-${tier.id}`}
-                        className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                      >
-                        Save
-                      </button>
-                    )}
-                  </td>
-                  <td className="py-3 align-top">
-                    <div className="flex flex-wrap gap-2">
-                      {tier.is_active && !tier.is_default && (
-                        <form action={setDefaultTierAction.bind(null, slug, tier.id)}>
-                          <button
-                            type="submit"
-                            className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                          >
-                            Set default
-                          </button>
-                        </form>
-                      )}
-                      {tier.is_active && (
-                        <DeactivateButton action={deactivateTierAction.bind(null, slug, tier.id)} />
-                      )}
-                    </div>
-                  </td>
-                </tr>
+                <TierRow
+                  key={tier.id}
+                  tier={tier}
+                  formId={`update-tier-${tier.id}`}
+                  setDefaultAction={setDefaultTierAction.bind(null, slug, tier.id)}
+                  deactivateAction={deactivateTierAction.bind(null, slug, tier.id)}
+                  showError={!!(error && errorTierId === tier.id)}
+                />
               ))}
             </tbody>
           </table>
@@ -305,7 +240,7 @@ export default async function SettingsPage({
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           Add Tier
         </h2>
-        <form action={createTierAction.bind(null, slug)} className="flex items-end gap-4">
+        <form action={createTierAction.bind(null, slug)} className="flex flex-wrap items-end gap-4">
           <div>
             <label
               htmlFor="new-tier-name"
@@ -336,6 +271,45 @@ export default async function SettingsPage({
               min="0"
               className="w-24 rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
             />
+          </div>
+          <div>
+            <label
+              htmlFor="new-tier-jumping"
+              className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+            >
+              Jumping
+            </label>
+            <select
+              id="new-tier-jumping"
+              name="default_jumping"
+              defaultValue=""
+              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+            >
+              <option value="">— no default</option>
+              <option value="true">Yes</option>
+              <option value="false">No</option>
+            </select>
+          </div>
+          <div>
+            <label
+              htmlFor="new-tier-exertion"
+              className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
+            >
+              Exertion
+            </label>
+            <select
+              id="new-tier-exertion"
+              name="default_exertion_level"
+              defaultValue=""
+              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+            >
+              <option value="">— no default</option>
+              <option value="1">1</option>
+              <option value="2">2</option>
+              <option value="3">3</option>
+              <option value="4">4</option>
+              <option value="5">5</option>
+            </select>
           </div>
           <button
             type="submit"
