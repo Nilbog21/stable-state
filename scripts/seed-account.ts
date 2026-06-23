@@ -76,7 +76,7 @@ async function run() {
         title: 'New member request',
         body: `${name} is requesting to join as a member.`,
         link: `/barn/${barnSlug}/settings`,
-      }, supabase as any)
+      }, supabase)
     }
 
     console.log(`\nLinked ${firstName} ${lastName} <${email}> as manager for barn "${barnSlug}".`)
