@@ -3,7 +3,7 @@ import * as fs from 'fs'
 import * as path from 'path'
 
 async function globalSetup(_config: FullConfig) {
-  const authDir = path.join(_config.rootDir, 'e2e', '.auth')
+  const authDir = path.join(__dirname, '.auth')
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
