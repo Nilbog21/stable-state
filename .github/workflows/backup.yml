@@ -1,7 +1,8 @@
-# SUPABASE_DB_URL secret format:
-#   postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres
-# Find it in Supabase dashboard → Connect button (top of project overview) → Direct connection URI (port 5432, not pooled).
-# IMPORTANT: URL-encode any special characters in the password (e.g. @ → %40, # → %23).
+# SUPABASE_DB_POOLER_URL secret format:
+#   postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+# Find it in Supabase dashboard → Connect button (top of project overview) → Session mode (port 5432, pooled).
+# Use the session-mode pooler URL (not the direct connection URI) — the direct host is IPv6-only and
+# unreachable from GitHub Actions runners. URL-encode any special characters in the password (e.g. @ → %40, # → %23).
 
 name: Nightly DB Backup
 
