@@ -25,6 +25,7 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { requireMembership } from '../guard'
@@ -34,6 +35,7 @@ const mockUser = createMockUser()
 
 describe('requireMembership', () => {
   beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
     setupAuth(mockUser)
