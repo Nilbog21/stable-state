@@ -1,6 +1,8 @@
 'use client'
 
 import { useState, useEffect, useTransition, useRef } from 'react'
+import { useRouter } from 'next/navigation'
+import { useNavigationBlocker, type PendingNav } from '../../NavigationBlocker'
 
 interface LessonHorse {
   horse_notes: string | null
@@ -20,18 +22,16 @@ interface Props {
   riders: LessonRider[]
 }
 
-type PendingNav =
-  | { type: 'push'; state: unknown; title: string; url: string | URL | null }
-  | { type: 'back' }
-  | null
-
 export function LessonNotesForm({ action, horses, riders }: Props) {
-  const [dirty, setDirty] = useState(false)
+  const { dirty, setDirty, pendingNav, setPendingNav } = useNavigationBlocker()
   const [isPending, startTransition] = useTransition()
-  const [pendingNav, setPendingNav] = useState<PendingNav>(null)
   const formRef = useRef<HTMLFormElement>(null)
-  const originalPushStateRef = useRef<typeof window.history.pushState | null>(null)
   const ignoreNextPopState = useRef(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    return () => { setDirty(false) }
+  }, [setDirty])
 
   useEffect(() => {
     if (!dirty) return
@@ -39,40 +39,25 @@ export function LessonNotesForm({ action, horses, riders }: Props) {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => { e.preventDefault() }
     window.addEventListener('beforeunload', handleBeforeUnload)
 
-    const originalPushState = window.history.pushState.bind(window.history)
-    originalPushStateRef.current = originalPushState
-    window.history.pushState = function(state, title, url) {
-      if (url) {
-        const next = new URL(String(url), window.location.href)
-        if (next.pathname !== window.location.pathname) {
-          setPendingNav({ type: 'push', state, title, url })
-          return
-        }
-      }
-      originalPushState(state, title, url)
-    }
-
     const handlePopState = () => {
       if (ignoreNextPopState.current) {
         ignoreNextPopState.current = false
         return
       }
-      originalPushState(null, '', window.location.href)
+      window.history.pushState(null, '', window.location.href)
       setPendingNav({ type: 'back' })
     }
     window.addEventListener('popstate', handlePopState)
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload)
-      window.history.pushState = originalPushState
-      originalPushStateRef.current = null
       window.removeEventListener('popstate', handlePopState)
     }
-  }, [dirty])
+  }, [dirty, setPendingNav])
 
   function proceed(nav: NonNullable<PendingNav>) {
     if (nav.type === 'push') {
-      originalPushStateRef.current!(nav.state, nav.title, nav.url)
+      router.push(nav.href)
     } else {
       ignoreNextPopState.current = true
       window.history.back()

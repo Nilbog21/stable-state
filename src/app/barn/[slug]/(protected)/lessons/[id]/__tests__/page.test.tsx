@@ -21,6 +21,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
+  useRouter: vi.fn(() => ({ push: vi.fn() })),
 }))
 
 import { getBarnBySlug } from '@/lib/db/barns'

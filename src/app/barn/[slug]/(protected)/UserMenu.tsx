@@ -1,7 +1,8 @@
 'use client'
 import { useRef, useState, useEffect } from 'react'
-import Link from 'next/link'
 import { signOut } from '@/app/actions/auth'
+import { useNavigationBlocker } from './NavigationBlocker'
+import Link from 'next/link'
 
 interface Props {
   initials: string
@@ -13,6 +14,7 @@ interface Props {
 export function UserMenu({ initials, email, fullName, showSwitchBarn }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
+  const { dirty, setPendingNav } = useNavigationBlocker()
 
   useEffect(() => {
     function close(e: MouseEvent | TouchEvent) {
@@ -47,6 +49,13 @@ export function UserMenu({ initials, email, fullName, showSwitchBarn }: Props) {
           <Link
             href="/profile"
             onClick={() => setOpen(false)}
+            onNavigate={(e) => {
+              if (dirty) {
+                e.preventDefault()
+                setOpen(false)
+                setPendingNav({ type: 'push', href: '/profile' })
+              }
+            }}
             className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
           >
             Profile
@@ -55,6 +64,13 @@ export function UserMenu({ initials, email, fullName, showSwitchBarn }: Props) {
             <Link
               href="/barns"
               onClick={() => setOpen(false)}
+              onNavigate={(e) => {
+                if (dirty) {
+                  e.preventDefault()
+                  setOpen(false)
+                  setPendingNav({ type: 'push', href: '/barns' })
+                }
+              }}
               className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
             >
               Switch Barn

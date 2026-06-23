@@ -1,11 +1,11 @@
 import type { Metadata } from 'next'
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { UserMenu } from './UserMenu'
+import { NavigationBlockerProvider, BlockingLink } from './NavigationBlocker'
 
 export async function generateMetadata({
   params,
@@ -74,26 +74,26 @@ export default async function ProtectedBarnLayout({
   }
 
   return (
-    <>
+    <NavigationBlockerProvider>
       <nav className="flex items-center gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <Link
+        <BlockingLink
           href={`/barn/${slug}`}
           className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
         >
           {barn.name}
-        </Link>
+        </BlockingLink>
         {navLinks.map((link) => (
-          <Link
+          <BlockingLink
             key={link.href}
             href={link.href}
             className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
           >
             {link.label}
-          </Link>
+          </BlockingLink>
         ))}
         <UserMenu initials={initials} email={email} fullName={fullName} showSwitchBarn={showSwitchBarn} />
       </nav>
       {children}
-    </>
+    </NavigationBlockerProvider>
   )
 }
