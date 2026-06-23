@@ -384,4 +384,93 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText('Bob Smith')).toBeDefined()
   })
+
+  it('should_render_jumping_select_for_active_tier', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('combobox', { name: /jumping/i })).toBeDefined()
+  })
+
+  it('should_render_exertion_select_for_active_tier', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('combobox', { name: /exertion/i })).toBeDefined()
+  })
+
+  it('should_render_jumping_and_exertion_selects_disabled_for_inactive_tier', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: false }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const jumpingSelect = screen.getByRole('combobox', { name: /jumping/i }) as HTMLSelectElement
+    const exertionSelect = screen.getByRole('combobox', { name: /exertion/i }) as HTMLSelectElement
+    expect(jumpingSelect.disabled).toBe(true)
+    expect(exertionSelect.disabled).toBe(true)
+  })
+
+  it('should_pre_fill_jumping_select_when_tier_has_default_jumping_true', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true, default_jumping: true }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const jumpingSelect = screen.getByRole('combobox', { name: /jumping/i }) as HTMLSelectElement
+    expect(jumpingSelect.value).toBe('true')
+  })
+
+  it('should_pre_fill_exertion_select_when_tier_has_default_exertion', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true, default_exertion_level: 3 }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const exertionSelect = screen.getByRole('combobox', { name: /exertion/i }) as HTMLSelectElement
+    expect(exertionSelect.value).toBe('3')
+  })
+
+  it('should_render_jumping_and_exertion_selects_in_add_tier_form', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const selects = screen.getAllByRole('combobox')
+    const names = selects.map((s) => (s as HTMLSelectElement).getAttribute('aria-label') ?? (s as HTMLSelectElement).name)
+    expect(selects.length).toBeGreaterThanOrEqual(2)
+    expect(selects.some((s) => (s as HTMLSelectElement).name === 'default_jumping')).toBe(true)
+    expect(selects.some((s) => (s as HTMLSelectElement).name === 'default_exertion_level')).toBe(true)
+  })
 })

@@ -15,6 +15,8 @@ const mockTier = {
   is_default: false,
   is_active: true,
   created_at: '2026-06-13T00:00:00Z',
+  default_exertion_level: null,
+  default_jumping: null,
 }
 
 describe('getTiersByBarn', () => {
@@ -434,5 +436,110 @@ describe('getTierById', () => {
     } as any)
 
     await expect(getTierById('tier-1', 'barn-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('createTier with defaults', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_include_default_exertion_level_in_insert_payload', async () => {
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { ...mockTier, default_exertion_level: 3 }, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: mockInsert }),
+    } as any)
+
+    await createTier('barn-1', 'Standard', 50, false, undefined, 3, null)
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ default_exertion_level: 3 })
+    )
+  })
+
+  it('should_include_default_jumping_in_insert_payload', async () => {
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { ...mockTier, default_jumping: true }, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: mockInsert }),
+    } as any)
+
+    await createTier('barn-1', 'Standard', 50, false, undefined, null, true)
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ default_jumping: true })
+    )
+  })
+
+  it('should_include_null_defaults_when_not_specified', async () => {
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: mockTier, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: mockInsert }),
+    } as any)
+
+    await createTier('barn-1', 'Standard', 50)
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ default_exertion_level: null, default_jumping: null })
+    )
+  })
+})
+
+describe('updateTier with defaults', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_include_default_exertion_level_in_update_payload', async () => {
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: { ...mockTier, default_exertion_level: 4 }, error: null }),
+          }),
+        }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateTier('tier-1', 'barn-1', { default_exertion_level: 4 })
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ default_exertion_level: 4 })
+    )
+  })
+
+  it('should_include_default_jumping_in_update_payload', async () => {
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: { ...mockTier, default_jumping: false }, error: null }),
+          }),
+        }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateTier('tier-1', 'barn-1', { default_jumping: false })
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ default_jumping: false })
+    )
   })
 })
