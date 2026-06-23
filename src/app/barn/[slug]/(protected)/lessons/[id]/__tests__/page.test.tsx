@@ -471,4 +471,39 @@ describe('LessonDetailPage', () => {
     render(jsx)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
+
+  it('should_show_unpaid_badge_when_past_lesson_with_fee_and_no_payment', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: null })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Unpaid')).toBeDefined()
+  })
+
+  it('should_not_show_unpaid_badge_when_fee_is_zero', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_not_show_unpaid_badge_when_fee_is_null', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: null, payment_type: null })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_not_show_unpaid_badge_when_payment_type_is_set', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: 'cash' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_not_show_unpaid_badge_when_lesson_is_in_future', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2099-01-01T10:00:00Z', fee: 75, payment_type: null })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
 })

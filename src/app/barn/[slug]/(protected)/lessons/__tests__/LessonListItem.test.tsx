@@ -160,4 +160,64 @@ describe('LessonListItem', () => {
     )
     expect(screen.queryByText(/Jumping/)).toBeNull()
   })
+
+  it('should_show_unpaid_badge_when_past_lesson_with_fee_and_no_payment', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: null }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.getByText('Unpaid')).toBeDefined()
+  })
+
+  it('should_not_show_unpaid_badge_when_fee_is_zero', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_not_show_unpaid_badge_when_fee_is_null', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: null, payment_type: null }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_not_show_unpaid_badge_when_payment_type_is_set', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: 'cash' }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_not_show_unpaid_badge_when_lesson_is_in_future', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', fee: 75, payment_type: null }}
+        slug="green-acres"
+        isManager={false}
+        deleteAction={deleteAction}
+      />
+    )
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
 })
