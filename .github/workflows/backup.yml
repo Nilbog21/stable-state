@@ -19,15 +19,8 @@ jobs:
 
       - name: Dump database
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: |
-          export PGHOSTADDR=$(python3 -c "
-          import os, socket
-          from urllib.parse import urlparse
-          host = urlparse(os.environ['SUPABASE_DB_URL']).hostname
-          print(socket.getaddrinfo(host, None, socket.AF_INET)[0][4][0])
-          ")
-          pg_dump "$SUPABASE_DB_URL" --format=custom --no-acl --no-owner -f backup.dump
+          SUPABASE_DB_POOLER_URL: ${{ secrets.SUPABASE_DB_POOLER_URL }}
+        run: pg_dump "$SUPABASE_DB_POOLER_URL" --format=custom --no-acl --no-owner -f backup.dump
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
