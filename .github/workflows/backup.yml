@@ -20,7 +20,11 @@ jobs:
       - name: Dump database
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: pg_dump "$SUPABASE_DB_URL" --format=custom --no-acl --no-owner -f backup.dump
+        run: |
+          DB_HOST="${SUPABASE_DB_URL##*@}"
+          DB_HOST="${DB_HOST%%:*}"
+          export PGHOSTADDR=$(dig +short A "$DB_HOST" | head -1)
+          pg_dump "$SUPABASE_DB_URL" --format=custom --no-acl --no-owner -f backup.dump
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
