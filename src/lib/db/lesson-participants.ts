@@ -97,3 +97,44 @@ export async function addRiderToLesson(
   if (error) throw error
   return data
 }
+
+export async function updateLessonRiderNotes(
+  lessonId: string,
+  riderId: string,
+  barnId: string,
+  riderNotes: string | null,
+  privateNotes: string | null
+): Promise<LessonRider> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lesson_riders')
+    .update({ rider_notes: riderNotes, private_notes: privateNotes })
+    .eq('lesson_id', lessonId)
+    .eq('rider_id', riderId)
+    .eq('barn_id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateLessonHorseNotes(
+  lessonId: string,
+  horseId: string,
+  barnId: string,
+  horseNotes: string | null
+): Promise<LessonHorse> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('lesson_horses')
+    .update({ horse_notes: horseNotes })
+    .eq('lesson_id', lessonId)
+    .eq('horse_id', horseId)
+    .eq('barn_id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

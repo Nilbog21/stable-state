@@ -103,6 +103,7 @@ export interface LessonHorse {
   lesson_id: string
   horse_id: string
   exertion_level: number
+  horse_notes: string | null
 }
 
 export interface LessonRider {
@@ -110,6 +111,8 @@ export interface LessonRider {
   barn_id: string
   lesson_id: string
   rider_id: string
+  rider_notes: string | null
+  private_notes: string | null
 }
 
 export interface OutstandingLesson {
