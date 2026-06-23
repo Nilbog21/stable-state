@@ -34,8 +34,10 @@ export default async function HorsesPage({
         Horses
       </h1>
 
-      {/* <form> cannot be a valid descendant of <table>, so update forms live here
-          and are linked to their row controls via the HTML `form` attribute. */}
+      {/* <form> cannot be a valid descendant of <table>, so forms live here outside the table.
+          Update forms are linked to row inputs via the HTML `form` attribute.
+          Toggle forms are submitted imperatively via getElementById().requestSubmit()
+          because the Set Inactive path needs a confirm() before submission. */}
       {isManager && horses.map((horse) => (
         <form
           key={`update-${horse.id}`}

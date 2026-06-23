@@ -267,7 +267,17 @@ describe('HorseOverviewTable', () => {
     expect(mockRequestSubmit).not.toHaveBeenCalled()
   })
 
-  it('should_call_requestSubmit_on_toggle_form_when_confirm_is_accepted', () => {
+  it('should_call_getElementById_with_toggle_form_id_when_confirm_is_accepted', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: vi.fn() } as any)
+    render(<HorseOverviewTable horses={[horses[0]]} isManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /set inactive/i }))
+
+    expect(document.getElementById).toHaveBeenCalledWith('toggle-horse-horse-1')
+  })
+
+  it('should_call_requestSubmit_when_confirm_is_accepted', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const mockRequestSubmit = vi.fn()
     vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: mockRequestSubmit } as any)
@@ -275,7 +285,6 @@ describe('HorseOverviewTable', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /set inactive/i }))
 
-    expect(document.getElementById).toHaveBeenCalledWith('toggle-horse-horse-1')
     expect(mockRequestSubmit).toHaveBeenCalledOnce()
   })
 
@@ -304,14 +313,22 @@ describe('HorseOverviewTable', () => {
     expect(screen.queryByRole('button', { name: /set inactive/i })).toBeNull()
   })
 
-  it('should_call_requestSubmit_on_toggle_form_when_set_active_clicked', () => {
+  it('should_call_getElementById_with_toggle_form_id_when_set_active_clicked', () => {
+    vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: vi.fn() } as any)
+    render(<HorseOverviewTable horses={[inactiveHorse]} isManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /set active/i }))
+
+    expect(document.getElementById).toHaveBeenCalledWith('toggle-horse-horse-4')
+  })
+
+  it('should_call_requestSubmit_when_set_active_clicked', () => {
     const mockRequestSubmit = vi.fn()
     vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: mockRequestSubmit } as any)
     render(<HorseOverviewTable horses={[inactiveHorse]} isManager />)
 
     fireEvent.click(screen.getByRole('button', { name: /set active/i }))
 
-    expect(document.getElementById).toHaveBeenCalledWith('toggle-horse-horse-4')
     expect(mockRequestSubmit).toHaveBeenCalledOnce()
   })
 

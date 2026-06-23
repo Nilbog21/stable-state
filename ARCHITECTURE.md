@@ -99,7 +99,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 |---|---|
 | `barns.ts` | Barn lookups |
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
-| `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`); soft-delete (`deleteHorse(horseId, barnId)` — sets `is_active=false`); `getHorsesByBarn` filters to active only |
+| `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`); soft-delete (`setHorseActive(horseId, barnId, isActive)` — sets `is_active=false` or `true`); `getHorsesByBarn` filters to active only |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
 | `lessons.ts` | Lesson CRUD: `createLesson`, `getLessonsByBarn`, `getLessonById`, `deleteLesson`, `updateLesson`, `getUpcomingLessons(barnId, from, to, userId, role)` — manager/trainer: filters by `instructor_id`; rider: resolves via `riders → lesson_riders → lessons` |
 | `lesson-participants.ts` | Participant management: `createLessonWithParticipants`, `updateLessonWithParticipants`, `addHorseToLesson`, `addRiderToLesson` |
