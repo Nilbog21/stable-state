@@ -8,12 +8,31 @@ vi.mock('@/app/actions/auth', () => ({
 }))
 
 vi.mock('next/link', () => ({
-  default: ({ href, children, onClick }: { href: string; children: React.ReactNode; onClick?: () => void }) => (
-    <a href={href} onClick={onClick}>{children}</a>
+  default: ({ href, children, onClick, onNavigate }: {
+    href: string
+    children: React.ReactNode
+    onClick?: () => void
+    onNavigate?: (e: { preventDefault: () => void }) => void
+  }) => (
+    <a href={href} onClick={() => { onClick?.(); onNavigate?.({ preventDefault: vi.fn() }) }}>{children}</a>
   ),
 }))
 
+vi.mock('../NavigationBlocker', () => ({
+  useNavigationBlocker: vi.fn(),
+}))
+
+import { useNavigationBlocker } from '../NavigationBlocker'
 import { UserMenu } from '../UserMenu'
+
+beforeEach(() => {
+  vi.mocked(useNavigationBlocker).mockReturnValue({
+    dirty: false,
+    setDirty: vi.fn(),
+    pendingNav: null,
+    setPendingNav: vi.fn(),
+  })
+})
 
 const baseProps = {
   initials: 'JD',
@@ -135,5 +154,27 @@ describe('UserMenu - outside click/touch closes dropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     fireEvent.touchStart(screen.getByTestId('outside'))
     expect(screen.queryByText('Sign out')).toBeNull()
+  })
+})
+
+describe('UserMenu - dirty navigation intercepted from Profile link', () => {
+  it('should_call_setPendingNav_with_profile_href_when_dirty', () => {
+    const setPendingNav = vi.fn()
+    vi.mocked(useNavigationBlocker).mockReturnValue({ dirty: true, setDirty: vi.fn(), pendingNav: null, setPendingNav })
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /profile/i }))
+    expect(setPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/profile' })
+  })
+})
+
+describe('UserMenu - dirty navigation intercepted from Switch Barn link', () => {
+  it('should_call_setPendingNav_with_barns_href_when_dirty', () => {
+    const setPendingNav = vi.fn()
+    vi.mocked(useNavigationBlocker).mockReturnValue({ dirty: true, setDirty: vi.fn(), pendingNav: null, setPendingNav })
+    render(<UserMenu {...baseProps} showSwitchBarn={true} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /switch barn/i }))
+    expect(setPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/barns' })
   })
 })
