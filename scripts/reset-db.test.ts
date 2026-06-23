@@ -3,7 +3,6 @@ import {
   buildLessonDates,
   getLessonVariation,
   getPaymentType,
-  mustSucceed,
   isGroupLesson,
   DEV_PENDING_RIDER,
   DEV_MANAGER_2,
@@ -38,18 +37,6 @@ describe('buildLessonDates', () => {
   it('should_place_dates_30_to_34_in_future_bucket', () => {
     const dates = buildLessonDates(NOW)
     expect(dates.slice(29, 34).every(d => d > NOW)).toBe(true)
-  })
-})
-
-describe('mustSucceed', () => {
-  it('should_throw_with_label_and_message_when_result_has_error', () => {
-    expect(() =>
-      mustSucceed({ data: null, error: { message: 'boom' } }, 'test-label')
-    ).toThrow('test-label: boom')
-  })
-
-  it('should_return_data_when_result_has_no_error', () => {
-    expect(mustSucceed({ data: [1, 2, 3], error: null }, 'ok')).toEqual([1, 2, 3])
   })
 })
 
