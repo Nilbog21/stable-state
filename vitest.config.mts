@@ -7,6 +7,7 @@ export default defineConfig({
     tsconfigPaths: true,
   },
   test: {
+    include: ['src/**/*.{test,spec}.{ts,tsx}'],
     setupFiles: ['./vitest.setup.ts'],
     environment: 'jsdom',
     coverage: {
