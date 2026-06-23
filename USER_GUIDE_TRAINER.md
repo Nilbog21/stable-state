@@ -18,6 +18,10 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 **Lesson notes** — Open any lesson to see per-horse and per-rider note fields. Tap any note field to edit it inline; changes are saved immediately. Private notes (visually distinguished) are visible to trainers and managers only.
 
+## Outstanding payments
+
+If you have past lessons with unpaid balances, you will receive a notification. Tap the notification to open the **Outstanding Payments** page, which lists all your past unpaid lessons with their date, riders, and fee. Tap any row to open the lesson detail.
+
 ## Horses
 
 Go to **Horses** to see a weekly exertion summary for each horse in the barn, sortable by name or exertion level.

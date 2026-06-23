@@ -81,6 +81,7 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
     const { data: riderLessons, error: rlErr } = await supabase
       .from('lesson_riders')
       .select('lesson_id')
+      .eq('barn_id', barnId)
       .eq('rider_id', rider.id)
     if (rlErr) throw rlErr
     const lessonIds = (riderLessons ?? []).map((r: { lesson_id: string }) => r.lesson_id)
@@ -90,6 +91,7 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
       .from('lessons')
       .select('*')
       .in('id', lessonIds)
+      .eq('barn_id', barnId)
       .is('payment_type', null)
       .lt('lesson_at', now.toISOString())
       .order('lesson_at', { ascending: true })

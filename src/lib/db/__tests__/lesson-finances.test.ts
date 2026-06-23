@@ -1415,18 +1415,20 @@ describe('getOutstandingLessons', () => {
   }
 
   function makeRiderLessonsChain(data: { lesson_id: string }[] | null, error: Error | null = null) {
-    const mockEq = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq }
+    const mockEqRider = vi.fn().mockResolvedValue({ data, error })
+    const mockEqBarn = vi.fn().mockReturnValue({ eq: mockEqRider })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    return { select: mockSelect, mockEqBarn, mockEqRider }
   }
 
   function makeRiderOutstandingChain(data: unknown[] | null, error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
     const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockIn = vi.fn().mockReturnValue({ is: mockIs })
+    const mockEqBarn = vi.fn().mockReturnValue({ is: mockIs })
+    const mockIn = vi.fn().mockReturnValue({ eq: mockEqBarn })
     const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
-    return { select: mockSelect, mockIn }
+    return { select: mockSelect, mockIn, mockEqBarn }
   }
 
   it('should_filter_by_instructor_id_when_role_is_trainer', async () => {
@@ -1462,6 +1464,39 @@ describe('getOutstandingLessons', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
+
+    await getOutstandingLessons('barn-1', 'user-rider', 'rider')
+
+    expect(mockEqBarn).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_lesson_riders_by_barn_id_when_role_is_rider', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const { select, mockEqBarn } = makeRiderLessonsChain([])
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'lesson_riders') return { select }
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    await getOutstandingLessons('barn-1', 'user-rider', 'rider')
+
+    expect(mockEqBarn).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_outstanding_lessons_by_barn_id_in_rider_path', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const { select: outstandingSelect, mockEqBarn } = makeRiderOutstandingChain([])
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'lesson_riders') return makeRiderLessonsChain([{ lesson_id: 'lesson-1' }])
+      if (table === 'lessons') return { select: outstandingSelect }
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     await getOutstandingLessons('barn-1', 'user-rider', 'rider')
 

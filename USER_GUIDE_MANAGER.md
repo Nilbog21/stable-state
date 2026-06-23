@@ -30,7 +30,7 @@ Go to **Riders** to add new riders and manage the roster. Tap any rider's name t
 
 ## Finances
 
-Go to **Finances** to review payment status. The **Outstanding** section at the top lists all past unpaid lessons with a non-zero fee — select a payment type from the dropdown next to any lesson to mark it paid. Below that, use the **←** / **→** arrows to browse monthly summaries of collected and pending income, with breakdowns by tier, horse, rider, and trainer.
+Go to **Finances** to review payment status. The **Outstanding** section at the top lists all past unpaid lessons with a non-zero fee — select a payment type from the dropdown next to any lesson to mark it paid, or tap **View all outstanding** to open a full read-only list at a glance. Below that, use the **←** / **→** arrows to browse monthly summaries of collected and pending income, with breakdowns by tier, horse, rider, and trainer.
 
 ## Settings
 

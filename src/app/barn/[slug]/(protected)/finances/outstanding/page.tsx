@@ -41,6 +41,7 @@ export default async function OutstandingPage({
       {lessons.length === 0 ? (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No outstanding lessons.</p>
       ) : (
+        <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
             <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
@@ -76,6 +77,7 @@ export default async function OutstandingPage({
             ))}
           </tbody>
         </table>
+        </div>
       )}
     </main>
   )
