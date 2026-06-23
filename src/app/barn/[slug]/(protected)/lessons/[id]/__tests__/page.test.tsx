@@ -49,8 +49,8 @@ const mockLessonDetail = {
   payment_type: null,
   tier_name: 'Custom',
   instructor_name: 'Jane Smith',
-  lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-  lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
+  lesson_horses: [{ exertion_level: 3, horse_notes: 'watch left lead', horses: { id: 'horse-1', name: 'Thunderbolt' } }],
+  lesson_riders: [{ rider_notes: 'good position', private_notes: 'struggling with confidence', riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
 }
 
 const mockMembership = {
@@ -328,5 +328,92 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('Jumping')).toBeNull()
+  })
+
+  it('should_show_horse_notes_form_for_trainer', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const textarea = screen.getByDisplayValue('watch left lead')
+    expect(textarea).toBeDefined()
+  })
+
+  it('should_show_horse_notes_form_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const textarea = screen.getByDisplayValue('watch left lead')
+    expect(textarea).toBeDefined()
+  })
+
+  it('should_not_show_horse_notes_form_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByDisplayValue('watch left lead')).toBeNull()
+  })
+
+  it('should_show_rider_notes_form_for_trainer', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const textarea = screen.getByDisplayValue('good position')
+    expect(textarea).toBeDefined()
+  })
+
+  it('should_show_rider_notes_form_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const textarea = screen.getByDisplayValue('good position')
+    expect(textarea).toBeDefined()
+  })
+
+  it('should_show_private_notes_form_for_trainer', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const textarea = screen.getByDisplayValue('struggling with confidence')
+    expect(textarea).toBeDefined()
+  })
+
+  it('should_show_private_notes_form_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const textarea = screen.getByDisplayValue('struggling with confidence')
+    expect(textarea).toBeDefined()
+  })
+
+  it('should_show_private_label_for_trainer', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Private')).toBeDefined()
+  })
+
+  it('should_show_rider_own_notes_readonly_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('good position')).toBeDefined()
+  })
+
+  it('should_not_show_private_notes_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('struggling with confidence')).toBeNull()
+  })
+
+  it('should_not_show_other_riders_notes_for_rider_in_group_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: 'good position', private_notes: null, riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: 'needs work', private_notes: null, riders: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('needs work')).toBeNull()
   })
 })

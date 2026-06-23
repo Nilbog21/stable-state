@@ -803,6 +803,59 @@ describe('getLessonById', () => {
 
     expect(result?.jumping).toBe(true)
   })
+
+  it('should_select_private_notes_for_trainer_role', async () => {
+    const { select, mockEq1 } = makeLessonByIdChain(rawLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('private_notes'))
+  })
+
+  it('should_select_private_notes_for_manager_role', async () => {
+    const { select } = makeLessonByIdChain(rawLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getLessonById('lesson-1', 'barn-1', 'manager')
+
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('private_notes'))
+  })
+
+  it('should_not_select_private_notes_for_rider_role', async () => {
+    const riderLessonData = {
+      ...rawLessonData,
+      lesson_riders: [{ rider_notes: 'note', riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+    }
+    const { select } = makeLessonByIdChain(riderLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getLessonById('lesson-1', 'barn-1', 'rider')
+
+    expect(select).not.toHaveBeenCalledWith(expect.stringContaining('private_notes'))
+  })
+
+  it('should_set_private_notes_to_null_for_rider_role', async () => {
+    const riderLessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: 'good position', riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+    }
+    const { select } = makeLessonByIdChain(riderLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+
+    expect(result?.lesson_riders[0].private_notes).toBeNull()
+  })
 })
 
 describe('getUpcomingLessons', () => {
