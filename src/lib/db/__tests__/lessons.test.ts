@@ -1173,6 +1173,50 @@ describe('getUpcomingLessons', () => {
 
     expect(result[0].horse_names).toEqual([])
   })
+
+  it('should_return_instructor_name_for_rider_role', async () => {
+    const lesson = createMockLesson({ instructor_id: 'instructor-1' })
+    let lessonRidersCallCount = 0
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'lesson_riders') {
+        lessonRidersCallCount++
+        if (lessonRidersCallCount === 1) return makeEnrollmentChain([{ lesson_id: lesson.id }])
+        return makeInChain([])
+      }
+      if (table === 'lessons') return makeRiderLessonsChain([lesson])
+      if (table === 'lesson_horses') return makeInChain([])
+      if (table === 'profiles') return makeInChain([{ user_id: 'instructor-1', first_name: 'Jane', last_name: 'Smith' }])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getUpcomingLessons('barn-1', from, to, 'user-1', 'rider')
+
+    expect(result[0].instructor_name).toBe('Jane Smith')
+  })
+
+  it('should_return_null_instructor_name_when_profiles_empty_for_rider_role', async () => {
+    const lesson = createMockLesson({ instructor_id: 'instructor-1' })
+    let lessonRidersCallCount = 0
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'lesson_riders') {
+        lessonRidersCallCount++
+        if (lessonRidersCallCount === 1) return makeEnrollmentChain([{ lesson_id: lesson.id }])
+        return makeInChain([])
+      }
+      if (table === 'lessons') return makeRiderLessonsChain([lesson])
+      if (table === 'lesson_horses') return makeInChain([])
+      if (table === 'profiles') return makeInChain([])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getUpcomingLessons('barn-1', from, to, 'user-1', 'rider')
+
+    expect(result[0].instructor_name).toBeNull()
+  })
 })
 
 describe('updateLesson', () => {
