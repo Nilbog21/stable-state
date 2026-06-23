@@ -114,7 +114,11 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 No API routes. All mutations go through Next.js Server Actions.
 
 - **Global actions:** `src/app/actions/` — auth (`auth.ts`), lesson submission and payment-type update (`lessons.ts`), notification create and mark-read (`notifications.ts`)
-- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`profile/`, `barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`, `barn/[slug]/settings/`)
+- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`profile/`, `barn/[slug]/horses/`, `barn/[slug]/register/`, `barn/[slug]/riders/`, `barn/[slug]/settings/`, `barn/[slug]/(protected)/approvals/`)
+
+## Auth guard
+
+`src/lib/auth/guard.ts` exports `requireMembership(barnSlug: string, allowedRoles: Role[]): Promise<{ user, barn, membership }>`. All server actions that enforce role-based access call this function. It redirects to `/barn/[slug]/login` on any auth or role failure, eliminating the 6-line auth block that was previously duplicated across every action. `register/actions.ts` does not use it — its guard is a different pattern (membership existence check, not role authorization).
 
 ## Supabase RPC
 

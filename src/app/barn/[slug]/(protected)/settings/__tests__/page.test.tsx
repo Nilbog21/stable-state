@@ -17,6 +17,8 @@ vi.mock('../actions', () => ({
   updateTierAction: vi.fn(),
   setDefaultTierAction: vi.fn(),
   deactivateTierAction: vi.fn(),
+}))
+vi.mock('../approvals/actions', () => ({
   approveMembershipAction: vi.fn(),
   rejectMembershipAction: vi.fn(),
   removeMembershipAction: vi.fn(),
