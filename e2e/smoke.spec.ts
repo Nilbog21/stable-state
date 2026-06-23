@@ -51,7 +51,7 @@ for (const [role, routes] of Object.entries(STATIC_ROUTES)) {
   test(`${role}_no_error_on_lesson_detail`, async ({ page }, testInfo) => {
     test.skip(testInfo.project.name !== role && !(testInfo.project.name === 'mobile' && role === 'manager'))
     await page.goto(`/barn/${barnSlug}/lessons`)
-    const firstLesson = page.locator(`a[href*="/lessons/"]`).first()
+    const firstLesson = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`).first()
     const href = await firstLesson.getAttribute('href')
     if (!href) throw new Error(`no lesson link found on /barn/${barnSlug}/lessons — is seed data present?`)
     await assertPageClean(page, href)
@@ -61,7 +61,7 @@ for (const [role, routes] of Object.entries(STATIC_ROUTES)) {
     test(`${role}_no_error_on_lesson_edit`, async ({ page }, testInfo) => {
       test.skip(testInfo.project.name !== role && !(testInfo.project.name === 'mobile' && role === 'manager'))
       await page.goto(`/barn/${barnSlug}/lessons`)
-      const firstLesson = page.locator(`a[href*="/lessons/"]`).first()
+      const firstLesson = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`).first()
       const href = await firstLesson.getAttribute('href')
       if (!href) throw new Error(`no lesson link found on /barn/${barnSlug}/lessons — is seed data present?`)
       await assertPageClean(page, `${href}/edit`)
