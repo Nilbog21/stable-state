@@ -10,4 +10,4 @@ Go to **Lessons** to see your lesson history. Tap any lesson to open it and see 
 
 ## Viewing horses
 
-Go to **Horses** to see the weekly exertion summary for each horse in the barn.
+Go to **Horses** to see the weekly exertion summary for each horse in the barn. Tap any horse name to open its detail page. If a horse is unavailable, you will see its availability status and the reason provided by the barn manager.
