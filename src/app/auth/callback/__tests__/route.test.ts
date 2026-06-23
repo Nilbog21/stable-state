@@ -13,14 +13,20 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   applyPreAuthProfile: vi.fn().mockResolvedValue(undefined),
   getUserMembership: vi.fn(),
   getBarnMembershipsForUser: vi.fn(),
+  getActiveMemberships: vi.fn(),
 }))
 
 vi.mock('@/lib/db/profiles', () => ({
   getProfileByUserId: vi.fn(),
+  getProfilesByUserIds: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
+}))
+
+vi.mock('@/lib/db/notifications', () => ({
+  createNotification: vi.fn(),
 }))
 
 const mockCookiesSet = vi.fn()
@@ -39,9 +45,10 @@ vi.mock('next/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { applyPreAuthProfile, getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import { applyPreAuthProfile, getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getProfileByUserId } from '@/lib/db/profiles'
+import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
+import { createNotification } from '@/lib/db/notifications'
 import { GET } from '../route'
 
 const mockBarn = createMockBarn()
@@ -64,6 +71,12 @@ describe('GET /auth/callback', () => {
     vi.mocked(getProfileByUserId).mockReset()
     vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
     vi.mocked(getAuthenticatedUser).mockReset()
+    vi.mocked(createNotification).mockReset()
+    vi.mocked(createNotification).mockResolvedValue(undefined)
+    vi.mocked(getActiveMemberships).mockReset()
+    vi.mocked(getActiveMemberships).mockResolvedValue([])
+    vi.mocked(getProfilesByUserIds).mockReset()
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
     mockCookiesSet.mockReset()
     mockRedirect.mockImplementation((url: string | URL) => ({
       url: url.toString(),
@@ -610,6 +623,215 @@ describe('GET /auth/callback', () => {
 
       expect(getUserMembership).not.toHaveBeenCalled()
       expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres/register')
+    })
+
+    describe('notification generation', () => {
+      beforeEach(() => {
+        vi.mocked(createClient).mockReset()
+        vi.mocked(createClient).mockResolvedValue({
+          auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
+        } as any)
+        vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: 'user@barn.com' } as any)
+        vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+        vi.mocked(getUserMembership).mockResolvedValue(mockMembership as any)
+      })
+
+      it('should_create_incomplete_profile_notification_when_phone_is_null_with_barn_param', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+        await GET(request as any)
+
+        expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({
+          userId: 'user-1',
+          barnId: mockBarn.id,
+          type: 'incomplete_profile',
+        }))
+      })
+
+      it('should_not_create_incomplete_profile_notification_when_profile_is_complete_with_barn_param', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+        await GET(request as any)
+
+        expect(createNotification).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'incomplete_profile' }))
+      })
+
+      it('should_create_member_incomplete_profile_notification_when_manager_with_incomplete_members_with_barn_param', async () => {
+        vi.mocked(getUserMembership).mockResolvedValue(
+          createMockMembership({ id: 'm1', role: 'manager' }) as any
+        )
+        vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+        vi.mocked(getActiveMemberships).mockResolvedValue([
+          createMockMembership({ id: 'm2', user_id: 'member-1', role: 'rider' }),
+        ])
+        vi.mocked(getProfilesByUserIds).mockResolvedValue([
+          createMockProfile({ user_id: 'member-1', phone: null }),
+        ])
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+        await GET(request as any)
+
+        expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({
+          userId: 'user-1',
+          barnId: mockBarn.id,
+          type: 'member_incomplete_profile',
+        }))
+      })
+
+      it('should_not_block_login_when_notification_creation_fails_with_barn_param', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+        vi.mocked(createNotification).mockRejectedValue(new Error('db error'))
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+        await GET(request as any)
+
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres/')
+      })
+    })
+  })
+
+  describe('notification generation without barn param', () => {
+    beforeEach(() => {
+      vi.mocked(createClient).mockReset()
+      vi.mocked(createClient).mockResolvedValue({
+        auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
+      } as any)
+      vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: 'user@barn.com' } as any)
+    })
+
+    it('should_create_incomplete_profile_notification_when_phone_is_null', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn(), membership: createMockMembership({ status: 'active' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(
+        createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+      )
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'user-1',
+        barnId: 'barn-1',
+        type: 'incomplete_profile',
+      }))
+    })
+
+    it('should_create_incomplete_profile_notification_for_each_barn_when_multiple_active', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+        { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'active' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(
+        createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+      )
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ barnId: 'b1', type: 'incomplete_profile' }))
+      expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ barnId: 'b2', type: 'incomplete_profile' }))
+    })
+
+    it('should_not_create_incomplete_profile_notification_when_profile_is_complete', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn(), membership: createMockMembership({ status: 'active' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(createNotification).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'incomplete_profile' }))
+    })
+
+    it('should_create_member_incomplete_profile_notification_when_manager_with_incomplete_members', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn(), membership: createMockMembership({ status: 'active', role: 'manager' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+      vi.mocked(getActiveMemberships).mockResolvedValue([
+        createMockMembership({ id: 'm2', user_id: 'member-1', role: 'rider' }),
+      ])
+      vi.mocked(getProfilesByUserIds).mockResolvedValue([
+        createMockProfile({ user_id: 'member-1', phone: null }),
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({
+        userId: 'user-1',
+        barnId: 'barn-1',
+        type: 'member_incomplete_profile',
+      }))
+    })
+
+    it('should_not_create_member_incomplete_profile_notification_when_user_is_trainer', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn(), membership: createMockMembership({ status: 'active', role: 'trainer' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(createNotification).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'member_incomplete_profile' }))
+    })
+
+    it('should_not_create_member_incomplete_profile_notification_when_all_members_are_complete', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn(), membership: createMockMembership({ status: 'active', role: 'manager' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+      vi.mocked(getActiveMemberships).mockResolvedValue([
+        createMockMembership({ id: 'm2', user_id: 'member-1', role: 'rider' }),
+      ])
+      vi.mocked(getProfilesByUserIds).mockResolvedValue([
+        createMockProfile({
+          user_id: 'member-1',
+          phone: '555-9999',
+          emergency_contact_name: 'Alice',
+          emergency_contact_phone: '555-8888',
+        }),
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(createNotification).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'member_incomplete_profile' }))
+    })
+
+    it('should_not_create_member_incomplete_profile_notification_when_no_other_members', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn(), membership: createMockMembership({ status: 'active', role: 'manager' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+      vi.mocked(getActiveMemberships).mockResolvedValue([
+        createMockMembership({ user_id: 'user-1', role: 'manager' }),
+      ])
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(createNotification).not.toHaveBeenCalledWith(expect.objectContaining({ type: 'member_incomplete_profile' }))
+    })
+
+    it('should_not_block_login_when_notification_creation_fails', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
+      ])
+      vi.mocked(getProfileByUserId).mockResolvedValue(completeProfile)
+      vi.mocked(createNotification).mockRejectedValue(new Error('db error'))
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres')
     })
   })
 })
