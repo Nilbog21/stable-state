@@ -6,7 +6,7 @@ Stable State is a barn management app for scheduling lessons and tracking horses
 
 ## Viewing lessons
 
-Go to **Lessons** to see your lesson history. Tap any lesson to open it and see your notes for that session.
+Go to **Lessons** to see your lesson history. Tap any lesson to open it and see your notes for that session. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
 
 ## Viewing horses
 

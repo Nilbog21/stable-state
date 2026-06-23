@@ -10,7 +10,7 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 ## Lessons
 
-**View lessons** — Go to **Lessons** to see your recent lessons. Tap **Show older lessons** to see the full history.
+**View lessons** — Go to **Lessons** to see your recent lessons. Tap **Show older lessons** to see the full history. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
 
 **Book a lesson** — Go to **Lessons → New Lesson**, fill in the date, select a horse and rider, choose a fee tier, optionally select a payment type if payment was collected at booking, and click **Submit**. Horses marked as unavailable appear grayed out and cannot be selected; their unavailability reason is shown next to the name.
 
