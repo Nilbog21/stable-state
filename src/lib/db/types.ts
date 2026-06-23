@@ -93,8 +93,8 @@ export interface LessonWithDetails extends Lesson {
 
 export interface LessonDetail extends Lesson {
   instructor_name: string | null
-  lesson_horses: { exertion_level: number; horses: { id: string; name: string } | null }[]
-  lesson_riders: { riders: { id: string; name: string } | null }[]
+  lesson_horses: { exertion_level: number; horse_notes: string | null; horses: { id: string; name: string } | null }[]
+  lesson_riders: { rider_notes: string | null; private_notes: string | null; riders: { id: string; name: string; user_id: string | null } | null }[]
 }
 
 export interface LessonHorse {

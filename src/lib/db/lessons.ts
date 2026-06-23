@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { Lesson, LessonDetail, LessonWithDetails } from './types'
+import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
 
 async function hydrateParticipants(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -129,14 +129,17 @@ export async function getLessonsByBarn(
   return hydrateParticipants(supabase, lessons)
 }
 
-export async function getLessonById(lessonId: string, barnId: string): Promise<LessonDetail | null> {
+export async function getLessonById(lessonId: string, barnId: string, role: Role = 'trainer', userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
+  const riderSelect = role === 'rider'
+    ? 'rider_notes, riders ( id, name, user_id )'
+    : 'rider_notes, private_notes, riders ( id, name, user_id )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
       *,
-      lesson_horses ( exertion_level, horses ( id, name ) ),
-      lesson_riders ( riders ( id, name ) )
+      lesson_horses ( horse_notes, exertion_level, horses ( id, name ) ),
+      lesson_riders ( ${riderSelect} )
     `)
     .eq('id', lessonId)
     .eq('barn_id', barnId)
@@ -156,7 +159,18 @@ export async function getLessonById(lessonId: string, barnId: string): Promise<L
     if (profile) instructor_name = `${profile.first_name} ${profile.last_name}`
   }
 
-  return { ...data, instructor_name }
+  const base = { ...data, instructor_name }
+  if (role === 'rider') {
+    return {
+      ...base,
+      lesson_riders: base.lesson_riders.map((lr: LessonDetail['lesson_riders'][number]) => ({
+        ...lr,
+        private_notes: null,
+        rider_notes: lr.riders?.user_id === userId ? lr.rider_notes : null,
+      })),
+    } as LessonDetail
+  }
+  return base as LessonDetail
 }
 
 export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
