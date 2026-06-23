@@ -6,7 +6,7 @@ Stable State is a barn management app for scheduling lessons, tracking horses an
 
 ## Dashboard
 
-Go to **Dashboard** to see upcoming lessons for the next 7 days at a glance.
+Go to **Dashboard** to see your upcoming lessons for the next 7 days (lessons where you are the instructor).
 
 ## Horses
 
@@ -26,13 +26,15 @@ Go to **Riders** to add new riders and manage the roster. Tap any rider's name t
 
 **Delete a lesson** — From the Lessons list, click the delete icon on any lesson.
 
+**Lesson notes** — Open any lesson to see per-horse and per-rider note fields. Tap any note field to edit it inline; changes are saved immediately. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
+
 ## Finances
 
 Go to **Finances** to review payment status. The **Outstanding** section at the top lists all past unpaid lessons with a non-zero fee — select a payment type from the dropdown next to any lesson to mark it paid. Below that, use the **←** / **→** arrows to browse monthly summaries of collected and pending income, with breakdowns by tier, horse, rider, and trainer.
 
 ## Settings
 
-Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing tier's name or price, set a tier as the default for new lessons, or deactivate a tier. The default tier cannot be deactivated until a different tier is set as default first.
+Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing tier's name or price, set a default exertion level and jumping preference for a tier, set a tier as the default for new lessons, or deactivate a tier. The default tier cannot be deactivated until a different tier is set as default first.
 
 ## Approvals
 
