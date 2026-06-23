@@ -90,7 +90,7 @@ async function run() {
     await supabase.from('barn_memberships').insert([
       { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active', can_instruct: true },
       { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active', can_instruct: true },
-      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active' },
+      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false },
     ]),
     'insert memberships'
   )
