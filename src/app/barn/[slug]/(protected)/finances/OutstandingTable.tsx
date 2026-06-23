@@ -17,17 +17,17 @@ function formatDate(isoString: string): string {
 
 export function OutstandingTable({
   outstandingLessons,
-  barnId,
+  barnSlug,
 }: {
   outstandingLessons: OutstandingLesson[]
-  barnId: string
+  barnSlug: string
 }) {
   const router = useRouter()
 
   if (outstandingLessons.length === 0) return null
 
   async function handleChange(lessonId: string, value: string) {
-    await updatePaymentTypeAction(lessonId, barnId, value || null)
+    await updatePaymentTypeAction(lessonId, barnSlug, value || null)
     router.refresh()
   }
 

@@ -162,7 +162,7 @@ export default async function FinancesPage({
             {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
           </p>
           <div className="mt-4">
-            <OutstandingTable outstandingLessons={outstandingLessons} barnId={barn.id} />
+            <OutstandingTable outstandingLessons={outstandingLessons} barnSlug={slug} />
           </div>
         </section>
       )}

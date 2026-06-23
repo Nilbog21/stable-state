@@ -1,40 +1,19 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn, createMockMembership, createMockRider } from '@/test/fixtures'
-import { setupAuth } from '@/test/mocks/auth'
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
-}))
-
-vi.mock('@/lib/db/barns', () => ({
-  getBarnBySlug: vi.fn(),
-}))
-
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
+vi.mock('@/lib/auth/guard', () => ({
+  requireMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/db/riders', () => ({
   updateRider: vi.fn(),
 }))
 
-const mockRedirect = vi.hoisted(() =>
-  vi.fn((url: string) => {
-    throw Object.assign(new Error('NEXT_REDIRECT'), {
-      digest: `NEXT_REDIRECT;replace;${url}`,
-    })
-  })
-)
-vi.mock('next/navigation', () => ({
-  redirect: mockRedirect,
-}))
-
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import { updateRider } from '@/lib/db/riders'
 import { revalidatePath } from 'next/cache'
 import { updateRiderAction } from '../actions'
@@ -47,48 +26,23 @@ describe('updateRiderAction', () => {
   let formData: FormData
 
   beforeEach(() => {
-    setupAuth()
-    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateRider).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
     vi.mocked(updateRider).mockResolvedValue(mockRider)
     formData = new FormData()
     formData.set('name', 'Jane Doe Updated')
   })
 
-  it('should_redirect_to_login_when_unauthenticated', async () => {
-    setupAuth(null)
+  it('should_call_requireMembership_with_manager_and_trainer_roles', async () => {
+    await updateRiderAction('green-acres', 'rider-1', formData)
 
-    await expect(updateRiderAction('green-acres', 'rider-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateRider).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_to_login_when_barn_is_not_found', async () => {
-    vi.mocked(getBarnBySlug).mockResolvedValue(null)
-
-    await expect(updateRiderAction('green-acres', 'rider-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateRider).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_when_user_has_no_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-
-    await expect(updateRiderAction('green-acres', 'rider-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateRider).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_when_user_is_rider_not_manager_or_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-rd', role: 'rider' }))
-
-    await expect(updateRiderAction('green-acres', 'rider-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateRider).not.toHaveBeenCalled()
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
   })
 
   it('should_call_updateRider_and_revalidate_when_manager', async () => {
@@ -99,7 +53,11 @@ describe('updateRiderAction', () => {
   })
 
   it('should_call_updateRider_and_revalidate_when_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: createMockMembership({ id: 'mem-tr', role: 'trainer' }),
+    })
 
     await updateRiderAction('green-acres', 'rider-1', formData)
 

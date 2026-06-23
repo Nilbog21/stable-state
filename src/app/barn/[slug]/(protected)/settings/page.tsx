@@ -13,10 +13,12 @@ import {
   updateTierAction,
   setDefaultTierAction,
   deactivateTierAction,
+} from './actions'
+import {
   approveMembershipAction,
   rejectMembershipAction,
   removeMembershipAction,
-} from './actions'
+} from '../approvals/actions'
 import { DeactivateButton } from './DeactivateButton'
 import InviteLink from './InviteLink'
 import type { BarnMembership, Profile } from '@/lib/db/types'

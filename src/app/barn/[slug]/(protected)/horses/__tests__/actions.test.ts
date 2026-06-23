@@ -1,17 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn, createMockMembership, createMockHorse } from '@/test/fixtures'
-import { setupAuth } from '@/test/mocks/auth'
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
-}))
-
-vi.mock('@/lib/db/barns', () => ({
-  getBarnBySlug: vi.fn(),
-}))
-
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
+vi.mock('@/lib/auth/guard', () => ({
+  requireMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/db/horses', () => ({
@@ -19,23 +10,11 @@ vi.mock('@/lib/db/horses', () => ({
   updateHorse: vi.fn(),
 }))
 
-const mockRedirect = vi.hoisted(() =>
-  vi.fn((url: string) => {
-    throw Object.assign(new Error('NEXT_REDIRECT'), {
-      digest: `NEXT_REDIRECT;replace;${url}`,
-    })
-  })
-)
-vi.mock('next/navigation', () => ({
-  redirect: mockRedirect,
-}))
-
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import { createHorse, updateHorse } from '@/lib/db/horses'
 import { revalidatePath } from 'next/cache'
 import { addHorseAction, updateHorseAction } from '../actions'
@@ -48,48 +27,23 @@ describe('addHorseAction', () => {
   let formData: FormData
 
   beforeEach(() => {
-    setupAuth()
-    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(createHorse).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
     vi.mocked(createHorse).mockResolvedValue(mockHorse)
     formData = new FormData()
     formData.set('name', 'Thunderbolt')
   })
 
-  it('should_redirect_to_login_when_unauthenticated', async () => {
-    setupAuth(null)
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await addHorseAction('green-acres', formData)
 
-    await expect(addHorseAction('green-acres', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(createHorse).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_to_login_when_barn_is_not_found', async () => {
-    vi.mocked(getBarnBySlug).mockResolvedValue(null)
-
-    await expect(addHorseAction('green-acres', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(createHorse).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_when_user_has_no_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-
-    await expect(addHorseAction('green-acres', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(createHorse).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_when_user_is_trainer_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
-
-    await expect(addHorseAction('green-acres', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(createHorse).not.toHaveBeenCalled()
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_call_createHorse_and_revalidate_when_manager', async () => {
@@ -112,48 +66,23 @@ describe('updateHorseAction', () => {
   let formData: FormData
 
   beforeEach(() => {
-    setupAuth()
-    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateHorse).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
     vi.mocked(updateHorse).mockResolvedValue(mockHorse)
     formData = new FormData()
     formData.set('name', 'Thunderbolt Updated')
   })
 
-  it('should_redirect_to_login_when_unauthenticated', async () => {
-    setupAuth(null)
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await updateHorseAction('green-acres', 'horse-1', formData)
 
-    await expect(updateHorseAction('green-acres', 'horse-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateHorse).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_to_login_when_barn_is_not_found', async () => {
-    vi.mocked(getBarnBySlug).mockResolvedValue(null)
-
-    await expect(updateHorseAction('green-acres', 'horse-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateHorse).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_when_user_has_no_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-
-    await expect(updateHorseAction('green-acres', 'horse-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateHorse).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_when_user_is_trainer_not_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ id: 'mem-tr', role: 'trainer' }))
-
-    await expect(updateHorseAction('green-acres', 'horse-1', formData)).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-    expect(updateHorse).not.toHaveBeenCalled()
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_call_updateHorse_and_revalidate_when_manager', async () => {

@@ -1,10 +1,10 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { requireMembership } from '@/lib/auth/guard'
 import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants } from '@/lib/db/lesson-participants'
 import type { PaymentType } from '@/lib/db/types'
-import { getUserMembership, getInstructorsByBarn } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { createRider, getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
@@ -41,15 +41,8 @@ export async function submitLesson(
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
   if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (!membership || !['manager', 'trainer'].includes(membership.role)) {
-    return { error: 'not authorized' }
-  }
   const isManager = membership.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
@@ -153,13 +146,7 @@ export async function updateLessonAction(
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (membership?.role !== 'manager') return { error: 'not authorized' }
+  const { user } = await requireMembership(barnSlug, ['manager'])
 
   const instructorIdFromForm = formData.get('instructor_id') as string | null
   const instructorId = instructorIdFromForm || user.id
@@ -230,15 +217,7 @@ export async function deleteLessonAction(
   barnSlug: string,
   lessonId: string
 ): Promise<{ error: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (membership?.role !== 'manager') {
-    return { error: 'not authorized' }
-  }
+  await requireMembership(barnSlug, ['manager'])
 
   try {
     await deleteLesson(lessonId, barnId)
@@ -251,27 +230,19 @@ export async function deleteLessonAction(
 
 export async function updatePaymentTypeAction(
   lessonId: string,
-  barnId: string,
+  barnSlug: string,
   paymentType: string | null
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (!membership || membership.status !== 'active' || !['manager', 'trainer'].includes(membership.role)) {
-    return { error: 'not authorized' }
-  }
+  const { user, barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   if (membership.role === 'trainer') {
-    const lesson = await getLessonById(lessonId, barnId)
+    const lesson = await getLessonById(lessonId, barn.id)
     if (!lesson) return { error: 'lesson not found' }
     if (lesson.instructor_id !== user.id) return { error: 'not authorized' }
   }
 
   try {
-    await updateLesson(lessonId, barnId, { payment_type: paymentType as PaymentType | null })
+    await updateLesson(lessonId, barn.id, { payment_type: paymentType as PaymentType | null })
   } catch {
     return { error: 'Failed to update payment type' }
   }
