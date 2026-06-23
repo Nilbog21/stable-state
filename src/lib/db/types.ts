@@ -112,7 +112,7 @@ export interface LessonRider {
   lesson_id: string
   rider_id: string
   rider_notes: string | null
-  private_notes?: string | null
+  private_notes: string | null
 }
 
 export interface OutstandingLesson {
