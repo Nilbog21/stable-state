@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import { createMockProfile } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
 
 afterEach(cleanup)
 
@@ -10,6 +10,14 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('@/lib/db/profiles', () => ({
   getProfileByUserId: vi.fn(),
+}))
+
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getBarnMembershipsForUser: vi.fn(),
+}))
+
+vi.mock('../ProfileForm', () => ({
+  ProfileForm: vi.fn((props: { heading: string }) => <h1>{props.heading}</h1>),
 }))
 
 const mockRedirect = vi.hoisted(() =>
@@ -31,6 +39,8 @@ vi.mock('../actions', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getProfileByUserId } from '@/lib/db/profiles'
+import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import { ProfileForm } from '../ProfileForm'
 import ProfilePage from '../page'
 import ProfileCompletePage from '../complete/page'
 
@@ -46,6 +56,7 @@ describe('ProfilePage', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
     vi.mocked(getProfileByUserId).mockReset()
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
     mockRedirect.mockClear()
   })
 
@@ -70,6 +81,48 @@ describe('ProfilePage', () => {
     render(jsx as React.ReactElement)
 
     expect(screen.getByRole('heading', { name: /edit profile/i })).toBeDefined()
+  })
+})
+
+describe('ProfilePage - redirectAfterSave', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.mocked(getProfileByUserId).mockReset()
+    vi.mocked(getBarnMembershipsForUser).mockReset()
+    vi.mocked(ProfileForm).mockClear()
+    mockRedirect.mockClear()
+  })
+
+  it('should_pass_redirect_to_barn_slug_when_user_has_one_active_membership', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
+    ])
+    render((await ProfilePage()) as React.ReactElement)
+    const [props] = vi.mocked(ProfileForm).mock.calls[0]
+    expect(props.redirectAfterSave).toBe('/barn/green-acres')
+  })
+
+  it('should_pass_redirect_to_barns_when_user_has_multiple_active_memberships', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      { barn: createMockBarn({ id: 'barn-1', slug: 'barn-1-slug' }), membership: createMockMembership({ status: 'active' }) },
+      { barn: createMockBarn({ id: 'barn-2', slug: 'barn-2-slug' }), membership: createMockMembership({ id: 'mem-2', barn_id: 'barn-2', status: 'active' }) },
+    ])
+    render((await ProfilePage()) as React.ReactElement)
+    const [props] = vi.mocked(ProfileForm).mock.calls[0]
+    expect(props.redirectAfterSave).toBe('/barns')
+  })
+
+  it('should_pass_redirect_to_barns_when_user_has_no_active_memberships', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+    render((await ProfilePage()) as React.ReactElement)
+    const [props] = vi.mocked(ProfileForm).mock.calls[0]
+    expect(props.redirectAfterSave).toBe('/barns')
   })
 })
 
