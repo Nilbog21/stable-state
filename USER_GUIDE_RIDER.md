@@ -12,6 +12,10 @@ Go to **Lessons** to see your lesson history. Tap any lesson to open it and see 
 
 If you have past lessons with unpaid balances, you will receive a notification. Tap the notification to open the **Outstanding Payments** page, which lists all your enrolled past unpaid lessons with their date, instructor, and fee. Tap any row to open the lesson detail.
 
+## Notifications
+
+Tap the bell icon in the nav bar to view your notifications. If your profile is missing a phone number or emergency contact, you will receive a **Complete your profile** notification — tap it to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
+
 ## Viewing horses
 
 Go to **Horses** to see the weekly exertion summary for each horse in the barn. Tap any horse name to open its detail page. If a horse is unavailable, you will see its availability status and the reason provided by the barn manager.

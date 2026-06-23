@@ -55,6 +55,22 @@ export async function getNotifications(
   return data ?? []
 }
 
+export async function deleteNotificationByType(
+  userId: string,
+  barnId: string,
+  type: NotificationType
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('notifications')
+    .delete()
+    .eq('user_id', userId)
+    .eq('barn_id', barnId)
+    .eq('type', type)
+
+  if (error) throw error
+}
+
 export async function markAllNotificationsRead(userId: string, barnId: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase

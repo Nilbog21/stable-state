@@ -1,10 +1,55 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getUserMembership, getBarnMembershipsForUser, applyPreAuthProfile } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser, applyPreAuthProfile, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getProfileByUserId } from '@/lib/db/profiles'
+import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
+import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import type { Barn, BarnMembership, Profile } from '@/lib/db/types'
+
+async function generateLoginNotifications(
+  userId: string,
+  activeMemberships: Array<{ barn: Barn; membership: BarnMembership }>,
+  profile: Profile | null
+): Promise<void> {
+  const profileIncomplete = !profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone
+
+  await Promise.all(activeMemberships.map(async ({ barn, membership }) => {
+    if (profileIncomplete) {
+      await createNotification({
+        userId,
+        barnId: barn.id,
+        type: 'incomplete_profile',
+        title: 'Complete your profile',
+        link: '/profile/complete',
+      })
+    } else {
+      await deleteNotificationByType(userId, barn.id, 'incomplete_profile')
+    }
+    if (membership.role === 'manager') {
+      const members = await getActiveMemberships(barn.id)
+      const otherIds = members.filter(m => m.user_id !== userId).map(m => m.user_id)
+      let hasIncomplete = false
+      if (otherIds.length > 0) {
+        const memberProfiles = await getProfilesByUserIds(otherIds)
+        hasIncomplete = memberProfiles.some(
+          p => !p.phone || !p.emergency_contact_name || !p.emergency_contact_phone
+        )
+      }
+      if (hasIncomplete) {
+        await createNotification({
+          userId,
+          barnId: barn.id,
+          type: 'member_incomplete_profile',
+          title: 'Some barn members have incomplete profiles',
+        })
+      } else {
+        await deleteNotificationByType(userId, barn.id, 'member_incomplete_profile')
+      }
+    }
+  }))
+}
 
 export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
@@ -41,6 +86,7 @@ export async function GET(request: NextRequest) {
         if (user) {
           try {
             const profile = await getProfileByUserId(user.id)
+            await generateLoginNotifications(user.id, [{ barn, membership }], profile).catch(() => {})
             if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
               const response = NextResponse.redirect(`${origin}/profile/complete`)
               response.cookies.set(`barn_session_${barnSlug}`, user.id, {
@@ -76,6 +122,7 @@ export async function GET(request: NextRequest) {
       if (active.length >= 1 && user) {
         try {
           const profile = await getProfileByUserId(user.id)
+          await generateLoginNotifications(user.id, active, profile).catch(() => {})
           if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
             const response = NextResponse.redirect(`${origin}/profile/complete`)
             for (const { barn } of active) {

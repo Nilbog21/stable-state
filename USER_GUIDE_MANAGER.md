@@ -41,3 +41,10 @@ Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing
 ## Approvals
 
 Go to **Settings** to review pending membership requests. Approving a request grants the member active access to the barn and, for rider-role requests, automatically creates their rider record.
+
+## Notifications
+
+You will receive notifications for situations that need attention. Tap the bell icon in the nav bar to view them; tap **Mark all read** to dismiss them.
+
+- **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go to your profile and fill in the missing fields.
+- **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.

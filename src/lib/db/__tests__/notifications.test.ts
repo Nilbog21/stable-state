@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, markNotificationRead, markAllNotificationsRead, getNotifications } from '../notifications'
+import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications } from '../notifications'
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -89,6 +89,65 @@ describe('createNotification', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(mockFrom).toHaveBeenCalledWith('notifications')
+  })
+})
+
+describe('deleteNotificationByType', () => {
+  function makeChain(result: { error: unknown }) {
+    const mockEq3 = vi.fn().mockResolvedValue(result)
+    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
+    const mockFrom = vi.fn().mockReturnValue({ delete: mockDelete })
+    return { mockFrom, mockDelete, mockEq1, mockEq2, mockEq3 }
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_from_notifications_table', async () => {
+    const { mockFrom } = makeChain({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await deleteNotificationByType('user-1', 'barn-1', 'incomplete_profile')
+
+    expect(mockFrom).toHaveBeenCalledWith('notifications')
+  })
+
+  it('should_filter_by_user_id', async () => {
+    const { mockFrom, mockEq1 } = makeChain({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await deleteNotificationByType('user-99', 'barn-1', 'incomplete_profile')
+
+    expect(mockEq1).toHaveBeenCalledWith('user_id', 'user-99')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockFrom, mockEq2 } = makeChain({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await deleteNotificationByType('user-1', 'barn-42', 'incomplete_profile')
+
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-42')
+  })
+
+  it('should_filter_by_type', async () => {
+    const { mockFrom, mockEq3 } = makeChain({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await deleteNotificationByType('user-1', 'barn-1', 'member_incomplete_profile')
+
+    expect(mockEq3).toHaveBeenCalledWith('type', 'member_incomplete_profile')
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('delete failed')
+    const { mockFrom } = makeChain({ error: dbError })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await expect(deleteNotificationByType('user-1', 'barn-1', 'incomplete_profile')).rejects.toThrow('delete failed')
   })
 })
 
