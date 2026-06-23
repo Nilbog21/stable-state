@@ -29,14 +29,13 @@ export default async function LessonsPage({
     notFound()
   }
 
-  const [lessons, membership] = await Promise.all([
-    getLessonsByBarn(barn.id),
-    getUserMembership(user.id, barn.id),
-  ])
+  const membership = await getUserMembership(user.id, barn.id)
 
   if (!membership) {
     notFound()
   }
+
+  const lessons = await getLessonsByBarn(barn.id, user.id, membership.role)
 
   const isManager = membership.role === 'manager'
   const canCreateLesson = membership.role === 'manager' || membership.role === 'trainer'

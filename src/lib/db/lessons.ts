@@ -86,16 +86,45 @@ export async function createLesson({
   return data
 }
 
-export async function getLessonsByBarn(barnId: string): Promise<LessonWithDetails[]> {
+export async function getLessonsByBarn(
+  barnId: string,
+  userId: string,
+  role: 'manager' | 'trainer' | 'rider'
+): Promise<LessonWithDetails[]> {
   const supabase = await createClient()
-  const { data: lessons, error: lessonsError } = await supabase
-    .from('lessons')
-    .select('*')
-    .eq('barn_id', barnId)
-    .order('lesson_at', { ascending: false })
 
+  if (role === 'rider') {
+    const { data: rider, error: riderError } = await supabase
+      .from('riders')
+      .select('id')
+      .eq('barn_id', barnId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (riderError) throw riderError
+    if (!rider) return []
+
+    const { data: enrollments, error: enrollmentError } = await supabase
+      .from('lesson_riders')
+      .select('lesson_id')
+      .eq('barn_id', barnId)
+      .eq('rider_id', rider.id)
+    if (enrollmentError) throw enrollmentError
+    if (!enrollments?.length) return []
+
+    const lessonIds = enrollments.map((e) => e.lesson_id)
+    const { data: lessons, error: lessonsError } = await supabase
+      .from('lessons')
+      .select('*')
+      .in('id', lessonIds)
+      .order('lesson_at', { ascending: false })
+    if (lessonsError) throw lessonsError
+    return hydrateParticipants(supabase, lessons)
+  }
+
+  let query = supabase.from('lessons').select('*').eq('barn_id', barnId)
+  if (role === 'trainer') query = query.eq('instructor_id', userId)
+  const { data: lessons, error: lessonsError } = await query.order('lesson_at', { ascending: false })
   if (lessonsError) throw lessonsError
-
   return hydrateParticipants(supabase, lessons)
 }
 
