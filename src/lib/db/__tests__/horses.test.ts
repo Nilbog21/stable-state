@@ -69,6 +69,35 @@ describe('getHorsesByBarn', () => {
 
     expect(mockEqIsActive).toHaveBeenCalledWith('is_active', true)
   })
+
+  it('should_return_horses_with_is_available_field', async () => {
+    const horseWithAvailability = { ...mockHorses[0], is_available: false, unavailability_reason: 'on stall rest' }
+    const mockOrder = vi.fn().mockResolvedValue({ data: [horseWithAvailability], error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ order: mockOrder }) }),
+        }),
+      }),
+    } as any)
+
+    const result = await getHorsesByBarn('barn-1')
+
+    expect(result[0]).toMatchObject({ is_available: false, unavailability_reason: 'on stall rest' })
+  })
+
+  it('should_not_filter_out_unavailable_horses', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: mockHorses, error: null })
+    const mockEqIsActive = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockEqBarnId }) }),
+    } as any)
+
+    await getHorsesByBarn('barn-1')
+
+    expect(mockEqIsActive).not.toHaveBeenCalledWith('is_available', expect.anything())
+  })
 })
 
 describe('createHorse', () => {

@@ -405,4 +405,72 @@ describe('LessonForm (edit mode)', () => {
     fireEvent.submit(form)
     expect(action).not.toHaveBeenCalled()
   })
+
+  it('should_render_unavailable_horse_as_disabled_checkbox', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const { container } = render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
+    expect(checkbox.disabled).toBe(true)
+  })
+
+  it('should_sort_available_horse_before_unavailable_horse', () => {
+    const unavailableHorse = { id: 'horse-unavail', barn_id: 'barn-1', name: 'AAA Unavailable', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const availableHorse = { id: 'horse-avail', barn_id: 'barn-1', name: 'ZZZ Available', is_active: true, is_available: true, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const { container } = render(<LessonForm {...baseProps} horses={[unavailableHorse, availableHorse]} />)
+    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+    expect((checkboxes[0] as HTMLInputElement).value).toBe('horse-avail')
+  })
+
+  it('should_sort_unavailable_horse_after_available_horse', () => {
+    const unavailableHorse = { id: 'horse-unavail', barn_id: 'barn-1', name: 'AAA Unavailable', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const availableHorse = { id: 'horse-avail', barn_id: 'barn-1', name: 'ZZZ Available', is_active: true, is_available: true, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const { container } = render(<LessonForm {...baseProps} horses={[unavailableHorse, availableHorse]} />)
+    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+    expect((checkboxes[1] as HTMLInputElement).value).toBe('horse-unavail')
+  })
+
+  it('should_show_unavailability_reason_next_to_horse_name', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'on stall rest', created_at: '', updated_at: '' } as unknown as Horse
+    render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} />)
+    expect(screen.getByText(/on stall rest/i)).toBeDefined()
+  })
+
+  it('should_keep_pre_assigned_unavailable_horse_checked_in_edit_mode', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const lessonWithUnavailableHorse: LessonDetail = {
+      ...normalLesson,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
+    }
+    const { container } = render(
+      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+    )
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
+  })
+
+  it('should_keep_pre_assigned_unavailable_horse_disabled_in_edit_mode', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const lessonWithUnavailableHorse: LessonDetail = {
+      ...normalLesson,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
+    }
+    const { container } = render(
+      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+    )
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
+    expect(checkbox.disabled).toBe(true)
+  })
+
+  it('should_include_pre_assigned_unavailable_horse_id_in_form_via_hidden_input', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const lessonWithUnavailableHorse: LessonDetail = {
+      ...normalLesson,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
+    }
+    const { container } = render(
+      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+    )
+    const hidden = container.querySelector('input[type="hidden"][name="horse_id"][value="horse-2"]')
+    expect(hidden).not.toBeNull()
+  })
 })

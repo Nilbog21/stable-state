@@ -44,6 +44,8 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
     barn_id: 'barn-1',
     name: 'Thunderbolt',
     is_active: true,
+    is_available: true,
+    unavailability_reason: null,
     created_at: '',
     updated_at: '',
     ...overrides,

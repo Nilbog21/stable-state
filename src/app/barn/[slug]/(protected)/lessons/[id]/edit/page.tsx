@@ -51,6 +51,8 @@ export default async function EditLessonPage({
       barn_id: barn.id,
       name: `${lh.horses!.name} (inactive)`,
       is_active: false,
+      is_available: true,
+      unavailability_reason: null,
       created_at: '',
       updated_at: '',
     }))

@@ -20,9 +20,9 @@ Go to **Riders** to add new riders and manage the roster. Tap any rider's name t
 
 **View lessons** — Go to **Lessons** to see recent activity. Older lessons are hidden by default; tap **Show older lessons** to expand them.
 
-**Create a lesson** — Go to **Lessons → New Lesson**, fill in the date, select a horse and rider (or multiple riders for a group lesson), choose a fee tier, and click **Submit**.
+**Create a lesson** — Go to **Lessons → New Lesson**, fill in the date, select a horse and rider (or multiple riders for a group lesson), choose a fee tier, and click **Submit**. Horses marked as unavailable appear grayed out and cannot be selected; their unavailability reason is shown next to the name.
 
-**Edit a lesson** — Open any lesson from the Lessons list and click **Edit**. All fields are editable. Downgrading a group lesson to a normal lesson requires selecting one rider and one horse to keep.
+**Edit a lesson** — Open any lesson from the Lessons list and click **Edit**. All fields are editable. Downgrading a group lesson to a normal lesson requires selecting one rider and one horse to keep. Unavailable horses that were already assigned to the lesson remain shown (checked but grayed out) and will stay on the lesson when saved.
 
 **Delete a lesson** — From the Lessons list, click the delete icon on any lesson.
 
