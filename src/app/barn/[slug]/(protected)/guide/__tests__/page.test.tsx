@@ -25,8 +25,10 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
 
+const mockReadFileSync = vi.hoisted(() => vi.fn().mockReturnValue('# Guide Content'))
 vi.mock('fs', () => ({
-  readFileSync: vi.fn().mockReturnValue('# Guide Content'),
+  default: { readFileSync: mockReadFileSync },
+  readFileSync: mockReadFileSync,
 }))
 
 vi.mock('react-markdown', () => ({
@@ -38,7 +40,6 @@ vi.mock('react-markdown', () => ({
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { readFileSync } from 'fs'
 import GuidePage from '../page'
 
 const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
@@ -70,13 +71,13 @@ describe('GuidePage', () => {
     vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
-    vi.mocked(readFileSync).mockReset()
+    mockReadFileSync.mockReset()
     mockNotFound.mockClear()
 
     vi.mocked(getAuthenticatedUser).mockResolvedValue(mockUser as any)
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(readFileSync).mockReturnValue('# Guide Content')
+    mockReadFileSync.mockReturnValue('# Guide Content')
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -119,7 +120,7 @@ describe('GuidePage', () => {
 
     await GuidePage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
-    expect(vi.mocked(readFileSync)).toHaveBeenCalledWith(
+    expect(mockReadFileSync).toHaveBeenCalledWith(
       expect.stringContaining('USER_GUIDE_MANAGER.md'),
       'utf-8'
     )
@@ -130,7 +131,7 @@ describe('GuidePage', () => {
 
     await GuidePage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
-    expect(vi.mocked(readFileSync)).toHaveBeenCalledWith(
+    expect(mockReadFileSync).toHaveBeenCalledWith(
       expect.stringContaining('USER_GUIDE_TRAINER.md'),
       'utf-8'
     )
@@ -141,14 +142,14 @@ describe('GuidePage', () => {
 
     await GuidePage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
-    expect(vi.mocked(readFileSync)).toHaveBeenCalledWith(
+    expect(mockReadFileSync).toHaveBeenCalledWith(
       expect.stringContaining('USER_GUIDE_RIDER.md'),
       'utf-8'
     )
   })
 
   it('should_render_markdown_content', async () => {
-    vi.mocked(readFileSync).mockReturnValue('# Hello Guide')
+    mockReadFileSync.mockReturnValue('# Hello Guide')
 
     const jsx = await GuidePage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
