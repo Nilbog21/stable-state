@@ -11,6 +11,8 @@ import {
   addRiderToLesson,
   createLessonWithParticipants,
   updateLessonWithParticipants,
+  updateLessonRiderNotes,
+  updateLessonHorseNotes,
 } from '../lesson-participants'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -386,5 +388,135 @@ describe('updateLessonWithParticipants', () => {
         riderIds: ['rider-1'],
       })
     ).rejects.toThrow('rpc failed')
+  })
+})
+
+describe('updateLessonRiderNotes', () => {
+  const mockUpdatedRider = {
+    id: 'lr-1',
+    barn_id: 'barn-1',
+    lesson_id: 'lesson-1',
+    rider_id: 'rider-1',
+    rider_notes: 'Great progress today',
+    private_notes: 'Needs to work on posture',
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_update_on_lesson_riders_with_rider_notes_and_private_notes', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedRider, error: null })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqRider = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqRider })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqLesson })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateLessonRiderNotes('lesson-1', 'rider-1', 'barn-1', 'Great progress today', 'Needs to work on posture')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ rider_notes: 'Great progress today', private_notes: 'Needs to work on posture' })
+  })
+
+  it('should_return_updated_lesson_rider', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedRider, error: null })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqRider = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqRider })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
+      }),
+    } as any)
+
+    const result = await updateLessonRiderNotes('lesson-1', 'rider-1', 'barn-1', 'Great progress today', 'Needs to work on posture')
+
+    expect(result).toEqual(mockUpdatedRider)
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqRider = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqRider })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
+      }),
+    } as any)
+
+    await expect(
+      updateLessonRiderNotes('lesson-1', 'rider-1', 'barn-1', null, null)
+    ).rejects.toThrow('db error')
+  })
+})
+
+describe('updateLessonHorseNotes', () => {
+  const mockUpdatedHorse = {
+    id: 'lh-1',
+    barn_id: 'barn-1',
+    lesson_id: 'lesson-1',
+    horse_id: 'horse-1',
+    exertion_level: 3,
+    horse_notes: 'Moved well today',
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_update_on_lesson_horses_with_horse_notes', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedHorse, error: null })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqHorse = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqHorse })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqLesson })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateLessonHorseNotes('lesson-1', 'horse-1', 'barn-1', 'Moved well today')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ horse_notes: 'Moved well today' })
+  })
+
+  it('should_return_updated_lesson_horse', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedHorse, error: null })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqHorse = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqHorse })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
+      }),
+    } as any)
+
+    const result = await updateLessonHorseNotes('lesson-1', 'horse-1', 'barn-1', 'Moved well today')
+
+    expect(result).toEqual(mockUpdatedHorse)
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqHorse = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqHorse })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
+      }),
+    } as any)
+
+    await expect(
+      updateLessonHorseNotes('lesson-1', 'horse-1', 'barn-1', null)
+    ).rejects.toThrow('db error')
   })
 })
