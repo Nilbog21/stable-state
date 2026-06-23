@@ -139,7 +139,7 @@ describe('getLessonsByBarn', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    await getLessonsByBarn('barn-1')
+    await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
     expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: false })
@@ -151,7 +151,7 @@ describe('getLessonsByBarn', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result).toEqual([])
   })
@@ -169,7 +169,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result).toEqual([{
       ...lesson,
@@ -199,7 +199,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].rider_names).toEqual(['Alice', 'Bob'])
     expect(result[0].rider_count).toBe(2)
@@ -222,7 +222,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].horse_count).toBe(2)
   })
@@ -240,7 +240,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].instructor_name).toBeNull()
   })
@@ -255,7 +255,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].horse_names).toEqual([])
   })
@@ -268,7 +268,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].lesson_type).toBe('normal')
   })
@@ -281,7 +281,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].jumping).toBe(false)
   })
@@ -294,7 +294,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].jumping).toBe(true)
   })
@@ -310,7 +310,7 @@ describe('getLessonsByBarn', () => {
   it('should_include_payment_type_in_results', async () => {
     mockClientWithLesson(createMockLesson({ instructor_id: null }))
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].payment_type).toBeNull()
   })
@@ -318,7 +318,7 @@ describe('getLessonsByBarn', () => {
   it('should_pass_through_non_null_payment_type', async () => {
     mockClientWithLesson(createMockLesson({ instructor_id: null, payment_type: 'venmo' }))
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].payment_type).toBe('venmo')
   })
@@ -329,7 +329,7 @@ describe('getLessonsByBarn', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    await expect(getLessonsByBarn('barn-1')).rejects.toThrow('db error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('db error')
   })
 
   it('should_throw_when_lesson_horses_fetch_returns_an_error', async () => {
@@ -341,7 +341,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getLessonsByBarn('barn-1')).rejects.toThrow('horses error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('horses error')
   })
 
   it('should_throw_when_lesson_riders_fetch_returns_an_error', async () => {
@@ -354,7 +354,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getLessonsByBarn('barn-1')).rejects.toThrow('riders error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('riders error')
   })
 
   it('should_throw_when_horses_fetch_returns_an_error', async () => {
@@ -368,7 +368,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getLessonsByBarn('barn-1')).rejects.toThrow('horse lookup error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('horse lookup error')
   })
 
   it('should_throw_when_riders_fetch_returns_an_error', async () => {
@@ -383,7 +383,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getLessonsByBarn('barn-1')).rejects.toThrow('rider lookup error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('rider lookup error')
   })
 
   it('should_throw_when_profiles_fetch_returns_an_error', async () => {
@@ -397,7 +397,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getLessonsByBarn('barn-1')).rejects.toThrow('profiles error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('profiles error')
   })
 
   it('should_treat_null_lesson_horses_data_as_empty', async () => {
@@ -410,7 +410,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].horse_names).toEqual([])
   })
@@ -425,7 +425,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].rider_names).toEqual([])
     expect(result[0].rider_count).toBe(0)
@@ -442,7 +442,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].instructor_name).toBeNull()
   })
@@ -458,7 +458,7 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].horse_names).toEqual([])
   })
@@ -474,10 +474,192 @@ describe('getLessonsByBarn', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonsByBarn('barn-1')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].rider_names).toEqual([])
     expect(result[0].rider_count).toBe(1)
+  })
+
+  describe('role_filtering', () => {
+    function makeTrainerLessonsChain(data: unknown[], error: Error | null = null) {
+      const mockOrder = vi.fn().mockResolvedValue({ data, error })
+      const mockInstructorEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockBarnEq = vi.fn().mockReturnValue({ eq: mockInstructorEq })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
+      return { select: mockSelect, mockBarnEq, mockInstructorEq, mockOrder }
+    }
+
+    function makeRiderLookupChain(data: { id: string } | null, error: Error | null = null) {
+      const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
+      const mockUserEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+      const mockBarnEq = vi.fn().mockReturnValue({ eq: mockUserEq })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
+      return { select: mockSelect }
+    }
+
+    function makeEnrollmentChain(data: unknown[], error: Error | null = null) {
+      const mockRiderEq = vi.fn().mockResolvedValue({ data, error })
+      const mockBarnEq = vi.fn().mockReturnValue({ eq: mockRiderEq })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
+      return { select: mockSelect }
+    }
+
+    function makeRiderLessonsInChain(data: unknown[], error: Error | null = null) {
+      const mockOrder = vi.fn().mockResolvedValue({ data, error })
+      const mockBarnEq = vi.fn().mockReturnValue({ order: mockOrder })
+      const mockIn = vi.fn().mockReturnValue({ eq: mockBarnEq })
+      const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
+      return { select: mockSelect, mockBarnEq }
+    }
+
+    it('should_filter_by_barn_id_for_trainer_role', async () => {
+      const { select, mockBarnEq } = makeTrainerLessonsChain([])
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue({ select }),
+      } as any)
+
+      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
+
+      expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    })
+
+    it('should_filter_by_instructor_id_for_trainer_role', async () => {
+      const { select, mockInstructorEq } = makeTrainerLessonsChain([])
+      vi.mocked(createClient).mockResolvedValue({
+        from: vi.fn().mockReturnValue({ select }),
+      } as any)
+
+      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
+
+      expect(mockInstructorEq).toHaveBeenCalledWith('instructor_id', 'trainer-1')
+    })
+
+    it('should_return_one_lesson_for_rider_role', async () => {
+      const lesson = createMockLesson({ instructor_id: null })
+      let lessonRidersCallCount = 0
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') {
+          lessonRidersCallCount++
+          if (lessonRidersCallCount === 1) return makeEnrollmentChain([{ lesson_id: lesson.id }])
+          return makeInChain([])
+        }
+        if (table === 'lessons') return makeRiderLessonsInChain([lesson])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+
+      expect(result).toHaveLength(1)
+    })
+
+    it('should_return_correct_lesson_id_for_rider_role', async () => {
+      const lesson = createMockLesson({ instructor_id: null })
+      let lessonRidersCallCount = 0
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') {
+          lessonRidersCallCount++
+          if (lessonRidersCallCount === 1) return makeEnrollmentChain([{ lesson_id: lesson.id }])
+          return makeInChain([])
+        }
+        if (table === 'lessons') return makeRiderLessonsInChain([lesson])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+
+      expect(result[0].id).toBe(lesson.id)
+    })
+
+    it('should_return_empty_when_rider_lessons_data_is_null', async () => {
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') return makeEnrollmentChain([{ lesson_id: 'lesson-1' }])
+        if (table === 'lessons') return makeRiderLessonsInChain(null as any)
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+
+      expect(result).toEqual([])
+    })
+
+    it('should_filter_rider_lessons_by_barn_id', async () => {
+      const { select: lessonsSelect, mockBarnEq } = makeRiderLessonsInChain([])
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') return makeEnrollmentChain([{ lesson_id: 'lesson-1' }])
+        if (table === 'lessons') return { select: lessonsSelect }
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      await getLessonsByBarn('barn-1', 'user-1', 'rider')
+
+      expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    })
+
+    it('should_return_empty_when_no_rider_row_found_for_rider_role', async () => {
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain(null)
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+
+      expect(result).toEqual([])
+    })
+
+    it('should_return_empty_when_rider_has_no_enrollments', async () => {
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') return makeEnrollmentChain([])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+
+      expect(result).toEqual([])
+    })
+
+    it('should_throw_when_rider_lookup_returns_error', async () => {
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain(null, new Error('rider error'))
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider')).rejects.toThrow('rider error')
+    })
+
+    it('should_throw_when_enrollment_lookup_returns_error', async () => {
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') return makeEnrollmentChain([], new Error('enrollment error'))
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider')).rejects.toThrow('enrollment error')
+    })
+
+    it('should_throw_when_rider_lessons_fetch_returns_error', async () => {
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') return makeEnrollmentChain([{ lesson_id: 'lesson-1' }])
+        if (table === 'lessons') return makeRiderLessonsInChain([], new Error('lessons error'))
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider')).rejects.toThrow('lessons error')
+    })
   })
 })
 

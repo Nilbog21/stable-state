@@ -267,4 +267,22 @@ describe('LessonsPage', () => {
     render(jsx)
     expect(screen.queryByRole('list')).toBeNull()
   })
+
+  it('should_call_getLessonsByBarn_with_manager_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'manager')
+  })
+
+  it('should_call_getLessonsByBarn_with_trainer_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'trainer')
+  })
+
+  it('should_call_getLessonsByBarn_with_rider_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'rider')
+  })
 })
