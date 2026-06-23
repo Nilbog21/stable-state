@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getHorsesByBarn, createHorse, updateHorse, getHorseExertionSummary } from '../horses'
+import { getHorsesByBarn, createHorse, updateHorse, deleteHorse, getHorseExertionSummary } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -58,6 +58,19 @@ describe('getHorsesByBarn', () => {
     } as any)
 
     await expect(getHorsesByBarn('barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_filter_to_active_horses_only', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: mockHorses, error: null })
+    const mockEqIsActive = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive, order: mockOrder })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockEqBarnId }) }),
+    } as any)
+
+    await getHorsesByBarn('barn-1')
+
+    expect(mockEqIsActive).toHaveBeenCalledWith('is_active', true)
   })
 })
 
@@ -314,6 +327,49 @@ describe('getHorseExertionSummary', () => {
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
     ])
+  })
+
+  it('should_only_query_active_horses', async () => {
+    const mockOrder = vi.fn().mockResolvedValue({ data: [horse1], error: null })
+    const mockEqIsActive = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive, order: mockOrder })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return { select: mockSelect }
+      if (table === 'lessons') return makeLessonsChain([])
+      return makeLessonHorsesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    await getHorseExertionSummary('barn-1', since)
+
+    expect(mockEqIsActive).toHaveBeenCalledWith('is_active', true)
+  })
+})
+
+describe('deleteHorse', () => {
+  it('should_set_is_active_false_on_success', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: null }),
+        }),
+      }),
+    } as any)
+
+    await expect(deleteHorse('horse-1')).resolves.toBeUndefined()
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: new Error('db error') }),
+        }),
+      }),
+    } as any)
+
+    await expect(deleteHorse('horse-1')).rejects.toThrow('db error')
   })
 })
 
