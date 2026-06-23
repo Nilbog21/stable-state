@@ -1,11 +1,9 @@
 import type { FullConfig } from '@playwright/test'
 import * as fs from 'fs'
 import * as path from 'path'
-import { fileURLToPath } from 'url'
-
-const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
 async function globalSetup(_config: FullConfig) {
+  const authDir = path.join(__dirname, '.auth')
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
   if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
@@ -18,7 +16,7 @@ async function globalSetup(_config: FullConfig) {
   const authCookieName = `sb-${projectRef}-auth-token`
   const domain = new URL(baseUrl).hostname
 
-  fs.mkdirSync(path.join(__dirname, '.auth'), { recursive: true })
+  fs.mkdirSync(authDir, { recursive: true })
 
   for (const role of ['manager', 'trainer', 'rider']) {
     const email = `${role}@${barnSlug}.e2e`
@@ -61,7 +59,7 @@ async function globalSetup(_config: FullConfig) {
     }
 
     fs.writeFileSync(
-      path.join(__dirname, '.auth', `${role}.json`),
+      path.join(authDir, `${role}.json`),
       JSON.stringify(storageState, null, 2),
     )
     console.log(`[global-setup] ${role}.json written`)
