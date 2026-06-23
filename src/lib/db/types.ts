@@ -55,6 +55,8 @@ export interface Horse {
   barn_id: string
   name: string
   is_active: boolean
+  is_available: boolean
+  unavailability_reason: string | null
   created_at: string
   updated_at: string
 }

@@ -232,14 +232,21 @@ export function LessonForm({
           Horse{' '}
           <span className="font-normal text-zinc-500">(select at least one)</span>
         </legend>
-        {horses.map((h) => (
+        {[...horses].sort((a, b) => {
+          const aAvail = a.is_available === false ? 1 : 0
+          const bAvail = b.is_available === false ? 1 : 0
+          return aAvail - bAvail
+        }).map((h) => {
+          const isUnavailable = h.is_available === false
+          return (
           <div key={h.id} className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+            <label className={`flex items-center gap-2 text-sm ${isUnavailable ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-50'}`}>
               <input
                 type="checkbox"
                 name="horse_id"
                 value={h.id}
                 checked={checkedHorseIds.has(h.id)}
+                disabled={isUnavailable}
                 onChange={(e) => {
                   setCheckedHorseIds(prev => {
                     const next = new Set(prev)
@@ -264,6 +271,9 @@ export function LessonForm({
                 className="rounded border-zinc-300 dark:border-zinc-600"
               />
               {h.name}
+              {isUnavailable && h.unavailability_reason && (
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">— {h.unavailability_reason}</span>
+              )}
             </label>
             {checkedHorseIds.has(h.id) && (
               <>
@@ -290,7 +300,8 @@ export function LessonForm({
               </>
             )}
           </div>
-        ))}
+          )
+        })}
         {isManager && (
           <>
             <label htmlFor="new_horse_name" className="sr-only">Add new horse</label>
