@@ -68,7 +68,7 @@ export async function getHorseExertionSummary(
     id: row.id,
     name: row.name,
     is_active: row.is_active,
-    is_available: row.is_available,
+    is_available: row.is_available ?? true,
     lessonCount: Number(row.lesson_count),
     totalExertion: Number(row.total_exertion),
     jumpingCount: Number(row.jumping_count),

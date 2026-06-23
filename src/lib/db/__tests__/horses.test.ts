@@ -306,6 +306,18 @@ describe('getHorseExertionSummary', () => {
     expect(result[0].is_available).toBe(false)
   })
 
+  it('should_default_is_available_to_true_when_rpc_does_not_return_the_field', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([
+        { id: 'horse-1', name: 'Thunderbolt', is_active: true, lesson_count: 0, total_exertion: 0, jumping_count: 0 },
+      ]),
+    } as any)
+
+    const result = await getHorseExertionSummary('barn-1', since)
+
+    expect(result[0].is_available).toBe(true)
+  })
+
 })
 
 describe('setHorseActive', () => {
