@@ -14,6 +14,12 @@ interface TierRowProps {
 
 export function TierRow({ tier, formId, setDefaultAction, deactivateAction, showError }: TierRowProps) {
   const [nameDirty, setNameDirty] = useState(false)
+  const [jumpingValue, setJumpingValue] = useState(
+    tier.default_jumping === null ? '' : String(tier.default_jumping)
+  )
+  const [exertionValue, setExertionValue] = useState(
+    tier.default_exertion_level === null ? '' : String(tier.default_exertion_level)
+  )
 
   return (
     <>
@@ -103,11 +109,11 @@ export function TierRow({ tier, formId, setDefaultAction, deactivateAction, show
               >
                 Jumping
               </label>
+              <input type="hidden" name="default_jumping" form={formId} value={jumpingValue} />
               <select
                 id={`jumping-${tier.id}`}
-                name="default_jumping"
-                form={formId}
-                defaultValue={tier.default_jumping === null ? '' : String(tier.default_jumping)}
+                value={jumpingValue}
+                onChange={(e) => setJumpingValue(e.target.value)}
                 disabled={!tier.is_active}
                 className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
               >
@@ -123,11 +129,11 @@ export function TierRow({ tier, formId, setDefaultAction, deactivateAction, show
               >
                 Exertion
               </label>
+              <input type="hidden" name="default_exertion_level" form={formId} value={exertionValue} />
               <select
                 id={`exertion-${tier.id}`}
-                name="default_exertion_level"
-                form={formId}
-                defaultValue={tier.default_exertion_level === null ? '' : String(tier.default_exertion_level)}
+                value={exertionValue}
+                onChange={(e) => setExertionValue(e.target.value)}
                 disabled={!tier.is_active}
                 className="rounded border border-zinc-300 px-2 py-1 text-xs disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
               >

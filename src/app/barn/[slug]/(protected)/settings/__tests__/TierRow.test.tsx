@@ -246,4 +246,30 @@ describe('TierRow', () => {
     const priceInput = screen.getByRole('spinbutton') as HTMLInputElement
     expect(priceInput.value).toBe('')
   })
+
+  it('should_update_hidden_jumping_input_when_select_changes', () => {
+    render(
+      <table><tbody>
+        <TierRow tier={createMockLessonTier({ default_jumping: null })} formId="form-1" setDefaultAction={noop} deactivateAction={noop} />
+      </tbody></table>
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: /jumping/i }), { target: { value: 'true' } })
+
+    const hidden = document.querySelector('input[type="hidden"][name="default_jumping"]') as HTMLInputElement
+    expect(hidden.value).toBe('true')
+  })
+
+  it('should_update_hidden_exertion_input_when_select_changes', () => {
+    render(
+      <table><tbody>
+        <TierRow tier={createMockLessonTier({ default_exertion_level: null })} formId="form-1" setDefaultAction={noop} deactivateAction={noop} />
+      </tbody></table>
+    )
+
+    fireEvent.change(screen.getByRole('combobox', { name: /exertion/i }), { target: { value: '4' } })
+
+    const hidden = document.querySelector('input[type="hidden"][name="default_exertion_level"]') as HTMLInputElement
+    expect(hidden.value).toBe('4')
+  })
 })
