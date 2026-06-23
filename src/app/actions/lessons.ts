@@ -29,6 +29,8 @@ export async function submitLesson(
   const tierName = (formData.get('tier_name') as string | null) ?? 'Custom'
   const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
   const jumping = formData.get('jumping') === 'true'
+  const paymentTypeRaw = (formData.get('payment_type') as string | null) || null
+  const paymentType = paymentTypeRaw as PaymentType | null
 
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
@@ -109,6 +111,7 @@ export async function submitLesson(
       lessonType,
       jumping,
       tierName,
+      paymentType,
     })
   } catch {
     return { error: 'Failed to submit lesson' }
