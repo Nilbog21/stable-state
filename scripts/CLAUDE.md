@@ -43,6 +43,8 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 | `reset-db` | ✓ | ✓ | ✓ | ✓ | Canonical model |
 | `change-user` | ✓ | ✓ | ✓ | ✓ | `.ts` uses `readline` for numbered-list selection; bash can't do this cleanly |
 | `seed-account` | ✓ | ✓ | — | — | No extractable pure functions (all operations are DB calls); no non-trivial shell branching |
+| `seed-test-barn` | ✓ | ✓ | ✓ | ✓ | Positional arg: barn slug; teardown-first for idempotency; email/password auth users |
+| `teardown-test-barn` | ✓ | ✓ | — | ✓ | Exports `teardown(slug, supabase)` reused by `seed-test-barn.ts`; all DB calls, no pure functions |
 | `ci` | ✓ | — | — | ✓ | Shell-only |
 | `check-coverage` | ✓ | — | — | ✓ | Shell-only |
 
