@@ -383,7 +383,8 @@ describe('getHorseById', () => {
 
   function makeSelectChain(data: unknown, error: Error | null = null) {
     const mockSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEqBarnId = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqIsActive = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive })
     const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
     return { select: vi.fn().mockReturnValue({ eq: mockEqId }) }
   }
@@ -418,7 +419,8 @@ describe('getHorseById', () => {
 
   it('should_scope_query_to_barn_id', async () => {
     const mockSingle = vi.fn().mockResolvedValue({ data: mockHorse, error: null })
-    const mockEqBarnId = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqIsActive = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive })
     const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockEqId }) }),
@@ -427,6 +429,20 @@ describe('getHorseById', () => {
     await getHorseById('horse-1', 'barn-1')
 
     expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_to_active_horses_only', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: mockHorse, error: null })
+    const mockEqIsActive = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockEqId }) }),
+    } as any)
+
+    await getHorseById('horse-1', 'barn-1')
+
+    expect(mockEqIsActive).toHaveBeenCalledWith('is_active', true)
   })
 })
 

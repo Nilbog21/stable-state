@@ -300,7 +300,7 @@ describe('HorseOverviewTable', () => {
   })
 
   it('should_not_render_inactive_badge_for_active_horse', () => {
-    render(<HorseOverviewTable horses={[horses[0]]} />)
+    render(<HorseOverviewTable horses={[horses[0]]} barnSlug="green-acres" />)
     expect(screen.queryByText('Inactive')).toBeNull()
   })
 
@@ -376,5 +376,15 @@ describe('HorseOverviewTable', () => {
   it('should_render_unavailable_badge_when_manager', () => {
     render(<HorseOverviewTable horses={[unavailableHorse]} isManager barnSlug="green-acres" />)
     expect(screen.getByText('(Unavailable)')).toBeDefined()
+  })
+
+  it('should_apply_greyed_out_class_to_unavailable_horse_link_when_not_manager', () => {
+    render(<HorseOverviewTable horses={[unavailableHorse]} barnSlug="green-acres" />)
+    expect(screen.getByRole('link', { name: unavailableHorse.name }).className).toContain('text-zinc-400')
+  })
+
+  it('should_not_apply_greyed_out_class_to_available_horse_link_when_not_manager', () => {
+    render(<HorseOverviewTable horses={[horses[0]]} barnSlug="green-acres" />)
+    expect(screen.getByRole('link', { name: horses[0].name }).className).not.toContain('text-zinc-400')
   })
 })
