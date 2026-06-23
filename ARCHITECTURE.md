@@ -30,6 +30,8 @@ Three roles: `manager`, `trainer`, `rider`.
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
 | profiles | SELECT own + barn members; UPDATE own + any barn member (contact fields only); INSERT own | SELECT own + barn members | SELECT own + barn members; INSERT/UPDATE own |
 | notifications | SELECT/UPDATE own; INSERT any authenticated | SELECT/UPDATE own; INSERT any authenticated | SELECT/UPDATE own; INSERT any authenticated |
+| horse_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT (barn-scoped) | — |
+| trainer_documents | SELECT, INSERT, UPDATE, DELETE | SELECT own rows only | — |
 
 ## DB schema
 
@@ -48,6 +50,8 @@ All tables are in the `public` schema with RLS enabled.
 | `lesson_riders` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `lesson_id UUID NOT NULL`, `rider_id UUID NOT NULL`, `rider_notes TEXT`, `private_notes TEXT`; `UNIQUE(lesson_id, rider_id)`; `FK(barn_id, lesson_id)→lessons`; `FK(barn_id, rider_id)→riders` | `UNIQUE(lesson_id)` dropped; trigger `lesson_riders_participant_count_check` enforces normal=1 rider+1 horse, group=≥2 riders (deferred); `private_notes` visible to trainer/manager only (DAL-layer column projection) |
 | `profiles` | `id UUID PK`, `user_id UUID UNIQUE→auth.users` (nullable — null until first sign-in), `email TEXT UNIQUE NOT NULL`, `barn_id UUID→barns` (nullable), `role TEXT→roles` (nullable), `first_name TEXT NOT NULL`, `last_name TEXT NOT NULL`, `phone TEXT` (nullable), `emergency_contact_name TEXT` (nullable), `emergency_contact_phone TEXT` (nullable), `created_at TIMESTAMPTZ` | User-level (not barn-scoped). Pre-auth rows (user_id=null, barn_id+role set) are inserted by `seedManagerProfile` before OAuth sign-in; the trigger fills in user_id on first sign-in. Regular users have barn_id=null and role=null. |
 | `notifications` | `id UUID PK`, `user_id UUID NOT NULL→auth.users`, `barn_id UUID NOT NULL→barns`, `type TEXT NOT NULL`, `title TEXT NOT NULL`, `body TEXT`, `link TEXT`, `read_at TIMESTAMPTZ`, `created_at TIMESTAMPTZ NOT NULL DEFAULT now()`; `UNIQUE(user_id, barn_id, type)` | In-app alert system. Types for release-2: `outstanding_payment`, `pending_approval`, `lesson_cancelled`, `incomplete_profile`, `member_incomplete_profile`. Upsert on `(user_id, barn_id, type)` prevents duplicates and resets `read_at = NULL` on conflict. |
+| `horse_documents` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `horse_id UUID NOT NULL`, `record_type horse_document_type NOT NULL`, `storage_path TEXT NOT NULL`, `file_name TEXT NOT NULL`, `file_size INTEGER NOT NULL`, `notes TEXT`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)`; `FK(barn_id, horse_id)→horses` | Enum `horse_document_type`: `insurance_binder`, `coggins`, `shot_record`, `contract`. No unique constraint on `(horse_id, record_type)` — multiple records per type allowed. Storage objects at `{barn_id}/horses/{horse_id}/{filename}` in the `documents` bucket. |
+| `trainer_documents` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `trainer_id UUID NOT NULL→auth.users`, `record_type trainer_document_type NOT NULL`, `storage_path TEXT NOT NULL`, `file_name TEXT NOT NULL`, `file_size INTEGER NOT NULL`, `notes TEXT`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | Enum `trainer_document_type`: `instructor_contract`. Storage objects at `{barn_id}/trainers/{trainer_user_id}/{filename}` in the `documents` bucket. |
 
 ## RLS conventions
 
