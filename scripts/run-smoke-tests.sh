@@ -31,6 +31,9 @@ if [ -z "$TEST_BARN_SLUG" ]; then
   exit 1
 fi
 
+echo "Seeding test barn..."
+bash scripts/seed-test-barn.sh "$TEST_BARN_SLUG"
+
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
 E2E_BASE_URL="$E2E_BASE_URL" \
