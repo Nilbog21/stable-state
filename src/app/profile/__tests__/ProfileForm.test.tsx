@@ -204,4 +204,20 @@ describe('ProfileForm - after save', () => {
     fireEvent.submit(screen.getByRole('form'))
     await waitFor(() => expect(screen.getByText(/failed to update profile/i)).toBeDefined())
   })
+
+  it('should_show_success_message_after_save_when_redirectAfterSave_is_null', async () => {
+    vi.mocked(updateProfileAction).mockResolvedValue({ error: null })
+    render(<ProfileForm profile={mockProfile} heading="Edit Profile" redirectAfterSave={null} />)
+    fireEvent.submit(screen.getByRole('form'))
+    await waitFor(() => expect(screen.getByText(/profile saved/i)).toBeDefined())
+  })
+
+  it('should_clear_success_message_when_field_is_edited_after_save', async () => {
+    vi.mocked(updateProfileAction).mockResolvedValue({ error: null })
+    render(<ProfileForm profile={mockProfile} heading="Edit Profile" redirectAfterSave={null} />)
+    fireEvent.submit(screen.getByRole('form'))
+    await waitFor(() => expect(screen.getByText(/profile saved/i)).toBeDefined())
+    fireEvent.change(screen.getByLabelText(/^phone$/i), { target: { value: '555-0000' } })
+    expect(screen.queryByText(/profile saved/i)).toBeNull()
+  })
 })

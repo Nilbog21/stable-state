@@ -1,3 +1,4 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Barn, BarnMembership } from './types'
@@ -172,9 +173,9 @@ export async function getInstructorsByBarn(
   })
 }
 
-export async function getBarnMembershipsForUser(
+export const getBarnMembershipsForUser = cache(async (
   userId: string
-): Promise<{ barn: Barn; membership: BarnMembership }[]> {
+): Promise<{ barn: Barn; membership: BarnMembership }[]> => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
@@ -190,5 +191,5 @@ export async function getBarnMembershipsForUser(
       barn: barns as Barn,
       membership: membership as BarnMembership,
     }))
-}
+})
 

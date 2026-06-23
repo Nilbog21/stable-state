@@ -18,10 +18,12 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
   const [ecName, setEcName] = useState(profile.emergency_contact_name ?? '')
   const [ecPhone, setEcPhone] = useState(profile.emergency_contact_phone ?? '')
   const [error, setError] = useState<string | null>(null)
+  const [saved, setSaved] = useState(false)
 
   async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault()
     setError(null)
+    setSaved(false)
 
     if (!firstName.trim()) return
     if (!lastName.trim()) return
@@ -47,6 +49,7 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
       return
     }
 
+    setSaved(true)
     if (redirectAfterSave) {
       router.push(redirectAfterSave)
     }
@@ -66,7 +69,7 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
             type="text"
             required
             value={firstName}
-            onChange={(e) => setFirstName(e.target.value)}
+            onChange={(e) => { setFirstName(e.target.value); setSaved(false) }}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
@@ -80,7 +83,7 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
             type="text"
             required
             value={lastName}
-            onChange={(e) => setLastName(e.target.value)}
+            onChange={(e) => { setLastName(e.target.value); setSaved(false) }}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
@@ -93,7 +96,7 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
             name="phone"
             type="tel"
             value={phone}
-            onChange={(e) => setPhone(e.target.value)}
+            onChange={(e) => { setPhone(e.target.value); setSaved(false) }}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
@@ -106,7 +109,7 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
             name="emergency_contact_name"
             type="text"
             value={ecName}
-            onChange={(e) => setEcName(e.target.value)}
+            onChange={(e) => { setEcName(e.target.value); setSaved(false) }}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
@@ -119,11 +122,12 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
             name="emergency_contact_phone"
             type="tel"
             value={ecPhone}
-            onChange={(e) => setEcPhone(e.target.value)}
+            onChange={(e) => { setEcPhone(e.target.value); setSaved(false) }}
             className="rounded-md border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
+        {saved && <p className="text-sm text-green-700 dark:text-green-400">Profile saved.</p>}
         <button
           type="submit"
           className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
