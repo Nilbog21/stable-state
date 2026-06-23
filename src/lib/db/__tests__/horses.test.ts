@@ -146,9 +146,8 @@ describe('getHorseExertionSummary', () => {
 
   function makeHorsesChain(data: unknown[], error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
-    const mockEqIsActive = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }
 
@@ -327,47 +326,45 @@ describe('getHorseExertionSummary', () => {
     ])
   })
 
-  it('should_only_query_active_horses', async () => {
-    const mockOrder = vi.fn().mockResolvedValue({ data: [horse1], error: null })
-    const mockEqIsActive = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqIsActive, order: mockOrder })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horses') return { select: mockSelect }
-      if (table === 'lessons') return makeLessonsChain([])
-      return makeLessonHorsesChain([])
-    })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-
-    await getHorseExertionSummary('barn-1', since)
-
-    expect(mockEqIsActive).toHaveBeenCalledWith('is_active', true)
-  })
 })
 
 describe('deleteHorse', () => {
+  function makeDeleteChain(error: Error | null = null) {
+    const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'horse-1' }, error })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarnId = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    return { update: vi.fn().mockReturnValue({ eq: mockEqId }) }
+  }
+
   it('should_set_is_active_false_on_success', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      }),
+      from: vi.fn().mockReturnValue(makeDeleteChain()),
     } as any)
 
-    await expect(deleteHorse('horse-1')).resolves.toBeUndefined()
+    await expect(deleteHorse('horse-1', 'barn-1')).resolves.toBeUndefined()
+  })
+
+  it('should_scope_delete_to_barn_id', async () => {
+    const mockSingle = vi.fn().mockResolvedValue({ data: null, error: null })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEqBarnId = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
+    } as any)
+
+    await deleteHorse('horse-1', 'barn-1')
+
+    expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: new Error('db error') }),
-        }),
-      }),
+      from: vi.fn().mockReturnValue(makeDeleteChain(new Error('db error'))),
     } as any)
 
-    await expect(deleteHorse('horse-1')).rejects.toThrow('db error')
+    await expect(deleteHorse('horse-1', 'barn-1')).rejects.toThrow('db error')
   })
 })
 

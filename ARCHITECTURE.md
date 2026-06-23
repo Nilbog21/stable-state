@@ -82,7 +82,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 | `/barn/[slug]/lessons/new` | manager, trainer | |
 | `/barn/[slug]/lessons/[id]` | All active members | Edit link visible to managers |
 | `/barn/[slug]/lessons/[id]/edit` | manager | Pre-filled edit form; group→normal downgrade shows warning and requires manager to select one rider/horse to keep; updates are atomic via `update_lesson_with_participants` RPC |
-| `/barn/[slug]/horses` | All active members | Per-horse exertion summary over the last 7 days; columns (Horse, Total Exertion, # Jumping, Lessons) are clickable headers that sort client-side; active header shows ↑/↓; default sort: Total Exertion descending; manager sees Add Horse form at top and inline rename + Save per row |
+| `/barn/[slug]/horses` | All active members | Per-horse exertion summary over the last 7 days (includes all horses with lessons in the window, regardless of `is_active`); columns (Horse, Total Exertion, # Jumping, Lessons) are clickable headers that sort client-side; active header shows ↑/↓; default sort: Total Exertion descending; manager sees Add Horse form at top and inline rename + Save + Remove per row; Remove soft-deletes via `is_active=false`; edit lesson form shows inactive horses already assigned to the lesson with an `(inactive)` suffix |
 | `/barn/[slug]/riders` | manager, trainer | Inline name editing via `updateRiderAction` |
 | `/barn/[slug]/finances` | manager | **Outstanding** section (all-time past unpaid lessons with non-zero fee — inline payment-type dropdown via `OutstandingTable` Client Component) appears above the month selector and is hidden entirely when there are no outstanding lessons. Below it: `←`/`→` month navigation; `?month=YYYY-MM` selects month (defaults to current, clamped to barn creation date); **Collected income** (`payment_type IS NOT NULL`), **Pending income** (future unpaid lessons with fee); pill-style tab switcher (`?tab=tier\|horse\|rider\|trainer`, defaults to `tier`) with four views: **By Tier** (tier name, price or `—` for Custom, lesson count, subtotal), **By Horse** (horse name, collected income), **By Rider** (rider name, collected income), **By Trainer** (trainer full name, collected income) |
 | `/barn/[slug]/settings` | manager | **Manage Barn** page: Invite Link, Pending Requests (approve/reject; approving `rider` auto-creates a `riders` row, duplicate suppressed), Active Members (remove), Tier CRUD |
@@ -99,7 +99,7 @@ A `UserMenu` Client Component sits on the right side of the nav bar. It shows th
 |---|---|
 | `barns.ts` | Barn lookups |
 | `barn-memberships.ts` | Membership reads and writes; cross-barn user lookup (`getBarnMembershipsForUser`) |
-| `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`) |
+| `horses.ts` | Horse registry; per-horse exertion summary (`getHorseExertionSummary`); soft-delete (`deleteHorse(horseId, barnId)` — sets `is_active=false`); `getHorsesByBarn` filters to active only |
 | `riders.ts` | Rider registry; name updates (`updateRider`) |
 | `lessons.ts` | Lesson CRUD: `createLesson`, `getLessonsByBarn`, `getLessonById`, `deleteLesson`, `updateLesson`, `getUpcomingLessons(barnId, from, to, userId, role)` — manager/trainer: filters by `instructor_id`; rider: resolves via `riders → lesson_riders → lessons` |
 | `lesson-participants.ts` | Participant management: `createLessonWithParticipants`, `updateLessonWithParticipants`, `addHorseToLesson`, `addRiderToLesson` |

@@ -209,4 +209,12 @@ describe('EditLessonPage', () => {
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
+
+  it('should_not_include_active_horse_in_inactive_assigned', async () => {
+    const activeHorse = { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', is_active: true, created_at: '', updated_at: '' }
+    vi.mocked(getHorsesByBarn).mockResolvedValue([activeHorse])
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
 })

@@ -130,10 +130,10 @@ describe('deleteHorseAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_deleteHorse_when_manager', async () => {
+  it('should_call_deleteHorse_with_horse_and_barn_id_when_manager', async () => {
     await deleteHorseAction('green-acres', 'horse-1', new FormData())
 
-    expect(deleteHorse).toHaveBeenCalledWith('horse-1')
+    expect(deleteHorse).toHaveBeenCalledWith('horse-1', mockBarn.id)
   })
 
   it('should_revalidate_horses_path_after_deleteHorse', async () => {

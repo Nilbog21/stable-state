@@ -44,6 +44,19 @@ export default async function EditLessonPage({
     ? [{ userId: lesson.instructor_id, name: 'Former Instructor' }, ...instructorList]
     : instructorList
 
+  const activeHorseIds = new Set(horses.map((h) => h.id))
+  const inactiveAssigned = lesson.lesson_horses
+    .filter((lh) => lh.horses && !activeHorseIds.has(lh.horses.id))
+    .map((lh) => ({
+      id: lh.horses!.id,
+      barn_id: barn.id,
+      name: `${lh.horses!.name} (inactive)`,
+      is_active: false,
+      created_at: '',
+      updated_at: '',
+    }))
+  const horsesForForm = [...horses, ...inactiveAssigned]
+
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
 
   return (
@@ -54,7 +67,7 @@ export default async function EditLessonPage({
       <LessonForm
         mode="edit"
         initialLesson={lesson}
-        horses={horses}
+        horses={horsesForForm}
         riders={riders}
         isManager={true}
         instructors={instructors}

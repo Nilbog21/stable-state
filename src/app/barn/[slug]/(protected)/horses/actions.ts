@@ -27,7 +27,7 @@ export async function updateHorseAction(
 }
 
 export async function deleteHorseAction(barnSlug: string, horseId: string, _formData: FormData): Promise<void> {
-  await requireMembership(barnSlug, ['manager'])
-  await deleteHorse(horseId)
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await deleteHorse(horseId, barn.id)
   revalidatePath(`/barn/${barnSlug}/horses`)
 }

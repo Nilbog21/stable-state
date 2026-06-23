@@ -41,12 +41,15 @@ export async function updateHorse(horseId: string, name: string): Promise<Horse>
   return data
 }
 
-export async function deleteHorse(horseId: string): Promise<void> {
+export async function deleteHorse(horseId: string, barnId: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('horses')
     .update({ is_active: false })
     .eq('id', horseId)
+    .eq('barn_id', barnId)
+    .select()
+    .single()
 
   if (error) throw error
 }
@@ -61,7 +64,6 @@ export async function getHorseExertionSummary(
     .from('horses')
     .select('id, name')
     .eq('barn_id', barnId)
-    .eq('is_active', true)
     .order('name')
 
   if (horsesError) throw horsesError
