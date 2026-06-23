@@ -1,6 +1,8 @@
-# SUPABASE_DB_URL secret format:
-#   postgresql://postgres:[password]@db.[project-ref].supabase.co:5432/postgres
-# Find it in Supabase dashboard → Connect button (top of project overview) → Direct connection URI (port 5432, not pooled).
+# SUPABASE_DB_POOLER_URL secret format:
+#   postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
+# Find it in Supabase dashboard → Connect button (top of project overview) → Session mode (port 5432, pooled).
+# Use the session-mode pooler URL (not the direct connection URI) — the direct host is IPv6-only and
+# unreachable from GitHub Actions runners. URL-encode any special characters in the password (e.g. @ → %40, # → %23).
 
 name: Nightly DB Backup
 
@@ -13,16 +15,20 @@ jobs:
   backup:
     runs-on: ubuntu-latest
     steps:
-      - name: Install PostgreSQL client
-        run: sudo apt-get install -y postgresql-client
+      - name: Install PostgreSQL 17 client
+        run: |
+          curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo gpg --dearmor -o /usr/share/keyrings/postgresql.gpg
+          echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" | sudo tee /etc/apt/sources.list.d/pgdg.list
+          sudo apt-get update -qq
+          sudo apt-get install -y postgresql-client-17
 
       - name: Dump database
         env:
-          SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
-        run: pg_dump "$SUPABASE_DB_URL" --format=custom --no-acl --no-owner -f backup.dump
+          SUPABASE_DB_POOLER_URL: ${{ secrets.SUPABASE_DB_POOLER_URL }}
+        run: /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_POOLER_URL" --format=custom --no-acl --no-owner -f backup.dump
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v4.6.2
         with:
           name: db-backup-${{ github.run_id }}
           path: backup.dump
