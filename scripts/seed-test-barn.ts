@@ -8,13 +8,13 @@
 // Playwright tests should hardcode these patterns to derive credentials from the slug.
 
 import { fileURLToPath } from 'url'
-import { createClient } from '@supabase/supabase-js'
 import { upsertProfile } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
 import { createRider } from '@/lib/db/riders'
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { teardown } from './teardown-test-barn'
+import { mustSucceed, createServiceClient } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -26,20 +26,12 @@ export function buildTestUserEmail(barnSlug: string, role: string): string {
   return `${role}@${barnSlug}.e2e`
 }
 
-export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
-  const err = result.error as { message?: string } | null
-  if (err) throw new Error(`${label}: ${err.message}`)
-  return result.data as T
-}
-
 async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
   console.log(`Tearing down existing barn: ${BARN_SLUG}…`)
   await teardown(BARN_SLUG, supabase)

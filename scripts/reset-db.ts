@@ -1,11 +1,11 @@
 import { fileURLToPath } from 'url'
-import { createClient } from '@supabase/supabase-js'
 import { upsertProfile } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
 import { createRider } from '@/lib/db/riders'
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createPendingMembership } from '@/lib/db/barn-memberships'
+import { mustSucceed, createServiceClient, teardownBarnData, findAuthUserIdsByEmails } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -93,19 +93,11 @@ export function getPaymentType(i: number, isPast: boolean): string | null {
   return PAYMENT_TYPES[(i - Math.floor(i / 5)) % PAYMENT_TYPES.length]
 }
 
-export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
-  const err = result.error as { message?: string } | null
-  if (err) throw new Error(`${label}: ${err.message}`)
-  return result.data as T
-}
-
 async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
   console.log('Tearing down existing dev fixtures…')
 
@@ -115,35 +107,17 @@ async function run() {
   )
   const devUserIdSet = new Set((memberships ?? []).map((m: { user_id: string }) => m.user_id))
 
-  const devEmails = new Set([
+  const devEmails = [
     DEV_MANAGER_2.email,
     ...DEV_TRAINERS.map((t) => t.email),
     ...DEV_RIDERS.map((r) => r.email),
     DEV_PENDING_RIDER.email,
-  ])
-  let listPage = 1
-  let hasMore = true
-  while (hasMore) {
-    const { data: listData, error: listErr } = await supabase.auth.admin.listUsers({ page: listPage, perPage: 50 })
-    if (listErr) throw new Error(`list auth users: ${listErr.message}`)
-    if (!listData) throw new Error('list auth users: no data returned')
-    for (const user of listData.users) {
-      if (user.email && devEmails.has(user.email)) devUserIdSet.add(user.id)
-    }
-    hasMore = listData.users.length === 50
-    listPage++
-  }
+  ]
+  const orphanIds = await findAuthUserIdsByEmails(devEmails, supabase)
+  for (const id of orphanIds) devUserIdSet.add(id)
   const devUserIds = [...devUserIdSet]
 
-  mustSucceed(
-    await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: DEV_BARN_ID }),
-    'delete lessons and participants'
-  )
-  mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', DEV_BARN_ID), 'delete lesson_tiers')
-  mustSucceed(await supabase.from('notifications').delete().eq('barn_id', DEV_BARN_ID), 'delete notifications')
-  mustSucceed(await supabase.from('riders').delete().eq('barn_id', DEV_BARN_ID), 'delete riders')
-  mustSucceed(await supabase.from('horses').delete().eq('barn_id', DEV_BARN_ID), 'delete horses')
-  mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', DEV_BARN_ID), 'delete barn_memberships')
+  await teardownBarnData(DEV_BARN_ID, supabase)
   mustSucceed(
     await supabase.from('profiles').delete().eq('barn_id', DEV_BARN_ID),
     'delete dev profiles'

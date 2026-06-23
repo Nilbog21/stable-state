@@ -15,12 +15,12 @@ Each script's shell wrapper (`.sh`) validates required env vars from `.env.local
 Scripts use db layer functions from `src/lib/db/` wherever an equivalent function exists. A service-role Supabase client is created in the script and injected into db layer calls via the optional `client` parameter added in issue #252:
 
 ```ts
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-  auth: { autoRefreshToken: false, persistSession: false },
-})
+const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
 await createHorse(barnId, name, supabase)
 ```
+
+`createServiceClient` (from `./script-utils`) sets the standard `auth` options and avoids repeating the same three-liner across scripts.
 
 Raw `supabase.from(...)` calls are used only when no db layer equivalent exists (e.g. barn insert, active membership insert, teardown deletes, `auth.admin.*` calls).
 
@@ -45,6 +45,7 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 | `seed-account` | ✓ | ✓ | — | — | No extractable pure functions (all operations are DB calls); no non-trivial shell branching |
 | `seed-test-barn` | ✓ | ✓ | ✓ | ✓ | Positional arg: barn slug; teardown-first for idempotency; email/password auth users |
 | `teardown-test-barn` | ✓ | ✓ | — | ✓ | Exports `teardown(slug, supabase)` reused by `seed-test-barn.ts`; all DB calls, no pure functions |
+| `script-utils` | — | ✓ | ✓ | — | Shared utilities (`mustSucceed`, `createServiceClient`, `teardownBarnData`, `findAuthUserIdsByEmails`); import from here to reduce duplication across seed/teardown scripts |
 | `ci` | ✓ | — | — | ✓ | Shell-only |
 | `check-coverage` | ✓ | — | — | ✓ | Shell-only |
 
