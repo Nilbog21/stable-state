@@ -163,7 +163,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   if (role === 'rider') {
     return {
       ...base,
-      lesson_riders: base.lesson_riders.map((lr: any) => ({
+      lesson_riders: base.lesson_riders.map((lr: LessonDetail['lesson_riders'][number]) => ({
         ...lr,
         private_notes: null,
         rider_notes: lr.riders?.user_id === userId ? lr.rider_notes : null,
