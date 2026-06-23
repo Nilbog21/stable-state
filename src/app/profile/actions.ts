@@ -31,7 +31,8 @@ export async function updateProfileAction(
       emergency_contact_phone: ecPhone,
     })
     return { error: null }
-  } catch {
+  } catch (e) {
+    console.error('updateProfileAction failed:', e)
     return { error: 'Failed to update profile' }
   }
 }

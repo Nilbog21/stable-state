@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createMockProfile } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -33,10 +33,17 @@ function mockAuthNoUser() {
 }
 
 describe('updateProfileAction', () => {
+  let consoleSpy: ReturnType<typeof vi.spyOn>
+
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
     vi.mocked(getProfileByUserId).mockReset()
     vi.mocked(updateProfile).mockReset()
+    consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    consoleSpy.mockRestore()
   })
 
   it('should_return_error_when_not_authenticated', async () => {
@@ -150,6 +157,20 @@ describe('updateProfileAction', () => {
     const result = await updateProfileAction(form)
 
     expect(result).toEqual({ error: 'Failed to update profile' })
+  })
+
+  it('should_log_error_on_db_failure', async () => {
+    mockAuthUser()
+    const dbError = new Error('db error')
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(updateProfile).mockRejectedValue(dbError)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+
+    await updateProfileAction(form)
+
+    expect(consoleSpy).toHaveBeenCalledWith('updateProfileAction failed:', dbError)
   })
 
   it('should_pass_null_for_empty_optional_fields', async () => {
