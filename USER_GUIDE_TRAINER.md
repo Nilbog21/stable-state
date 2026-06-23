@@ -22,6 +22,10 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 If you have past lessons with unpaid balances, you will receive a notification. Tap the notification to open the **Outstanding Payments** page, which lists all your past unpaid lessons with their date, riders, and fee. Tap any row to open the lesson detail.
 
+## Notifications
+
+Tap the bell icon in the nav bar to view your notifications. If your profile is missing a phone number or emergency contact, you will receive a **Complete your profile** notification — tap it to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
+
 ## Horses
 
 Go to **Horses** to see a weekly exertion summary for each horse in the barn, sortable by name or exertion level. Tap any horse name to open its detail page and see its current availability status. If a horse is unavailable, the reason set by your barn manager is shown there.

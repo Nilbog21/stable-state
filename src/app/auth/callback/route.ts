@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getUserMembership, getBarnMembershipsForUser, applyPreAuthProfile, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
-import { createNotification } from '@/lib/db/notifications'
+import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import type { Barn, BarnMembership, Profile } from '@/lib/db/types'
@@ -24,23 +24,28 @@ async function generateLoginNotifications(
         title: 'Complete your profile',
         link: '/profile/complete',
       })
+    } else {
+      await deleteNotificationByType(userId, barn.id, 'incomplete_profile')
     }
     if (membership.role === 'manager') {
       const members = await getActiveMemberships(barn.id)
       const otherIds = members.filter(m => m.user_id !== userId).map(m => m.user_id)
+      let hasIncomplete = false
       if (otherIds.length > 0) {
         const memberProfiles = await getProfilesByUserIds(otherIds)
-        const hasIncomplete = memberProfiles.some(
+        hasIncomplete = memberProfiles.some(
           p => !p.phone || !p.emergency_contact_name || !p.emergency_contact_phone
         )
-        if (hasIncomplete) {
-          await createNotification({
-            userId,
-            barnId: barn.id,
-            type: 'member_incomplete_profile',
-            title: 'Some barn members have incomplete profiles',
-          })
-        }
+      }
+      if (hasIncomplete) {
+        await createNotification({
+          userId,
+          barnId: barn.id,
+          type: 'member_incomplete_profile',
+          title: 'Some barn members have incomplete profiles',
+        })
+      } else {
+        await deleteNotificationByType(userId, barn.id, 'member_incomplete_profile')
       }
     }
   }))
