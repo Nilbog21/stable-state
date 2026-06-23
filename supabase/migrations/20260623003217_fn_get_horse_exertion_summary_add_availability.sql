@@ -1,4 +1,6 @@
-CREATE OR REPLACE FUNCTION get_horse_exertion_summary(p_barn_id uuid, p_since timestamptz)
+DROP FUNCTION IF EXISTS get_horse_exertion_summary(uuid, timestamptz);
+
+CREATE FUNCTION get_horse_exertion_summary(p_barn_id uuid, p_since timestamptz)
 RETURNS TABLE (
   id             uuid,
   name           text,
