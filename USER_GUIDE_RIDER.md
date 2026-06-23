@@ -8,6 +8,10 @@ Stable State is a barn management app for scheduling lessons and tracking horses
 
 Go to **Lessons** to see your lesson history. Tap any lesson to open it and see your notes for that session. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
 
+## Outstanding payments
+
+If you have past lessons with unpaid balances, you will receive a notification. Tap the notification to open the **Outstanding Payments** page, which lists all your enrolled past unpaid lessons with their date, instructor, and fee. Tap any row to open the lesson detail.
+
 ## Viewing horses
 
 Go to **Horses** to see the weekly exertion summary for each horse in the barn.

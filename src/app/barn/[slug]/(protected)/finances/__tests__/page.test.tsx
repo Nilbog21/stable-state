@@ -622,6 +622,16 @@ describe('FinancesPage', () => {
     expect(outstandingSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
+  it('should_show_link_to_outstanding_route_when_outstanding_lessons_exist', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([
+      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: [], fee: 75 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /view all outstanding/i })
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/finances/outstanding')
+  })
+
   it('should_render_info_button_on_pending_label', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
