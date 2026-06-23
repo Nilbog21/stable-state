@@ -140,6 +140,7 @@ describe('updateProfileAction', () => {
   })
 
   it('should_return_error_on_db_failure', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
     mockAuthUser()
     vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
     vi.mocked(updateProfile).mockRejectedValue(new Error('db error'))
@@ -150,6 +151,23 @@ describe('updateProfileAction', () => {
     const result = await updateProfileAction(form)
 
     expect(result).toEqual({ error: 'Failed to update profile' })
+    vi.restoreAllMocks()
+  })
+
+  it('should_log_error_on_db_failure', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockAuthUser()
+    const dbError = new Error('db error')
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(updateProfile).mockRejectedValue(dbError)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+
+    await updateProfileAction(form)
+
+    expect(spy).toHaveBeenCalledWith('updateProfileAction failed:', dbError)
+    spy.mockRestore()
   })
 
   it('should_pass_null_for_empty_optional_fields', async () => {
