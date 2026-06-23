@@ -101,7 +101,7 @@ async function run() {
   const horse2 = await createHorse(barnId, 'Bella', supabase)
 
   const rider1 = await createRider(barnId, 'Test Rider', riderId, supabase)
-  const rider2 = await createRider(barnId, 'Anon Rider', null, supabase)
+  const rider2 = await createRider(barnId, 'Anon Rider', undefined, supabase)
 
   const now = new Date()
   const past = (daysAgo: number) =>
