@@ -241,6 +241,9 @@ export function LessonForm({
           return (
           <div key={h.id} className="flex items-center gap-3">
             <label className={`flex items-center gap-2 text-sm ${isUnavailable ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-50'}`}>
+              {isUnavailable && checkedHorseIds.has(h.id) && (
+                <input type="hidden" name="horse_id" value={h.id} />
+              )}
               <input
                 type="checkbox"
                 name="horse_id"
