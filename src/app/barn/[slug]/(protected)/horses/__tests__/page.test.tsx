@@ -12,6 +12,7 @@ vi.mock('@/lib/db/horses', () => ({ getHorseExertionSummary: vi.fn() }))
 vi.mock('../actions', () => ({
   addHorseAction: vi.fn(),
   updateHorseAction: vi.fn(),
+  setHorseActiveAction: vi.fn(),
 }))
 vi.mock('../HorseOverviewTable', () => ({
   HorseOverviewTable: ({ horses, isManager }: { horses: unknown[]; isManager?: boolean }) => (

@@ -4,7 +4,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseExertionSummary } from '@/lib/db/horses'
 import { HorseOverviewTable } from './HorseOverviewTable'
-import { addHorseAction, updateHorseAction } from './actions'
+import { addHorseAction, updateHorseAction, setHorseActiveAction } from './actions'
 
 export default async function HorsesPage({
   params,
@@ -34,13 +34,22 @@ export default async function HorsesPage({
         Horses
       </h1>
 
-      {/* <form> cannot be a valid descendant of <table>, so update forms live here
-          and are linked to their row controls via the HTML `form` attribute. */}
+      {/* <form> cannot be a valid descendant of <table>, so forms live here outside the table.
+          Update forms are linked to row inputs via the HTML `form` attribute.
+          Toggle forms are submitted imperatively via getElementById().requestSubmit()
+          because the Set Inactive path needs a confirm() before submission. */}
       {isManager && horses.map((horse) => (
         <form
           key={`update-${horse.id}`}
           id={`update-horse-${horse.id}`}
           action={updateHorseAction.bind(null, slug, horse.id)}
+        />
+      ))}
+      {isManager && horses.map((horse) => (
+        <form
+          key={`toggle-${horse.id}`}
+          id={`toggle-horse-${horse.id}`}
+          action={setHorseActiveAction.bind(null, slug, horse.id, !horse.is_active)}
         />
       ))}
 

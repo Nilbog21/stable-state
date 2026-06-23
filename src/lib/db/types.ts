@@ -52,6 +52,7 @@ export interface Horse {
   id: string
   barn_id: string
   name: string
+  is_active: boolean
   created_at: string
   updated_at: string
 }
@@ -135,6 +136,7 @@ export interface TrainerIncomeSummary {
 export interface HorseExertionSummary {
   id: string
   name: string
+  is_active: boolean
   lessonCount: number
   totalExertion: number
   jumpingCount: number

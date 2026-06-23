@@ -13,7 +13,11 @@ vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn() }))
 vi.mock('../../../LessonForm', () => ({
-  LessonForm: () => <div data-testid="edit-lesson-form" />,
+  LessonForm: ({ horses }: { horses: Array<{ id: string; name: string }> }) => (
+    <div data-testid="edit-lesson-form">
+      {horses?.map((h) => <span key={h.id}>{h.name}</span>)}
+    </div>
+  ),
 }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -208,5 +212,20 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
+
+  it('should_not_include_active_horse_in_inactive_assigned', async () => {
+    const activeHorse = { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', is_active: true, created_at: '', updated_at: '' }
+    vi.mocked(getHorsesByBarn).mockResolvedValue([activeHorse])
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.queryByText('Thunderbolt (inactive)')).toBeNull()
+  })
+
+  it('should_include_inactive_assigned_horse_with_inactive_suffix', async () => {
+    // getHorsesByBarn returns [] (default), so lesson horse-1 is not active — appears as inactive
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByText('Thunderbolt (inactive)')).toBeDefined()
   })
 })
