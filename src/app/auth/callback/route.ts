@@ -41,7 +41,14 @@ export async function GET(request: NextRequest) {
           try {
             const profile = await getProfileByUserId(data.user.id)
             if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
-              return NextResponse.redirect(`${origin}/profile/complete`)
+              const response = NextResponse.redirect(`${origin}/profile/complete`)
+              response.cookies.set(`barn_session_${barnSlug}`, data.user.id, {
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: process.env.NODE_ENV === 'production',
+                path: `/barn/${barnSlug}/`,
+              })
+              return response
             }
           } catch {
             // transient DB error — proceed to barn redirect
@@ -69,7 +76,16 @@ export async function GET(request: NextRequest) {
         try {
           const profile = await getProfileByUserId(data.user.id)
           if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
-            return NextResponse.redirect(`${origin}/profile/complete`)
+            const response = NextResponse.redirect(`${origin}/profile/complete`)
+            for (const { barn } of active) {
+              response.cookies.set(`barn_session_${barn.slug}`, data.user!.id, {
+                httpOnly: true,
+                sameSite: 'lax',
+                secure: process.env.NODE_ENV === 'production',
+                path: `/barn/${barn.slug}/`,
+              })
+            }
+            return response
           }
         } catch {
           // transient DB error — proceed to barn redirect

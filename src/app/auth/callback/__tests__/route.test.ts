@@ -422,6 +422,59 @@ describe('GET /auth/callback', () => {
         expect(mockRedirect).not.toHaveBeenCalledWith('http://localhost:3000/profile/complete')
         expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres')
       })
+
+      it('should_set_barn_session_cookie_when_incomplete_profile_and_single_active_membership', async () => {
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockCookiesSet).toHaveBeenCalledWith(
+          'barn_session_green-acres',
+          'user-1',
+          expect.objectContaining({ httpOnly: true, path: '/barn/green-acres/' })
+        )
+      })
+
+      it('should_set_barn_session_cookie_for_first_barn_when_incomplete_profile_and_multiple_active_memberships', async () => {
+        vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+          { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+          { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'active' }) },
+        ])
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockCookiesSet).toHaveBeenCalledWith(
+          'barn_session_barn-one',
+          'user-1',
+          expect.objectContaining({ httpOnly: true, path: '/barn/barn-one/' })
+        )
+      })
+
+      it('should_set_barn_session_cookie_for_second_barn_when_incomplete_profile_and_multiple_active_memberships', async () => {
+        vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+          { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
+          { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'active' }) },
+        ])
+        vi.mocked(getProfileByUserId).mockResolvedValue(
+          createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+        )
+
+        const request = new Request('http://localhost:3000/auth/callback?code=code')
+        await GET(request as any)
+
+        expect(mockCookiesSet).toHaveBeenCalledWith(
+          'barn_session_barn-two',
+          'user-1',
+          expect.objectContaining({ httpOnly: true, path: '/barn/barn-two/' })
+        )
+      })
     })
   })
 
@@ -538,6 +591,23 @@ describe('GET /auth/callback', () => {
       await GET(request as any)
 
       expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/barn/green-acres/')
+    })
+
+    it('should_set_barn_session_cookie_when_barn_login_and_profile_is_incomplete', async () => {
+      vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+      vi.mocked(getUserMembership).mockResolvedValue(mockMembership as any)
+      vi.mocked(getProfileByUserId).mockResolvedValue(
+        createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+      )
+
+      const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
+      await GET(request as any)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith(
+        'barn_session_green-acres',
+        'user-1',
+        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres/' })
+      )
     })
 
     it('should_treat_membership_as_null_when_user_is_null_after_exchange', async () => {
