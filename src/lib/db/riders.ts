@@ -37,6 +37,8 @@ export async function deleteRider(riderId: string, barnId: string): Promise<void
     .update({ is_active: false })
     .eq('id', riderId)
     .eq('barn_id', barnId)
+    .select()
+    .single()
 
   if (error) throw error
 }

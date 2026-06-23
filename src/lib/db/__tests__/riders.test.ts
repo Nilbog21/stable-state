@@ -203,17 +203,21 @@ describe('deleteRider', () => {
   })
 
   it('should_set_is_active_false_for_rider', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: null }),
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: mockRiders[0], error: null }),
           }),
         }),
       }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
     } as any)
 
     await expect(deleteRider('rider-1', 'barn-1')).resolves.toBeUndefined()
+    expect(mockUpdate).toHaveBeenCalledWith({ is_active: false })
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
@@ -221,7 +225,11 @@ describe('deleteRider', () => {
       from: vi.fn().mockReturnValue({
         update: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: new Error('db error') }),
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
+              }),
+            }),
           }),
         }),
       }),

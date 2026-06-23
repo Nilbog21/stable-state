@@ -26,4 +26,11 @@ describe('DeleteRiderButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /delete/i }))
     expect(action).not.toHaveBeenCalled()
   })
+
+  it('should_not_prevent_default_when_confirm_is_accepted', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    render(<DeleteRiderButton action={vi.fn() as unknown as () => Promise<void>} />)
+    fireEvent.click(screen.getByRole('button', { name: /delete/i }))
+    expect(window.confirm).toHaveBeenCalledOnce()
+  })
 })

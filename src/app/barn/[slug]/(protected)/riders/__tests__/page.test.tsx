@@ -14,6 +14,12 @@ vi.mock('../actions', () => ({
   deleteRiderAction: vi.fn(),
 }))
 
+vi.mock('../DeleteRiderButton', () => ({
+  DeleteRiderButton: ({ action }: { action: () => Promise<void> }) => (
+    <button type="submit" onClick={action}>Delete</button>
+  ),
+}))
+
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
@@ -138,10 +144,10 @@ describe('RidersPage', () => {
     expect(screen.queryAllByRole('button', { name: /delete/i })).toHaveLength(0)
   })
 
-  it('should_associate_delete_button_with_its_form', async () => {
+  it('should_render_one_delete_button_per_rider_for_manager', async () => {
     vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
     const jsx = await RidersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getAllByRole('button', { name: /delete/i })[0].getAttribute('form')).toBe('delete-rider-rider-1')
+    expect(screen.getAllByRole('button', { name: /delete/i })).toHaveLength(mockRiders.length)
   })
 })
