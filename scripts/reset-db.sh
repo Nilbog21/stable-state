@@ -40,4 +40,6 @@ if [ "$key" = $'\e' ]; then
   exit 0
 fi
 
+bash scripts/seed-account.sh
+
 bash scripts/change-user.sh
