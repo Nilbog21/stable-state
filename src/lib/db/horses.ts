@@ -59,47 +59,17 @@ export async function getHorseExertionSummary(
   since: Date
 ): Promise<HorseExertionSummary[]> {
   const supabase = await createClient()
-
-  const { data: horses, error: horsesError } = await supabase
-    .from('horses')
-    .select('id, name, is_active')
-    .eq('barn_id', barnId)
-    .order('name')
-
-  if (horsesError) throw horsesError
-  if (!horses.length) return []
-
-  const { data: lessons, error: lessonsError } = await supabase
-    .from('lessons')
-    .select('id, jumping')
-    .eq('barn_id', barnId)
-    .gte('lesson_at', since.toISOString())
-
-  if (lessonsError) throw lessonsError
-
-  if (!lessons.length) {
-    return horses.map((h) => ({ id: h.id, name: h.name, is_active: h.is_active, lessonCount: 0, totalExertion: 0, jumpingCount: 0 }))
-  }
-
-  const lessonIds = lessons.map((l) => l.id)
-  const jumpingLessonIds = new Set(lessons.filter((l) => l.jumping).map((l) => l.id))
-
-  const { data: lessonHorses, error: lessonHorsesError } = await supabase
-    .from('lesson_horses')
-    .select('lesson_id, horse_id, exertion_level')
-    .in('lesson_id', lessonIds)
-
-  if (lessonHorsesError) throw lessonHorsesError
-
-  return horses.map((h) => {
-    const entries = (lessonHorses ?? []).filter((lh) => lh.horse_id === h.id)
-    return {
-      id: h.id,
-      name: h.name,
-      is_active: h.is_active,
-      lessonCount: entries.length,
-      totalExertion: entries.reduce((sum, e) => sum + e.exertion_level, 0),
-      jumpingCount: entries.filter((e) => jumpingLessonIds.has(e.lesson_id)).length,
-    }
+  const { data, error } = await supabase.rpc('get_horse_exertion_summary', {
+    p_barn_id: barnId,
+    p_since: since.toISOString(),
   })
+  if (error) throw error
+  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
+    id: row.id,
+    name: row.name,
+    is_active: row.is_active,
+    lessonCount: Number(row.lesson_count),
+    totalExertion: Number(row.total_exertion),
+    jumpingCount: Number(row.jumping_count),
+  }))
 }

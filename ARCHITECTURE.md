@@ -132,6 +132,8 @@ No API routes. All mutations go through Next.js Server Actions.
 
 `teardown_dev_barn_lessons(p_barn_id uuid)` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows for a barn in a single transaction, so the deferred participant-count triggers see the lesson rows gone at commit and skip enforcement. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called exclusively by `scripts/reset-db.ts`.
 
+`get_horse_exertion_summary(p_barn_id uuid, p_since timestamptz)` — returns one row per horse in the barn with aggregated `lesson_count`, `total_exertion`, and `jumping_count` for lessons on or after `p_since`. Uses a subquery JOIN + GROUP BY so horses with zero in-window lessons appear with zero counts. `SECURITY INVOKER`; `EXECUTE` granted to `authenticated`. Used by `getHorseExertionSummary` in `horses.ts`.
+
 ## Feature anatomy
 
 Canonical file-touch sequence for any new feature:
