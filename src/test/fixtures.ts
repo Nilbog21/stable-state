@@ -100,6 +100,8 @@ export function createMockLessonTier(overrides: Partial<LessonTier> = {}): Lesso
     is_default: false,
     is_active: true,
     created_at: '',
+    default_exertion_level: null,
+    default_jumping: null,
     ...overrides,
   }
 }

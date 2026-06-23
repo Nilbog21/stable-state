@@ -162,8 +162,8 @@ async function run() {
     'insert manager2 membership'
   )
 
-  const tier1 = await createTier(DEV_BARN_ID, DEV_TIER_NAME, DEV_TIER_PRICE, true, supabase)
-  const tier2 = await createTier(DEV_BARN_ID, DEV_TIER_2_NAME, DEV_TIER_2_PRICE, false, supabase)
+  const tier1 = await createTier(DEV_BARN_ID, DEV_TIER_NAME, DEV_TIER_PRICE, true, 3, false, supabase)
+  const tier2 = await createTier(DEV_BARN_ID, DEV_TIER_2_NAME, DEV_TIER_2_PRICE, false, null, null, supabase)
 
   const trainerIds: string[] = []
   for (const t of DEV_TRAINERS) {

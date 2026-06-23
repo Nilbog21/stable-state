@@ -75,7 +75,7 @@ describe('createTierAction', () => {
   it('should_call_createTier_when_manager', async () => {
     await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null)
   })
 
   it('should_revalidate_settings_path_after_createTier', async () => {
@@ -87,7 +87,7 @@ describe('createTierAction', () => {
   it('should_pass_null_price_when_price_field_is_blank', async () => {
     await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '' }))
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', null)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', null, false, null, null)
   })
 
   it('should_return_early_when_name_is_blank', async () => {
@@ -99,7 +99,31 @@ describe('createTierAction', () => {
   it('should_pass_null_price_when_price_is_non_numeric_string', async () => {
     await createTierAction('green-acres', makeFormData({ name: 'Premium', price: 'abc' }))
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', null)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', null, false, null, null)
+  })
+
+  it('should_pass_default_jumping_true_when_field_is_true', async () => {
+    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_jumping: 'true' }))
+
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, true)
+  })
+
+  it('should_pass_default_jumping_false_when_field_is_false', async () => {
+    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_jumping: 'false' }))
+
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, false)
+  })
+
+  it('should_pass_default_exertion_level_when_field_is_valid', async () => {
+    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_exertion_level: '3' }))
+
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, 3, null)
+  })
+
+  it('should_pass_null_default_exertion_when_field_is_out_of_range', async () => {
+    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_exertion_level: '9' }))
+
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null)
   })
 })
 
@@ -125,7 +149,7 @@ describe('updateTierAction', () => {
   it('should_call_updateTier_when_manager', async () => {
     await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
 
-    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 90 })
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 90, default_jumping: null, default_exertion_level: null })
   })
 
   it('should_revalidate_settings_path_after_updateTier', async () => {
@@ -137,13 +161,31 @@ describe('updateTierAction', () => {
   it('should_pass_null_price_when_price_field_is_blank', async () => {
     await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '' }))
 
-    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: null })
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: null, default_jumping: null, default_exertion_level: null })
   })
 
   it('should_return_early_when_name_is_blank', async () => {
     await updateTierAction('green-acres', 'tier-1', makeFormData({ name: '', price: '90' }))
 
     expect(updateTier).not.toHaveBeenCalled()
+  })
+
+  it('should_pass_default_jumping_true_when_field_is_true', async () => {
+    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_jumping: 'true' }))
+
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_jumping: true }))
+  })
+
+  it('should_pass_default_jumping_false_when_field_is_false', async () => {
+    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_jumping: 'false' }))
+
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_jumping: false }))
+  })
+
+  it('should_pass_default_exertion_level_when_field_is_valid', async () => {
+    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_exertion_level: '4' }))
+
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_exertion_level: 4 }))
   })
 })
 
