@@ -68,9 +68,9 @@ RLS policies always go in a **separate migration file** from schema changes.
 Protected barn routes (dashboard, lessons, horses, riders, finances, settings) live in a `(protected)` route group under `src/app/barn/[slug]/(protected)/`. The group layout (`layout.tsx`) centralises auth: absent or pending membership redirects to `/barn/[slug]/login`. Public routes (login, pending, register) stay outside the group and are unaffected.
 
 The `(protected)` layout renders a persistent role-aware nav bar above `{children}` on every barn page. The barn name is rendered as a home link (visually distinct, `font-semibold`) before the section links:
-- manager: {Barn Name} (home), Lessons, Horses, Riders, Finances, Manage Barn — 5 section links
-- trainer: {Barn Name} (home), Lessons, Horses, Riders — 3 section links
-- rider: {Barn Name} (home), Lessons, Horses — 2 section links
+- manager: {Barn Name} (home), Lessons, Horses, Riders, Finances, Manage Barn, Guide — 6 section links
+- trainer: {Barn Name} (home), Lessons, Horses, Riders, Guide — 4 section links
+- rider: {Barn Name} (home), Lessons, Horses, Guide — 3 section links
 
 A `UserMenu` Client Component sits on the right side of the nav bar. It shows the user's initials (first letter of `first_name` + first letter of `last_name` from `profiles`; falls back to first character of email, then `?`). Clicking it opens a dropdown with: full name + email (non-clickable header), a "Profile" link to `/profile`, a "Switch Barn" link to `/barns` (only when the user has >1 active barn membership), and a Sign Out button. The dropdown closes on outside click or touch.
 

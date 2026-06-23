@@ -1,7 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  /* config options here */
+  outputFileTracingIncludes: {
+    '/barn/[slug]/guide': ['./USER_GUIDE_*.md'],
+  },
 };
 
 export default nextConfig;

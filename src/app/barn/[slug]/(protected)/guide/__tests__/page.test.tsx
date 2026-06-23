@@ -148,6 +148,16 @@ describe('GuidePage', () => {
     )
   })
 
+  it('should_call_notFound_when_guide_file_cannot_be_read', async () => {
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error('ENOENT: no such file or directory')
+    })
+
+    try { await GuidePage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
+
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
   it('should_render_markdown_content', async () => {
     mockReadFileSync.mockReturnValue('# Hello Guide')
 

@@ -29,10 +29,12 @@ export default async function GuidePage({
   const membership = await getUserMembership(user.id, barn.id)
   if (!membership || membership.status !== 'active') notFound()
 
-  const content = readFileSync(
-    path.join(process.cwd(), GUIDE_FILES[membership.role]),
-    'utf-8'
-  )
+  let content: string
+  try {
+    content = readFileSync(path.join(process.cwd(), GUIDE_FILES[membership.role]), 'utf-8')
+  } catch {
+    return notFound()
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
