@@ -64,12 +64,12 @@ export async function getHorseExertionSummary(
     p_since: since.toISOString(),
   })
   if (error) throw error
-  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; lesson_count: number; total_exertion: number; jumping_count: number }) => ({
+  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
     id: row.id,
     name: row.name,
     is_active: row.is_active,
-    lessonCount: row.lesson_count,
-    totalExertion: row.total_exertion,
-    jumpingCount: row.jumping_count,
+    lessonCount: Number(row.lesson_count),
+    totalExertion: Number(row.total_exertion),
+    jumpingCount: Number(row.jumping_count),
   }))
 }

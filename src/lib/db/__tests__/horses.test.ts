@@ -205,6 +205,18 @@ describe('getHorseExertionSummary', () => {
     expect(result).toEqual([])
   })
 
+  it('should_call_rpc_with_correct_function_name_and_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await getHorseExertionSummary('barn-1', since)
+
+    expect(mockRpc).toHaveBeenCalledWith('get_horse_exertion_summary', {
+      p_barn_id: 'barn-1',
+      p_since: since.toISOString(),
+    })
+  })
+
   it('should_throw_when_rpc_returns_an_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
       rpc: makeRpc(null, new Error('rpc error')),
