@@ -41,11 +41,11 @@ export async function updateHorse(horseId: string, name: string): Promise<Horse>
   return data
 }
 
-export async function deleteHorse(horseId: string, barnId: string): Promise<void> {
+export async function setHorseActive(horseId: string, barnId: string, isActive: boolean): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('horses')
-    .update({ is_active: false })
+    .update({ is_active: isActive })
     .eq('id', horseId)
     .eq('barn_id', barnId)
     .select()
@@ -62,7 +62,7 @@ export async function getHorseExertionSummary(
 
   const { data: horses, error: horsesError } = await supabase
     .from('horses')
-    .select('id, name')
+    .select('id, name, is_active')
     .eq('barn_id', barnId)
     .order('name')
 
@@ -78,7 +78,7 @@ export async function getHorseExertionSummary(
   if (lessonsError) throw lessonsError
 
   if (!lessons.length) {
-    return horses.map((h) => ({ id: h.id, name: h.name, lessonCount: 0, totalExertion: 0, jumpingCount: 0 }))
+    return horses.map((h) => ({ id: h.id, name: h.name, is_active: h.is_active, lessonCount: 0, totalExertion: 0, jumpingCount: 0 }))
   }
 
   const lessonIds = lessons.map((l) => l.id)
@@ -96,6 +96,7 @@ export async function getHorseExertionSummary(
     return {
       id: h.id,
       name: h.name,
+      is_active: h.is_active,
       lessonCount: entries.length,
       totalExertion: entries.reduce((sum, e) => sum + e.exertion_level, 0),
       jumpingCount: entries.filter((e) => jumpingLessonIds.has(e.lesson_id)).length,

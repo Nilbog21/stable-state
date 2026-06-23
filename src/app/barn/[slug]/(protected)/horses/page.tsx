@@ -4,7 +4,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseExertionSummary } from '@/lib/db/horses'
 import { HorseOverviewTable } from './HorseOverviewTable'
-import { addHorseAction, updateHorseAction, deleteHorseAction } from './actions'
+import { addHorseAction, updateHorseAction, setHorseActiveAction } from './actions'
 
 export default async function HorsesPage({
   params,
@@ -45,9 +45,9 @@ export default async function HorsesPage({
       ))}
       {isManager && horses.map((horse) => (
         <form
-          key={`delete-${horse.id}`}
-          id={`delete-horse-${horse.id}`}
-          action={deleteHorseAction.bind(null, slug, horse.id)}
+          key={`toggle-${horse.id}`}
+          id={`toggle-horse-${horse.id}`}
+          action={setHorseActiveAction.bind(null, slug, horse.id, !horse.is_active)}
         />
       ))}
 

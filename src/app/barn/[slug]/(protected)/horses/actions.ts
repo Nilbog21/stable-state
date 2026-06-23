@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { createHorse, updateHorse, deleteHorse } from '@/lib/db/horses'
+import { createHorse, updateHorse, setHorseActive } from '@/lib/db/horses'
 
 export async function addHorseAction(barnSlug: string, formData: FormData): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
@@ -26,8 +26,8 @@ export async function updateHorseAction(
   revalidatePath(`/barn/${barnSlug}/horses`)
 }
 
-export async function deleteHorseAction(barnSlug: string, horseId: string, _formData: FormData): Promise<void> {
+export async function setHorseActiveAction(barnSlug: string, horseId: string, isActive: boolean, _formData: FormData): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
-  await deleteHorse(horseId, barn.id)
+  await setHorseActive(horseId, barn.id, isActive)
   revalidatePath(`/barn/${barnSlug}/horses`)
 }

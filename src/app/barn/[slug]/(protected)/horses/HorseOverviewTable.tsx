@@ -75,16 +75,30 @@ export function HorseOverviewTable({
           <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
             <td className={COLUMNS[0].tdClassName}>
               {isManager ? (
-                <input
-                  type="text"
-                  name="name"
-                  form={`update-horse-${horse.id}`}
-                  defaultValue={horse.name}
-                  required
-                  className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-                />
+                <div className="flex flex-wrap items-center gap-2">
+                  <input
+                    type="text"
+                    name="name"
+                    form={`update-horse-${horse.id}`}
+                    defaultValue={horse.name}
+                    required
+                    className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+                  />
+                  {!horse.is_active && (
+                    <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
+                      Inactive
+                    </span>
+                  )}
+                </div>
               ) : (
-                horse.name
+                <>
+                  {horse.name}
+                  {!horse.is_active && (
+                    <span className="ml-2 rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
+                      Inactive
+                    </span>
+                  )}
+                </>
               )}
             </td>
             {COLUMNS.slice(1).map(col => (
@@ -100,17 +114,29 @@ export function HorseOverviewTable({
                   >
                     Save
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (confirm(`Remove ${horse.name} from this barn?`)) {
-                        (document.getElementById(`delete-horse-${horse.id}`) as HTMLFormElement)?.requestSubmit()
-                      }
-                    }}
-                    className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
-                  >
-                    Remove
-                  </button>
+                  {horse.is_active ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm(`Set ${horse.name} inactive?`)) {
+                          (document.getElementById(`toggle-horse-${horse.id}`) as HTMLFormElement)?.requestSubmit()
+                        }
+                      }}
+                      className="rounded bg-red-600 px-3 py-1 text-xs font-medium text-white hover:bg-red-500"
+                    >
+                      Set Inactive
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        (document.getElementById(`toggle-horse-${horse.id}`) as HTMLFormElement)?.requestSubmit()
+                      }}
+                      className="rounded bg-green-700 px-3 py-1 text-xs font-medium text-white hover:bg-green-600"
+                    >
+                      Set Active
+                    </button>
+                  )}
                 </div>
               </td>
             )}

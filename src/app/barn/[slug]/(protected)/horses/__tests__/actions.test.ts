@@ -8,7 +8,7 @@ vi.mock('@/lib/auth/guard', () => ({
 vi.mock('@/lib/db/horses', () => ({
   createHorse: vi.fn(),
   updateHorse: vi.fn(),
-  deleteHorse: vi.fn(),
+  setHorseActive: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -16,9 +16,9 @@ vi.mock('next/cache', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { createHorse, updateHorse, deleteHorse } from '@/lib/db/horses'
+import { createHorse, updateHorse, setHorseActive } from '@/lib/db/horses'
 import { revalidatePath } from 'next/cache'
-import { addHorseAction, updateHorseAction, deleteHorseAction } from '../actions'
+import { addHorseAction, updateHorseAction, setHorseActiveAction } from '../actions'
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
@@ -112,10 +112,10 @@ describe('updateHorseAction', () => {
   })
 })
 
-describe('deleteHorseAction', () => {
+describe('setHorseActiveAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
-    vi.mocked(deleteHorse).mockReset()
+    vi.mocked(setHorseActive).mockReset()
     vi.mocked(revalidatePath).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
@@ -125,19 +125,25 @@ describe('deleteHorseAction', () => {
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
-    await deleteHorseAction('green-acres', 'horse-1', new FormData())
+    await setHorseActiveAction('green-acres', 'horse-1', false, new FormData())
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_deleteHorse_with_horse_and_barn_id_when_manager', async () => {
-    await deleteHorseAction('green-acres', 'horse-1', new FormData())
+  it('should_call_setHorseActive_with_horse_barn_and_false_when_deactivating', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', false, new FormData())
 
-    expect(deleteHorse).toHaveBeenCalledWith('horse-1', mockBarn.id)
+    expect(setHorseActive).toHaveBeenCalledWith('horse-1', mockBarn.id, false)
   })
 
-  it('should_revalidate_horses_path_after_deleteHorse', async () => {
-    await deleteHorseAction('green-acres', 'horse-1', new FormData())
+  it('should_call_setHorseActive_with_true_when_activating', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', true, new FormData())
+
+    expect(setHorseActive).toHaveBeenCalledWith('horse-1', mockBarn.id, true)
+  })
+
+  it('should_revalidate_horses_path_after_setHorseActive', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', false, new FormData())
 
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
   })

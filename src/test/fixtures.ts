@@ -83,6 +83,7 @@ export function createMockHorseExertionSummary(overrides: Partial<HorseExertionS
   return {
     id: 'horse-1',
     name: 'Thunderbolt',
+    is_active: true,
     lessonCount: 3,
     totalExertion: 12,
     jumpingCount: 0,

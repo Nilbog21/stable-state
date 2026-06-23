@@ -8,10 +8,12 @@ afterEach(() => {
 })
 
 const horses = [
-  { id: 'horse-1', name: 'Thunderbolt', lessonCount: 3, totalExertion: 12, jumpingCount: 1 },
-  { id: 'horse-2', name: 'Shadow', lessonCount: 5, totalExertion: 4, jumpingCount: 3 },
-  { id: 'horse-3', name: 'Ariel', lessonCount: 2, totalExertion: 8, jumpingCount: 2 },
+  { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 3, totalExertion: 12, jumpingCount: 1 },
+  { id: 'horse-2', name: 'Shadow', is_active: true, lessonCount: 5, totalExertion: 4, jumpingCount: 3 },
+  { id: 'horse-3', name: 'Ariel', is_active: true, lessonCount: 2, totalExertion: 8, jumpingCount: 2 },
 ]
+
+const inactiveHorse = { id: 'horse-4', name: 'Retired', is_active: false, lessonCount: 0, totalExertion: 0, jumpingCount: 0 }
 
 function getNameCells() {
   return screen.getAllByRole('cell').filter(c => ['Thunderbolt', 'Shadow', 'Ariel'].includes(c.textContent!))
@@ -235,23 +237,23 @@ describe('HorseOverviewTable', () => {
     expect(input.getAttribute('form')).toBe('update-horse-horse-1')
   })
 
-  it('should_render_remove_button_when_manager', () => {
+  it('should_render_set_inactive_button_for_active_horse_when_manager', () => {
     render(<HorseOverviewTable horses={horses} isManager />)
-    expect(screen.getAllByRole('button', { name: /remove/i }).length).toBeGreaterThan(0)
+    expect(screen.getAllByRole('button', { name: /set inactive/i }).length).toBeGreaterThan(0)
   })
 
-  it('should_not_render_remove_button_when_not_manager', () => {
+  it('should_not_render_set_inactive_button_when_not_manager', () => {
     render(<HorseOverviewTable horses={horses} />)
-    expect(screen.queryAllByRole('button', { name: /remove/i })).toHaveLength(0)
+    expect(screen.queryAllByRole('button', { name: /set inactive/i })).toHaveLength(0)
   })
 
-  it('should_call_window_confirm_when_remove_clicked', () => {
+  it('should_call_window_confirm_when_set_inactive_clicked', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     render(<HorseOverviewTable horses={[horses[0]]} isManager />)
 
-    fireEvent.click(screen.getByRole('button', { name: /remove/i }))
+    fireEvent.click(screen.getByRole('button', { name: /set inactive/i }))
 
-    expect(window.confirm).toHaveBeenCalledWith('Remove Thunderbolt from this barn?')
+    expect(window.confirm).toHaveBeenCalledWith('Set Thunderbolt inactive?')
   })
 
   it('should_not_submit_when_confirm_is_cancelled', () => {
@@ -260,19 +262,66 @@ describe('HorseOverviewTable', () => {
     vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: mockRequestSubmit } as any)
     render(<HorseOverviewTable horses={[horses[0]]} isManager />)
 
-    fireEvent.click(screen.getByRole('button', { name: /remove/i }))
+    fireEvent.click(screen.getByRole('button', { name: /set inactive/i }))
 
     expect(mockRequestSubmit).not.toHaveBeenCalled()
   })
 
-  it('should_call_requestSubmit_on_delete_form_when_confirm_is_accepted', () => {
+  it('should_call_requestSubmit_on_toggle_form_when_confirm_is_accepted', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(true)
     const mockRequestSubmit = vi.fn()
     vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: mockRequestSubmit } as any)
     render(<HorseOverviewTable horses={[horses[0]]} isManager />)
 
-    fireEvent.click(screen.getByRole('button', { name: /remove/i }))
+    fireEvent.click(screen.getByRole('button', { name: /set inactive/i }))
 
+    expect(document.getElementById).toHaveBeenCalledWith('toggle-horse-horse-1')
     expect(mockRequestSubmit).toHaveBeenCalledOnce()
+  })
+
+  it('should_render_inactive_badge_for_inactive_horse_when_manager', () => {
+    render(<HorseOverviewTable horses={[inactiveHorse]} isManager />)
+    expect(screen.getByText('Inactive')).toBeDefined()
+  })
+
+  it('should_render_inactive_badge_for_inactive_horse_when_not_manager', () => {
+    render(<HorseOverviewTable horses={[inactiveHorse]} />)
+    expect(screen.getByText('Inactive')).toBeDefined()
+  })
+
+  it('should_not_render_inactive_badge_for_active_horse', () => {
+    render(<HorseOverviewTable horses={[horses[0]]} />)
+    expect(screen.queryByText('Inactive')).toBeNull()
+  })
+
+  it('should_render_set_active_button_for_inactive_horse_when_manager', () => {
+    render(<HorseOverviewTable horses={[inactiveHorse]} isManager />)
+    expect(screen.getByRole('button', { name: /set active/i })).toBeDefined()
+  })
+
+  it('should_not_render_set_inactive_button_for_inactive_horse', () => {
+    render(<HorseOverviewTable horses={[inactiveHorse]} isManager />)
+    expect(screen.queryByRole('button', { name: /set inactive/i })).toBeNull()
+  })
+
+  it('should_call_requestSubmit_on_toggle_form_when_set_active_clicked', () => {
+    const mockRequestSubmit = vi.fn()
+    vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: mockRequestSubmit } as any)
+    render(<HorseOverviewTable horses={[inactiveHorse]} isManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /set active/i }))
+
+    expect(document.getElementById).toHaveBeenCalledWith('toggle-horse-horse-4')
+    expect(mockRequestSubmit).toHaveBeenCalledOnce()
+  })
+
+  it('should_not_call_confirm_when_set_active_clicked', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(true)
+    vi.spyOn(document, 'getElementById').mockReturnValue({ requestSubmit: vi.fn() } as any)
+    render(<HorseOverviewTable horses={[inactiveHorse]} isManager />)
+
+    fireEvent.click(screen.getByRole('button', { name: /set active/i }))
+
+    expect(window.confirm).not.toHaveBeenCalled()
   })
 })

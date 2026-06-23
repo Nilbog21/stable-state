@@ -136,6 +136,7 @@ export interface TrainerIncomeSummary {
 export interface HorseExertionSummary {
   id: string
   name: string
+  is_active: boolean
   lessonCount: number
   totalExertion: number
   jumpingCount: number

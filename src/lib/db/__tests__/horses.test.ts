@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getHorsesByBarn, createHorse, updateHorse, deleteHorse, getHorseExertionSummary } from '../horses'
+import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -184,8 +184,8 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 6, jumpingCount: 0 },
-      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 2, totalExertion: 6, jumpingCount: 0 },
+      { id: 'horse-2', name: 'Shadow', is_active: true, lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
     ])
   })
 
@@ -200,7 +200,7 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
     ])
   })
 
@@ -218,8 +218,8 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 5, jumpingCount: 0 },
-      { id: 'horse-2', name: 'Shadow', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 1, totalExertion: 5, jumpingCount: 0 },
+      { id: 'horse-2', name: 'Shadow', is_active: true, lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
     ])
   })
 
@@ -280,7 +280,7 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
     ])
   })
 
@@ -303,8 +303,8 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 2, totalExertion: 6, jumpingCount: 1 },
-      { id: 'horse-2', name: 'Shadow', lessonCount: 1, totalExertion: 3, jumpingCount: 1 },
+      { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 2, totalExertion: 6, jumpingCount: 1 },
+      { id: 'horse-2', name: 'Shadow', is_active: true, lessonCount: 1, totalExertion: 3, jumpingCount: 1 },
     ])
   })
 
@@ -322,14 +322,14 @@ describe('getHorseExertionSummary', () => {
     const result = await getHorseExertionSummary('barn-1', since)
 
     expect(result).toEqual([
-      { id: 'horse-1', name: 'Thunderbolt', lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
+      { id: 'horse-1', name: 'Thunderbolt', is_active: true, lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
     ])
   })
 
 })
 
-describe('deleteHorse', () => {
-  function makeDeleteChain(error: Error | null = null) {
+describe('setHorseActive', () => {
+  function makeToggleChain(error: Error | null = null) {
     const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'horse-1' }, error })
     const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
     const mockEqBarnId = vi.fn().mockReturnValue({ select: mockSelect })
@@ -337,15 +337,45 @@ describe('deleteHorse', () => {
     return { update: vi.fn().mockReturnValue({ eq: mockEqId }) }
   }
 
-  it('should_set_is_active_false_on_success', async () => {
+  it('should_resolve_when_deactivating', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeDeleteChain()),
+      from: vi.fn().mockReturnValue(makeToggleChain()),
     } as any)
 
-    await expect(deleteHorse('horse-1', 'barn-1')).resolves.toBeUndefined()
+    await expect(setHorseActive('horse-1', 'barn-1', false)).resolves.toBeUndefined()
   })
 
-  it('should_scope_delete_to_barn_id', async () => {
+  it('should_resolve_when_activating', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeToggleChain()),
+    } as any)
+
+    await expect(setHorseActive('horse-1', 'barn-1', true)).resolves.toBeUndefined()
+  })
+
+  it('should_pass_is_active_false_to_update_when_deactivating', async () => {
+    const chain = makeToggleChain()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(chain),
+    } as any)
+
+    await setHorseActive('horse-1', 'barn-1', false)
+
+    expect(chain.update).toHaveBeenCalledWith({ is_active: false })
+  })
+
+  it('should_pass_is_active_true_to_update_when_activating', async () => {
+    const chain = makeToggleChain()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(chain),
+    } as any)
+
+    await setHorseActive('horse-1', 'barn-1', true)
+
+    expect(chain.update).toHaveBeenCalledWith({ is_active: true })
+  })
+
+  it('should_scope_update_to_barn_id', async () => {
     const mockSingle = vi.fn().mockResolvedValue({ data: null, error: null })
     const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
     const mockEqBarnId = vi.fn().mockReturnValue({ select: mockSelect })
@@ -354,17 +384,17 @@ describe('deleteHorse', () => {
       from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
     } as any)
 
-    await deleteHorse('horse-1', 'barn-1')
+    await setHorseActive('horse-1', 'barn-1', false)
 
     expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeDeleteChain(new Error('db error'))),
+      from: vi.fn().mockReturnValue(makeToggleChain(new Error('db error'))),
     } as any)
 
-    await expect(deleteHorse('horse-1', 'barn-1')).rejects.toThrow('db error')
+    await expect(setHorseActive('horse-1', 'barn-1', false)).rejects.toThrow('db error')
   })
 })
 
