@@ -144,4 +144,22 @@ describe('NotificationBell', () => {
     expect(markAllNotificationsReadAction).toHaveBeenCalledWith('barn-1')
     expect(mockRefresh).toHaveBeenCalled()
   })
+
+  it('should_render_read_notification_without_bold_style', () => {
+    render(<NotificationBell notifications={[readNotif]} barnId="barn-1" />)
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+
+    const title = screen.getByText('Old notification')
+    expect(title.className).not.toContain('font-semibold')
+  })
+
+  it('should_close_dropdown_when_linked_notification_is_clicked', () => {
+    render(<NotificationBell notifications={[linkedNotif]} barnId="barn-1" />)
+    fireEvent.click(screen.getByRole('button', { name: /notifications/i }))
+    expect(screen.getByText('Payment overdue')).toBeDefined()
+
+    fireEvent.click(screen.getByRole('link', { name: /payment overdue/i }))
+
+    expect(screen.queryByText('Payment overdue')).toBeNull()
+  })
 })

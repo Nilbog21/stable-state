@@ -29,7 +29,7 @@ export function UserMenu({ initials, email, fullName, showSwitchBarn }: Props) {
   }, [])
 
   return (
-    <div ref={ref} className="relative ml-auto">
+    <div ref={ref} className="relative">
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="User menu"

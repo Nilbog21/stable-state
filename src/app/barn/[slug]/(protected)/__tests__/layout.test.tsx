@@ -20,6 +20,7 @@ const mockRedirect = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
   redirect: mockRedirect,
+  useRouter: () => ({ refresh: vi.fn() }),
 }))
 
 vi.mock('@/lib/db/auth', () => ({

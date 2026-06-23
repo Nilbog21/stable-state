@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { NotificationType } from './types'
+import type { Notification, NotificationType } from './types'
 
 export async function createNotification(params: {
   userId: string
@@ -34,6 +34,24 @@ export async function markNotificationRead(id: string): Promise<void> {
     .eq('id', id)
 
   if (error) throw error
+}
+
+export async function getNotifications(
+  userId: string,
+  barnId: string,
+  limit = 20
+): Promise<Notification[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('notifications')
+    .select('*')
+    .eq('user_id', userId)
+    .eq('barn_id', barnId)
+    .order('created_at', { ascending: false })
+    .limit(limit)
+
+  if (error) throw error
+  return data ?? []
 }
 
 export async function markAllNotificationsRead(userId: string, barnId: string): Promise<void> {
