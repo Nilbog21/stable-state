@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, markNotificationRead, markAllNotificationsRead } from '../notifications'
+import { createNotification, markNotificationRead, markAllNotificationsRead, getNotifications } from '../notifications'
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -77,6 +77,18 @@ describe('createNotification', () => {
     await expect(
       createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'outstanding_payment', title: 'Overdue' })
     ).rejects.toThrow('insert failed')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockFrom = vi.fn().mockReturnValue({
+      upsert: vi.fn().mockResolvedValue({ error: null }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'New request' }, injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(mockFrom).toHaveBeenCalledWith('notifications')
   })
 })
 
@@ -199,5 +211,102 @@ describe('markAllNotificationsRead', () => {
     } as any)
 
     await expect(markAllNotificationsRead('user-1', 'barn-1')).rejects.toThrow('bulk update failed')
+  })
+})
+
+describe('getNotifications', () => {
+  function makeChain(result: { data: unknown; error: unknown }) {
+    const mockLimit = vi.fn().mockResolvedValue(result)
+    const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit })
+    const mockEq2 = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect })
+    return { mockFrom, mockSelect, mockEq1, mockEq2, mockOrder, mockLimit }
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_from_notifications_table', async () => {
+    const { mockFrom } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getNotifications('user-1', 'barn-1')
+
+    expect(mockFrom).toHaveBeenCalledWith('notifications')
+  })
+
+  it('should_select_all_columns', async () => {
+    const { mockFrom, mockSelect } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getNotifications('user-1', 'barn-1')
+
+    expect(mockSelect).toHaveBeenCalledWith('*')
+  })
+
+  it('should_filter_by_user_id', async () => {
+    const { mockFrom, mockEq1 } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getNotifications('user-99', 'barn-1')
+
+    expect(mockEq1).toHaveBeenCalledWith('user_id', 'user-99')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockFrom, mockEq2 } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getNotifications('user-1', 'barn-42')
+
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-42')
+  })
+
+  it('should_order_by_created_at_desc', async () => {
+    const { mockFrom, mockOrder } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getNotifications('user-1', 'barn-1')
+
+    expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false })
+  })
+
+  it('should_limit_to_20_by_default', async () => {
+    const { mockFrom, mockLimit } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getNotifications('user-1', 'barn-1')
+
+    expect(mockLimit).toHaveBeenCalledWith(20)
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    const { mockFrom } = makeChain({ data: null, error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getNotifications('user-1', 'barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_notifications_array', async () => {
+    const notif = { id: 'n-1', user_id: 'user-1', barn_id: 'barn-1', type: 'outstanding_payment', title: 'Pay up', body: null, link: null, read_at: null, created_at: '2026-01-01T00:00:00Z' }
+    const { mockFrom } = makeChain({ data: [notif], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getNotifications('user-1', 'barn-1')
+
+    expect(result).toEqual([notif])
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('select failed')
+    const { mockFrom } = makeChain({ data: null, error: dbError })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await expect(getNotifications('user-1', 'barn-1')).rejects.toThrow('select failed')
   })
 })

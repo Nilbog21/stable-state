@@ -4,7 +4,9 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getNotifications } from '@/lib/db/notifications'
 import { UserMenu } from './UserMenu'
+import { NotificationBell } from './NotificationBell'
 import { NavigationBlockerProvider, BlockingLink } from './NavigationBlocker'
 
 export async function generateMetadata({
@@ -37,9 +39,10 @@ export default async function ProtectedBarnLayout({
   if (membership.status === 'pending') redirect(`/barn/${slug}/pending`)
   if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
 
-  const [allMemberships, profileRows] = await Promise.all([
+  const [allMemberships, profileRows, notifications] = await Promise.all([
     getBarnMembershipsForUser(user.id),
     getProfilesByUserIds([user.id]),
+    getNotifications(user.id, barn.id),
   ])
   const profile = profileRows[0] ?? null
   const initials =
@@ -93,7 +96,10 @@ export default async function ProtectedBarnLayout({
             {link.label}
           </BlockingLink>
         ))}
-        <UserMenu initials={initials} email={email} fullName={fullName} showSwitchBarn={showSwitchBarn} />
+        <div className="ml-auto flex items-center gap-2">
+          <UserMenu initials={initials} email={email} fullName={fullName} showSwitchBarn={showSwitchBarn} />
+          <NotificationBell notifications={notifications} barnId={barn.id} />
+        </div>
       </nav>
       {children}
     </NavigationBlockerProvider>
