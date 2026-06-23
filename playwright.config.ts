@@ -8,5 +8,6 @@ export default defineConfig({
     { name: 'manager', use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/manager.json' } },
     { name: 'trainer', use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/trainer.json' } },
     { name: 'rider',   use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/rider.json'   } },
+    { name: 'mobile',  use: { ...devices['Pixel 5'],        storageState: 'e2e/.auth/manager.json' } },
   ],
 });

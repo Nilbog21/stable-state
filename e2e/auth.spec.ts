@@ -2,7 +2,7 @@ import { test, expect } from '@playwright/test'
 
 const barnSlug = process.env.TEST_BARN_SLUG!
 
-test('lands on barn dashboard when authenticated', async ({ page }) => {
+test('should_land_on_barn_dashboard_when_authenticated', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}`)
-  await expect(page).not.toHaveURL(/\/login/)
+  await expect(page).toHaveURL(new RegExp('/barn/' + barnSlug + '$'))
 })
