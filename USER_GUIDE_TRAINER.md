@@ -24,7 +24,7 @@ If you have past lessons with unpaid balances, you will receive a notification. 
 
 ## Horses
 
-Go to **Horses** to see a weekly exertion summary for each horse in the barn, sortable by name or exertion level.
+Go to **Horses** to see a weekly exertion summary for each horse in the barn, sortable by name or exertion level. Tap any horse name to open its detail page and see its current availability status. If a horse is unavailable, the reason set by your barn manager is shown there.
 
 ## Riders
 
