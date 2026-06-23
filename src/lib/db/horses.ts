@@ -64,12 +64,45 @@ export async function getHorseExertionSummary(
     p_since: since.toISOString(),
   })
   if (error) throw error
-  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
+  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; is_available: boolean; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
     id: row.id,
     name: row.name,
     is_active: row.is_active,
+    is_available: row.is_available,
     lessonCount: Number(row.lesson_count),
     totalExertion: Number(row.total_exertion),
     jumpingCount: Number(row.jumping_count),
   }))
+}
+
+export async function getHorseById(horseId: string, barnId: string): Promise<Horse | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('horses')
+    .select()
+    .eq('id', horseId)
+    .eq('barn_id', barnId)
+    .single()
+
+  if (error) {
+    if ((error as { code?: string }).code === 'PGRST116') return null
+    throw error
+  }
+  return data
+}
+
+export async function setHorseAvailability(
+  horseId: string,
+  barnId: string,
+  isAvailable: boolean,
+  reason: string | null
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('horses')
+    .update({ is_available: isAvailable, unavailability_reason: reason })
+    .eq('id', horseId)
+    .eq('barn_id', barnId)
+
+  if (error) throw error
 }

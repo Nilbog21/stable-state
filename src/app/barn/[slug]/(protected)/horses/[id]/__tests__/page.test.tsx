@@ -73,7 +73,7 @@ describe('HorseDetailPage', () => {
   it('should_render_horse_name', async () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.getByText('Thunderbolt')).toBeDefined()
+    expect(screen.getByRole('heading', { name: 'Thunderbolt' })).toBeDefined()
   })
 
   it('should_render_available_status_when_horse_is_available', async () => {

@@ -73,7 +73,7 @@ export default async function HorsesPage({
         </section>
       )}
 
-      <HorseOverviewTable horses={horses} isManager={isManager} />
+      <HorseOverviewTable horses={horses} isManager={isManager} barnSlug={slug} />
     </main>
   )
 }

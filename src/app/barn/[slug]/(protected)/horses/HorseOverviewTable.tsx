@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import Link from 'next/link'
 import type { HorseExertionSummary } from '@/lib/db/types'
 
 type SortKey = 'name' | 'totalExertion' | 'jumpingCount' | 'lessonCount'
@@ -15,9 +16,11 @@ const COLUMNS: { key: SortKey; label: string; tdClassName: string }[] = [
 export function HorseOverviewTable({
   horses,
   isManager = false,
+  barnSlug,
 }: {
   horses: HorseExertionSummary[]
   isManager?: boolean
+  barnSlug: string
 }) {
   const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({
     key: 'totalExertion',
@@ -76,6 +79,12 @@ export function HorseOverviewTable({
             <td className={COLUMNS[0].tdClassName}>
               {isManager ? (
                 <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/barn/${barnSlug}/horses/${horse.id}`}
+                    className="font-medium hover:underline"
+                  >
+                    {horse.name}
+                  </Link>
                   <input
                     type="text"
                     name="name"
@@ -89,16 +98,31 @@ export function HorseOverviewTable({
                       Inactive
                     </span>
                   )}
+                  {!horse.is_available && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                      (Unavailable)
+                    </span>
+                  )}
                 </div>
               ) : (
-                <>
-                  {horse.name}
+                <div className="flex flex-wrap items-center gap-2">
+                  <Link
+                    href={`/barn/${barnSlug}/horses/${horse.id}`}
+                    className={horse.is_available ? '' : 'text-zinc-400 dark:text-zinc-500'}
+                  >
+                    {horse.name}
+                  </Link>
                   {!horse.is_active && (
-                    <span className="ml-2 rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
+                    <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-xs font-medium text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
                       Inactive
                     </span>
                   )}
-                </>
+                  {!horse.is_available && (
+                    <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
+                      (Unavailable)
+                    </span>
+                  )}
+                </div>
               )}
             </td>
             {COLUMNS.slice(1).map(col => (

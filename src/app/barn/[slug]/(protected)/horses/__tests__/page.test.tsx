@@ -15,8 +15,8 @@ vi.mock('../actions', () => ({
   setHorseActiveAction: vi.fn(),
 }))
 vi.mock('../HorseOverviewTable', () => ({
-  HorseOverviewTable: ({ horses, isManager }: { horses: unknown[]; isManager?: boolean }) => (
-    <div data-testid="horse-overview-table" data-is-manager={String(isManager ?? false)}>
+  HorseOverviewTable: ({ horses, isManager, barnSlug }: { horses: unknown[]; isManager?: boolean; barnSlug?: string }) => (
+    <div data-testid="horse-overview-table" data-is-manager={String(isManager ?? false)} data-barn-slug={barnSlug ?? ''}>
       {(horses as { name: string; id: string }[]).map((h) => (
         <span key={h.id}>{h.name}</span>
       ))}
