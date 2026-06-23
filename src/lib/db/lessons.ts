@@ -116,9 +116,10 @@ export async function getLessonsByBarn(
       .from('lessons')
       .select('*')
       .in('id', lessonIds)
+      .eq('barn_id', barnId)
       .order('lesson_at', { ascending: false })
     if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons)
+    return hydrateParticipants(supabase, lessons ?? [])
   }
 
   let query = supabase.from('lessons').select('*').eq('barn_id', barnId)
