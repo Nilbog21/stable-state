@@ -68,6 +68,7 @@ async function run() {
       email_confirm: true,
     })
     if (error) throw new Error(`create ${role}: ${error.message}`)
+    if (!data?.user) throw new Error(`create ${role}: no user returned`)
     const userId = data.user.id
     await upsertProfile(userId, email, firstName, lastName, supabase)
     mustSucceed(

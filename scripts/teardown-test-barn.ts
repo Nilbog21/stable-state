@@ -13,26 +13,27 @@ const BARN_SLUG = process.env.TEST_BARN_SLUG
 
 const TEST_ROLES = ['manager', 'trainer', 'rider'] as const
 
-function buildTestUserEmail(barnSlug: string, role: string): string {
-  return `${role}@${barnSlug}.e2e`
+function check({ error }: { error: unknown }, label: string): void {
+  const err = error as { message?: string } | null
+  if (err) throw new Error(`${label}: ${err.message}`)
 }
 
 export async function teardown(barnSlug: string, supabase: SupabaseClient): Promise<void> {
   const { data: barn } = await supabase.from('barns').select('id').eq('slug', barnSlug).maybeSingle()
-  if (!barn) return
 
-  const barnId = barn.id
+  if (barn) {
+    const barnId = barn.id
+    check(await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId }), 'teardown lessons')
+    check(await supabase.from('lesson_tiers').delete().eq('barn_id', barnId), 'delete lesson_tiers')
+    check(await supabase.from('notifications').delete().eq('barn_id', barnId), 'delete notifications')
+    check(await supabase.from('riders').delete().eq('barn_id', barnId), 'delete riders')
+    check(await supabase.from('horses').delete().eq('barn_id', barnId), 'delete horses')
+    check(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
+    check(await supabase.from('barns').delete().eq('id', barnId), 'delete barn')
+  }
 
-  await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId })
-  await supabase.from('lesson_tiers').delete().eq('barn_id', barnId)
-  await supabase.from('notifications').delete().eq('barn_id', barnId)
-  await supabase.from('riders').delete().eq('barn_id', barnId)
-  await supabase.from('horses').delete().eq('barn_id', barnId)
-  await supabase.from('barn_memberships').delete().eq('barn_id', barnId)
-  await supabase.from('profiles').delete().eq('barn_id', barnId)
-  await supabase.from('barns').delete().eq('id', barnId)
-
-  const testEmails = TEST_ROLES.map((role) => buildTestUserEmail(barnSlug, role))
+  // Always clean up auth users — runs even when no barn exists (handles partial seed failures)
+  const testEmails = TEST_ROLES.map((role) => `${role}@${barnSlug}.e2e`)
   let page = 1
   let hasMore = true
   while (hasMore) {
