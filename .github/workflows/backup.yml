@@ -21,9 +21,12 @@ jobs:
         env:
           SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
         run: |
-          DB_HOST="${SUPABASE_DB_URL##*@}"
-          DB_HOST="${DB_HOST%%:*}"
-          export PGHOSTADDR=$(dig +short A "$DB_HOST" | head -1)
+          export PGHOSTADDR=$(python3 -c "
+          import os, socket
+          from urllib.parse import urlparse
+          host = urlparse(os.environ['SUPABASE_DB_URL']).hostname
+          print(socket.getaddrinfo(host, None, socket.AF_INET)[0][4][0])
+          ")
           pg_dump "$SUPABASE_DB_URL" --format=custom --no-acl --no-owner -f backup.dump
 
       - name: Upload artifact
