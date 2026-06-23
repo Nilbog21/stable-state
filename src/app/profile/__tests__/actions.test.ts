@@ -1,8 +1,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createMockProfile } from '@/test/fixtures'
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/profiles', () => ({
@@ -10,33 +10,25 @@ vi.mock('@/lib/db/profiles', () => ({
   updateProfile: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId, updateProfile } from '@/lib/db/profiles'
 import { updateProfileAction } from '../actions'
 
 const mockProfile = createMockProfile()
 
 function mockAuthUser(userId = 'user-1') {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }),
-    },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
 }
 
 function mockAuthNoUser() {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-    },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
 }
 
 describe('updateProfileAction', () => {
   let consoleSpy: ReturnType<typeof vi.spyOn>
 
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getProfileByUserId).mockReset()
     vi.mocked(updateProfile).mockReset()
     consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})

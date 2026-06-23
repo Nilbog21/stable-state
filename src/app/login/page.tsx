@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { signInWithGoogle, signOut } from '@/app/actions/auth'
 
 export default async function LoginPage({
@@ -7,9 +7,8 @@ export default async function LoginPage({
   searchParams: Promise<{ no_barns?: string }>
 }) {
   const { no_barns } = await searchParams
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  const showGuidance = no_barns === 'true' && data.user !== null
+  const user = await getAuthenticatedUser()
+  const showGuidance = no_barns === 'true' && user !== null
   const connected = !!process.env.NEXT_PUBLIC_SUPABASE_URL
 
   return (

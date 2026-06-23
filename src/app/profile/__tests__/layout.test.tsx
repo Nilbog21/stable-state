@@ -4,8 +4,8 @@ import { createMockBarn, createMockMembership } from '@/test/fixtures'
 
 afterEach(cleanup)
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -24,19 +24,17 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import ProfileLayout from '../layout'
 
 function mockAuth(user: { id: string; email: string } | null) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
 
 describe('ProfileLayout', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockReset()
     mockRedirect.mockClear()
   })

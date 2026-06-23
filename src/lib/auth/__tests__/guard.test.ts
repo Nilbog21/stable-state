@@ -2,8 +2,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barns', () => ({
@@ -25,6 +25,7 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { requireMembership } from '../guard'
@@ -34,6 +35,7 @@ const mockUser = createMockUser()
 
 describe('requireMembership', () => {
   beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
     setupAuth(mockUser)

@@ -15,8 +15,8 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -27,7 +27,7 @@ vi.mock('next/navigation', () => ({
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import LessonDetailPage from '../page'
 
@@ -64,11 +64,7 @@ const mockMembership = {
 }
 
 function mockSupabaseUser(userId = 'user-1') {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }),
-    },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
 }
 
 describe('LessonDetailPage', () => {
@@ -92,11 +88,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_call_notFound_when_user_is_not_authenticated', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-      },
-    } as any)
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
 
     await expect(

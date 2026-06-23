@@ -9,8 +9,8 @@ vi.mock('../UpcomingLessonCard', () => ({
   ),
 }))
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barns', () => ({
@@ -36,7 +36,7 @@ vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
@@ -75,14 +75,12 @@ const mockRiderMembership = {
 }
 
 function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
 
 describe('BarnDashboardPage', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)

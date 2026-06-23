@@ -3,7 +3,7 @@ import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
@@ -23,7 +23,6 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 }))
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect, useRouter: vi.fn(() => ({ refresh: vi.fn() })) }))
 
-import { createClient } from '@/lib/supabase/server'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary } from '@/lib/db/lesson-finances'
@@ -35,7 +34,6 @@ const trainerMembership = createMockMembership({ id: 'mem-trn', role: 'trainer' 
 
 describe('FinancesPage', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)

@@ -1,13 +1,12 @@
 'use server'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId, updateProfile } from '@/lib/db/profiles'
 
 export async function updateProfileAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) return { error: 'not authenticated' }
+  const user = await getAuthenticatedUser()
+  if (!user) return { error: 'not authenticated' }
 
   const firstName = (formData.get('first_name') as string ?? '').trim()
   const lastName = (formData.get('last_name') as string ?? '').trim()
@@ -15,7 +14,7 @@ export async function updateProfileAction(
   if (!firstName) return { error: 'first_name is required' }
   if (!lastName) return { error: 'last_name is required' }
 
-  const profile = await getProfileByUserId(data.user.id)
+  const profile = await getProfileByUserId(user.id)
   if (!profile) return { error: 'profile not found' }
 
   const phone = (formData.get('phone') as string | null)?.trim() || null

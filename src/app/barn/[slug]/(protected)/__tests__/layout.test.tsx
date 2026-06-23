@@ -22,8 +22,8 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barns', () => ({
@@ -39,7 +39,7 @@ vi.mock('@/lib/db/profiles', () => ({
   getProfilesByUserIds: vi.fn(),
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
@@ -76,9 +76,7 @@ const mockRiderMembership = {
 }
 
 function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
 
 const children = <div data-testid="child">content</div>
@@ -99,7 +97,7 @@ const mockMembershipEntry = { barn: mockBarn, membership: mockManagerMembership 
 
 describe('ProtectedBarnLayout - auth guard', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
@@ -192,7 +190,7 @@ describe('ProtectedBarnLayout - auth guard', () => {
 
 describe('ProtectedBarnLayout - nav links', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
@@ -383,7 +381,7 @@ describe('ProtectedBarnLayout - nav links', () => {
 
 describe('ProtectedBarnLayout - UserMenu', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)

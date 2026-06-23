@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
@@ -17,21 +17,20 @@ export default async function BarnDashboardPage({
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   let upcomingLessons: LessonWithDetails[] | null = null
   let pendingCount = 0
   let userRole: 'manager' | 'trainer' | 'rider' | null = null
 
-  if (data.user) {
-    const membership = await getUserMembership(data.user.id, barn.id)
+  if (user) {
+    const membership = await getUserMembership(user.id, barn.id)
     if (membership?.role) {
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
       const [lessons, pending] = await Promise.all([
-        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), data.user.id, membership.role),
+        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), user.id, membership.role),
         membership.role === 'manager' ? getPendingMemberships(barn.id) : Promise.resolve([]),
       ])
       upcomingLessons = lessons
