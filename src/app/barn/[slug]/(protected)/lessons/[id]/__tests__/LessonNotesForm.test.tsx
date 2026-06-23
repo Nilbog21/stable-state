@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-library/react'
 import { LessonNotesForm } from '../LessonNotesForm'
 
@@ -143,6 +143,10 @@ describe('LessonNotesForm', () => {
 })
 
 describe('LessonNotesForm - navigation guard', () => {
+  beforeEach(() => {
+    window.history.replaceState(null, '', '/')
+  })
+
   afterEach(() => {
     cleanup()
     vi.restoreAllMocks()
@@ -155,69 +159,124 @@ describe('LessonNotesForm - navigation guard', () => {
     })
   }
 
-  it('should_prompt_on_pushstate_to_different_path_when_dirty', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('should_show_modal_on_pushstate_to_different_path_when_dirty', async () => {
     await renderDirty()
-
     window.history.pushState(null, '', '/barn/other')
-
-    expect(confirmSpy).toHaveBeenCalled()
+    await waitFor(() => expect(screen.queryByText('Unsaved changes')).not.toBeNull())
   })
 
-  it('should_not_navigate_on_different_path_when_user_cancels', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
+  it('should_not_show_modal_on_same_path_pushstate', async () => {
+    await renderDirty()
+    window.history.pushState(null, '', `${window.location.pathname}?tab=notes`)
+    expect(screen.queryByText('Unsaved changes')).toBeNull()
+  })
+
+  it('should_not_show_modal_when_pushstate_url_is_null', async () => {
+    await renderDirty()
+    window.history.pushState(null, '', null)
+    expect(screen.queryByText('Unsaved changes')).toBeNull()
+  })
+
+  it('should_not_navigate_when_modal_is_shown', async () => {
     await renderDirty()
     const before = window.location.pathname
-
     window.history.pushState(null, '', '/barn/other')
-
+    await waitFor(() => screen.getByText('Unsaved changes'))
     expect(window.location.pathname).toBe(before)
   })
 
-  it('should_navigate_on_different_path_when_user_confirms', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(true)
+  it('should_show_modal_on_popstate_when_dirty', async () => {
     await renderDirty()
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    await waitFor(() => expect(screen.queryByText('Unsaved changes')).not.toBeNull())
+  })
 
+  it('should_dismiss_modal_on_cancel', async () => {
+    await renderDirty()
     window.history.pushState(null, '', '/barn/other')
+    await waitFor(() => screen.getByRole('button', { name: 'Cancel' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull())
+  })
 
+  it('should_call_action_when_save_changes_clicked', async () => {
+    const action = vi.fn().mockResolvedValue(undefined)
+    render(<LessonNotesForm action={action} horses={[mockHorse]} riders={[]} />)
+    await act(async () => {
+      fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    })
+    window.history.pushState(null, '', '/barn/other')
+    await waitFor(() => screen.getByRole('button', { name: 'Save changes' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })) })
+    expect(action).toHaveBeenCalled()
+  })
+
+  it('should_navigate_after_save_changes_on_push', async () => {
+    await renderDirty()
+    window.history.pushState(null, '', '/barn/other')
+    await waitFor(() => screen.getByRole('button', { name: 'Save changes' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })) })
     expect(window.location.pathname).toBe('/barn/other')
   })
 
-  it('should_not_prompt_on_pushstate_to_same_path_when_dirty', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    await renderDirty()
-
-    window.history.pushState(null, '', `${window.location.pathname}?tab=notes`)
-
-    expect(confirmSpy).not.toHaveBeenCalled()
+  it('should_navigate_on_discard_without_calling_action', async () => {
+    const action = vi.fn()
+    render(<LessonNotesForm action={action} horses={[mockHorse]} riders={[]} />)
+    await act(async () => {
+      fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    })
+    window.history.pushState(null, '', '/barn/other')
+    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    await waitFor(() => expect(window.location.pathname).toBe('/barn/other'))
   })
 
-  it('should_not_prompt_on_pushstate_when_url_is_null', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(false)
-    await renderDirty()
-
-    window.history.pushState(null, '', null)
-
-    expect(confirmSpy).not.toHaveBeenCalled()
+  it('should_not_call_action_on_discard', async () => {
+    const action = vi.fn()
+    render(<LessonNotesForm action={action} horses={[mockHorse]} riders={[]} />)
+    await act(async () => {
+      fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    })
+    window.history.pushState(null, '', '/barn/other')
+    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    expect(action).not.toHaveBeenCalled()
   })
 
-  it('should_prompt_on_popstate_when_dirty', async () => {
-    const confirmSpy = vi.spyOn(window, 'confirm').mockReturnValue(true)
+  it('should_call_history_back_when_discarding_back_nav', async () => {
+    const backSpy = vi.spyOn(window.history, 'back').mockImplementation(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
     await renderDirty()
-
     window.dispatchEvent(new PopStateEvent('popstate'))
-
-    expect(confirmSpy).toHaveBeenCalled()
+    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    expect(backSpy).toHaveBeenCalled()
   })
 
-  it('should_push_state_back_on_popstate_when_user_cancels', async () => {
-    vi.spyOn(window, 'confirm').mockReturnValue(false)
-    const pushStateSpy = vi.spyOn(window.history, 'pushState')
+  it('should_ignore_popstate_fired_by_history_back_after_discard', async () => {
+    vi.spyOn(window.history, 'back').mockImplementation(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
     await renderDirty()
-    pushStateSpy.mockClear()
-
     window.dispatchEvent(new PopStateEvent('popstate'))
+    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull())
+  })
 
-    expect(pushStateSpy).toHaveBeenCalledWith(null, '', window.location.href)
+  it('should_call_history_back_when_saving_and_leaving_back_nav', async () => {
+    const backSpy = vi.spyOn(window.history, 'back').mockImplementation(() => {
+      window.dispatchEvent(new PopStateEvent('popstate'))
+    })
+    const action = vi.fn().mockResolvedValue(undefined)
+    render(<LessonNotesForm action={action} horses={[mockHorse]} riders={[]} />)
+    await act(async () => {
+      fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    })
+    window.dispatchEvent(new PopStateEvent('popstate'))
+    await waitFor(() => screen.getByRole('button', { name: 'Save changes' }))
+    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })) })
+    expect(backSpy).toHaveBeenCalled()
   })
 })
