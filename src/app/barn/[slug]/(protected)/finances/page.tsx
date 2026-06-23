@@ -163,6 +163,14 @@ export default async function FinancesPage({
           <div className="mt-4">
             <OutstandingTable outstandingLessons={outstandingLessons} barnSlug={slug} />
           </div>
+          <div className="mt-3">
+            <Link
+              href={`/barn/${slug}/finances/outstanding`}
+              className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              View all outstanding →
+            </Link>
+          </div>
         </section>
       )}
 

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { FinancialSummary, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary, TrainerIncomeSummary } from './types'
+import type { FinancialSummary, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
 
 export async function getFinancialSummary(
   barnId: string,
@@ -61,21 +61,56 @@ export async function getFinancialSummary(
   return { collectedIncome, pendingIncome, breakdown }
 }
 
-export async function getOutstandingLessons(barnId: string): Promise<OutstandingLesson[]> {
+export async function getOutstandingLessons(barnId: string, userId?: string, role?: Role): Promise<OutstandingLesson[]> {
   const supabase = await createClient()
   const now = new Date()
 
-  const { data, error } = await supabase
-    .from('lessons')
-    .select('*')
-    .eq('barn_id', barnId)
-    .is('payment_type', null)
-    .lt('lesson_at', now.toISOString())
-    .order('lesson_at', { ascending: true })
+  type LessonRow = { id: string; barn_id: string; lesson_at: string; instructor_id: string | null; fee: number | null }
+  let outstandingRaw: LessonRow[]
 
-  if (error) throw error
+  if (role === 'rider' && userId) {
+    const { data: rider, error: riderErr } = await supabase
+      .from('riders')
+      .select('id')
+      .eq('barn_id', barnId)
+      .eq('user_id', userId)
+      .maybeSingle()
+    if (riderErr) throw riderErr
+    if (!rider) return []
 
-  const outstandingRaw = (data ?? []).filter((l) => l.fee !== 0)
+    const { data: riderLessons, error: rlErr } = await supabase
+      .from('lesson_riders')
+      .select('lesson_id')
+      .eq('rider_id', rider.id)
+    if (rlErr) throw rlErr
+    const lessonIds = (riderLessons ?? []).map((r: { lesson_id: string }) => r.lesson_id)
+    if (!lessonIds.length) return []
+
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('*')
+      .in('id', lessonIds)
+      .is('payment_type', null)
+      .lt('lesson_at', now.toISOString())
+      .order('lesson_at', { ascending: true })
+    if (error) throw error
+    outstandingRaw = ((data ?? []) as LessonRow[]).filter((l) => l.fee !== 0)
+  } else {
+    let query = supabase
+      .from('lessons')
+      .select('*')
+      .eq('barn_id', barnId)
+      .is('payment_type', null)
+      .lt('lesson_at', now.toISOString())
+
+    if (role === 'trainer' && userId) {
+      query = query.eq('instructor_id', userId)
+    }
+
+    const { data, error } = await query.order('lesson_at', { ascending: true })
+    if (error) throw error
+    outstandingRaw = ((data ?? []) as LessonRow[]).filter((l) => l.fee !== 0)
+  }
 
   if (outstandingRaw.length === 0) return []
 
