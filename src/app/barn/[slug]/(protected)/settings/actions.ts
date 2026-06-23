@@ -39,7 +39,7 @@ export async function createTierAction(barnSlug: string, formData: FormData): Pr
   const defaultJumping = parseBoolean(formData.get('default_jumping') as string | null)
   const defaultExertionLevel = parseExertion(formData.get('default_exertion_level') as string | null)
 
-  await createTier(barn.id, name, price, false, undefined, defaultExertionLevel, defaultJumping)
+  await createTier(barn.id, name, price, false, defaultExertionLevel, defaultJumping)
   revalidatePath(`/barn/${barnSlug}/settings`)
 }
 

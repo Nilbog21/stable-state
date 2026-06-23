@@ -20,9 +20,9 @@ export async function createTier(
   name: string,
   price: number | null,
   isDefault = false,
-  client?: SupabaseClient,
   defaultExertionLevel: number | null = null,
-  defaultJumping: boolean | null = null
+  defaultJumping: boolean | null = null,
+  client?: SupabaseClient
 ): Promise<LessonTier> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()

@@ -87,8 +87,8 @@ async function run() {
     'insert memberships'
   )
 
-  const tier1 = await createTier(barnId, 'Standard', 80, true, supabase)
-  const tier2 = await createTier(barnId, 'Premium', 120, false, supabase)
+  const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, supabase)
+  const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, supabase)
 
   const horse1 = await createHorse(barnId, 'Apollo', supabase)
   const horse2 = await createHorse(barnId, 'Bella', supabase)

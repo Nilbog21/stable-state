@@ -186,7 +186,7 @@ describe('createTier', () => {
       }),
     } as any
 
-    await createTier('barn-1', 'Standard', 50, false, injectedClient)
+    await createTier('barn-1', 'Standard', 50, false, null, null, injectedClient)
 
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
@@ -202,7 +202,7 @@ describe('createTier', () => {
     })
     const injectedClient = { from: mockFrom } as any
 
-    await createTier('barn-1', 'Standard', 50, false, injectedClient)
+    await createTier('barn-1', 'Standard', 50, false, null, null, injectedClient)
 
     expect(mockFrom).toHaveBeenCalled()
   })
@@ -454,7 +454,7 @@ describe('createTier with defaults', () => {
       from: vi.fn().mockReturnValue({ insert: mockInsert }),
     } as any)
 
-    await createTier('barn-1', 'Standard', 50, false, undefined, 3, null)
+    await createTier('barn-1', 'Standard', 50, false, 3, null)
 
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ default_exertion_level: 3 })
@@ -471,7 +471,7 @@ describe('createTier with defaults', () => {
       from: vi.fn().mockReturnValue({ insert: mockInsert }),
     } as any)
 
-    await createTier('barn-1', 'Standard', 50, false, undefined, null, true)
+    await createTier('barn-1', 'Standard', 50, false, null, true)
 
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ default_jumping: true })
