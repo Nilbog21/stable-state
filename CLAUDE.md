@@ -18,6 +18,10 @@
 
 Update `ARCHITECTURE.md` whenever a migration or role change is committed.
 
+## User Guides
+
+When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE_MANAGER.md`, `USER_GUIDE_TRAINER.md`, and/or `USER_GUIDE_RIDER.md`.
+
 ## Working Directory
 
 `specs/` is a personal, gitignored working directory. Ignore its contents.
