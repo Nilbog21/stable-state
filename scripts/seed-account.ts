@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'url'
 import { createClient } from '@supabase/supabase-js'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { createNotification } from '@/lib/db/notifications'
 
 async function run() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -56,28 +55,6 @@ async function run() {
       { onConflict: 'user_id,barn_id' }
     )
     if (memberError) throw new Error(`upsert membership: ${memberError.message}`)
-
-    const { data: pendingMembers } = await supabase
-      .from('barn_memberships')
-      .select('user_id')
-      .eq('barn_id', barn.id)
-      .eq('status', 'pending')
-    for (const { user_id: pendingId } of pendingMembers ?? []) {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('first_name, last_name')
-        .eq('user_id', pendingId)
-        .single()
-      const name = profile ? `${profile.first_name} ${profile.last_name}` : 'Someone'
-      await createNotification({
-        userId: authUserId,
-        barnId: barn.id,
-        type: 'pending_approval',
-        title: 'New member request',
-        body: `${name} is requesting to join as a member.`,
-        link: `/barn/${barnSlug}/settings`,
-      }, supabase)
-    }
 
     console.log(`\nLinked ${firstName} ${lastName} <${email}> as manager for barn "${barnSlug}".`)
   } else {

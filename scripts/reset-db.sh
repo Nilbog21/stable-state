@@ -36,8 +36,6 @@ printf "Press Enter when logged in, or Escape to skip role selection: "
 IFS= read -rsn1 key || true
 echo ""
 
-bash scripts/seed-account.sh
-
 if [ "$key" = $'\e' ]; then
   exit 0
 fi

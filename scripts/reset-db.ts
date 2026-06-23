@@ -5,7 +5,6 @@ import { createRider } from '@/lib/db/riders'
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createPendingMembership } from '@/lib/db/barn-memberships'
-import { createNotification } from '@/lib/db/notifications'
 import { mustSucceed, createServiceClient, teardownBarnData, findAuthUserIdsByEmails } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -211,21 +210,6 @@ async function run() {
 
   await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
   await createPendingMembership(pendingUserId, DEV_BARN_ID, 'rider', supabase)
-
-  const managers = mustSucceed(
-    await supabase.from('barn_memberships').select('user_id').eq('barn_id', DEV_BARN_ID).eq('role', 'manager').eq('status', 'active'),
-    'fetch managers for pending notification'
-  )
-  for (const { user_id } of managers) {
-    await createNotification({
-      userId: user_id,
-      barnId: DEV_BARN_ID,
-      type: 'pending_approval',
-      title: 'New member request',
-      body: `${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName} is requesting to join as a rider.`,
-      link: `/barn/${DEV_BARN_SLUG}/settings`,
-    }, supabase)
-  }
 
   const riderRowIds: string[] = []
   for (let i = 0; i < DEV_RIDERS.length; i++) {
