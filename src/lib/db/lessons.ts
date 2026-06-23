@@ -129,7 +129,7 @@ export async function getLessonsByBarn(
   return hydrateParticipants(supabase, lessons)
 }
 
-export async function getLessonById(lessonId: string, barnId: string, role: Role = 'trainer'): Promise<LessonDetail | null> {
+export async function getLessonById(lessonId: string, barnId: string, role: Role = 'trainer', userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
     ? 'rider_notes, riders ( id, name, user_id )'
@@ -163,7 +163,11 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   if (role === 'rider') {
     return {
       ...base,
-      lesson_riders: base.lesson_riders.map((lr: any) => ({ ...lr, private_notes: null })),
+      lesson_riders: base.lesson_riders.map((lr: any) => ({
+        ...lr,
+        private_notes: null,
+        rider_notes: lr.riders?.user_id === userId ? lr.rider_notes : null,
+      })),
     } as LessonDetail
   }
   return base as LessonDetail

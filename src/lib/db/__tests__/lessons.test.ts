@@ -855,6 +855,41 @@ describe('getLessonById', () => {
 
     expect(result?.lesson_riders[0].private_notes).toBeNull()
   })
+
+  it('should_preserve_rider_notes_for_self_when_role_is_rider', async () => {
+    const riderLessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: 'good position', riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+    }
+    const { select } = makeLessonByIdChain(riderLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
+
+    expect(result?.lesson_riders[0].rider_notes).toBe('good position')
+  })
+
+  it('should_null_rider_notes_for_non_self_riders_when_role_is_rider', async () => {
+    const riderLessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [
+        { rider_notes: 'good position', riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: 'needs work', riders: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    }
+    const { select } = makeLessonByIdChain(riderLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
+
+    expect(result?.lesson_riders[1].rider_notes).toBeNull()
+  })
 })
 
 describe('getUpcomingLessons', () => {

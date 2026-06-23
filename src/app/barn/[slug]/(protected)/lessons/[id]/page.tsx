@@ -31,7 +31,7 @@ export default async function LessonDetailPage({
   }
 
   const role = membership.role
-  const lesson = await getLessonById(id, barn.id, role)
+  const lesson = await getLessonById(id, barn.id, role, user.id)
 
   if (!lesson) {
     notFound()
@@ -95,15 +95,17 @@ export default async function LessonDetailPage({
                         {lh.horses?.name ?? '—'}{' '}
                         <span className="text-zinc-500">(exertion {lh.exertion_level})</span>
                       </div>
-                      {canEditNotes && (
-                        <form action={updateHorseNotesAction.bind(null, slug, lesson.id, lh.horses?.id ?? '')} className="mt-2 flex flex-col gap-1">
-                          <label className="text-xs font-medium text-zinc-500">Horse Notes</label>
-                          <textarea
-                            name="horseNotes"
-                            defaultValue={lh.horse_notes ?? ''}
-                            rows={2}
-                            className="w-full rounded border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
-                          />
+                      {canEditNotes && lh.horses?.id && (
+                        <form action={updateHorseNotesAction.bind(null, slug, lesson.id, lh.horses.id)} className="mt-2 flex flex-col gap-1">
+                          <div className="flex flex-col gap-1 rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Horse Notes</span>
+                            <textarea
+                              name="horseNotes"
+                              defaultValue={lh.horse_notes ?? ''}
+                              rows={2}
+                              className="w-full rounded border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                            />
+                          </div>
                           <button type="submit" className="self-end rounded bg-zinc-800 px-3 py-1 text-xs text-white dark:bg-zinc-200 dark:text-zinc-900">
                             Save
                           </button>
@@ -123,7 +125,7 @@ export default async function LessonDetailPage({
                   {lesson.lesson_riders.map((lr, i) => (
                     <li key={lr.riders?.id ?? i}>
                       <div className="font-medium">{lr.riders?.name ?? '—'}</div>
-                      <form action={updateRiderNotesAction.bind(null, slug, lesson.id, lr.riders?.id ?? '')} className="mt-2 flex flex-col gap-2">
+                      {lr.riders?.id && <form action={updateRiderNotesAction.bind(null, slug, lesson.id, lr.riders.id)} className="mt-2 flex flex-col gap-2">
                         <div className="flex flex-col gap-1">
                           <label className="text-xs font-medium text-zinc-500">Rider Notes</label>
                           <textarea
@@ -145,7 +147,7 @@ export default async function LessonDetailPage({
                         <button type="submit" className="self-end rounded bg-zinc-800 px-3 py-1 text-xs text-white dark:bg-zinc-200 dark:text-zinc-900">
                           Save
                         </button>
-                      </form>
+                      </form>}
                     </li>
                   ))}
                 </ul>
