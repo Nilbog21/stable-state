@@ -83,6 +83,7 @@ export function LessonForm({
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
+  const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
 
   const { setDirty, setMessage } = useNavigationBlocker()
   const unpaidPastDue =
@@ -105,6 +106,46 @@ export function LessonForm({
     return () => window.removeEventListener('beforeunload', handler)
   }, [shouldWarn])
 
+  function flash(keys: string[]) {
+    if (keys.length === 0) return
+    setFlashingKeys(new Set(keys))
+    setTimeout(() => setFlashingKeys(new Set()), 600)
+  }
+
+  function handleTierChange(id: string) {
+    if (id === CUSTOM_ID) {
+      setSelectedId(id)
+      setJumping(false)
+      setExertionMap(prev => {
+        const next = new Map(prev)
+        for (const key of next.keys()) next.set(key, 3)
+        return next
+      })
+      setNewHorseExertionLevel(3)
+      flash([...(jumping ? ['jumping'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
+    } else {
+      const tier = tiers.find(t => t.id === id) ?? null
+      if (!tier) return
+      setSelectedId(id)
+      const affectedKeys: string[] = []
+      if (tier.default_jumping !== null) {
+        setJumping(tier.default_jumping)
+        affectedKeys.push('jumping')
+      }
+      if (tier.default_exertion_level !== null) {
+        const lvl = tier.default_exertion_level
+        setExertionMap(prev => {
+          const next = new Map(prev)
+          for (const key of next.keys()) next.set(key, lvl)
+          return next
+        })
+        setNewHorseExertionLevel(lvl)
+        affectedKeys.push(...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`))
+      }
+      flash(affectedKeys)
+    }
+  }
+
   if (tiers.length === 0) {
     return (
       <p role="alert" className="text-sm text-red-600 dark:text-red-400">
@@ -120,6 +161,9 @@ export function LessonForm({
     const checked = e.target.checked
     setJumping(checked)
     if (checked) {
+      const bumped = Array.from(exertionMap.entries())
+        .filter(([, v]) => v < 4)
+        .map(([id]) => `exertion_${id}`)
       setExertionMap(prev => {
         const next = new Map(prev)
         for (const [id, val] of next) {
@@ -127,7 +171,11 @@ export function LessonForm({
         }
         return next
       })
-      if (newHorseExertionLevel < 4) setNewHorseExertionLevel(4)
+      if (newHorseExertionLevel < 4) {
+        setNewHorseExertionLevel(4)
+        bumped.push('new_horse_exertion')
+      }
+      if (bumped.length > 0) flash(bumped)
     }
   }
 
@@ -188,6 +236,27 @@ export function LessonForm({
         </p>
       )}
 
+      <div className="flex flex-col gap-1">
+        <label htmlFor="tier_name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Tier
+        </label>
+        <select
+          id="tier_name"
+          value={selectedId}
+          onChange={e => handleTierChange(e.target.value)}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          {tiers.map(t => (
+            <option key={t.id} value={t.id}>
+              {t.price != null ? `${t.name} - $${t.price}` : t.name}
+            </option>
+          ))}
+          <option value={CUSTOM_ID}>Custom</option>
+        </select>
+        <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
+        {isCustom && <input type="hidden" name="is_custom" value="true" />}
+      </div>
+
       <div className="flex gap-2">
         <button
           type="button"
@@ -211,7 +280,7 @@ export function LessonForm({
           aria-label="Jumping"
           checked={jumping}
           onChange={handleJumpingToggle}
-          className="rounded border-zinc-300 dark:border-zinc-600"
+          className={`rounded border-zinc-300 dark:border-zinc-600 transition ${flashingKeys.has('jumping') ? 'ring-2 ring-blue-400' : ''}`}
         />
         Jumping
       </label>
@@ -276,7 +345,8 @@ export function LessonForm({
                   if (e.target.checked) {
                     setExertionMap(prev => {
                       const next = new Map(prev)
-                      next.set(h.id, jumping ? 4 : 3)
+                      const base = selectedTier?.default_exertion_level ?? (jumping ? 4 : 3)
+                      next.set(h.id, jumping ? Math.max(base, 4) : base)
                       return next
                     })
                   } else {
@@ -314,7 +384,7 @@ export function LessonForm({
                     })
                   }}
                   required
-                  className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  className={`w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has(`exertion_${h.id}`) ? 'ring-2 ring-blue-400' : ''}`}
                 />
               </>
             )}
@@ -347,7 +417,7 @@ export function LessonForm({
                     value={newHorseExertionLevel}
                     onChange={(e) => setNewHorseExertionLevel(parseInt(e.target.value, 10))}
                     required
-                    className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                    className={`w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has('new_horse_exertion') ? 'ring-2 ring-blue-400' : ''}`}
                   />
                 </>
               )}
@@ -406,27 +476,6 @@ export function LessonForm({
         initialDate={mode === 'edit' && initialLesson ? parseInitialDate(initialLesson.lesson_at) : undefined}
         initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
       />
-
-      <div className="flex flex-col gap-1">
-        <label htmlFor="tier_name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Tier
-        </label>
-        <select
-          id="tier_name"
-          value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        >
-          {tiers.map(t => (
-            <option key={t.id} value={t.id}>
-              {t.price != null ? `${t.name} - $${t.price}` : t.name}
-            </option>
-          ))}
-          <option value={CUSTOM_ID}>Custom</option>
-        </select>
-        <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
-        {isCustom && <input type="hidden" name="is_custom" value="true" />}
-      </div>
 
       {isCustom ? (
         <div className="flex flex-col gap-1">
