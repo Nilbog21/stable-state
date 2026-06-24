@@ -169,4 +169,14 @@ describe('HorsesPage', () => {
     render(jsx)
     expect(screen.getByText('Retired')).toBeDefined()
   })
+
+  it('should_render_lower_exertion_horse_before_higher_exertion_horse', async () => {
+    const lowExertion = createMockHorseExertionSummary({ id: 'horse-a', name: 'Lazy', is_active: true, is_available: true, totalExertion: 2 })
+    const highExertion = createMockHorseExertionSummary({ id: 'horse-b', name: 'Busy', is_active: true, is_available: true, totalExertion: 10 })
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([highExertion, lowExertion])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const links = screen.getAllByRole('link')
+    expect(links[0].textContent).toBe('Lazy')
+  })
 })

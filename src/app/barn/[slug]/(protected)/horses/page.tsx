@@ -3,8 +3,8 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseExertionSummary } from '@/lib/db/horses'
-import { HorseOverviewTable } from './HorseOverviewTable'
-import { addHorseAction, updateHorseAction, setHorseActiveAction } from './actions'
+import { HorseCard } from './HorseCard'
+import { addHorseAction } from './actions'
 
 export default async function HorsesPage({
   params,
@@ -27,34 +27,17 @@ export default async function HorsesPage({
   sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
   const horses = await getHorseExertionSummary(barn.id, sevenDaysAgo)
 
+  const available = horses
+    .filter((h) => h.is_active && h.is_available)
+    .sort((a, b) => a.totalExertion - b.totalExertion)
+  const unavailable = horses.filter((h) => h.is_active && !h.is_available)
+  const inactive = horses.filter((h) => !h.is_active)
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        Horses
-      </h1>
-
-      {/* <form> cannot be a valid descendant of <table>, so forms live here outside the table.
-          Update forms are linked to row inputs via the HTML `form` attribute.
-          Toggle forms are submitted imperatively via getElementById().requestSubmit()
-          because the Set Inactive path needs a confirm() before submission. */}
-      {isManager && horses.map((horse) => (
-        <form
-          key={`update-${horse.id}`}
-          id={`update-horse-${horse.id}`}
-          action={updateHorseAction.bind(null, slug, horse.id)}
-        />
-      ))}
-      {isManager && horses.map((horse) => (
-        <form
-          key={`toggle-${horse.id}`}
-          id={`toggle-horse-${horse.id}`}
-          action={setHorseActiveAction.bind(null, slug, horse.id, !horse.is_active)}
-        />
-      ))}
-
-      {isManager && (
-        <section className="mb-8">
-          <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Add Horse</h2>
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Horses</h1>
+        {isManager && (
           <form action={addHorseAction.bind(null, slug)} className="flex gap-2">
             <input
               type="text"
@@ -70,10 +53,41 @@ export default async function HorsesPage({
               Add
             </button>
           </form>
+        )}
+      </div>
+
+      {available.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Available</h2>
+          <div className="flex flex-col gap-2">
+            {available.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="available" />
+            ))}
+          </div>
         </section>
       )}
 
-      <HorseOverviewTable horses={horses} isManager={isManager} barnSlug={slug} />
+      {unavailable.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Unavailable</h2>
+          <div className="flex flex-col gap-2">
+            {unavailable.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="unavailable" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {isManager && inactive.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Inactive</h2>
+          <div className="flex flex-col gap-2">
+            {inactive.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="inactive" />
+            ))}
+          </div>
+        </section>
+      )}
     </main>
   )
 }
