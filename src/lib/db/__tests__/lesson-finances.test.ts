@@ -2112,4 +2112,19 @@ describe('getHorseIncomeDetail', () => {
 
     expect(result.rows).toEqual([])
   })
+
+  it('should_treat_null_lesson_horses_data_as_empty', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+        if (table === 'horses') return makeHorseChain({ id: 'horse-1', name: 'Thunderbolt' })
+        if (table === 'lesson_horses') return makeInChain(null)
+        return makeInChain([])
+      }),
+    } as any)
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows).toEqual([])
+  })
 })

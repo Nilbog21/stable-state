@@ -112,7 +112,7 @@ describe('HorseIncomePage', () => {
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(screen.getByText('$50.00')).toBeDefined()
+    expect(screen.getAllByText('$50.00').length).toBeGreaterThan(0)
   })
 
   it('should_render_total_row', async () => {
