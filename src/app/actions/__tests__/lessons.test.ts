@@ -786,6 +786,15 @@ describe('updateLessonAction', () => {
     expect(updateLessonWithParticipants).toHaveBeenCalled()
   })
 
+  it('should_use_current_user_id_as_instructor_when_trainer_updates_lesson', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', instructor_id: 'other-trainer', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorId: 'user-1' })
+    )
+  })
+
   it('should_return_error_when_trainer_tries_to_add_new_horse', async () => {
     guardAs(mockTrainerMembership)
     const fd = makeFormData({ new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })

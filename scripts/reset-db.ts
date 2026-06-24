@@ -4,7 +4,7 @@ import { createTier } from '@/lib/db/lesson-tiers'
 
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
-import { createPendingMembership } from '@/lib/db/barn-memberships'
+import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { mustSucceed, createServiceClient, teardownBarnData, findAuthUserIdsByEmails } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -21,9 +21,9 @@ const DEV_TRAINERS = [
 ]
 
 const DEV_RIDERS = [
-  { email: 'rider1@dev.local', firstName: 'Dana',   lastName: 'Rider', riderName: 'Dana Rider' },
-  { email: 'rider2@dev.local', firstName: 'Emery',  lastName: 'Rider', riderName: 'Emery Rider' },
-  { email: 'rider3@dev.local', firstName: 'Finley', lastName: 'Rider', riderName: 'Finley Rider' },
+  { email: 'rider1@dev.local', firstName: 'Dana',   lastName: 'Rider' },
+  { email: 'rider2@dev.local', firstName: 'Emery',  lastName: 'Rider' },
+  { email: 'rider3@dev.local', firstName: 'Finley', lastName: 'Rider' },
 ]
 
 const DEV_HORSES = ['Apple', 'Butter', 'Clover']
@@ -211,15 +211,12 @@ async function run() {
   await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
   await createPendingMembership(pendingUserId, DEV_BARN_ID, 'rider', supabase)
 
-  const { data: riderMemberships, error: riderMembershipsErr } = await supabase
-    .from('barn_memberships')
-    .select('id, user_id')
-    .eq('barn_id', DEV_BARN_ID)
-    .eq('role', 'rider')
-    .eq('status', 'active')
-    .in('user_id', riderIds)
-  if (riderMembershipsErr) throw riderMembershipsErr
-  const riderRowIds = riderIds.map((uid) => riderMemberships!.find((m) => m.user_id === uid)!.id)
+  const allRiderMembers = await getActiveMembersWithProfiles(DEV_BARN_ID, 'rider', supabase)
+  const riderRowIds = riderIds.map((uid) => {
+    const m = allRiderMembers.find((mem) => mem.userId === uid)
+    if (!m) throw new Error(`active membership not found for user ${uid}`)
+    return m.membershipId
+  })
 
   const horseIds: string[] = []
   for (const name of DEV_HORSES) {

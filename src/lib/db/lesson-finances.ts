@@ -124,7 +124,7 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
     { data: lessonRiders, error: lrError },
     { data: profiles, error: profError },
   ] = await Promise.all([
-    supabase.from('lesson_riders').select('lesson_id, rider_id').in('lesson_id', outstandingIds),
+    supabase.from('lesson_riders').select('lesson_id, rider_id').eq('barn_id', barnId).in('lesson_id', outstandingIds),
     instructorIds.length
       ? supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
       : Promise.resolve({ data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }),
@@ -251,6 +251,7 @@ export async function getRiderIncomeSummary(
   const { data: lessonRiders, error: lrError } = await supabase
     .from('lesson_riders')
     .select('lesson_id, rider_id')
+    .eq('barn_id', barnId)
     .in('lesson_id', lessonIds)
 
   if (lrError) throw lrError

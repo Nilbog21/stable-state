@@ -3,7 +3,8 @@ import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
 
 async function hydrateParticipants(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  lessons: Lesson[]
+  lessons: Lesson[],
+  barnId: string
 ): Promise<LessonWithDetails[]> {
   if (!lessons.length) return []
   const lessonIds = lessons.map((l) => l.id)
@@ -13,8 +14,8 @@ async function hydrateParticipants(
     { data: lessonHorses, error: lessonHorsesError },
     { data: lessonRiders, error: lessonRidersError },
   ] = await Promise.all([
-    supabase.from('lesson_horses').select('lesson_id, horse_id').in('lesson_id', lessonIds),
-    supabase.from('lesson_riders').select('lesson_id, rider_id').in('lesson_id', lessonIds),
+    supabase.from('lesson_horses').select('lesson_id, horse_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
+    supabase.from('lesson_riders').select('lesson_id, rider_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
   ])
 
   if (lessonHorsesError) throw lessonHorsesError
@@ -131,14 +132,14 @@ export async function getLessonsByBarn(
       .eq('barn_id', barnId)
       .order('lesson_at', { ascending: false })
     if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons ?? [])
+    return hydrateParticipants(supabase, lessons ?? [], barnId)
   }
 
   let query = supabase.from('lessons').select('*').eq('barn_id', barnId)
   if (role === 'trainer') query = query.eq('instructor_id', userId)
   const { data: lessons, error: lessonsError } = await query.order('lesson_at', { ascending: false })
   if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons)
+  return hydrateParticipants(supabase, lessons, barnId)
 }
 
 export async function getLessonById(lessonId: string, barnId: string, role: Role = 'trainer', userId?: string): Promise<LessonDetail | null> {
@@ -282,7 +283,7 @@ export async function getUpcomingLessons(
       .lt('lesson_at', to)
       .order('lesson_at', { ascending: true })
     if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons)
+    return hydrateParticipants(supabase, lessons, barnId)
   }
 
   const { data: lessons, error: lessonsError } = await supabase
@@ -294,5 +295,5 @@ export async function getUpcomingLessons(
     .lt('lesson_at', to)
     .order('lesson_at', { ascending: true })
   if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons)
+  return hydrateParticipants(supabase, lessons, barnId)
 }
