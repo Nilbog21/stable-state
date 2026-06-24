@@ -20,6 +20,10 @@ Tap the bell icon in the nav bar to view your notifications. If your profile is 
 
 Go to **Members** and tap your card to manage your documents. You can upload a **Liability Waiver**, **Lease Agreement**, or **Boarding Contract** (PDF, JPG, PNG, or DOCX — max 5 MB). Tap a file name to open the document (link is valid for 5 minutes). You can also delete any document you have uploaded.
 
+## Profile & Guide
+
+Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, or tap **User Guide** to open this guide from any page.
+
 ## Viewing horses
 
 Go to **Horses** to see horses grouped into two sections:
