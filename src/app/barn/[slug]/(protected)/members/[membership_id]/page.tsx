@@ -46,6 +46,14 @@ export default async function MemberDetailPage({
 
   if (!canAccess) notFound()
 
+  if (targetRole !== 'trainer' && targetRole !== 'rider') {
+    return (
+      <main className="mx-auto max-w-3xl px-4 py-12">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">No documents available.</p>
+      </main>
+    )
+  }
+
   const canUpload =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && isOwnPage) ||

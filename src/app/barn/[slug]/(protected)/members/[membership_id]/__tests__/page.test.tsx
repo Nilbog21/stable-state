@@ -244,4 +244,13 @@ describe('MemberDetailPage', () => {
     render(jsx)
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
+
+  it('should_show_no_documents_available_when_target_is_manager', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
+    )
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
+    render(jsx)
+    expect(screen.getByText(/no documents available/i)).toBeDefined()
+  })
 })
