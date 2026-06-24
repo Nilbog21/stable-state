@@ -12,6 +12,8 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 **View lessons** — Go to **Lessons** to see your recent lessons. Tap **Show older lessons** to see the full history. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
 
+**Filter by rider** — A scrollable pill bar above the lesson list shows **All** plus one pill per rider who appears in your lessons. Tap a rider's name to filter to their lessons; tap **All** to clear. The selection is stored in the URL so it survives a page refresh.
+
 **Book a lesson** — Go to **Lessons → New Lesson**, fill in the date, select a horse and rider, choose a fee tier, optionally select a payment type if payment was collected at booking, and click **Submit**. Horses marked as unavailable appear grayed out and cannot be selected; their unavailability reason is shown next to the name.
 
 **Edit a lesson** — Open any of your lessons and click **Edit**. You can update the date, horse, rider, fee tier, and other fields. Unavailable horses that were already assigned to the lesson remain shown (checked but grayed out) and will stay on the lesson when saved.

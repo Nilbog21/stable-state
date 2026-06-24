@@ -33,6 +33,8 @@ Go to **Members** to browse the barn roster. You will see a Trainers section and
 
 **View lessons** — Go to **Lessons** to see recent activity. Older lessons are hidden by default; tap **Show older lessons** to expand them. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
 
+**Filter lessons** — A pill bar above the lesson list lets you narrow by dimension. Tap **By Trainer** or **By Rider** to reveal a second scrollable row of specific names; tap any name to filter to that person's lessons. Tap **All** to clear the filter. The active filter is preserved in the URL, so the page can be bookmarked or refreshed without losing your selection.
+
 **Create a lesson** — Go to **Lessons → New Lesson**, fill in the date, select a horse and rider (or multiple riders for a group lesson), choose a fee tier, optionally select a payment type if payment was collected at booking, and click **Submit**. Horses marked as unavailable appear grayed out and cannot be selected; their unavailability reason is shown next to the name.
 
 **Edit a lesson** — Open any lesson from the Lessons list and click **Edit**. All fields are editable. Downgrading a group lesson to a normal lesson requires selecting one rider and one horse to keep. Unavailable horses that were already assigned to the lesson remain shown (checked but grayed out) and will stay on the lesson when saved.

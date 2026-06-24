@@ -292,14 +292,19 @@ describe('LessonsPage', () => {
     expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
   })
 
-  it('should_show_rider_pills_for_trainer', async () => {
+  it('should_show_all_pill_for_trainer', async () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('link', { name: /^all$/i })).toBeDefined()
+  })
+
+  it('should_show_rider_name_pill_for_trainer', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByRole('link', { name: /^alice$/i })).toBeDefined()
   })
 
-  it('should_filter_lessons_by_rider_id_for_trainer', async () => {
+  it('should_show_matching_lesson_when_filtering_by_rider_for_trainer', async () => {
     const matchingLesson = { ...mockLesson, id: 'lesson-match', rider_names: ['Alice'], rider_ids: ['rider-1'] }
     const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
     vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
@@ -309,10 +314,21 @@ describe('LessonsPage', () => {
     })
     render(jsx)
     expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
+  })
+
+  it('should_hide_non_matching_lesson_when_filtering_by_rider_for_trainer', async () => {
+    const matchingLesson = { ...mockLesson, id: 'lesson-match', rider_names: ['Alice'], rider_ids: ['rider-1'] }
+    const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
+    })
+    render(jsx)
     expect(screen.queryByText('Spirit')).toBeNull()
   })
 
-  it('should_show_all_lessons_for_trainer_when_filter_is_rider_with_no_id', async () => {
+  it('should_show_first_lesson_for_trainer_when_filter_is_rider_with_no_id', async () => {
     const lesson2 = { ...mockLesson, id: 'lesson-2', rider_names: ['Bob'], rider_ids: ['rider-2'] }
     vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
     const jsx = await LessonsPage({
@@ -321,18 +337,34 @@ describe('LessonsPage', () => {
     })
     render(jsx)
     expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
+  })
+
+  it('should_show_second_lesson_for_trainer_when_filter_is_rider_with_no_id', async () => {
+    const lesson2 = { ...mockLesson, id: 'lesson-2', rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider' }),
+    })
+    render(jsx)
     expect(screen.getAllByText('Bob').length).toBeGreaterThan(0)
   })
 
-  it('should_show_dimension_pills_for_manager', async () => {
+  it('should_show_by_trainer_pill_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('link', { name: /by trainer/i })).toBeDefined()
+  })
+
+  it('should_show_by_rider_pill_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByRole('link', { name: /by rider/i })).toBeDefined()
   })
 
-  it('should_filter_lessons_by_trainer_id_for_manager', async () => {
+  it('should_show_matching_lesson_when_filtering_by_trainer_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const matchingLesson = { ...mockLesson, id: 'lesson-match', instructor_id: 'user-1', instructor_name: 'John Doe', rider_names: ['Alice'], rider_ids: ['rider-1'] }
     const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', instructor_id: 'user-2', instructor_name: 'Jane Smith', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
@@ -343,10 +375,22 @@ describe('LessonsPage', () => {
     })
     render(jsx)
     expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0)
+  })
+
+  it('should_hide_non_matching_lesson_when_filtering_by_trainer_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const matchingLesson = { ...mockLesson, id: 'lesson-match', instructor_id: 'user-1', instructor_name: 'John Doe', rider_names: ['Alice'], rider_ids: ['rider-1'] }
+    const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', instructor_id: 'user-2', instructor_name: 'Jane Smith', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'trainer', id: 'user-1' }),
+    })
+    render(jsx)
     expect(screen.queryByText('Spirit')).toBeNull()
   })
 
-  it('should_filter_lessons_by_rider_id_for_manager', async () => {
+  it('should_show_matching_lesson_when_filtering_by_rider_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const matchingLesson = { ...mockLesson, id: 'lesson-match', rider_names: ['Alice'], rider_ids: ['rider-1'] }
     const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
@@ -357,10 +401,22 @@ describe('LessonsPage', () => {
     })
     render(jsx)
     expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
+  })
+
+  it('should_hide_non_matching_lesson_when_filtering_by_rider_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const matchingLesson = { ...mockLesson, id: 'lesson-match', rider_names: ['Alice'], rider_ids: ['rider-1'] }
+    const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
+    })
+    render(jsx)
     expect(screen.queryByText('Spirit')).toBeNull()
   })
 
-  it('should_show_all_lessons_for_manager_when_filter_is_trainer_with_no_id', async () => {
+  it('should_show_first_lesson_for_manager_when_filter_is_trainer_with_no_id', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const lesson2 = { ...mockLesson, id: 'lesson-2', instructor_id: 'user-2', instructor_name: 'Jane Smith', rider_names: ['Bob'], rider_ids: ['rider-2'] }
     vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
@@ -370,6 +426,17 @@ describe('LessonsPage', () => {
     })
     render(jsx)
     expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0)
+  })
+
+  it('should_show_second_lesson_for_manager_when_filter_is_trainer_with_no_id', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const lesson2 = { ...mockLesson, id: 'lesson-2', instructor_id: 'user-2', instructor_name: 'Jane Smith', rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'trainer' }),
+    })
+    render(jsx)
     expect(screen.getAllByText('Jane Smith').length).toBeGreaterThan(0)
   })
 

@@ -69,18 +69,17 @@ export default async function LessonsPage({
   const filter = filterParam === 'trainer' || filterParam === 'rider' ? filterParam : null
 
   const allLessons = await getLessonsByBarn(barn.id, user.id, membership.role)
+  const isManager = membership.role === 'manager'
+  const isTrainer = membership.role === 'trainer'
 
   let lessons = allLessons
   if (filter && filterId) {
-    if (filter === 'trainer') {
+    if (filter === 'trainer' && isManager) {
       lessons = allLessons.filter((l) => l.instructor_id === filterId)
-    } else {
+    } else if (filter === 'rider' && (isManager || isTrainer)) {
       lessons = allLessons.filter((l) => l.rider_ids.includes(filterId))
     }
   }
-
-  const isManager = membership.role === 'manager'
-  const isTrainer = membership.role === 'trainer'
   const canCreateLesson = isManager || isTrainer
   const deleteAction = deleteLessonAction.bind(null, barn.id, slug)
 

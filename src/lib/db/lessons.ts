@@ -50,10 +50,11 @@ async function hydrateParticipants(
       .map((lh) => (horses ?? []).find((h) => h.id === lh.horse_id)?.name)
       .filter((name): name is string => Boolean(name))
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
-    const riderNames = riderJunctionRows
-      .map((lr) => (riders ?? []).find((r) => r.id === lr.rider_id)?.name)
-      .filter((name): name is string => Boolean(name))
-    const riderIds = riderJunctionRows.map((lr) => lr.rider_id)
+    const riderParticipants = riderJunctionRows
+      .map((lr) => ({ id: lr.rider_id, name: (riders ?? []).find((r) => r.id === lr.rider_id)?.name }))
+      .filter((p): p is { id: string; name: string } => Boolean(p.name))
+    const riderNames = riderParticipants.map((p) => p.name)
+    const riderIds = riderParticipants.map((p) => p.id)
     return {
       ...lesson,
       instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
