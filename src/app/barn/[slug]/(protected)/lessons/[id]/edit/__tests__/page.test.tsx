@@ -139,6 +139,21 @@ describe('EditLessonPage', () => {
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
 
+  it('should_call_notFound_when_trainer_accesses_lesson_they_do_not_own', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'other-trainer' })
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_invoke_notFound_when_trainer_accesses_lesson_they_do_not_own', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'other-trainer' })
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    try { await EditLessonPage({ params }) } catch (_) {}
+    expect(notFound).toHaveBeenCalled()
+  })
+
   it('should_call_notFound_when_user_is_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })

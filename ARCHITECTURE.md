@@ -25,8 +25,8 @@ Three roles: `manager`, `trainer`, `rider`.
 | horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT |
 | riders | SELECT, INSERT, UPDATE | SELECT | SELECT |
 | lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (any column; instructor_id locked by RLS) | SELECT, INSERT |
-| lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE | SELECT, INSERT |
-| lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE | SELECT, INSERT |
+| lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT, INSERT |
+| lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT, INSERT |
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
 | profiles | SELECT own + barn members; UPDATE own + any barn member (contact fields only); INSERT own | SELECT own + barn members | SELECT own + barn members; INSERT/UPDATE own |
 | notifications | SELECT/UPDATE own; INSERT any authenticated | SELECT/UPDATE own; INSERT any authenticated | SELECT/UPDATE own; INSERT any authenticated |
