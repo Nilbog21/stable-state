@@ -7,10 +7,16 @@ vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
+vi.mock('@/lib/db/horse-documents', () => ({
+  getHorseDocuments: vi.fn(),
+  getDocumentSignedUrl: vi.fn(),
+}))
 vi.mock('../actions', () => ({
   updateHorseAvailabilityAction: vi.fn(),
   renameHorseAction: vi.fn(),
   setHorseActiveAction: vi.fn(),
+  uploadHorseDocumentAction: vi.fn(),
+  deleteHorseDocumentAction: vi.fn(),
 }))
 vi.mock('../HorseAvailabilityForm', () => ({
   HorseAvailabilityForm: ({ horse }: { horse: { name: string } }) => (
@@ -22,6 +28,9 @@ vi.mock('../HorseActivationSection', () => ({
     <div data-testid="activation-section">{isActive ? 'active' : 'inactive'}</div>
   ),
 }))
+vi.mock('../HorseDocumentUploadForm', () => ({
+  HorseDocumentUploadForm: () => <div data-testid="horse-document-upload-form" />,
+}))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
@@ -29,6 +38,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
+import { getHorseDocuments, getDocumentSignedUrl } from '@/lib/db/horse-documents'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -42,12 +52,27 @@ const inactiveHorse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_a
 
 const pageParams = Promise.resolve({ slug: 'green-acres', id: 'horse-1' })
 
+const mockDoc = {
+  id: 'doc-1',
+  barn_id: 'barn-1',
+  horse_id: 'horse-1',
+  record_type: 'coggins',
+  storage_path: 'barn-1/horses/horse-1/coggins.pdf',
+  file_name: 'coggins.pdf',
+  file_size: 1024,
+  notes: null,
+  created_at: '2026-01-01T00:00:00Z',
+  updated_at: '2026-01-01T00:00:00Z',
+}
+
 describe('HorseDetailPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getHorseById).mockResolvedValue(availableHorse)
+    vi.mocked(getHorseDocuments).mockResolvedValue([])
+    vi.mocked(getDocumentSignedUrl).mockResolvedValue('https://example.com/signed')
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -202,5 +227,60 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByTestId('activation-section').textContent).toBe('inactive')
+  })
+
+  it('should_render_upload_form_for_manager', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('horse-document-upload-form')).toBeDefined()
+  })
+
+  it('should_render_upload_form_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('horse-document-upload-form')).toBeDefined()
+  })
+
+  it('should_not_render_upload_form_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByTestId('horse-document-upload-form')).toBeNull()
+  })
+
+  it('should_render_documents_list_for_manager_when_documents_exist', async () => {
+    vi.mocked(getHorseDocuments).mockResolvedValue([mockDoc] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('coggins.pdf')).toBeDefined()
+  })
+
+  it('should_render_no_documents_message_when_list_is_empty_for_manager', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('No documents yet.')).toBeDefined()
+  })
+
+  it('should_render_delete_button_for_manager_when_document_exists', async () => {
+    vi.mocked(getHorseDocuments).mockResolvedValue([mockDoc] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+  })
+
+  it('should_not_render_delete_button_for_trainer_when_document_exists', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getHorseDocuments).mockResolvedValue([mockDoc] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
+  })
+
+  it('should_not_render_documents_section_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('No documents yet.')).toBeNull()
   })
 })

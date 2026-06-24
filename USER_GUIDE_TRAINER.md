@@ -35,7 +35,7 @@ Go to **Horses** to see horses grouped into two sections:
 - **Available** — horses in active rotation, sorted by total exertion (7d) ascending. Each card shows name, total exertion, lesson count, and jumping count for the last 7 days.
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name and the reason entered by your barn manager.
 
-Tap any card to open the horse's detail page for full availability details.
+Tap any card to open the horse's detail page for full availability details and documents. The **Documents** section lists all uploaded files for the horse, labeled by type. Tap a file name to open it (link is valid for 5 minutes). Use the **Upload Document** form to add a new file; accepted types are PDF, JPG, PNG, and DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**.
 
 ## Profile & Guide
 

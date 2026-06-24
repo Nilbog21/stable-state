@@ -20,10 +20,11 @@ Empty sections are hidden. Tap any card to open the horse's detail page. To add 
 
 ### Horse detail page (manager controls)
 
-On the horse's detail page, managers see two additional sections:
+On the horse's detail page, managers see additional sections:
 
 - **Name** — pre-filled text input with the current name and a **Save** button to rename the horse.
 - **Activation** — at the bottom of the page. When the horse is active, a **Set Inactive** button appears; tapping it shows an inline confirmation with **Confirm** and **Cancel** before submitting. When the horse is already inactive, a **Set Active** button appears and submits immediately without confirmation.
+- **Documents** — lists all uploaded files for this horse, labeled by document type. Tap a file name to open the document (link is valid for 5 minutes). Tap **Delete** to remove a document. Use the **Upload Document** form to add a new file; accepted types are PDF, JPG, PNG, and DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**.
 
 ## Members
 
