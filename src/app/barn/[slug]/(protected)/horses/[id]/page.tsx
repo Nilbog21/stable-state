@@ -4,7 +4,8 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
 import { HorseAvailabilityForm } from './HorseAvailabilityForm'
-import { updateHorseAvailabilityAction } from './actions'
+import { HorseActivationSection } from './HorseActivationSection'
+import { updateHorseAvailabilityAction, renameHorseAction, setHorseActiveAction } from './actions'
 
 export default async function HorseDetailPage({
   params,
@@ -25,7 +26,9 @@ export default async function HorseDetailPage({
   if (!horse) notFound()
 
   const role = membership.role
-  const boundAction = updateHorseAvailabilityAction.bind(null, slug, horse.id)
+  const boundAvailabilityAction = updateHorseAvailabilityAction.bind(null, slug, horse.id)
+  const boundRenameAction = renameHorseAction.bind(null, slug, horse.id)
+  const boundActivationAction = setHorseActiveAction.bind(null, slug, horse.id, !horse.is_active)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -50,10 +53,34 @@ export default async function HorseDetailPage({
       </dl>
 
       {role === 'manager' && (
-        <section className="mt-6">
-          <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500">Availability</h2>
-          <HorseAvailabilityForm horse={horse} action={boundAction} />
-        </section>
+        <>
+          <section className="mt-6">
+            <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500">Name</h2>
+            <form action={boundRenameAction} className="flex items-center gap-3">
+              <label htmlFor="horse-name" className="sr-only">Name</label>
+              <input
+                id="horse-name"
+                name="name"
+                type="text"
+                defaultValue={horse.name}
+                className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+              <button
+                type="submit"
+                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                Save
+              </button>
+            </form>
+          </section>
+
+          <section className="mt-6">
+            <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500">Availability</h2>
+            <HorseAvailabilityForm horse={horse} action={boundAvailabilityAction} />
+          </section>
+
+          <HorseActivationSection isActive={horse.is_active} action={boundActivationAction} />
+        </>
       )}
     </main>
   )
