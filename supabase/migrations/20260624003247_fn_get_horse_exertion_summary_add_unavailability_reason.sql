@@ -39,3 +39,5 @@ AS $$
   WHERE h.barn_id = p_barn_id
   ORDER BY h.name;
 $$;
+
+GRANT EXECUTE ON FUNCTION get_horse_exertion_summary(uuid, timestamptz) TO authenticated;

@@ -83,7 +83,6 @@ export async function getHorseById(horseId: string, barnId: string): Promise<Hor
     .select()
     .eq('id', horseId)
     .eq('barn_id', barnId)
-    .eq('is_active', true)
     .single()
 
   if (error) {
