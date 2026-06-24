@@ -27,33 +27,40 @@ async function hydrateParticipants(
   const [
     { data: horses, error: horsesError },
     { data: riders, error: ridersError },
-    { data: profiles, error: profilesError },
   ] = await Promise.all([
     horseIds.length
       ? supabase.from('horses').select('id, name').in('id', horseIds)
       : Promise.resolve({ data: [], error: null }),
     riderIds.length
-      ? supabase.from('barn_memberships').select('id, user_id, profiles(first_name, last_name)').in('id', riderIds)
-      : Promise.resolve({ data: [], error: null }),
-    instructorIds.length
-      ? supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
+      ? supabase.from('barn_memberships').select('id, user_id').in('id', riderIds)
       : Promise.resolve({ data: [], error: null }),
   ])
 
   if (horsesError) throw horsesError
   if (ridersError) throw ridersError
+
+  type MemberRow = { id: string; user_id: string | null }
+  const memberUserIds = [...new Set((riders as MemberRow[] | null ?? []).map((bm) => bm.user_id).filter((uid): uid is string => uid !== null))]
+  const allProfileIds = [...new Set([...instructorIds, ...memberUserIds])]
+
+  const { data: profiles, error: profilesError } = allProfileIds.length
+    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', allProfileIds)
+    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
+
   if (profilesError) throw profilesError
 
-  type MemberRow = { id: string; user_id: string; profiles: { first_name: string; last_name: string } | null }
+  const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]))
   const membershipMap = new Map(
     (riders as MemberRow[] | null ?? []).map((bm) => [
       bm.id,
-      bm.profiles ? `${bm.profiles.first_name} ${bm.profiles.last_name}` : bm.id,
+      bm.user_id && profileMap.get(bm.user_id)
+        ? `${profileMap.get(bm.user_id)!.first_name} ${profileMap.get(bm.user_id)!.last_name}`
+        : bm.id,
     ])
   )
 
   return lessons.map((lesson) => {
-    const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
+    const profile = lesson.instructor_id ? profileMap.get(lesson.instructor_id) : undefined
     const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
     const horseNames = horseJunctionRows
       .map((lh) => (horses ?? []).find((h) => h.id === lh.horse_id)?.name)
@@ -145,8 +152,8 @@ export async function getLessonsByBarn(
 export async function getLessonById(lessonId: string, barnId: string, role: Role = 'trainer', userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, barn_memberships ( id, user_id, profiles ( first_name, last_name ) )'
-    : 'rider_notes, private_notes, barn_memberships ( id, user_id, profiles ( first_name, last_name ) )'
+    ? 'rider_notes, barn_memberships ( id, user_id )'
+    : 'rider_notes, private_notes, barn_memberships ( id, user_id )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
@@ -161,22 +168,28 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   if (error) throw error
   if (!data) return null
 
-  let instructor_name: string | null = null
-  if (data.instructor_id) {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('first_name, last_name')
-      .eq('user_id', data.instructor_id)
-      .maybeSingle()
-    if (profileError) throw profileError
-    if (profile) instructor_name = `${profile.first_name} ${profile.last_name}`
-  }
-
   type RawLessonRider = {
     rider_notes: string | null
     private_notes?: string | null
-    barn_memberships: { id: string; user_id: string | null; profiles: { first_name: string; last_name: string } | null } | null
+    barn_memberships: { id: string; user_id: string | null } | null
   }
+
+  const riderUserIds = (data.lesson_riders as RawLessonRider[])
+    .map((lr) => lr.barn_memberships?.user_id)
+    .filter((uid): uid is string => uid !== null && uid !== undefined)
+  const allProfileIds = [...new Set([...(data.instructor_id ? [data.instructor_id] : []), ...riderUserIds])]
+
+  const { data: profilesData, error: profilesError } = allProfileIds.length
+    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', allProfileIds)
+    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
+
+  if (profilesError) throw profilesError
+
+  const profileMap = new Map((profilesData ?? []).map((p) => [p.user_id, p]))
+  const instructor_name = data.instructor_id && profileMap.get(data.instructor_id)
+    ? `${profileMap.get(data.instructor_id)!.first_name} ${profileMap.get(data.instructor_id)!.last_name}`
+    : null
+
   type NormalizedLr = {
     rider_notes: string | null
     private_notes: string | null
@@ -190,8 +203,8 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
       ? {
           id: lr.barn_memberships.id,
           user_id: lr.barn_memberships.user_id,
-          name: lr.barn_memberships.profiles
-            ? `${lr.barn_memberships.profiles.first_name} ${lr.barn_memberships.profiles.last_name}`
+          name: lr.barn_memberships.user_id && profileMap.get(lr.barn_memberships.user_id)
+            ? `${profileMap.get(lr.barn_memberships.user_id)!.first_name} ${profileMap.get(lr.barn_memberships.user_id)!.last_name}`
             : lr.barn_memberships.id,
         }
       : null,
