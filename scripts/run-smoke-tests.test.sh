@@ -143,6 +143,21 @@ else
 fi
 rm -rf "$REPO"
 
+# Test 9: should_succeed_without_env_local_when_skip_env_local_check_passed
+REPO="$(make_repo)"  # no .env.local
+(cd "$REPO" && PATH="$REPO/bin:$PATH" \
+  NEXT_PUBLIC_SUPABASE_URL=http://localhost \
+  NEXT_PUBLIC_SUPABASE_ANON_KEY=test-anon-key \
+  VERCEL_AUTOMATION_BYPASS_SECRET=test-bypass \
+  bash "$SCRIPT" --skip-env-local-check "http://preview.example.com" "test-barn" </dev/null >/dev/null 2>&1)
+exit_code=$?
+if [ "$exit_code" -eq 0 ] && [ -f "$REPO/npm.log" ] && grep -q 'E2E_BASE_URL=http://preview.example.com' "$REPO/npm.log"; then
+  assert_pass "should_succeed_without_env_local_when_skip_env_local_check_passed"
+else
+  assert_fail "should_succeed_without_env_local_when_skip_env_local_check_passed" "exit=$exit_code npm.log: $(cat "$REPO/npm.log" 2>/dev/null || echo '(missing)')"
+fi
+rm -rf "$REPO"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]
