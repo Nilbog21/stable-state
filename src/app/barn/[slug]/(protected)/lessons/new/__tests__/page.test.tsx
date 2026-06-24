@@ -12,13 +12,10 @@ vi.mock('@/lib/db/horses', () => ({
   getHorsesByBarn: vi.fn(),
 }))
 
-vi.mock('@/lib/db/riders', () => ({
-  getRidersByBarn: vi.fn(),
-}))
-
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
   getInstructorsByBarn: vi.fn(),
+  getActiveMembersWithProfiles: vi.fn(),
 }))
 
 vi.mock('@/lib/db/auth', () => ({
@@ -40,8 +37,7 @@ vi.mock('@/lib/db/lesson-tiers', () => ({
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
-import { getRidersByBarn } from '@/lib/db/riders'
-import { getUserMembership, getInstructorsByBarn } from '@/lib/db/barn-memberships'
+import { getUserMembership, getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
@@ -56,8 +52,8 @@ const mockHorses = [
 ]
 
 const mockRiders = [
-  { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', created_at: '2026-01-01', updated_at: '2026-01-01' },
-  { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', created_at: '2026-01-02', updated_at: '2026-01-02' },
+  { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
+  { membershipId: 'mem-2', userId: 'user-2', name: 'Bob' },
 ]
 
 const mockTrainerMembership = createMockMembership({ id: 'mem-1', created_at: '2026-01-01T00:00:00Z' })
@@ -72,7 +68,7 @@ describe('LessonNewPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
-    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue(mockRiders)
     vi.mocked(getTiersByBarn).mockResolvedValue([mockTier])
     mockSupabaseUser()
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
@@ -244,9 +240,9 @@ describe('LessonNewPage', () => {
     expect(vi.mocked(getHorsesByBarn).mock.calls[0][0]).toBe('barn-1')
   })
 
-  it('should_call_getRidersByBarn_with_barn_id', async () => {
+  it('should_call_getActiveMembersWithProfiles_with_barn_id', async () => {
     await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(vi.mocked(getRidersByBarn).mock.calls[0][0]).toBe('barn-1')
+    expect(vi.mocked(getActiveMembersWithProfiles).mock.calls[0][0]).toBe('barn-1')
   })
 
   it('should_call_getTiersByBarn_with_barn_id', async () => {

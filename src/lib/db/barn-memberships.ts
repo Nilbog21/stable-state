@@ -175,9 +175,10 @@ export async function getInstructorsByBarn(
 
 export async function getActiveMembersWithProfiles(
   barnId: string,
-  role: 'trainer' | 'rider'
+  role: 'trainer' | 'rider',
+  client?: SupabaseClient
 ): Promise<{ membershipId: string; userId: string; name: string }[]> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
 
   const { data: memberships, error: memError } = await supabase
     .from('barn_memberships')

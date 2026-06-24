@@ -478,35 +478,4 @@ describe('LessonForm', () => {
     expect(screen.queryByText(/group lesson requires at least 1 horse/i)).toBeNull()
   })
 
-  it('should_not_show_rider_error_when_new_rider_name_entered_without_existing_rider_in_normal_mode', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
-    render(<LessonForm {...baseProps} isManager={true} horses={[horse]} />)
-    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
-    fireEvent.change(screen.getByPlaceholderText(/Add new rider/i), { target: { value: 'Jane' } })
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
-    expect(screen.queryByText(/a rider is required/i)).toBeNull()
-  })
-
-  it('should_show_conflict_error_when_new_rider_name_and_existing_rider_both_submitted_in_normal_mode', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm {...baseProps} isManager={true} horses={[horse]} riders={[rider]} />)
-    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
-    fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
-    fireEvent.change(screen.getByPlaceholderText(/Add new rider/i), { target: { value: 'Jane' } })
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
-    expect(screen.getByRole('alert').textContent).toContain('select a rider or add a new one, not both')
-  })
-
-  it('should_not_call_action_when_new_rider_name_and_existing_rider_both_submitted_in_normal_mode', () => {
-    const action = vi.fn().mockResolvedValue({ error: null })
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm {...baseProps} action={action} isManager={true} horses={[horse]} riders={[rider]} />)
-    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
-    fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
-    fireEvent.change(screen.getByPlaceholderText(/Add new rider/i), { target: { value: 'Jane' } })
-    fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
-    expect(action).not.toHaveBeenCalled()
-  })
 })

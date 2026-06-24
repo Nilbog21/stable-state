@@ -48,7 +48,7 @@ export default async function LessonDetailPage({
   const canEditNotes = role === 'trainer' || role === 'manager'
 
   const myRiderEntry = role === 'rider'
-    ? lesson.lesson_riders.find((lr) => lr.riders?.user_id === user.id) ?? null
+    ? lesson.lesson_riders.find((lr) => lr.barn_membership?.user_id === user.id) ?? null
     : null
 
   const boundAction = updateAllNotesAction.bind(null, slug, lesson.id)
@@ -109,11 +109,11 @@ export default async function LessonDetailPage({
                   {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_type === 'group' ? (
                     <ul className="flex flex-col gap-1">
                       {lesson.lesson_riders.map((lr, i) => (
-                        <li key={lr.riders?.id ?? i}>{lr.riders?.name ?? '—'}</li>
+                        <li key={lr.barn_membership?.id ?? i}>{lr.barn_membership?.name ?? '—'}</li>
                       ))}
                     </ul>
                   ) : (
-                    lesson.lesson_riders.map((lr) => lr.riders?.name ?? '—').join(', ')
+                    lesson.lesson_riders.map((lr) => lr.barn_membership?.name ?? '—').join(', ')
                   )}
                   {role === 'rider' && myRiderEntry && (
                     <div className="mt-2">

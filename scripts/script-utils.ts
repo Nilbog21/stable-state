@@ -16,7 +16,6 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   mustSucceed(await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId }), 'teardown lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', barnId), 'delete lesson_tiers')
   mustSucceed(await supabase.from('notifications').delete().eq('barn_id', barnId), 'delete notifications')
-  mustSucceed(await supabase.from('riders').delete().eq('barn_id', barnId), 'delete riders')
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', barnId), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
 }

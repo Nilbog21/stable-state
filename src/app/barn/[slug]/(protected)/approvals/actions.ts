@@ -7,8 +7,6 @@ import {
   deleteMembership,
   getMembershipById,
 } from '@/lib/db/barn-memberships'
-import { createRider } from '@/lib/db/riders'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
 
 export async function approveMembershipAction(
   barnSlug: string,
@@ -19,19 +17,6 @@ export async function approveMembershipAction(
   const toApprove = await getMembershipById(membershipId)
   if (!toApprove || toApprove.barn_id !== barn.id) return
   await approveMembership(membershipId)
-
-  if (toApprove.role === 'rider' && toApprove.user_id) {
-    const profiles = await getProfilesByUserIds([toApprove.user_id])
-    const profile = profiles[0]
-    if (profile) {
-      const name = `${profile.first_name} ${profile.last_name}`.trim()
-      try {
-        await createRider(toApprove.barn_id, name, toApprove.user_id)
-      } catch (err) {
-        if ((err as { code?: string }).code !== '23505') throw err
-      }
-    }
-  }
 
   revalidatePath(`/barn/${barnSlug}/settings`)
 }

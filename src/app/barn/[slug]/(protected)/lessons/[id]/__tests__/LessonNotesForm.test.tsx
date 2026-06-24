@@ -17,7 +17,7 @@ import { useRouter } from 'next/navigation'
 afterEach(cleanup)
 
 const mockHorse = { exertion_level: 3, horse_notes: 'watch left lead', horses: { id: 'horse-1', name: 'Thunderbolt' } }
-const mockRider = { rider_notes: 'good position', private_notes: 'struggling', riders: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }
+const mockRider = { rider_notes: 'good position', private_notes: 'struggling', barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }
 
 const mockAction = vi.fn().mockResolvedValue(undefined)
 
@@ -156,7 +156,7 @@ describe('LessonNotesForm', () => {
   })
 
   it('should_not_render_rider_form_when_riders_relation_is_null', () => {
-    const nullRider = { ...mockRider, riders: null }
+    const nullRider = { ...mockRider, barn_membership: null }
     render(
       <NavigationBlockerProvider>
         <LessonNotesForm action={mockAction} horses={[]} riders={[nullRider]} />
@@ -178,7 +178,7 @@ describe('LessonNotesForm', () => {
   })
 
   it('should_render_dash_for_null_rider_name', () => {
-    const nullRider = { ...mockRider, riders: null }
+    const nullRider = { ...mockRider, barn_membership: null }
     render(
       <NavigationBlockerProvider>
         <LessonNotesForm action={mockAction} horses={[]} riders={[nullRider]} />
