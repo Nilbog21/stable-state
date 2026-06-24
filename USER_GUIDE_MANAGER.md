@@ -10,9 +10,13 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days (lessons wh
 
 ## Horses
 
-Use **Horses** in the nav to see a weekly exertion summary for each horse, sortable by name or exertion level. Add a new horse using the form at the top of the page. To rename a horse, tap its name inline and click **Save**. To remove a horse, click **Remove** — this soft-deletes the horse and hides it from the active roster while preserving its lesson history.
+Use **Horses** in the nav to see horses grouped into three sections:
 
-Tap any horse name to open its detail page. From there you can manage availability: check **Available** to mark the horse in rotation, or uncheck it to mark the horse unavailable and optionally enter a reason. When marking a horse available again, any existing reason text is shown but grayed out and will be cleared when you save. Unavailable horses appear with an **(Unavailable)** badge in the list.
+- **Available** — horses in active rotation, sorted by total exertion (7d) ascending so the most-rested horses appear first. Each card shows name, total exertion, lesson count, and jumping count for the last 7 days.
+- **Unavailable** — horses temporarily out of rotation; each card shows the horse name and the reason entered when marking them unavailable.
+- **Inactive** — soft-deleted horses (visible to managers only); each card shows the horse name.
+
+Empty sections are hidden. Tap any card to open the horse's detail page. To add a new horse, use the **Horse name** input and **Add** button in the page header (top right).
 
 ## Members
 

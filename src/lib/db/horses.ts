@@ -64,11 +64,12 @@ export async function getHorseExertionSummary(
     p_since: since.toISOString(),
   })
   if (error) throw error
-  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; is_available: boolean; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
+  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
     id: row.id,
     name: row.name,
     is_active: row.is_active,
     is_available: row.is_available ?? true,
+    unavailability_reason: row.unavailability_reason ?? null,
     lessonCount: Number(row.lesson_count),
     totalExertion: Number(row.total_exertion),
     jumpingCount: Number(row.jumping_count),
@@ -82,7 +83,6 @@ export async function getHorseById(horseId: string, barnId: string): Promise<Hor
     .select()
     .eq('id', horseId)
     .eq('barn_id', barnId)
-    .eq('is_active', true)
     .single()
 
   if (error) {
