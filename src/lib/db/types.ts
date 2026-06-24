@@ -171,6 +171,14 @@ export interface HorseIncomeDetailRow {
   splitAmount: number
 }
 
+export interface RiderIncomeDetailRow {
+  lessonId: string
+  lessonAt: string
+  fee: number
+  riderCount: number
+  splitAmount: number
+}
+
 export interface Notification {
   id: string
   user_id: string
