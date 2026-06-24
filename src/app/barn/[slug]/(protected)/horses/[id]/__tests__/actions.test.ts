@@ -256,10 +256,15 @@ describe('uploadHorseDocumentAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
   })
 
-  it('should_upload_document_as_manager', async () => {
+  it('should_call_uploadDocumentFile_when_manager_uploads', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
     await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
     expect(uploadDocumentFile).toHaveBeenCalled()
+  })
+
+  it('should_call_createHorseDocument_when_manager_uploads', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
     expect(createHorseDocument).toHaveBeenCalled()
   })
 
@@ -354,9 +359,13 @@ describe('deleteHorseDocumentAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_delete_document_record_and_storage_file', async () => {
+  it('should_delete_document_record', async () => {
     await deleteHorseDocumentAction('green-acres', 'horse-1', 'doc-1', 'barn-1/horses/horse-1/coggins.pdf')
-    expect(deleteHorseDocument).toHaveBeenCalledWith('doc-1', mockBarnForDocs.id)
+    expect(deleteHorseDocument).toHaveBeenCalledWith('doc-1', 'horse-1', mockBarnForDocs.id)
+  })
+
+  it('should_remove_storage_file', async () => {
+    await deleteHorseDocumentAction('green-acres', 'horse-1', 'doc-1', 'barn-1/horses/horse-1/coggins.pdf')
     expect(removeDocumentFile).toHaveBeenCalledWith('barn-1/horses/horse-1/coggins.pdf')
   })
 

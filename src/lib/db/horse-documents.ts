@@ -32,12 +32,13 @@ export async function createHorseDocument(
   return data
 }
 
-export async function deleteHorseDocument(id: string, barnId: string): Promise<void> {
+export async function deleteHorseDocument(id: string, horseId: string, barnId: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('horse_documents')
     .delete()
     .eq('id', id)
+    .eq('horse_id', horseId)
     .eq('barn_id', barnId)
   if (error) throw error
 }

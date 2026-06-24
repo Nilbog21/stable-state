@@ -155,12 +155,12 @@ describe('deleteHorseDocument', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         delete: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ eq: mockEq }),
+          eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq }) }),
         }),
       }),
     } as any)
 
-    await expect(deleteHorseDocument('doc-1', 'barn-1')).resolves.toBeUndefined()
+    await expect(deleteHorseDocument('doc-1', 'horse-1', 'barn-1')).resolves.toBeUndefined()
   })
 
   it('should_throw_on_supabase_error', async () => {
@@ -168,13 +168,15 @@ describe('deleteHorseDocument', () => {
       from: vi.fn().mockReturnValue({
         delete: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: new Error('delete error') }),
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: new Error('delete error') }),
+            }),
           }),
         }),
       }),
     } as any)
 
-    await expect(deleteHorseDocument('doc-1', 'barn-1')).rejects.toThrow('delete error')
+    await expect(deleteHorseDocument('doc-1', 'horse-1', 'barn-1')).rejects.toThrow('delete error')
   })
 })
 

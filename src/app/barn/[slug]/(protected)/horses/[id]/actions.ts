@@ -97,7 +97,7 @@ export async function deleteHorseDocumentAction(
   storagePath: string
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
-  await deleteHorseDocument(docId, barn.id)
-  await removeDocumentFile(storagePath)
+  await deleteHorseDocument(docId, horseId, barn.id)
+  await removeDocumentFile(storagePath).catch(() => {})
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
