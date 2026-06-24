@@ -1,7 +1,7 @@
 'use client'
 
 import { useActionState, useState, useEffect } from 'react'
-import type { Horse, LessonDetail, LessonTier, LessonType, Rider } from '@/lib/db/types'
+import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types'
 import { DateHourPicker } from './new/DateHourPicker'
 import { useNavigationBlocker } from '../NavigationBlocker'
 
@@ -28,7 +28,7 @@ export function LessonForm({
 }: {
   mode: 'new' | 'edit'
   horses: Horse[]
-  riders: Rider[]
+  riders: { id: string; name: string }[]
   isManager: boolean
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   instructors: { userId: string; name: string }[]
@@ -63,12 +63,12 @@ export function LessonForm({
 
   const initialRiderIds = new Set(
     (initialLesson?.lesson_riders ?? [])
-      .map(lr => lr.riders?.id)
+      .map(lr => lr.barn_membership?.id)
       .filter((id): id is string => Boolean(id))
   )
 
   const initialNormalRiderId =
-    mode === 'edit' ? (initialLesson?.lesson_riders[0]?.riders?.id ?? '') : ''
+    mode === 'edit' ? (initialLesson?.lesson_riders[0]?.barn_membership?.id ?? '') : ''
 
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [lessonType, setLessonType] = useState<LessonType>(initialLessonType)
@@ -81,7 +81,6 @@ export function LessonForm({
   const [selectedId, setSelectedId] = useState<string>(computedInitialSelectedId)
   const [newHorseName, setNewHorseName] = useState('')
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
-  const [newRiderName, setNewRiderName] = useState('')
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
 
@@ -148,7 +147,6 @@ export function LessonForm({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setClientError(null)
     const hasNewHorse = newHorseName.trim() !== ''
-    const hasNewRider = newRiderName.trim() !== ''
     if (hasNewHorse && checkedHorseIds.size > 0) {
       e.preventDefault()
       setClientError('select a horse or add a new one, not both')
@@ -159,14 +157,9 @@ export function LessonForm({
       setClientError('normal lesson requires exactly 1 horse')
       return
     }
-    if (lessonType === 'normal' && normalRiderId === '' && !hasNewRider) {
+    if (lessonType === 'normal' && normalRiderId === '') {
       e.preventDefault()
       setClientError('a rider is required')
-      return
-    }
-    if (lessonType === 'normal' && normalRiderId !== '' && hasNewRider) {
-      e.preventDefault()
-      setClientError('select a rider or add a new one, not both')
       return
     }
     if (lessonType === 'group' && !hasNewHorse && checkedHorseIds.size < 1) {
@@ -384,20 +377,6 @@ export function LessonForm({
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
-            {isManager && (
-              <>
-                <label htmlFor="new_rider_name" className="sr-only">Add new rider</label>
-                <input
-                  id="new_rider_name"
-                  type="text"
-                  name="new_rider_name"
-                  placeholder="Add new rider…"
-                  value={newRiderName}
-                  onChange={e => setNewRiderName(e.target.value)}
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-              </>
-            )}
           </>
         ) : (
           riders.map((r) => (

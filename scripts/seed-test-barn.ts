@@ -10,7 +10,7 @@
 import { fileURLToPath } from 'url'
 import { upsertProfile } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
-import { createRider } from '@/lib/db/riders'
+
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { teardown } from './teardown-test-barn'
@@ -77,24 +77,29 @@ async function run() {
   const managerId = await createUser('manager', 'Test', 'Manager')
   const trainerId = await createUser('trainer', 'Test', 'Trainer')
   const riderId = await createUser('rider', 'Test', 'Rider')
+  const rider2Id = await createUser('rider2', 'Test', 'Rider2')
 
   mustSucceed(
     await supabase.from('barn_memberships').insert([
       { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active', can_instruct: true },
       { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active', can_instruct: true },
       { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false },
+      { user_id: rider2Id,  barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false },
     ]),
     'insert memberships'
   )
+
+  const { data: riderMemberships, error: rmErr } = await supabase
+    .from('barn_memberships').select('id, user_id').eq('barn_id', barnId).eq('role', 'rider')
+  if (rmErr) throw rmErr
+  const rider1MembershipId = riderMemberships!.find((m) => m.user_id === riderId)!.id
+  const rider2MembershipId = riderMemberships!.find((m) => m.user_id === rider2Id)!.id
 
   const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, supabase)
   const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, supabase)
 
   const horse1 = await createHorse(barnId, 'Apollo', supabase)
   const horse2 = await createHorse(barnId, 'Bella', supabase)
-
-  const rider1 = await createRider(barnId, 'Test Rider', riderId, supabase)
-  const rider2 = await createRider(barnId, 'Anon Rider', undefined, supabase)
 
   const now = new Date()
   const past = (daysAgo: number) =>
@@ -104,37 +109,37 @@ async function run() {
 
   await createLessonWithParticipants({
     barnId, instructorId: trainerId, lessonAt: past(5), fee: tier1.price,
-    horseIds: [horse1.id], exertionLevels: [3], riderIds: [rider1.id],
+    horseIds: [horse1.id], exertionLevels: [3], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: false, tierName: tier1.name,
   }, supabase)
 
   await createLessonWithParticipants({
     barnId, instructorId: trainerId, lessonAt: past(3), fee: tier2.price,
-    horseIds: [horse2.id], exertionLevels: [4], riderIds: [rider1.id],
+    horseIds: [horse2.id], exertionLevels: [4], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: true, tierName: tier2.name,
   }, supabase)
 
   await createLessonWithParticipants({
     barnId, instructorId: trainerId, lessonAt: past(1), fee: 80,
-    horseIds: [horse1.id, horse2.id], exertionLevels: [3, 2], riderIds: [rider1.id, rider2.id],
+    horseIds: [horse1.id, horse2.id], exertionLevels: [3, 2], riderIds: [rider1MembershipId, rider2MembershipId],
     lessonType: 'group', jumping: false, tierName: 'Custom',
   }, supabase)
 
   await createLessonWithParticipants({
     barnId, instructorId: trainerId, lessonAt: past(10), fee: tier1.price,
-    horseIds: [horse2.id], exertionLevels: [2], riderIds: [rider1.id],
+    horseIds: [horse2.id], exertionLevels: [2], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: false, tierName: tier1.name,
   }, supabase)
 
   await createLessonWithParticipants({
     barnId, instructorId: trainerId, lessonAt: future(2), fee: tier1.price,
-    horseIds: [horse1.id], exertionLevels: [3], riderIds: [rider1.id],
+    horseIds: [horse1.id], exertionLevels: [3], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: false, tierName: tier1.name,
   }, supabase)
 
   await createLessonWithParticipants({
     barnId, instructorId: trainerId, lessonAt: future(5), fee: tier2.price,
-    horseIds: [horse2.id], exertionLevels: [5], riderIds: [rider1.id],
+    horseIds: [horse2.id], exertionLevels: [5], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: true, tierName: tier2.name,
   }, supabase)
 

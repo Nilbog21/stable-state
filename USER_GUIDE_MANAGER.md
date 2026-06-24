@@ -27,7 +27,7 @@ On the horse's detail page, managers see two additional sections:
 
 ## Members
 
-Go to **Members** to browse the barn roster. You will see a Trainers section and a Riders section, each listing active members with links to their detail pages. Your own card appears at the top. When you approve a membership request, a rider record is created automatically.
+Go to **Members** to browse the barn roster. You will see a Trainers section and a Riders section, each listing active members with links to their detail pages. Your own card appears at the top.
 
 Tap any member card to open their detail page. From there you can view their documents, upload new ones, or delete existing ones. Accepted file types are PDF, JPG, PNG, and DOCX (max 5 MB per file). Document types for trainers: **Instructor Contract**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**. Tap a file name to open the document (link is valid for 5 minutes).
 
@@ -59,7 +59,7 @@ Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing
 
 ## Approvals
 
-Go to **Settings** to review pending membership requests. Approving a request grants the member active access to the barn and, for rider-role requests, automatically creates their rider record.
+Go to **Settings** to review pending membership requests. Approving a request grants the member active access to the barn.
 
 ## Profile & Guide
 

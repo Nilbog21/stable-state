@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
-import type { LessonDetail, Horse, Rider } from '@/lib/db/types'
+import type { LessonDetail, Horse } from '@/lib/db/types'
 import { createMockLessonTier } from '@/test/fixtures'
 import { LessonForm } from '../../../LessonForm'
 import { NavigationBlockerProvider, useNavigationBlocker } from '../../../../NavigationBlocker'
@@ -10,8 +10,8 @@ afterEach(cleanup)
 const mockTier = createMockLessonTier({ is_default: true })
 
 const mockHorse: Horse = { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '', updated_at: '' }
-const mockRider: Rider = { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', user_id: null, created_at: '', updated_at: '' }
-const mockRider2: Rider = { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', user_id: null, created_at: '', updated_at: '' }
+const mockRider = { id: 'rider-1', name: 'Alice' }
+const mockRider2 = { id: 'rider-2', name: 'Bob' }
 
 const normalLesson: LessonDetail = {
   id: 'lesson-1',
@@ -26,15 +26,15 @@ const normalLesson: LessonDetail = {
   tier_name: 'Custom',
   instructor_name: 'Jane Smith',
   lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-  lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
+  lesson_riders: [{ barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } }],
 }
 
 const groupLesson: LessonDetail = {
   ...normalLesson,
   lesson_type: 'group',
   lesson_riders: [
-    { riders: { id: 'rider-1', name: 'Alice' } },
-    { riders: { id: 'rider-2', name: 'Bob' } },
+    { barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } },
+    { barn_membership: { id: 'rider-2', name: 'Bob', user_id: null } },
   ],
 }
 
@@ -366,11 +366,6 @@ describe('LessonForm (edit mode)', () => {
   it('should_render_add_new_horse_input_for_managers_in_edit_mode', () => {
     render(<LessonForm {...baseProps} isManager={true} />)
     expect(screen.queryByPlaceholderText(/add new horse/i)).not.toBeNull()
-  })
-
-  it('should_render_add_new_rider_input_for_managers_in_normal_edit_mode', () => {
-    render(<LessonForm {...baseProps} isManager={true} />)
-    expect(screen.queryByPlaceholderText(/add new rider/i)).not.toBeNull()
   })
 
   it('should_show_save_button_in_edit_mode', () => {

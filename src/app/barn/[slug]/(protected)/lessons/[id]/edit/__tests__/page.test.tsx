@@ -5,9 +5,8 @@ afterEach(cleanup)
 
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/lessons', () => ({ getLessonById: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn(), getUserMembership: vi.fn() }))
+vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn(), getUserMembership: vi.fn(), getActiveMembersWithProfiles: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
-vi.mock('@/lib/db/riders', () => ({ getRidersByBarn: vi.fn() }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
@@ -22,9 +21,8 @@ vi.mock('../../../LessonForm', () => ({
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
-import { getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
-import { getRidersByBarn } from '@/lib/db/riders'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
@@ -45,7 +43,7 @@ const mockLesson = {
   tier_name: 'Custom',
   instructor_name: 'Jane Smith',
   lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-  lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
+  lesson_riders: [{ barn_membership: { id: 'mem-1', name: 'Alice', user_id: null } }],
 }
 
 const mockManagerMembership = {
@@ -60,7 +58,7 @@ function setupDefaults() {
   vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
   vi.mocked(getInstructorsByBarn).mockResolvedValue([])
   vi.mocked(getHorsesByBarn).mockResolvedValue([])
-  vi.mocked(getRidersByBarn).mockResolvedValue([])
+  vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
   vi.mocked(getAllTiersByBarn).mockResolvedValue([])
 }
 
@@ -74,7 +72,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getUserMembership).mockReset()
     vi.mocked(getInstructorsByBarn).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
-    vi.mocked(getRidersByBarn).mockReset()
+    vi.mocked(getActiveMembersWithProfiles).mockReset()
     vi.mocked(getAllTiersByBarn).mockReset()
     vi.mocked(getAuthenticatedUser).mockReset()
     setupDefaults()
@@ -230,5 +228,14 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByText('Thunderbolt (inactive)')).toBeDefined()
+  })
+
+  it('should_map_rider_members_to_id_name_objects', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice Rider' },
+    ])
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
 })

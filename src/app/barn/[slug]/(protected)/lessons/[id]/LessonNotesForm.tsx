@@ -13,7 +13,7 @@ interface LessonHorse {
 interface LessonRider {
   rider_notes: string | null
   private_notes: string | null
-  riders: { id: string; name: string; user_id: string | null } | null
+  barn_membership: { id: string; name: string; user_id: string | null } | null
 }
 
 interface Props {
@@ -105,16 +105,16 @@ export function LessonNotesForm({ action, horses, riders }: Props) {
       ))}
 
       {riders.map((lr, i) => (
-        <div key={lr.riders?.id ?? i}>
-          <div className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">{lr.riders?.name ?? '—'}</div>
-          {lr.riders?.id && (
+        <div key={lr.barn_membership?.id ?? i}>
+          <div className="mb-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">{lr.barn_membership?.name ?? '—'}</div>
+          {lr.barn_membership?.id && (
             <>
-              <input type="hidden" name="riderIds" value={lr.riders.id} />
+              <input type="hidden" name="riderIds" value={lr.barn_membership.id} />
               <div className="flex flex-col gap-2">
                 <div className="flex flex-col gap-1">
                   <label className="text-xs font-medium text-zinc-500">Rider Notes</label>
                   <textarea
-                    name={`rider_notes_${lr.riders.id}`}
+                    name={`rider_notes_${lr.barn_membership.id}`}
                     defaultValue={lr.rider_notes ?? ''}
                     rows={2}
                     className="w-full rounded border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
@@ -123,7 +123,7 @@ export function LessonNotesForm({ action, horses, riders }: Props) {
                 <div className="flex flex-col gap-1 rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
                   <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</span>
                   <textarea
-                    name={`private_notes_${lr.riders.id}`}
+                    name={`private_notes_${lr.barn_membership.id}`}
                     defaultValue={lr.private_notes ?? ''}
                     rows={2}
                     className="w-full rounded border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"

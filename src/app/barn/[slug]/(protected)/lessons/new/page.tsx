@@ -2,8 +2,7 @@ import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
-import { getRidersByBarn } from '@/lib/db/riders'
-import { getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
+import { getActiveMembersWithProfiles, getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { submitLesson } from '@/app/actions/lessons'
 import { LessonForm } from '../LessonForm'
@@ -26,13 +25,14 @@ export default async function LessonNewPage({
     notFound()
   }
 
-  const [horses, riders, membership, tiers, instructors] = await Promise.all([
+  const [horses, riderMembers, membership, tiers, instructors] = await Promise.all([
     getHorsesByBarn(barn.id),
-    getRidersByBarn(barn.id),
+    getActiveMembersWithProfiles(barn.id, 'rider'),
     getUserMembership(user.id, barn.id),
     getTiersByBarn(barn.id),
     getInstructorsByBarn(barn.id),
   ])
+  const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
   const isManager = membership?.role === 'manager'
 

@@ -133,13 +133,21 @@ async function run() {
   }
 
   if (targetMembership.role === 'rider') {
+    const targetBm = mustSucceed(
+      await supabase.from('barn_memberships').select('id').eq('user_id', targetUserId).eq('barn_id', barnId).single(),
+      'fetch target barn membership'
+    )
+    const devBm = mustSucceed(
+      await supabase.from('barn_memberships').select('id').eq('user_id', devUserId).eq('barn_id', barnId).single(),
+      'fetch dev barn membership'
+    )
     mustSucceed(
       await supabase
-        .from('riders')
-        .update({ user_id: devUserId, name: DEV_NAME })
-        .eq('user_id', targetUserId)
+        .from('lesson_riders')
+        .update({ rider_id: devBm.id })
+        .eq('rider_id', targetBm.id)
         .eq('barn_id', barnId),
-      'update rider row'
+      'reassign lesson riders'
     )
   }
 

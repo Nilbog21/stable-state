@@ -32,7 +32,7 @@ async function hydrateParticipants(
       ? supabase.from('horses').select('id, name').in('id', horseIds)
       : Promise.resolve({ data: [], error: null }),
     riderIds.length
-      ? supabase.from('riders').select('id, name').in('id', riderIds)
+      ? supabase.from('barn_memberships').select('id, user_id, profiles(first_name, last_name)').in('id', riderIds)
       : Promise.resolve({ data: [], error: null }),
     instructorIds.length
       ? supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
@@ -43,6 +43,13 @@ async function hydrateParticipants(
   if (ridersError) throw ridersError
   if (profilesError) throw profilesError
 
+  const membershipMap = new Map(
+    (riders ?? []).map((bm: { id: string; profiles: { first_name: string; last_name: string } | null }) => [
+      bm.id,
+      bm.profiles ? `${bm.profiles.first_name} ${bm.profiles.last_name}` : bm.id,
+    ])
+  )
+
   return lessons.map((lesson) => {
     const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
     const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
@@ -51,7 +58,7 @@ async function hydrateParticipants(
       .filter((name): name is string => Boolean(name))
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
     const riderParticipants = riderJunctionRows
-      .map((lr) => ({ id: lr.rider_id, name: (riders ?? []).find((r) => r.id === lr.rider_id)?.name }))
+      .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id) }))
       .filter((p): p is { id: string; name: string } => Boolean(p.name))
     const riderNames = riderParticipants.map((p) => p.name)
     const riderIds = riderParticipants.map((p) => p.id)
@@ -98,10 +105,11 @@ export async function getLessonsByBarn(
 
   if (role === 'rider') {
     const { data: rider, error: riderError } = await supabase
-      .from('riders')
+      .from('barn_memberships')
       .select('id')
       .eq('barn_id', barnId)
       .eq('user_id', userId)
+      .eq('role', 'rider')
       .maybeSingle()
     if (riderError) throw riderError
     if (!rider) return []
@@ -135,8 +143,8 @@ export async function getLessonsByBarn(
 export async function getLessonById(lessonId: string, barnId: string, role: Role = 'trainer', userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, riders ( id, name, user_id )'
-    : 'rider_notes, private_notes, riders ( id, name, user_id )'
+    ? 'rider_notes, barn_memberships ( id, user_id, profiles ( first_name, last_name ) )'
+    : 'rider_notes, private_notes, barn_memberships ( id, user_id, profiles ( first_name, last_name ) )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
@@ -162,14 +170,39 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     if (profile) instructor_name = `${profile.first_name} ${profile.last_name}`
   }
 
-  const base = { ...data, instructor_name }
+  type RawLessonRider = {
+    rider_notes: string | null
+    private_notes?: string | null
+    barn_memberships: { id: string; user_id: string | null; profiles: { first_name: string; last_name: string } | null } | null
+  }
+
+  const normalizeLr = (lr: RawLessonRider) => ({
+    rider_notes: lr.rider_notes,
+    private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
+    barn_membership: lr.barn_memberships
+      ? {
+          id: lr.barn_memberships.id,
+          user_id: lr.barn_memberships.user_id,
+          name: lr.barn_memberships.profiles
+            ? `${lr.barn_memberships.profiles.first_name} ${lr.barn_memberships.profiles.last_name}`
+            : lr.barn_memberships.id,
+        }
+      : null,
+  })
+
+  const base = {
+    ...data,
+    instructor_name,
+    lesson_riders: (data.lesson_riders as RawLessonRider[]).map(normalizeLr),
+  }
+
   if (role === 'rider') {
     return {
       ...base,
-      lesson_riders: base.lesson_riders.map((lr: LessonDetail['lesson_riders'][number]) => ({
+      lesson_riders: base.lesson_riders.map((lr) => ({
         ...lr,
         private_notes: null,
-        rider_notes: lr.riders?.user_id === userId ? lr.rider_notes : null,
+        rider_notes: lr.barn_membership?.user_id === userId ? lr.rider_notes : null,
       })),
     } as LessonDetail
   }
@@ -217,10 +250,11 @@ export async function getUpcomingLessons(
 
   if (role === 'rider') {
     const { data: rider, error: riderError } = await supabase
-      .from('riders')
+      .from('barn_memberships')
       .select('id')
       .eq('barn_id', barnId)
       .eq('user_id', userId)
+      .eq('role', 'rider')
       .maybeSingle()
     if (riderError) throw riderError
     if (!rider) return []

@@ -481,6 +481,22 @@ describe('getLessonsByBarn', () => {
     expect(result[0].rider_count).toBe(1)
   })
 
+  it('should_use_membership_id_as_name_when_membership_profiles_is_null', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([lesson])
+      if (table === 'lesson_horses') return makeInChain([])
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: null, profiles: null }])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+
+    expect(result[0].rider_names).toEqual(['mem-1'])
+  })
+
   describe('role_filtering', () => {
     function makeTrainerLessonsChain(data: unknown[], error: Error | null = null) {
       const mockOrder = vi.fn().mockResolvedValue({ data, error })
@@ -891,6 +907,38 @@ describe('getLessonById', () => {
     const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
 
     expect(result?.lesson_riders[1].rider_notes).toBeNull()
+  })
+
+  it('should_use_membership_id_as_name_when_barn_membership_profiles_is_null', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ barn_memberships: { id: 'mem-1', user_id: null, profiles: null } }],
+    }
+    const { select } = makeLessonByIdChain(lessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1')
+
+    expect(result?.lesson_riders[0].barn_membership?.name).toBe('mem-1')
+  })
+
+  it('should_return_null_barn_membership_when_lesson_riders_barn_memberships_is_null', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, barn_memberships: null }],
+    }
+    const { select } = makeLessonByIdChain(lessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1')
+
+    expect(result?.lesson_riders[0].barn_membership).toBeNull()
   })
 })
 

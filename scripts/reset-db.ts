@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url'
 import { upsertProfile } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
-import { createRider } from '@/lib/db/riders'
+
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createPendingMembership } from '@/lib/db/barn-memberships'
@@ -211,11 +211,15 @@ async function run() {
   await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
   await createPendingMembership(pendingUserId, DEV_BARN_ID, 'rider', supabase)
 
-  const riderRowIds: string[] = []
-  for (let i = 0; i < DEV_RIDERS.length; i++) {
-    const row = await createRider(DEV_BARN_ID, DEV_RIDERS[i].riderName, riderIds[i], supabase)
-    riderRowIds.push(row.id)
-  }
+  const { data: riderMemberships, error: riderMembershipsErr } = await supabase
+    .from('barn_memberships')
+    .select('id, user_id')
+    .eq('barn_id', DEV_BARN_ID)
+    .eq('role', 'rider')
+    .eq('status', 'active')
+    .in('user_id', riderIds)
+  if (riderMembershipsErr) throw riderMembershipsErr
+  const riderRowIds = riderIds.map((uid) => riderMemberships!.find((m) => m.user_id === uid)!.id)
 
   const horseIds: string[] = []
   for (const name of DEV_HORSES) {

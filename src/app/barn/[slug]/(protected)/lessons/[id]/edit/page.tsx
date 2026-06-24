@@ -2,9 +2,8 @@ import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
-import { getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
-import { getRidersByBarn } from '@/lib/db/riders'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { updateLessonAction } from '@/app/actions/lessons'
 import { LessonForm } from '../../LessonForm'
@@ -33,12 +32,13 @@ export default async function EditLessonPage({
   if (!lesson) notFound()
   if (membership.role === 'trainer' && lesson.instructor_id !== user.id) notFound()
 
-  const [horses, riders, tiers, instructorList] = await Promise.all([
+  const [horses, riderMembers, tiers, instructorList] = await Promise.all([
     getHorsesByBarn(barn.id),
-    getRidersByBarn(barn.id),
+    getActiveMembersWithProfiles(barn.id, 'rider'),
     getAllTiersByBarn(barn.id),
     getInstructorsByBarn(barn.id),
   ])
+  const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
   const instructors = lesson.instructor_id && instructorList.every((i) => i.userId !== lesson.instructor_id)
     ? [{ userId: lesson.instructor_id, name: 'Former Instructor' }, ...instructorList]

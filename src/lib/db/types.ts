@@ -61,15 +61,6 @@ export interface Horse {
   updated_at: string
 }
 
-export interface Rider {
-  id: string
-  barn_id: string
-  name: string
-  user_id: string | null
-  is_active: boolean
-  created_at: string
-  updated_at: string
-}
 
 export type LessonType = 'normal' | 'group'
 export type PaymentType = 'venmo' | 'zelle' | 'cash' | 'check' | 'freshbooks'
@@ -99,7 +90,7 @@ export interface LessonWithDetails extends Lesson {
 export interface LessonDetail extends Lesson {
   instructor_name: string | null
   lesson_horses: { exertion_level: number; horse_notes: string | null; horses: { id: string; name: string } | null }[]
-  lesson_riders: { rider_notes: string | null; private_notes: string | null; riders: { id: string; name: string; user_id: string | null } | null }[]
+  lesson_riders: { rider_notes: string | null; private_notes: string | null; barn_membership: { id: string; name: string; user_id: string | null } | null }[]
 }
 
 export interface LessonHorse {

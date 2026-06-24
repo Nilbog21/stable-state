@@ -994,6 +994,21 @@ describe('getRiderIncomeSummary', () => {
     expect(result).toEqual([{ riderId: 'mem-orphan', riderName: 'mem-orphan', totalIncome: 100 }])
   })
 
+  it('should_use_membership_id_as_fallback_name_when_profiles_is_null', async () => {
+    const lesson = createMockLesson({ fee: 100 })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profiles: null }])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([{ riderId: 'mem-1', riderName: 'mem-1', totalIncome: 100 }])
+  })
+
   it('should_treat_null_lessons_data_as_empty', async () => {
     const mockLt = vi.fn().mockResolvedValue({ data: null, error: null })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
@@ -1680,6 +1695,24 @@ describe('getOutstandingLessons', () => {
     const result = await getOutstandingLessons('barn-1', 'user-rider', 'rider')
 
     expect(result).toHaveLength(0)
+  })
+
+  it('should_use_membership_id_as_rider_name_when_profiles_is_null', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeOutstandingChain([lesson])
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profiles: null }])
+      if (table === 'profiles') return makeInChain([])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getOutstandingLessons('barn-1')
+
+    expect(result[0].rider_names).toEqual(['mem-1'])
   })
 })
 
