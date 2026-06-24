@@ -444,6 +444,13 @@ describe('LessonForm (edit mode)', () => {
     expect(checkbox.checked).toBe(true)
   })
 
+  it('should_render_tier_selector_before_jumping_checkbox_in_edit_mode', () => {
+    render(<LessonForm {...baseProps} />)
+    const tierSelect = screen.getByRole('combobox', { name: /tier/i })
+    const jumpingCheckbox = screen.getByRole('checkbox', { name: /jumping/i })
+    expect(tierSelect.compareDocumentPosition(jumpingCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('should_keep_pre_assigned_unavailable_horse_disabled_in_edit_mode', () => {
     const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
     const lessonWithUnavailableHorse: LessonDetail = {
