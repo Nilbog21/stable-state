@@ -7,7 +7,7 @@ export function HorseActivationSection({
   action,
 }: {
   isActive: boolean
-  action: () => Promise<void>
+  action: (isActive: boolean) => Promise<void>
 }) {
   const [confirming, setConfirming] = useState(false)
 
@@ -17,7 +17,7 @@ export function HorseActivationSection({
         <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500">Activation</h2>
         <button
           type="button"
-          onClick={() => void action()}
+          onClick={() => void action(true)}
           className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700"
         >
           Set Active
@@ -34,7 +34,7 @@ export function HorseActivationSection({
           <p className="text-sm text-zinc-700 dark:text-zinc-300">Mark this horse as inactive?</p>
           <button
             type="button"
-            onClick={() => { setConfirming(false); void action() }}
+            onClick={() => { setConfirming(false); void action(false) }}
             className="rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
           >
             Confirm

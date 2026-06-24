@@ -119,13 +119,30 @@ describe('renameHorseAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_updateHorse_with_trimmed_name', async () => {
+  it('should_call_updateHorse_with_trimmed_name_and_barn_id', async () => {
     const formData = new FormData()
     formData.set('name', '  Stormy  ')
 
     await renameHorseAction('green-acres', 'horse-1', formData)
 
-    expect(updateHorse).toHaveBeenCalledWith('horse-1', 'Stormy')
+    expect(updateHorse).toHaveBeenCalledWith('horse-1', mockBarn.id, 'Stormy')
+  })
+
+  it('should_not_call_updateHorse_when_name_is_blank', async () => {
+    const formData = new FormData()
+    formData.set('name', '   ')
+
+    await renameHorseAction('green-acres', 'horse-1', formData)
+
+    expect(updateHorse).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_updateHorse_when_name_field_is_absent', async () => {
+    const formData = new FormData()
+
+    await renameHorseAction('green-acres', 'horse-1', formData)
+
+    expect(updateHorse).not.toHaveBeenCalled()
   })
 
   it('should_revalidate_horses_list_path', async () => {

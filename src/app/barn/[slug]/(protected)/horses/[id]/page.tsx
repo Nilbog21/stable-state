@@ -28,7 +28,7 @@ export default async function HorseDetailPage({
   const role = membership.role
   const boundAvailabilityAction = updateHorseAvailabilityAction.bind(null, slug, horse.id)
   const boundRenameAction = renameHorseAction.bind(null, slug, horse.id)
-  const boundActivationAction = setHorseActiveAction.bind(null, slug, horse.id, !horse.is_active)
+  const boundActivationAction = setHorseActiveAction.bind(null, slug, horse.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">

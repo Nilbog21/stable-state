@@ -25,9 +25,10 @@ export async function renameHorseAction(
   horseId: string,
   formData: FormData
 ): Promise<void> {
-  await requireMembership(barnSlug, ['manager'])
-  const name = (formData.get('name') as string).trim()
-  await updateHorse(horseId, name)
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const name = (formData.get('name') as string | null)?.trim() ?? ''
+  if (!name) return
+  await updateHorse(horseId, barn.id, name)
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
