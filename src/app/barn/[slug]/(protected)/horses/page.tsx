@@ -35,26 +35,24 @@ export default async function HorsesPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <div className="mb-8 flex items-center justify-between">
-        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Horses</h1>
-        {isManager && (
-          <form action={addHorseAction.bind(null, slug)} className="flex gap-2">
-            <input
-              type="text"
-              name="name"
-              placeholder="Horse name"
-              required
-              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-            <button
-              type="submit"
-              className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Add
-            </button>
-          </form>
-        )}
-      </div>
+      <h1 className="mb-4 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Horses</h1>
+      {isManager && (
+        <form action={addHorseAction.bind(null, slug)} className="mb-8 flex gap-2">
+          <input
+            type="text"
+            name="name"
+            placeholder="Horse name"
+            required
+            className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+          <button
+            type="submit"
+            className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Add
+          </button>
+        </form>
+      )}
 
       {available.length > 0 && (
         <section className="mb-8">
