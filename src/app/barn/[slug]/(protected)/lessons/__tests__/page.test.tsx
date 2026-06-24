@@ -62,6 +62,7 @@ const mockLesson = {
   horse_names: ['Thunderbolt'],
   horse_count: 1,
   rider_names: ['Alice'],
+  rider_ids: ['rider-1'],
   rider_count: 1,
 }
 
@@ -276,5 +277,120 @@ describe('LessonsPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(getLessonsByBarn).toHaveBeenCalledWith('barn-1', 'user-1', 'rider')
+  })
+
+  it('should_not_show_filter_bar_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /^all$/i })).toBeNull()
+  })
+
+  it('should_show_all_lessons_when_no_filter_params', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Alice')).toBeDefined()
+  })
+
+  it('should_show_rider_pills_for_trainer', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /^all$/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /^alice$/i })).toBeDefined()
+  })
+
+  it('should_filter_lessons_by_rider_id_for_trainer', async () => {
+    const matchingLesson = { ...mockLesson, id: 'lesson-match', rider_names: ['Alice'], rider_ids: ['rider-1'] }
+    const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Alice')).toBeDefined()
+    expect(screen.queryByText('Spirit')).toBeNull()
+  })
+
+  it('should_show_all_lessons_for_trainer_when_filter_is_rider_with_no_id', async () => {
+    const lesson2 = { ...mockLesson, id: 'lesson-2', rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Alice')).toBeDefined()
+    expect(screen.getByText('Bob')).toBeDefined()
+  })
+
+  it('should_show_dimension_pills_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /by trainer/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: /by rider/i })).toBeDefined()
+  })
+
+  it('should_filter_lessons_by_trainer_id_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const matchingLesson = { ...mockLesson, id: 'lesson-match', instructor_id: 'user-1', instructor_name: 'John Doe', rider_names: ['Alice'], rider_ids: ['rider-1'] }
+    const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', instructor_id: 'user-2', instructor_name: 'Jane Smith', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'trainer', id: 'user-1' }),
+    })
+    render(jsx)
+    expect(screen.getByText('John Doe')).toBeDefined()
+    expect(screen.queryByText('Spirit')).toBeNull()
+  })
+
+  it('should_filter_lessons_by_rider_id_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const matchingLesson = { ...mockLesson, id: 'lesson-match', rider_names: ['Alice'], rider_ids: ['rider-1'] }
+    const nonMatchingLesson = { ...mockLesson, id: 'lesson-other', horse_names: ['Spirit'], rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Alice')).toBeDefined()
+    expect(screen.queryByText('Spirit')).toBeNull()
+  })
+
+  it('should_show_all_lessons_for_manager_when_filter_is_trainer_with_no_id', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const lesson2 = { ...mockLesson, id: 'lesson-2', instructor_id: 'user-2', instructor_name: 'Jane Smith', rider_names: ['Bob'], rider_ids: ['rider-2'] }
+    vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByText('John Doe')).toBeDefined()
+    expect(screen.getByText('Jane Smith')).toBeDefined()
+  })
+
+  it('should_show_active_pill_style_for_selected_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'trainer', id: 'user-1' }),
+    })
+    render(jsx)
+    const pill = screen.getByRole('link', { name: /john doe/i })
+    expect(pill.className).toContain('bg-zinc-900')
+  })
+
+  it('should_show_active_pill_style_for_selected_rider', async () => {
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
+    })
+    render(jsx)
+    const pill = screen.getByRole('link', { name: /alice/i })
+    expect(pill.className).toContain('bg-zinc-900')
   })
 })

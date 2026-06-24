@@ -53,12 +53,14 @@ async function hydrateParticipants(
     const riderNames = riderJunctionRows
       .map((lr) => (riders ?? []).find((r) => r.id === lr.rider_id)?.name)
       .filter((name): name is string => Boolean(name))
+    const riderIds = riderJunctionRows.map((lr) => lr.rider_id)
     return {
       ...lesson,
       instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
       horse_names: horseNames,
       horse_count: horseJunctionRows.length,
       rider_names: riderNames,
+      rider_ids: riderIds,
       rider_count: riderJunctionRows.length,
     }
   })
