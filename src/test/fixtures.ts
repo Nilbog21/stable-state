@@ -1,4 +1,4 @@
-import type { Barn, BarnMembership, Horse, HorseExertionSummary, Lesson, LessonTier, Profile, Rider } from '@/lib/db/types'
+import type { Barn, BarnMembership, Horse, HorseExertionSummary, Lesson, LessonTier, Profile } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
   return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', ...overrides }
@@ -52,18 +52,6 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
   }
 }
 
-export function createMockRider(overrides: Partial<Rider> = {}): Rider {
-  return {
-    id: 'rider-1',
-    barn_id: 'barn-1',
-    name: 'Jane Doe',
-    user_id: null,
-    is_active: true,
-    created_at: '',
-    updated_at: '',
-    ...overrides,
-  }
-}
 
 export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
   return {

@@ -778,15 +778,15 @@ describe('getRiderIncomeSummary', () => {
     const lesson = createMockLesson({ fee: 100 })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
-      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'rider-1' }])
-      if (table === 'riders') return makeInChain([{ id: 'rider-1', name: 'Alice' }])
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ riderId: 'rider-1', riderName: 'Alice', totalIncome: 100 }])
+    expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 100 }])
   })
 
   it('should_return_two_entries_when_splitting_fee_across_two_riders', async () => {
@@ -794,12 +794,12 @@ describe('getRiderIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson.id, rider_id: 'rider-1' },
-        { lesson_id: lesson.id, rider_id: 'rider-2' },
+        { lesson_id: lesson.id, rider_id: 'mem-1' },
+        { lesson_id: lesson.id, rider_id: 'mem-2' },
       ])
-      if (table === 'riders') return makeInChain([
-        { id: 'rider-1', name: 'Alice' },
-        { id: 'rider-2', name: 'Bob' },
+      if (table === 'barn_memberships') return makeInChain([
+        { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+        { id: 'mem-2', user_id: 'user-2', profiles: { first_name: 'Bob', last_name: 'Rider' } },
       ])
       return makeInChain([])
     })
@@ -815,12 +815,12 @@ describe('getRiderIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson.id, rider_id: 'rider-1' },
-        { lesson_id: lesson.id, rider_id: 'rider-2' },
+        { lesson_id: lesson.id, rider_id: 'mem-1' },
+        { lesson_id: lesson.id, rider_id: 'mem-2' },
       ])
-      if (table === 'riders') return makeInChain([
-        { id: 'rider-1', name: 'Alice' },
-        { id: 'rider-2', name: 'Bob' },
+      if (table === 'barn_memberships') return makeInChain([
+        { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+        { id: 'mem-2', user_id: 'user-2', profiles: { first_name: 'Bob', last_name: 'Rider' } },
       ])
       return makeInChain([])
     })
@@ -828,7 +828,7 @@ describe('getRiderIncomeSummary', () => {
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result.find((r) => r.riderId === 'rider-1')?.totalIncome).toBe(50)
+    expect(result.find((r) => r.riderId === 'mem-1')?.totalIncome).toBe(50)
   })
 
   it('should_allocate_half_fee_to_rider_2_when_two_riders', async () => {
@@ -836,12 +836,12 @@ describe('getRiderIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson.id, rider_id: 'rider-1' },
-        { lesson_id: lesson.id, rider_id: 'rider-2' },
+        { lesson_id: lesson.id, rider_id: 'mem-1' },
+        { lesson_id: lesson.id, rider_id: 'mem-2' },
       ])
-      if (table === 'riders') return makeInChain([
-        { id: 'rider-1', name: 'Alice' },
-        { id: 'rider-2', name: 'Bob' },
+      if (table === 'barn_memberships') return makeInChain([
+        { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+        { id: 'mem-2', user_id: 'user-2', profiles: { first_name: 'Bob', last_name: 'Rider' } },
       ])
       return makeInChain([])
     })
@@ -849,7 +849,7 @@ describe('getRiderIncomeSummary', () => {
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result.find((r) => r.riderId === 'rider-2')?.totalIncome).toBe(50)
+    expect(result.find((r) => r.riderId === 'mem-2')?.totalIncome).toBe(50)
   })
 
   it('should_return_three_entries_when_splitting_fee_across_three_riders', async () => {
@@ -857,14 +857,14 @@ describe('getRiderIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 90 }])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson.id, rider_id: 'rider-1' },
-        { lesson_id: lesson.id, rider_id: 'rider-2' },
-        { lesson_id: lesson.id, rider_id: 'rider-3' },
+        { lesson_id: lesson.id, rider_id: 'mem-1' },
+        { lesson_id: lesson.id, rider_id: 'mem-2' },
+        { lesson_id: lesson.id, rider_id: 'mem-3' },
       ])
-      if (table === 'riders') return makeInChain([
-        { id: 'rider-1', name: 'Alice' },
-        { id: 'rider-2', name: 'Bob' },
-        { id: 'rider-3', name: 'Carol' },
+      if (table === 'barn_memberships') return makeInChain([
+        { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+        { id: 'mem-2', user_id: 'user-2', profiles: { first_name: 'Bob', last_name: 'Rider' } },
+        { id: 'mem-3', user_id: 'user-3', profiles: { first_name: 'Carol', last_name: 'Rider' } },
       ])
       return makeInChain([])
     })
@@ -880,14 +880,14 @@ describe('getRiderIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 90 }])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson.id, rider_id: 'rider-1' },
-        { lesson_id: lesson.id, rider_id: 'rider-2' },
-        { lesson_id: lesson.id, rider_id: 'rider-3' },
+        { lesson_id: lesson.id, rider_id: 'mem-1' },
+        { lesson_id: lesson.id, rider_id: 'mem-2' },
+        { lesson_id: lesson.id, rider_id: 'mem-3' },
       ])
-      if (table === 'riders') return makeInChain([
-        { id: 'rider-1', name: 'Alice' },
-        { id: 'rider-2', name: 'Bob' },
-        { id: 'rider-3', name: 'Carol' },
+      if (table === 'barn_memberships') return makeInChain([
+        { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+        { id: 'mem-2', user_id: 'user-2', profiles: { first_name: 'Bob', last_name: 'Rider' } },
+        { id: 'mem-3', user_id: 'user-3', profiles: { first_name: 'Carol', last_name: 'Rider' } },
       ])
       return makeInChain([])
     })
@@ -907,17 +907,17 @@ describe('getRiderIncomeSummary', () => {
         { id: lesson2.id, fee: 50 },
       ])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson1.id, rider_id: 'rider-1' },
-        { lesson_id: lesson2.id, rider_id: 'rider-1' },
+        { lesson_id: lesson1.id, rider_id: 'mem-1' },
+        { lesson_id: lesson2.id, rider_id: 'mem-1' },
       ])
-      if (table === 'riders') return makeInChain([{ id: 'rider-1', name: 'Alice' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ riderId: 'rider-1', riderName: 'Alice', totalIncome: 150 }])
+    expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 150 }])
   })
 
   it('should_sort_riders_descending_by_income', async () => {
@@ -929,13 +929,13 @@ describe('getRiderIncomeSummary', () => {
         { id: lesson2.id, fee: 60 },
       ])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson1.id, rider_id: 'rider-1' },
-        { lesson_id: lesson2.id, rider_id: 'rider-1' },
-        { lesson_id: lesson2.id, rider_id: 'rider-2' },
+        { lesson_id: lesson1.id, rider_id: 'mem-1' },
+        { lesson_id: lesson2.id, rider_id: 'mem-1' },
+        { lesson_id: lesson2.id, rider_id: 'mem-2' },
       ])
-      if (table === 'riders') return makeInChain([
-        { id: 'rider-1', name: 'Alice' },
-        { id: 'rider-2', name: 'Bob' },
+      if (table === 'barn_memberships') return makeInChain([
+        { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+        { id: 'mem-2', user_id: 'user-2', profiles: { first_name: 'Bob', last_name: 'Rider' } },
       ])
       return makeInChain([])
     })
@@ -966,32 +966,32 @@ describe('getRiderIncomeSummary', () => {
     await expect(getRiderIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lr error')
   })
 
-  it('should_throw_on_riders_query_error', async () => {
+  it('should_throw_on_barn_memberships_query_error', async () => {
     const lesson = createMockLesson({ fee: 100 })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
-      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'rider-1' }])
-      if (table === 'riders') return makeInChain(null, new Error('riders error'))
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain(null, new Error('barn_memberships error'))
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getRiderIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('riders error')
+    await expect(getRiderIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('barn_memberships error')
   })
 
-  it('should_use_rider_id_as_fallback_name_when_rider_not_found', async () => {
+  it('should_use_membership_id_as_fallback_name_when_membership_not_found', async () => {
     const lesson = createMockLesson({ fee: 100 })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
-      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'rider-orphan' }])
-      if (table === 'riders') return makeInChain([])
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-orphan' }])
+      if (table === 'barn_memberships') return makeInChain([])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ riderId: 'rider-orphan', riderName: 'rider-orphan', totalIncome: 100 }])
+    expect(result).toEqual([{ riderId: 'mem-orphan', riderName: 'mem-orphan', totalIncome: 100 }])
   })
 
   it('should_treat_null_lessons_data_as_empty', async () => {
@@ -1032,31 +1032,31 @@ describe('getRiderIncomeSummary', () => {
         { id: lesson2.id, fee: 80 },
       ])
       if (table === 'lesson_riders') return makeInChain([
-        { lesson_id: lesson1.id, rider_id: 'rider-1' },
+        { lesson_id: lesson1.id, rider_id: 'mem-1' },
       ])
-      if (table === 'riders') return makeInChain([{ id: 'rider-1', name: 'Alice' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ riderId: 'rider-1', riderName: 'Alice', totalIncome: 100 }])
+    expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 100 }])
   })
 
-  it('should_treat_null_riders_data_as_empty', async () => {
+  it('should_treat_null_barn_memberships_data_as_empty', async () => {
     const lesson = createMockLesson({ fee: 100 })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
-      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'rider-1' }])
-      if (table === 'riders') return makeInChain(null)
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain(null)
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ riderId: 'rider-1', riderName: 'rider-1', totalIncome: 100 }])
+    expect(result).toEqual([{ riderId: 'mem-1', riderName: 'mem-1', totalIncome: 100 }])
   })
 
   it('should_exclude_unpaid_lessons_from_income', async () => {
@@ -1243,8 +1243,8 @@ describe('getOutstandingLessons', () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeOutstandingChain([lesson])
-      if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'rider-1' }])
-      if (table === 'riders') return makeInChain([{ id: 'rider-1', name: 'Alice' }])
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } }])
       if (table === 'profiles') return makeInChain([])
       return makeInChain([])
     })
@@ -1252,7 +1252,7 @@ describe('getOutstandingLessons', () => {
 
     const result = await getOutstandingLessons('barn-1')
 
-    expect(result[0].rider_names).toEqual(['Alice'])
+    expect(result[0].rider_names).toEqual(['Alice Rider'])
   })
 
   it('should_include_instructor_name_in_result', async () => {
@@ -1323,14 +1323,14 @@ describe('getOutstandingLessons', () => {
     expect(result[0].instructor_name).toBeNull()
   })
 
-  it('should_treat_null_riders_data_as_empty', async () => {
+  it('should_treat_null_barn_memberships_data_as_empty', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeOutstandingChain([lesson])
-      if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'rider-1' }])
-      if (table === 'riders') return makeInChain(null)
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain(null)
       if (table === 'profiles') return makeInChain([])
       return makeInChain([])
     })
@@ -1382,20 +1382,20 @@ describe('getOutstandingLessons', () => {
     await expect(getOutstandingLessons('barn-1')).rejects.toThrow('prof error')
   })
 
-  it('should_throw_when_riders_query_fails', async () => {
+  it('should_throw_when_barn_memberships_query_fails', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeOutstandingChain([lesson])
-      if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'rider-1' }])
-      if (table === 'riders') return makeInChain(null, new Error('riders error'))
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      if (table === 'barn_memberships') return makeInChain(null, new Error('barn_memberships error'))
       if (table === 'profiles') return makeInChain([])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getOutstandingLessons('barn-1')).rejects.toThrow('riders error')
+    await expect(getOutstandingLessons('barn-1')).rejects.toThrow('barn_memberships error')
   })
 
   function makeTrainerOutstandingChain(data: unknown[] | null, error: Error | null = null) {
@@ -1408,9 +1408,10 @@ describe('getOutstandingLessons', () => {
     return { select: mockSelect, mockEqInstructor, mockOrder }
   }
 
-  function makeRiderLookupChain(data: { id: string } | null, error: Error | null = null) {
+  function makeMembershipLookupChain(data: { id: string } | null, error: Error | null = null) {
     const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEqUser = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockRoleEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockEqUser = vi.fn().mockReturnValue({ eq: mockRoleEq })
     const mockEqBarn = vi.fn().mockReturnValue({ eq: mockEqUser })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarn })
     return { select: mockSelect, mockEqBarn, mockEqUser }
@@ -1462,7 +1463,7 @@ describe('getOutstandingLessons', () => {
   it('should_filter_riders_by_barn_id_when_role_is_rider', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    const { select, mockEqBarn } = makeRiderLookupChain(null)
+    const { select, mockEqBarn } = makeMembershipLookupChain(null)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -1477,7 +1478,7 @@ describe('getOutstandingLessons', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const { select, mockEqBarn } = makeRiderLessonsChain([])
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return { select }
       return makeInChain([])
     })
@@ -1493,7 +1494,7 @@ describe('getOutstandingLessons', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const { select: outstandingSelect, mockEqBarn } = makeRiderOutstandingChain([])
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain([{ lesson_id: 'lesson-1' }])
       if (table === 'lessons') return { select: outstandingSelect }
       return makeInChain([])
@@ -1508,7 +1509,7 @@ describe('getOutstandingLessons', () => {
   it('should_filter_riders_by_user_id_when_role_is_rider', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    const { select, mockEqUser } = makeRiderLookupChain(null)
+    const { select, mockEqUser } = makeMembershipLookupChain(null)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -1521,7 +1522,7 @@ describe('getOutstandingLessons', () => {
   it('should_return_empty_when_no_rider_record_found', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    const { select } = makeRiderLookupChain(null)
+    const { select } = makeMembershipLookupChain(null)
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
@@ -1535,7 +1536,7 @@ describe('getOutstandingLessons', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain([])
       return makeInChain([])
     })
@@ -1551,7 +1552,7 @@ describe('getOutstandingLessons', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const { select: outstandingSelect, mockIn } = makeRiderOutstandingChain([])
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain([{ lesson_id: 'lesson-1' }])
       if (table === 'lessons') return { select: outstandingSelect }
       return makeInChain([])
@@ -1566,19 +1567,19 @@ describe('getOutstandingLessons', () => {
   it('should_throw_when_rider_lookup_fails', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-    const { select } = makeRiderLookupChain(null, new Error('rider lookup error'))
+    const { select } = makeMembershipLookupChain(null, new Error('membership lookup error'))
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    await expect(getOutstandingLessons('barn-1', 'user-rider', 'rider')).rejects.toThrow('rider lookup error')
+    await expect(getOutstandingLessons('barn-1', 'user-rider', 'rider')).rejects.toThrow('membership lookup error')
   })
 
   it('should_throw_when_rider_lesson_riders_lookup_fails', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain(null, new Error('lesson_riders error'))
       return makeInChain([])
     })
@@ -1592,7 +1593,7 @@ describe('getOutstandingLessons', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const { select: errorSelect } = makeRiderOutstandingChain(null, new Error('lessons query error'))
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain([{ lesson_id: 'lesson-1' }])
       if (table === 'lessons') return { select: errorSelect }
       return makeInChain([])
@@ -1606,7 +1607,7 @@ describe('getOutstandingLessons', () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain(null)
       return makeInChain([])
     })
@@ -1622,12 +1623,12 @@ describe('getOutstandingLessons', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, lesson_at: '2026-06-10T10:00:00Z', payment_type: null, instructor_id: null })
     const { select: outstandingSelect } = makeRiderOutstandingChain([lesson])
-    let ridersCallCount = 0
+    let barnMembershipsCallCount = 0
     let lessonRidersCallCount = 0
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') {
-        ridersCallCount++
-        return ridersCallCount === 1 ? makeRiderLookupChain({ id: 'rider-1' }) : makeInChain([])
+      if (table === 'barn_memberships') {
+        barnMembershipsCallCount++
+        return barnMembershipsCallCount === 1 ? makeMembershipLookupChain({ id: 'mem-1' }) : makeInChain([])
       }
       if (table === 'lesson_riders') {
         lessonRidersCallCount++
@@ -1652,7 +1653,7 @@ describe('getOutstandingLessons', () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 0, lesson_at: '2026-06-10T10:00:00Z', payment_type: null })
     const { select: outstandingSelect } = makeRiderOutstandingChain([lesson])
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain([{ lesson_id: 'lesson-1' }])
       if (table === 'lessons') return { select: outstandingSelect }
       return makeInChain([])
@@ -1669,7 +1670,7 @@ describe('getOutstandingLessons', () => {
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
     const { select: outstandingSelect } = makeRiderOutstandingChain(null)
     const from = vi.fn().mockImplementation((table: string) => {
-      if (table === 'riders') return makeRiderLookupChain({ id: 'rider-1' })
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'mem-1' })
       if (table === 'lesson_riders') return makeRiderLessonsChain([{ lesson_id: 'lesson-1' }])
       if (table === 'lessons') return { select: outstandingSelect }
       return makeInChain([])
@@ -2153,7 +2154,7 @@ describe('getRiderIncomeDetail', () => {
   }
 
   function makeRiderChain(
-    data: { id: string; name: string } | null,
+    data: { id: string; user_id: string | null; profiles: { first_name: string; last_name: string } } | null,
     error: Error | null = null
   ) {
     const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
@@ -2172,13 +2173,13 @@ describe('getRiderIncomeDetail', () => {
 
   function setupClient(
     lessons: { id: string; fee: number | null; lesson_at: string }[],
-    rider: { id: string; name: string } | null,
+    rider: { id: string; user_id: string | null; profiles: { first_name: string; last_name: string } } | null,
     lessonRiders: { lesson_id: string; rider_id: string }[]
   ) {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain(lessons)
-        if (table === 'riders') return makeRiderChain(rider)
+        if (table === 'barn_memberships') return makeRiderChain(rider)
         if (table === 'lesson_riders') return makeInChain(lessonRiders)
         return makeInChain([])
       }),
@@ -2190,57 +2191,57 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-        if (table === 'riders') return makeRiderChain({ id: 'rider-1', name: 'Alice' })
+        if (table === 'barn_memberships') return makeRiderChain({ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } })
         if (table === 'lesson_riders') return { select: vi.fn().mockReturnValue({ eq: mockEq }) }
         return makeInChain([])
       }),
     } as any)
 
-    await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_return_rider_name_when_no_paid_lessons', async () => {
-    setupClient([], { id: 'rider-1', name: 'Alice' }, [])
+    setupClient([], { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } }, [])
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
-    expect(result.riderName).toBe('Alice')
+    expect(result.riderName).toBe('Alice Rider')
   })
 
   it('should_return_empty_rows_when_no_paid_lessons', async () => {
-    setupClient([], { id: 'rider-1', name: 'Alice' }, [])
+    setupClient([], { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } }, [])
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows).toEqual([])
   })
 
   it('should_return_zero_total_when_no_paid_lessons', async () => {
-    setupClient([], { id: 'rider-1', name: 'Alice' }, [])
+    setupClient([], { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } }, [])
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.total).toBe(0)
   })
 
-  it('should_return_rider_id_as_fallback_name_when_rider_not_found', async () => {
+  it('should_return_membership_id_as_fallback_name_when_membership_not_found', async () => {
     setupClient([], null, [])
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
-    expect(result.riderName).toBe('rider-1')
+    expect(result.riderName).toBe('mem-1')
   })
 
   it('should_return_row_with_full_fee_when_single_rider_in_lesson', async () => {
     setupClient(
       [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
-      { id: 'rider-1', name: 'Alice' },
-      [{ lesson_id: 'lesson-1', rider_id: 'rider-1' }]
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+      [{ lesson_id: 'lesson-1', rider_id: 'mem-1' }]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows[0].splitAmount).toBe(100)
   })
@@ -2248,11 +2249,11 @@ describe('getRiderIncomeDetail', () => {
   it('should_return_rider_count_of_one_when_single_rider_in_lesson', async () => {
     setupClient(
       [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
-      { id: 'rider-1', name: 'Alice' },
-      [{ lesson_id: 'lesson-1', rider_id: 'rider-1' }]
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+      [{ lesson_id: 'lesson-1', rider_id: 'mem-1' }]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows[0].riderCount).toBe(1)
   })
@@ -2260,11 +2261,11 @@ describe('getRiderIncomeDetail', () => {
   it('should_split_fee_evenly_when_two_riders_in_lesson', async () => {
     setupClient(
       [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
-      { id: 'rider-1', name: 'Alice' },
-      [{ lesson_id: 'lesson-1', rider_id: 'rider-1' }, { lesson_id: 'lesson-1', rider_id: 'rider-2' }]
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+      [{ lesson_id: 'lesson-1', rider_id: 'mem-1' }, { lesson_id: 'lesson-1', rider_id: 'mem-2' }]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows[0].splitAmount).toBe(50)
   })
@@ -2272,11 +2273,11 @@ describe('getRiderIncomeDetail', () => {
   it('should_return_rider_count_of_two_when_two_riders_in_lesson', async () => {
     setupClient(
       [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
-      { id: 'rider-1', name: 'Alice' },
-      [{ lesson_id: 'lesson-1', rider_id: 'rider-1' }, { lesson_id: 'lesson-1', rider_id: 'rider-2' }]
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+      [{ lesson_id: 'lesson-1', rider_id: 'mem-1' }, { lesson_id: 'lesson-1', rider_id: 'mem-2' }]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows[0].riderCount).toBe(2)
   })
@@ -2284,11 +2285,11 @@ describe('getRiderIncomeDetail', () => {
   it('should_return_full_lesson_fee_in_row', async () => {
     setupClient(
       [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
-      { id: 'rider-1', name: 'Alice' },
-      [{ lesson_id: 'lesson-1', rider_id: 'rider-1' }, { lesson_id: 'lesson-1', rider_id: 'rider-2' }]
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+      [{ lesson_id: 'lesson-1', rider_id: 'mem-1' }, { lesson_id: 'lesson-1', rider_id: 'mem-2' }]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows[0].fee).toBe(100)
   })
@@ -2299,11 +2300,11 @@ describe('getRiderIncomeDetail', () => {
         { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
         { id: 'lesson-2', fee: 80, lesson_at: '2026-05-15T10:00:00Z' },
       ],
-      { id: 'rider-1', name: 'Alice' },
-      [{ lesson_id: 'lesson-1', rider_id: 'rider-1' }, { lesson_id: 'lesson-2', rider_id: 'rider-2' }]
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+      [{ lesson_id: 'lesson-1', rider_id: 'mem-1' }, { lesson_id: 'lesson-2', rider_id: 'mem-2' }]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows).toHaveLength(1)
   })
@@ -2311,11 +2312,11 @@ describe('getRiderIncomeDetail', () => {
   it('should_return_correct_lesson_id_in_row', async () => {
     setupClient(
       [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
-      { id: 'rider-1', name: 'Alice' },
-      [{ lesson_id: 'lesson-1', rider_id: 'rider-1' }]
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
+      [{ lesson_id: 'lesson-1', rider_id: 'mem-1' }]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows[0].lessonId).toBe('lesson-1')
   })
@@ -2326,14 +2327,14 @@ describe('getRiderIncomeDetail', () => {
         { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
         { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
       ],
-      { id: 'rider-1', name: 'Alice' },
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
       [
-        { lesson_id: 'lesson-1', rider_id: 'rider-1' },
-        { lesson_id: 'lesson-2', rider_id: 'rider-1' },
+        { lesson_id: 'lesson-1', rider_id: 'mem-1' },
+        { lesson_id: 'lesson-2', rider_id: 'mem-1' },
       ]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.total).toBe(160)
   })
@@ -2344,14 +2345,14 @@ describe('getRiderIncomeDetail', () => {
         { id: 'lesson-1', fee: null, lesson_at: '2026-05-10T10:00:00Z' },
         { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
       ],
-      { id: 'rider-1', name: 'Alice' },
+      { id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } },
       [
-        { lesson_id: 'lesson-1', rider_id: 'rider-1' },
-        { lesson_id: 'lesson-2', rider_id: 'rider-1' },
+        { lesson_id: 'lesson-1', rider_id: 'mem-1' },
+        { lesson_id: 'lesson-2', rider_id: 'mem-1' },
       ]
     )
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows).toHaveLength(1)
   })
@@ -2364,44 +2365,44 @@ describe('getRiderIncomeDetail', () => {
       }),
     } as any)
 
-    await expect(getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)).rejects.toThrow('lessons error')
+    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('lessons error')
   })
 
-  it('should_throw_on_rider_query_error', async () => {
+  it('should_throw_on_membership_query_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([])
-        if (table === 'riders') return makeRiderChain(null, new Error('rider error'))
+        if (table === 'barn_memberships') return makeRiderChain(null, new Error('membership error'))
         return makeInChain([])
       }),
     } as any)
 
-    await expect(getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)).rejects.toThrow('rider error')
+    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('membership error')
   })
 
   it('should_throw_on_lesson_riders_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-        if (table === 'riders') return makeRiderChain({ id: 'rider-1', name: 'Alice' })
+        if (table === 'barn_memberships') return makeRiderChain({ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } })
         if (table === 'lesson_riders') return makeInChain(null, new Error('lr error'))
         return makeInChain([])
       }),
     } as any)
 
-    await expect(getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)).rejects.toThrow('lr error')
+    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('lr error')
   })
 
   it('should_treat_null_lesson_data_as_empty', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain(null as any)
-        if (table === 'riders') return makeRiderChain({ id: 'rider-1', name: 'Alice' })
+        if (table === 'barn_memberships') return makeRiderChain({ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } })
         return makeInChain([])
       }),
     } as any)
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows).toEqual([])
   })
@@ -2410,13 +2411,13 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-        if (table === 'riders') return makeRiderChain({ id: 'rider-1', name: 'Alice' })
+        if (table === 'barn_memberships') return makeRiderChain({ id: 'mem-1', user_id: 'user-1', profiles: { first_name: 'Alice', last_name: 'Rider' } })
         if (table === 'lesson_riders') return makeInChain(null)
         return makeInChain([])
       }),
     } as any)
 
-    const result = await getRiderIncomeDetail('barn-1', 'rider-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.rows).toEqual([])
   })
