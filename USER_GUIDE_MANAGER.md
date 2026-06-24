@@ -40,6 +40,8 @@ Go to **Finances** to review payment status. The **Outstanding** section at the 
 
 In the **By Horse** tab, tap any horse name to open a drill-down page listing each lesson that contributed to that horse's income for the selected month. Each row shows the lesson date (linked to the lesson detail), the full lesson fee, the number of horses in that lesson, and the horse's split amount. The total at the bottom matches the amount shown in the By Horse summary.
 
+In the **By Rider** tab, tap any rider name to open a drill-down page listing each lesson that contributed to that rider's income for the selected month. Each row shows the lesson date (linked to the lesson detail), the full lesson fee, the number of riders in that lesson, and the rider's split amount. The total at the bottom matches the amount shown in the By Rider summary.
+
 ## Settings
 
 Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing tier's name or price, set a default exertion level and jumping preference for a tier, set a tier as the default for new lessons, or deactivate a tier. The default tier cannot be deactivated until a different tier is set as default first.

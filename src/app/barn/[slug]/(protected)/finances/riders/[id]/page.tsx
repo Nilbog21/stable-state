@@ -43,7 +43,7 @@ export default async function RiderIncomePage({
       <div className="mb-6">
         <Link
           href={backHref}
-          className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+          className="text-sm underline text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
         >
           ← Back
         </Link>
