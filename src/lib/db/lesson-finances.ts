@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { FinancialSummary, HorseIncomeDetailRow, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
+import type { FinancialSummary, HorseIncomeDetailRow, HorseIncomeSummary, OutstandingLesson, RiderIncomeDetailRow, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
 
 export async function getFinancialSummary(
   barnId: string,
@@ -384,4 +384,65 @@ export async function getHorseIncomeDetail(
 
   const total = rows.reduce((sum, r) => sum + r.splitAmount, 0)
   return { horseName, rows, total }
+}
+
+export async function getRiderIncomeDetail(
+  barnId: string,
+  riderId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<{ riderName: string; rows: RiderIncomeDetailRow[]; total: number }> {
+  const supabase = await createClient()
+
+  const { data: lessonsData, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('id, fee, lesson_at')
+    .eq('barn_id', barnId)
+    .not('payment_type', 'is', null)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+    .order('lesson_at', { ascending: true })
+
+  if (lessonsError) throw lessonsError
+
+  const { data: riderData, error: riderError } = await supabase
+    .from('riders')
+    .select('id, name')
+    .eq('id', riderId)
+    .eq('barn_id', barnId)
+    .maybeSingle()
+
+  if (riderError) throw riderError
+  const riderName = riderData?.name ?? riderId
+
+  const paidLessons = (lessonsData ?? []).filter(
+    (l): l is { id: string; fee: number; lesson_at: string } => l.fee !== null
+  )
+  if (!paidLessons.length) return { riderName, rows: [], total: 0 }
+
+  const lessonIds = paidLessons.map((l) => l.id)
+  const { data: lessonRiders, error: lrError } = await supabase
+    .from('lesson_riders')
+    .select('lesson_id, rider_id')
+    .eq('barn_id', barnId)
+    .in('lesson_id', lessonIds)
+
+  if (lrError) throw lrError
+
+  const rows: RiderIncomeDetailRow[] = []
+  for (const lesson of paidLessons) {
+    const participants = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
+    if (!participants.some((lr) => lr.rider_id === riderId)) continue
+    const riderCount = participants.length
+    rows.push({
+      lessonId: lesson.id,
+      lessonAt: lesson.lesson_at,
+      fee: lesson.fee,
+      riderCount,
+      splitAmount: lesson.fee / riderCount,
+    })
+  }
+
+  const total = rows.reduce((sum, r) => sum + r.splitAmount, 0)
+  return { riderName, rows, total }
 }
