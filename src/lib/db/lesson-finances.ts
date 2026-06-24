@@ -135,9 +135,9 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
 
   const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
 
-  type MembershipRow = { id: string; profiles: { first_name: string; last_name: string } | null }
+  type MembershipRow = { id: string; user_id: string; profiles: { first_name: string; last_name: string } | null }
   const { data: members, error: ridersError } = riderIds.length
-    ? await supabase.from('barn_memberships').select('id, user_id, profiles(first_name, last_name)').in('id', riderIds)
+    ? await supabase.from('barn_memberships').select('id, user_id, profiles(first_name, last_name)').in('id', riderIds) as { data: MembershipRow[] | null; error: Error | null }
     : { data: [] as MembershipRow[], error: null }
 
   if (ridersError) throw ridersError
@@ -259,11 +259,11 @@ export async function getRiderIncomeSummary(
 
   const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
 
-  type MemberRow = { id: string; profiles: { first_name: string; last_name: string } | null }
+  type MemberRow = { id: string; user_id: string; profiles: { first_name: string; last_name: string } | null }
   const { data: members, error: ridersError } = await supabase
     .from('barn_memberships')
     .select('id, user_id, profiles(first_name, last_name)')
-    .in('id', riderIds)
+    .in('id', riderIds) as { data: MemberRow[] | null; error: Error | null }
 
   if (ridersError) throw ridersError
 
@@ -430,8 +430,10 @@ export async function getRiderIncomeDetail(
     .maybeSingle()
 
   if (riderError) throw riderError
-  const riderName = riderData?.profiles
-    ? `${riderData.profiles.first_name} ${riderData.profiles.last_name}`
+  type RiderProfile = { first_name: string; last_name: string } | null
+  const riderProfile = (riderData as { profiles: RiderProfile } | null)?.profiles
+  const riderName = riderProfile
+    ? `${riderProfile.first_name} ${riderProfile.last_name}`
     : riderId
 
   const paidLessons = (lessonsData ?? []).filter(

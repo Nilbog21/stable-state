@@ -133,11 +133,11 @@ async function run() {
   }
 
   if (targetMembership.role === 'rider') {
-    const targetBm = mustSucceed(
+    const targetBm = mustSucceed<{ id: string }>(
       await supabase.from('barn_memberships').select('id').eq('user_id', targetUserId).eq('barn_id', barnId).single(),
       'fetch target barn membership'
     )
-    const devBm = mustSucceed(
+    const devBm = mustSucceed<{ id: string }>(
       await supabase.from('barn_memberships').select('id').eq('user_id', devUserId).eq('barn_id', barnId).single(),
       'fetch dev barn membership'
     )

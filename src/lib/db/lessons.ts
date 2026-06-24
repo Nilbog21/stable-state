@@ -43,8 +43,9 @@ async function hydrateParticipants(
   if (ridersError) throw ridersError
   if (profilesError) throw profilesError
 
+  type MemberRow = { id: string; user_id: string; profiles: { first_name: string; last_name: string } | null }
   const membershipMap = new Map(
-    (riders ?? []).map((bm: { id: string; profiles: { first_name: string; last_name: string } | null }) => [
+    (riders as MemberRow[] | null ?? []).map((bm) => [
       bm.id,
       bm.profiles ? `${bm.profiles.first_name} ${bm.profiles.last_name}` : bm.id,
     ])
@@ -175,8 +176,13 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     private_notes?: string | null
     barn_memberships: { id: string; user_id: string | null; profiles: { first_name: string; last_name: string } | null } | null
   }
+  type NormalizedLr = {
+    rider_notes: string | null
+    private_notes: string | null
+    barn_membership: { id: string; user_id: string | null; name: string } | null
+  }
 
-  const normalizeLr = (lr: RawLessonRider) => ({
+  const normalizeLr = (lr: RawLessonRider): NormalizedLr => ({
     rider_notes: lr.rider_notes,
     private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
     barn_membership: lr.barn_memberships
@@ -193,13 +199,13 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   const base = {
     ...data,
     instructor_name,
-    lesson_riders: (data.lesson_riders as RawLessonRider[]).map(normalizeLr),
+    lesson_riders: (data.lesson_riders as RawLessonRider[]).map(normalizeLr) as NormalizedLr[],
   }
 
   if (role === 'rider') {
     return {
       ...base,
-      lesson_riders: base.lesson_riders.map((lr) => ({
+      lesson_riders: base.lesson_riders.map((lr: NormalizedLr) => ({
         ...lr,
         private_notes: null,
         rider_notes: lr.barn_membership?.user_id === userId ? lr.rider_notes : null,
