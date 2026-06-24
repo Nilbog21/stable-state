@@ -106,6 +106,29 @@ else
 fi
 rm -rf "$REPO"
 
+# Test 7: should_skip_env_local_check_when_flag_passed
+REPO="$(make_repo "" 0)"
+# Supply env vars directly (no .env.local) and pass the flag
+output="$(cd "$REPO" && NEXT_PUBLIC_SUPABASE_URL=http://localhost SUPABASE_SERVICE_ROLE_KEY=secret PATH="$REPO/bin:$PATH" bash "$SCRIPT" --skip-env-local-check test-barn-pr-99 2>&1)"
+exit_code=$?
+if [ "$exit_code" -eq 0 ]; then
+  assert_pass "should_skip_env_local_check_when_flag_passed"
+else
+  assert_fail "should_skip_env_local_check_when_flag_passed" "exit=$exit_code output=$output"
+fi
+rm -rf "$REPO"
+
+# Test 8: should_error_when_env_vars_missing_even_with_flag
+REPO="$(make_repo "" 0)"
+output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" --skip-env-local-check test-barn-pr-99 2>&1)"
+exit_code=$?
+if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'NEXT_PUBLIC_SUPABASE_URL\|SUPABASE_SERVICE_ROLE_KEY'; then
+  assert_pass "should_error_when_env_vars_missing_even_with_flag"
+else
+  assert_fail "should_error_when_env_vars_missing_even_with_flag" "exit=$exit_code output=$output"
+fi
+rm -rf "$REPO"
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

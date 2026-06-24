@@ -83,6 +83,10 @@ jobs:
       - name: Run smoke tests
         run: bash scripts/run-smoke-tests.sh --skip-env-local-check "${{ steps.vercel.outputs.PREVIEW_URL }}" "e2e-stable"
 
+      - name: Teardown test barn
+        if: always()
+        run: bash scripts/teardown-test-barn.sh --skip-env-local-check e2e-stable
+
       - name: Upload Playwright report
         if: failure()
         uses: actions/upload-artifact@v4
