@@ -112,13 +112,21 @@ describe('MembersPage', () => {
     expect(screen.getByRole('heading', { name: /trainers/i })).toBeDefined()
   })
 
-  it('should_render_each_trainer_for_manager', async () => {
+  it('should_render_first_trainer_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
       role === 'trainer' ? mockTrainers : mockRiders
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Alice Trainer')).toBeDefined()
+  })
+
+  it('should_render_second_trainer_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'trainer' ? mockTrainers : mockRiders
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByText('Bob Trainer')).toBeDefined()
   })
 
@@ -131,13 +139,21 @@ describe('MembersPage', () => {
     expect(screen.getByRole('heading', { name: /riders/i })).toBeDefined()
   })
 
-  it('should_render_each_rider_for_manager', async () => {
+  it('should_render_first_rider_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
       role === 'trainer' ? mockTrainers : mockRiders
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Carol Rider')).toBeDefined()
+  })
+
+  it('should_render_second_rider_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'trainer' ? mockTrainers : mockRiders
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByText('Dave Rider')).toBeDefined()
   })
 
@@ -191,18 +207,29 @@ describe('MembersPage', () => {
     expect(screen.queryByRole('heading', { name: /riders/i })).toBeNull()
   })
 
-  it('should_fetch_trainers_and_riders_for_manager', async () => {
+  it('should_fetch_trainers_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
     await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'trainer')
+  })
+
+  it('should_fetch_riders_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'rider')
   })
 
-  it('should_fetch_only_riders_for_trainer', async () => {
+  it('should_fetch_riders_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
     await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'rider')
+  })
+
+  it('should_not_fetch_trainers_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getActiveMembersWithProfiles)).not.toHaveBeenCalledWith('barn-1', 'trainer')
   })
 
