@@ -1,16 +1,16 @@
--- Convert any seeded admin accounts to barn-scoped manager of the barn with slug 'sme'.
--- TODO(#96): replace this hardcoded slug with a safe, environment-agnostic lookup.
-UPDATE public.seeded_accounts
-  SET role = 'manager',
-      barn_id = (SELECT id FROM public.barns WHERE slug = 'sme')
-  WHERE role = 'admin';
-
--- Convert any existing admin barn_memberships (barn_id IS NULL) to manager of the barn with slug 'sme'.
--- TODO(#96): replace this hardcoded slug with a safe, environment-agnostic lookup.
-UPDATE public.barn_memberships
-  SET role = 'manager',
-      barn_id = (SELECT id FROM public.barns WHERE slug = 'sme')
-  WHERE role = 'admin' AND barn_id IS NULL;
+-- Convert any seeded admin accounts and memberships to barn-scoped manager of the barn
+-- with slug 'sme'. Skips safely when no 'sme' barn exists (e.g. CI with no seeded data).
+DO $$
+DECLARE
+  v_barn_id UUID;
+BEGIN
+  SELECT id INTO v_barn_id FROM public.barns WHERE slug = 'sme';
+  IF v_barn_id IS NULL THEN
+    RETURN;
+  END IF;
+  UPDATE public.seeded_accounts SET role = 'manager', barn_id = v_barn_id WHERE role = 'admin';
+  UPDATE public.barn_memberships SET role = 'manager', barn_id = v_barn_id WHERE role = 'admin' AND barn_id IS NULL;
+END $$;
 
 -- Remove admin from the roles lookup table.
 DELETE FROM public.roles WHERE name = 'admin';
