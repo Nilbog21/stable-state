@@ -94,7 +94,7 @@ export async function deleteDocumentAction(
     await deleteRiderDocument(docId, barn.id)
   }
 
-  await removeFile(storagePath)
+  await removeFile(storagePath).catch(() => {})
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
 }

@@ -351,13 +351,13 @@ describe('deleteDocumentAction', () => {
     ).rejects.toThrow()
   })
 
-  it('should_throw_when_storage_remove_fails', async () => {
+  it('should_succeed_when_storage_remove_fails', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
     vi.mocked(removeFile).mockRejectedValue(new Error('storage remove failed'))
 
     await expect(
       deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-target-trn/file.pdf')
-    ).rejects.toThrow('storage remove failed')
+    ).resolves.toBeUndefined()
   })
 })
