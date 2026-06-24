@@ -14,9 +14,9 @@ Use **Horses** in the nav to see a weekly exertion summary for each horse, sorta
 
 Tap any horse name to open its detail page. From there you can manage availability: check **Available** to mark the horse in rotation, or uncheck it to mark the horse unavailable and optionally enter a reason. When marking a horse available again, any existing reason text is shown but grayed out and will be cleared when you save. Unavailable horses appear with an **(Unavailable)** badge in the list.
 
-## Riders
+## Members
 
-Go to **Riders** to add new riders and manage the roster. Tap any rider's name to edit it inline. When you approve a membership request, a rider record is created automatically.
+Go to **Members** to browse the barn roster. You will see a Trainers section and a Riders section, each listing active members with links to their detail pages. Your own card appears at the top. When you approve a membership request, a rider record is created automatically.
 
 ## Lessons
 

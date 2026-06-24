@@ -30,6 +30,6 @@ Tap the bell icon in the nav bar to view your notifications. If your profile is 
 
 Go to **Horses** to see a weekly exertion summary for each horse in the barn, sortable by name or exertion level. Tap any horse name to open its detail page and see its current availability status. If a horse is unavailable, the reason set by your barn manager is shown there.
 
-## Riders
+## Members
 
-Go to **Riders** to view the barn's rider roster.
+Go to **Members** to view the barn's rider roster. Your own card appears at the top; the Riders section lists all active riders with links to their detail pages.
