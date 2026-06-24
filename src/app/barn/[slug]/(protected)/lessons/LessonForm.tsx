@@ -107,6 +107,7 @@ export function LessonForm({
   }, [shouldWarn])
 
   function flash(keys: string[]) {
+    if (keys.length === 0) return
     setFlashingKeys(new Set(keys))
     setTimeout(() => setFlashingKeys(new Set()), 600)
   }
@@ -121,7 +122,7 @@ export function LessonForm({
         return next
       })
       setNewHorseExertionLevel(3)
-      flash(['jumping', ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
+      flash([...(jumping ? ['jumping'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
     } else {
       const tier = tiers.find(t => t.id === id) ?? null
       if (!tier) return
@@ -344,7 +345,8 @@ export function LessonForm({
                   if (e.target.checked) {
                     setExertionMap(prev => {
                       const next = new Map(prev)
-                      next.set(h.id, selectedTier?.default_exertion_level ?? (jumping ? 4 : 3))
+                      const base = selectedTier?.default_exertion_level ?? (jumping ? 4 : 3)
+                      next.set(h.id, jumping ? Math.max(base, 4) : base)
                       return next
                     })
                   } else {

@@ -483,6 +483,7 @@ describe('LessonForm', () => {
 describe('LessonForm tier cascade', () => {
   const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
   const horse2 = { id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+  afterEach(() => vi.useRealTimers())
 
   it('should_render_tier_selector_before_jumping_checkbox', () => {
     render(<LessonForm {...baseProps} />)
@@ -520,7 +521,7 @@ describe('LessonForm tier cascade', () => {
     expect(exertionInput.value).toBe('2')
   })
 
-  it('should_cascade_default_exertion_into_multiple_checked_horses_when_tier_selected', () => {
+  it('should_cascade_default_exertion_into_first_checked_horse_when_tier_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const exertionTier = createMockLessonTier({ id: 't-ex', name: 'Exertion Tier', default_exertion_level: 2 })
     render(<LessonForm {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse, horse2]} />)
@@ -528,8 +529,17 @@ describe('LessonForm tier cascade', () => {
     fireEvent.click(screen.getByRole('checkbox', { name: /Lightning/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-ex' } })
     const e1 = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
-    const e2 = screen.getByRole('spinbutton', { name: /Exertion level for Lightning/i }) as HTMLInputElement
     expect(e1.value).toBe('2')
+  })
+
+  it('should_cascade_default_exertion_into_second_checked_horse_when_tier_selected', () => {
+    const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
+    const exertionTier = createMockLessonTier({ id: 't-ex', name: 'Exertion Tier', default_exertion_level: 2 })
+    render(<LessonForm {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse, horse2]} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Lightning/i }))
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-ex' } })
+    const e2 = screen.getByRole('spinbutton', { name: /Exertion level for Lightning/i }) as HTMLInputElement
     expect(e2.value).toBe('2')
   })
 
@@ -623,7 +633,6 @@ describe('LessonForm tier cascade', () => {
     })
     const jumpingCheckbox = screen.getByRole('checkbox', { name: /jumping/i })
     expect(jumpingCheckbox.className).toContain('ring-2')
-    vi.useRealTimers()
   })
 
   it('should_clear_flash_after_600ms', async () => {
@@ -639,6 +648,27 @@ describe('LessonForm tier cascade', () => {
     })
     const jumpingCheckbox = screen.getByRole('checkbox', { name: /jumping/i })
     expect(jumpingCheckbox.className).not.toContain('ring-2')
-    vi.useRealTimers()
+  })
+
+  it('should_not_flash_jumping_when_custom_selected_and_jumping_already_off', () => {
+    vi.useFakeTimers()
+    const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    act(() => {
+      fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
+    })
+    const jumpingCheckbox = screen.getByRole('checkbox', { name: /jumping/i })
+    expect(jumpingCheckbox.className).not.toContain('ring-2')
+  })
+
+  it('should_floor_exertion_at_4_when_tier_default_below_4_and_jumping_on_and_horse_checked', () => {
+    const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
+    const lowTier = createMockLessonTier({ id: 't-low', name: 'Low Tier', default_exertion_level: 2 })
+    render(<LessonForm {...baseProps} tiers={[baseTier, lowTier]} horses={[horse]} />)
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-low' } })
+    fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
+    const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
+    expect(exertionInput.value).toBe('4')
   })
 })
