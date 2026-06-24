@@ -779,6 +779,20 @@ describe('updateLessonAction', () => {
     expect(result).toEqual({ error: 'select a horse or add a new one, not both' })
   })
 
+  it('should_call_updateLessonWithParticipants_when_trainer_submits_valid_lesson', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_trainer_tries_to_add_new_horse', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized to add horses' })
+  })
+
 })
 
 describe('updatePaymentTypeAction', () => {
