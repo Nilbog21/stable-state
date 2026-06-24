@@ -18,6 +18,13 @@ Use **Horses** in the nav to see horses grouped into three sections:
 
 Empty sections are hidden. Tap any card to open the horse's detail page. To add a new horse, use the **Horse name** input and **Add** button in the page header (top right).
 
+### Horse detail page (manager controls)
+
+On the horse's detail page, managers see two additional sections:
+
+- **Name** — pre-filled text input with the current name and a **Save** button to rename the horse.
+- **Activation** — at the bottom of the page. When the horse is active, a **Set Inactive** button appears; tapping it shows an inline confirmation with **Confirm** and **Cancel** before submitting. When the horse is already inactive, a **Set Active** button appears and submits immediately without confirmation.
+
 ## Members
 
 Go to **Members** to browse the barn roster. You will see a Trainers section and a Riders section, each listing active members with links to their detail pages. Your own card appears at the top. When you approve a membership request, a rider record is created automatically.

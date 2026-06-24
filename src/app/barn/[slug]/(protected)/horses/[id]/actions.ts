@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { setHorseAvailability } from '@/lib/db/horses'
+import { setHorseAvailability, updateHorse, setHorseActive } from '@/lib/db/horses'
 
 export async function updateHorseAvailabilityAction(
   barnSlug: string,
@@ -16,6 +16,30 @@ export async function updateHorseAvailabilityAction(
   const reason = isAvailable ? null : rawReason
 
   await setHorseAvailability(horseId, barn.id, isAvailable, reason)
+  revalidatePath(`/barn/${barnSlug}/horses`)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function renameHorseAction(
+  barnSlug: string,
+  horseId: string,
+  formData: FormData
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const name = (formData.get('name') as string | null)?.trim() ?? ''
+  if (!name) return
+  await updateHorse(horseId, barn.id, name)
+  revalidatePath(`/barn/${barnSlug}/horses`)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function setHorseActiveAction(
+  barnSlug: string,
+  horseId: string,
+  isActive: boolean
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await setHorseActive(horseId, barn.id, isActive)
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }

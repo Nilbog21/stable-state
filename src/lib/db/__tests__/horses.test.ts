@@ -512,36 +512,32 @@ describe('updateHorse', () => {
   const updatedHorse = createMockHorse({ id: 'horse-1', name: 'Blaze Updated' })
 
   it('should_return_updated_horse_on_success', async () => {
+    const selectChain = { single: vi.fn().mockResolvedValue({ data: updatedHorse, error: null }) }
+    const eq2 = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(selectChain) })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: updatedHorse, error: null }),
-            }),
-          }),
+          eq: vi.fn().mockReturnValue({ eq: eq2 }),
         }),
       }),
     } as any)
 
-    const result = await updateHorse('horse-1', 'Blaze Updated')
+    const result = await updateHorse('horse-1', 'barn-1', 'Blaze Updated')
 
     expect(result).toEqual(updatedHorse)
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
+    const selectChain = { single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }) }
+    const eq2 = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(selectChain) })
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
         update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            select: vi.fn().mockReturnValue({
-              single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
-            }),
-          }),
+          eq: vi.fn().mockReturnValue({ eq: eq2 }),
         }),
       }),
     } as any)
 
-    await expect(updateHorse('horse-1', 'Blaze Updated')).rejects.toThrow('db error')
+    await expect(updateHorse('horse-1', 'barn-1', 'Blaze Updated')).rejects.toThrow('db error')
   })
 })

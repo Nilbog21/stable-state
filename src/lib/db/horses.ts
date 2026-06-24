@@ -28,12 +28,13 @@ export async function createHorse(barnId: string, name: string, client?: Supabas
   return data
 }
 
-export async function updateHorse(horseId: string, name: string): Promise<Horse> {
+export async function updateHorse(horseId: string, barnId: string, name: string): Promise<Horse> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('horses')
     .update({ name })
     .eq('id', horseId)
+    .eq('barn_id', barnId)
     .select()
     .single()
 
