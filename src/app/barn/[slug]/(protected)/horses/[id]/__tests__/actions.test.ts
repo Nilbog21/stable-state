@@ -12,11 +12,14 @@ vi.mock('@/lib/db/horses', () => ({
 }))
 
 vi.mock('@/lib/db/horse-documents', () => ({
-  uploadDocumentFile: vi.fn(),
-  removeDocumentFile: vi.fn(),
   createHorseDocument: vi.fn(),
   deleteHorseDocument: vi.fn(),
 }))
+
+vi.mock('@/lib/db/document-storage', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, uploadFile: vi.fn(), removeFile: vi.fn() }
+})
 
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
@@ -24,7 +27,8 @@ vi.mock('next/cache', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { setHorseAvailability, updateHorse, setHorseActive } from '@/lib/db/horses'
-import { uploadDocumentFile, removeDocumentFile, createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
+import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
+import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
 import { updateHorseAvailabilityAction, renameHorseAction, setHorseActiveAction, uploadHorseDocumentAction, deleteHorseDocumentAction } from '../actions'
 
@@ -235,13 +239,13 @@ function makeUploadFormData(file: File, recordType: string, notes = ''): FormDat
 describe('uploadHorseDocumentAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
-    vi.mocked(uploadDocumentFile).mockReset()
-    vi.mocked(removeDocumentFile).mockReset()
+    vi.mocked(uploadFile).mockReset()
+    vi.mocked(removeFile).mockReset()
     vi.mocked(createHorseDocument).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
-    vi.mocked(uploadDocumentFile).mockResolvedValue(undefined)
-    vi.mocked(removeDocumentFile).mockResolvedValue(undefined)
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(removeFile).mockResolvedValue(undefined)
     vi.mocked(createHorseDocument).mockResolvedValue({} as any)
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
@@ -256,10 +260,10 @@ describe('uploadHorseDocumentAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
   })
 
-  it('should_call_uploadDocumentFile_when_manager_uploads', async () => {
+  it('should_call_uploadFile_when_manager_uploads', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
     await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(uploadDocumentFile).toHaveBeenCalled()
+    expect(uploadFile).toHaveBeenCalled()
   })
 
   it('should_call_createHorseDocument_when_manager_uploads', async () => {
@@ -328,7 +332,7 @@ describe('uploadHorseDocumentAction', () => {
     vi.mocked(createHorseDocument).mockRejectedValue(new Error('db error'))
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
     await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow('db error')
-    expect(removeDocumentFile).toHaveBeenCalled()
+    expect(removeFile).toHaveBeenCalled()
   })
 
   it('should_revalidate_horse_detail_path', async () => {
@@ -342,11 +346,11 @@ describe('deleteHorseDocumentAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(deleteHorseDocument).mockReset()
-    vi.mocked(removeDocumentFile).mockReset()
+    vi.mocked(removeFile).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
     vi.mocked(deleteHorseDocument).mockResolvedValue(undefined)
-    vi.mocked(removeDocumentFile).mockResolvedValue(undefined)
+    vi.mocked(removeFile).mockResolvedValue(undefined)
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarnForDocs,
@@ -366,7 +370,7 @@ describe('deleteHorseDocumentAction', () => {
 
   it('should_remove_storage_file', async () => {
     await deleteHorseDocumentAction('green-acres', 'horse-1', 'doc-1', 'barn-1/horses/horse-1/coggins.pdf')
-    expect(removeDocumentFile).toHaveBeenCalledWith('barn-1/horses/horse-1/coggins.pdf')
+    expect(removeFile).toHaveBeenCalledWith('barn-1/horses/horse-1/coggins.pdf')
   })
 
   it('should_revalidate_horse_detail_path', async () => {

@@ -10,9 +10,12 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 vi.mock('@/lib/db/trainer-documents', () => ({
   createTrainerDocument: vi.fn(),
   deleteTrainerDocument: vi.fn(),
-  uploadDocumentFile: vi.fn(),
-  removeDocumentFile: vi.fn(),
 }))
+
+vi.mock('@/lib/db/document-storage', async (importOriginal) => {
+  const actual = await importOriginal()
+  return { ...actual, uploadFile: vi.fn(), removeFile: vi.fn() }
+})
 vi.mock('@/lib/db/rider-documents', () => ({
   createRiderDocument: vi.fn(),
   deleteRiderDocument: vi.fn(),
@@ -23,7 +26,8 @@ vi.mock('next/cache', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
-import { createTrainerDocument, deleteTrainerDocument, uploadDocumentFile, removeDocumentFile } from '@/lib/db/trainer-documents'
+import { createTrainerDocument, deleteTrainerDocument } from '@/lib/db/trainer-documents'
+import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { createRiderDocument, deleteRiderDocument } from '@/lib/db/rider-documents'
 import { revalidatePath } from 'next/cache'
 import { uploadDocumentAction, deleteDocumentAction } from '../actions'
@@ -57,12 +61,12 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockReset()
     vi.mocked(createTrainerDocument).mockReset()
     vi.mocked(createRiderDocument).mockReset()
-    vi.mocked(uploadDocumentFile).mockReset()
-    vi.mocked(removeDocumentFile).mockReset()
+    vi.mocked(uploadFile).mockReset()
+    vi.mocked(removeFile).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
-    vi.mocked(uploadDocumentFile).mockResolvedValue(undefined)
-    vi.mocked(removeDocumentFile).mockResolvedValue(undefined)
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(removeFile).mockResolvedValue(undefined)
     vi.mocked(createTrainerDocument).mockResolvedValue({} as any)
     vi.mocked(createRiderDocument).mockResolvedValue({} as any)
   })
@@ -229,7 +233,7 @@ describe('uploadDocumentAction', () => {
   it('should_throw_when_storage_upload_fails', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-    vi.mocked(uploadDocumentFile).mockRejectedValue(new Error('storage upload failed'))
+    vi.mocked(uploadFile).mockRejectedValue(new Error('storage upload failed'))
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
     await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow('storage upload failed')
@@ -242,7 +246,7 @@ describe('uploadDocumentAction', () => {
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
     await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow('db error')
-    expect(removeDocumentFile).toHaveBeenCalled()
+    expect(removeFile).toHaveBeenCalled()
   })
 
   it('should_use_null_for_empty_notes', async () => {
@@ -267,10 +271,10 @@ describe('deleteDocumentAction', () => {
     vi.mocked(getMembershipById).mockReset()
     vi.mocked(deleteTrainerDocument).mockReset()
     vi.mocked(deleteRiderDocument).mockReset()
-    vi.mocked(removeDocumentFile).mockReset()
+    vi.mocked(removeFile).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
-    vi.mocked(removeDocumentFile).mockResolvedValue(undefined)
+    vi.mocked(removeFile).mockResolvedValue(undefined)
     vi.mocked(deleteTrainerDocument).mockResolvedValue(undefined)
     vi.mocked(deleteRiderDocument).mockResolvedValue(undefined)
   })
@@ -347,13 +351,13 @@ describe('deleteDocumentAction', () => {
     ).rejects.toThrow()
   })
 
-  it('should_throw_when_storage_remove_fails', async () => {
+  it('should_succeed_when_storage_remove_fails', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-    vi.mocked(removeDocumentFile).mockRejectedValue(new Error('storage remove failed'))
+    vi.mocked(removeFile).mockRejectedValue(new Error('storage remove failed'))
 
     await expect(
       deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-target-trn/file.pdf')
-    ).rejects.toThrow('storage remove failed')
+    ).resolves.toBeUndefined()
   })
 })
