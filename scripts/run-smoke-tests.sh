@@ -23,10 +23,17 @@ for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY VERCEL_AU
   fi
 done
 
-read -r -p "Preview URL (leave blank for http://localhost:3000): " E2E_BASE_URL
+E2E_BASE_URL="${1:-}"
+TEST_BARN_SLUG="${2:-}"
+
+if [ -z "$E2E_BASE_URL" ]; then
+  read -r -p "Preview URL (leave blank for http://localhost:3000): " E2E_BASE_URL || true
+fi
 E2E_BASE_URL="${E2E_BASE_URL:-http://localhost:3000}"
 
-read -r -p "Test barn slug: " TEST_BARN_SLUG
+if [ -z "$TEST_BARN_SLUG" ]; then
+  read -r -p "Test barn slug: " TEST_BARN_SLUG || true
+fi
 if [ -z "$TEST_BARN_SLUG" ]; then
   echo "Error: barn slug is required" >&2
   exit 1
