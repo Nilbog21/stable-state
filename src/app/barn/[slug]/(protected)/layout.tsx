@@ -58,7 +58,7 @@ export default async function ProtectedBarnLayout({
     navLinks = [
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
-      { href: `/barn/${slug}/riders`, label: 'Riders' },
+      { href: `/barn/${slug}/members`, label: 'Members' },
       { href: `/barn/${slug}/finances`, label: 'Finances' },
       { href: `/barn/${slug}/settings`, label: 'Manage Barn' },
       { href: `/barn/${slug}/guide`, label: 'Guide' },
@@ -67,7 +67,7 @@ export default async function ProtectedBarnLayout({
     navLinks = [
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
-      { href: `/barn/${slug}/riders`, label: 'Riders' },
+      { href: `/barn/${slug}/members`, label: 'Members' },
       { href: `/barn/${slug}/guide`, label: 'Guide' },
     ]
   } else {

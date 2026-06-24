@@ -217,4 +217,19 @@ describe('MembersPage', () => {
     render(jsx)
     expect(screen.getByText(/you/i)).toBeDefined()
   })
+
+  it('should_display_email_when_profile_is_null', async () => {
+    vi.mocked(getProfileByUserId).mockResolvedValue(null)
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('user@example.com')).toBeDefined()
+  })
+
+  it('should_display_you_fallback_when_profile_and_email_are_null', async () => {
+    setupAuth({ id: 'user-1', email: null })
+    vi.mocked(getProfileByUserId).mockResolvedValue(null)
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByText('You').length).toBeGreaterThan(0)
+  })
 })
