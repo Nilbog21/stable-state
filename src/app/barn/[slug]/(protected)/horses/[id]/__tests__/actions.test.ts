@@ -7,6 +7,8 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/horses', () => ({
   setHorseAvailability: vi.fn(),
+  updateHorse: vi.fn(),
+  setHorseActive: vi.fn(),
 }))
 
 vi.mock('next/cache', () => ({
@@ -14,9 +16,9 @@ vi.mock('next/cache', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { setHorseAvailability } from '@/lib/db/horses'
+import { setHorseAvailability, updateHorse, setHorseActive } from '@/lib/db/horses'
 import { revalidatePath } from 'next/cache'
-import { updateHorseAvailabilityAction } from '../actions'
+import { updateHorseAvailabilityAction, renameHorseAction, setHorseActiveAction } from '../actions'
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
@@ -92,5 +94,99 @@ describe('updateHorseAvailabilityAction', () => {
     await updateHorseAvailabilityAction('green-acres', 'horse-1', formData)
 
     expect(setHorseAvailability).toHaveBeenCalledWith('horse-1', mockBarn.id, false, null)
+  })
+})
+
+describe('renameHorseAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateHorse).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateHorse).mockResolvedValue({} as any)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    const formData = new FormData()
+    formData.set('name', 'Stormy')
+
+    await renameHorseAction('green-acres', 'horse-1', formData)
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateHorse_with_trimmed_name', async () => {
+    const formData = new FormData()
+    formData.set('name', '  Stormy  ')
+
+    await renameHorseAction('green-acres', 'horse-1', formData)
+
+    expect(updateHorse).toHaveBeenCalledWith('horse-1', 'Stormy')
+  })
+
+  it('should_revalidate_horses_list_path', async () => {
+    const formData = new FormData()
+    formData.set('name', 'Stormy')
+
+    await renameHorseAction('green-acres', 'horse-1', formData)
+
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    const formData = new FormData()
+    formData.set('name', 'Stormy')
+
+    await renameHorseAction('green-acres', 'horse-1', formData)
+
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+})
+
+describe('setHorseActiveAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(setHorseActive).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(setHorseActive).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', false)
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_setHorseActive_with_false_when_deactivating', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', false)
+
+    expect(setHorseActive).toHaveBeenCalledWith('horse-1', mockBarn.id, false)
+  })
+
+  it('should_call_setHorseActive_with_true_when_activating', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', true)
+
+    expect(setHorseActive).toHaveBeenCalledWith('horse-1', mockBarn.id, true)
+  })
+
+  it('should_revalidate_horses_list_path', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', false)
+
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses')
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await setHorseActiveAction('green-acres', 'horse-1', false)
+
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
 })
