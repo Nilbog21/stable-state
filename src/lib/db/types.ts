@@ -180,6 +180,35 @@ export interface RiderIncomeDetailRow {
   splitAmount: number
 }
 
+export type TrainerDocumentType = 'instructor_contract'
+export type RiderDocumentType = 'liability_waiver' | 'lease_agreement' | 'boarding_contract'
+
+export interface TrainerDocument {
+  id: string
+  barn_id: string
+  trainer_id: string
+  record_type: TrainerDocumentType
+  storage_path: string
+  file_name: string
+  file_size: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface RiderDocument {
+  id: string
+  barn_id: string
+  rider_id: string
+  record_type: RiderDocumentType
+  storage_path: string
+  file_name: string
+  file_size: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
+
 export interface Notification {
   id: string
   user_id: string

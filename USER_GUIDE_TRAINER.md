@@ -40,3 +40,5 @@ Tap any card to open the horse's detail page for full availability details.
 ## Members
 
 Go to **Members** to view the barn's rider roster. Your own card appears at the top; the Riders section lists all active riders with links to their detail pages.
+
+Tap your own card to manage your documents: upload an **Instructor Contract** (PDF, JPG, PNG, or DOCX — max 5 MB) or delete an existing one. Tap any rider card to view that rider's documents (read-only — you cannot upload or delete rider documents). Tap a file name to open the document (link is valid for 5 minutes).

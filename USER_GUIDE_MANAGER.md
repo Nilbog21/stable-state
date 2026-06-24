@@ -29,6 +29,8 @@ On the horse's detail page, managers see two additional sections:
 
 Go to **Members** to browse the barn roster. You will see a Trainers section and a Riders section, each listing active members with links to their detail pages. Your own card appears at the top. When you approve a membership request, a rider record is created automatically.
 
+Tap any member card to open their detail page. From there you can view their documents, upload new ones, or delete existing ones. Accepted file types are PDF, JPG, PNG, and DOCX (max 5 MB per file). Document types for trainers: **Instructor Contract**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**. Tap a file name to open the document (link is valid for 5 minutes).
+
 ## Lessons
 
 **View lessons** — Go to **Lessons** to see recent activity. Older lessons are hidden by default; tap **Show older lessons** to expand them. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
