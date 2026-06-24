@@ -13,11 +13,12 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 vi.mock('@/lib/db/profiles', () => ({ getProfileByUserId: vi.fn() }))
 vi.mock('@/lib/db/trainer-documents', () => ({
   getTrainerDocuments: vi.fn(),
-  getDocumentSignedUrl: vi.fn(),
 }))
 vi.mock('@/lib/db/rider-documents', () => ({
   getRiderDocuments: vi.fn(),
-  getDocumentSignedUrl: vi.fn(),
+}))
+vi.mock('@/lib/db/document-storage', () => ({
+  getSignedUrl: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -29,8 +30,9 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
-import { getTrainerDocuments, getDocumentSignedUrl as getTrainerSignedUrl } from '@/lib/db/trainer-documents'
-import { getRiderDocuments, getDocumentSignedUrl as getRiderSignedUrl } from '@/lib/db/rider-documents'
+import { getTrainerDocuments } from '@/lib/db/trainer-documents'
+import { getRiderDocuments } from '@/lib/db/rider-documents'
+import { getSignedUrl } from '@/lib/db/document-storage'
 import MemberDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -74,8 +76,8 @@ describe('MemberDetailPage', () => {
     )
     vi.mocked(getTrainerDocuments).mockResolvedValue([])
     vi.mocked(getRiderDocuments).mockResolvedValue([])
-    vi.mocked(getTrainerSignedUrl).mockResolvedValue('https://example.com/signed')
-    vi.mocked(getRiderSignedUrl).mockResolvedValue('https://example.com/signed')
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
   })
 
   it('should_show_not_found_when_barn_does_not_exist', async () => {

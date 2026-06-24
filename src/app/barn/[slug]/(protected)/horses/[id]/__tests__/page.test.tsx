@@ -9,7 +9,9 @@ vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
 vi.mock('@/lib/db/horse-documents', () => ({
   getHorseDocuments: vi.fn(),
-  getDocumentSignedUrl: vi.fn(),
+}))
+vi.mock('@/lib/db/document-storage', () => ({
+  getSignedUrl: vi.fn(),
 }))
 vi.mock('../actions', () => ({
   updateHorseAvailabilityAction: vi.fn(),
@@ -38,7 +40,8 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
-import { getHorseDocuments, getDocumentSignedUrl } from '@/lib/db/horse-documents'
+import { getHorseDocuments } from '@/lib/db/horse-documents'
+import { getSignedUrl } from '@/lib/db/document-storage'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -72,7 +75,7 @@ describe('HorseDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getHorseById).mockResolvedValue(availableHorse)
     vi.mocked(getHorseDocuments).mockResolvedValue([])
-    vi.mocked(getDocumentSignedUrl).mockResolvedValue('https://example.com/signed')
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {

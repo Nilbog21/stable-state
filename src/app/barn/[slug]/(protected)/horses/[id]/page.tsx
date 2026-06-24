@@ -3,7 +3,8 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
-import { getHorseDocuments, getDocumentSignedUrl } from '@/lib/db/horse-documents'
+import { getHorseDocuments } from '@/lib/db/horse-documents'
+import { getSignedUrl } from '@/lib/db/document-storage'
 import { HorseAvailabilityForm } from './HorseAvailabilityForm'
 import { HorseActivationSection } from './HorseActivationSection'
 import { HorseDocumentUploadForm } from './HorseDocumentUploadForm'
@@ -44,7 +45,7 @@ export default async function HorseDetailPage({
   const docsWithUrls = canSeeDocuments
     ? await (async () => {
         const docs = await getHorseDocuments(horse.id, barn.id)
-        return Promise.all(docs.map(async (doc) => ({ doc, signedUrl: await getDocumentSignedUrl(doc.storage_path) })))
+        return Promise.all(docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) })))
       })()
     : []
 

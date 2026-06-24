@@ -43,22 +43,3 @@ export async function deleteHorseDocument(id: string, horseId: string, barnId: s
   if (error) throw error
 }
 
-export async function uploadDocumentFile(storagePath: string, file: File, contentType: string): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase.storage.from('documents').upload(storagePath, file, { contentType })
-  if (error) throw error
-}
-
-export async function removeDocumentFile(storagePath: string): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase.storage.from('documents').remove([storagePath])
-  if (error) throw error
-}
-
-export async function getDocumentSignedUrl(storagePath: string): Promise<string> {
-  const supabase = await createClient()
-  const { data, error } = await supabase.storage.from('documents').createSignedUrl(storagePath, 300)
-  if (error) throw error
-  if (!data?.signedUrl) throw new Error('No signed URL returned')
-  return data.signedUrl
-}
