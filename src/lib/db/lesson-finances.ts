@@ -135,17 +135,27 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
 
   const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
 
-  type MembershipRow = { id: string; user_id: string; profiles: { first_name: string; last_name: string } | null }
+  type MembershipRow = { id: string; user_id: string | null }
   const { data: members, error: ridersError } = riderIds.length
-    ? await supabase.from('barn_memberships').select('id, user_id, profiles(first_name, last_name)').in('id', riderIds) as { data: MembershipRow[] | null; error: Error | null }
+    ? await supabase.from('barn_memberships').select('id, user_id').in('id', riderIds) as { data: MembershipRow[] | null; error: Error | null }
     : { data: [] as MembershipRow[], error: null }
 
   if (ridersError) throw ridersError
 
+  const riderUserIds = [...new Set((members ?? []).map((bm) => bm.user_id).filter((uid): uid is string => uid !== null))]
+  const { data: riderProfiles, error: riderProfilesError } = riderUserIds.length
+    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', riderUserIds)
+    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
+
+  if (riderProfilesError) throw riderProfilesError
+
+  const riderProfileMap = new Map((riderProfiles ?? []).map((p) => [p.user_id, p]))
   const membershipNameMap = new Map(
     (members ?? []).map((bm: MembershipRow) => [
       bm.id,
-      bm.profiles ? `${bm.profiles.first_name} ${bm.profiles.last_name}` : bm.id,
+      bm.user_id && riderProfileMap.get(bm.user_id)
+        ? `${riderProfileMap.get(bm.user_id)!.first_name} ${riderProfileMap.get(bm.user_id)!.last_name}`
+        : bm.id,
     ])
   )
 
@@ -260,18 +270,28 @@ export async function getRiderIncomeSummary(
 
   const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
 
-  type MemberRow = { id: string; user_id: string; profiles: { first_name: string; last_name: string } | null }
+  type MemberRow = { id: string; user_id: string | null }
   const { data: members, error: ridersError } = await supabase
     .from('barn_memberships')
-    .select('id, user_id, profiles(first_name, last_name)')
+    .select('id, user_id')
     .in('id', riderIds) as { data: MemberRow[] | null; error: Error | null }
 
   if (ridersError) throw ridersError
 
+  const memberUserIds = [...new Set((members ?? []).map((bm) => bm.user_id).filter((uid): uid is string => uid !== null))]
+  const { data: memberProfiles, error: memberProfilesError } = memberUserIds.length
+    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', memberUserIds)
+    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
+
+  if (memberProfilesError) throw memberProfilesError
+
+  const memberProfileMap = new Map((memberProfiles ?? []).map((p) => [p.user_id, p]))
   const memberNameMap = new Map(
     (members ?? []).map((bm: MemberRow) => [
       bm.id,
-      bm.profiles ? `${bm.profiles.first_name} ${bm.profiles.last_name}` : bm.id,
+      bm.user_id && memberProfileMap.get(bm.user_id)
+        ? `${memberProfileMap.get(bm.user_id)!.first_name} ${memberProfileMap.get(bm.user_id)!.last_name}`
+        : bm.id,
     ])
   )
 
@@ -425,17 +445,23 @@ export async function getRiderIncomeDetail(
 
   const { data: riderData, error: riderError } = await supabase
     .from('barn_memberships')
-    .select('id, user_id, profiles(first_name, last_name)')
+    .select('id, user_id')
     .eq('barn_id', barnId)
     .eq('id', riderId)
     .maybeSingle()
 
   if (riderError) throw riderError
-  type RiderProfile = { first_name: string; last_name: string } | null
-  const riderProfile = (riderData as { profiles: RiderProfile } | null)?.profiles
-  const riderName = riderProfile
-    ? `${riderProfile.first_name} ${riderProfile.last_name}`
-    : riderId
+
+  let riderName = riderId
+  if (riderData?.user_id) {
+    const { data: riderProfile, error: riderProfileError } = await supabase
+      .from('profiles')
+      .select('first_name, last_name')
+      .eq('user_id', riderData.user_id)
+      .maybeSingle()
+    if (riderProfileError) throw riderProfileError
+    if (riderProfile) riderName = `${riderProfile.first_name} ${riderProfile.last_name}`
+  }
 
   const paidLessons = (lessonsData ?? []).filter(
     (l): l is { id: string; fee: number; lesson_at: string } => l.fee !== null
