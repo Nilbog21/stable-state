@@ -86,17 +86,25 @@ describe('HorseDetailPage', () => {
     expect(screen.getByRole('heading', { name: 'Thunderbolt' })).toBeDefined()
   })
 
-  it('should_render_available_status_when_horse_is_available', async () => {
+  it('should_render_available_status_for_trainer_when_horse_is_available', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText(/available/i)).toBeDefined()
   })
 
-  it('should_render_unavailable_status_when_horse_is_unavailable', async () => {
+  it('should_render_unavailable_status_for_trainer_when_horse_is_unavailable', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getHorseById).mockResolvedValue(unavailableHorse)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText(/unavailable/i)).toBeDefined()
+  })
+
+  it('should_not_render_status_section_for_manager', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Status')).toBeNull()
   })
 
   it('should_render_availability_form_for_manager', async () => {

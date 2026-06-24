@@ -36,21 +36,23 @@ export default async function HorseDetailPage({
         {horse.name}
       </h1>
 
-      <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
-        <div className="flex flex-col gap-1 py-4">
-          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</dt>
-          <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-            {horse.is_available ? 'Available' : 'Unavailable'}
-          </dd>
-        </div>
-
-        {role !== 'manager' && !horse.is_available && horse.unavailability_reason && (
+      {role !== 'manager' && (
+        <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Reason</dt>
-            <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.unavailability_reason}</dd>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</dt>
+            <dd className="text-sm text-zinc-900 dark:text-zinc-50">
+              {horse.is_available ? 'Available' : 'Unavailable'}
+            </dd>
           </div>
-        )}
-      </dl>
+
+          {!horse.is_available && horse.unavailability_reason && (
+            <div className="flex flex-col gap-1 py-4">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Reason</dt>
+              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.unavailability_reason}</dd>
+            </div>
+          )}
+        </dl>
+      )}
 
       {role === 'manager' && (
         <>
