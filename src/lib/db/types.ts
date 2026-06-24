@@ -180,8 +180,22 @@ export interface RiderIncomeDetailRow {
   splitAmount: number
 }
 
+export type HorseDocumentType = 'insurance_binder' | 'coggins' | 'shot_record' | 'contract'
 export type TrainerDocumentType = 'instructor_contract'
 export type RiderDocumentType = 'liability_waiver' | 'lease_agreement' | 'boarding_contract'
+
+export interface HorseDocument {
+  id: string
+  barn_id: string
+  horse_id: string
+  record_type: HorseDocumentType
+  storage_path: string
+  file_name: string
+  file_size: number
+  notes: string | null
+  created_at: string
+  updated_at: string
+}
 
 export interface TrainerDocument {
   id: string

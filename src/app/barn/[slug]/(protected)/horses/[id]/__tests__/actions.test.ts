@@ -303,6 +303,22 @@ describe('uploadHorseDocumentAction', () => {
     await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/No file/)
   })
 
+  it('should_reject_file_with_no_extension', async () => {
+    const file = new File([new Uint8Array(100)], 'coggins', { type: 'application/pdf' })
+    const fd = makeUploadFormData(file, 'coggins')
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/Unsupported/)
+  })
+
+  it('should_pass_null_notes_when_notes_field_is_absent', async () => {
+    const fd = new FormData()
+    fd.set('file', makePdfFile())
+    fd.set('record_type', 'coggins')
+    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(createHorseDocument).toHaveBeenCalledWith(
+      expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null
+    )
+  })
+
   it('should_rollback_storage_on_db_error', async () => {
     vi.mocked(createHorseDocument).mockRejectedValue(new Error('db error'))
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
