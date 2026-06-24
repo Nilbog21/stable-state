@@ -10,6 +10,8 @@ import {
   getTrainerDocuments,
   createTrainerDocument,
   deleteTrainerDocument,
+  uploadDocumentFile,
+  removeDocumentFile,
   getDocumentSignedUrl,
 } from '../trainer-documents'
 
@@ -176,6 +178,62 @@ describe('deleteTrainerDocument', () => {
   })
 })
 
+describe('uploadDocumentFile', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_upload_file_to_storage', async () => {
+    const mockUpload = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      storage: { from: vi.fn().mockReturnValue({ upload: mockUpload }) },
+    } as any)
+
+    const file = new File([new Uint8Array(100)], 'test.pdf', { type: 'application/pdf' })
+    await expect(uploadDocumentFile('barn-1/trainers/user-1/test.pdf', file, 'application/pdf')).resolves.toBeUndefined()
+  })
+
+  it('should_throw_on_storage_upload_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      storage: {
+        from: vi.fn().mockReturnValue({
+          upload: vi.fn().mockResolvedValue({ error: new Error('upload error') }),
+        }),
+      },
+    } as any)
+
+    const file = new File([new Uint8Array(100)], 'test.pdf', { type: 'application/pdf' })
+    await expect(uploadDocumentFile('some/path', file, 'application/pdf')).rejects.toThrow('upload error')
+  })
+})
+
+describe('removeDocumentFile', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_remove_file_from_storage', async () => {
+    const mockRemove = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      storage: { from: vi.fn().mockReturnValue({ remove: mockRemove }) },
+    } as any)
+
+    await expect(removeDocumentFile('barn-1/trainers/user-1/test.pdf')).resolves.toBeUndefined()
+  })
+
+  it('should_throw_on_storage_remove_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      storage: {
+        from: vi.fn().mockReturnValue({
+          remove: vi.fn().mockResolvedValue({ error: new Error('remove error') }),
+        }),
+      },
+    } as any)
+
+    await expect(removeDocumentFile('some/path')).rejects.toThrow('remove error')
+  })
+})
+
 describe('getDocumentSignedUrl', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
@@ -211,5 +269,20 @@ describe('getDocumentSignedUrl', () => {
     } as any)
 
     await expect(getDocumentSignedUrl('some/path')).rejects.toThrow('storage error')
+  })
+
+  it('should_throw_when_signed_url_is_missing', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      storage: {
+        from: vi.fn().mockReturnValue({
+          createSignedUrl: vi.fn().mockResolvedValue({
+            data: { signedUrl: null },
+            error: null,
+          }),
+        }),
+      },
+    } as any)
+
+    await expect(getDocumentSignedUrl('some/path')).rejects.toThrow('No signed URL returned')
   })
 })

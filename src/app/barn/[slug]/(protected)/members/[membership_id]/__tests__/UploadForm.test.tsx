@@ -1,14 +1,10 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { UploadForm } from '../UploadForm'
 
 const noop = async () => {}
 
 describe('UploadForm', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-  })
-
   it('should_render_upload_button_for_trainer', () => {
     render(<UploadForm memberRole="trainer" action={noop} />)
     expect(screen.getByRole('button', { name: /upload/i })).toBeDefined()
