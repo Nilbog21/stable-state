@@ -1,3 +1,8 @@
+-- 0. Purge lesson data before schema change. TRUNCATE avoids row-level trigger events
+--    (DELETE would schedule the deferred participant-count triggers, which then block
+--    subsequent ALTER TABLE statements on lesson_riders). Data is reseeded by reset-db.sh.
+TRUNCATE public.lessons CASCADE;
+
 -- 1. Add composite UNIQUE to barn_memberships so it can be a composite FK target
 ALTER TABLE public.barn_memberships ADD CONSTRAINT barn_memberships_barn_id_id_key UNIQUE (barn_id, id);
 
@@ -26,7 +31,11 @@ WHERE r.id = lr.rider_id AND r.user_id IS NOT NULL;
 DELETE FROM public.lesson_riders
 WHERE rider_id NOT IN (SELECT id FROM public.barn_memberships);
 
--- 5. Add new FK lesson_riders(barn_id, rider_id) → barn_memberships(barn_id, id)
+-- 5. Flush deferred triggers before ALTER TABLE (DELETE above fires them; ALTER TABLE
+--    cannot run while trigger events are pending in the same transaction)
+SET CONSTRAINTS ALL IMMEDIATE;
+
+-- 6. Add new FK lesson_riders(barn_id, rider_id) → barn_memberships(barn_id, id)
 ALTER TABLE public.lesson_riders
   ADD CONSTRAINT lesson_riders_barn_id_rider_id_fkey
   FOREIGN KEY (barn_id, rider_id) REFERENCES public.barn_memberships (barn_id, id) ON DELETE CASCADE;
