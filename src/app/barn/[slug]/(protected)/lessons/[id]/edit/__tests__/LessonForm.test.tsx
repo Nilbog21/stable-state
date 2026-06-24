@@ -611,4 +611,21 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const removeCalls = removeEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
     expect(removeCalls.length).toBeGreaterThan(0)
   })
+
+  it('should_prevent_default_on_beforeunload_event_when_dirty', async () => {
+    render(
+      <NavigationBlockerProvider>
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    let handler: ((e: BeforeUnloadEvent) => void) | undefined
+    await waitFor(() => {
+      const call = addEventSpy.mock.calls.find(([event]) => event === 'beforeunload')
+      expect(call).toBeDefined()
+      handler = call![1] as (e: BeforeUnloadEvent) => void
+    })
+    const mockEvent = { preventDefault: vi.fn() } as unknown as BeforeUnloadEvent
+    handler!(mockEvent)
+    expect(mockEvent.preventDefault).toHaveBeenCalled()
+  })
 })

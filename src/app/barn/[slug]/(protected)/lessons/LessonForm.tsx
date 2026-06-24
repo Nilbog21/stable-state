@@ -1,8 +1,9 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useState, useEffect } from 'react'
 import type { Horse, LessonDetail, LessonTier, LessonType, Rider } from '@/lib/db/types'
 import { DateHourPicker } from './new/DateHourPicker'
+import { useNavigationBlocker } from '../NavigationBlocker'
 
 const CUSTOM_ID = '__custom__'
 
@@ -82,6 +83,28 @@ export function LessonForm({
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
   const [newRiderName, setNewRiderName] = useState('')
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
+  const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
+
+  const { setDirty, setMessage } = useNavigationBlocker()
+  const unpaidPastDue =
+    mode === 'edit' &&
+    (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
+    new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
+    (initialLesson?.fee ?? 0) > 0
+  const shouldWarn = unpaidPastDue && paymentType === ''
+
+  useEffect(() => {
+    setDirty(shouldWarn)
+    if (shouldWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
+    return () => setDirty(false)
+  }, [shouldWarn])
+
+  useEffect(() => {
+    if (!shouldWarn) return
+    function handler(e: BeforeUnloadEvent) { e.preventDefault() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [shouldWarn])
 
   if (tiers.length === 0) {
     return (
@@ -453,7 +476,8 @@ export function LessonForm({
         <select
           id="payment_type"
           name="payment_type"
-          defaultValue={initialLesson?.payment_type ?? ''}
+          value={paymentType}
+          onChange={e => setPaymentType(e.target.value)}
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           <option value="">Unpaid</option>

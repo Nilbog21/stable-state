@@ -7,7 +7,7 @@ import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getNotifications } from '@/lib/db/notifications'
 import { UserMenu } from './UserMenu'
 import { NotificationBell } from './NotificationBell'
-import { NavigationBlockerProvider, BlockingLink } from './NavigationBlocker'
+import { NavigationBlockerProvider, BlockingLink, NavigationConfirmDialog } from './NavigationBlocker'
 
 export async function generateMetadata({
   params,
@@ -102,6 +102,7 @@ export default async function ProtectedBarnLayout({
         </div>
       </nav>
       {children}
+      <NavigationConfirmDialog />
     </NavigationBlockerProvider>
   )
 }
