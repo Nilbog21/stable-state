@@ -16,6 +16,10 @@ If you have past lessons with unpaid balances, you will receive a notification. 
 
 Tap the bell icon in the nav bar to view your notifications. If your profile is missing a phone number or emergency contact, you will receive a **Complete your profile** notification — tap it to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
 
+## Your documents
+
+Go to **Members** and tap your card to manage your documents. You can upload a **Liability Waiver**, **Lease Agreement**, or **Boarding Contract** (PDF, JPG, PNG, or DOCX — max 5 MB). Tap a file name to open the document (link is valid for 5 minutes). You can also delete any document you have uploaded.
+
 ## Viewing horses
 
 Go to **Horses** to see horses grouped into two sections:
