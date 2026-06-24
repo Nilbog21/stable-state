@@ -92,6 +92,7 @@ export interface LessonWithDetails extends Lesson {
   horse_names: string[]
   horse_count: number
   rider_names: string[]
+  rider_ids: string[]
   rider_count: number
 }
 
