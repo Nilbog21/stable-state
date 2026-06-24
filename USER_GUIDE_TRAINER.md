@@ -16,7 +16,7 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 **Book a lesson** — Go to **Lessons → New Lesson**, fill in the date, select a horse and rider, choose a fee tier, optionally select a payment type if payment was collected at booking, and click **Submit**. Horses marked as unavailable appear grayed out and cannot be selected; their unavailability reason is shown next to the name.
 
-**Edit a lesson** — Open any of your lessons and click **Edit**. You can update the date, horse, rider, fee tier, and other fields. Unavailable horses that were already assigned to the lesson remain shown (checked but grayed out) and will stay on the lesson when saved.
+**Edit a lesson** — Open any of your lessons and click **Edit**. You can update the date, horse, rider, fee tier, and other fields. The instructor field shows your name and cannot be changed. Adding a new horse or rider inline is not available during an edit — contact your barn manager if you need to add a participant that is not in the list. Unavailable horses that were already assigned to the lesson remain shown (checked but grayed out) and will stay on the lesson when saved.
 
 **Lesson notes** — Open any lesson to see per-horse and per-rider note fields. Tap any note field to edit it inline; changes are saved immediately. Private notes (visually distinguished) are visible to trainers and managers only.
 

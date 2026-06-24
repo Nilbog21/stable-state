@@ -149,12 +149,13 @@ export async function updateLessonAction(
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
 
-  const { user } = await requireMembership(barnSlug, ['manager'])
+  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const instructorIdFromForm = formData.get('instructor_id') as string | null
+  const isManager = membership.role === 'manager'
+  const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
 
-  if (instructorIdFromForm && instructorIdFromForm !== user.id) {
+  if (isManager && instructorIdFromForm && instructorIdFromForm !== user.id) {
     const instructors = await getInstructorsByBarn(barnId)
     if (!instructors.some((i) => i.userId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
@@ -184,12 +185,14 @@ export async function updateLessonAction(
 
   try {
     if (newHorseName) {
+      if (!isManager) return { error: 'not authorized to add horses' }
       const horse = await createHorse(barnId, newHorseName)
       horseIds = [...horseIds, horse.id]
       exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
     if (newRiderName) {
+      if (!isManager) return { error: 'not authorized to add riders' }
       const rider = await createRider(barnId, newRiderName)
       riderIds = [rider.id]
     }

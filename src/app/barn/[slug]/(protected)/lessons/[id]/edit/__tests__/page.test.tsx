@@ -132,16 +132,25 @@ describe('EditLessonPage', () => {
     expect(notFound).toHaveBeenCalled()
   })
 
-  it('should_call_notFound_when_user_is_trainer', async () => {
+  it('should_render_edit_form_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
+
+  it('should_call_notFound_when_trainer_accesses_lesson_they_do_not_own', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'other-trainer' })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_invoke_notFound_when_user_is_trainer', async () => {
+  it('should_invoke_notFound_when_trainer_accesses_lesson_they_do_not_own', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'other-trainer' })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
-    await expect(EditLessonPage({ params })).rejects.toThrow()
+    try { await EditLessonPage({ params }) } catch (_) {}
     expect(notFound).toHaveBeenCalled()
   })
 

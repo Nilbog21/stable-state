@@ -29,8 +29,9 @@ export default async function EditLessonPage({
   ])
 
   if (!membership || membership.status !== 'active') notFound()
-  if (membership.role !== 'manager') notFound()
+  if (membership.role !== 'manager' && membership.role !== 'trainer') notFound()
   if (!lesson) notFound()
+  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) notFound()
 
   const [horses, riders, tiers, instructorList] = await Promise.all([
     getHorsesByBarn(barn.id),
@@ -70,7 +71,7 @@ export default async function EditLessonPage({
         initialLesson={lesson}
         horses={horsesForForm}
         riders={riders}
-        isManager={true}
+        isManager={membership.role === 'manager'}
         instructors={instructors}
         currentUserId={user.id}
         tiers={tiers}
