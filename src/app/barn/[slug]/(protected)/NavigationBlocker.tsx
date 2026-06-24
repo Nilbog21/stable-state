@@ -1,6 +1,6 @@
 'use client'
 
-import { createContext, useContext, useState } from 'react'
+import { createContext, useCallback, useContext, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 
@@ -13,6 +13,8 @@ type Ctx = {
   setPendingNav: (nav: PendingNav) => void
   message: string
   setMessage: (m: string) => void
+  onLeave: (() => void) | null
+  setOnLeave: (fn: (() => void) | null) => void
 }
 
 const NavigationBlockerContext = createContext<Ctx>({
@@ -22,6 +24,8 @@ const NavigationBlockerContext = createContext<Ctx>({
   setPendingNav: () => {},
   message: '',
   setMessage: () => {},
+  onLeave: null,
+  setOnLeave: () => {},
 })
 
 export function useNavigationBlocker() {
@@ -32,23 +36,35 @@ export function NavigationBlockerProvider({ children }: { children: React.ReactN
   const [dirty, setDirty] = useState(false)
   const [pendingNav, setPendingNav] = useState<PendingNav>(null)
   const [message, setMessage] = useState('')
+  const [onLeaveState, setOnLeaveState] = useState<(() => void) | null>(null)
+  const setOnLeave = useCallback((fn: (() => void) | null) => {
+    setOnLeaveState(fn === null ? null : () => fn)
+  }, [])
   return (
-    <NavigationBlockerContext.Provider value={{ dirty, setDirty, pendingNav, setPendingNav, message, setMessage }}>
+    <NavigationBlockerContext.Provider value={{ dirty, setDirty, pendingNav, setPendingNav, message, setMessage, onLeave: onLeaveState, setOnLeave }}>
       {children}
     </NavigationBlockerContext.Provider>
   )
 }
 
 export function NavigationConfirmDialog() {
-  const { pendingNav, setPendingNav, setDirty, message } = useNavigationBlocker()
+  const { pendingNav, setPendingNav, setDirty, message, onLeave, setOnLeave } = useNavigationBlocker()
   const router = useRouter()
 
   if (!pendingNav) return null
 
   function handleLeave() {
-    if (pendingNav?.type === 'push') router.push(pendingNav.href)
+    const nav = pendingNav
     setDirty(false)
     setPendingNav(null)
+    setOnLeave(null)
+    if (onLeave) {
+      onLeave()
+    } else if (nav?.type === 'push') {
+      router.push(nav.href)
+    } else if (nav?.type === 'back') {
+      router.back()
+    }
   }
 
   return (
@@ -59,14 +75,14 @@ export function NavigationConfirmDialog() {
           <button
             type="button"
             onClick={() => setPendingNav(null)}
-            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:active:bg-zinc-700"
           >
             Stay
           </button>
           <button
             type="button"
             onClick={handleLeave}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 active:bg-zinc-600 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
           >
             Leave
           </button>

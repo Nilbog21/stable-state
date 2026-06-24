@@ -3,6 +3,7 @@ import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/re
 import { BlockingLink, NavigationBlockerProvider, NavigationConfirmDialog, useNavigationBlocker } from '../NavigationBlocker'
 
 const mockPush = vi.fn()
+const mockBack = vi.fn()
 
 vi.mock('next/link', () => ({
   default: ({ href, onNavigate, className, children }: {
@@ -26,11 +27,11 @@ vi.mock('next/link', () => ({
 }))
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ push: mockPush }),
+  useRouter: () => ({ push: mockPush, back: mockBack }),
 }))
 
 afterEach(cleanup)
-beforeEach(() => { mockPush.mockReset() })
+beforeEach(() => { mockPush.mockReset(); mockBack.mockReset() })
 
 function PendingNavDisplay() {
   const { pendingNav } = useNavigationBlocker()
@@ -54,6 +55,31 @@ function SetPendingNavButton({ href }: { href: string }) {
       }}
     >
       block
+    </button>
+  )
+}
+
+function SetBackNavButton() {
+  const { setDirty, setPendingNav, setMessage } = useNavigationBlocker()
+  return (
+    <button
+      data-testid="set-back"
+      onClick={() => {
+        setDirty(true)
+        setMessage('Test message')
+        setPendingNav({ type: 'back' })
+      }}
+    >
+      back
+    </button>
+  )
+}
+
+function SetOnLeaveButton({ onLeaveFn }: { onLeaveFn: () => void }) {
+  const { setOnLeave } = useNavigationBlocker()
+  return (
+    <button data-testid="set-onleave" onClick={() => setOnLeave(onLeaveFn)}>
+      register
     </button>
   )
 }
@@ -174,5 +200,47 @@ describe('NavigationConfirmDialog', () => {
     fireEvent.click(screen.getByTestId('set-pending'))
     fireEvent.click(screen.getByRole('button', { name: /leave/i }))
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('should_call_onLeave_instead_of_router_push_when_registered', () => {
+    const customLeave = vi.fn()
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/other" />
+        <SetOnLeaveButton onLeaveFn={customLeave} />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    fireEvent.click(screen.getByTestId('set-onleave'))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
+    expect(customLeave).toHaveBeenCalled()
+  })
+
+  it('should_not_call_router_push_when_onLeave_is_registered', () => {
+    const customLeave = vi.fn()
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/other" />
+        <SetOnLeaveButton onLeaveFn={customLeave} />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    fireEvent.click(screen.getByTestId('set-onleave'))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
+    expect(mockPush).not.toHaveBeenCalled()
+  })
+
+  it('should_call_router_back_for_type_back_when_no_onLeave', () => {
+    render(
+      <NavigationBlockerProvider>
+        <SetBackNavButton />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-back'))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
+    expect(mockBack).toHaveBeenCalled()
   })
 })
