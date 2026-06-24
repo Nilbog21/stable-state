@@ -205,4 +205,43 @@ describe('MemberDetailPage', () => {
     render(jsx)
     expect(screen.getByText(/no account linked/i)).toBeDefined()
   })
+
+  it('should_not_show_heading_when_target_has_no_user_id', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
+    )
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-nouser') })
+    render(jsx)
+    expect(screen.queryByRole('heading')).toBeNull()
+  })
+
+  it('should_show_user_id_as_name_when_profile_not_found', async () => {
+    vi.mocked(getProfileByUserId).mockImplementation(async (uid) =>
+      uid === 'user-mgr' ? callerProfile : null
+    )
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /user-target-trn/i })).toBeDefined()
+  })
+
+  it('should_show_delete_button_next_to_document_when_can_upload', async () => {
+    vi.mocked(getTrainerDocuments).mockResolvedValue([mockTrainerDoc])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+  })
+
+  it('should_not_show_delete_button_when_trainer_views_rider_doc', async () => {
+    setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileByUserId).mockImplementation(async (uid) =>
+      uid === 'user-trn' ? createMockProfile({ user_id: 'user-trn', first_name: 'Bob', last_name: 'Trainer' })
+        : createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' })
+    )
+    vi.mocked(getRiderDocuments).mockResolvedValue([mockRiderDoc])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
+  })
 })

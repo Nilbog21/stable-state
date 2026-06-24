@@ -82,6 +82,24 @@ describe('getTrainerDocuments', () => {
 
     await expect(getTrainerDocuments('user-1', 'barn-1')).rejects.toThrow('db error')
   })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getTrainerDocuments('user-1', 'barn-1')
+
+    expect(result).toEqual([])
+  })
 })
 
 describe('createTrainerDocument', () => {

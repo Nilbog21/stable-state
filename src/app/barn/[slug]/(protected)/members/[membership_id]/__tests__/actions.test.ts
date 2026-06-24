@@ -139,6 +139,111 @@ describe('uploadDocumentAction', () => {
 
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
+
+  it('should_upload_own_rider_document_as_rider', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+
+    const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
+    await uploadDocumentAction('green-acres', 'mem-rdr', fd)
+
+    expect(createRiderDocument).toHaveBeenCalled()
+  })
+
+  it('should_throw_when_target_membership_not_found', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
+    await expect(uploadDocumentAction('green-acres', 'mem-gone', fd)).rejects.toThrow()
+  })
+
+  it('should_throw_when_target_has_no_user_id', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
+    )
+
+    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
+    await expect(uploadDocumentAction('green-acres', 'mem-nouser', fd)).rejects.toThrow()
+  })
+
+  it('should_throw_when_no_file_provided', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const fd = new FormData()
+    fd.set('record_type', 'instructor_contract')
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+  })
+
+  it('should_throw_when_storage_upload_fails', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(createClient).mockResolvedValue({
+      storage: {
+        from: vi.fn().mockReturnValue({
+          upload: vi.fn().mockResolvedValue({ data: null, error: new Error('storage upload failed') }),
+        }),
+      },
+    } as any)
+
+    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow('storage upload failed')
+  })
+
+  it('should_use_bin_extension_when_filename_has_no_dot', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const mockUpload = vi.fn().mockResolvedValue({ data: { path: 'some/path' }, error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      storage: { from: vi.fn().mockReturnValue({ upload: mockUpload }) },
+    } as any)
+
+    const noExtFile = new File([new Uint8Array(100)], 'noextension', { type: 'application/pdf' })
+    const fd = new FormData()
+    fd.set('file', noExtFile)
+    fd.set('record_type', 'instructor_contract')
+    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+
+    const [[uploadPath]] = mockUpload.mock.calls
+    expect(uploadPath).toMatch(/\.bin$/)
+  })
+
+  it('should_use_bin_extension_when_filename_ends_with_dot', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const mockUpload = vi.fn().mockResolvedValue({ data: { path: 'some/path' }, error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      storage: { from: vi.fn().mockReturnValue({ upload: mockUpload }) },
+    } as any)
+
+    const trailingDotFile = new File([new Uint8Array(100)], 'file.', { type: 'application/pdf' })
+    const fd = new FormData()
+    fd.set('file', trailingDotFile)
+    fd.set('record_type', 'instructor_contract')
+    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+
+    const [[uploadPath]] = mockUpload.mock.calls
+    expect(uploadPath).toMatch(/\.bin$/)
+  })
+
+  it('should_use_null_for_empty_notes', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const fd = new FormData()
+    fd.set('file', makePdfFile())
+    fd.set('record_type', 'instructor_contract')
+    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+
+    expect(createTrainerDocument).toHaveBeenCalledWith(
+      expect.any(String), expect.any(String), expect.any(String),
+      expect.any(String), expect.any(String), expect.any(Number), null
+    )
+  })
 })
 
 describe('deleteDocumentAction', () => {
@@ -195,5 +300,39 @@ describe('deleteDocumentAction', () => {
     await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-target-trn/file.pdf')
 
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
+  })
+
+  it('should_delete_rider_document_as_manager', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+
+    await deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'rider', 'barn-1/riders/user-target-rdr/waiver.pdf')
+
+    expect(deleteRiderDocument).toHaveBeenCalledWith('doc-2', 'barn-1')
+  })
+
+  it('should_throw_when_target_membership_not_found_on_delete', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    await expect(
+      deleteDocumentAction('green-acres', 'mem-gone', 'doc-1', 'trainer', 'path')
+    ).rejects.toThrow()
+  })
+
+  it('should_throw_when_storage_remove_fails', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(createClient).mockResolvedValue({
+      storage: {
+        from: vi.fn().mockReturnValue({
+          remove: vi.fn().mockResolvedValue({ error: new Error('storage remove failed') }),
+        }),
+      },
+    } as any)
+
+    await expect(
+      deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-target-trn/file.pdf')
+    ).rejects.toThrow('storage remove failed')
   })
 })

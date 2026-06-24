@@ -10,6 +10,7 @@ import {
   getRiderDocuments,
   createRiderDocument,
   deleteRiderDocument,
+  getDocumentSignedUrl,
 } from '../rider-documents'
 
 const mockDoc: RiderDocument = {
@@ -80,6 +81,24 @@ describe('getRiderDocuments', () => {
     } as any)
 
     await expect(getRiderDocuments('user-2', 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockResolvedValue({ data: null, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getRiderDocuments('user-2', 'barn-1')
+
+    expect(result).toEqual([])
   })
 })
 
@@ -154,5 +173,43 @@ describe('deleteRiderDocument', () => {
     } as any)
 
     await expect(deleteRiderDocument('doc-2', 'barn-1')).rejects.toThrow('delete error')
+  })
+})
+
+describe('getDocumentSignedUrl', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_signed_url', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      storage: {
+        from: vi.fn().mockReturnValue({
+          createSignedUrl: vi.fn().mockResolvedValue({
+            data: { signedUrl: 'https://example.com/signed' },
+            error: null,
+          }),
+        }),
+      },
+    } as any)
+
+    const url = await getDocumentSignedUrl('barn-1/riders/user-2/file.pdf')
+
+    expect(url).toBe('https://example.com/signed')
+  })
+
+  it('should_throw_on_storage_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      storage: {
+        from: vi.fn().mockReturnValue({
+          createSignedUrl: vi.fn().mockResolvedValue({
+            data: null,
+            error: new Error('storage error'),
+          }),
+        }),
+      },
+    } as any)
+
+    await expect(getDocumentSignedUrl('some/path')).rejects.toThrow('storage error')
   })
 })
