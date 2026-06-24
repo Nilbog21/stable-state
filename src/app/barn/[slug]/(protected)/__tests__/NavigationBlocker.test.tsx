@@ -1,6 +1,8 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
-import { BlockingLink, NavigationBlockerProvider, useNavigationBlocker } from '../NavigationBlocker'
+import { BlockingLink, NavigationBlockerProvider, NavigationConfirmDialog, useNavigationBlocker } from '../NavigationBlocker'
+
+const mockPush = vi.fn()
 
 vi.mock('next/link', () => ({
   default: ({ href, onNavigate, className, children }: {
@@ -23,7 +25,12 @@ vi.mock('next/link', () => ({
   ),
 }))
 
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: mockPush }),
+}))
+
 afterEach(cleanup)
+beforeEach(() => { mockPush.mockReset() })
 
 function PendingNavDisplay() {
   const { pendingNav } = useNavigationBlocker()
@@ -33,6 +40,22 @@ function PendingNavDisplay() {
 function DirtyToggle() {
   const { setDirty } = useNavigationBlocker()
   return <button data-testid="make-dirty" onClick={() => setDirty(true)}>dirty</button>
+}
+
+function SetPendingNavButton({ href }: { href: string }) {
+  const { setDirty, setPendingNav, setMessage } = useNavigationBlocker()
+  return (
+    <button
+      data-testid="set-pending"
+      onClick={() => {
+        setDirty(true)
+        setMessage('Test message')
+        setPendingNav({ type: 'push', href })
+      }}
+    >
+      block
+    </button>
+  )
 }
 
 describe('BlockingLink', () => {
@@ -64,5 +87,92 @@ describe('BlockingLink', () => {
     fireEvent.click(screen.getByTestId('link'))
 
     expect(screen.getByTestId('pending').textContent).toBe('{"type":"push","href":"/other"}')
+  })
+})
+
+describe('NavigationConfirmDialog', () => {
+  it('should_not_render_dialog_when_pending_nav_is_null', () => {
+    render(
+      <NavigationBlockerProvider>
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('should_render_dialog_when_pending_nav_is_set', () => {
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/other" />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    expect(screen.queryByRole('dialog')).not.toBeNull()
+  })
+
+  it('should_display_message_from_context_in_dialog', () => {
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/other" />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    expect(screen.getByRole('dialog').textContent).toContain('Test message')
+  })
+
+  it('should_clear_pending_nav_on_stay_click', () => {
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/other" />
+        <PendingNavDisplay />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    fireEvent.click(screen.getByRole('button', { name: /stay/i }))
+    expect(screen.queryByRole('dialog')).toBeNull()
+  })
+
+  it('should_navigate_on_leave_click', () => {
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/destination" />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
+    expect(mockPush).toHaveBeenCalledWith('/destination')
+  })
+
+  it('should_set_dirty_false_on_leave_click', () => {
+    function DirtyDisplay() {
+      const { dirty } = useNavigationBlocker()
+      return <div data-testid="dirty">{dirty ? 'dirty' : 'clean'}</div>
+    }
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/other" />
+        <DirtyDisplay />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
+    expect(screen.getByTestId('dirty').textContent).toBe('clean')
+  })
+
+  it('should_clear_pending_nav_on_leave_click', () => {
+    render(
+      <NavigationBlockerProvider>
+        <SetPendingNavButton href="/other" />
+        <NavigationConfirmDialog />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByTestId('set-pending'))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })

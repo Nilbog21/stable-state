@@ -1,8 +1,9 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
 import type { LessonDetail, Horse, Rider } from '@/lib/db/types'
 import { createMockLessonTier } from '@/test/fixtures'
 import { LessonForm } from '../../../LessonForm'
+import { NavigationBlockerProvider, useNavigationBlocker } from '../../../../NavigationBlocker'
 
 afterEach(cleanup)
 
@@ -472,5 +473,142 @@ describe('LessonForm (edit mode)', () => {
     )
     const hidden = container.querySelector('input[type="hidden"][name="horse_id"][value="horse-2"]')
     expect(hidden).not.toBeNull()
+  })
+})
+
+function DirtyDisplay() {
+  const { dirty } = useNavigationBlocker()
+  return <div data-testid="dirty">{dirty ? 'dirty' : 'clean'}</div>
+}
+
+const pastLesson: LessonDetail = {
+  ...normalLesson,
+  lesson_at: '2020-01-01T10:00:00Z',
+  payment_type: null,
+  fee: 75,
+}
+
+describe('LessonForm (edit mode — navigation dirty state)', () => {
+  let addEventSpy: ReturnType<typeof vi.spyOn>
+  let removeEventSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    addEventSpy = vi.spyOn(window, 'addEventListener')
+    removeEventSpy = vi.spyOn(window, 'removeEventListener')
+  })
+
+  afterEach(() => {
+    addEventSpy.mockRestore()
+    removeEventSpy.mockRestore()
+  })
+
+  it('should_not_set_dirty_when_lesson_is_future', async () => {
+    const futureLesson: LessonDetail = { ...pastLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_not_set_dirty_when_fee_is_zero', async () => {
+    const zeroFeeLesson: LessonDetail = { ...pastLesson, fee: 0 }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={zeroFeeLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_not_set_dirty_when_fee_is_null', async () => {
+    const nullFeeLesson: LessonDetail = { ...pastLesson, fee: null }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={nullFeeLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_not_set_dirty_when_payment_type_is_already_set', async () => {
+    const paidLesson: LessonDetail = { ...pastLesson, payment_type: 'venmo' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={paidLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_set_dirty_when_past_due_unpaid_with_positive_fee', async () => {
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_set_dirty_false_when_payment_type_selected', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+    const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'venmo' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_set_dirty_true_when_payment_type_cleared_back_to_unpaid', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+    const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'venmo' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    fireEvent.change(select, { target: { value: '' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_register_beforeunload_when_dirty', async () => {
+    render(
+      <NavigationBlockerProvider>
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => {
+      const calls = addEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+      expect(calls.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('should_remove_beforeunload_when_payment_type_selected', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => {
+      const calls = addEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+      expect(calls.length).toBeGreaterThan(0)
+    })
+    const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
+    await act(async () => { fireEvent.change(select, { target: { value: 'venmo' } }) })
+    const removeCalls = removeEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+    expect(removeCalls.length).toBeGreaterThan(0)
   })
 })
