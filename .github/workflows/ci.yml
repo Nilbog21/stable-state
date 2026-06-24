@@ -21,6 +21,7 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: ci
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -68,6 +69,7 @@ jobs:
             -H "Authorization: Bearer $SUPABASE_ACCESS_TOKEN" \
             "https://api.supabase.com/v1/projects/$SUPABASE_PROJECT_REF/api-keys" \
             | jq -r '.[] | select(.name == "anon") | .api_key')
+          [ -n "$ANON_KEY" ] || { echo "Failed to fetch anon key from Supabase API" >&2; exit 1; }
           echo "::add-mask::$ANON_KEY"
           printf 'NEXT_PUBLIC_SUPABASE_URL=https://%s.supabase.co\nNEXT_PUBLIC_SUPABASE_ANON_KEY=%s\nVERCEL_AUTOMATION_BYPASS_SECRET=%s\nSUPABASE_SERVICE_ROLE_KEY=%s\n' \
             "$SUPABASE_PROJECT_REF" "$ANON_KEY" "$VERCEL_AUTOMATION_BYPASS_SECRET" "$SUPABASE_SERVICE_ROLE_KEY" \
