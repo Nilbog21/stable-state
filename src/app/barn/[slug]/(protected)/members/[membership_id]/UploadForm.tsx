@@ -35,7 +35,7 @@ export function UploadForm({ memberRole, action }: Props) {
         </label>
         <select
           value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value as any)}
+          onChange={(e) => setSelectedType(e.target.value as TrainerDocumentType | RiderDocumentType)}
           className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         >
           {types.map((t) => (
