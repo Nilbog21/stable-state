@@ -132,17 +132,11 @@ describe('EditLessonPage', () => {
     expect(notFound).toHaveBeenCalled()
   })
 
-  it('should_call_notFound_when_user_is_trainer', async () => {
+  it('should_render_edit_form_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
-    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
-    await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
-  })
-
-  it('should_invoke_notFound_when_user_is_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
-    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
-    await expect(EditLessonPage({ params })).rejects.toThrow()
-    expect(notFound).toHaveBeenCalled()
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
 
   it('should_call_notFound_when_user_is_rider', async () => {

@@ -907,6 +907,50 @@ describe('updateLessonAction', () => {
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(createRider).toHaveBeenCalledWith('barn-1', 'Charlie')
   })
+
+  it('should_call_updateLessonWithParticipants_when_trainer_submits_valid_lesson', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).toHaveBeenCalled()
+  })
+
+  it('should_use_current_user_id_as_instructor_when_trainer_updates_lesson', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', instructor_id: 'other-trainer', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorId: 'user-1' })
+    )
+  })
+
+  it('should_return_error_when_trainer_tries_to_add_new_horse', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized to add horses' })
+  })
+
+  it('should_not_call_createHorse_when_trainer_submits_new_horse_to_update', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'rider-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(createHorse).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_trainer_tries_to_add_new_rider', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Charlie', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'not authorized to add riders' })
+  })
+
+  it('should_not_call_createRider_when_trainer_submits_new_rider_to_update', async () => {
+    guardAs(mockTrainerMembership)
+    const fd = makeFormData({ horse_id: 'horse-1', new_rider_name: 'Charlie', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(createRider).not.toHaveBeenCalled()
+  })
 })
 
 describe('updatePaymentTypeAction', () => {

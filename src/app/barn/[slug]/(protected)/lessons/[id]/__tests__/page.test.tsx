@@ -311,10 +311,17 @@ describe('LessonDetailPage', () => {
     expect(link.href).toContain('/barn/green-acres/lessons/lesson-1/edit')
   })
 
-  it('should_not_show_edit_link_for_trainer', async () => {
+  it('should_show_edit_link_for_trainer', async () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
-    expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
+    expect(screen.getByRole('link', { name: /edit/i })).toBeDefined()
+  })
+
+  it('should_edit_link_point_to_edit_page_for_trainer', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /edit/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/lessons/lesson-1/edit')
   })
 
   it('should_not_show_edit_link_for_rider', async () => {
