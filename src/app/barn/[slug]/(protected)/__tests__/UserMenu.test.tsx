@@ -39,6 +39,7 @@ const baseProps = {
   email: 'jane@example.com',
   fullName: 'Jane Doe',
   showSwitchBarn: false,
+  barnSlug: 'test-barn',
 }
 
 describe('UserMenu - initials button', () => {
@@ -157,6 +158,43 @@ describe('UserMenu - outside click/touch closes dropdown', () => {
   })
 })
 
+describe('UserMenu - User Guide link', () => {
+  it('should_show_user_guide_link_when_dropdown_is_open', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: /user guide/i })).toBeDefined()
+  })
+
+  it('should_user_guide_link_point_to_barn_guide_route', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect((screen.getByRole('link', { name: /user guide/i }) as HTMLAnchorElement).href).toContain('/barn/test-barn/guide')
+  })
+
+  it('should_close_dropdown_when_user_guide_link_is_clicked', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /user guide/i }))
+    expect(screen.queryByText('Sign out')).toBeNull()
+  })
+
+  it('should_user_guide_link_appear_before_sign_out_button', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    const guideLink = screen.getByRole('link', { name: /user guide/i })
+    const signOutButton = screen.getByRole('button', { name: /sign out/i })
+    expect(guideLink.compareDocumentPosition(signOutButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('should_user_guide_link_appear_after_switch_barn_link_when_shown', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn={true} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    const switchBarnLink = screen.getByRole('link', { name: /switch barn/i })
+    const guideLink = screen.getByRole('link', { name: /user guide/i })
+    expect(switchBarnLink.compareDocumentPosition(guideLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
 describe('UserMenu - dirty navigation blocking', () => {
   const mockSetPendingNav = vi.fn()
 
@@ -191,5 +229,12 @@ describe('UserMenu - dirty navigation blocking', () => {
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     fireEvent.click(screen.getByRole('link', { name: /switch barn/i }))
     expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/barns' })
+  })
+
+  it('should_set_pending_nav_to_guide_when_dirty_and_user_guide_link_clicked', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /user guide/i }))
+    expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/barn/test-barn/guide' })
   })
 })

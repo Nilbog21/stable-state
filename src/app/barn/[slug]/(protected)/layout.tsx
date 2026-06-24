@@ -97,7 +97,7 @@ export default async function ProtectedBarnLayout({
           </BlockingLink>
         ))}
         <div className="ml-auto flex items-center gap-2">
-          <UserMenu initials={initials} email={email} fullName={fullName} showSwitchBarn={showSwitchBarn} />
+          <UserMenu initials={initials} email={email} fullName={fullName} showSwitchBarn={showSwitchBarn} barnSlug={slug} />
           <NotificationBell notifications={notifications} barnId={barn.id} />
         </div>
       </nav>

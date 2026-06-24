@@ -61,6 +61,10 @@ Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing
 
 Go to **Settings** to review pending membership requests. Approving a request grants the member active access to the barn and, for rider-role requests, automatically creates their rider record.
 
+## Profile & Guide
+
+Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, or tap **User Guide** to open this guide from any page.
+
 ## Notifications
 
 You will receive notifications for situations that need attention. Tap the bell icon in the nav bar to view them; tap **Mark all read** to dismiss them.

@@ -37,6 +37,10 @@ Go to **Horses** to see horses grouped into two sections:
 
 Tap any card to open the horse's detail page for full availability details.
 
+## Profile & Guide
+
+Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, or tap **User Guide** to open this guide from any page.
+
 ## Members
 
 Go to **Members** to view the barn's rider roster. Your own card appears at the top; the Riders section lists all active riders with links to their detail pages.
