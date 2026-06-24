@@ -122,7 +122,7 @@ rm -rf "$REPO"
 REPO="$(make_repo "" 0)"
 output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" --skip-env-local-check test-barn-pr-99 2>&1)"
 exit_code=$?
-if [ "$exit_code" -ne 0 ]; then
+if [ "$exit_code" -ne 0 ] && echo "$output" | grep -q 'NEXT_PUBLIC_SUPABASE_URL\|SUPABASE_SERVICE_ROLE_KEY'; then
   assert_pass "should_error_when_env_vars_missing_even_with_flag"
 else
   assert_fail "should_error_when_env_vars_missing_even_with_flag" "exit=$exit_code output=$output"
