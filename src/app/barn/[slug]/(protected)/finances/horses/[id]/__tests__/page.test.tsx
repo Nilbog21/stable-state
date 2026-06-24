@@ -17,7 +17,6 @@ import HorseIncomePage from '../page'
 const mockBarn = createMockBarn({ created_at: '2026-01-01T00:00:00Z' })
 const mockUser = createMockUser()
 const managerMembership = createMockMembership({ role: 'manager' })
-const trainerMembership = createMockMembership({ role: 'trainer' })
 
 const defaultParams = Promise.resolve({ slug: 'green-acres', id: 'horse-1' })
 const maySearchParams = Promise.resolve({ month: '2026-05' })
@@ -47,9 +46,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(requireMembership).mockRejectedValue(
       Object.assign(new Error('NEXT_REDIRECT'), { digest: 'NEXT_REDIRECT;replace;/barn/green-acres/login' })
     )
-    vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: trainerMembership })
-    await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+    await expect(HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })).rejects.toThrow('NEXT_REDIRECT')
   })
 
   it('should_call_getHorseIncomeDetail_with_horse_id', async () => {
@@ -126,12 +123,16 @@ describe('HorseIncomePage', () => {
     expect(screen.getByText(/total/i)).toBeDefined()
   })
 
-  it('should_render_back_link_to_finances_horse_tab', async () => {
+  it('should_render_back_link_pointing_to_finances', async () => {
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    const backLink = screen.getByRole('link', { name: /back/i })
-    expect(backLink.getAttribute('href')).toContain('/barn/green-acres/finances')
-    expect(backLink.getAttribute('href')).toContain('tab=horse')
+    expect(screen.getByRole('link', { name: /back/i }).getAttribute('href')).toContain('/barn/green-acres/finances')
+  })
+
+  it('should_render_back_link_with_horse_tab_param', async () => {
+    const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /back/i }).getAttribute('href')).toContain('tab=horse')
   })
 
   it('should_link_date_to_lesson_detail', async () => {

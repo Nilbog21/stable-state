@@ -72,7 +72,7 @@ export default async function HorseIncomePage({
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     <Link
                       href={`/barn/${slug}/lessons/${row.lessonId}`}
-                      className="hover:underline"
+                      className="underline"
                     >
                       {formatDate(row.lessonAt)}
                     </Link>

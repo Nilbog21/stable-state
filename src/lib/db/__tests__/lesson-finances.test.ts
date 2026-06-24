@@ -1905,7 +1905,8 @@ describe('getHorseIncomeDetail', () => {
 
   function makeInChain(data: unknown[] | null, error: Error | null = null) {
     const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }
 
