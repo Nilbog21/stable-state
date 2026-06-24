@@ -176,6 +176,7 @@ describe('getLessonsByBarn', () => {
       instructor_name: 'John Doe',
       horse_names: ['Thunderbolt'],
       rider_names: ['Alice'],
+      rider_ids: ['rider-1'],
       rider_count: 1,
       horse_count: 1,
     }])
@@ -1155,6 +1156,7 @@ describe('getUpcomingLessons', () => {
       instructor_name: 'John Doe',
       horse_names: ['Thunderbolt'],
       rider_names: ['Alice'],
+      rider_ids: ['rider-1'],
       rider_count: 1,
       horse_count: 1,
     }])

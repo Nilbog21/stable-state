@@ -7,13 +7,44 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { deleteLessonAction } from '@/app/actions/lessons'
 import { OlderLessonsToggle } from './OlderLessonsToggle'
 import { LessonListItem } from './LessonListItem'
+import type { LessonWithDetails } from '@/lib/db/types'
 
 const OLDER_LESSON_CUTOFF_DAYS = 7
 
+const pillBase = 'rounded-full px-4 py-1.5 text-sm font-medium transition-colors'
+const pillActive = 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
+const pillInactive = 'border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
+
+function pillClass(active: boolean) {
+  return `${pillBase} ${active ? pillActive : pillInactive}`
+}
+
+function buildRiderOptions(lessons: LessonWithDetails[]): { id: string; name: string }[] {
+  const map = new Map<string, string>()
+  for (const lesson of lessons) {
+    lesson.rider_ids.forEach((id, i) => {
+      if (!map.has(id) && lesson.rider_names[i]) map.set(id, lesson.rider_names[i])
+    })
+  }
+  return [...map.entries()].map(([id, name]) => ({ id, name }))
+}
+
+function buildTrainerOptions(lessons: LessonWithDetails[]): { id: string; name: string }[] {
+  const map = new Map<string, string>()
+  for (const lesson of lessons) {
+    if (lesson.instructor_id && lesson.instructor_name) {
+      map.set(lesson.instructor_id, lesson.instructor_name)
+    }
+  }
+  return [...map.entries()].map(([id, name]) => ({ id, name }))
+}
+
 export default async function LessonsPage({
   params,
+  searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ slug: string }>
+  searchParams?: Promise<{ filter?: string; id?: string }>
 }) {
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
@@ -34,16 +65,32 @@ export default async function LessonsPage({
     notFound()
   }
 
-  const lessons = await getLessonsByBarn(barn.id, user.id, membership.role)
+  const { filter: filterParam, id: filterId } = await searchParams
+  const filter = filterParam === 'trainer' || filterParam === 'rider' ? filterParam : null
+
+  const allLessons = await getLessonsByBarn(barn.id, user.id, membership.role)
+
+  let lessons = allLessons
+  if (filter && filterId) {
+    if (filter === 'trainer') {
+      lessons = allLessons.filter((l) => l.instructor_id === filterId)
+    } else {
+      lessons = allLessons.filter((l) => l.rider_ids.includes(filterId))
+    }
+  }
 
   const isManager = membership.role === 'manager'
-  const canCreateLesson = membership.role === 'manager' || membership.role === 'trainer'
+  const isTrainer = membership.role === 'trainer'
+  const canCreateLesson = isManager || isTrainer
   const deleteAction = deleteLessonAction.bind(null, barn.id, slug)
 
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - OLDER_LESSON_CUTOFF_DAYS)
   const recentLessons = lessons.filter((l) => new Date(l.lesson_at) >= cutoff)
   const olderLessons = lessons.filter((l) => new Date(l.lesson_at) < cutoff)
+
+  const riderOptions = isManager || isTrainer ? buildRiderOptions(allLessons) : []
+  const trainerOptions = isManager ? buildTrainerOptions(allLessons) : []
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -60,6 +107,68 @@ export default async function LessonsPage({
           </Link>
         )}
       </div>
+
+      {isTrainer && riderOptions.length > 0 && (
+        <div className="w-full max-w-2xl overflow-x-auto">
+          <div className="flex min-w-max gap-2 pb-2">
+            <Link href="?" className={pillClass(!filter)}>All</Link>
+            {riderOptions.map((r) => (
+              <Link
+                key={r.id}
+                href={`?filter=rider&id=${r.id}`}
+                className={pillClass(filter === 'rider' && filterId === r.id)}
+              >
+                {r.name}
+              </Link>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {isManager && (
+        <div className="w-full max-w-2xl flex flex-col gap-2">
+          <div className="overflow-x-auto">
+            <div className="flex min-w-max gap-2 pb-2">
+              <Link href="?" className={pillClass(!filter)}>All</Link>
+              <Link href="?filter=trainer" className={pillClass(filter === 'trainer')}>By Trainer</Link>
+              <Link href="?filter=rider" className={pillClass(filter === 'rider')}>By Rider</Link>
+            </div>
+          </div>
+          {filter === 'trainer' && (
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max gap-2 pb-2">
+                <Link href="?filter=trainer" className={pillClass(!filterId)}>All</Link>
+                {trainerOptions.map((t) => (
+                  <Link
+                    key={t.id}
+                    href={`?filter=trainer&id=${t.id}`}
+                    className={pillClass(filterId === t.id)}
+                  >
+                    {t.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+          {filter === 'rider' && (
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max gap-2 pb-2">
+                <Link href="?filter=rider" className={pillClass(!filterId)}>All</Link>
+                {riderOptions.map((r) => (
+                  <Link
+                    key={r.id}
+                    href={`?filter=rider&id=${r.id}`}
+                    className={pillClass(filterId === r.id)}
+                  >
+                    {r.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {lessons.length === 0 ? (
         <p className="text-zinc-500">No lessons recorded yet.</p>
       ) : (

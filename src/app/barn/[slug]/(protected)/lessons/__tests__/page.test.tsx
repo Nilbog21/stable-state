@@ -204,7 +204,7 @@ describe('LessonsPage', () => {
   it('should_display_rider_names', async () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Alice')).toBeDefined()
+    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
   })
 
   it('should_link_each_lesson_row_to_its_detail_page', async () => {
@@ -289,7 +289,7 @@ describe('LessonsPage', () => {
   it('should_show_all_lessons_when_no_filter_params', async () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Alice')).toBeDefined()
+    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
   })
 
   it('should_show_rider_pills_for_trainer', async () => {
@@ -308,7 +308,7 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
     })
     render(jsx)
-    expect(screen.getByText('Alice')).toBeDefined()
+    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
     expect(screen.queryByText('Spirit')).toBeNull()
   })
 
@@ -320,8 +320,8 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'rider' }),
     })
     render(jsx)
-    expect(screen.getByText('Alice')).toBeDefined()
-    expect(screen.getByText('Bob')).toBeDefined()
+    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Bob').length).toBeGreaterThan(0)
   })
 
   it('should_show_dimension_pills_for_manager', async () => {
@@ -342,7 +342,7 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'trainer', id: 'user-1' }),
     })
     render(jsx)
-    expect(screen.getByText('John Doe')).toBeDefined()
+    expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0)
     expect(screen.queryByText('Spirit')).toBeNull()
   })
 
@@ -356,7 +356,7 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
     })
     render(jsx)
-    expect(screen.getByText('Alice')).toBeDefined()
+    expect(screen.getAllByText('Alice').length).toBeGreaterThan(0)
     expect(screen.queryByText('Spirit')).toBeNull()
   })
 
@@ -369,8 +369,8 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'trainer' }),
     })
     render(jsx)
-    expect(screen.getByText('John Doe')).toBeDefined()
-    expect(screen.getByText('Jane Smith')).toBeDefined()
+    expect(screen.getAllByText('John Doe').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Jane Smith').length).toBeGreaterThan(0)
   })
 
   it('should_show_active_pill_style_for_selected_trainer', async () => {
@@ -380,8 +380,8 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'trainer', id: 'user-1' }),
     })
     render(jsx)
-    const pill = screen.getByRole('link', { name: /john doe/i })
-    expect(pill.className).toContain('bg-zinc-900')
+    const pills = screen.getAllByRole('link', { name: /john doe/i })
+    expect(pills.some((p) => p.className.includes('bg-zinc-900'))).toBe(true)
   })
 
   it('should_show_active_pill_style_for_selected_rider', async () => {
@@ -390,7 +390,7 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'rider', id: 'rider-1' }),
     })
     render(jsx)
-    const pill = screen.getByRole('link', { name: /alice/i })
-    expect(pill.className).toContain('bg-zinc-900')
+    const pills = screen.getAllByRole('link', { name: /alice/i })
+    expect(pills.some((p) => p.className.includes('bg-zinc-900'))).toBe(true)
   })
 })
