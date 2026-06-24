@@ -3,6 +3,7 @@ import { render, screen, fireEvent, cleanup, waitFor, act } from '@testing-libra
 import { LessonNotesForm } from '../LessonNotesForm'
 import {
   NavigationBlockerProvider,
+  NavigationConfirmDialog,
   useNavigationBlocker,
   type PendingNav,
 } from '../../../NavigationBlocker'
@@ -21,10 +22,12 @@ const mockRider = { rider_notes: 'good position', private_notes: 'struggling', r
 const mockAction = vi.fn().mockResolvedValue(undefined)
 
 let pushMock: ReturnType<typeof vi.fn>
+let backMock: ReturnType<typeof vi.fn>
 
 beforeEach(() => {
   pushMock = vi.fn()
-  vi.mocked(useRouter).mockReturnValue({ push: pushMock } as ReturnType<typeof useRouter>)
+  backMock = vi.fn()
+  vi.mocked(useRouter).mockReturnValue({ push: pushMock, back: backMock } as ReturnType<typeof useRouter>)
 })
 
 function NavTrigger({ href = '/other', type = 'push' as 'push' | 'back' } = {}) {
@@ -33,6 +36,16 @@ function NavTrigger({ href = '/other', type = 'push' as 'push' | 'back' } = {}) 
   return (
     <button data-testid="nav-trigger" onClick={() => setPendingNav(nav)} />
   )
+}
+
+function MessageDisplay() {
+  const { message } = useNavigationBlocker()
+  return <div data-testid="message">{message}</div>
+}
+
+function OnLeaveDisplay() {
+  const { onLeave } = useNavigationBlocker()
+  return <div data-testid="onleave">{onLeave ? 'registered' : 'null'}</div>
 }
 
 function TestWrapper({
@@ -47,7 +60,10 @@ function TestWrapper({
   return (
     <NavigationBlockerProvider>
       <NavTrigger />
+      <MessageDisplay />
+      <OnLeaveDisplay />
       <LessonNotesForm action={action} horses={horses} riders={riders} />
+      <NavigationConfirmDialog />
     </NavigationBlockerProvider>
   )
 }
@@ -242,92 +258,71 @@ describe('LessonNotesForm - navigation guard', () => {
     vi.restoreAllMocks()
   })
 
-  it('should_show_modal_when_pending_nav_is_set_and_dirty', async () => {
+  it('should_set_message_in_context_when_dirty', async () => {
     await renderDirty()
-    fireEvent.click(screen.getByTestId('nav-trigger'))
-    await waitFor(() => expect(screen.queryByText('Unsaved changes')).not.toBeNull())
+    await waitFor(() => expect(screen.getByTestId('message').textContent).toBe(
+      'You have unsaved changes. Stay to save them, or leave without saving.'
+    ))
   })
 
-  it('should_show_modal_on_popstate_when_dirty', async () => {
+  it('should_clear_message_in_context_after_submit', async () => {
+    await renderDirty()
+    await waitFor(() => expect(screen.getByTestId('message').textContent).not.toBe(''))
+    fireEvent.submit(screen.getByRole('button', { name: 'Save' }).closest('form')!)
+    await waitFor(() => expect(screen.getByTestId('message').textContent).toBe(''))
+  })
+
+  it('should_show_confirm_dialog_when_nav_triggered_while_dirty', async () => {
+    await renderDirty()
+    fireEvent.click(screen.getByTestId('nav-trigger'))
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeNull())
+  })
+
+  it('should_set_pendingNav_back_on_popstate_when_dirty', async () => {
     await renderDirty()
     window.dispatchEvent(new PopStateEvent('popstate'))
-    await waitFor(() => expect(screen.queryByText('Unsaved changes')).not.toBeNull())
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeNull())
   })
 
-  it('should_dismiss_modal_on_cancel', async () => {
+  it('should_dismiss_dialog_on_stay_click', async () => {
     await renderDirty()
     fireEvent.click(screen.getByTestId('nav-trigger'))
-    await waitFor(() => screen.getByRole('button', { name: 'Cancel' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
-    await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull())
+    await waitFor(() => screen.getByRole('button', { name: /stay/i }))
+    fireEvent.click(screen.getByRole('button', { name: /stay/i }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 
-  it('should_call_action_when_save_changes_clicked', async () => {
-    const action = vi.fn().mockResolvedValue(undefined)
-    await renderDirty(action)
-    fireEvent.click(screen.getByTestId('nav-trigger'))
-    await waitFor(() => screen.getByRole('button', { name: 'Save changes' }))
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })) })
-    expect(action).toHaveBeenCalled()
-  })
-
-  it('should_call_router_push_after_save_changes_on_push_nav', async () => {
-    const action = vi.fn().mockResolvedValue(undefined)
-    await renderDirty(action)
-    fireEvent.click(screen.getByTestId('nav-trigger'))
-    await waitFor(() => screen.getByRole('button', { name: 'Save changes' }))
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })) })
-    expect(pushMock).toHaveBeenCalledWith('/other')
-  })
-
-  it('should_call_router_push_on_discard_push_nav', async () => {
+  it('should_register_onLeave_when_pending_nav_set', async () => {
     await renderDirty()
     fireEvent.click(screen.getByTestId('nav-trigger'))
-    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    await waitFor(() => expect(screen.getByTestId('onleave').textContent).toBe('registered'))
+  })
+
+  it('should_call_router_push_via_onLeave_on_leave_click', async () => {
+    await renderDirty()
+    fireEvent.click(screen.getByTestId('nav-trigger'))
+    await waitFor(() => screen.getByRole('button', { name: /leave/i }))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
     await waitFor(() => expect(pushMock).toHaveBeenCalledWith('/other'))
   })
 
-  it('should_not_call_action_on_discard', async () => {
-    const action = vi.fn()
-    await renderDirty(action)
-    fireEvent.click(screen.getByTestId('nav-trigger'))
-    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
-    expect(action).not.toHaveBeenCalled()
-  })
-
-  it('should_call_history_back_when_discarding_back_nav', async () => {
-    const backSpy = vi.spyOn(window.history, 'back').mockImplementation(() => {
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    })
+  it('should_call_history_back_via_onLeave_on_popstate_leave', async () => {
+    const backSpy = vi.spyOn(window.history, 'back').mockImplementation(() => {})
     await renderDirty()
     window.dispatchEvent(new PopStateEvent('popstate'))
-    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
+    await waitFor(() => screen.getByRole('button', { name: /leave/i }))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
     expect(backSpy).toHaveBeenCalled()
   })
 
-  it('should_ignore_popstate_fired_by_history_back_after_discard', async () => {
+  it('should_ignore_popstate_triggered_by_history_back_via_onLeave', async () => {
     vi.spyOn(window.history, 'back').mockImplementation(() => {
       window.dispatchEvent(new PopStateEvent('popstate'))
     })
     await renderDirty()
     window.dispatchEvent(new PopStateEvent('popstate'))
-    await waitFor(() => screen.getByRole('button', { name: 'Discard changes' }))
-    fireEvent.click(screen.getByRole('button', { name: 'Discard changes' }))
-    await waitFor(() => expect(screen.queryByText('Unsaved changes')).toBeNull())
-  })
-
-  it('should_call_history_back_when_saving_and_leaving_back_nav', async () => {
-    const backSpy = vi.spyOn(window.history, 'back').mockImplementation(() => {
-      window.dispatchEvent(new PopStateEvent('popstate'))
-    })
-    const action = vi.fn().mockResolvedValue(undefined)
-    await renderDirty(action)
-    window.dispatchEvent(new PopStateEvent('popstate'))
-    await waitFor(() => screen.getByRole('button', { name: 'Save changes' }))
-    await act(async () => { fireEvent.click(screen.getByRole('button', { name: 'Save changes' })) })
-    expect(backSpy).toHaveBeenCalled()
+    await waitFor(() => screen.getByRole('button', { name: /leave/i }))
+    fireEvent.click(screen.getByRole('button', { name: /leave/i }))
+    await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull())
   })
 })
