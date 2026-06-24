@@ -12,6 +12,7 @@ import {
   getHorseIncomeSummary,
   getRiderIncomeSummary,
   getTrainerIncomeSummary,
+  getHorseIncomeDetail,
 } from '../lesson-finances'
 
 describe('getFinancialSummary', () => {
@@ -1867,5 +1868,264 @@ describe('getTrainerIncomeSummary', () => {
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('profiles error')
+  })
+})
+
+describe('getHorseIncomeDetail', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  const startDate = new Date('2026-05-01T00:00:00Z')
+  const endDate = new Date('2026-06-01T00:00:00Z')
+
+  function makeLessonsChain(
+    data: { id: string; fee: number | null; lesson_at: string }[],
+    error: Error | null = null
+  ) {
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeHorseChain(
+    data: { id: string; name: string } | null,
+    error: Error | null = null
+  ) {
+    const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
+    return { select: mockSelect }
+  }
+
+  function makeInChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function setupClient(
+    lessons: { id: string; fee: number | null; lesson_at: string }[],
+    horse: { id: string; name: string } | null,
+    lessonHorses: { lesson_id: string; horse_id: string }[]
+  ) {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeLessonsChain(lessons)
+        if (table === 'horses') return makeHorseChain(horse)
+        if (table === 'lesson_horses') return makeInChain(lessonHorses)
+        return makeInChain([])
+      }),
+    } as any)
+  }
+
+  it('should_return_empty_rows_and_horse_name_when_no_paid_lessons', async () => {
+    setupClient([], { id: 'horse-1', name: 'Thunderbolt' }, [])
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result).toEqual({ horseName: 'Thunderbolt', rows: [], total: 0 })
+  })
+
+  it('should_return_horse_id_as_fallback_name_when_horse_not_found', async () => {
+    setupClient([], null, [])
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.horseName).toBe('horse-1')
+  })
+
+  it('should_return_row_with_full_fee_when_single_horse_in_lesson', async () => {
+    setupClient(
+      [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows[0].splitAmount).toBe(100)
+  })
+
+  it('should_return_horse_count_of_one_when_single_horse_in_lesson', async () => {
+    setupClient(
+      [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows[0].horseCount).toBe(1)
+  })
+
+  it('should_split_fee_evenly_when_two_horses_in_lesson', async () => {
+    setupClient(
+      [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }, { lesson_id: 'lesson-1', horse_id: 'horse-2' }]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows[0].splitAmount).toBe(50)
+  })
+
+  it('should_return_horse_count_of_two_when_two_horses_in_lesson', async () => {
+    setupClient(
+      [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }, { lesson_id: 'lesson-1', horse_id: 'horse-2' }]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows[0].horseCount).toBe(2)
+  })
+
+  it('should_return_full_lesson_fee_in_row', async () => {
+    setupClient(
+      [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }, { lesson_id: 'lesson-1', horse_id: 'horse-2' }]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows[0].fee).toBe(100)
+  })
+
+  it('should_only_include_lessons_where_horse_participated', async () => {
+    setupClient(
+      [
+        { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
+        { id: 'lesson-2', fee: 80, lesson_at: '2026-05-15T10:00:00Z' },
+      ],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }, { lesson_id: 'lesson-2', horse_id: 'horse-2' }]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows).toHaveLength(1)
+  })
+
+  it('should_return_correct_lesson_id_in_row', async () => {
+    setupClient(
+      [{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows[0].lessonId).toBe('lesson-1')
+  })
+
+  it('should_accumulate_total_across_multiple_lessons', async () => {
+    setupClient(
+      [
+        { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
+        { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
+      ],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [
+        { lesson_id: 'lesson-1', horse_id: 'horse-1' },
+        { lesson_id: 'lesson-2', horse_id: 'horse-1' },
+      ]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.total).toBe(160)
+  })
+
+  it('should_exclude_lessons_with_null_fee', async () => {
+    setupClient(
+      [
+        { id: 'lesson-1', fee: null, lesson_at: '2026-05-10T10:00:00Z' },
+        { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
+      ],
+      { id: 'horse-1', name: 'Thunderbolt' },
+      [
+        { lesson_id: 'lesson-1', horse_id: 'horse-1' },
+        { lesson_id: 'lesson-2', horse_id: 'horse-1' },
+      ]
+    )
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows).toHaveLength(1)
+  })
+
+  it('should_throw_on_lessons_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeLessonsChain([], new Error('lessons error'))
+        return makeHorseChain(null)
+      }),
+    } as any)
+
+    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('lessons error')
+  })
+
+  it('should_throw_on_horse_query_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeLessonsChain([])
+        if (table === 'horses') return makeHorseChain(null, new Error('horse error'))
+        return makeInChain([])
+      }),
+    } as any)
+
+    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('horse error')
+  })
+
+  it('should_throw_on_lesson_horses_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+        if (table === 'horses') return makeHorseChain({ id: 'horse-1', name: 'Thunderbolt' })
+        if (table === 'lesson_horses') return makeInChain(null, new Error('lh error'))
+        return makeInChain([])
+      }),
+    } as any)
+
+    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('lh error')
+  })
+
+  it('should_treat_null_lesson_data_as_empty', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeLessonsChain(null as any)
+        if (table === 'horses') return makeHorseChain({ id: 'horse-1', name: 'Thunderbolt' })
+        return makeInChain([])
+      }),
+    } as any)
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows).toEqual([])
+  })
+
+  it('should_treat_null_lesson_horses_data_as_empty', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+        if (table === 'horses') return makeHorseChain({ id: 'horse-1', name: 'Thunderbolt' })
+        if (table === 'lesson_horses') return makeInChain(null)
+        return makeInChain([])
+      }),
+    } as any)
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+
+    expect(result.rows).toEqual([])
   })
 })

@@ -1,5 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
-import type { FinancialSummary, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
+import type { FinancialSummary, HorseIncomeDetailRow, HorseIncomeSummary, OutstandingLesson, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
 
 export async function getFinancialSummary(
   barnId: string,
@@ -323,4 +323,65 @@ export async function getTrainerIncomeSummary(
       }
     })
     .sort((a, b) => b.totalIncome - a.totalIncome)
+}
+
+export async function getHorseIncomeDetail(
+  barnId: string,
+  horseId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<{ horseName: string; rows: HorseIncomeDetailRow[]; total: number }> {
+  const supabase = await createClient()
+
+  const { data: lessonsData, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('id, fee, lesson_at')
+    .eq('barn_id', barnId)
+    .not('payment_type', 'is', null)
+    .gte('lesson_at', startDate.toISOString())
+    .lt('lesson_at', endDate.toISOString())
+    .order('lesson_at', { ascending: true })
+
+  if (lessonsError) throw lessonsError
+
+  const { data: horseData, error: horseError } = await supabase
+    .from('horses')
+    .select('id, name')
+    .eq('id', horseId)
+    .eq('barn_id', barnId)
+    .maybeSingle()
+
+  if (horseError) throw horseError
+  const horseName = horseData?.name ?? horseId
+
+  const paidLessons = (lessonsData ?? []).filter(
+    (l): l is { id: string; fee: number; lesson_at: string } => l.fee !== null
+  )
+  if (!paidLessons.length) return { horseName, rows: [], total: 0 }
+
+  const lessonIds = paidLessons.map((l) => l.id)
+  const { data: lessonHorses, error: lhError } = await supabase
+    .from('lesson_horses')
+    .select('lesson_id, horse_id')
+    .eq('barn_id', barnId)
+    .in('lesson_id', lessonIds)
+
+  if (lhError) throw lhError
+
+  const rows: HorseIncomeDetailRow[] = []
+  for (const lesson of paidLessons) {
+    const participants = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
+    if (!participants.some((lh) => lh.horse_id === horseId)) continue
+    const horseCount = participants.length
+    rows.push({
+      lessonId: lesson.id,
+      lessonAt: lesson.lesson_at,
+      fee: lesson.fee,
+      horseCount,
+      splitAmount: lesson.fee / horseCount,
+    })
+  }
+
+  const total = rows.reduce((sum, r) => sum + r.splitAmount, 0)
+  return { horseName, rows, total }
 }

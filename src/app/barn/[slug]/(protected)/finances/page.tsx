@@ -276,7 +276,7 @@ export default async function FinancesPage({
                 <tr key={row.horseId} className="border-b border-zinc-100 dark:border-zinc-800">
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     <Link
-                      href={`/barn/${slug}/finances/horses/${row.horseId}`}
+                      href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
                       className="hover:underline"
                     >
                       {row.horseName}

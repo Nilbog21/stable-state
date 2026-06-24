@@ -163,6 +163,14 @@ export interface RiderIncomeSummary {
   totalIncome: number
 }
 
+export interface HorseIncomeDetailRow {
+  lessonId: string
+  lessonAt: string
+  fee: number
+  horseCount: number
+  splitAmount: number
+}
+
 export interface Notification {
   id: string
   user_id: string

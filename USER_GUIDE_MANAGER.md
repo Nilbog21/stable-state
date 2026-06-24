@@ -38,6 +38,8 @@ Go to **Members** to browse the barn roster. You will see a Trainers section and
 
 Go to **Finances** to review payment status. The **Outstanding** section at the top lists all past unpaid lessons with a non-zero fee — select a payment type from the dropdown next to any lesson to mark it paid, or tap **View all outstanding** to open a full read-only list at a glance. Below that, use the **←** / **→** arrows to browse monthly summaries of collected and pending income, with breakdowns by tier, horse, rider, and trainer.
 
+In the **By Horse** tab, tap any horse name to open a drill-down page listing each lesson that contributed to that horse's income for the selected month. Each row shows the lesson date (linked to the lesson detail), the full lesson fee, the number of horses in that lesson, and the horse's split amount. The total at the bottom matches the amount shown in the By Horse summary.
+
 ## Settings
 
 Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing tier's name or price, set a default exertion level and jumping preference for a tier, set a tier as the default for new lessons, or deactivate a tier. The default tier cannot be deactivated until a different tier is set as default first.
