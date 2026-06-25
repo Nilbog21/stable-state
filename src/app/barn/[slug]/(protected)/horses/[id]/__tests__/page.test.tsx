@@ -14,21 +14,12 @@ vi.mock('@/lib/db/document-storage', () => ({
   getSignedUrl: vi.fn(),
 }))
 vi.mock('../actions', () => ({
-  updateHorseAvailabilityAction: vi.fn(),
-  renameHorseAction: vi.fn(),
-  setHorseActiveAction: vi.fn(),
+  updateHorseDetailsAction: vi.fn(),
   uploadHorseDocumentAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
 }))
-vi.mock('../HorseAvailabilityForm', () => ({
-  HorseAvailabilityForm: ({ horse }: { horse: { name: string } }) => (
-    <div data-testid="availability-form">{horse.name}</div>
-  ),
-}))
-vi.mock('../HorseActivationSection', () => ({
-  HorseActivationSection: ({ isActive }: { isActive: boolean }) => (
-    <div data-testid="activation-section">{isActive ? 'active' : 'inactive'}</div>
-  ),
+vi.mock('../HorseManagerForm', () => ({
+  HorseManagerForm: () => <div data-testid="horse-manager-form" />,
 }))
 vi.mock('../HorseDocumentUploadForm', () => ({
   HorseDocumentUploadForm: () => <div data-testid="horse-document-upload-form" />,
@@ -51,7 +42,6 @@ const riderMembership = createMockMembership({ role: 'rider', status: 'active' }
 
 const availableHorse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true, unavailability_reason: null })
 const unavailableHorse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: false, unavailability_reason: 'on stall rest' })
-const inactiveHorse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_active: false })
 
 const pageParams = Promise.resolve({ slug: 'green-acres', id: 'horse-1' })
 
@@ -135,24 +125,24 @@ describe('HorseDetailPage', () => {
     expect(screen.queryByText('Status')).toBeNull()
   })
 
-  it('should_render_availability_form_for_manager', async () => {
+  it('should_render_horse_manager_form_for_manager', async () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.getByTestId('availability-form')).toBeDefined()
+    expect(screen.getByTestId('horse-manager-form')).toBeDefined()
   })
 
-  it('should_not_render_availability_form_for_trainer', async () => {
+  it('should_not_render_horse_manager_form_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.queryByTestId('availability-form')).toBeNull()
+    expect(screen.queryByTestId('horse-manager-form')).toBeNull()
   })
 
-  it('should_not_render_availability_form_for_rider', async () => {
+  it('should_not_render_horse_manager_form_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.queryByTestId('availability-form')).toBeNull()
+    expect(screen.queryByTestId('horse-manager-form')).toBeNull()
   })
 
   it('should_render_unavailability_reason_for_trainer_when_unavailable', async () => {
@@ -176,60 +166,6 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText('on stall rest')).toBeNull()
-  })
-
-  it('should_render_name_input_prefilled_with_horse_name_for_manager', async () => {
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    const input = screen.getByRole('textbox', { name: /name/i }) as HTMLInputElement
-    expect(input.value).toBe('Thunderbolt')
-  })
-
-  it('should_not_render_name_input_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.queryByRole('textbox', { name: /name/i })).toBeNull()
-  })
-
-  it('should_not_render_name_input_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.queryByRole('textbox', { name: /name/i })).toBeNull()
-  })
-
-  it('should_render_activation_section_for_manager', async () => {
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.getByTestId('activation-section')).toBeDefined()
-  })
-
-  it('should_not_render_activation_section_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.queryByTestId('activation-section')).toBeNull()
-  })
-
-  it('should_not_render_activation_section_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.queryByTestId('activation-section')).toBeNull()
-  })
-
-  it('should_pass_is_active_true_to_activation_section_when_horse_is_active', async () => {
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.getByTestId('activation-section').textContent).toBe('active')
-  })
-
-  it('should_pass_is_active_false_to_activation_section_when_horse_is_inactive', async () => {
-    vi.mocked(getHorseById).mockResolvedValue(inactiveHorse)
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.getByTestId('activation-section').textContent).toBe('inactive')
   })
 
   it('should_render_upload_form_for_manager', async () => {
