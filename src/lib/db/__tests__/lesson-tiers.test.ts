@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getTiersByBarn, createTier, updateTier, deactivateTier, setDefaultTier, getAllTiersByBarn, getTierById } from '../lesson-tiers'
+import { getTiersByBarn, createTier, updateTier, deactivateTier, setDefaultTier, getAllTiersByBarn, getTierById, reactivateTier } from '../lesson-tiers'
 
 const mockTier = {
   id: 'tier-1',
@@ -493,6 +493,65 @@ describe('createTier with defaults', () => {
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ default_exertion_level: null, default_jumping: null })
     )
+  })
+})
+
+describe('reactivateTier', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_set_is_active_true_for_tier', async () => {
+    const mockEqBarn = vi.fn().mockResolvedValue({ error: null })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqId })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await reactivateTier('tier-1', 'barn-1')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ is_active: true })
+  })
+
+  it('should_filter_by_tier_id', async () => {
+    const mockEqBarn = vi.fn().mockResolvedValue({ error: null })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqId })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await reactivateTier('tier-1', 'barn-1')
+
+    expect(mockEqId).toHaveBeenCalledWith('id', 'tier-1')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const mockEqBarn = vi.fn().mockResolvedValue({ error: null })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqId })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await reactivateTier('tier-1', 'barn-1')
+
+    expect(mockEqBarn).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: new Error('db error') }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(reactivateTier('tier-1', 'barn-1')).rejects.toThrow('db error')
   })
 })
 

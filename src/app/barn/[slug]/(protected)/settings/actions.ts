@@ -1,7 +1,6 @@
 'use server'
 
 import { redirect } from 'next/navigation'
-import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import {
   createTier,
@@ -9,6 +8,7 @@ import {
   setDefaultTier,
   getTierById,
   deactivateTier,
+  reactivateTier,
 } from '@/lib/db/lesson-tiers'
 
 function parsePrice(raw: string | null): number | null {
@@ -40,7 +40,7 @@ export async function createTierAction(barnSlug: string, formData: FormData): Pr
   const defaultExertionLevel = parseExertion(formData.get('default_exertion_level') as string | null)
 
   await createTier(barn.id, name, price, false, defaultExertionLevel, defaultJumping)
-  revalidatePath(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings`)
 }
 
 export async function updateTierAction(
@@ -58,13 +58,13 @@ export async function updateTierAction(
   const default_exertion_level = parseExertion(formData.get('default_exertion_level') as string | null)
 
   await updateTier(tierId, barn.id, { name, price, default_jumping, default_exertion_level })
-  revalidatePath(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings`)
 }
 
 export async function setDefaultTierAction(barnSlug: string, tierId: string): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await setDefaultTier(tierId, barn.id)
-  revalidatePath(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings`)
 }
 
 export async function deactivateTierAction(barnSlug: string, tierId: string): Promise<void> {
@@ -80,5 +80,11 @@ export async function deactivateTierAction(barnSlug: string, tierId: string): Pr
   }
 
   await deactivateTier(tierId, barn.id)
-  revalidatePath(`/barn/${barnSlug}/settings`)
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+export async function reactivateTierAction(barnSlug: string, tierId: string): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await reactivateTier(tierId, barn.id)
+  redirect(`/barn/${barnSlug}/settings`)
 }
