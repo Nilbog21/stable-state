@@ -10,10 +10,13 @@ vi.mock('@/lib/db/auth', () => ({
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
-  applyPreAuthProfile: vi.fn().mockResolvedValue(undefined),
   getUserMembership: vi.fn(),
   getBarnMembershipsForUser: vi.fn(),
   getActiveMemberships: vi.fn(),
+}))
+
+vi.mock('@/lib/db/seeded-accounts', () => ({
+  activateSeededAccount: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/lib/db/profiles', () => ({
@@ -46,7 +49,8 @@ vi.mock('next/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { applyPreAuthProfile, getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { activateSeededAccount } from '@/lib/db/seeded-accounts'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
@@ -65,8 +69,8 @@ const completeProfile = createMockProfile({
 
 describe('GET /auth/callback', () => {
   beforeEach(() => {
-    vi.mocked(applyPreAuthProfile).mockReset()
-    vi.mocked(applyPreAuthProfile).mockResolvedValue(undefined)
+    vi.mocked(activateSeededAccount).mockReset()
+    vi.mocked(activateSeededAccount).mockResolvedValue(undefined)
     vi.mocked(getBarnMembershipsForUser).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
     vi.mocked(getProfileByUserId).mockReset()
@@ -88,7 +92,7 @@ describe('GET /auth/callback', () => {
     }))
   })
 
-  it('should_apply_pre_auth_profile_after_successful_session_exchange', async () => {
+  it('should_activate_seeded_account_after_successful_session_exchange', async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
     } as any)
@@ -97,10 +101,10 @@ describe('GET /auth/callback', () => {
     const request = new Request('http://localhost:3000/auth/callback?code=test-code')
     await GET(request as any)
 
-    expect(applyPreAuthProfile).toHaveBeenCalledWith('user-1', 'manager@example.com')
+    expect(activateSeededAccount).toHaveBeenCalledWith('user-1', 'manager@example.com')
   })
 
-  it('should_not_apply_pre_auth_profile_when_user_has_no_email', async () => {
+  it('should_not_activate_seeded_account_when_user_has_no_email', async () => {
     vi.mocked(createClient).mockResolvedValue({
       auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
     } as any)
@@ -109,7 +113,7 @@ describe('GET /auth/callback', () => {
     const request = new Request('http://localhost:3000/auth/callback?code=test-code')
     await GET(request as any)
 
-    expect(applyPreAuthProfile).not.toHaveBeenCalled()
+    expect(activateSeededAccount).not.toHaveBeenCalled()
   })
 
   it('should_exchange_code_for_session_when_code_is_present', async () => {

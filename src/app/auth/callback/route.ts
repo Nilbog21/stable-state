@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getUserMembership, getBarnMembershipsForUser, applyPreAuthProfile, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { activateSeededAccount } from '@/lib/db/seeded-accounts'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
@@ -62,7 +63,7 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const user = await getAuthenticatedUser()
       if (user?.email) {
-        await applyPreAuthProfile(user.id, user.email)
+        await activateSeededAccount(user.id, user.email)
       }
 
       if (barnSlug) {
