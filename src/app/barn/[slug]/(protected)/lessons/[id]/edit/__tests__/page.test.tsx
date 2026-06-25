@@ -19,6 +19,10 @@ vi.mock('../../../LessonForm', () => ({
   ),
 }))
 
+vi.mock('../LessonNotesForm', () => ({
+  LessonNotesForm: () => <div data-testid="lesson-notes-form" />,
+}))
+
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
@@ -237,5 +241,11 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
+  })
+
+  it('should_render_lesson_notes_form_on_edit_page', async () => {
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('lesson-notes-form')).toBeDefined()
   })
 })
