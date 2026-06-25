@@ -28,7 +28,7 @@ export function HorseManagerForm({
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
 
   return (
-    <form action={action} className="flex flex-col gap-5">
+    <form action={action} className="flex w-full flex-col gap-5">
       <div className="flex flex-col gap-1">
         <label htmlFor="horse-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Name
