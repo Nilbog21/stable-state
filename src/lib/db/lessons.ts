@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
+import { resolveMemberNames } from './barn-memberships'
 import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
 
 async function hydrateParticipants(
@@ -27,38 +28,23 @@ async function hydrateParticipants(
 
   const [
     { data: horses, error: horsesError },
-    { data: riders, error: ridersError },
+    membershipMap,
   ] = await Promise.all([
     horseIds.length
       ? supabase.from('horses').select('id, name').in('id', horseIds)
       : Promise.resolve({ data: [], error: null }),
-    riderIds.length
-      ? supabase.from('barn_memberships').select('id, user_id').in('id', riderIds)
-      : Promise.resolve({ data: [], error: null }),
+    resolveMemberNames(riderIds, supabase),
   ])
 
   if (horsesError) throw horsesError
-  if (ridersError) throw ridersError
 
-  type MemberRow = { id: string; user_id: string | null }
-  const memberUserIds = [...new Set((riders as MemberRow[] | null ?? []).map((bm) => bm.user_id).filter((uid): uid is string => uid !== null))]
-  const allProfileIds = [...new Set([...instructorIds, ...memberUserIds])]
-
-  const { data: profiles, error: profilesError } = allProfileIds.length
-    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', allProfileIds)
+  const { data: profiles, error: profilesError } = instructorIds.length
+    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
     : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
 
   if (profilesError) throw profilesError
 
   const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]))
-  const membershipMap = new Map(
-    (riders as MemberRow[] | null ?? []).map((bm) => [
-      bm.id,
-      bm.user_id && profileMap.get(bm.user_id)
-        ? `${profileMap.get(bm.user_id)!.first_name} ${profileMap.get(bm.user_id)!.last_name}`
-        : bm.id,
-    ])
-  )
 
   return lessons.map((lesson) => {
     const profile = lesson.instructor_id ? profileMap.get(lesson.instructor_id) : undefined

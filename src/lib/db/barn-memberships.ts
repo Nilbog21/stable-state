@@ -210,6 +210,42 @@ export async function getActiveMembersWithProfiles(
   })
 }
 
+export async function resolveMemberNames(
+  membershipIds: string[],
+  client?: SupabaseClient
+): Promise<Map<string, string>> {
+  if (!membershipIds.length) return new Map()
+
+  const supabase = client ?? await createClient()
+
+  type MemberRow = { id: string; user_id: string | null }
+  const { data: members, error: membersError } = await supabase
+    .from('barn_memberships')
+    .select('id, user_id')
+    .in('id', membershipIds) as { data: MemberRow[] | null; error: Error | null }
+
+  if (membersError) throw membersError
+
+  const userIds = [...new Set((members ?? []).map((m) => m.user_id).filter((uid): uid is string => uid !== null))]
+
+  const { data: profiles, error: profilesError } = userIds.length
+    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', userIds)
+    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
+
+  if (profilesError) throw profilesError
+
+  const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]))
+
+  return new Map(
+    (members ?? []).map((m) => [
+      m.id,
+      m.user_id && profileMap.get(m.user_id)
+        ? `${profileMap.get(m.user_id)!.first_name} ${profileMap.get(m.user_id)!.last_name}`
+        : m.id,
+    ])
+  )
+}
+
 export const getBarnMembershipsForUser = cache(async (
   userId: string
 ): Promise<{ barn: Barn; membership: BarnMembership }[]> => {
