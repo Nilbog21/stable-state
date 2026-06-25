@@ -77,4 +77,28 @@ describe('DateHourPicker', () => {
     const select = screen.getByLabelText('Hour') as HTMLSelectElement
     expect(select.value).toBe('9')
   })
+
+  it('should_display_midnight_as_12_00_AM', () => {
+    render(<DateHourPicker />)
+    const select = screen.getByLabelText('Hour') as HTMLSelectElement
+    expect(select.options[0].text).toBe('12:00 AM')
+  })
+
+  it('should_display_1am_as_1_00_AM', () => {
+    render(<DateHourPicker />)
+    const select = screen.getByLabelText('Hour') as HTMLSelectElement
+    expect(select.options[1].text).toBe('1:00 AM')
+  })
+
+  it('should_display_noon_as_12_00_PM', () => {
+    render(<DateHourPicker />)
+    const select = screen.getByLabelText('Hour') as HTMLSelectElement
+    expect(select.options[12].text).toBe('12:00 PM')
+  })
+
+  it('should_display_11pm_as_11_00_PM', () => {
+    render(<DateHourPicker />)
+    const select = screen.getByLabelText('Hour') as HTMLSelectElement
+    expect(select.options[23].text).toBe('11:00 PM')
+  })
 })

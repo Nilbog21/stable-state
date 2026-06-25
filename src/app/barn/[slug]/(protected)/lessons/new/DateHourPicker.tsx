@@ -10,8 +10,10 @@ function todayString() {
   return `${year}-${month}-${day}`
 }
 
-function padHour(h: number) {
-  return String(h).padStart(2, '0')
+function hourLabel(h: number) {
+  const period = h < 12 ? 'AM' : 'PM'
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${display}:00 ${period}`
 }
 
 export function DateHourPicker({
@@ -24,7 +26,7 @@ export function DateHourPicker({
   const [date, setDate] = useState(initialDate ?? todayString)
   const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
 
-  const combinedValue = `${date}T${padHour(hour)}:00`
+  const combinedValue = `${date}T${String(hour).padStart(2, '0')}:00`
 
   return (
     <div className="flex gap-2">
@@ -52,7 +54,7 @@ export function DateHourPicker({
           className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
         >
           {Array.from({ length: 24 }, (_, i) => (
-            <option key={i} value={i}>{padHour(i)}:00</option>
+            <option key={i} value={i}>{hourLabel(i)}</option>
           ))}
         </select>
       </div>
