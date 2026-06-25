@@ -382,7 +382,7 @@ describe('GET /auth/callback', () => {
         const request = new Request('http://localhost:3000/auth/callback?code=code')
         await GET(request as any)
 
-        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete?barn=green-acres')
       })
 
       it('should_redirect_to_profile_complete_when_emergency_contact_name_is_null', async () => {
@@ -393,7 +393,7 @@ describe('GET /auth/callback', () => {
         const request = new Request('http://localhost:3000/auth/callback?code=code')
         await GET(request as any)
 
-        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete?barn=green-acres')
       })
 
       it('should_redirect_to_profile_complete_when_emergency_contact_phone_is_null', async () => {
@@ -404,7 +404,7 @@ describe('GET /auth/callback', () => {
         const request = new Request('http://localhost:3000/auth/callback?code=code')
         await GET(request as any)
 
-        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete?barn=green-acres')
       })
 
       it('should_not_redirect_to_profile_complete_when_all_contact_fields_are_present', async () => {
@@ -413,7 +413,7 @@ describe('GET /auth/callback', () => {
         const request = new Request('http://localhost:3000/auth/callback?code=code')
         await GET(request as any)
 
-        expect(mockRedirect).not.toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+        expect(mockRedirect).not.toHaveBeenCalledWith(expect.stringContaining('/profile/complete'))
       })
 
       it('should_redirect_to_profile_complete_when_profile_is_null', async () => {
@@ -422,7 +422,7 @@ describe('GET /auth/callback', () => {
         const request = new Request('http://localhost:3000/auth/callback?code=code')
         await GET(request as any)
 
-        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+        expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete?barn=green-acres')
       })
 
       it('should_redirect_to_profile_complete_when_multiple_active_memberships_and_phone_is_null', async () => {
@@ -593,7 +593,7 @@ describe('GET /auth/callback', () => {
       const request = new Request('http://localhost:3000/auth/callback?code=code&barn=green-acres')
       await GET(request as any)
 
-      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete')
+      expect(mockRedirect).toHaveBeenCalledWith('http://localhost:3000/profile/complete?barn=green-acres')
     })
 
     it('should_redirect_to_barn_home_when_barn_login_and_profile_is_complete', async () => {

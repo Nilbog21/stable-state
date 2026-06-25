@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
             const profile = await getProfileByUserId(user.id)
             await generateLoginNotifications(user.id, [{ barn, membership }], profile).catch(() => {})
             if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
-              const response = NextResponse.redirect(`${origin}/profile/complete`)
+              const response = NextResponse.redirect(`${origin}/profile/complete?barn=${barnSlug}`)
               response.cookies.set(`barn_session_${barnSlug}`, user.id, {
                 httpOnly: true,
                 sameSite: 'lax',
@@ -129,7 +129,8 @@ export async function GET(request: NextRequest) {
           const profile = await getProfileByUserId(user.id)
           await generateLoginNotifications(user.id, active, profile).catch(() => {})
           if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
-            const response = NextResponse.redirect(`${origin}/profile/complete`)
+            const barnParam = active.length === 1 ? `?barn=${active[0].barn.slug}` : ''
+            const response = NextResponse.redirect(`${origin}/profile/complete${barnParam}`)
             for (const { barn } of active) {
               response.cookies.set(`barn_session_${barn.slug}`, user.id, {
                 httpOnly: true,
