@@ -103,35 +103,46 @@ export default async function MemberDetailPage({
           Documents
         </h2>
         {docsWithUrls.length > 0 ? (
-          <ul className="divide-y divide-zinc-200 dark:divide-zinc-800">
-            {docsWithUrls.map(({ doc, signedUrl }) => (
-              <li key={doc.id} className="flex items-center justify-between py-3">
-                <div className="flex flex-col gap-0.5">
-                  <a
-                    href={signedUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-                  >
-                    {doc.file_name}
-                  </a>
-                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                    {RECORD_TYPE_LABELS[doc.record_type]}
-                  </span>
-                </div>
-                {canUpload && (
-                  <form action={boundDelete.bind(null, doc.id, targetRole, doc.storage_path)}>
-                    <button
-                      type="submit"
-                      className="text-xs text-red-600 hover:text-red-800 dark:hover:text-red-400"
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                <th className="pb-2 pr-6">Type</th>
+                <th className="pb-2 pr-6">Notes</th>
+                <th className="pb-2 pr-6">Link</th>
+                <th className="pb-2">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              {docsWithUrls.map(({ doc, signedUrl }) => (
+                <tr key={doc.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{RECORD_TYPE_LABELS[doc.record_type]}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">{doc.notes ?? '—'}</td>
+                  <td className="py-3 pr-6 text-sm">
+                    <a
+                      href={signedUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
                     >
-                      Delete
-                    </button>
-                  </form>
-                )}
-              </li>
-            ))}
-          </ul>
+                      {doc.file_name}
+                    </a>
+                  </td>
+                  <td className="py-3 text-sm">
+                    {canUpload && (
+                      <form action={boundDelete.bind(null, doc.id, targetRole, doc.storage_path)}>
+                        <button
+                          type="submit"
+                          className="text-xs text-red-600 hover:text-red-800 dark:hover:text-red-400"
+                        >
+                          Delete
+                        </button>
+                      </form>
+                    )}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">No documents yet.</p>
         )}

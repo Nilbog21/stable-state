@@ -86,4 +86,24 @@ describe('HorseDocumentUploadForm', () => {
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(fileInput.className).toContain('sr-only')
   })
+
+  it('should_invoke_file_input_click_when_choose_file_button_clicked', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    let clicked = false
+    fileInput.click = () => { clicked = true }
+    fireEvent.click(screen.getByRole('button', { name: /choose file/i }))
+    expect(clicked).toBe(true)
+  })
+
+  it('should_clear_filename_when_change_fires_with_no_file', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    Object.defineProperty(fileInput, 'files', { value: [], configurable: true })
+    fireEvent.change(fileInput)
+    expect(screen.queryByText('doc.pdf')).toBeNull()
+  })
 })
