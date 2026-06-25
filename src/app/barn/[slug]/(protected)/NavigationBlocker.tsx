@@ -96,16 +96,19 @@ export function BlockingLink({
   href,
   className,
   children,
+  onClick,
 }: {
   href: string
   className?: string
   children: React.ReactNode
+  onClick?: () => void
 }) {
   const { dirty, setPendingNav } = useNavigationBlocker()
   return (
     <Link
       href={href}
       className={className}
+      onClick={onClick}
       onNavigate={(e) => {
         if (dirty) {
           e.preventDefault()

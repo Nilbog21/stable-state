@@ -6,6 +6,7 @@ import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memb
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getNotifications } from '@/lib/db/notifications'
 import { UserMenu } from './UserMenu'
+import { BarnSwitcher } from './BarnSwitcher'
 import { NotificationBell } from './NotificationBell'
 import { NavigationBlockerProvider, BlockingLink, NavigationConfirmDialog } from './NavigationBlocker'
 
@@ -50,7 +51,8 @@ export default async function ProtectedBarnLayout({
       ? `${profile.first_name[0]}${profile.last_name[0]}`.toUpperCase()
       : (user.email?.[0] ?? '?').toUpperCase()
   const fullName = profile ? `${profile.first_name} ${profile.last_name}` : null
-  const showSwitchBarn = allMemberships.filter((m) => m.membership.status === 'active').length > 1
+  const activeMemberships = allMemberships.filter((m) => m.membership.status === 'active')
+  const activeBarnMemberships = activeMemberships.map((m) => ({ slug: m.barn.slug, name: m.barn.name }))
   const email = user.email ?? ''
 
   let navLinks: { href: string; label: string }[]
@@ -81,12 +83,11 @@ export default async function ProtectedBarnLayout({
   return (
     <NavigationBlockerProvider>
       <nav className="flex items-center gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
-        <BlockingLink
-          href={`/barn/${slug}`}
-          className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-        >
-          {barn.name}
-        </BlockingLink>
+        <BarnSwitcher
+          barnName={barn.name}
+          barnSlug={slug}
+          activeBarnMemberships={activeBarnMemberships}
+        />
         {navLinks.map((link) => (
           <BlockingLink
             key={link.href}
@@ -97,7 +98,7 @@ export default async function ProtectedBarnLayout({
           </BlockingLink>
         ))}
         <div className="ml-auto flex items-center gap-2">
-          <UserMenu initials={initials} email={email} fullName={fullName} showSwitchBarn={showSwitchBarn} barnSlug={slug} />
+          <UserMenu initials={initials} email={email} fullName={fullName} barnSlug={slug} />
           <NotificationBell notifications={notifications} barnId={barn.id} />
         </div>
       </nav>

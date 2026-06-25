@@ -24,6 +24,8 @@ Go to **Members** and tap your card to manage your documents. Your documents are
 
 Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, or tap **User Guide** to open this guide from any page.
 
+If you are a member of more than one barn, a **▾** caret appears next to the barn name in the nav bar. Tap the caret to open a barn-switcher dropdown and jump directly to any of your barns.
+
 ## Viewing horses
 
 Go to **Horses** to see horses grouped into two sections:
