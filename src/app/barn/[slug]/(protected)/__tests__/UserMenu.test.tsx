@@ -131,6 +131,27 @@ describe('UserMenu - outside click/touch closes dropdown', () => {
   })
 })
 
+describe('UserMenu - Switch Barn link', () => {
+  it('should_show_switch_barn_link_when_show_switch_barn_is_true', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: /switch barn/i })).toBeDefined()
+  })
+
+  it('should_close_dropdown_when_switch_barn_link_is_clicked', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /switch barn/i }))
+    expect(screen.queryByText('Sign out')).toBeNull()
+  })
+
+  it('should_not_show_switch_barn_link_when_show_switch_barn_is_false', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.queryByRole('link', { name: /switch barn/i })).toBeNull()
+  })
+})
+
 describe('UserMenu - User Guide link', () => {
   it('should_show_user_guide_link_when_dropdown_is_open', () => {
     render(<UserMenu {...baseProps} />)
