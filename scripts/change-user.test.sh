@@ -41,7 +41,8 @@ TSXEOF
 FULL_ENV="DEV_EMAIL=dev@example.com
 DEV_NAME=Dev User
 NEXT_PUBLIC_SUPABASE_URL=http://localhost
-SUPABASE_SERVICE_ROLE_KEY=secret"
+SUPABASE_SERVICE_ROLE_KEY=secret
+DEV_BARN=dev-barn"
 
 # Test 1: should_error_with_env_local_message_when_env_local_missing
 REPO="$(make_repo "" 0)"
@@ -124,6 +125,21 @@ if [ "$exit_code" -eq 0 ]; then
   assert_pass "should_exit_zero_when_all_required_vars_present"
 else
   assert_fail "should_exit_zero_when_all_required_vars_present" "script exited non-zero ($exit_code)"
+fi
+rm -rf "$REPO"
+
+# Test 8: should_error_when_barn_slug_missing
+ENV_NO_BARN="DEV_EMAIL=dev@example.com
+DEV_NAME=Dev User
+NEXT_PUBLIC_SUPABASE_URL=http://localhost
+SUPABASE_SERVICE_ROLE_KEY=secret"
+REPO="$(make_repo "$ENV_NO_BARN" 0)"
+output="$(cd "$REPO" && PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)"
+exit_code=$?
+if [ "$exit_code" -ne 0 ] && echo "$output" | grep -qi 'barn slug'; then
+  assert_pass "should_error_when_barn_slug_missing"
+else
+  assert_fail "should_error_when_barn_slug_missing" "exit=$exit_code output=$output"
 fi
 rm -rf "$REPO"
 
