@@ -140,3 +140,24 @@ export async function updateLessonHorseNotes(
   if (error) throw error
   return data
 }
+
+export async function getRiderEnrolledLessonIds(barnId: string, userId: string): Promise<string[]> {
+  const supabase = await createClient()
+  const { data: rider, error: riderError } = await supabase
+    .from('barn_memberships')
+    .select('id')
+    .eq('barn_id', barnId)
+    .eq('user_id', userId)
+    .eq('role', 'rider')
+    .maybeSingle()
+  if (riderError) throw riderError
+  if (!rider) return []
+
+  const { data: enrollments, error: enrollmentError } = await supabase
+    .from('lesson_riders')
+    .select('lesson_id')
+    .eq('barn_id', barnId)
+    .eq('rider_id', rider.id)
+  if (enrollmentError) throw enrollmentError
+  return (enrollments ?? []).map((e: { lesson_id: string }) => e.lesson_id)
+}

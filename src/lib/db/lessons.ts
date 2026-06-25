@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getRiderEnrolledLessonIds } from './lesson-participants'
 import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
 
 async function hydrateParticipants(
@@ -113,25 +114,9 @@ export async function getLessonsByBarn(
   const supabase = await createClient()
 
   if (role === 'rider') {
-    const { data: rider, error: riderError } = await supabase
-      .from('barn_memberships')
-      .select('id')
-      .eq('barn_id', barnId)
-      .eq('user_id', userId)
-      .eq('role', 'rider')
-      .maybeSingle()
-    if (riderError) throw riderError
-    if (!rider) return []
+    const lessonIds = await getRiderEnrolledLessonIds(barnId, userId)
+    if (!lessonIds.length) return []
 
-    const { data: enrollments, error: enrollmentError } = await supabase
-      .from('lesson_riders')
-      .select('lesson_id')
-      .eq('barn_id', barnId)
-      .eq('rider_id', rider.id)
-    if (enrollmentError) throw enrollmentError
-    if (!enrollments?.length) return []
-
-    const lessonIds = enrollments.map((e) => e.lesson_id)
     const { data: lessons, error: lessonsError } = await supabase
       .from('lessons')
       .select('*')
@@ -269,25 +254,9 @@ export async function getUpcomingLessons(
   const supabase = await createClient()
 
   if (role === 'rider') {
-    const { data: rider, error: riderError } = await supabase
-      .from('barn_memberships')
-      .select('id')
-      .eq('barn_id', barnId)
-      .eq('user_id', userId)
-      .eq('role', 'rider')
-      .maybeSingle()
-    if (riderError) throw riderError
-    if (!rider) return []
+    const lessonIds = await getRiderEnrolledLessonIds(barnId, userId)
+    if (!lessonIds.length) return []
 
-    const { data: enrollments, error: enrollmentError } = await supabase
-      .from('lesson_riders')
-      .select('lesson_id')
-      .eq('barn_id', barnId)
-      .eq('rider_id', rider.id)
-    if (enrollmentError) throw enrollmentError
-    if (!enrollments?.length) return []
-
-    const lessonIds = enrollments.map((e) => e.lesson_id)
     const { data: lessons, error: lessonsError } = await supabase
       .from('lessons')
       .select('*')
