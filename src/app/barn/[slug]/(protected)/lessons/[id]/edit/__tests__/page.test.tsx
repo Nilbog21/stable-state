@@ -12,15 +12,11 @@ vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn() }))
 vi.mock('../../../LessonForm', () => ({
-  LessonForm: ({ horses }: { horses: Array<{ id: string; name: string }> }) => (
-    <div data-testid="edit-lesson-form">
+  LessonForm: ({ horses, initialNotes }: { horses: Array<{ id: string; name: string }>, initialNotes?: object }) => (
+    <div data-testid="edit-lesson-form" data-has-notes={initialNotes ? 'true' : 'false'}>
       {horses?.map((h) => <span key={h.id}>{h.name}</span>)}
     </div>
   ),
-}))
-
-vi.mock('../../LessonNotesForm', () => ({
-  LessonNotesForm: () => <div data-testid="lesson-notes-form" />,
 }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -243,9 +239,9 @@ describe('EditLessonPage', () => {
     expect(screen.getByTestId('edit-lesson-form')).toBeDefined()
   })
 
-  it('should_render_lesson_notes_form_on_edit_page', async () => {
+  it('should_pass_initial_notes_to_lesson_form', async () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
-    expect(screen.getByTestId('lesson-notes-form')).toBeDefined()
+    expect(screen.getByTestId('edit-lesson-form').dataset.hasNotes).toBe('true')
   })
 })

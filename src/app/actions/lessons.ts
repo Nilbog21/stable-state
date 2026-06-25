@@ -2,7 +2,7 @@
 
 import { requireMembership } from '@/lib/auth/guard'
 import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
-import { createLessonWithParticipants, updateLessonWithParticipants } from '@/lib/db/lesson-participants'
+import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes } from '@/lib/db/lesson-participants'
 import type { PaymentType } from '@/lib/db/types'
 import { getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
@@ -192,6 +192,21 @@ export async function updateLessonAction(
       exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
       riderIds,
     })
+
+    const noteHorseIds = formData.getAll('noteHorseId') as string[]
+    const noteRiderIds = formData.getAll('noteRiderId') as string[]
+    await Promise.all([
+      ...noteHorseIds.map(hId =>
+        updateLessonHorseNotes(lessonId, hId, barnId, (formData.get(`horse_notes_${hId}`) as string) || null)
+      ),
+      ...noteRiderIds.map(rId =>
+        updateLessonRiderNotes(
+          lessonId, rId, barnId,
+          (formData.get(`rider_notes_${rId}`) as string) || null,
+          (formData.get(`private_notes_${rId}`) as string) || null,
+        )
+      ),
+    ])
   } catch {
     return { error: 'Failed to update lesson' }
   }

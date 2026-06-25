@@ -15,6 +15,8 @@ vi.mock('@/lib/db/lessons', () => ({
 vi.mock('@/lib/db/lesson-participants', () => ({
   createLessonWithParticipants: vi.fn(),
   updateLessonWithParticipants: vi.fn(),
+  updateLessonHorseNotes: vi.fn(),
+  updateLessonRiderNotes: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -33,7 +35,7 @@ vi.mock('next/navigation', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
-import { createLessonWithParticipants, updateLessonWithParticipants } from '@/lib/db/lesson-participants'
+import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes } from '@/lib/db/lesson-participants'
 import { getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
@@ -527,6 +529,8 @@ describe('updateLessonAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(updateLessonWithParticipants).mockReset()
+    vi.mocked(updateLessonHorseNotes).mockReset()
+    vi.mocked(updateLessonRiderNotes).mockReset()
     vi.mocked(getInstructorsByBarn).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getActiveMembersWithProfiles).mockReset()
@@ -535,6 +539,8 @@ describe('updateLessonAction', () => {
     guardAs(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     vi.mocked(updateLessonWithParticipants).mockResolvedValue(mockLesson)
+    vi.mocked(updateLessonHorseNotes).mockResolvedValue({} as any)
+    vi.mocked(updateLessonRiderNotes).mockResolvedValue({} as any)
     vi.mocked(getHorsesByBarn).mockResolvedValue([
       { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
     ])
@@ -800,6 +806,47 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(result).toEqual({ error: 'not authorized to add horses' })
+  })
+
+  it('should_save_horse_notes_when_noteHorseId_present', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteHorseId', 'horse-1')
+    fd.set('horse_notes_horse-1', 'watch left lead')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonHorseNotes).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1', 'watch left lead')
+  })
+
+  it('should_pass_null_for_empty_horse_notes', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteHorseId', 'horse-1')
+    fd.set('horse_notes_horse-1', '')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonHorseNotes).toHaveBeenCalledWith('lesson-1', 'horse-1', 'barn-1', null)
+  })
+
+  it('should_save_rider_notes_when_noteRiderId_present', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteRiderId', 'mem-1')
+    fd.set('rider_notes_mem-1', 'good position')
+    fd.set('private_notes_mem-1', 'private info')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonRiderNotes).toHaveBeenCalledWith('lesson-1', 'mem-1', 'barn-1', 'good position', 'private info')
+  })
+
+  it('should_pass_null_for_empty_rider_and_private_notes', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteRiderId', 'mem-1')
+    fd.set('rider_notes_mem-1', '')
+    fd.set('private_notes_mem-1', '')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonRiderNotes).toHaveBeenCalledWith('lesson-1', 'mem-1', 'barn-1', null, null)
+  })
+
+  it('should_not_call_notes_functions_when_no_note_ids_present', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonHorseNotes).not.toHaveBeenCalled()
+    expect(updateLessonRiderNotes).not.toHaveBeenCalled()
   })
 
 })

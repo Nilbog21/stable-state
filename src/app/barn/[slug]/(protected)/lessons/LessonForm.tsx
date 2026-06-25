@@ -25,6 +25,7 @@ export function LessonForm({
   currentUserId,
   tiers,
   initialLesson,
+  initialNotes,
 }: {
   mode: 'new' | 'edit'
   horses: Horse[]
@@ -35,6 +36,10 @@ export function LessonForm({
   currentUserId: string
   tiers: LessonTier[]
   initialLesson?: LessonDetail
+  initialNotes?: {
+    horses: Array<{ id: string; name: string; horse_notes: string | null }>
+    riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
+  }
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
 
@@ -516,6 +521,48 @@ export function LessonForm({
           <option value="freshbooks">FreshBooks Invoice</option>
         </select>
       </div>
+
+      {initialNotes && (
+        <div className="flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Notes</p>
+          {initialNotes.horses.map((h) => (
+            <div key={h.id} className="flex flex-col gap-1">
+              <input type="hidden" name="noteHorseId" value={h.id} />
+              <label className="text-xs font-medium text-zinc-500">{h.name}</label>
+              <textarea
+                name={`horse_notes_${h.id}`}
+                defaultValue={h.horse_notes ?? ''}
+                rows={2}
+                className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          ))}
+          {initialNotes.riders.map((r) => (
+            <div key={r.membershipId} className="flex flex-col gap-2">
+              <input type="hidden" name="noteRiderId" value={r.membershipId} />
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{r.name}</p>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-zinc-500">Rider Notes</label>
+                <textarea
+                  name={`rider_notes_${r.membershipId}`}
+                  defaultValue={r.rider_notes ?? ''}
+                  rows={2}
+                  className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
+              <div className="flex flex-col gap-1 rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</span>
+                <textarea
+                  name={`private_notes_${r.membershipId}`}
+                  defaultValue={r.private_notes ?? ''}
+                  rows={2}
+                  className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
 
       <button
         type="submit"

@@ -6,9 +6,7 @@ import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles }
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { updateLessonAction } from '@/app/actions/lessons'
-import { updateAllNotesAction } from '../actions'
 import { LessonForm } from '../../LessonForm'
-import { LessonNotesForm } from '../LessonNotesForm'
 
 export default async function EditLessonPage({
   params,
@@ -62,7 +60,15 @@ export default async function EditLessonPage({
   const horsesForForm = [...horses, ...inactiveAssigned]
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
-  const notesAction = updateAllNotesAction.bind(null, barn.slug, lesson.id)
+
+  const initialNotes = {
+    horses: lesson.lesson_horses
+      .filter(lh => lh.horses?.id)
+      .map(lh => ({ id: lh.horses!.id, name: lh.horses!.name, horse_notes: lh.horse_notes })),
+    riders: lesson.lesson_riders
+      .filter(lr => lr.barn_membership?.id)
+      .map(lr => ({ membershipId: lr.barn_membership!.id, name: lr.barn_membership!.name, rider_notes: lr.rider_notes, private_notes: lr.private_notes })),
+  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
@@ -79,11 +85,7 @@ export default async function EditLessonPage({
         currentUserId={user.id}
         tiers={tiers}
         action={update}
-      />
-      <LessonNotesForm
-        action={notesAction}
-        horses={lesson.lesson_horses}
-        riders={lesson.lesson_riders}
+        initialNotes={initialNotes}
       />
     </main>
   )
