@@ -12,31 +12,31 @@ const mockSetDefault = vi.fn() as unknown as () => Promise<void>
 
 describe('TierForm — new mode', () => {
   it('should_render_name_field', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.getByLabelText(/name/i)).toBeDefined()
   })
 
   it('should_render_price_field', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.getByLabelText(/price/i)).toBeDefined()
   })
 
   it('should_render_default_jumping_select', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.getByLabelText(/default jumping/i)).toBeDefined()
   })
 
   it('should_render_default_exertion_select', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.getByLabelText(/default exertion/i)).toBeDefined()
   })
 
   it('should_render_save_button', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
   })
@@ -54,13 +54,13 @@ describe('TierForm — new mode', () => {
   })
 
   it('should_not_render_set_default_button', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.queryByRole('button', { name: /set default/i })).toBeNull()
   })
 
   it('should_not_show_rename_warning', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.queryByText(/renaming will not update past lessons/i)).toBeNull()
   })
@@ -175,7 +175,7 @@ describe('TierForm — edit mode, active tier', () => {
 
 describe('TierForm — edit mode, no initial tier', () => {
   it('should_not_show_rename_warning_when_no_initial_tier', () => {
-    render(<TierForm mode="edit" slug="green-acres" onSave={mockSave} />)
+    render(<TierForm mode="edit" onSave={mockSave} />)
 
     expect(screen.queryByText(/renaming will not update past lessons/i)).toBeNull()
   })
