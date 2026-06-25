@@ -5,10 +5,9 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
 import { getHorseDocuments } from '@/lib/db/horse-documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
-import { HorseAvailabilityForm } from './HorseAvailabilityForm'
-import { HorseActivationSection } from './HorseActivationSection'
+import { HorseManagerForm } from './HorseManagerForm'
 import { HorseDocumentUploadForm } from './HorseDocumentUploadForm'
-import { updateHorseAvailabilityAction, renameHorseAction, setHorseActiveAction, uploadHorseDocumentAction, deleteHorseDocumentAction } from './actions'
+import { updateHorseDetailsAction, uploadHorseDocumentAction, deleteHorseDocumentAction } from './actions'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   insurance_binder: 'Insurance Binder',
@@ -37,9 +36,6 @@ export default async function HorseDetailPage({
   if (!horse) notFound()
 
   const role = membership.role
-  const boundAvailabilityAction = updateHorseAvailabilityAction.bind(null, slug, horse.id)
-  const boundRenameAction = renameHorseAction.bind(null, slug, horse.id)
-  const boundActivationAction = setHorseActiveAction.bind(null, slug, horse.id)
 
   const canSeeDocuments = role === 'manager' || role === 'trainer'
 
@@ -50,6 +46,7 @@ export default async function HorseDetailPage({
       })()
     : []
 
+  const boundUpdateAction = updateHorseDetailsAction.bind(null, slug, horse.id)
   const boundUploadAction = uploadHorseDocumentAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
 
@@ -78,34 +75,9 @@ export default async function HorseDetailPage({
       )}
 
       {role === 'manager' && (
-        <>
-          <section className="mt-6">
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500">Name</h2>
-            <form action={boundRenameAction} className="flex items-center gap-3">
-              <label htmlFor="horse-name" className="sr-only">Name</label>
-              <input
-                id="horse-name"
-                name="name"
-                type="text"
-                defaultValue={horse.name}
-                className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-              <button
-                type="submit"
-                className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                Save
-              </button>
-            </form>
-          </section>
-
-          <section className="mt-6">
-            <h2 className="mb-4 text-sm font-medium uppercase tracking-wide text-zinc-500">Availability</h2>
-            <HorseAvailabilityForm horse={horse} action={boundAvailabilityAction} />
-          </section>
-
-          <HorseActivationSection isActive={horse.is_active} action={boundActivationAction} />
-        </>
+        <section className="mt-6">
+          <HorseManagerForm horse={horse} action={boundUpdateAction} />
+        </section>
       )}
 
       {canSeeDocuments && (

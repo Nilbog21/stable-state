@@ -20,10 +20,10 @@ Empty sections are hidden. Tap any card to open the horse's detail page. To add 
 
 ### Horse detail page (manager controls)
 
-On the horse's detail page, managers see additional sections:
+On the horse's detail page, managers see a unified form and a documents section:
 
-- **Name** — pre-filled text input with the current name and a **Save** button to rename the horse.
-- **Activation** — at the bottom of the page. When the horse is active, a **Set Inactive** button appears; tapping it shows an inline confirmation with **Confirm** and **Cancel** before submitting. When the horse is already inactive, a **Set Active** button appears and submits immediately without confirmation.
+- **Name** — pre-filled text input with the current name.
+- **Status** — a three-state pill control: **Active**, **Unavailable**, **Inactive**. Tap a pill to select the new status. When **Unavailable** is selected, a **Reason** textarea appears to record why the horse is out of rotation. When **Inactive** is selected for a currently active horse, a warning appears noting the horse will be removed from the roster and lesson scheduling. Tap **Save** to apply all changes (name, status, and reason) in one step — no separate confirmation is required.
 - **Documents** — displays uploaded files in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap the filename in the **Link** column to open the document (link is valid for 5 minutes). Tap **Delete** in the **Action** column to remove a document. To upload a new file, tap **Choose File** in the Upload Document form, select a file (the filename appears next to the button once chosen), fill in any optional notes, then tap **Upload**. Accepted types: PDF, JPG, PNG, DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**, **Other**.
 
 ## Members

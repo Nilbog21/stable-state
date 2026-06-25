@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames } from '../horses'
+import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, updateHorseDetails } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -638,5 +638,54 @@ describe('resolveHorseNames', () => {
     await resolveHorseNames(['horse-1'], 'barn-1', injectedClient)
 
     expect(mockFrom).toHaveBeenCalledWith('horses')
+  })
+})
+
+describe('updateHorseDetails', () => {
+  function makeUpdateChain(error: Error | null = null) {
+    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    return { update: vi.fn().mockReturnValue({ eq: mockEqId }) }
+  }
+
+  it('should_resolve_when_called_with_valid_updates', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeUpdateChain()),
+    } as any)
+    await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).resolves.toBeUndefined()
+  })
+
+  it('should_pass_updates_object_to_supabase_update', async () => {
+    const chain = makeUpdateChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
+    expect(chain.update).toHaveBeenCalledWith({ name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
+  })
+
+  it('should_scope_update_to_horse_id', async () => {
+    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error: null })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
+    } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
+    expect(mockEqId).toHaveBeenCalledWith('id', 'horse-1')
+  })
+
+  it('should_scope_update_to_barn_id', async () => {
+    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error: null })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
+    } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
+    expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeUpdateChain(new Error('db error'))),
+    } as any)
+    await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).rejects.toThrow('db error')
   })
 })

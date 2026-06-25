@@ -124,3 +124,17 @@ export async function setHorseAvailability(
 
   if (error) throw error
 }
+
+export async function updateHorseDetails(
+  horseId: string,
+  barnId: string,
+  updates: { name?: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null }
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('horses')
+    .update(updates)
+    .eq('id', horseId)
+    .eq('barn_id', barnId)
+  if (error) throw error
+}

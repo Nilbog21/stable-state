@@ -2,49 +2,37 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { setHorseAvailability, updateHorse, setHorseActive } from '@/lib/db/horses'
+import { updateHorseDetails } from '@/lib/db/horses'
 import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import type { HorseDocumentType } from '@/lib/db/types'
 
 const HORSE_RECORD_TYPES = new Set<HorseDocumentType>(['insurance_binder', 'coggins', 'shot_record', 'contract', 'other'])
 
-export async function updateHorseAvailabilityAction(
+export async function updateHorseDetailsAction(
   barnSlug: string,
   horseId: string,
   formData: FormData
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
-  const isAvailable = formData.get('is_available') === 'true'
-  const rawReason = (formData.get('reason') as string | null)?.trim() || null
-  const reason = isAvailable ? null : rawReason
+  const status = formData.get('status')
+  if (status !== 'active' && status !== 'unavailable' && status !== 'inactive') return
 
-  await setHorseAvailability(horseId, barn.id, isAvailable, reason)
-  revalidatePath(`/barn/${barnSlug}/horses`)
-  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-}
+  const name = (formData.get('name') as string | null)?.trim() || null
+  const isActive = status !== 'inactive'
+  const isAvailable = status === 'active'
+  const reason = status === 'unavailable'
+    ? ((formData.get('reason') as string | null)?.trim() || null)
+    : null
 
-export async function renameHorseAction(
-  barnSlug: string,
-  horseId: string,
-  formData: FormData
-): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-  const name = (formData.get('name') as string | null)?.trim() ?? ''
-  if (!name) return
-  await updateHorse(horseId, barn.id, name)
-  revalidatePath(`/barn/${barnSlug}/horses`)
-  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-}
+  await updateHorseDetails(horseId, barn.id, {
+    ...(name ? { name } : {}),
+    is_active: isActive,
+    is_available: isAvailable,
+    unavailability_reason: reason,
+  })
 
-export async function setHorseActiveAction(
-  barnSlug: string,
-  horseId: string,
-  isActive: boolean
-): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-  await setHorseActive(horseId, barn.id, isActive)
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
