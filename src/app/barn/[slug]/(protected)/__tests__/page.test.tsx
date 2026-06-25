@@ -117,7 +117,16 @@ describe('BarnDashboardPage', () => {
     expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
-  it('should_show_empty_state_when_no_upcoming_lessons', async () => {
+  it('should_show_empty_state_heading_when_no_upcoming_lessons', async () => {
+    vi.mocked(getUpcomingLessons).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText("You're all clear")).toBeDefined()
+  })
+
+  it('should_show_empty_state_subtext_when_no_upcoming_lessons', async () => {
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })

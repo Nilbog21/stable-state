@@ -150,6 +150,37 @@ describe('LessonsPage', () => {
     expect(screen.getByText(/no lessons/i)).toBeDefined()
   })
 
+  it('should_show_empty_state_subtext_when_no_lessons', async () => {
+    vi.mocked(getLessonsByBarn).mockResolvedValue([])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Lessons you record will appear here.')).toBeDefined()
+  })
+
+  it('should_show_new_lesson_cta_in_empty_state_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getLessonsByBarn).mockResolvedValue([])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('link', { name: /new lesson/i }).length).toBeGreaterThan(0)
+  })
+
+  it('should_show_new_lesson_cta_in_empty_state_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getLessonsByBarn).mockResolvedValue([])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByRole('link', { name: /new lesson/i }).length).toBeGreaterThan(0)
+  })
+
+  it('should_not_show_new_lesson_cta_in_empty_state_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    vi.mocked(getLessonsByBarn).mockResolvedValue([])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /new lesson/i })).toBeNull()
+  })
+
   it('should_not_show_delete_button_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })

@@ -259,4 +259,26 @@ describe('MembersPage', () => {
     render(jsx)
     expect(screen.getAllByText('You').length).toBeGreaterThan(0)
   })
+
+  it('should_show_empty_state_in_trainers_section_when_no_trainers', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No trainers yet')).toBeDefined()
+  })
+
+  it('should_show_empty_state_in_riders_section_when_no_riders_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No riders yet')).toBeDefined()
+  })
+
+  it('should_show_empty_state_in_riders_section_when_no_riders_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No riders yet')).toBeDefined()
+  })
 })
