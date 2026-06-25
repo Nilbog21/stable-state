@@ -61,4 +61,59 @@ describe('HorseDocumentUploadForm', () => {
 
     expect(screen.queryByText(/exceeds 5 mb/i)).toBeNull()
   })
+
+  it('should_render_choose_file_button', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    expect(screen.getByRole('button', { name: /choose file/i })).toBeDefined()
+  })
+
+  it('should_not_display_filename_before_file_selected', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    expect(screen.queryByText('small.pdf')).toBeNull()
+  })
+
+  it('should_display_filename_after_file_selected', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'small.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    expect(screen.getByText('small.pdf')).toBeDefined()
+  })
+
+  it('should_hide_native_file_input', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput.className).toContain('sr-only')
+  })
+
+  it('should_invoke_file_input_click_when_choose_file_button_clicked', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    let clicked = false
+    fileInput.click = () => { clicked = true }
+    fireEvent.click(screen.getByRole('button', { name: /choose file/i }))
+    expect(clicked).toBe(true)
+  })
+
+  it('should_clear_filename_when_change_fires_with_no_file', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    Object.defineProperty(fileInput, 'files', { value: [], configurable: true })
+    fireEvent.change(fileInput)
+    expect(screen.queryByText('doc.pdf')).toBeNull()
+  })
+
+  it('should_clear_filename_on_form_submit', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'upload.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    fireEvent.submit(screen.getByRole('button', { name: /upload/i }).closest('form')!)
+    expect(screen.queryByText('upload.pdf')).toBeNull()
+  })
 })

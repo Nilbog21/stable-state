@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import type { HorseDocumentType } from '@/lib/db/types'
 
 const HORSE_TYPES: { value: HorseDocumentType; label: string }[] = [
@@ -20,9 +20,11 @@ interface Props {
 export function HorseDocumentUploadForm({ action }: Props) {
   const [selectedType, setSelectedType] = useState<HorseDocumentType>(HORSE_TYPES[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} className="space-y-4" onSubmit={() => setFileName(null)}>
       <input type="hidden" name="record_type" value={selectedType} />
 
       <div>
@@ -45,6 +47,7 @@ export function HorseDocumentUploadForm({ action }: Props) {
           File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 5 MB)</span>
         </label>
         <input
+          ref={inputRef}
           type="file"
           name="file"
           accept=".pdf,.jpg,.jpeg,.png,.docx"
@@ -53,13 +56,25 @@ export function HorseDocumentUploadForm({ action }: Props) {
             const file = e.target.files?.[0]
             if (file && file.size > MAX_FILE_SIZE) {
               setFileError('File exceeds 5 MB limit')
+              setFileName(null)
               e.target.value = ''
             } else {
               setFileError(null)
+              setFileName(file?.name ?? null)
             }
           }}
-          className="w-full text-sm text-zinc-700 dark:text-zinc-300"
+          className="sr-only"
         />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            Choose File
+          </button>
+          {fileName && <span className="text-sm text-zinc-700 dark:text-zinc-300">{fileName}</span>}
+        </div>
         {fileError && <p className="mt-1 text-xs text-red-600">{fileError}</p>}
       </div>
 
