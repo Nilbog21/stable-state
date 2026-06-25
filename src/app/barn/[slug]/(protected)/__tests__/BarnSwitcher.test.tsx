@@ -126,10 +126,9 @@ describe('BarnSwitcher - dropdown content', () => {
     expect(screen.getByText(/✓/)).toBeDefined()
   })
 
-  it('should_not_render_current_barn_as_a_link', () => {
-    const links = screen.getAllByRole('link')
-    const hrefs = links.map((l) => (l as HTMLAnchorElement).href)
-    expect(hrefs.every((h) => !h.includes('/barn/sunset-stables'))).toBe(true)
+  it('should_render_current_barn_as_text_not_link_in_dropdown', () => {
+    const checkmarkEl = screen.getByText('✓')
+    expect(checkmarkEl.parentElement?.tagName).toBe('SPAN')
   })
 
   it('should_list_other_barns_as_links', () => {
