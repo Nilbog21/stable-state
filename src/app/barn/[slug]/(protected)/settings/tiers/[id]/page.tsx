@@ -7,7 +7,6 @@ import {
   updateTierAction,
   deactivateTierAction,
   reactivateTierAction,
-  setDefaultTierAction,
 } from '../../actions'
 import { TierForm } from '../TierForm'
 
@@ -34,7 +33,6 @@ export default async function TierEditPage({
   const save = updateTierAction.bind(null, slug, id)
   const deactivate = deactivateTierAction.bind(null, slug, id)
   const activate = reactivateTierAction.bind(null, slug, id)
-  const setDefault = setDefaultTierAction.bind(null, slug, id)
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
@@ -47,7 +45,6 @@ export default async function TierEditPage({
         onSave={save}
         onDeactivate={deactivate}
         onActivate={activate}
-        onSetDefault={setDefault}
       />
     </main>
   )

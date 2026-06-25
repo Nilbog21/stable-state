@@ -58,12 +58,11 @@ export async function updateTierAction(
   const default_exertion_level = parseExertion(formData.get('default_exertion_level') as string | null)
 
   await updateTier(tierId, barn.id, { name, price, default_jumping, default_exertion_level })
-  redirect(`/barn/${barnSlug}/settings`)
-}
 
-export async function setDefaultTierAction(barnSlug: string, tierId: string): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-  await setDefaultTier(tierId, barn.id)
+  if (formData.get('set_as_default') === 'on') {
+    await setDefaultTier(tierId, barn.id)
+  }
+
   redirect(`/barn/${barnSlug}/settings`)
 }
 

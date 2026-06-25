@@ -10,7 +10,6 @@ type TierFormProps = {
   onSave: (fd: FormData) => Promise<void>
   onDeactivate?: () => Promise<void>
   onActivate?: () => Promise<void>
-  onSetDefault?: () => Promise<void>
 }
 
 export function TierForm({
@@ -19,7 +18,6 @@ export function TierForm({
   onSave,
   onDeactivate,
   onActivate,
-  onSetDefault,
 }: TierFormProps) {
   const [name, setName] = useState(initialTier?.name ?? '')
   const isActive = initialTier?.is_active ?? true
@@ -132,6 +130,25 @@ export function TierForm({
           </select>
         </div>
 
+        {mode === 'edit' && (
+          <div className="flex items-center gap-2">
+            <input
+              id="set-as-default"
+              name="set_as_default"
+              type="checkbox"
+              defaultChecked={initialTier?.is_default ?? false}
+              disabled={!isActive}
+              className="h-4 w-4 rounded border-zinc-300 disabled:opacity-50"
+            />
+            <label
+              htmlFor="set-as-default"
+              className="text-sm font-medium text-zinc-700 dark:text-zinc-300"
+            >
+              Set as default tier
+            </label>
+          </div>
+        )}
+
         <button
           type="submit"
           disabled={!isActive}
@@ -140,18 +157,6 @@ export function TierForm({
           Save
         </button>
       </form>
-
-      {mode === 'edit' && onSetDefault && (
-        <form action={onSetDefault}>
-          <button
-            type="submit"
-            disabled={!isActive}
-            className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            Set default
-          </button>
-        </form>
-      )}
     </div>
   )
 }

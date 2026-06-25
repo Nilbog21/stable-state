@@ -8,7 +8,6 @@ afterEach(() => vi.restoreAllMocks())
 const mockSave = vi.fn() as unknown as (fd: FormData) => Promise<void>
 const mockDeactivate = vi.fn() as unknown as () => Promise<void>
 const mockActivate = vi.fn() as unknown as () => Promise<void>
-const mockSetDefault = vi.fn() as unknown as () => Promise<void>
 
 describe('TierForm — new mode', () => {
   it('should_render_name_field', () => {
@@ -76,7 +75,7 @@ describe('TierForm — edit mode, active tier', () => {
                initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -90,7 +89,7 @@ describe('TierForm — edit mode, active tier', () => {
                initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -104,7 +103,7 @@ describe('TierForm — edit mode, active tier', () => {
                initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -118,7 +117,7 @@ describe('TierForm — edit mode, active tier', () => {
                initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -132,7 +131,7 @@ describe('TierForm — edit mode, active tier', () => {
                initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -148,7 +147,7 @@ describe('TierForm — edit mode, active tier', () => {
                initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -176,7 +175,7 @@ describe('TierForm — default_jumping pre-selected', () => {
                initialTier={tier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -196,7 +195,7 @@ describe('TierForm — edit mode, inactive tier', () => {
                initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -210,7 +209,7 @@ describe('TierForm — edit mode, inactive tier', () => {
                initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -224,7 +223,7 @@ describe('TierForm — edit mode, inactive tier', () => {
                initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -238,7 +237,7 @@ describe('TierForm — edit mode, inactive tier', () => {
                initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
@@ -252,7 +251,7 @@ describe('TierForm — edit mode, inactive tier', () => {
                initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
-        onSetDefault={mockSetDefault}
+
       />
     )
 
