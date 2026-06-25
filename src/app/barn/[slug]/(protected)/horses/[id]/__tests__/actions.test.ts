@@ -152,6 +152,13 @@ describe('updateHorseDetailsAction', () => {
     expect(updateHorse).not.toHaveBeenCalled()
   })
 
+  it('should_not_call_updateHorse_when_name_field_is_absent', async () => {
+    const fd = new FormData()
+    fd.set('status', 'active')
+    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
+    expect(updateHorse).not.toHaveBeenCalled()
+  })
+
   it('should_not_call_setHorseActive_when_name_is_blank', async () => {
     const fd = new FormData()
     fd.set('name', '   ')

@@ -9,42 +9,31 @@ import type { HorseDocumentType } from '@/lib/db/types'
 
 const HORSE_RECORD_TYPES = new Set<HorseDocumentType>(['insurance_binder', 'coggins', 'shot_record', 'contract', 'other'])
 
-export async function updateHorseAvailabilityAction(
+export async function updateHorseDetailsAction(
   barnSlug: string,
   horseId: string,
   formData: FormData
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
-  const isAvailable = formData.get('is_available') === 'true'
-  const rawReason = (formData.get('reason') as string | null)?.trim() || null
-  const reason = isAvailable ? null : rawReason
-
-  await setHorseAvailability(horseId, barn.id, isAvailable, reason)
-  revalidatePath(`/barn/${barnSlug}/horses`)
-  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-}
-
-export async function renameHorseAction(
-  barnSlug: string,
-  horseId: string,
-  formData: FormData
-): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
   const name = (formData.get('name') as string | null)?.trim() ?? ''
   if (!name) return
-  await updateHorse(horseId, barn.id, name)
-  revalidatePath(`/barn/${barnSlug}/horses`)
-  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-}
 
-export async function setHorseActiveAction(
-  barnSlug: string,
-  horseId: string,
-  isActive: boolean
-): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-  await setHorseActive(horseId, barn.id, isActive)
+  const status = formData.get('status') as string
+
+  await updateHorse(horseId, barn.id, name)
+
+  if (status === 'active') {
+    await setHorseActive(horseId, barn.id, true)
+    await setHorseAvailability(horseId, barn.id, true, null)
+  } else if (status === 'unavailable') {
+    await setHorseActive(horseId, barn.id, true)
+    const rawReason = (formData.get('reason') as string | null)?.trim() || null
+    await setHorseAvailability(horseId, barn.id, false, rawReason)
+  } else if (status === 'inactive') {
+    await setHorseActive(horseId, barn.id, false)
+  }
+
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
