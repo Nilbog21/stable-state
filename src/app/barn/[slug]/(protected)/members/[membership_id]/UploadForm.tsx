@@ -30,7 +30,7 @@ export function UploadForm({ memberRole, action }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={action} className="space-y-4" onSubmit={() => setFileName(null)}>
       <input type="hidden" name="record_type" value={selectedType} />
 
       <div>

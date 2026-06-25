@@ -106,4 +106,14 @@ describe('HorseDocumentUploadForm', () => {
     fireEvent.change(fileInput)
     expect(screen.queryByText('doc.pdf')).toBeNull()
   })
+
+  it('should_clear_filename_on_form_submit', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'upload.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    fireEvent.submit(screen.getByRole('button', { name: /upload/i }).closest('form')!)
+    expect(screen.queryByText('upload.pdf')).toBeNull()
+  })
 })

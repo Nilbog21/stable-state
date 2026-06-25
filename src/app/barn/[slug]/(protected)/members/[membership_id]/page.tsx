@@ -132,7 +132,7 @@ export default async function MemberDetailPage({
                       <form action={boundDelete.bind(null, doc.id, targetRole, doc.storage_path)}>
                         <button
                           type="submit"
-                          className="text-xs text-red-600 hover:text-red-800 dark:hover:text-red-400"
+                          className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
                         >
                           Delete
                         </button>
