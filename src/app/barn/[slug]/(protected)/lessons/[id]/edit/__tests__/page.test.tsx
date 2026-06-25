@@ -19,7 +19,7 @@ vi.mock('../../../LessonForm', () => ({
   ),
 }))
 
-vi.mock('../LessonNotesForm', () => ({
+vi.mock('../../LessonNotesForm', () => ({
   LessonNotesForm: () => <div data-testid="lesson-notes-form" />,
 }))
 

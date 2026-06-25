@@ -6,7 +6,9 @@ import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles }
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { updateLessonAction } from '@/app/actions/lessons'
+import { updateAllNotesAction } from '../actions'
 import { LessonForm } from '../../LessonForm'
+import { LessonNotesForm } from '../LessonNotesForm'
 
 export default async function EditLessonPage({
   params,
@@ -60,6 +62,7 @@ export default async function EditLessonPage({
   const horsesForForm = [...horses, ...inactiveAssigned]
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
+  const notesAction = updateAllNotesAction.bind(null, barn.slug, lesson.id)
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
@@ -76,6 +79,11 @@ export default async function EditLessonPage({
         currentUserId={user.id}
         tiers={tiers}
         action={update}
+      />
+      <LessonNotesForm
+        action={notesAction}
+        horses={lesson.lesson_horses}
+        riders={lesson.lesson_riders}
       />
     </main>
   )

@@ -188,6 +188,28 @@ describe('LessonNotesForm', () => {
     expect(screen.getByText('—')).toBeDefined()
   })
 
+  it('should_show_empty_textarea_when_rider_notes_is_null', () => {
+    const noNotesRider = { ...mockRider, rider_notes: null }
+    render(
+      <NavigationBlockerProvider>
+        <LessonNotesForm action={mockAction} horses={[]} riders={[noNotesRider]} />
+      </NavigationBlockerProvider>
+    )
+
+    expect(screen.getByText('Rider Notes')).toBeDefined()
+  })
+
+  it('should_show_empty_textarea_when_private_notes_is_null', () => {
+    const noNotesRider = { ...mockRider, private_notes: null }
+    render(
+      <NavigationBlockerProvider>
+        <LessonNotesForm action={mockAction} horses={[]} riders={[noNotesRider]} />
+      </NavigationBlockerProvider>
+    )
+
+    expect(screen.getByText('Private')).toBeDefined()
+  })
+
   it('should_show_empty_textarea_when_horse_notes_is_null', () => {
     const noNotesHorse = { ...mockHorse, horse_notes: null }
     render(

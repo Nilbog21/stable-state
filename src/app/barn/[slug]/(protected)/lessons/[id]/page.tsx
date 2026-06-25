@@ -3,8 +3,6 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { updateAllNotesAction } from './actions'
-import { LessonNotesForm } from './LessonNotesForm'
 
 export default async function LessonDetailPage({
   params,
@@ -45,13 +43,11 @@ export default async function LessonDetailPage({
     timeZone: 'UTC',
   }).format(new Date(lesson.lesson_at))
 
-  const canEditNotes = role === 'trainer' || role === 'manager'
+  const canSeeNotes = role === 'trainer' || role === 'manager'
 
   const myRiderEntry = role === 'rider'
     ? lesson.lesson_riders.find((lr) => lr.barn_membership?.user_id === user.id) ?? null
     : null
-
-  const boundAction = updateAllNotesAction.bind(null, slug, lesson.id)
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -86,45 +82,75 @@ export default async function LessonDetailPage({
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Instructor</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">{instructorName}</dd>
           </div>
-          {!canEditNotes && (
-            <>
-              <div className="flex flex-col gap-1 py-4">
-                <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Horse(s)</dt>
-                <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.lesson_horses.length === 0 ? '—' : (
-                    <ul className="flex flex-col gap-1">
-                      {lesson.lesson_horses.map((lh, i) => (
-                        <li key={lh.horses?.id ?? i}>
-                          {lh.horses?.name ?? '—'}{' '}
-                          <span className="text-zinc-500">(exertion {lh.exertion_level})</span>
-                        </li>
-                      ))}
-                    </ul>
-                  )}
-                </dd>
-              </div>
-              <div className="flex flex-col gap-1 py-4">
-                <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Rider(s)</dt>
-                <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_type === 'group' ? (
-                    <ul className="flex flex-col gap-1">
-                      {lesson.lesson_riders.map((lr, i) => (
-                        <li key={lr.barn_membership?.id ?? i}>{lr.barn_membership?.name ?? '—'}</li>
-                      ))}
-                    </ul>
-                  ) : (
-                    lesson.lesson_riders.map((lr) => lr.barn_membership?.name ?? '—').join(', ')
-                  )}
+          <div className="flex flex-col gap-1 py-4">
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Horse(s)</dt>
+            <dd className="text-sm text-zinc-900 dark:text-zinc-50">
+              {lesson.lesson_horses.length === 0 ? '—' : (
+                <ul className="flex flex-col gap-2">
+                  {lesson.lesson_horses.map((lh, i) => (
+                    <li key={lh.horses?.id ?? i}>
+                      <span>{lh.horses?.name ?? '—'}</span>{' '}
+                      <span className="text-zinc-500">(exertion {lh.exertion_level})</span>
+                      {canSeeNotes && lh.horses?.id && (
+                        <div className="mt-1">
+                          <p className="text-xs font-medium text-zinc-500">Horse Notes</p>
+                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lh.horse_notes ?? '—'}</p>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </dd>
+          </div>
+          <div className="flex flex-col gap-1 py-4">
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Rider(s)</dt>
+            <dd className="text-sm text-zinc-900 dark:text-zinc-50">
+              {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_type === 'group' ? (
+                <ul className="flex flex-col gap-2">
+                  {lesson.lesson_riders.map((lr, i) => (
+                    <li key={lr.barn_membership?.id ?? i}>
+                      <span>{lr.barn_membership?.name ?? '—'}</span>
+                      {canSeeNotes && lr.barn_membership?.id && (
+                        <div className="mt-1 flex flex-col gap-1">
+                          <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
+                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
+                          <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
+                            <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
+                          </div>
+                        </div>
+                      )}
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {lesson.lesson_riders.map((lr, i) => (
+                    <div key={lr.barn_membership?.id ?? i}>
+                      <span>{lr.barn_membership?.name ?? '—'}</span>
+                      {canSeeNotes && lr.barn_membership?.id && (
+                        <div className="mt-1 flex flex-col gap-1">
+                          <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
+                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
+                          <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
+                            <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ))}
                   {role === 'rider' && myRiderEntry && (
                     <div className="mt-2">
                       <p className="text-xs font-medium text-zinc-500">Your Notes</p>
                       <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
                     </div>
                   )}
-                </dd>
-              </div>
-            </>
-          )}
+                </div>
+              )}
+            </dd>
+          </div>
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Fee</dt>
             <dd className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
@@ -135,16 +161,6 @@ export default async function LessonDetailPage({
             </dd>
           </div>
         </dl>
-        {canEditNotes && (
-          <div className="mt-6 flex flex-col gap-4">
-            <h2 className="text-sm font-medium uppercase tracking-wide text-zinc-500">Notes</h2>
-            <LessonNotesForm
-              action={boundAction}
-              horses={lesson.lesson_horses}
-              riders={lesson.lesson_riders}
-            />
-          </div>
-        )}
       </div>
     </main>
   )

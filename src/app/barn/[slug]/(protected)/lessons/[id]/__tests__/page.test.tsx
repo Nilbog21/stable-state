@@ -408,6 +408,26 @@ describe('LessonDetailPage', () => {
     expect(screen.getByText('Private')).toBeDefined()
   })
 
+  it('should_show_dash_when_rider_notes_is_null_for_trainer', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_riders: [{ rider_notes: null, private_notes: 'struggling with confidence', barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_show_dash_when_private_notes_is_null_for_trainer', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_riders: [{ rider_notes: 'good position', private_notes: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
   it('should_show_rider_own_notes_readonly_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
