@@ -15,6 +15,7 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
   liability_waiver: 'Liability Waiver',
   lease_agreement: 'Lease Agreement',
   boarding_contract: 'Boarding Contract',
+  other: 'Other',
 }
 
 export default async function MemberDetailPage({

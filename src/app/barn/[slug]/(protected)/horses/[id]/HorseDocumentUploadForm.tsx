@@ -8,6 +8,7 @@ const HORSE_TYPES: { value: HorseDocumentType; label: string }[] = [
   { value: 'coggins', label: 'Coggins' },
   { value: 'shot_record', label: 'Shot Record' },
   { value: 'contract', label: 'Contract' },
+  { value: 'other', label: 'Other' },
 ]
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024

@@ -306,6 +306,12 @@ describe('uploadHorseDocumentAction', () => {
     await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/Invalid/)
   })
 
+  it('should_accept_other_as_valid_horse_record_type', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'other')
+    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(createHorseDocument).toHaveBeenCalled()
+  })
+
   it('should_reject_when_no_file_provided', async () => {
     const fd = new FormData()
     fd.set('record_type', 'coggins')

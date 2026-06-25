@@ -24,13 +24,13 @@ On the horse's detail page, managers see additional sections:
 
 - **Name** — pre-filled text input with the current name and a **Save** button to rename the horse.
 - **Activation** — at the bottom of the page. When the horse is active, a **Set Inactive** button appears; tapping it shows an inline confirmation with **Confirm** and **Cancel** before submitting. When the horse is already inactive, a **Set Active** button appears and submits immediately without confirmation.
-- **Documents** — lists all uploaded files for this horse, labeled by document type. Tap a file name to open the document (link is valid for 5 minutes). Tap **Delete** to remove a document. Use the **Upload Document** form to add a new file; accepted types are PDF, JPG, PNG, and DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**.
+- **Documents** — lists all uploaded files for this horse, labeled by document type. Tap a file name to open the document (link is valid for 5 minutes). Tap **Delete** to remove a document. Use the **Upload Document** form to add a new file; accepted types are PDF, JPG, PNG, and DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**, **Other**.
 
 ## Members
 
 Go to **Members** to browse the barn roster. You will see a Trainers section and a Riders section, each listing active members with links to their detail pages. Your own card appears at the top.
 
-Tap any member card to open their detail page. From there you can view their documents, upload new ones, or delete existing ones. Accepted file types are PDF, JPG, PNG, and DOCX (max 5 MB per file). Document types for trainers: **Instructor Contract**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**. Tap a file name to open the document (link is valid for 5 minutes).
+Tap any member card to open their detail page. From there you can view their documents, upload new ones, or delete existing ones. Accepted file types are PDF, JPG, PNG, and DOCX (max 5 MB per file). Document types for trainers: **Instructor Contract**, **Other**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other**. Tap a file name to open the document (link is valid for 5 minutes).
 
 ## Lessons
 
