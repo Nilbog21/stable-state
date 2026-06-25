@@ -14,12 +14,12 @@ All notable changes to Stable State are documented here. Written for barn manage
 ### Notifications
 
 - **Notification bell in the nav bar.** A bell icon shows an unread count badge. Click it to see recent alerts and mark them read.
-- **Alerts include:** outstanding payment reminders, pending approval requests (managers), and incomplete profile warnings.
+- **Alerts include:** outstanding payment reminders, pending approval requests (managers), incomplete profile warnings, and lesson cancellation alerts.
 
 ### Dashboard
 
 - **Upcoming lessons cards.** The dashboard now shows your next 7 days of lessons as cards — upcoming lessons you're teaching (trainers), enrolled in (riders), or scheduled at the barn (managers).
-- **Lesson times shown in your local time zone.** Times no longer display in UTC.
+- **Lesson times shown in your local time zone.**
 - **Pending-requests badge.** Managers see a badge on the dashboard when there are members waiting for approval, with a link to Manage Barn.
 
 ### Navigation
@@ -40,8 +40,7 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ### Horses
 
-- **Horses and Manage Horses merged.** All roles now use a single Horses page. The page shows three sections: Available, Unavailable, and Inactive (managers only). Horses appear as cards, not a table.
-- **Sort the horse summary by clicking column headers.** Click any column header (name, exertion, lessons, jumping) to sort the list.
+- **Horses and Manage Horses merged.** All roles now use a single Horses page. The page shows three sections: Available, Unavailable, and Inactive (managers only). Horses appear as cards, sorted automatically by recent exertion (lowest first).
 - **Simpler status control (managers).** The horse detail page has a single form: pick Active, Unavailable (and enter a reason), or Inactive — then click Save once.
 - **Horse documents visible to trainers.** Trainers can see and upload horse documents from the horse detail page. Managers can upload and delete.
 
@@ -50,7 +49,7 @@ All notable changes to Stable State are documented here. Written for barn manage
 - **Trainers can edit their own lessons.** An Edit button appears on lesson detail pages for lessons the trainer instructed.
 - **Filter lessons by person.** Trainers see a pill row to filter by rider. Managers see a two-level filter: first choose "All," "By Trainer," or "By Rider," then pick a specific person.
 - **Tier defaults pre-fill the lesson form.** When you select a fee tier, the lesson form pre-fills the price, exertion level, and jumping field with the tier's defaults (if set).
-- **Lesson notes editing moved to Edit Lesson.** Horse notes and rider notes can only be edited on the Edit Lesson page. The lesson detail page shows them read-only.
+- **Lesson notes editing moved to Edit Lesson.** Horse notes and rider notes can only be edited on the Edit Lesson page. The lesson detail page shows them read-only. Trainers and managers can also leave private notes on a rider that the rider cannot see.
 - **Navigation warning.** If you navigate away from a lesson edit with unsaved changes, you'll be asked to confirm before leaving.
 
 ### Members & Documents
@@ -61,9 +60,9 @@ All notable changes to Stable State are documented here. Written for barn manage
 - **"Other" document type.** When uploading a document for a horse, trainer, or rider, you can now choose "Other" as the type.
 - **Cleaner document list.** Uploaded documents appear in a table with a clearly labeled upload button.
 
-### Finances (managers)
+### Finances
 
-- **Outstanding income shown first.** Unpaid past lessons appear above the collected income summary.
+- **Outstanding income shown first (managers).** Unpaid past lessons appear above the collected income summary. Trainers and riders can also view their own outstanding lessons from the Finances page.
 - **"By Trainer" tab added.** A new tab on the Finances page breaks down collected income by instructor.
 - **Income summaries show collected (paid) income only.** Breakdowns no longer mix paid and unpaid lessons.
 - **Info labels.** Each section of the Finances page has a label explaining what it shows.
@@ -91,9 +90,9 @@ All notable changes to Stable State are documented here. Written for barn manage
 - New members wait for manager approval before accessing the barn
 - Roles: managers, trainers, and riders each see different features
 - Barn selector page for users who belong to multiple barns
-- Role-aware navigation bar on every barn page
+- A navigation bar on every barn page that shows different links depending on your role
 - Sign-out for all roles
-- Unapproved and unauthenticated users are redirected to login
+- Users who aren't signed in or haven't been approved are redirected to the login page
 
 ### Lessons
 
