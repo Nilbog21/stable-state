@@ -1,9 +1,11 @@
-import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { notFound } from 'next/navigation'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getHorsesByBarn } from '@/lib/db/horses'
-import { addHorseAction, updateHorseAction } from './actions'
+import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getHorseExertionSummary } from '@/lib/db/horses'
+import { HorseCard } from './HorseCard'
+import { addHorseAction } from './actions'
+import { EmptyState } from '@/components/EmptyState'
 
 export default async function HorsesPage({
   params,
@@ -14,78 +16,30 @@ export default async function HorsesPage({
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect(`/barn/${slug}/login`)
+  const user = await getAuthenticatedUser()
+  if (!user) notFound()
 
-  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
+  const membership = await getUserMembership(user.id, barn.id)
+  if (!membership || membership.status !== 'active') notFound()
 
-  if (
-    !actorMembership ||
-    actorMembership.status !== 'active' ||
-    actorMembership.role !== 'manager'
-  ) {
-    redirect(`/barn/${slug}/login`)
-  }
+  const isManager = membership.role === 'manager'
 
-  const horses = await getHorsesByBarn(barn.id)
+  const sevenDaysAgo = new Date()
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
+  const horses = await getHorseExertionSummary(barn.id, sevenDaysAgo)
+
+  const available = horses
+    .filter((h) => h.is_active && h.is_available)
+    .sort((a, b) => a.totalExertion - b.totalExertion)
+  const unavailable = horses.filter((h) => h.is_active && !h.is_available)
+  const inactive = horses.filter((h) => !h.is_active)
+  const allEmpty = available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {barn.name} — Manage Horses
-      </h1>
-
-      {horses.length > 0 && (
-        <>
-          {/* <form> cannot be a valid child of <tr>, so update forms live here
-              and are associated to their row controls via the HTML `form` attribute. */}
-          {horses.map((horse) => (
-            <form
-              key={`update-${horse.id}`}
-              id={`update-horse-${horse.id}`}
-              action={updateHorseAction.bind(null, slug, horse.id)}
-            />
-          ))}
-          <table className="mb-12 w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Name</th>
-                <th className="pb-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {horses.map((horse) => (
-                <tr key={horse.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6">
-                    <input
-                      type="text"
-                      name="name"
-                      form={`update-horse-${horse.id}`}
-                      defaultValue={horse.name}
-                      required
-                      className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-                    />
-                  </td>
-                  <td className="py-3">
-                    <button
-                      type="submit"
-                      form={`update-horse-${horse.id}`}
-                      className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                    >
-                      Save
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </>
-      )}
-
-      <section>
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">Add Horse</h2>
-        <form action={addHorseAction.bind(null, slug)} className="flex gap-2">
+      <h1 className="mb-4 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Horses</h1>
+      {isManager && (
+        <form action={addHorseAction.bind(null, slug)} className="mb-8 flex gap-2">
           <input
             type="text"
             name="name"
@@ -100,7 +54,47 @@ export default async function HorsesPage({
             Add
           </button>
         </form>
-      </section>
+      )}
+
+      {available.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Available</h2>
+          <div className="flex flex-col gap-2">
+            {available.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="available" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {unavailable.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Unavailable</h2>
+          <div className="flex flex-col gap-2">
+            {unavailable.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="unavailable" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {isManager && inactive.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Inactive</h2>
+          <div className="flex flex-col gap-2">
+            {inactive.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="inactive" />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {allEmpty && (
+        <EmptyState
+          heading="No horses yet"
+          subtext={isManager ? 'Use the form above to add your first horse.' : 'No horses have been added yet.'}
+        />
+      )}
     </main>
   )
 }

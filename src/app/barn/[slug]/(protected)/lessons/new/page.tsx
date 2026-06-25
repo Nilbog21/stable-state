@@ -1,11 +1,8 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
-import { getRidersByBarn } from '@/lib/db/riders'
-import { getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getActiveMembersWithProfiles, getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { submitLesson } from '@/app/actions/lessons'
 import { LessonForm } from '../LessonForm'
@@ -22,53 +19,28 @@ export default async function LessonNewPage({
     notFound()
   }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   if (!user) {
     notFound()
   }
 
-  const [horses, riders, membership, tiers] = await Promise.all([
+  const [horses, riderMembers, membership, tiers, instructors] = await Promise.all([
     getHorsesByBarn(barn.id),
-    getRidersByBarn(barn.id),
-    getEffectiveMembership(user.id, barn.id),
+    getActiveMembersWithProfiles(barn.id, 'rider'),
+    getUserMembership(user.id, barn.id),
     getTiersByBarn(barn.id),
+    getInstructorsByBarn(barn.id),
   ])
+  const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
   const isManager = membership?.role === 'manager'
-
-  let instructors: { userId: string; name: string }[]
-
-  if (isManager) {
-    const trainerMemberships = await getActiveTrainerMembershipsByBarn(barn.id)
-    const trainerUserIds = trainerMemberships.map((m) => m.user_id)
-    const allUserIds = [...new Set([user.id, ...trainerUserIds])]
-    const profiles = await getProfilesByUserIds(allUserIds)
-
-    const nameOf = (userId: string) => {
-      const p = profiles.find((p) => p.user_id === userId)
-      return p ? `${p.first_name} ${p.last_name}` : userId
-    }
-
-    instructors = [
-      { userId: user.id, name: nameOf(user.id) },
-      ...trainerMemberships.map((m) => ({ userId: m.user_id, name: nameOf(m.user_id) })),
-    ]
-  } else {
-    const profiles = await getProfilesByUserIds([user.id])
-    const nameOf = (userId: string) => {
-      const p = profiles.find((p) => p.user_id === userId)
-      return p ? `${p.first_name} ${p.last_name}` : userId
-    }
-    instructors = [{ userId: user.id, name: nameOf(user.id) }]
-  }
 
   const submit = submitLesson.bind(null, barn.id, barn.slug)
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
-      <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+    <main className="flex min-h-screen flex-col items-center gap-6 bg-white pt-8 dark:bg-black">
+      <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         New Lesson
       </h1>
       <LessonForm

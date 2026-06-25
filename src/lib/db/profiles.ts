@@ -1,23 +1,77 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Profile } from './types'
 
 export async function upsertProfile(
   userId: string,
+  email: string,
   firstName: string,
-  lastName: string
+  lastName: string,
+  client?: SupabaseClient
 ): Promise<Profile> {
-  const supabase = await createClient()
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('profiles')
     .upsert(
-      { user_id: userId, first_name: firstName, last_name: lastName },
-      { onConflict: 'user_id' }
+      { user_id: userId, email, first_name: firstName, last_name: lastName },
+      { onConflict: 'email' }
     )
     .select()
     .single()
 
   if (error) throw error
+  if (!data) throw new Error('upsert returned no row')
   return data
+}
+
+
+export async function getProfileByUserId(userId: string): Promise<Profile | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('user_id', userId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateProfile(
+  profileId: string,
+  fields: {
+    first_name: string
+    last_name: string
+    phone?: string | null
+    emergency_contact_name?: string | null
+    emergency_contact_phone?: string | null
+  }
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update(fields)
+    .eq('id', profileId)
+
+  if (error) throw error
+}
+
+export async function updateContactInfo(
+  profileId: string,
+  fields: {
+    phone?: string | null
+    emergency_contact_name?: string | null
+    emergency_contact_phone?: string | null
+  }
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update(fields)
+    .eq('id', profileId)
+
+  if (error) throw error
 }
 
 export async function getProfilesByUserIds(

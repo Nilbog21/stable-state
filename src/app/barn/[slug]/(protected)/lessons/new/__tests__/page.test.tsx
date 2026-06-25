@@ -12,21 +12,14 @@ vi.mock('@/lib/db/horses', () => ({
   getHorsesByBarn: vi.fn(),
 }))
 
-vi.mock('@/lib/db/riders', () => ({
-  getRidersByBarn: vi.fn(),
-}))
-
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getActiveTrainerMembershipsByBarn: vi.fn(),
+  getInstructorsByBarn: vi.fn(),
+  getActiveMembersWithProfiles: vi.fn(),
 }))
 
-vi.mock('@/lib/db/profiles', () => ({
-  getProfilesByUserIds: vi.fn(),
-}))
-
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -44,11 +37,9 @@ vi.mock('@/lib/db/lesson-tiers', () => ({
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
-import { getRidersByBarn } from '@/lib/db/riders'
-import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getUserMembership, getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import LessonNewPage from '../page'
 
@@ -61,8 +52,8 @@ const mockHorses = [
 ]
 
 const mockRiders = [
-  { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', created_at: '2026-01-01', updated_at: '2026-01-01' },
-  { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', created_at: '2026-01-02', updated_at: '2026-01-02' },
+  { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
+  { membershipId: 'mem-2', userId: 'user-2', name: 'Bob' },
 ]
 
 const mockTrainerMembership = createMockMembership({ id: 'mem-1', created_at: '2026-01-01T00:00:00Z' })
@@ -70,23 +61,18 @@ const mockManagerMembership = createMockMembership({ id: 'mem-1', user_id: 'mana
 const mockTrainerBarnMembership = createMockMembership({ id: 'mem-2', user_id: 'trainer-2', created_at: '2026-01-01T00:00:00Z' })
 
 function mockSupabaseUser(userId = 'user-1') {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: {
-      getUser: vi.fn().mockResolvedValue({ data: { user: { id: userId } }, error: null }),
-    },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
 }
 
 describe('LessonNewPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getHorsesByBarn).mockResolvedValue(mockHorses)
-    vi.mocked(getRidersByBarn).mockResolvedValue(mockRiders)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue(mockRiders)
     vi.mocked(getTiersByBarn).mockResolvedValue([mockTier])
     mockSupabaseUser()
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([])
   })
 
   it('should_render_form_when_barn_exists', async () => {
@@ -96,11 +82,7 @@ describe('LessonNewPage', () => {
   })
 
   it('should_call_notFound_when_user_is_not_authenticated', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: {
-        getUser: vi.fn().mockResolvedValue({ data: { user: null }, error: null }),
-      },
-    } as any)
+    vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => {
       throw new Error('NEXT_NOT_FOUND')
     })
@@ -148,8 +130,8 @@ describe('LessonNewPage', () => {
 
   it('should_display_trainer_full_name_when_profile_is_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'user-1', first_name: 'John', last_name: 'Trainer', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'user-1', name: 'John Trainer' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -159,8 +141,8 @@ describe('LessonNewPage', () => {
   it('should_render_instructor_select_when_user_is_a_manager', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -170,10 +152,9 @@ describe('LessonNewPage', () => {
   it('should_render_trainer_options_in_instructor_select_for_manager', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getActiveTrainerMembershipsByBarn).mockResolvedValue([mockTrainerBarnMembership])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
-      { user_id: 'trainer-2', first_name: 'John', last_name: 'Smith', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'manager-1', name: 'Jane Doe' },
+      { userId: 'trainer-2', name: 'John Smith' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -183,8 +164,8 @@ describe('LessonNewPage', () => {
   it('should_pre_select_current_user_in_instructor_select', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([
-      { user_id: 'manager-1', first_name: 'Jane', last_name: 'Doe', created_at: '2026-01-01' },
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([
+      { userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -259,9 +240,9 @@ describe('LessonNewPage', () => {
     expect(vi.mocked(getHorsesByBarn).mock.calls[0][0]).toBe('barn-1')
   })
 
-  it('should_call_getRidersByBarn_with_barn_id', async () => {
+  it('should_call_getActiveMembersWithProfiles_with_barn_id', async () => {
     await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(vi.mocked(getRidersByBarn).mock.calls[0][0]).toBe('barn-1')
+    expect(vi.mocked(getActiveMembersWithProfiles).mock.calls[0][0]).toBe('barn-1')
   })
 
   it('should_call_getTiersByBarn_with_barn_id', async () => {

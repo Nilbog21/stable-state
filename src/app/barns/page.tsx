@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 
 function capitalizeRole(role: string): string {
@@ -8,11 +8,10 @@ function capitalizeRole(role: string): string {
 }
 
 export default async function BarnsPage() {
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect('/login')
+  const user = await getAuthenticatedUser()
+  if (!user) redirect('/login')
 
-  const memberships = await getBarnMembershipsForUser(data.user.id)
+  const memberships = await getBarnMembershipsForUser(user.id)
   if (memberships.length === 0) redirect('/login?no_barns=true')
 
   return (

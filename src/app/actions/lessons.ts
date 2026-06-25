@@ -1,11 +1,11 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
-import { createLessonWithParticipants, deleteLesson, updateLessonWithParticipants, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { requireMembership } from '@/lib/auth/guard'
+import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes } from '@/lib/db/lesson-participants'
 import type { PaymentType } from '@/lib/db/types'
-import { getUserMembership, getActiveTrainerMembershipsByBarn } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
-import { createRider, getRidersByBarn } from '@/lib/db/riders'
 import { redirect } from 'next/navigation'
 
 function parseExertionLevel(raw: FormDataEntryValue | null): number {
@@ -21,42 +21,34 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const horseIds = formData.getAll('horse_id') as string[]
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
-  let riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
-  const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
+  const riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
   const tierName = (formData.get('tier_name') as string | null) ?? 'Custom'
   const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
   const jumping = formData.get('jumping') === 'true'
+  const paymentTypeRaw = (formData.get('payment_type') as string | null) || null
+  const paymentType = paymentTypeRaw as PaymentType | null
 
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
 
-  if (riderIds.length === 0 && !newRiderName) return { error: 'rider required' }
-  if (riderIds.length > 0 && newRiderName) return { error: 'select a rider or add a new one, not both' }
+  if (riderIds.length === 0) return { error: 'rider required' }
   if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
   if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (!membership || !['manager', 'trainer'].includes(membership.role)) {
-    return { error: 'not authorized' }
-  }
   const isManager = membership.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
 
   if (isManager && instructorIdFromForm && instructorIdFromForm !== user.id) {
-    const trainerMemberships = await getActiveTrainerMembershipsByBarn(barnId)
-    const validIds = new Set(trainerMemberships.map((m) => m.user_id))
-    if (!validIds.has(instructorIdFromForm)) return { error: 'Invalid instructor' }
+    const instructors = await getInstructorsByBarn(barnId)
+    if (!instructors.some((i) => i.userId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
@@ -68,7 +60,7 @@ export async function submitLesson(
 
   const [barnHorses, barnRiders] = await Promise.all([
     getHorsesByBarn(barnId),
-    getRidersByBarn(barnId),
+    getActiveMembersWithProfiles(barnId, 'rider'),
   ])
 
   if (horseIds.length > 0) {
@@ -79,7 +71,7 @@ export async function submitLesson(
   }
 
   if (riderIds.length > 0) {
-    const validRiderIds = new Set(barnRiders.map((r) => r.id))
+    const validRiderIds = new Set(barnRiders.map((m) => m.membershipId))
     if (riderIds.some((id) => !validRiderIds.has(id))) {
       return { error: 'rider not found in this barn' }
     }
@@ -97,14 +89,6 @@ export async function submitLesson(
       exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
-    if (newRiderName) {
-      if (membership?.role !== 'manager') {
-        return { error: 'not authorized to add riders' }
-      }
-      const rider = await createRider(barnId, newRiderName)
-      riderIds = [rider.id]
-    }
-
     await createLessonWithParticipants({
       barnId,
       instructorId,
@@ -116,6 +100,7 @@ export async function submitLesson(
       lessonType,
       jumping,
       tierName,
+      paymentType,
     })
   } catch {
     return { error: 'Failed to submit lesson' }
@@ -132,9 +117,8 @@ export async function updateLessonAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
   let horseIds = formData.getAll('horse_id') as string[]
-  let riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
+  const riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
-  const newRiderName = (formData.get('new_rider_name') as string | null)?.trim() || null
   const lessonAt = formData.get('lesson_at') as string | null
   const feeRaw = formData.get('fee') as string | null
   const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
@@ -147,27 +131,20 @@ export async function updateLessonAction(
 
   if (horseIds.length === 0 && !newHorseName) return { error: 'horse required' }
   if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
-  if (lessonType === 'normal' && riderIds.length === 0 && !newRiderName) return { error: 'rider required' }
-  if (newRiderName && riderIds.length > 0) return { error: 'select a rider or add a new one, not both' }
+  if (lessonType === 'normal' && riderIds.length === 0) return { error: 'rider required' }
   if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
 
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
+  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (membership?.role !== 'manager') return { error: 'not authorized' }
-
-  const instructorIdFromForm = formData.get('instructor_id') as string | null
+  const isManager = membership.role === 'manager'
+  const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
   const instructorId = instructorIdFromForm || user.id
 
-  if (instructorIdFromForm && instructorIdFromForm !== user.id) {
-    const trainerMemberships = await getActiveTrainerMembershipsByBarn(barnId)
-    const validIds = new Set(trainerMemberships.map((m) => m.user_id))
-    if (!validIds.has(instructorIdFromForm)) return { error: 'Invalid instructor' }
+  if (isManager && instructorIdFromForm && instructorIdFromForm !== user.id) {
+    const instructors = await getInstructorsByBarn(barnId)
+    if (!instructors.some((i) => i.userId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
@@ -180,7 +157,7 @@ export async function updateLessonAction(
 
   const [barnHorses, barnRiders] = await Promise.all([
     getHorsesByBarn(barnId),
-    getRidersByBarn(barnId),
+    getActiveMembersWithProfiles(barnId, 'rider'),
   ])
 
   if (horseIds.length > 0) {
@@ -189,20 +166,16 @@ export async function updateLessonAction(
   }
 
   if (riderIds.length > 0) {
-    const validRiderIds = new Set(barnRiders.map((r) => r.id))
+    const validRiderIds = new Set(barnRiders.map((m) => m.membershipId))
     if (riderIds.some((id) => !validRiderIds.has(id))) return { error: 'rider not found in this barn' }
   }
 
   try {
     if (newHorseName) {
+      if (!isManager) return { error: 'not authorized to add horses' }
       const horse = await createHorse(barnId, newHorseName)
       horseIds = [...horseIds, horse.id]
       exertionLevels.set(horse.id, newHorseExertionLevel)
-    }
-
-    if (newRiderName) {
-      const rider = await createRider(barnId, newRiderName)
-      riderIds = [rider.id]
     }
 
     await updateLessonWithParticipants({
@@ -219,6 +192,23 @@ export async function updateLessonAction(
       exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
       riderIds,
     })
+
+    const horseIdSet = new Set(horseIds)
+    const riderIdSet = new Set(riderIds)
+    const noteHorseIds = (formData.getAll('noteHorseId') as string[]).filter(id => horseIdSet.has(id))
+    const noteRiderIds = (formData.getAll('noteRiderId') as string[]).filter(id => riderIdSet.has(id))
+    await Promise.all([
+      ...noteHorseIds.map(hId =>
+        updateLessonHorseNotes(lessonId, hId, barnId, (formData.get(`horse_notes_${hId}`) as string) || null)
+      ),
+      ...noteRiderIds.map(rId =>
+        updateLessonRiderNotes(
+          lessonId, rId, barnId,
+          (formData.get(`rider_notes_${rId}`) as string) || null,
+          (formData.get(`private_notes_${rId}`) as string) || null,
+        )
+      ),
+    ])
   } catch {
     return { error: 'Failed to update lesson' }
   }
@@ -231,15 +221,7 @@ export async function deleteLessonAction(
   barnSlug: string,
   lessonId: string
 ): Promise<{ error: string }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (membership?.role !== 'manager') {
-    return { error: 'not authorized' }
-  }
+  await requireMembership(barnSlug, ['manager'])
 
   try {
     await deleteLesson(lessonId, barnId)
@@ -252,27 +234,19 @@ export async function deleteLessonAction(
 
 export async function updatePaymentTypeAction(
   lessonId: string,
-  barnId: string,
+  barnSlug: string,
   paymentType: string | null
 ): Promise<{ error: string | null }> {
-  const supabase = await createClient()
-  const { data: { user } } = await supabase.auth.getUser()
-
-  if (!user) return { error: 'not authenticated' }
-
-  const membership = await getUserMembership(user.id, barnId)
-  if (!membership || membership.status !== 'active' || !['manager', 'trainer'].includes(membership.role)) {
-    return { error: 'not authorized' }
-  }
+  const { user, barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   if (membership.role === 'trainer') {
-    const lesson = await getLessonById(lessonId, barnId)
+    const lesson = await getLessonById(lessonId, barn.id, 'trainer')
     if (!lesson) return { error: 'lesson not found' }
     if (lesson.instructor_id !== user.id) return { error: 'not authorized' }
   }
 
   try {
-    await updateLesson(lessonId, barnId, { payment_type: paymentType as PaymentType | null })
+    await updateLesson(lessonId, barn.id, { payment_type: paymentType as PaymentType | null })
   } catch {
     return { error: 'Failed to update payment type' }
   }

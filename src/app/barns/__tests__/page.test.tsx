@@ -3,8 +3,8 @@ import { render, screen, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -23,7 +23,7 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import BarnsPage from '../page'
 
@@ -54,9 +54,7 @@ const mockPendingMembership = {
 }
 
 function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
 
 describe('BarnsPage', () => {

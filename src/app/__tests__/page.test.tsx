@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn, createMockMembership } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
-vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
+vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getBarnMembershipsForUser: vi.fn() }))
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
@@ -10,14 +10,14 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 }))
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import Home from '../page'
 
 describe('Home', () => {
   beforeEach(() => {
     mockRedirect.mockClear()
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
   })
 

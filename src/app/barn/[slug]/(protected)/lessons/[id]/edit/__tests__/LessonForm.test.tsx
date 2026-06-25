@@ -1,16 +1,17 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, waitFor } from '@testing-library/react'
-import type { LessonDetail, Horse, Rider } from '@/lib/db/types'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
+import type { LessonDetail, Horse } from '@/lib/db/types'
 import { createMockLessonTier } from '@/test/fixtures'
 import { LessonForm } from '../../../LessonForm'
+import { NavigationBlockerProvider, useNavigationBlocker } from '../../../../NavigationBlocker'
 
 afterEach(cleanup)
 
 const mockTier = createMockLessonTier({ is_default: true })
 
 const mockHorse: Horse = { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '', updated_at: '' }
-const mockRider: Rider = { id: 'rider-1', barn_id: 'barn-1', name: 'Alice', user_id: null, created_at: '', updated_at: '' }
-const mockRider2: Rider = { id: 'rider-2', barn_id: 'barn-1', name: 'Bob', user_id: null, created_at: '', updated_at: '' }
+const mockRider = { id: 'rider-1', name: 'Alice' }
+const mockRider2 = { id: 'rider-2', name: 'Bob' }
 
 const normalLesson: LessonDetail = {
   id: 'lesson-1',
@@ -25,15 +26,15 @@ const normalLesson: LessonDetail = {
   tier_name: 'Custom',
   instructor_name: 'Jane Smith',
   lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-  lesson_riders: [{ riders: { id: 'rider-1', name: 'Alice' } }],
+  lesson_riders: [{ barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } }],
 }
 
 const groupLesson: LessonDetail = {
   ...normalLesson,
   lesson_type: 'group',
   lesson_riders: [
-    { riders: { id: 'rider-1', name: 'Alice' } },
-    { riders: { id: 'rider-2', name: 'Bob' } },
+    { barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } },
+    { barn_membership: { id: 'rider-2', name: 'Bob', user_id: null } },
   ],
 }
 
@@ -367,11 +368,6 @@ describe('LessonForm (edit mode)', () => {
     expect(screen.queryByPlaceholderText(/add new horse/i)).not.toBeNull()
   })
 
-  it('should_render_add_new_rider_input_for_managers_in_normal_edit_mode', () => {
-    render(<LessonForm {...baseProps} isManager={true} />)
-    expect(screen.queryByPlaceholderText(/add new rider/i)).not.toBeNull()
-  })
-
   it('should_show_save_button_in_edit_mode', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeNull()
@@ -404,5 +400,295 @@ describe('LessonForm (edit mode)', () => {
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
     fireEvent.submit(form)
     expect(action).not.toHaveBeenCalled()
+  })
+
+  it('should_render_unavailable_horse_as_disabled_checkbox', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const { container } = render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} />)
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
+    expect(checkbox.disabled).toBe(true)
+  })
+
+  it('should_sort_available_horse_before_unavailable_horse', () => {
+    const unavailableHorse = { id: 'horse-unavail', barn_id: 'barn-1', name: 'AAA Unavailable', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const availableHorse = { id: 'horse-avail', barn_id: 'barn-1', name: 'ZZZ Available', is_active: true, is_available: true, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const { container } = render(<LessonForm {...baseProps} horses={[unavailableHorse, availableHorse]} />)
+    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+    expect((checkboxes[0] as HTMLInputElement).value).toBe('horse-avail')
+  })
+
+  it('should_sort_unavailable_horse_after_available_horse', () => {
+    const unavailableHorse = { id: 'horse-unavail', barn_id: 'barn-1', name: 'AAA Unavailable', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const availableHorse = { id: 'horse-avail', barn_id: 'barn-1', name: 'ZZZ Available', is_active: true, is_available: true, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const { container } = render(<LessonForm {...baseProps} horses={[unavailableHorse, availableHorse]} />)
+    const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+    expect((checkboxes[1] as HTMLInputElement).value).toBe('horse-unavail')
+  })
+
+  it('should_show_unavailability_reason_next_to_horse_name', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'on stall rest', created_at: '', updated_at: '' } as unknown as Horse
+    render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} />)
+    expect(screen.getByText(/on stall rest/i)).toBeDefined()
+  })
+
+  it('should_keep_pre_assigned_unavailable_horse_checked_in_edit_mode', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const lessonWithUnavailableHorse: LessonDetail = {
+      ...normalLesson,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
+    }
+    const { container } = render(
+      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+    )
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
+    expect(checkbox.checked).toBe(true)
+  })
+
+  it('should_render_tier_selector_before_jumping_checkbox_in_edit_mode', () => {
+    render(<LessonForm {...baseProps} />)
+    const tierSelect = screen.getByRole('combobox', { name: /tier/i })
+    const jumpingCheckbox = screen.getByRole('checkbox', { name: /jumping/i })
+    expect(tierSelect.compareDocumentPosition(jumpingCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('should_keep_pre_assigned_unavailable_horse_disabled_in_edit_mode', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const lessonWithUnavailableHorse: LessonDetail = {
+      ...normalLesson,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
+    }
+    const { container } = render(
+      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+    )
+    const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
+    expect(checkbox.disabled).toBe(true)
+  })
+
+  it('should_include_pre_assigned_unavailable_horse_id_in_form_via_hidden_input', () => {
+    const unavailableHorse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, created_at: '', updated_at: '' } as unknown as Horse
+    const lessonWithUnavailableHorse: LessonDetail = {
+      ...normalLesson,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
+    }
+    const { container } = render(
+      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+    )
+    const hidden = container.querySelector('input[type="hidden"][name="horse_id"][value="horse-2"]')
+    expect(hidden).not.toBeNull()
+  })
+})
+
+function DirtyDisplay() {
+  const { dirty } = useNavigationBlocker()
+  return <div data-testid="dirty">{dirty ? 'dirty' : 'clean'}</div>
+}
+
+const pastLesson: LessonDetail = {
+  ...normalLesson,
+  lesson_at: '2020-01-01T10:00:00Z',
+  payment_type: null,
+  fee: 75,
+}
+
+describe('LessonForm (edit mode — navigation dirty state)', () => {
+  let addEventSpy: ReturnType<typeof vi.spyOn>
+  let removeEventSpy: ReturnType<typeof vi.spyOn>
+
+  beforeEach(() => {
+    addEventSpy = vi.spyOn(window, 'addEventListener')
+    removeEventSpy = vi.spyOn(window, 'removeEventListener')
+  })
+
+  afterEach(() => {
+    addEventSpy.mockRestore()
+    removeEventSpy.mockRestore()
+  })
+
+  it('should_not_set_dirty_when_lesson_is_future', async () => {
+    const futureLesson: LessonDetail = { ...pastLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_not_set_dirty_when_fee_is_zero', async () => {
+    const zeroFeeLesson: LessonDetail = { ...pastLesson, fee: 0 }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={zeroFeeLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_not_set_dirty_when_fee_is_null', async () => {
+    const nullFeeLesson: LessonDetail = { ...pastLesson, fee: null }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={nullFeeLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_not_set_dirty_when_payment_type_is_already_set', async () => {
+    const paidLesson: LessonDetail = { ...pastLesson, payment_type: 'venmo' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={paidLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_set_dirty_when_past_due_unpaid_with_positive_fee', async () => {
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_set_dirty_false_when_payment_type_selected', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+    const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'venmo' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_set_dirty_true_when_payment_type_cleared_back_to_unpaid', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+    const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'venmo' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    fireEvent.change(select, { target: { value: '' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_register_beforeunload_when_dirty', async () => {
+    render(
+      <NavigationBlockerProvider>
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => {
+      const calls = addEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+      expect(calls.length).toBeGreaterThan(0)
+    })
+  })
+
+  it('should_remove_beforeunload_when_payment_type_selected', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => {
+      const calls = addEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+      expect(calls.length).toBeGreaterThan(0)
+    })
+    const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
+    await act(async () => { fireEvent.change(select, { target: { value: 'venmo' } }) })
+    const removeCalls = removeEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+    expect(removeCalls.length).toBeGreaterThan(0)
+  })
+
+  it('should_prevent_default_on_beforeunload_event_when_dirty', async () => {
+    render(
+      <NavigationBlockerProvider>
+        <LessonForm {...baseProps} initialLesson={pastLesson} />
+      </NavigationBlockerProvider>
+    )
+    let handler: ((e: BeforeUnloadEvent) => void) | undefined
+    await waitFor(() => {
+      const call = addEventSpy.mock.calls.find(([event]) => event === 'beforeunload')
+      expect(call).toBeDefined()
+      handler = call![1] as (e: BeforeUnloadEvent) => void
+    })
+    const mockEvent = { preventDefault: vi.fn() } as unknown as BeforeUnloadEvent
+    handler!(mockEvent)
+    expect(mockEvent.preventDefault).toHaveBeenCalled()
+  })
+})
+
+describe('LessonForm notes fields', () => {
+  const notesProps = {
+    ...baseProps,
+    initialNotes: {
+      horses: [{ id: 'horse-1', name: 'Thunderbolt', horse_notes: 'watch left lead' }],
+      riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: 'good position', private_notes: 'private info' }],
+    },
+  }
+
+  it('should_render_horse_notes_textarea_when_initialNotes_provided', () => {
+    render(<LessonForm {...notesProps} />)
+    expect(screen.getByDisplayValue('watch left lead')).toBeDefined()
+  })
+
+  it('should_render_rider_notes_textarea_when_initialNotes_provided', () => {
+    render(<LessonForm {...notesProps} />)
+    expect(screen.getByDisplayValue('good position')).toBeDefined()
+  })
+
+  it('should_render_private_notes_textarea_when_initialNotes_provided', () => {
+    render(<LessonForm {...notesProps} />)
+    expect(screen.getByDisplayValue('private info')).toBeDefined()
+  })
+
+  it('should_render_empty_textarea_when_horse_notes_is_null', () => {
+    const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, horses: [{ id: 'horse-1', name: 'Thunderbolt', horse_notes: null }] } }
+    render(<LessonForm {...props} />)
+    expect(screen.getByLabelText('Thunderbolt', { selector: 'textarea' })).toBeDefined()
+  })
+
+  it('should_render_empty_textarea_when_rider_notes_is_null', () => {
+    const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: null, private_notes: 'private info' }] } }
+    render(<LessonForm {...props} />)
+    expect(screen.getByText('Rider Notes')).toBeDefined()
+  })
+
+  it('should_render_empty_textarea_when_private_notes_is_null', () => {
+    const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: 'good position', private_notes: null }] } }
+    render(<LessonForm {...props} />)
+    expect(screen.getByText('Private')).toBeDefined()
+  })
+
+  it('should_not_render_notes_section_when_initialNotes_not_provided', () => {
+    render(<LessonForm {...baseProps} />)
+    expect(screen.queryByText('Notes')).toBeNull()
+  })
+
+  it('should_set_dirty_when_notes_changed', async () => {
+    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...notesProps} initialLesson={futureLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
 })

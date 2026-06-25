@@ -3,24 +3,27 @@ import { render, screen, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
-vi.mock('@/lib/supabase/server', () => ({
-  createClient: vi.fn(),
+vi.mock('../UpcomingLessonCard', () => ({
+  UpcomingLessonCard: ({ role, slug, lesson }: { role: string; slug: string; lesson: { id: string } }) => (
+    <div data-testid="upcoming-card" data-role={role} data-slug={slug} data-lesson-id={lesson.id} />
+  ),
+}))
+
+vi.mock('@/lib/db/auth', () => ({
+  getAuthenticatedUser: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
 }))
 
-vi.mock('@/lib/db/effective-membership', () => ({
-  getEffectiveMembership: vi.fn(),
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
+  getPendingMemberships: vi.fn(),
 }))
 
 vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
-}))
-
-vi.mock('@/app/actions/auth', () => ({
-  signOut: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() =>
@@ -33,10 +36,11 @@ vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
 }))
 
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
+import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { createMockLesson } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
@@ -71,18 +75,17 @@ const mockRiderMembership = {
 }
 
 function setupAuth(user: typeof mockUser | null = mockUser) {
-  vi.mocked(createClient).mockResolvedValue({
-    auth: { getUser: vi.fn().mockResolvedValue({ data: { user } }) },
-  } as any)
+  vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
 
 describe('BarnDashboardPage', () => {
   beforeEach(() => {
-    vi.mocked(createClient).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
+    vi.mocked(getPendingMemberships).mockResolvedValue([])
   })
 
   it('should_throw_when_barn_does_not_exist', async () => {
@@ -101,60 +104,41 @@ describe('BarnDashboardPage', () => {
     expect(mockNotFound).toHaveBeenCalled()
   })
 
+  it('should_render_dashboard_heading', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Dashboard')
+  })
+
   it('should_show_upcoming_lessons_section_for_manager', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByRole('heading', { name: /upcoming lessons/i })).toBeDefined()
+    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
-  it('should_show_empty_state_when_no_upcoming_lessons', async () => {
+  it('should_show_empty_state_heading_when_no_upcoming_lessons', async () => {
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText('No upcoming lessons this week')).toBeDefined()
+    expect(screen.getByText("You're all clear")).toBeDefined()
   })
 
-  it('should_show_horse_names_for_manager', async () => {
-    const lesson = {
-      ...createMockLesson(),
-      instructor_name: null,
-      horse_names: ['Thunderbolt'],
-      horse_count: 1,
-      rider_names: ['Alice'],
-      rider_count: 1,
-    }
-    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
+  it('should_show_empty_state_subtext_when_no_upcoming_lessons', async () => {
+    vi.mocked(getUpcomingLessons).mockResolvedValue([])
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText('Thunderbolt')).toBeDefined()
+    expect(screen.getByText('No lessons scheduled for the next 7 days.')).toBeDefined()
   })
 
-  it('should_show_rider_names_for_manager', async () => {
+  it('should_render_upcoming_lesson_card_with_role', async () => {
     const lesson = {
       ...createMockLesson(),
       instructor_name: null,
-      horse_names: ['Thunderbolt'],
-      horse_count: 1,
-      rider_names: ['Alice'],
-      rider_count: 1,
-    }
-    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByText('Alice')).toBeDefined()
-  })
-
-  it('should_show_instructor_name_when_present', async () => {
-    const lesson = {
-      ...createMockLesson(),
-      instructor_name: 'Jane Smith',
       horse_names: [],
       horse_count: 0,
       rider_names: [],
@@ -165,35 +149,124 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText('Jane Smith')).toBeDefined()
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-role')).toBe('manager')
   })
 
-  it('should_not_show_upcoming_lessons_section_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+  it('should_render_upcoming_lesson_card_with_slug', async () => {
+    const lesson = {
+      ...createMockLesson(),
+      instructor_name: null,
+      horse_names: [],
+      horse_count: 0,
+      rider_names: [],
+      rider_count: 0,
+    }
+    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.queryByText(/upcoming lessons/i)).toBeNull()
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-slug')).toBe('green-acres')
   })
 
-  it('should_render_sign_out_button_for_manager', async () => {
+  it('should_show_upcoming_lessons_section_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
+
+    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
-  it('should_render_sign_out_button_for_trainer', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockTrainerMembership)
+  it('should_show_upcoming_lessons_section_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
+
+    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
-  it('should_render_sign_out_button_for_rider', async () => {
-    vi.mocked(getEffectiveMembership).mockResolvedValue(mockRiderMembership)
+  it('should_call_getUpcomingLessons_with_user_id', async () => {
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(vi.mocked(getUpcomingLessons)).toHaveBeenCalledWith(
+      mockBarn.id,
+      expect.any(String),
+      expect.any(String),
+      mockUser.id,
+      expect.any(String)
+    )
+  })
+
+  it('should_call_getUpcomingLessons_with_membership_role', async () => {
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(vi.mocked(getUpcomingLessons)).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      expect.any(String),
+      mockManagerMembership.role
+    )
+  })
+
+  it('should_not_render_sign_out_button', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('button', { name: /sign out/i })).toBeDefined()
+    expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull()
+  })
+
+  it('should_render_pending_approvals_badge_when_count_is_nonzero', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText(/pending request/i)).toBeDefined()
+  })
+
+  it('should_not_render_pending_approvals_badge_when_count_is_zero', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/pending request/i)).toBeNull()
+  })
+
+  it('should_render_pending_approvals_badge_with_link_to_settings', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /pending request/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/settings')
+  })
+
+  it('should_not_render_pending_approvals_badge_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/pending request/i)).toBeNull()
+  })
+
+  it('should_use_plural_pending_requests_when_count_is_greater_than_one', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+      { id: 'p2', user_id: 'u2', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText(/2 pending requests/i)).toBeDefined()
   })
 })

@@ -1,10 +1,14 @@
 import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary } from '@/lib/db/lessons'
+import { getUserMembership } from '@/lib/db/barn-memberships'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary } from '@/lib/db/lesson-finances'
 import { OutstandingTable } from './OutstandingTable'
+import { InfoPopover } from './InfoPopover'
+
+const VALID_TABS = ['tier', 'horse', 'rider', 'trainer'] as const
+type Tab = typeof VALID_TABS[number]
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -92,22 +96,25 @@ export function resolveFinancesMonth(
   return { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl }
 }
 
+const pillBase = 'rounded-full px-4 py-1.5 text-sm font-medium transition-colors'
+const pillActive = 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
+const pillInactive = 'border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
+
 export default async function FinancesPage({
   params,
   searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ slug: string }>
-  searchParams?: Promise<{ month?: string }>
+  searchParams?: Promise<{ month?: string; tab?: string }>
 }) {
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
-  if (!data.user) redirect(`/barn/${slug}/login`)
+  const user = await getAuthenticatedUser()
+  if (!user) redirect(`/barn/${slug}/login`)
 
-  const actorMembership = await getEffectiveMembership(data.user.id, barn.id)
+  const actorMembership = await getUserMembership(user.id, barn.id)
 
   if (
     !actorMembership ||
@@ -117,50 +124,67 @@ export default async function FinancesPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const { month: monthParam } = await searchParams
+  const { month: monthParam, tab: tabParam } = await searchParams
+  const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'tier'
+
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, outstandingLessons] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
+    getTrainerIncomeSummary(barn.id, startDate, endDate),
     getOutstandingLessons(barn.id),
   ])
 
   const outstandingTotal = outstandingLessons.reduce((sum, l) => sum + (l.fee ?? 0), 0)
 
+  const monthQ = isCurrentMonth ? '' : `&month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
+  const tabQ = tab !== 'tier' ? `&tab=${tab}` : ''
+  const prevUrl = prevMonthUrl ? prevMonthUrl + tabQ : null
+  const nextUrl = nextMonthUrl ? nextMonthUrl + tabQ : null
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {barn.name} — Finances
+        Finances
       </h1>
 
       {outstandingLessons.length > 0 && (
         <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
           <p className="text-sm font-medium uppercase tracking-wide">
             Outstanding
+            <InfoPopover text="All-time unpaid lessons with a fee set" />
           </p>
           <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
             {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
           </p>
           <div className="mt-4">
-            <OutstandingTable outstandingLessons={outstandingLessons} barnId={barn.id} />
+            <OutstandingTable outstandingLessons={outstandingLessons} barnSlug={slug} />
+          </div>
+          <div className="mt-3">
+            <Link
+              href={`/barn/${slug}/finances/outstanding`}
+              className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
+            >
+              View all outstanding →
+            </Link>
           </div>
         </section>
       )}
 
       <div className="mb-8 flex items-center gap-4">
-        {prevMonthUrl ? (
-          <Link href={prevMonthUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+        {prevUrl ? (
+          <Link href={prevUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
             &lt;
           </Link>
         ) : (
           <span aria-hidden="true" className="invisible flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300">&lt;</span>
         )}
         <span className="font-medium text-zinc-900 dark:text-zinc-50">{monthLabel}</span>
-        {nextMonthUrl ? (
-          <Link href={nextMonthUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+        {nextUrl ? (
+          <Link href={nextUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
             &gt;
           </Link>
         ) : (
@@ -168,42 +192,11 @@ export default async function FinancesPage({
         )}
       </div>
 
-      <section className="mb-10">
-        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          {`Collected income (${monthLabel})`}
-        </p>
-        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-        </p>
-      </section>
-
-      {breakdown.length > 0 ? (
-        <table className="w-full">
-          <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Fee</th>
-              <th className="pb-2 pr-6">Lessons</th>
-              <th className="pb-2">Subtotal</th>
-            </tr>
-          </thead>
-          <tbody>
-            {breakdown.map((tier) => (
-              <tr key={tier.fee} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
-                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      ) : (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
-      )}
-
       {isCurrentMonth && (
-        <section className="mt-10">
+        <section className="mb-6">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Pending income (from scheduled lessons)
+            <InfoPopover text="Lessons scheduled this month that haven't been paid yet" />
           </p>
           <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
             {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
@@ -211,11 +204,66 @@ export default async function FinancesPage({
         </section>
       )}
 
-      <section className="mt-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {`Income by Horse (${monthLabel}) (Collected, Pending, Outstanding)`}
-        </h2>
-        {horseIncome.length > 0 ? (
+      <section className="mb-4">
+        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          {`Collected income (${monthLabel})`}
+          <InfoPopover text="Lessons paid this month" />
+        </p>
+        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+        </p>
+      </section>
+
+      <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
+
+      <div className="mb-6 overflow-x-auto -mx-1">
+        <div className="flex gap-2 whitespace-nowrap px-1 pb-2">
+          <Link href={`?tab=tier${monthQ}`} className={`${pillBase} ${tab === 'tier' ? pillActive : pillInactive}`}>
+            By Tier
+          </Link>
+          <Link href={`?tab=horse${monthQ}`} className={`${pillBase} ${tab === 'horse' ? pillActive : pillInactive}`}>
+            By Horse
+          </Link>
+          <Link href={`?tab=rider${monthQ}`} className={`${pillBase} ${tab === 'rider' ? pillActive : pillInactive}`}>
+            By Rider
+          </Link>
+          <Link href={`?tab=trainer${monthQ}`} className={`${pillBase} ${tab === 'trainer' ? pillActive : pillInactive}`}>
+            By Trainer
+          </Link>
+        </div>
+      </div>
+
+      {tab === 'tier' && (
+        breakdown.length > 0 ? (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                <th className="pb-2 pr-6">Tier</th>
+                <th className="pb-2 pr-6">Price</th>
+                <th className="pb-2 pr-6">Lessons</th>
+                <th className="pb-2">Subtotal</th>
+              </tr>
+            </thead>
+            <tbody>
+              {breakdown.map((tier) => (
+                <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                    {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
+                  </td>
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
+                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
+        )
+      )}
+
+      {tab === 'horse' && (
+        horseIncome.length > 0 ? (
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
@@ -228,7 +276,7 @@ export default async function FinancesPage({
                 <tr key={row.horseId} className="border-b border-zinc-100 dark:border-zinc-800">
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     <Link
-                      href={`/barn/${slug}/finances/horses/${row.horseId}`}
+                      href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
                       className="hover:underline"
                     >
                       {row.horseName}
@@ -243,14 +291,11 @@ export default async function FinancesPage({
           </table>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No horse income in ${monthLabel}.`}</p>
-        )}
-      </section>
+        )
+      )}
 
-      <section className="mt-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {`Income by Rider (${monthLabel}) (Collected, Pending, Outstanding)`}
-        </h2>
-        {riderIncome.length > 0 ? (
+      {tab === 'rider' && (
+        riderIncome.length > 0 ? (
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
@@ -263,7 +308,7 @@ export default async function FinancesPage({
                 <tr key={row.riderId} className="border-b border-zinc-100 dark:border-zinc-800">
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     <Link
-                      href={`/barn/${slug}/finances/riders/${row.riderId}`}
+                      href={`/barn/${slug}/finances/riders/${row.riderId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
                       className="hover:underline"
                     >
                       {row.riderName}
@@ -278,8 +323,33 @@ export default async function FinancesPage({
           </table>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No rider income in ${monthLabel}.`}</p>
-        )}
-      </section>
+        )
+      )}
+
+      {tab === 'trainer' && (
+        trainerIncome.length > 0 ? (
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                <th className="pb-2 pr-6">Trainer</th>
+                <th className="pb-2">Income</th>
+              </tr>
+            </thead>
+            <tbody>
+              {trainerIncome.map((row) => (
+                <tr key={row.trainerId} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{row.trainerName}</td>
+                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
+                    {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No trainer income in ${monthLabel}.`}</p>
+        )
+      )}
     </main>
   )
 }

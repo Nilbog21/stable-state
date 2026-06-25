@@ -1,5 +1,7 @@
+import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
-import type { Barn, BarnMembership, Role } from './types'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Barn, BarnMembership } from './types'
 
 export async function getUserMembership(
   userId: string,
@@ -20,9 +22,11 @@ export async function getUserMembership(
 export async function createPendingMembership(
   userId: string,
   barnId: string,
-  role: 'trainer' | 'rider'
+  role: 'trainer' | 'rider',
+  client?: SupabaseClient
 ): Promise<BarnMembership> {
-  const supabase = await createClient()
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
     .insert({ user_id: userId, barn_id: barnId, role, status: 'pending' })
@@ -31,19 +35,6 @@ export async function createPendingMembership(
 
   if (error) throw error
   return data
-}
-
-export async function seedManagerAccount(
-  email: string,
-  barnId: string
-): Promise<void> {
-  const supabase = await createClient()
-  const role: Role = 'manager'
-  const { error } = await supabase
-    .from('seeded_accounts')
-    .insert({ email, role, barn_id: barnId })
-
-  if (error) throw error
 }
 
 export async function getPendingMemberships(
@@ -124,9 +115,116 @@ export async function getMembershipById(id: string): Promise<BarnMembership | nu
   return data
 }
 
-export async function getBarnMembershipsForUser(
+
+export async function getInstructorsByBarn(
+  barnId: string
+): Promise<{ userId: string; name: string }[]> {
+  const supabase = await createClient()
+
+  const { data: memberships, error: memError } = await supabase
+    .from('barn_memberships')
+    .select('user_id')
+    .eq('barn_id', barnId)
+    .eq('status', 'active')
+    .eq('can_instruct', true)
+    .order('created_at', { ascending: true })
+
+  if (memError) throw memError
+  if (!memberships?.length) return []
+
+  const userIds = memberships.map((m) => m.user_id)
+
+  const { data: profiles, error: profError } = await supabase
+    .from('profiles')
+    .select('user_id, first_name, last_name')
+    .in('user_id', userIds)
+
+  if (profError) throw profError
+
+  return memberships.map((m) => {
+    const p = (profiles ?? []).find((pr) => pr.user_id === m.user_id)
+    return { userId: m.user_id, name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Instructor' }
+  })
+}
+
+export async function getActiveMembersWithProfiles(
+  barnId: string,
+  role: 'manager' | 'trainer' | 'rider',
+  client?: SupabaseClient
+): Promise<{ membershipId: string; userId: string; name: string }[]> {
+  const supabase = client ?? await createClient()
+
+  const { data: memberships, error: memError } = await supabase
+    .from('barn_memberships')
+    .select('id, user_id')
+    .eq('barn_id', barnId)
+    .eq('role', role)
+    .eq('status', 'active')
+    .order('created_at', { ascending: true })
+
+  if (memError) throw memError
+  if (!memberships?.length) return []
+
+  const userIds = memberships.map((m) => m.user_id)
+
+  const { data: profiles, error: profError } = await supabase
+    .from('profiles')
+    .select('user_id, first_name, last_name')
+    .in('user_id', userIds)
+
+  if (profError) throw profError
+
+  return memberships.map((m) => {
+    const p = (profiles ?? []).find((pr) => pr.user_id === m.user_id)
+    return {
+      membershipId: m.id,
+      userId: m.user_id,
+      name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Member',
+    }
+  })
+}
+
+export async function resolveMemberNames(
+  membershipIds: string[],
+  barnId: string,
+  client?: SupabaseClient
+): Promise<Map<string, string>> {
+  if (!membershipIds.length) return new Map()
+
+  const supabase = client ?? await createClient()
+
+  type MemberRow = { id: string; user_id: string | null }
+  const { data: members, error: membersError } = await supabase
+    .from('barn_memberships')
+    .select('id, user_id')
+    .eq('barn_id', barnId)
+    .in('id', membershipIds) as { data: MemberRow[] | null; error: Error | null }
+
+  if (membersError) throw membersError
+
+  const userIds = [...new Set((members ?? []).map((m) => m.user_id).filter((uid): uid is string => uid !== null))]
+
+  const { data: profiles, error: profilesError } = userIds.length
+    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', userIds)
+    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
+
+  if (profilesError) throw profilesError
+
+  const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]))
+
+  return new Map(
+    (members ?? []).map((m) => [
+      m.id,
+      m.user_id && profileMap.get(m.user_id)
+        ? `${profileMap.get(m.user_id)!.first_name} ${profileMap.get(m.user_id)!.last_name}`
+        : m.id,
+    ])
+  )
+}
+
+export const getBarnMembershipsForUser = cache(async (
   userId: string
-): Promise<{ barn: Barn; membership: BarnMembership }[]> {
+): Promise<{ barn: Barn; membership: BarnMembership }[]> => {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
@@ -142,27 +240,5 @@ export async function getBarnMembershipsForUser(
       barn: barns as Barn,
       membership: membership as BarnMembership,
     }))
-}
+})
 
-export async function applySeededMembership(
-  userId: string,
-  email: string
-): Promise<void> {
-  const supabase = await createClient()
-
-  const { data: seeded } = await supabase
-    .from('seeded_accounts')
-    .select('*')
-    .eq('email', email)
-    .maybeSingle()
-
-  if (!seeded) return
-
-  const { error } = await supabase
-    .from('barn_memberships')
-    .upsert(
-      { user_id: userId, barn_id: seeded.barn_id, role: seeded.role, status: 'active' },
-      { onConflict: 'user_id,barn_id' }
-    )
-  if (error) throw error
-}

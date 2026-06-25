@@ -1,10 +1,13 @@
 import { notFound } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import Link from 'next/link'
+import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getEffectiveMembership } from '@/lib/db/effective-membership'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
-import { signOut } from '@/app/actions/auth'
+import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import type { LessonWithDetails } from '@/lib/db/types'
+import { UpcomingLessonCard } from './UpcomingLessonCard'
+import { EmptyState } from '@/components/EmptyState'
 
 export default async function BarnDashboardPage({
   params,
@@ -15,59 +18,63 @@ export default async function BarnDashboardPage({
   const barn = await getBarnBySlug(slug)
   if (!barn) notFound()
 
-  const supabase = await createClient()
-  const { data } = await supabase.auth.getUser()
+  const user = await getAuthenticatedUser()
 
   let upcomingLessons: LessonWithDetails[] | null = null
+  let pendingCount = 0
+  let userRole: 'manager' | 'trainer' | 'rider' | null = null
 
-  if (data.user) {
-    const membership = await getEffectiveMembership(data.user.id, barn.id)
-    if (membership?.role === 'manager') {
+  if (user) {
+    const membership = await getUserMembership(user.id, barn.id)
+    if (membership?.role) {
+      userRole = membership.role as 'manager' | 'trainer' | 'rider'
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      upcomingLessons = await getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString())
+      const [lessons, pending] = await Promise.all([
+        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), user.id, membership.role),
+        membership.role === 'manager' ? getPendingMemberships(barn.id) : Promise.resolve([]),
+      ])
+      upcomingLessons = lessons
+      pendingCount = pending.length
     }
   }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {barn.name}
+        Dashboard
       </h1>
-      <form action={signOut} className="mb-8">
-        <button
-          type="submit"
-          className="text-sm font-medium text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-        >
-          Sign out
-        </button>
-      </form>
-      {upcomingLessons !== null && (
+      {pendingCount > 0 && (
+        <div className="mb-8">
+          <Link
+            href={`/barn/${slug}/settings`}
+            className="inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300 dark:hover:bg-amber-900"
+          >
+            {pendingCount} pending request{pendingCount !== 1 ? 's' : ''}
+          </Link>
+        </div>
+      )}
+      {upcomingLessons !== null && userRole !== null && (
         <section>
           <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
-            Upcoming Lessons
+            Your Upcoming Lessons
           </h2>
           {upcomingLessons.length === 0 ? (
-            <p className="text-sm text-zinc-500">No upcoming lessons this week</p>
+            <EmptyState
+              heading="You're all clear"
+              subtext="No lessons scheduled for the next 7 days."
+            />
           ) : (
-            <ul className="space-y-2">
+            <div className="space-y-3">
               {upcomingLessons.map((lesson) => (
-                <li key={lesson.id} className="text-sm text-zinc-700 dark:text-zinc-300">
-                  <span className="font-medium">
-                    {new Date(lesson.lesson_at).toLocaleString()}
-                  </span>
-                  {lesson.instructor_name && (
-                    <span className="ml-2">{lesson.instructor_name}</span>
-                  )}
-                  {lesson.horse_names.length > 0 && (
-                    <span className="ml-2">{lesson.horse_names.join(', ')}</span>
-                  )}
-                  {lesson.rider_names.length > 0 && (
-                    <span className="ml-2">{lesson.rider_names.join(', ')}</span>
-                  )}
-                </li>
+                <UpcomingLessonCard
+                  key={lesson.id}
+                  lesson={lesson}
+                  role={userRole}
+                  slug={slug}
+                />
               ))}
-            </ul>
+            </div>
           )}
         </section>
       )}

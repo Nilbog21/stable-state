@@ -1,8 +1,9 @@
 'use client'
 
-import { useActionState, useState } from 'react'
-import type { Horse, LessonDetail, LessonTier, LessonType, Rider } from '@/lib/db/types'
+import { useActionState, useState, useEffect } from 'react'
+import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types'
 import { DateHourPicker } from './new/DateHourPicker'
+import { useNavigationBlocker } from '../NavigationBlocker'
 
 const CUSTOM_ID = '__custom__'
 
@@ -24,16 +25,21 @@ export function LessonForm({
   currentUserId,
   tiers,
   initialLesson,
+  initialNotes,
 }: {
   mode: 'new' | 'edit'
   horses: Horse[]
-  riders: Rider[]
+  riders: { id: string; name: string }[]
   isManager: boolean
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   instructors: { userId: string; name: string }[]
   currentUserId: string
   tiers: LessonTier[]
   initialLesson?: LessonDetail
+  initialNotes?: {
+    horses: Array<{ id: string; name: string; horse_notes: string | null }>
+    riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
+  }
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
 
@@ -62,12 +68,12 @@ export function LessonForm({
 
   const initialRiderIds = new Set(
     (initialLesson?.lesson_riders ?? [])
-      .map(lr => lr.riders?.id)
+      .map(lr => lr.barn_membership?.id)
       .filter((id): id is string => Boolean(id))
   )
 
   const initialNormalRiderId =
-    mode === 'edit' ? (initialLesson?.lesson_riders[0]?.riders?.id ?? '') : ''
+    mode === 'edit' ? (initialLesson?.lesson_riders[0]?.barn_membership?.id ?? '') : ''
 
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [lessonType, setLessonType] = useState<LessonType>(initialLessonType)
@@ -80,8 +86,73 @@ export function LessonForm({
   const [selectedId, setSelectedId] = useState<string>(computedInitialSelectedId)
   const [newHorseName, setNewHorseName] = useState('')
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
-  const [newRiderName, setNewRiderName] = useState('')
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
+  const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
+  const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
+  const [notesDirty, setNotesDirty] = useState(false)
+
+  const { setDirty, setMessage } = useNavigationBlocker()
+  const unpaidPastDue =
+    mode === 'edit' &&
+    (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
+    new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
+    (initialLesson?.fee ?? 0) > 0
+  const unpaidWarn = unpaidPastDue && paymentType === ''
+  const shouldWarn = unpaidWarn || notesDirty
+
+  useEffect(() => {
+    setDirty(shouldWarn)
+    if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
+    else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
+    return () => setDirty(false)
+  }, [shouldWarn, unpaidWarn, notesDirty])
+
+  useEffect(() => {
+    if (!shouldWarn) return
+    function handler(e: BeforeUnloadEvent) { e.preventDefault() }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [shouldWarn])
+
+  function flash(keys: string[]) {
+    if (keys.length === 0) return
+    setFlashingKeys(new Set(keys))
+    setTimeout(() => setFlashingKeys(new Set()), 600)
+  }
+
+  function handleTierChange(id: string) {
+    if (id === CUSTOM_ID) {
+      setSelectedId(id)
+      setJumping(false)
+      setExertionMap(prev => {
+        const next = new Map(prev)
+        for (const key of next.keys()) next.set(key, 3)
+        return next
+      })
+      setNewHorseExertionLevel(3)
+      flash([...(jumping ? ['jumping'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
+    } else {
+      const tier = tiers.find(t => t.id === id) ?? null
+      if (!tier) return
+      setSelectedId(id)
+      const affectedKeys: string[] = []
+      if (tier.default_jumping !== null) {
+        setJumping(tier.default_jumping)
+        affectedKeys.push('jumping')
+      }
+      if (tier.default_exertion_level !== null) {
+        const lvl = tier.default_exertion_level
+        setExertionMap(prev => {
+          const next = new Map(prev)
+          for (const key of next.keys()) next.set(key, lvl)
+          return next
+        })
+        setNewHorseExertionLevel(lvl)
+        affectedKeys.push(...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`))
+      }
+      flash(affectedKeys)
+    }
+  }
 
   if (tiers.length === 0) {
     return (
@@ -98,6 +169,9 @@ export function LessonForm({
     const checked = e.target.checked
     setJumping(checked)
     if (checked) {
+      const bumped = Array.from(exertionMap.entries())
+        .filter(([, v]) => v < 4)
+        .map(([id]) => `exertion_${id}`)
       setExertionMap(prev => {
         const next = new Map(prev)
         for (const [id, val] of next) {
@@ -105,7 +179,11 @@ export function LessonForm({
         }
         return next
       })
-      if (newHorseExertionLevel < 4) setNewHorseExertionLevel(4)
+      if (newHorseExertionLevel < 4) {
+        setNewHorseExertionLevel(4)
+        bumped.push('new_horse_exertion')
+      }
+      if (bumped.length > 0) flash(bumped)
     }
   }
 
@@ -125,7 +203,6 @@ export function LessonForm({
   function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
     setClientError(null)
     const hasNewHorse = newHorseName.trim() !== ''
-    const hasNewRider = newRiderName.trim() !== ''
     if (hasNewHorse && checkedHorseIds.size > 0) {
       e.preventDefault()
       setClientError('select a horse or add a new one, not both')
@@ -136,14 +213,9 @@ export function LessonForm({
       setClientError('normal lesson requires exactly 1 horse')
       return
     }
-    if (lessonType === 'normal' && normalRiderId === '' && !hasNewRider) {
+    if (lessonType === 'normal' && normalRiderId === '') {
       e.preventDefault()
       setClientError('a rider is required')
-      return
-    }
-    if (lessonType === 'normal' && normalRiderId !== '' && hasNewRider) {
-      e.preventDefault()
-      setClientError('select a rider or add a new one, not both')
       return
     }
     if (lessonType === 'group' && !hasNewHorse && checkedHorseIds.size < 1) {
@@ -172,6 +244,27 @@ export function LessonForm({
         </p>
       )}
 
+      <div className="flex flex-col gap-1">
+        <label htmlFor="tier_name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Tier
+        </label>
+        <select
+          id="tier_name"
+          value={selectedId}
+          onChange={e => handleTierChange(e.target.value)}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          {tiers.map(t => (
+            <option key={t.id} value={t.id}>
+              {t.price != null ? `${t.name} - $${t.price}` : t.name}
+            </option>
+          ))}
+          <option value={CUSTOM_ID}>Custom</option>
+        </select>
+        <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
+        {isCustom && <input type="hidden" name="is_custom" value="true" />}
+      </div>
+
       <div className="flex gap-2">
         <button
           type="button"
@@ -195,7 +288,7 @@ export function LessonForm({
           aria-label="Jumping"
           checked={jumping}
           onChange={handleJumpingToggle}
-          className="rounded border-zinc-300 dark:border-zinc-600"
+          className={`rounded border-zinc-300 dark:border-zinc-600 transition ${flashingKeys.has('jumping') ? 'ring-2 ring-blue-400' : ''}`}
         />
         Jumping
       </label>
@@ -232,14 +325,24 @@ export function LessonForm({
           Horse{' '}
           <span className="font-normal text-zinc-500">(select at least one)</span>
         </legend>
-        {horses.map((h) => (
+        {[...horses].sort((a, b) => {
+          const aAvail = a.is_available === false ? 1 : 0
+          const bAvail = b.is_available === false ? 1 : 0
+          return aAvail - bAvail
+        }).map((h) => {
+          const isUnavailable = h.is_available === false
+          return (
           <div key={h.id} className="flex items-center gap-3">
-            <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+            <label className={`flex items-center gap-2 text-sm ${isUnavailable ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-50'}`}>
+              {isUnavailable && checkedHorseIds.has(h.id) && (
+                <input type="hidden" name="horse_id" value={h.id} />
+              )}
               <input
                 type="checkbox"
                 name="horse_id"
                 value={h.id}
                 checked={checkedHorseIds.has(h.id)}
+                disabled={isUnavailable}
                 onChange={(e) => {
                   setCheckedHorseIds(prev => {
                     const next = new Set(prev)
@@ -250,7 +353,8 @@ export function LessonForm({
                   if (e.target.checked) {
                     setExertionMap(prev => {
                       const next = new Map(prev)
-                      next.set(h.id, jumping ? 4 : 3)
+                      const base = selectedTier?.default_exertion_level ?? (jumping ? 4 : 3)
+                      next.set(h.id, jumping ? Math.max(base, 4) : base)
                       return next
                     })
                   } else {
@@ -264,6 +368,9 @@ export function LessonForm({
                 className="rounded border-zinc-300 dark:border-zinc-600"
               />
               {h.name}
+              {isUnavailable && h.unavailability_reason && (
+                <span className="text-xs text-zinc-400 dark:text-zinc-500">— {h.unavailability_reason}</span>
+              )}
             </label>
             {checkedHorseIds.has(h.id) && (
               <>
@@ -285,12 +392,13 @@ export function LessonForm({
                     })
                   }}
                   required
-                  className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  className={`w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has(`exertion_${h.id}`) ? 'ring-2 ring-blue-400' : ''}`}
                 />
               </>
             )}
           </div>
-        ))}
+          )
+        })}
         {isManager && (
           <>
             <label htmlFor="new_horse_name" className="sr-only">Add new horse</label>
@@ -317,7 +425,7 @@ export function LessonForm({
                     value={newHorseExertionLevel}
                     onChange={(e) => setNewHorseExertionLevel(parseInt(e.target.value, 10))}
                     required
-                    className="w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                    className={`w-16 rounded-lg border border-zinc-200 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has('new_horse_exertion') ? 'ring-2 ring-blue-400' : ''}`}
                   />
                 </>
               )}
@@ -347,20 +455,6 @@ export function LessonForm({
                 <option key={r.id} value={r.id}>{r.name}</option>
               ))}
             </select>
-            {isManager && (
-              <>
-                <label htmlFor="new_rider_name" className="sr-only">Add new rider</label>
-                <input
-                  id="new_rider_name"
-                  type="text"
-                  name="new_rider_name"
-                  placeholder="Add new rider…"
-                  value={newRiderName}
-                  onChange={e => setNewRiderName(e.target.value)}
-                  className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-              </>
-            )}
           </>
         ) : (
           riders.map((r) => (
@@ -391,27 +485,6 @@ export function LessonForm({
         initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
       />
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="tier_name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Tier
-        </label>
-        <select
-          id="tier_name"
-          value={selectedId}
-          onChange={e => setSelectedId(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        >
-          {tiers.map(t => (
-            <option key={t.id} value={t.id}>
-              {t.price != null ? `${t.name} - $${t.price}` : t.name}
-            </option>
-          ))}
-          <option value={CUSTOM_ID}>Custom</option>
-        </select>
-        <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
-        {isCustom && <input type="hidden" name="is_custom" value="true" />}
-      </div>
-
       {isCustom ? (
         <div className="flex flex-col gap-1">
           <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -432,24 +505,66 @@ export function LessonForm({
         <input type="hidden" name="fee" value={selectedTier?.price ?? ''} />
       )}
 
-      {mode === 'edit' && (
-        <div className="flex flex-col gap-1">
-          <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Payment type
-          </label>
-          <select
-            id="payment_type"
-            name="payment_type"
-            defaultValue={initialLesson?.payment_type ?? ''}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          >
-            <option value="">Unpaid</option>
-            <option value="venmo">Venmo</option>
-            <option value="zelle">Zelle</option>
-            <option value="cash">Cash</option>
-            <option value="check">Check</option>
-            <option value="freshbooks">FreshBooks Invoice</option>
-          </select>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Payment type
+        </label>
+        <select
+          id="payment_type"
+          name="payment_type"
+          value={paymentType}
+          onChange={e => setPaymentType(e.target.value)}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          <option value="">Unpaid</option>
+          <option value="venmo">Venmo</option>
+          <option value="zelle">Zelle</option>
+          <option value="cash">Cash</option>
+          <option value="check">Check</option>
+          <option value="freshbooks">FreshBooks Invoice</option>
+        </select>
+      </div>
+
+      {initialNotes && (
+        <div className="flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-700" onChange={() => setNotesDirty(true)}>
+          <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Notes</p>
+          {initialNotes.horses.map((h) => (
+            <div key={h.id} className="flex flex-col gap-1">
+              <input type="hidden" name="noteHorseId" value={h.id} />
+              <label htmlFor={`horse_notes_${h.id}`} className="text-xs font-medium text-zinc-500">{h.name}</label>
+              <textarea
+                id={`horse_notes_${h.id}`}
+                name={`horse_notes_${h.id}`}
+                defaultValue={h.horse_notes ?? ''}
+                rows={2}
+                className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          ))}
+          {initialNotes.riders.map((r) => (
+            <div key={r.membershipId} className="flex flex-col gap-2">
+              <input type="hidden" name="noteRiderId" value={r.membershipId} />
+              <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{r.name}</p>
+              <div className="flex flex-col gap-1">
+                <label className="text-xs font-medium text-zinc-500">Rider Notes</label>
+                <textarea
+                  name={`rider_notes_${r.membershipId}`}
+                  defaultValue={r.rider_notes ?? ''}
+                  rows={2}
+                  className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+                />
+              </div>
+              <div className="flex flex-col gap-1 rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                <span className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</span>
+                <textarea
+                  name={`private_notes_${r.membershipId}`}
+                  defaultValue={r.private_notes ?? ''}
+                  rows={2}
+                  className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-800"
+                />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 

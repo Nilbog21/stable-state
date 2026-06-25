@@ -42,45 +42,45 @@ beforeEach(() => {
 
 describe('OutstandingTable', () => {
   it('should_render_outstanding_lessons_in_table', () => {
-    render(<OutstandingTable outstandingLessons={[lesson]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lesson]} barnSlug="green-acres" />)
     expect(screen.getByText('Alice')).toBeDefined()
   })
 
   it('should_render_instructor_name', () => {
-    render(<OutstandingTable outstandingLessons={[lesson]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lesson]} barnSlug="green-acres" />)
     expect(screen.getByText('Jane Doe')).toBeDefined()
   })
 
   it('should_render_fee_as_currency', () => {
-    render(<OutstandingTable outstandingLessons={[lesson]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lesson]} barnSlug="green-acres" />)
     expect(screen.getByText('$75.00')).toBeDefined()
   })
 
   it('should_show_dash_for_null_fee', () => {
-    render(<OutstandingTable outstandingLessons={[lessonNullFee]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lessonNullFee]} barnSlug="green-acres" />)
     expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
   })
 
   it('should_call_updatePaymentTypeAction_on_payment_type_change', async () => {
-    render(<OutstandingTable outstandingLessons={[lesson]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lesson]} barnSlug="green-acres" />)
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
     })
-    expect(vi.mocked(updatePaymentTypeAction)).toHaveBeenCalledWith('lesson-1', 'barn-1', 'venmo')
+    expect(vi.mocked(updatePaymentTypeAction)).toHaveBeenCalledWith('lesson-1', 'green-acres', 'venmo')
   })
 
   it('should_pass_null_to_action_when_empty_option_selected', async () => {
-    render(<OutstandingTable outstandingLessons={[lesson]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lesson]} barnSlug="green-acres" />)
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } })
     })
-    expect(vi.mocked(updatePaymentTypeAction)).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+    expect(vi.mocked(updatePaymentTypeAction)).toHaveBeenCalledWith('lesson-1', 'green-acres', null)
   })
 
   it('should_call_router_refresh_after_successful_update', async () => {
     const mockRefresh = vi.fn()
     vi.mocked(useRouter).mockReturnValue({ refresh: mockRefresh } as any)
-    render(<OutstandingTable outstandingLessons={[lesson]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lesson]} barnSlug="green-acres" />)
     await act(async () => {
       fireEvent.change(screen.getByRole('combobox'), { target: { value: 'cash' } })
     })
@@ -88,13 +88,13 @@ describe('OutstandingTable', () => {
   })
 
   it('should_render_empty_state_when_no_outstanding_lessons', () => {
-    render(<OutstandingTable outstandingLessons={[]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[]} barnSlug="green-acres" />)
     expect(screen.queryByRole('combobox')).toBeNull()
   })
 
   it('should_show_dash_when_rider_names_is_empty', () => {
     const lessonNoRiders = { ...lesson, rider_names: [] }
-    render(<OutstandingTable outstandingLessons={[lessonNoRiders]} barnId="barn-1" />)
+    render(<OutstandingTable outstandingLessons={[lessonNoRiders]} barnSlug="green-acres" />)
     expect(screen.getByText('—')).toBeDefined()
   })
 })
