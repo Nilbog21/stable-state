@@ -296,4 +296,32 @@ describe('MemberDetailPage', () => {
     render(jsx)
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
   })
+
+  it('should_render_documents_table_when_documents_exist', async () => {
+    vi.mocked(getTrainerDocuments).mockResolvedValue([mockTrainerDoc])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByRole('table')).toBeDefined()
+  })
+
+  it('should_render_type_column_header_when_documents_exist', async () => {
+    vi.mocked(getTrainerDocuments).mockResolvedValue([mockTrainerDoc])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByText('Type')).toBeDefined()
+  })
+
+  it('should_render_notes_em_dash_when_notes_is_null', async () => {
+    vi.mocked(getTrainerDocuments).mockResolvedValue([mockTrainerDoc])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByText('—')).toBeDefined()
+  })
+
+  it('should_render_notes_text_when_present', async () => {
+    vi.mocked(getTrainerDocuments).mockResolvedValue([{ ...mockTrainerDoc, notes: 'signed 2026' }])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByText('signed 2026')).toBeDefined()
+  })
 })

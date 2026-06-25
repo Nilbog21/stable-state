@@ -286,4 +286,32 @@ describe('HorseDetailPage', () => {
     render(jsx)
     expect(screen.queryByText('No documents yet.')).toBeNull()
   })
+
+  it('should_render_documents_table_for_manager_when_documents_exist', async () => {
+    vi.mocked(getHorseDocuments).mockResolvedValue([mockDoc] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('table')).toBeDefined()
+  })
+
+  it('should_render_type_column_header_when_documents_exist', async () => {
+    vi.mocked(getHorseDocuments).mockResolvedValue([mockDoc] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Type')).toBeDefined()
+  })
+
+  it('should_render_notes_em_dash_when_notes_is_null', async () => {
+    vi.mocked(getHorseDocuments).mockResolvedValue([mockDoc] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('—')).toBeDefined()
+  })
+
+  it('should_render_notes_text_when_present', async () => {
+    vi.mocked(getHorseDocuments).mockResolvedValue([{ ...mockDoc, notes: 'check annually' }] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('check annually')).toBeDefined()
+  })
 })

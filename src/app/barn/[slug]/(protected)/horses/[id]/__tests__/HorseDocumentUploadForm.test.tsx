@@ -61,4 +61,29 @@ describe('HorseDocumentUploadForm', () => {
 
     expect(screen.queryByText(/exceeds 5 mb/i)).toBeNull()
   })
+
+  it('should_render_choose_file_button', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    expect(screen.getByRole('button', { name: /choose file/i })).toBeDefined()
+  })
+
+  it('should_not_display_filename_before_file_selected', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    expect(screen.queryByText('small.pdf')).toBeNull()
+  })
+
+  it('should_display_filename_after_file_selected', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'small.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    expect(screen.getByText('small.pdf')).toBeDefined()
+  })
+
+  it('should_hide_native_file_input', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput.className).toContain('sr-only')
+  })
 })
