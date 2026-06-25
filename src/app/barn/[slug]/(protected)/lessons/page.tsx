@@ -30,6 +30,16 @@ function buildRiderOptions(lessons: LessonWithDetails[]): { id: string; name: st
   return [...map.entries()].map(([id, name]) => ({ id, name }))
 }
 
+function buildHorseOptions(lessons: LessonWithDetails[]): { id: string; name: string }[] {
+  const map = new Map<string, string>()
+  for (const lesson of lessons) {
+    lesson.horse_ids.forEach((id, i) => {
+      if (!map.has(id) && lesson.horse_names[i]) map.set(id, lesson.horse_names[i])
+    })
+  }
+  return [...map.entries()].map(([id, name]) => ({ id, name }))
+}
+
 function buildTrainerOptions(lessons: LessonWithDetails[]): { id: string; name: string }[] {
   const map = new Map<string, string>()
   for (const lesson of lessons) {
@@ -67,7 +77,7 @@ export default async function LessonsPage({
   }
 
   const { filter: filterParam, id: filterId } = await searchParams
-  const filter = filterParam === 'trainer' || filterParam === 'rider' ? filterParam : null
+  const filter = filterParam === 'trainer' || filterParam === 'rider' || filterParam === 'horse' ? filterParam : null
 
   const allLessons = await getLessonsByBarn(barn.id, user.id, membership.role)
   const isManager = membership.role === 'manager'
@@ -79,6 +89,8 @@ export default async function LessonsPage({
       lessons = allLessons.filter((l) => l.instructor_id === filterId)
     } else if (filter === 'rider' && (isManager || isTrainer)) {
       lessons = allLessons.filter((l) => l.rider_ids.includes(filterId))
+    } else if (filter === 'horse' && isManager) {
+      lessons = allLessons.filter((l) => l.horse_ids.includes(filterId))
     }
   }
   const canCreateLesson = isManager || isTrainer
@@ -91,6 +103,7 @@ export default async function LessonsPage({
 
   const riderOptions = isManager || isTrainer ? buildRiderOptions(allLessons) : []
   const trainerOptions = isManager ? buildTrainerOptions(allLessons) : []
+  const horseOptions = isManager ? buildHorseOptions(allLessons) : []
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -132,6 +145,7 @@ export default async function LessonsPage({
               <Link href="?" className={pillClass(!filter)}>All</Link>
               <Link href="?filter=trainer" className={pillClass(filter === 'trainer')}>By Trainer</Link>
               <Link href="?filter=rider" className={pillClass(filter === 'rider')}>By Rider</Link>
+              <Link href="?filter=horse" className={pillClass(filter === 'horse')}>By Horse</Link>
             </div>
           </div>
           {filter === 'trainer' && (
@@ -161,6 +175,22 @@ export default async function LessonsPage({
                     className={pillClass(filterId === r.id)}
                   >
                     {r.name}
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+          {filter === 'horse' && (
+            <div className="overflow-x-auto">
+              <div className="flex min-w-max gap-2 pb-2">
+                <Link href="?filter=horse" className={pillClass(!filterId)}>All</Link>
+                {horseOptions.map((h) => (
+                  <Link
+                    key={h.id}
+                    href={`?filter=horse&id=${h.id}`}
+                    className={pillClass(filterId === h.id)}
+                  >
+                    {h.name}
                   </Link>
                 ))}
               </div>

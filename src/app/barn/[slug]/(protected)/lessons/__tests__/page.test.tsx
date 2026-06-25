@@ -521,7 +521,10 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'horse' }),
     })
     render(jsx)
-    expect(screen.getByRole('link', { name: /thunderbolt/i })).toBeDefined()
+    const horsePill = screen.getAllByRole('link').find(
+      (l) => (l as HTMLAnchorElement).href?.includes('filter=horse&id=horse-1')
+    )
+    expect(horsePill).toBeDefined()
   })
 
   it('should_show_matching_lesson_when_filtering_by_horse_for_manager', async () => {
@@ -547,7 +550,7 @@ describe('LessonsPage', () => {
       searchParams: Promise.resolve({ filter: 'horse', id: 'horse-1' }),
     })
     render(jsx)
-    expect(screen.queryByText('Spirit')).toBeNull()
+    expect(screen.queryByText('Bob')).toBeNull()
   })
 
   it('should_show_active_pill_style_for_selected_horse', async () => {
