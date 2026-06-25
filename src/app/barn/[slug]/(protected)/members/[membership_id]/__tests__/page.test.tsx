@@ -257,13 +257,33 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
-  it('should_show_no_documents_available_when_target_is_manager', async () => {
+  it('should_show_trainer_documents_for_manager_viewing_manager', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
+    )
+    vi.mocked(getTrainerDocuments).mockResolvedValue([mockTrainerDoc])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
+    render(jsx)
+    expect(screen.getByText('contract.pdf')).toBeDefined()
+  })
+
+  it('should_show_upload_form_when_manager_views_manager_page', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(
       createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
     )
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
     render(jsx)
-    expect(screen.getByText(/no documents available/i)).toBeDefined()
+    expect(screen.getByRole('button', { name: /upload/i })).toBeDefined()
+  })
+
+  it('should_show_delete_button_when_manager_views_manager_doc', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
+    )
+    vi.mocked(getTrainerDocuments).mockResolvedValue([mockTrainerDoc])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
   })
 
   it('should_show_upload_form_when_trainer_views_own_page', async () => {
