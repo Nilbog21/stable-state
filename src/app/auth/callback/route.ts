@@ -63,7 +63,11 @@ export async function GET(request: NextRequest) {
     if (!error) {
       const user = await getAuthenticatedUser()
       if (user?.email) {
-        await activateSeededAccount(user.id, user.email)
+        try {
+          await activateSeededAccount(user.id, user.email)
+        } catch {
+          // transient DB error — activation will retry on next sign-in
+        }
       }
 
       if (barnSlug) {

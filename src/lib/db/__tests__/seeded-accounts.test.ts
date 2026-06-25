@@ -183,4 +183,24 @@ describe('activateSeededAccount', () => {
 
     await expect(activateSeededAccount('user-1', 'manager@example.com')).rejects.toThrow('delete failed')
   })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const seeded = { email: 'manager@example.com', first_name: 'Dev', last_name: 'Manager', barn_id: 'barn-1', role: 'manager' }
+    const injectedClient = {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'seeded_accounts') {
+          return {
+            select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: seeded }) }) }),
+            delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: null }) }),
+          }
+        }
+        return { upsert: vi.fn().mockResolvedValue({ error: null }) }
+      }),
+    } as any
+
+    await activateSeededAccount('user-1', 'manager@example.com', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
 })
