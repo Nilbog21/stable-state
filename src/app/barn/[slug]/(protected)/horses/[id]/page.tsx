@@ -143,7 +143,7 @@ export default async function HorseDetailPage({
                         <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
                           <button
                             type="submit"
-                            className="text-xs text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                            className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
                           >
                             Delete
                           </button>
