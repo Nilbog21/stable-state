@@ -111,6 +111,16 @@ describe('ProfileLayout - back-button nav (no barn param)', () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
   })
 
+  it('should_render_back_link_when_x_url_header_is_absent', async () => {
+    mockHeaders.mockResolvedValue({ get: () => null })
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
+    ])
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('link', { name: /back/i })).toBeDefined()
+  })
+
   it('should_render_back_link_to_barn_slug_when_user_has_one_active_membership', async () => {
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
       { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
@@ -262,6 +272,36 @@ describe('ProfileLayout - barn nav (valid barn param + active membership)', () =
     const jsx = await ProfileLayout({ children: <div data-testid="child">content</div> })
     render(jsx as React.ReactElement)
     expect(screen.getByTestId('child')).toBeDefined()
+  })
+})
+
+describe('ProfileLayout - barn nav initials fallback', () => {
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockReset()
+    vi.mocked(getBarnMembershipsForUser).mockReset()
+    vi.mocked(getUserMembership).mockReset()
+    vi.mocked(getBarnBySlug).mockReset()
+    mockAuth(mockUser)
+    mockHeaders.mockResolvedValue(makeHeaders('http://localhost/profile?barn=green-acres'))
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([{ barn: mockBarn, membership: mockManagerMembership }])
+    vi.mocked(getNotifications).mockResolvedValue([])
+  })
+
+  it('should_render_email_initial_when_no_profile_in_barn_nav', async () => {
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('button', { name: /user menu/i }).textContent).toBe('U')
+  })
+
+  it('should_render_question_mark_when_no_profile_and_no_email_in_barn_nav', async () => {
+    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: null } as any)
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('button', { name: /user menu/i }).textContent).toBe('?')
   })
 })
 
