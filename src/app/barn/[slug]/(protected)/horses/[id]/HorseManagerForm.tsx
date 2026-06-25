@@ -64,9 +64,11 @@ export function HorseManagerForm({
         </div>
 
         {status === 'inactive' && horse.is_active && (
-          <p className="text-sm text-amber-700 dark:text-amber-400">
-            Marking this horse inactive will remove it from the roster and lesson scheduling.
-          </p>
+          <div className="flex">
+            <p className="flex-1 break-words whitespace-normal text-sm text-amber-700 dark:text-amber-400">
+              Marking this horse inactive will remove it from the roster and lesson scheduling.
+            </p>
+          </div>
         )}
       </div>
 
