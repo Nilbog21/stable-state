@@ -11,6 +11,7 @@ vi.mock('@/lib/db/lesson-tiers', () => ({
   setDefaultTier: vi.fn(),
   getTierById: vi.fn(),
   deactivateTier: vi.fn(),
+  reactivateTier: vi.fn(),
 }))
 
 const mockRedirect = vi.hoisted(() =>
@@ -35,13 +36,14 @@ import {
   setDefaultTier,
   getTierById,
   deactivateTier,
+  reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { revalidatePath } from 'next/cache'
 import {
   createTierAction,
   updateTierAction,
   setDefaultTierAction,
   deactivateTierAction,
+  reactivateTierAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -57,7 +59,7 @@ describe('createTierAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(createTier).mockReset()
-    vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarn,
@@ -67,25 +69,33 @@ describe('createTierAction', () => {
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_call_createTier_when_manager', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null)
   })
 
-  it('should_revalidate_settings_path_after_createTier', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
+  it('should_redirect_to_settings_after_createTier', async () => {
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 
   it('should_pass_null_price_when_price_field_is_blank', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', null, false, null, null)
   })
@@ -97,31 +107,41 @@ describe('createTierAction', () => {
   })
 
   it('should_pass_null_price_when_price_is_non_numeric_string', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: 'abc' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: 'abc' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', null, false, null, null)
   })
 
   it('should_pass_default_jumping_true_when_field_is_true', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_jumping: 'true' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_jumping: 'true' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, true)
   })
 
   it('should_pass_default_jumping_false_when_field_is_false', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_jumping: 'false' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_jumping: 'false' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, false)
   })
 
   it('should_pass_default_exertion_level_when_field_is_valid', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_exertion_level: '3' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_exertion_level: '3' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, 3, null)
   })
 
   it('should_pass_null_default_exertion_when_field_is_out_of_range', async () => {
-    await createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_exertion_level: '9' }))
+    await expect(
+      createTierAction('green-acres', makeFormData({ name: 'Premium', price: '75', default_exertion_level: '9' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null)
   })
@@ -131,7 +151,7 @@ describe('updateTierAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(updateTier).mockReset()
-    vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarn,
@@ -141,25 +161,33 @@ describe('updateTierAction', () => {
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
+    await expect(
+      updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_call_updateTier_when_manager', async () => {
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
+    await expect(
+      updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 90, default_jumping: null, default_exertion_level: null })
   })
 
-  it('should_revalidate_settings_path_after_updateTier', async () => {
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
+  it('should_redirect_to_settings_after_updateTier', async () => {
+    await expect(
+      updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 
   it('should_pass_null_price_when_price_field_is_blank', async () => {
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '' }))
+    await expect(
+      updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: null, default_jumping: null, default_exertion_level: null })
   })
@@ -171,19 +199,25 @@ describe('updateTierAction', () => {
   })
 
   it('should_pass_default_jumping_true_when_field_is_true', async () => {
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_jumping: 'true' }))
+    await expect(
+      updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_jumping: 'true' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_jumping: true }))
   })
 
   it('should_pass_default_jumping_false_when_field_is_false', async () => {
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_jumping: 'false' }))
+    await expect(
+      updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_jumping: 'false' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_jumping: false }))
   })
 
   it('should_pass_default_exertion_level_when_field_is_valid', async () => {
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_exertion_level: '4' }))
+    await expect(
+      updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', default_exertion_level: '4' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_exertion_level: 4 }))
   })
@@ -193,7 +227,7 @@ describe('setDefaultTierAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(setDefaultTier).mockReset()
-    vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarn,
@@ -203,21 +237,21 @@ describe('setDefaultTierAction', () => {
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
-    await setDefaultTierAction('green-acres', 'tier-1')
+    await expect(setDefaultTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_call_setDefaultTier_when_manager', async () => {
-    await setDefaultTierAction('green-acres', 'tier-1')
+    await expect(setDefaultTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
     expect(setDefaultTier).toHaveBeenCalledWith('tier-1', mockBarn.id)
   })
 
-  it('should_revalidate_settings_path_after_setDefaultTier', async () => {
-    await setDefaultTierAction('green-acres', 'tier-1')
+  it('should_redirect_to_settings_after_setDefaultTier', async () => {
+    await expect(setDefaultTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 })
 
@@ -227,7 +261,6 @@ describe('deactivateTierAction', () => {
     vi.mocked(getTierById).mockReset()
     vi.mocked(deactivateTier).mockReset()
     mockRedirect.mockClear()
-    vi.mocked(revalidatePath).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarn,
@@ -238,7 +271,7 @@ describe('deactivateTierAction', () => {
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
-    await deactivateTierAction('green-acres', 'tier-1')
+    await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
@@ -292,14 +325,46 @@ describe('deactivateTierAction', () => {
   })
 
   it('should_call_deactivateTier_when_tier_is_not_default', async () => {
-    await deactivateTierAction('green-acres', 'tier-1')
+    await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
     expect(deactivateTier).toHaveBeenCalledWith('tier-1', mockBarn.id)
   })
 
-  it('should_revalidate_settings_path_after_deactivateTier', async () => {
-    await deactivateTierAction('green-acres', 'tier-1')
+  it('should_redirect_to_settings_after_deactivateTier', async () => {
+    await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+})
+
+describe('reactivateTierAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(reactivateTier).mockReset()
+    mockRedirect.mockClear()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(reactivateTier).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await expect(reactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_reactivateTier_when_manager', async () => {
+    await expect(reactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(reactivateTier).toHaveBeenCalledWith('tier-1', mockBarn.id)
+  })
+
+  it('should_redirect_to_settings_after_reactivateTier', async () => {
+    await expect(reactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 })
