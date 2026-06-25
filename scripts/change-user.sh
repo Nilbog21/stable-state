@@ -25,7 +25,7 @@ for var_name in DEV_EMAIL DEV_NAME NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROL
   fi
 done
 
-read -r -p "Barn slug${DEV_BARN:+ [$DEV_BARN]}: " slug_input
+read -r -p "Barn slug${DEV_BARN:+ [$DEV_BARN]}: " slug_input || true
 slug="${slug_input:-$DEV_BARN}"
 
 if [ -z "$slug" ]; then echo "Error: barn slug is required" >&2; exit 1; fi
