@@ -381,7 +381,8 @@ describe('getHorseIncomeSummary', () => {
 
   function makeInChain(data: unknown[] | null, error: Error | null = null) {
     const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }
 
@@ -720,6 +721,25 @@ describe('getHorseIncomeSummary', () => {
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
     expect(result).toEqual([])
+  })
+
+  it('should_apply_barn_id_filter_to_lesson_horses_query', async () => {
+    const lesson = createMockLesson({ fee: 100 })
+    const mockIn = vi.fn().mockResolvedValue({ data: [{ lesson_id: lesson.id, horse_id: 'horse-1' }], error: null })
+    const mockLhEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockLhSelect = vi.fn().mockReturnValue({ eq: mockLhEq })
+
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
+      if (table === 'lesson_horses') return { select: mockLhSelect }
+      if (table === 'horses') return makeHorseNamesChain([{ id: 'horse-1', name: 'Thunderbolt' }])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await getHorseIncomeSummary('barn-1', startDate, endDate)
+
+    expect(mockLhEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 })
 
