@@ -149,6 +149,7 @@ export async function getRiderEnrolledLessonIds(barnId: string, userId: string):
     .eq('barn_id', barnId)
     .eq('user_id', userId)
     .eq('role', 'rider')
+    .eq('status', 'active')
     .maybeSingle()
   if (riderError) throw riderError
   if (!rider) return []

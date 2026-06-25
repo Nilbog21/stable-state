@@ -265,7 +265,7 @@ export async function getUpcomingLessons(
       .lt('lesson_at', to)
       .order('lesson_at', { ascending: true })
     if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons, barnId)
+    return hydrateParticipants(supabase, lessons ?? [], barnId)
   }
 
   const { data: lessons, error: lessonsError } = await supabase

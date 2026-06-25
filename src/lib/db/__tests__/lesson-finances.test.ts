@@ -1460,7 +1460,8 @@ describe('getOutstandingLessons', () => {
 
   function makeMembershipLookupChain(data: { id: string } | null, error: Error | null = null) {
     const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockRoleEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockStatusEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockRoleEq = vi.fn().mockReturnValue({ eq: mockStatusEq })
     const mockEqUser = vi.fn().mockReturnValue({ eq: mockRoleEq })
     const mockEqBarn = vi.fn().mockReturnValue({ eq: mockEqUser })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarn })

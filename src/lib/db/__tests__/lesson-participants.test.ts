@@ -572,7 +572,8 @@ describe('getRiderEnrolledLessonIds', () => {
 
   it('should_return_empty_array_when_user_has_no_rider_membership_in_barn', async () => {
     const mockMaybeSingle = vi.fn().mockResolvedValue({ data: null, error: null })
-    const mockEqRole = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockEqStatus = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockEqRole = vi.fn().mockReturnValue({ eq: mockEqStatus })
     const mockEqUserId = vi.fn().mockReturnValue({ eq: mockEqRole })
     const mockEqBarnId = vi.fn().mockReturnValue({ eq: mockEqUserId })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarnId })
@@ -592,7 +593,9 @@ describe('getRiderEnrolledLessonIds', () => {
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
             }),
           }),
         }),
@@ -619,7 +622,9 @@ describe('getRiderEnrolledLessonIds', () => {
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
             }),
           }),
         }),
@@ -649,7 +654,9 @@ describe('getRiderEnrolledLessonIds', () => {
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
               eq: vi.fn().mockReturnValue({
-                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: new Error('membership error') }),
+                eq: vi.fn().mockReturnValue({
+                  maybeSingle: vi.fn().mockResolvedValue({ data: null, error: new Error('membership error') }),
+                }),
               }),
             }),
           }),
@@ -669,7 +676,9 @@ describe('getRiderEnrolledLessonIds', () => {
         eq: vi.fn().mockReturnValue({
           eq: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
             }),
           }),
         }),

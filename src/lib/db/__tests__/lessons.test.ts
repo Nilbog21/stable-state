@@ -545,7 +545,8 @@ describe('getLessonsByBarn', () => {
 
     function makeMembershipLookupChain(data: { id: string } | null, error: Error | null = null) {
       const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-      const mockRoleEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+      const mockStatusEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+      const mockRoleEq = vi.fn().mockReturnValue({ eq: mockStatusEq })
       const mockUserEq = vi.fn().mockReturnValue({ eq: mockRoleEq })
       const mockBarnEq = vi.fn().mockReturnValue({ eq: mockUserEq })
       const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
@@ -1058,7 +1059,7 @@ describe('getUpcomingLessons', () => {
   }
 
   // rider path: lessons query uses .in(id) instead of second .eq
-  function makeRiderLessonsChain(data: unknown[], error: Error | null = null) {
+  function makeRiderLessonsChain(data: unknown[] | null, error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
@@ -1067,10 +1068,11 @@ describe('getUpcomingLessons', () => {
     return { select: mockSelect, mockIn, mockGte, mockLt, mockOrder }
   }
 
-  // membership lookup: select → eq(barn_id) → eq(user_id) → eq(role) → maybeSingle
+  // membership lookup: select → eq(barn_id) → eq(user_id) → eq(role) → eq(status) → maybeSingle
   function makeMembershipLookupChain(data: { id: string } | null, error: Error | null = null) {
     const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockRoleEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockStatusEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockRoleEq = vi.fn().mockReturnValue({ eq: mockStatusEq })
     const mockUserEq = vi.fn().mockReturnValue({ eq: mockRoleEq })
     const mockBarnEq = vi.fn().mockReturnValue({ eq: mockUserEq })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
@@ -1270,6 +1272,20 @@ describe('getUpcomingLessons', () => {
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     await expect(getUpcomingLessons('barn-1', from, to, 'user-1', 'rider')).rejects.toThrow('lessons error')
+  })
+
+  it('should_return_empty_when_rider_lessons_data_is_null', async () => {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'rider-1' })
+      if (table === 'lesson_riders') return makeEnrollmentChain([{ lesson_id: 'lesson-1' }])
+      if (table === 'lessons') return makeRiderLessonsChain(null)
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getUpcomingLessons('barn-1', from, to, 'user-1', 'rider')
+
+    expect(result).toEqual([])
   })
 
   it('should_return_empty_array_when_no_lessons_in_range', async () => {
