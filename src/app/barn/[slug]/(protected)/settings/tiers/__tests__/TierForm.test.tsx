@@ -175,6 +175,34 @@ describe('TierForm — edit mode, active tier', () => {
   })
 })
 
+describe('TierForm — edit mode, no initial tier', () => {
+  it('should_not_show_rename_warning_when_no_initial_tier', () => {
+    render(<TierForm mode="edit" slug="green-acres" onSave={mockSave} />)
+
+    expect(screen.queryByText(/renaming will not update past lessons/i)).toBeNull()
+  })
+})
+
+describe('TierForm — default_jumping pre-selected', () => {
+  it('should_pre_select_jumping_default_when_tier_has_default_jumping_true', () => {
+    const tier = createMockLessonTier({ default_jumping: true })
+    render(
+      <TierForm
+        mode="edit"
+        slug="green-acres"
+        initialTier={tier}
+        onSave={mockSave}
+        onDeactivate={mockDeactivate}
+        onSetDefault={mockSetDefault}
+      />
+    )
+
+    expect(
+      (screen.getByLabelText(/default jumping/i) as HTMLSelectElement).value
+    ).toBe('true')
+  })
+})
+
 describe('TierForm — edit mode, inactive tier', () => {
   const inactiveTier = createMockLessonTier({ id: 'tier-2', name: 'Old', is_active: false })
 

@@ -85,6 +85,17 @@ export async function getAllTiersByBarn(barnId: string): Promise<LessonTier[]> {
   return data ?? []
 }
 
+export async function reactivateTier(tierId: string, barnId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('lesson_tiers')
+    .update({ is_active: true })
+    .eq('id', tierId)
+    .eq('barn_id', barnId)
+
+  if (error) throw error
+}
+
 export async function getTierById(tierId: string, barnId: string): Promise<LessonTier | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
