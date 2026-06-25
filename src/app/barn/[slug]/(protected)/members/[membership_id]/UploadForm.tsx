@@ -5,12 +5,14 @@ import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
 
 const TRAINER_TYPES: { value: TrainerDocumentType; label: string }[] = [
   { value: 'instructor_contract', label: 'Instructor Contract' },
+  { value: 'other', label: 'Other' },
 ]
 
 const RIDER_TYPES: { value: RiderDocumentType; label: string }[] = [
   { value: 'liability_waiver', label: 'Liability Waiver' },
   { value: 'lease_agreement', label: 'Lease Agreement' },
   { value: 'boarding_contract', label: 'Boarding Contract' },
+  { value: 'other', label: 'Other' },
 ]
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024

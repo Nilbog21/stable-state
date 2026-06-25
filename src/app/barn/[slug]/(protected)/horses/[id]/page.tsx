@@ -15,6 +15,7 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
   coggins: 'Coggins',
   shot_record: 'Shot Record',
   contract: 'Contract',
+  other: 'Other',
 }
 
 export default async function HorseDetailPage({

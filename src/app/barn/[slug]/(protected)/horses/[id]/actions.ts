@@ -7,7 +7,7 @@ import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documen
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import type { HorseDocumentType } from '@/lib/db/types'
 
-const HORSE_RECORD_TYPES = new Set<HorseDocumentType>(['insurance_binder', 'coggins', 'shot_record', 'contract'])
+const HORSE_RECORD_TYPES = new Set<HorseDocumentType>(['insurance_binder', 'coggins', 'shot_record', 'contract', 'other'])
 
 export async function updateHorseAvailabilityAction(
   barnSlug: string,

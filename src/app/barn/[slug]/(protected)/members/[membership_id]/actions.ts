@@ -8,8 +8,8 @@ import { createRiderDocument, deleteRiderDocument } from '@/lib/db/rider-documen
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
 
-const TRAINER_RECORD_TYPES = new Set<TrainerDocumentType>(['instructor_contract'])
-const RIDER_RECORD_TYPES = new Set<RiderDocumentType>(['liability_waiver', 'lease_agreement', 'boarding_contract'])
+const TRAINER_RECORD_TYPES = new Set<TrainerDocumentType>(['instructor_contract', 'other'])
+const RIDER_RECORD_TYPES = new Set<RiderDocumentType>(['liability_waiver', 'lease_agreement', 'boarding_contract', 'other'])
 
 function canManage(callerRole: string, isOwnPage: boolean): boolean {
   if (callerRole === 'manager') return true
