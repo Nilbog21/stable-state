@@ -16,8 +16,37 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   mustSucceed(await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId }), 'teardown lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', barnId), 'delete lesson_tiers')
   mustSucceed(await supabase.from('notifications').delete().eq('barn_id', barnId), 'delete notifications')
+  mustSucceed(await supabase.from('horse_documents').delete().eq('barn_id', barnId), 'delete horse_documents')
+  mustSucceed(await supabase.from('trainer_documents').delete().eq('barn_id', barnId), 'delete trainer_documents')
+  mustSucceed(await supabase.from('rider_documents').delete().eq('barn_id', barnId), 'delete rider_documents')
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', barnId), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
+}
+
+export async function teardownAllData(supabase: SupabaseClient): Promise<void> {
+  mustSucceed(await supabase.rpc('teardown_all_lesson_data'), 'teardown all lessons')
+  mustSucceed(await supabase.from('lesson_tiers').delete().not('id', 'is', null), 'delete lesson_tiers')
+  mustSucceed(await supabase.from('notifications').delete().not('id', 'is', null), 'delete notifications')
+  mustSucceed(await supabase.from('horse_documents').delete().not('id', 'is', null), 'delete horse_documents')
+  mustSucceed(await supabase.from('trainer_documents').delete().not('id', 'is', null), 'delete trainer_documents')
+  mustSucceed(await supabase.from('rider_documents').delete().not('id', 'is', null), 'delete rider_documents')
+  mustSucceed(await supabase.from('horses').delete().not('id', 'is', null), 'delete horses')
+  mustSucceed(await supabase.from('barn_memberships').delete().not('id', 'is', null), 'delete barn_memberships')
+  mustSucceed(await supabase.from('profiles').delete().not('id', 'is', null), 'delete profiles')
+  mustSucceed(await supabase.from('barns').delete().not('id', 'is', null), 'delete barns')
+  let page = 1
+  let hasMore = true
+  while (hasMore) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page, perPage: 50 })
+    if (error) throw new Error(`list auth users: ${error.message}`)
+    if (!data) break
+    for (const user of data.users) {
+      const { error: delErr } = await supabase.auth.admin.deleteUser(user.id)
+      if (delErr) throw new Error(`delete auth user ${user.id}: ${delErr.message}`)
+    }
+    hasMore = data.users.length === 50
+    page++
+  }
 }
 
 export async function findAuthUserIdsByEmails(emails: string[], supabase: SupabaseClient): Promise<string[]> {
