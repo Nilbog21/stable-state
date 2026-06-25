@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
 import { createClient } from '@supabase/supabase-js'
+import { getBarnBySlug } from '@/lib/db/barns'
 
 export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
   const err = result.error as { message?: string } | null
@@ -39,15 +40,21 @@ async function run() {
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   const DEV_EMAIL = process.env.DEV_EMAIL
   const DEV_NAME = process.env.DEV_NAME
+  const BARN_SLUG = process.env.CHANGE_USER_BARN_SLUG
 
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!DEV_EMAIL) throw new Error('DEV_EMAIL is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
+  if (!BARN_SLUG) throw new Error('CHANGE_USER_BARN_SLUG is required')
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
+
+  const barn = await getBarnBySlug(BARN_SLUG, supabase)
+  if (!barn) throw new Error(`barn not found: ${BARN_SLUG}`)
+  const barnId: string = barn.id
 
   const profiles = mustSucceed(
     await supabase
@@ -64,8 +71,8 @@ async function run() {
   const selection = await promptSelection(profiles.length)
   const target = profiles[selection - 1] as { user_id: string | null; email: string; first_name: string; last_name: string }
 
-  const devProfile = mustSucceed<{ user_id: string | null; barn_id: string | null }>(
-    await supabase.from('profiles').select('user_id, barn_id').eq('email', DEV_EMAIL).single(),
+  const devProfile = mustSucceed<{ user_id: string | null }>(
+    await supabase.from('profiles').select('user_id').eq('email', DEV_EMAIL).single(),
     'fetch dev profile'
   )
 
@@ -74,13 +81,7 @@ async function run() {
     process.exit(1)
   }
 
-  if (!devProfile.barn_id) {
-    console.error('dev profile has no barn — run reset-db.sh first')
-    process.exit(1)
-  }
-
   const devUserId: string = devProfile.user_id
-  const barnId: string = devProfile.barn_id
 
   if (isSelfSelect(DEV_EMAIL, target.email)) {
     mustSucceed(
