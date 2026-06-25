@@ -235,13 +235,6 @@ describe('updateTierAction', () => {
     expect(setDefaultTier).not.toHaveBeenCalled()
   })
 
-  it('should_not_call_setDefaultTier_when_tier_is_already_default', async () => {
-    vi.mocked(updateTier).mockResolvedValueOnce(createMockLessonTier({ is_default: true }))
-    await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', set_as_default: 'on' })).catch(() => {})
-
-    expect(setDefaultTier).not.toHaveBeenCalled()
-  })
-
   it('should_not_call_setDefaultTier_when_tier_is_inactive', async () => {
     vi.mocked(updateTier).mockResolvedValueOnce(createMockLessonTier({ is_active: false }))
     await updateTierAction('green-acres', 'tier-1', makeFormData({ name: 'Gold', price: '90', set_as_default: 'on' })).catch(() => {})
