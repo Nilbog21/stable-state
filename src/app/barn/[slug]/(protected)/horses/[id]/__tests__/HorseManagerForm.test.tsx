@@ -85,9 +85,18 @@ describe('HorseManagerForm', () => {
     expect(screen.queryByText(/remove it from the roster/i)).toBeNull()
   })
 
-  it('should_render_inactive_warning_when_inactive_is_selected', () => {
+  it('should_not_render_inactive_warning_when_horse_is_already_inactive', () => {
     render(<HorseManagerForm horse={inactiveHorse} action={mockAction} />)
-    expect(screen.getByText(/remove it from the roster/i)).toBeDefined()
+    expect(screen.queryByText(/remove it from the roster/i)).toBeNull()
+  })
+
+  it('should_retain_typed_reason_after_switching_away_from_unavailable_and_back', () => {
+    render(<HorseManagerForm horse={activeHorse} action={mockAction} />)
+    fireEvent.click(screen.getByRole('button', { name: /^unavailable$/i }))
+    fireEvent.change(screen.getByRole('textbox', { name: /reason/i }), { target: { value: 'injured leg' } })
+    fireEvent.click(screen.getByRole('button', { name: /^active$/i }))
+    fireEvent.click(screen.getByRole('button', { name: /^unavailable$/i }))
+    expect((screen.getByRole('textbox', { name: /reason/i }) as HTMLTextAreaElement).value).toBe('injured leg')
   })
 
   it('should_set_hidden_status_input_to_active_when_horse_is_active', () => {

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { setHorseAvailability, updateHorse, setHorseActive } from '@/lib/db/horses'
+import { updateHorseDetails } from '@/lib/db/horses'
 import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import type { HorseDocumentType } from '@/lib/db/types'
@@ -16,23 +16,22 @@ export async function updateHorseDetailsAction(
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
-  const name = (formData.get('name') as string | null)?.trim() ?? ''
-  if (!name) return
+  const status = formData.get('status')
+  if (status !== 'active' && status !== 'unavailable' && status !== 'inactive') return
 
-  const status = formData.get('status') as string
+  const name = (formData.get('name') as string | null)?.trim() || null
+  const isActive = status !== 'inactive'
+  const isAvailable = status === 'active'
+  const reason = status === 'unavailable'
+    ? ((formData.get('reason') as string | null)?.trim() || null)
+    : null
 
-  await updateHorse(horseId, barn.id, name)
-
-  if (status === 'active') {
-    await setHorseActive(horseId, barn.id, true)
-    await setHorseAvailability(horseId, barn.id, true, null)
-  } else if (status === 'unavailable') {
-    await setHorseActive(horseId, barn.id, true)
-    const rawReason = (formData.get('reason') as string | null)?.trim() || null
-    await setHorseAvailability(horseId, barn.id, false, rawReason)
-  } else if (status === 'inactive') {
-    await setHorseActive(horseId, barn.id, false)
-  }
+  await updateHorseDetails(horseId, barn.id, {
+    ...(name ? { name } : {}),
+    is_active: isActive,
+    is_available: isAvailable,
+    unavailability_reason: reason,
+  })
 
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)

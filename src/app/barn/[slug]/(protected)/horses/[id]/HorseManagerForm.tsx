@@ -25,6 +25,7 @@ export function HorseManagerForm({
   action: (formData: FormData) => Promise<void>
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
+  const [reason, setReason] = useState(horse.unavailability_reason ?? '')
 
   return (
     <form action={action} className="flex flex-col gap-5">
@@ -51,7 +52,7 @@ export function HorseManagerForm({
               aria-pressed={status === value}
               onClick={() => setStatus(value)}
               className={[
-                'px-4 py-2 text-sm font-medium first:rounded-l-md last:rounded-r-md focus:outline-none',
+                'px-4 py-2 text-sm font-medium first:rounded-l-md last:rounded-r-md focus:outline-none focus-visible:ring-2 focus-visible:ring-zinc-500 focus-visible:ring-offset-1',
                 status === value
                   ? 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
                   : 'bg-white text-zinc-700 hover:bg-zinc-50 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800',
@@ -62,7 +63,7 @@ export function HorseManagerForm({
           ))}
         </div>
 
-        {status === 'inactive' && (
+        {status === 'inactive' && horse.is_active && (
           <p className="text-sm text-amber-700 dark:text-amber-400">
             Marking this horse inactive will remove it from the roster and lesson scheduling.
           </p>
@@ -79,7 +80,8 @@ export function HorseManagerForm({
           <textarea
             id="horse-reason"
             name="reason"
-            defaultValue={horse.unavailability_reason ?? ''}
+            value={reason}
+            onChange={e => setReason(e.target.value)}
             rows={3}
             className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
           />

@@ -6,9 +6,7 @@ vi.mock('@/lib/auth/guard', () => ({
 }))
 
 vi.mock('@/lib/db/horses', () => ({
-  setHorseAvailability: vi.fn(),
-  updateHorse: vi.fn(),
-  setHorseActive: vi.fn(),
+  updateHorseDetails: vi.fn(),
 }))
 
 vi.mock('@/lib/db/horse-documents', () => ({
@@ -26,7 +24,7 @@ vi.mock('next/cache', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { setHorseAvailability, updateHorse, setHorseActive } from '@/lib/db/horses'
+import { updateHorseDetails } from '@/lib/db/horses'
 import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
@@ -38,18 +36,14 @@ const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manag
 describe('updateHorseDetailsAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
-    vi.mocked(updateHorse).mockReset()
-    vi.mocked(setHorseActive).mockReset()
-    vi.mocked(setHorseAvailability).mockReset()
+    vi.mocked(updateHorseDetails).mockReset()
     vi.mocked(revalidatePath).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarn,
       membership: mockManagerMembership,
     })
-    vi.mocked(updateHorse).mockResolvedValue({} as any)
-    vi.mocked(setHorseActive).mockResolvedValue(undefined)
-    vi.mocked(setHorseAvailability).mockResolvedValue(undefined)
+    vi.mocked(updateHorseDetails).mockResolvedValue(undefined)
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
@@ -60,55 +54,31 @@ describe('updateHorseDetailsAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_updateHorse_when_status_is_active', async () => {
+  it('should_call_updateHorseDetails_with_active_updates_when_status_is_active', async () => {
     const fd = new FormData()
     fd.set('name', 'Stormy')
     fd.set('status', 'active')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(updateHorse).toHaveBeenCalledWith('horse-1', mockBarn.id, 'Stormy')
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      name: 'Stormy',
+      is_active: true,
+      is_available: true,
+      unavailability_reason: null,
+    })
   })
 
-  it('should_call_setHorseActive_with_true_when_status_is_active', async () => {
-    const fd = new FormData()
-    fd.set('name', 'Stormy')
-    fd.set('status', 'active')
-    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseActive).toHaveBeenCalledWith('horse-1', mockBarn.id, true)
-  })
-
-  it('should_call_setHorseAvailability_with_true_and_null_reason_when_status_is_active', async () => {
-    const fd = new FormData()
-    fd.set('name', 'Stormy')
-    fd.set('status', 'active')
-    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseAvailability).toHaveBeenCalledWith('horse-1', mockBarn.id, true, null)
-  })
-
-  it('should_call_updateHorse_when_status_is_unavailable', async () => {
+  it('should_call_updateHorseDetails_with_unavailable_updates_when_status_is_unavailable', async () => {
     const fd = new FormData()
     fd.set('name', 'Stormy')
     fd.set('status', 'unavailable')
     fd.set('reason', 'stall rest')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(updateHorse).toHaveBeenCalledWith('horse-1', mockBarn.id, 'Stormy')
-  })
-
-  it('should_call_setHorseActive_with_true_when_status_is_unavailable', async () => {
-    const fd = new FormData()
-    fd.set('name', 'Stormy')
-    fd.set('status', 'unavailable')
-    fd.set('reason', 'stall rest')
-    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseActive).toHaveBeenCalledWith('horse-1', mockBarn.id, true)
-  })
-
-  it('should_call_setHorseAvailability_with_false_and_reason_when_status_is_unavailable', async () => {
-    const fd = new FormData()
-    fd.set('name', 'Stormy')
-    fd.set('status', 'unavailable')
-    fd.set('reason', 'stall rest')
-    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseAvailability).toHaveBeenCalledWith('horse-1', mockBarn.id, false, 'stall rest')
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      name: 'Stormy',
+      is_active: true,
+      is_available: false,
+      unavailability_reason: 'stall rest',
+    })
   })
 
   it('should_treat_empty_reason_as_null_when_status_is_unavailable', async () => {
@@ -117,54 +87,76 @@ describe('updateHorseDetailsAction', () => {
     fd.set('status', 'unavailable')
     fd.set('reason', '   ')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseAvailability).toHaveBeenCalledWith('horse-1', mockBarn.id, false, null)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      name: 'Stormy',
+      is_active: true,
+      is_available: false,
+      unavailability_reason: null,
+    })
   })
 
-  it('should_call_updateHorse_when_status_is_inactive', async () => {
+  it('should_call_updateHorseDetails_with_inactive_updates_when_status_is_inactive', async () => {
     const fd = new FormData()
     fd.set('name', 'Stormy')
     fd.set('status', 'inactive')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(updateHorse).toHaveBeenCalledWith('horse-1', mockBarn.id, 'Stormy')
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      name: 'Stormy',
+      is_active: false,
+      is_available: false,
+      unavailability_reason: null,
+    })
   })
 
-  it('should_call_setHorseActive_with_false_when_status_is_inactive', async () => {
-    const fd = new FormData()
-    fd.set('name', 'Stormy')
-    fd.set('status', 'inactive')
-    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseActive).toHaveBeenCalledWith('horse-1', mockBarn.id, false)
-  })
-
-  it('should_not_call_setHorseAvailability_when_status_is_inactive', async () => {
-    const fd = new FormData()
-    fd.set('name', 'Stormy')
-    fd.set('status', 'inactive')
-    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseAvailability).not.toHaveBeenCalled()
-  })
-
-  it('should_not_call_updateHorse_when_name_is_blank', async () => {
+  it('should_call_updateHorseDetails_without_name_when_name_is_blank', async () => {
     const fd = new FormData()
     fd.set('name', '   ')
     fd.set('status', 'active')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(updateHorse).not.toHaveBeenCalled()
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      is_active: true,
+      is_available: true,
+      unavailability_reason: null,
+    })
   })
 
-  it('should_not_call_updateHorse_when_name_field_is_absent', async () => {
+  it('should_call_updateHorseDetails_without_name_when_name_field_is_absent', async () => {
     const fd = new FormData()
     fd.set('status', 'active')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(updateHorse).not.toHaveBeenCalled()
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      is_active: true,
+      is_available: true,
+      unavailability_reason: null,
+    })
   })
 
-  it('should_not_call_setHorseActive_when_name_is_blank', async () => {
+  it('should_not_call_updateHorseDetails_when_status_is_invalid', async () => {
     const fd = new FormData()
-    fd.set('name', '   ')
+    fd.set('name', 'Stormy')
+    fd.set('status', 'deleted')
+    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
+    expect(updateHorseDetails).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_updateHorseDetails_when_status_is_absent', async () => {
+    const fd = new FormData()
+    fd.set('name', 'Stormy')
+    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
+    expect(updateHorseDetails).not.toHaveBeenCalled()
+  })
+
+  it('should_trim_name_before_calling_updateHorseDetails', async () => {
+    const fd = new FormData()
+    fd.set('name', '  Stormy  ')
     fd.set('status', 'active')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(setHorseActive).not.toHaveBeenCalled()
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      name: 'Stormy',
+      is_active: true,
+      is_available: true,
+      unavailability_reason: null,
+    })
   })
 
   it('should_revalidate_horses_list_path', async () => {
@@ -181,14 +173,6 @@ describe('updateHorseDetailsAction', () => {
     fd.set('status', 'active')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
-  })
-
-  it('should_trim_name_before_calling_updateHorse', async () => {
-    const fd = new FormData()
-    fd.set('name', '  Stormy  ')
-    fd.set('status', 'active')
-    await updateHorseDetailsAction('green-acres', 'horse-1', fd)
-    expect(updateHorse).toHaveBeenCalledWith('horse-1', mockBarn.id, 'Stormy')
   })
 })
 
