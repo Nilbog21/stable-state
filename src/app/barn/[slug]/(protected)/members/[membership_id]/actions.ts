@@ -28,7 +28,7 @@ export async function uploadDocumentAction(
   const targetMembership = await getMembershipById(membershipId)
   if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
 
-  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider') {
+  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
     throw new Error('Forbidden')
   }
 
@@ -43,21 +43,24 @@ export async function uploadDocumentAction(
   const ext = validateFile(file)
 
   const recordType = formData.get('record_type') as string
-  const validTypes = targetMembership.role === 'trainer' ? TRAINER_RECORD_TYPES : RIDER_RECORD_TYPES
+  const validTypes = targetMembership.role === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
   if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) throw new Error('Invalid record type')
 
   const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
 
-  const folder = targetMembership.role === 'trainer' ? 'trainers' : 'riders'
+  const folder =
+    targetMembership.role === 'trainer' ? 'trainers'
+    : targetMembership.role === 'manager' ? 'managers'
+    : 'riders'
   const storagePath = `${barn.id}/${folder}/${targetMembership.user_id}/${Date.now()}.${ext}`
 
   await uploadFile(storagePath, file!, file!.type)
 
   try {
-    if (targetMembership.role === 'trainer') {
-      await createTrainerDocument(barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
-    } else {
+    if (targetMembership.role === 'rider') {
       await createRiderDocument(barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes)
+    } else {
+      await createTrainerDocument(barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
     }
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
@@ -71,7 +74,6 @@ export async function deleteDocumentAction(
   barnSlug: string,
   membershipId: string,
   docId: string,
-  docType: 'trainer' | 'rider',
   storagePath: string
 ): Promise<void> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
@@ -79,7 +81,7 @@ export async function deleteDocumentAction(
   const targetMembership = await getMembershipById(membershipId)
   if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
 
-  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider') {
+  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
     throw new Error('Forbidden')
   }
 
@@ -88,10 +90,10 @@ export async function deleteDocumentAction(
     throw new Error('Forbidden')
   }
 
-  if (docType === 'trainer') {
-    await deleteTrainerDocument(docId, barn.id)
-  } else {
+  if (targetMembership.role === 'rider') {
     await deleteRiderDocument(docId, barn.id)
+  } else {
+    await deleteTrainerDocument(docId, barn.id)
   }
 
   await removeFile(storagePath).catch(() => {})

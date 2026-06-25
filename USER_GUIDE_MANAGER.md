@@ -28,9 +28,9 @@ On the horse's detail page, managers see additional sections:
 
 ## Members
 
-Go to **Members** to browse the barn roster. You will see a Trainers section and a Riders section, each listing active members with links to their detail pages. Your own card appears at the top.
+Go to **Members** to browse the barn roster. You will see a **Managers** section (other managers in the barn), a **Trainers** section, and a **Riders** section, each listing active members with links to their detail pages. Your own card appears at the top under **You**.
 
-Tap any member card to open their detail page. Documents are shown in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap a filename in the **Link** column to open the document (link is valid for 5 minutes). Tap **Delete** to remove it. To add a new file, tap **Choose File**, select a file (the filename appears next to the button once chosen), add optional notes, and tap **Upload**. Accepted file types: PDF, JPG, PNG, DOCX (max 5 MB). Document types for trainers: **Instructor Contract**, **Other**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other**.
+Tap any member card to open their detail page. Documents are shown in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap a filename in the **Link** column to open the document (link is valid for 5 minutes). Tap **Delete** to remove it. To add a new file, tap **Choose File**, select a file (the filename appears next to the button once chosen), add optional notes, and tap **Upload**. Accepted file types: PDF, JPG, PNG, DOCX (max 5 MB). Document types for managers and trainers: **Instructor Contract**, **Other**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other**.
 
 ## Lessons
 

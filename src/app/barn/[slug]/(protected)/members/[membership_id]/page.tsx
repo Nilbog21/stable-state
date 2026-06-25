@@ -48,14 +48,6 @@ export default async function MemberDetailPage({
 
   if (!canAccess) notFound()
 
-  if (targetRole !== 'trainer' && targetRole !== 'rider') {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-12">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No documents available.</p>
-      </main>
-    )
-  }
-
   const canUpload =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && isOwnPage) ||
@@ -77,13 +69,13 @@ export default async function MemberDetailPage({
   type DocWithUrl = { doc: TrainerDocument | RiderDocument; signedUrl: string }
   let docsWithUrls: DocWithUrl[] = []
 
-  if (targetRole === 'trainer') {
-    const docs = await getTrainerDocuments(targetMembership.user_id, barn.id)
+  if (targetRole === 'rider') {
+    const docs = await getRiderDocuments(targetMembership.user_id, barn.id)
     docsWithUrls = await Promise.all(
       docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
     )
   } else {
-    const docs = await getRiderDocuments(targetMembership.user_id, barn.id)
+    const docs = await getTrainerDocuments(targetMembership.user_id, barn.id)
     docsWithUrls = await Promise.all(
       docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
     )
@@ -129,7 +121,7 @@ export default async function MemberDetailPage({
                   </td>
                   <td className="py-3 text-sm">
                     {canUpload && (
-                      <form action={boundDelete.bind(null, doc.id, targetRole, doc.storage_path)}>
+                      <form action={boundDelete.bind(null, doc.id, doc.storage_path)}>
                         <button
                           type="submit"
                           className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
@@ -153,7 +145,7 @@ export default async function MemberDetailPage({
           <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Upload Document
           </h2>
-          <UploadForm memberRole={targetRole as 'trainer' | 'rider'} action={boundUpload} />
+          <UploadForm memberRole={targetRole as 'trainer' | 'rider' | 'manager'} action={boundUpload} />
         </section>
       )}
     </main>

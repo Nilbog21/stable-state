@@ -121,4 +121,19 @@ describe('UploadForm', () => {
     fireEvent.submit(screen.getByRole('button', { name: /upload/i }).closest('form')!)
     expect(screen.queryByText('upload.pdf')).toBeNull()
   })
+
+  it('should_render_upload_button_for_manager', () => {
+    render(<UploadForm memberRole="manager" action={noop} />)
+    expect(screen.getByRole('button', { name: /upload/i })).toBeDefined()
+  })
+
+  it('should_show_instructor_contract_option_for_manager', () => {
+    render(<UploadForm memberRole="manager" action={noop} />)
+    expect(screen.getByText('Instructor Contract')).toBeDefined()
+  })
+
+  it('should_not_show_liability_waiver_for_manager', () => {
+    render(<UploadForm memberRole="manager" action={noop} />)
+    expect(screen.queryByText('Liability Waiver')).toBeNull()
+  })
 })

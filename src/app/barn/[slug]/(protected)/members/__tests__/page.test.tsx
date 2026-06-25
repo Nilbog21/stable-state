@@ -36,6 +36,9 @@ const mockRiders = [
   { membershipId: 'mem-r1', userId: 'u-r1', name: 'Carol Rider' },
   { membershipId: 'mem-r2', userId: 'u-r2', name: 'Dave Rider' },
 ]
+const mockManagers = [
+  { membershipId: 'mem-m1', userId: 'u-m1', name: 'Eve Manager' },
+]
 
 describe('MembersPage', () => {
   beforeEach(() => {
@@ -105,7 +108,7 @@ describe('MembersPage', () => {
 
   it('should_render_trainers_section_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
-      role === 'trainer' ? mockTrainers : mockRiders
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -114,7 +117,7 @@ describe('MembersPage', () => {
 
   it('should_render_first_trainer_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
-      role === 'trainer' ? mockTrainers : mockRiders
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -123,7 +126,7 @@ describe('MembersPage', () => {
 
   it('should_render_second_trainer_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
-      role === 'trainer' ? mockTrainers : mockRiders
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -132,7 +135,7 @@ describe('MembersPage', () => {
 
   it('should_render_riders_section_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
-      role === 'trainer' ? mockTrainers : mockRiders
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -141,7 +144,7 @@ describe('MembersPage', () => {
 
   it('should_render_first_rider_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
-      role === 'trainer' ? mockTrainers : mockRiders
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -150,7 +153,7 @@ describe('MembersPage', () => {
 
   it('should_render_second_rider_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
-      role === 'trainer' ? mockTrainers : mockRiders
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -280,5 +283,71 @@ describe('MembersPage', () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('No riders yet')).toBeDefined()
+  })
+
+  it('should_fetch_managers_for_manager', async () => {
+    await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'manager')
+  })
+
+  it('should_render_managers_section_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'manager' ? mockManagers : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /managers/i })).toBeDefined()
+  })
+
+  it('should_render_manager_name_card', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'manager' ? mockManagers : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Eve Manager')).toBeDefined()
+  })
+
+  it('should_link_manager_card_to_detail_page', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'manager' ? mockManagers : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /eve manager/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members\/mem-m1$/)
+  })
+
+  it('should_exclude_caller_from_managers_section', async () => {
+    const callerAsManager = { membershipId: 'mem-mgr', userId: 'user-1', name: 'Jane Doe' }
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'manager' ? [callerAsManager, ...mockManagers] : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const links = screen.getAllByRole('link', { name: /jane doe/i })
+    expect(links).toHaveLength(1)
+  })
+
+  it('should_show_empty_state_in_managers_section_when_no_other_managers', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No managers yet')).toBeDefined()
+  })
+
+  it('should_not_render_managers_section_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('heading', { name: /managers/i })).toBeNull()
+  })
+
+  it('should_not_render_managers_section_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('heading', { name: /managers/i })).toBeNull()
   })
 })
