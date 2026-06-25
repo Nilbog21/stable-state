@@ -72,5 +72,7 @@ If you are a member of more than one barn, a **▾** caret appears next to the b
 
 You will receive notifications for situations that need attention. Tap the bell icon in the nav bar to view them; tap **Mark all read** to dismiss them.
 
+- **New membership request** — a rider has requested to join the barn. Tap the notification to go to **Settings** and approve or reject the request.
+- **Lesson cancelled** — a lesson you instructed has been cancelled.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go to your profile and fill in the missing fields.
 - **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.

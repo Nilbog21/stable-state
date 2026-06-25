@@ -8,7 +8,7 @@ Stable State is a multi-tenant lesson-tracking application for equestrian barns.
 |---|---|
 | `manager` | Full barn administration: horses, riders, lessons, finances, membership approvals |
 | `trainer` | Book and submit lessons; view and edit riders |
-| `rider` | View own lessons |
+| `rider` | View own lessons and horses; track outstanding payments; manage own documents |
 
 ## Prerequisites
 
@@ -31,21 +31,19 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_SUPABASE_URL` | App + reset script | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App | Supabase anon (public) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Reset script only | Service role key — bypasses RLS; never expose client-side |
-| `DEV_MANAGER_EMAIL` | Reset script only | Google email to pre-authorize as dev barn manager |
-| `DEV_TRAINER_EMAIL` | Reset script only (optional) | Google email pre-authorized as dev trainer; sign in via incognito to test trainer role |
-| `DEV_RIDER_EMAIL` | Reset script only (optional) | Google email pre-authorized as dev rider; sign in via incognito to test rider role |
+| `DEV_EMAIL` | Reset script only | Your Google email — pre-authorized as dev barn manager; used as default by seed-account.sh |
+| `DEV_NAME` | Reset script only | Your full name (first last) — split on first space for first/last name defaults in seed-account.sh |
+| `DEV_BARN` | Reset script only (optional) | Default barn slug for seed-account.sh (defaults to `dev-barn`) |
 
 ### Dev database reset
 
-To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 3 trainers, 3 riders, 3 horses, 25 lessons):
+To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 additional manager, 3 trainers, 3 riders, 1 pending rider, 3 horses, 2 fee tiers, 34 lessons):
 
 ```bash
 bash scripts/reset-db.sh
 ```
 
-Requires `SUPABASE_SERVICE_ROLE_KEY` and `DEV_MANAGER_EMAIL` in `.env.local`. The script is idempotent — safe to re-run between branches.
-
-To test trainer or rider role behaviour, set `DEV_TRAINER_EMAIL` and/or `DEV_RIDER_EMAIL` in `.env.local` to a Google account you control, then re-run the script. Open an incognito window and sign in with that account to experience the app as that role.
+Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to pre-authorize your manager account, then opens `change-user.sh` to let you select a dev role to sign in as.
 
 ## Database setup
 
@@ -55,7 +53,7 @@ Run all migration files in `supabase/migrations/` against your Supabase project 
 
 ### Seed a manager account
 
-Pre-authorize a Google account to sign in as a barn manager. The script inserts a row into `profiles`; the trigger `on_auth_user_created` reads it on first sign-in and creates an active `barn_memberships` row automatically.
+Pre-authorize a Google account to sign in as a barn manager. The script inserts a row into `seeded_accounts`; on first sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row, then deletes the staging row.
 
 **Prerequisites:**
 - The barn slug must already exist (create via the Supabase dashboard if needed)
@@ -65,7 +63,7 @@ Pre-authorize a Google account to sign in as a barn manager. The script inserts 
 bash scripts/seed-account.sh
 ```
 
-The script prompts for email, first name, last name, and barn slug. Once the manager signs in with Google, their account is immediately active. To enable instructor access (so the manager can be assigned as a lesson instructor), toggle "Can instruct" in barn Settings → Members.
+The script prompts for email, first name, last name, and barn slug (defaults to `DEV_EMAIL`, `DEV_NAME`, and `DEV_BARN` from `.env.local` if set). Once the manager signs in with Google, their account is immediately active. To enable instructor access (so the manager can be assigned as a lesson instructor), toggle "Can instruct" in barn Settings → Members.
 
 ## Production bootstrap
 
@@ -90,7 +88,7 @@ Pre-authorize the barn manager's Google email before their first sign-in. The ba
 bash scripts/seed-account.sh
 ```
 
-On first Google OAuth sign-in the trigger `on_auth_user_created` fires and creates an active `barn_memberships` row automatically.
+On first OAuth sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row automatically.
 
 ### 3. Add redirect URLs to Supabase
 
