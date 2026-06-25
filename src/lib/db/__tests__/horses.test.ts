@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability } from '../horses'
+import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -539,5 +539,104 @@ describe('updateHorse', () => {
     } as any)
 
     await expect(updateHorse('horse-1', 'barn-1', 'Blaze Updated')).rejects.toThrow('db error')
+  })
+})
+
+describe('resolveHorseNames', () => {
+  function makeSelectChain(data: unknown, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    return { select: vi.fn().mockReturnValue({ eq: mockEq }) }
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_empty_map_when_ids_is_empty', async () => {
+    const result = await resolveHorseNames([], 'barn-1')
+
+    expect(result).toEqual(new Map())
+  })
+
+  it('should_not_call_create_client_when_ids_is_empty', async () => {
+    await resolveHorseNames([], 'barn-1')
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_resolve_name_for_first_horse_id', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeSelectChain([
+        { id: 'horse-1', name: 'Thunderbolt' },
+        { id: 'horse-2', name: 'Shadow' },
+      ])),
+    } as any)
+
+    const result = await resolveHorseNames(['horse-1', 'horse-2'], 'barn-1')
+
+    expect(result.get('horse-1')).toBe('Thunderbolt')
+  })
+
+  it('should_resolve_name_for_second_horse_id', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeSelectChain([
+        { id: 'horse-1', name: 'Thunderbolt' },
+        { id: 'horse-2', name: 'Shadow' },
+      ])),
+    } as any)
+
+    const result = await resolveHorseNames(['horse-1', 'horse-2'], 'barn-1')
+
+    expect(result.get('horse-2')).toBe('Shadow')
+  })
+
+  it('should_return_undefined_for_horse_id_not_in_barn', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeSelectChain([{ id: 'horse-1', name: 'Thunderbolt' }])),
+    } as any)
+
+    const result = await resolveHorseNames(['horse-1', 'horse-unknown'], 'barn-1')
+
+    expect(result.get('horse-unknown')).toBeUndefined()
+  })
+
+  it('should_scope_query_to_barn_id', async () => {
+    const mockIn = vi.fn().mockResolvedValue({ data: [], error: null })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockEq }) }),
+    } as any)
+
+    await resolveHorseNames(['horse-1'], 'barn-1')
+
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeSelectChain(null, new Error('db error'))),
+    } as any)
+
+    await expect(resolveHorseNames(['horse-1'], 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_not_call_create_client_when_client_is_injected', async () => {
+    const injectedClient = {
+      from: vi.fn().mockReturnValue(makeSelectChain([{ id: 'horse-1', name: 'Thunderbolt' }])),
+    } as any
+
+    await resolveHorseNames(['horse-1'], 'barn-1', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    const mockFrom = vi.fn().mockReturnValue(makeSelectChain([{ id: 'horse-1', name: 'Thunderbolt' }]))
+    const injectedClient = { from: mockFrom } as any
+
+    await resolveHorseNames(['horse-1'], 'barn-1', injectedClient)
+
+    expect(mockFrom).toHaveBeenCalledWith('horses')
   })
 })

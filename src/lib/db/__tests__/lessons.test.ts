@@ -758,7 +758,7 @@ describe('getLessonById', () => {
     const from = makeFrom(rawLessonData, [{ user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' }])
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.instructor_name).toBe('Jane Smith')
   })
@@ -770,7 +770,7 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.instructor_name).toBeNull()
   })
@@ -779,7 +779,7 @@ describe('getLessonById', () => {
     const from = makeFrom(rawLessonData, null)
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.instructor_name).toBeNull()
   })
@@ -798,7 +798,7 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.lesson_riders).toHaveLength(2)
   })
@@ -810,7 +810,7 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    await getLessonById('lesson-1', 'barn-1')
+    await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
@@ -822,7 +822,7 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonById('nonexistent', 'barn-1')
+    const result = await getLessonById('nonexistent', 'barn-1', 'trainer')
 
     expect(result).toBeNull()
   })
@@ -833,14 +833,14 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    await expect(getLessonById('lesson-1', 'barn-1')).rejects.toThrow('db error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('db error')
   })
 
   it('should_throw_when_profiles_query_returns_error', async () => {
     const from = makeFrom(rawLessonData, null, null, new Error('profiles error'))
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getLessonById('lesson-1', 'barn-1')).rejects.toThrow('profiles error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('profiles error')
   })
 
   it('should_include_jumping_true_in_result', async () => {
@@ -854,7 +854,7 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.jumping).toBe(true)
   })
@@ -969,7 +969,7 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.lesson_riders[0].barn_membership?.name).toBe('mem-1')
   })
@@ -985,7 +985,7 @@ describe('getLessonById', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.lesson_riders[0].barn_membership).toBeNull()
   })
@@ -1010,7 +1010,7 @@ describe('getLessonById', () => {
       }),
     } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.lesson_riders[0].barn_membership?.name).toBe('Alice Rider')
   })
@@ -1035,7 +1035,7 @@ describe('getLessonById', () => {
       }),
     } as any)
 
-    await expect(getLessonById('lesson-1', 'barn-1')).rejects.toThrow('rider profiles error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('rider profiles error')
   })
 })
 

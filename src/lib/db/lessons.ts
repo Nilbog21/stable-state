@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
 import { resolveMemberNames } from './barn-memberships'
+import { resolveHorseNames } from './horses'
 import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
 
 async function hydrateParticipants(
@@ -26,17 +27,10 @@ async function hydrateParticipants(
   const horseIds = [...new Set((lessonHorses ?? []).map((lh) => lh.horse_id))]
   const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
 
-  const [
-    { data: horses, error: horsesError },
-    membershipMap,
-  ] = await Promise.all([
-    horseIds.length
-      ? supabase.from('horses').select('id, name').in('id', horseIds)
-      : Promise.resolve({ data: [], error: null }),
+  const [horseNameMap, membershipMap] = await Promise.all([
+    resolveHorseNames(horseIds, barnId, supabase),
     resolveMemberNames(riderIds, barnId, supabase),
   ])
-
-  if (horsesError) throw horsesError
 
   const { data: profiles, error: profilesError } = instructorIds.length
     ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
@@ -50,7 +44,7 @@ async function hydrateParticipants(
     const profile = lesson.instructor_id ? profileMap.get(lesson.instructor_id) : undefined
     const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
     const horseNames = horseJunctionRows
-      .map((lh) => (horses ?? []).find((h) => h.id === lh.horse_id)?.name)
+      .map((lh) => horseNameMap.get(lh.horse_id))
       .filter((name): name is string => Boolean(name))
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
     const riderParticipants = riderJunctionRows
@@ -120,7 +114,7 @@ export async function getLessonsByBarn(
   return hydrateParticipants(supabase, lessons, barnId)
 }
 
-export async function getLessonById(lessonId: string, barnId: string, role: Role = 'trainer', userId?: string): Promise<LessonDetail | null> {
+export async function getLessonById(lessonId: string, barnId: string, role: Role, userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
     ? 'rider_notes, barn_memberships ( id, user_id )'
