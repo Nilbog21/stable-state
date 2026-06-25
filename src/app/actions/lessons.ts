@@ -223,7 +223,7 @@ export async function updatePaymentTypeAction(
   const { user, barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   if (membership.role === 'trainer') {
-    const lesson = await getLessonById(lessonId, barn.id)
+    const lesson = await getLessonById(lessonId, barn.id, 'trainer')
     if (!lesson) return { error: 'lesson not found' }
     if (lesson.instructor_id !== user.id) return { error: 'not authorized' }
   }

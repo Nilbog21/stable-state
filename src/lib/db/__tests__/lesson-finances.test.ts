@@ -385,6 +385,13 @@ describe('getHorseIncomeSummary', () => {
     return { select: mockSelect }
   }
 
+  function makeHorseNamesChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
   it('should_return_empty_when_no_lessons_in_range', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue(makeLessonsChain([])),
@@ -425,7 +432,7 @@ describe('getHorseIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_horses') return makeInChain([{ lesson_id: lesson.id, horse_id: 'horse-1' }])
-      if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
+      if (table === 'horses') return makeHorseNamesChain([{ id: 'horse-1', name: 'Thunderbolt' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -443,7 +450,7 @@ describe('getHorseIncomeSummary', () => {
         { lesson_id: lesson.id, horse_id: 'horse-1' },
         { lesson_id: lesson.id, horse_id: 'horse-2' },
       ])
-      if (table === 'horses') return makeInChain([
+      if (table === 'horses') return makeHorseNamesChain([
         { id: 'horse-1', name: 'Thunderbolt' },
         { id: 'horse-2', name: 'Shadow' },
       ])
@@ -464,7 +471,7 @@ describe('getHorseIncomeSummary', () => {
         { lesson_id: lesson.id, horse_id: 'horse-1' },
         { lesson_id: lesson.id, horse_id: 'horse-2' },
       ])
-      if (table === 'horses') return makeInChain([
+      if (table === 'horses') return makeHorseNamesChain([
         { id: 'horse-1', name: 'Thunderbolt' },
         { id: 'horse-2', name: 'Shadow' },
       ])
@@ -485,7 +492,7 @@ describe('getHorseIncomeSummary', () => {
         { lesson_id: lesson.id, horse_id: 'horse-1' },
         { lesson_id: lesson.id, horse_id: 'horse-2' },
       ])
-      if (table === 'horses') return makeInChain([
+      if (table === 'horses') return makeHorseNamesChain([
         { id: 'horse-1', name: 'Thunderbolt' },
         { id: 'horse-2', name: 'Shadow' },
       ])
@@ -507,7 +514,7 @@ describe('getHorseIncomeSummary', () => {
         { lesson_id: lesson.id, horse_id: 'horse-2' },
         { lesson_id: lesson.id, horse_id: 'horse-3' },
       ])
-      if (table === 'horses') return makeInChain([
+      if (table === 'horses') return makeHorseNamesChain([
         { id: 'horse-1', name: 'Thunderbolt' },
         { id: 'horse-2', name: 'Shadow' },
         { id: 'horse-3', name: 'Blaze' },
@@ -530,7 +537,7 @@ describe('getHorseIncomeSummary', () => {
         { lesson_id: lesson.id, horse_id: 'horse-2' },
         { lesson_id: lesson.id, horse_id: 'horse-3' },
       ])
-      if (table === 'horses') return makeInChain([
+      if (table === 'horses') return makeHorseNamesChain([
         { id: 'horse-1', name: 'Thunderbolt' },
         { id: 'horse-2', name: 'Shadow' },
         { id: 'horse-3', name: 'Blaze' },
@@ -556,7 +563,7 @@ describe('getHorseIncomeSummary', () => {
         { lesson_id: lesson1.id, horse_id: 'horse-1' },
         { lesson_id: lesson2.id, horse_id: 'horse-1' },
       ])
-      if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
+      if (table === 'horses') return makeHorseNamesChain([{ id: 'horse-1', name: 'Thunderbolt' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -579,7 +586,7 @@ describe('getHorseIncomeSummary', () => {
         { lesson_id: lesson2.id, horse_id: 'horse-1' },
         { lesson_id: lesson2.id, horse_id: 'horse-2' },
       ])
-      if (table === 'horses') return makeInChain([
+      if (table === 'horses') return makeHorseNamesChain([
         { id: 'horse-1', name: 'Thunderbolt' },
         { id: 'horse-2', name: 'Shadow' },
       ])
@@ -617,7 +624,7 @@ describe('getHorseIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_horses') return makeInChain([{ lesson_id: lesson.id, horse_id: 'horse-1' }])
-      if (table === 'horses') return makeInChain(null, new Error('horses error'))
+      if (table === 'horses') return makeHorseNamesChain(null, new Error('horses error'))
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -665,7 +672,7 @@ describe('getHorseIncomeSummary', () => {
       if (table === 'lesson_horses') return makeInChain([
         { lesson_id: lesson1.id, horse_id: 'horse-1' },
       ])
-      if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
+      if (table === 'horses') return makeHorseNamesChain([{ id: 'horse-1', name: 'Thunderbolt' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -680,7 +687,7 @@ describe('getHorseIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_horses') return makeInChain([{ lesson_id: lesson.id, horse_id: 'horse-orphan' }])
-      if (table === 'horses') return makeInChain([])
+      if (table === 'horses') return makeHorseNamesChain([])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -695,7 +702,7 @@ describe('getHorseIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_horses') return makeInChain([{ lesson_id: lesson.id, horse_id: 'horse-1' }])
-      if (table === 'horses') return makeInChain(null)
+      if (table === 'horses') return makeHorseNamesChain(null)
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1997,17 +2004,6 @@ describe('getHorseIncomeDetail', () => {
     return { select: mockSelect }
   }
 
-  function makeHorseChain(
-    data: { id: string; name: string } | null,
-    error: Error | null = null
-  ) {
-    const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-    return { select: mockSelect }
-  }
-
   function makeInChain(data: unknown[] | null, error: Error | null = null) {
     const mockIn = vi.fn().mockResolvedValue({ data, error })
     const mockEq = vi.fn().mockReturnValue({ in: mockIn })
@@ -2023,7 +2019,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain(lessons)
-        if (table === 'horses') return makeHorseChain(horse)
+        if (table === 'horses') return makeInChain(horse ? [horse] : [])
         if (table === 'lesson_horses') return makeInChain(lessonHorses)
         return makeInChain([])
       }),
@@ -2173,7 +2169,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([], new Error('lessons error'))
-        return makeHorseChain(null)
+        return makeInChain([])
       }),
     } as any)
 
@@ -2184,7 +2180,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([])
-        if (table === 'horses') return makeHorseChain(null, new Error('horse error'))
+        if (table === 'horses') return makeInChain(null, new Error('horse error'))
         return makeInChain([])
       }),
     } as any)
@@ -2196,7 +2192,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-        if (table === 'horses') return makeHorseChain({ id: 'horse-1', name: 'Thunderbolt' })
+        if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
         if (table === 'lesson_horses') return makeInChain(null, new Error('lh error'))
         return makeInChain([])
       }),
@@ -2209,7 +2205,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain(null as any)
-        if (table === 'horses') return makeHorseChain({ id: 'horse-1', name: 'Thunderbolt' })
+        if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
         return makeInChain([])
       }),
     } as any)
@@ -2223,7 +2219,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'lessons') return makeLessonsChain([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-        if (table === 'horses') return makeHorseChain({ id: 'horse-1', name: 'Thunderbolt' })
+        if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
         if (table === 'lesson_horses') return makeInChain(null)
         return makeInChain([])
       }),

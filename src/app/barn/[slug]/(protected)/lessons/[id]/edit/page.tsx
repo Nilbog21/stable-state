@@ -22,22 +22,22 @@ export default async function EditLessonPage({
 
   if (!user) notFound()
 
-  const [lesson, membership] = await Promise.all([
-    getLessonById(id, barn.id),
-    getUserMembership(user.id, barn.id),
-  ])
-
+  const membership = await getUserMembership(user.id, barn.id)
   if (!membership || membership.status !== 'active') notFound()
   if (membership.role !== 'manager' && membership.role !== 'trainer') notFound()
-  if (!lesson) notFound()
-  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) notFound()
 
-  const [horses, riderMembers, tiers, instructorList] = await Promise.all([
+  const role = membership.role as 'manager' | 'trainer'
+
+  const [lesson, horses, riderMembers, tiers, instructorList] = await Promise.all([
+    getLessonById(id, barn.id, role),
     getHorsesByBarn(barn.id),
     getActiveMembersWithProfiles(barn.id, 'rider'),
     getAllTiersByBarn(barn.id),
     getInstructorsByBarn(barn.id),
   ])
+
+  if (!lesson) notFound()
+  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) notFound()
   const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
   const instructors = lesson.instructor_id && instructorList.every((i) => i.userId !== lesson.instructor_id)

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
 import { resolveMemberNames } from './barn-memberships'
+import { resolveHorseNames } from './horses'
 import type { FinancialSummary, HorseIncomeDetailRow, HorseIncomeSummary, OutstandingLesson, RiderIncomeDetailRow, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
 
 export async function getFinancialSummary(
@@ -173,12 +174,7 @@ export async function getHorseIncomeSummary(
 
   const horseIds = [...new Set(lessonHorses.map((lh) => lh.horse_id))]
 
-  const { data: horses, error: horsesError } = await supabase
-    .from('horses')
-    .select('id, name')
-    .in('id', horseIds)
-
-  if (horsesError) throw horsesError
+  const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
 
   const incomeMap = new Map<string, number>()
 
@@ -194,7 +190,7 @@ export async function getHorseIncomeSummary(
   return Array.from(incomeMap.entries())
     .map(([horseId, totalIncome]) => ({
       horseId,
-      horseName: (horses ?? []).find((h) => h.id === horseId)?.name ?? horseId,
+      horseName: horseNameMap.get(horseId) ?? horseId,
       totalIncome,
     }))
     .sort((a, b) => b.totalIncome - a.totalIncome)
@@ -323,15 +319,8 @@ export async function getHorseIncomeDetail(
 
   if (lessonsError) throw lessonsError
 
-  const { data: horseData, error: horseError } = await supabase
-    .from('horses')
-    .select('id, name')
-    .eq('id', horseId)
-    .eq('barn_id', barnId)
-    .maybeSingle()
-
-  if (horseError) throw horseError
-  const horseName = horseData?.name ?? horseId
+  const horseNameMap = await resolveHorseNames([horseId], barnId, supabase)
+  const horseName = horseNameMap.get(horseId) ?? horseId
 
   const paidLessons = (lessonsData ?? []).filter(
     (l): l is { id: string; fee: number; lesson_at: string } => l.fee !== null
