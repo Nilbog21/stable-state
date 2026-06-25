@@ -94,7 +94,7 @@ export default async function LessonsPage({
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
       <div className="flex w-full max-w-2xl items-center justify-between">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           Lessons
         </h1>
         {canCreateLesson && (
