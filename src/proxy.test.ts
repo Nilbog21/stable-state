@@ -31,10 +31,11 @@ function makeRequest(url: string, cookies: Record<string, string> = {}) {
   } as any
 }
 
-const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] }, headers: { set: vi.fn() } }
+const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] } }
 
 describe('proxy', () => {
   beforeEach(() => {
+    mockNextResponseNext.mockClear()
     mockNextResponseNext.mockReturnValue(mockResponse)
     mockNextResponseRedirect.mockReturnValue(mockResponse)
     mockCreateServerClient.mockImplementation((_url: string, _key: string, _config: any) => ({
@@ -57,7 +58,8 @@ describe('proxy', () => {
 
       await proxy(makeRequest('http://localhost:3000/profile?barn=green-acres'))
 
-      expect(mockResponse.headers.set).toHaveBeenCalledWith('x-url', 'http://localhost:3000/profile?barn=green-acres')
+      const arg = mockNextResponseNext.mock.calls[0][0]
+      expect(arg.request.headers.get('x-url')).toBe('http://localhost:3000/profile?barn=green-acres')
     })
   })
 

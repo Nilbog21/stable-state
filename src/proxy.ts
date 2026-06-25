@@ -4,7 +4,9 @@ import { NextResponse, type NextRequest } from 'next/server'
 const BARN_ROUTE = /^\/barn\/([^/]+)\//
 
 export async function proxy(request: NextRequest) {
-  let response = NextResponse.next({ request })
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-url', request.url)
+  let response = NextResponse.next({ request: { headers: requestHeaders } })
 
   const supabase = createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -16,7 +18,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
-          response = NextResponse.next({ request })
+          response = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
             response.cookies.set(name, value, options)
           )
@@ -26,9 +28,6 @@ export async function proxy(request: NextRequest) {
   )
 
   const { data } = await supabase.auth.getUser()
-
-  // Inject full URL so server component layouts can read ?barn= via headers()
-  response.headers.set('x-url', request.url)
 
   const { pathname } = new URL(request.url)
   const barnMatch = BARN_ROUTE.exec(pathname)
