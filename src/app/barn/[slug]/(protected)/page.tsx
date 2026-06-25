@@ -7,6 +7,7 @@ import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import type { LessonWithDetails } from '@/lib/db/types'
 import { UpcomingLessonCard } from './UpcomingLessonCard'
+import { EmptyState } from '@/components/EmptyState'
 
 export default async function BarnDashboardPage({
   params,
@@ -59,7 +60,10 @@ export default async function BarnDashboardPage({
             Your Upcoming Lessons
           </h2>
           {upcomingLessons.length === 0 ? (
-            <p className="text-sm text-zinc-500">No lessons scheduled for the next 7 days.</p>
+            <EmptyState
+              heading="You're all clear"
+              subtext="No lessons scheduled for the next 7 days."
+            />
           ) : (
             <div className="space-y-3">
               {upcomingLessons.map((lesson) => (
