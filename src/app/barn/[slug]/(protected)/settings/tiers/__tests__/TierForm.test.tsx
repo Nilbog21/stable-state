@@ -53,10 +53,10 @@ describe('TierForm — new mode', () => {
     expect(screen.queryByRole('button', { name: /activate/i })).toBeNull()
   })
 
-  it('should_not_render_set_default_button', () => {
+  it('should_not_render_set_as_default_checkbox_in_new_mode', () => {
     render(<TierForm mode="new" onSave={mockSave} />)
 
-    expect(screen.queryByRole('button', { name: /set default/i })).toBeNull()
+    expect(screen.queryByLabelText(/set as default tier/i)).toBeNull()
   })
 
   it('should_not_show_rename_warning', () => {
@@ -109,20 +109,6 @@ describe('TierForm — edit mode, active tier', () => {
     )
 
     expect(screen.queryByRole('button', { name: /^activate$/i })).toBeNull()
-  })
-
-  it('should_render_set_default_button_in_edit_mode', () => {
-    render(
-      <TierForm
-        mode="edit"
-               initialTier={activeTier}
-        onSave={mockSave}
-        onDeactivate={mockDeactivate}
-        onSetDefault={mockSetDefault}
-      />
-    )
-
-    expect(screen.getByRole('button', { name: /set default/i })).toBeDefined()
   })
 
   it('should_not_show_rename_warning_when_name_unchanged', () => {
@@ -259,20 +245,6 @@ describe('TierForm — edit mode, inactive tier', () => {
     expect((screen.getByLabelText(/name/i) as HTMLInputElement).disabled).toBe(true)
   })
 
-  it('should_disable_set_default_button_when_inactive', () => {
-    render(
-      <TierForm
-        mode="edit"
-               initialTier={inactiveTier}
-        onSave={mockSave}
-        onActivate={mockActivate}
-        onSetDefault={mockSetDefault}
-      />
-    )
-
-    expect((screen.getByRole('button', { name: /set default/i }) as HTMLButtonElement).disabled).toBe(true)
-  })
-
   it('should_not_show_rename_warning_for_inactive_tier', () => {
     render(
       <TierForm
@@ -287,5 +259,35 @@ describe('TierForm — edit mode, inactive tier', () => {
     fireEvent.change(screen.getByLabelText(/name/i), { target: { value: 'New Name' } })
 
     expect(screen.queryByText(/renaming will not update past lessons/i)).toBeNull()
+  })
+})
+
+describe('TierForm — set as default checkbox', () => {
+  it('should_render_set_as_default_checkbox_in_edit_mode', () => {
+    const activeTier = createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true })
+    render(<TierForm mode="edit" initialTier={activeTier} onSave={mockSave} />)
+
+    expect(screen.getByLabelText(/set as default tier/i)).toBeDefined()
+  })
+
+  it('should_pre_check_checkbox_when_tier_is_default', () => {
+    const defaultTier = createMockLessonTier({ id: 'tier-1', is_active: true, is_default: true })
+    render(<TierForm mode="edit" initialTier={defaultTier} onSave={mockSave} />)
+
+    expect((screen.getByLabelText(/set as default tier/i) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('should_not_pre_check_checkbox_when_tier_is_not_default', () => {
+    const nonDefaultTier = createMockLessonTier({ id: 'tier-1', is_active: true, is_default: false })
+    render(<TierForm mode="edit" initialTier={nonDefaultTier} onSave={mockSave} />)
+
+    expect((screen.getByLabelText(/set as default tier/i) as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('should_disable_set_as_default_checkbox_when_inactive', () => {
+    const inactiveTier = createMockLessonTier({ id: 'tier-2', name: 'Old', is_active: false })
+    render(<TierForm mode="edit" initialTier={inactiveTier} onSave={mockSave} />)
+
+    expect((screen.getByLabelText(/set as default tier/i) as HTMLInputElement).disabled).toBe(true)
   })
 })

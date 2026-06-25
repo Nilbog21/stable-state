@@ -11,7 +11,6 @@ vi.mock('../../../actions', () => ({
   updateTierAction: vi.fn(),
   deactivateTierAction: vi.fn(),
   reactivateTierAction: vi.fn(),
-  setDefaultTierAction: vi.fn(),
 }))
 vi.mock('../../TierForm', () => ({
   TierForm: ({ mode, initialTier }: { mode: string; initialTier?: { name: string } }) => (
