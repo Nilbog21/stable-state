@@ -565,7 +565,7 @@ describe('resolveHorseNames', () => {
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 
-  it('should_return_map_of_horse_id_to_name', async () => {
+  it('should_resolve_name_for_first_horse_id', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue(makeSelectChain([
         { id: 'horse-1', name: 'Thunderbolt' },
@@ -575,7 +575,20 @@ describe('resolveHorseNames', () => {
 
     const result = await resolveHorseNames(['horse-1', 'horse-2'], 'barn-1')
 
-    expect(result).toEqual(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
+    expect(result.get('horse-1')).toBe('Thunderbolt')
+  })
+
+  it('should_resolve_name_for_second_horse_id', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeSelectChain([
+        { id: 'horse-1', name: 'Thunderbolt' },
+        { id: 'horse-2', name: 'Shadow' },
+      ])),
+    } as any)
+
+    const result = await resolveHorseNames(['horse-1', 'horse-2'], 'barn-1')
+
+    expect(result.get('horse-2')).toBe('Shadow')
   })
 
   it('should_return_undefined_for_horse_id_not_in_barn', async () => {
