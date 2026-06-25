@@ -8,11 +8,10 @@ interface Props {
   initials: string
   email: string
   fullName: string | null
-  showSwitchBarn: boolean
   barnSlug: string
 }
 
-export function UserMenu({ initials, email, fullName, showSwitchBarn, barnSlug }: Props) {
+export function UserMenu({ initials, email, fullName, barnSlug }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const { dirty, setPendingNav } = useNavigationBlocker()
@@ -61,22 +60,6 @@ export function UserMenu({ initials, email, fullName, showSwitchBarn, barnSlug }
           >
             Profile
           </Link>
-          {showSwitchBarn && (
-            <Link
-              href="/barns"
-              onClick={() => setOpen(false)}
-              onNavigate={(e) => {
-                if (dirty) {
-                  e.preventDefault()
-                  setOpen(false)
-                  setPendingNav({ type: 'push', href: '/barns' })
-                }
-              }}
-              className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-            >
-              Switch Barn
-            </Link>
-          )}
           <Link
             href={`/barn/${barnSlug}/guide`}
             onClick={() => setOpen(false)}

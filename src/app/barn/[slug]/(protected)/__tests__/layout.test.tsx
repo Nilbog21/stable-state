@@ -428,7 +428,7 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     expect(screen.getByRole('button', { name: /user menu/i }).textContent).toBe('?')
   })
 
-  it('should_show_switch_barn_link_when_user_has_multiple_active_memberships', async () => {
+  it('should_show_barn_switcher_caret_when_user_has_multiple_active_memberships', async () => {
     const secondMembership = {
       barn: { id: 'barn-2', name: 'Other Barn', slug: 'other-barn', created_at: '' },
       membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'active' as const },
@@ -436,19 +436,17 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, secondMembership])
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
-    expect(screen.getByRole('link', { name: /switch barn/i })).toBeDefined()
+    expect(screen.getByRole('button', { name: /switch barn/i })).toBeDefined()
   })
 
-  it('should_not_show_switch_barn_link_when_user_has_one_active_membership', async () => {
+  it('should_not_show_barn_switcher_caret_when_user_has_one_active_membership', async () => {
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry])
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
-    expect(screen.queryByRole('link', { name: /switch barn/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /switch barn/i })).toBeNull()
   })
 
-  it('should_not_show_switch_barn_link_when_second_membership_is_pending', async () => {
+  it('should_not_show_barn_switcher_caret_when_second_membership_is_pending', async () => {
     const pendingMembership = {
       barn: { id: 'barn-2', name: 'Other Barn', slug: 'other-barn', created_at: '' },
       membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'pending' as const },
@@ -456,8 +454,7 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, pendingMembership])
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
-    expect(screen.queryByRole('link', { name: /switch barn/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /switch barn/i })).toBeNull()
   })
 })
 
