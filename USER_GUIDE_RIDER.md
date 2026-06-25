@@ -18,7 +18,7 @@ Tap the bell icon in the nav bar to view your notifications. If your profile is 
 
 ## Your documents
 
-Go to **Members** and tap your card to manage your documents. You can upload a **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, or **Other** document (PDF, JPG, PNG, or DOCX — max 5 MB). Tap a file name to open the document (link is valid for 5 minutes). You can also delete any document you have uploaded.
+Go to **Members** and tap your card to manage your documents. Your documents are shown in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap a filename in the **Link** column to open it (link is valid for 5 minutes). Tap **Delete** to remove a document. To add a new one, tap **Choose File** (the filename appears next to the button once chosen), add optional notes, and tap **Upload**. Accepted types: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other** — PDF, JPG, PNG, or DOCX (max 5 MB).
 
 ## Profile & Guide
 

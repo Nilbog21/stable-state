@@ -35,7 +35,7 @@ Go to **Horses** to see horses grouped into two sections:
 - **Available** — horses in active rotation, sorted by total exertion (7d) ascending. Each card shows name, total exertion, lesson count, and jumping count for the last 7 days.
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name and the reason entered by your barn manager.
 
-Tap any card to open the horse's detail page for full availability details and documents. The **Documents** section lists all uploaded files for the horse, labeled by type. Tap a file name to open it (link is valid for 5 minutes). Use the **Upload Document** form to add a new file; accepted types are PDF, JPG, PNG, and DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**, **Other**.
+Tap any card to open the horse's detail page for full availability details and documents. The **Documents** section shows uploaded files in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap a filename in the **Link** column to open the document (link is valid for 5 minutes). To upload a new file, tap **Choose File** in the Upload Document form, select a file (the filename appears next to the button once chosen), add optional notes, and tap **Upload**. Accepted types: PDF, JPG, PNG, DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**, **Other**.
 
 ## Profile & Guide
 
@@ -45,4 +45,4 @@ Tap your avatar (your initials) in the top-right corner to open the account menu
 
 Go to **Members** to view the barn's rider roster. Your own card appears at the top; the Riders section lists all active riders with links to their detail pages.
 
-Tap your own card to manage your documents: upload an **Instructor Contract** or **Other** document (PDF, JPG, PNG, or DOCX — max 5 MB) or delete an existing one. Tap any rider card to view that rider's documents (read-only — you cannot upload or delete rider documents). Tap a file name to open the document (link is valid for 5 minutes).
+Tap your own card to manage your documents. Documents are shown in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap a filename in the **Link** column to open the document (link is valid for 5 minutes). Tap **Delete** to remove one of your own documents. To upload a new file, tap **Choose File** (the filename appears next to the button once chosen), add optional notes, and tap **Upload**. Accepted types: **Instructor Contract**, **Other** — PDF, JPG, PNG, or DOCX (max 5 MB). Tap any rider card to view that rider's documents in the same table layout (read-only — you cannot upload or delete rider documents).
