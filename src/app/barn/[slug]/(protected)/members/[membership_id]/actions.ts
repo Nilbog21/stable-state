@@ -74,7 +74,6 @@ export async function deleteDocumentAction(
   barnSlug: string,
   membershipId: string,
   docId: string,
-  docType: 'trainer' | 'rider' | 'manager',
   storagePath: string
 ): Promise<void> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
@@ -91,7 +90,7 @@ export async function deleteDocumentAction(
     throw new Error('Forbidden')
   }
 
-  if (docType === 'rider') {
+  if (targetMembership.role === 'rider') {
     await deleteRiderDocument(docId, barn.id)
   } else {
     await deleteTrainerDocument(docId, barn.id)

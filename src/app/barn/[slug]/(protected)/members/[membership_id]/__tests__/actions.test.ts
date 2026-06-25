@@ -345,7 +345,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
-    await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-target-trn/file.pdf')
+    await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
 
     expect(deleteTrainerDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
   })
@@ -354,7 +354,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-trn' } as any, barn: mockBarn, membership: trainerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(trainerMembership)
 
-    await deleteDocumentAction('green-acres', 'mem-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-trn/file.pdf')
+    await deleteDocumentAction('green-acres', 'mem-trn', 'doc-1', 'barn-1/trainers/user-trn/file.pdf')
 
     expect(deleteTrainerDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
   })
@@ -363,7 +363,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
     vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
 
-    await deleteDocumentAction('green-acres', 'mem-rdr', 'doc-1', 'rider', 'barn-1/riders/user-rdr/file.pdf')
+    await deleteDocumentAction('green-acres', 'mem-rdr', 'doc-1', 'barn-1/riders/user-rdr/file.pdf')
 
     expect(deleteRiderDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
   })
@@ -373,7 +373,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
     await expect(
-      deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'rider', 'barn-1/riders/user-target-rdr/waiver.pdf')
+      deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'barn-1/riders/user-target-rdr/waiver.pdf')
     ).rejects.toThrow()
   })
 
@@ -381,7 +381,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
-    await deleteDocumentAction('green-acres', 'mem-mgr-target', 'doc-1', 'manager', 'barn-1/managers/user-mgr-target/file.pdf')
+    await deleteDocumentAction('green-acres', 'mem-mgr-target', 'doc-1', 'barn-1/managers/user-mgr-target/file.pdf')
 
     expect(deleteTrainerDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
   })
@@ -390,7 +390,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
-    await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-target-trn/file.pdf')
+    await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
 
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
@@ -399,7 +399,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
-    await deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'rider', 'barn-1/riders/user-target-rdr/waiver.pdf')
+    await deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'barn-1/riders/user-target-rdr/waiver.pdf')
 
     expect(deleteRiderDocument).toHaveBeenCalledWith('doc-2', 'barn-1')
   })
@@ -411,7 +411,7 @@ describe('deleteDocumentAction', () => {
     )
 
     await expect(
-      deleteDocumentAction('green-acres', 'mem-unknown', 'doc-1', 'trainer', 'path')
+      deleteDocumentAction('green-acres', 'mem-unknown', 'doc-1', 'path')
     ).rejects.toThrow()
   })
 
@@ -420,7 +420,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(null)
 
     await expect(
-      deleteDocumentAction('green-acres', 'mem-gone', 'doc-1', 'trainer', 'path')
+      deleteDocumentAction('green-acres', 'mem-gone', 'doc-1', 'path')
     ).rejects.toThrow()
   })
 
@@ -430,7 +430,7 @@ describe('deleteDocumentAction', () => {
     vi.mocked(removeFile).mockRejectedValue(new Error('storage remove failed'))
 
     await expect(
-      deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'trainer', 'barn-1/trainers/user-target-trn/file.pdf')
+      deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
     ).resolves.toBeUndefined()
   })
 })

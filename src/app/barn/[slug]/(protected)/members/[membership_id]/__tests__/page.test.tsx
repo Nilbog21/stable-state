@@ -172,6 +172,15 @@ describe('MemberDetailPage', () => {
     await expect(MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
+  it('should_show_not_found_when_trainer_views_manager', async () => {
+    setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
+    )
+    await expect(MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
   it('should_show_own_rider_documents_for_rider_viewing_self', async () => {
     setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)

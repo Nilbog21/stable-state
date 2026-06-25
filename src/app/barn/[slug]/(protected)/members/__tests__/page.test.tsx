@@ -333,7 +333,7 @@ describe('MembersPage', () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('No managers yet.')).toBeDefined()
+    expect(screen.getByText('No managers yet')).toBeDefined()
   })
 
   it('should_not_render_managers_section_for_trainer', async () => {

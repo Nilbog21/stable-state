@@ -76,7 +76,10 @@ export default async function MembersPage({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No managers yet.</p>
+            <EmptyState
+              heading="No managers yet"
+              subtext="Other managers will appear here once they join."
+            />
           )}
         </section>
       )}
