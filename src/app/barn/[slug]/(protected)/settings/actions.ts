@@ -57,9 +57,9 @@ export async function updateTierAction(
   const default_jumping = parseBoolean(formData.get('default_jumping') as string | null)
   const default_exertion_level = parseExertion(formData.get('default_exertion_level') as string | null)
 
-  await updateTier(tierId, barn.id, { name, price, default_jumping, default_exertion_level })
+  const tier = await updateTier(tierId, barn.id, { name, price, default_jumping, default_exertion_level })
 
-  if (formData.get('set_as_default') === 'on') {
+  if (formData.get('set_as_default') === 'on' && !tier.is_default && tier.is_active) {
     await setDefaultTier(tierId, barn.id)
   }
 
