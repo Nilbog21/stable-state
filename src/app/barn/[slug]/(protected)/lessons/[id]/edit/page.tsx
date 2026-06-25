@@ -63,7 +63,7 @@ export default async function EditLessonPage({
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white pt-8 dark:bg-black">
-      <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+      <h1 className="w-full max-w-sm text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Edit Lesson
       </h1>
       <LessonForm
