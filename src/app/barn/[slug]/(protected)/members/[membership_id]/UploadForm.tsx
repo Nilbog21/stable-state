@@ -18,12 +18,12 @@ const RIDER_TYPES: { value: RiderDocumentType; label: string }[] = [
 const MAX_FILE_SIZE = 5 * 1024 * 1024
 
 interface Props {
-  memberRole: 'trainer' | 'rider'
+  memberRole: 'trainer' | 'rider' | 'manager'
   action: (formData: FormData) => Promise<void>
 }
 
 export function UploadForm({ memberRole, action }: Props) {
-  const types = memberRole === 'trainer' ? TRAINER_TYPES : RIDER_TYPES
+  const types = memberRole === 'rider' ? RIDER_TYPES : TRAINER_TYPES
   const [selectedType, setSelectedType] = useState(types[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)

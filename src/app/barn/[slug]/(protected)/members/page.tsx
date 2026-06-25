@@ -24,14 +24,17 @@ export default async function MembersPage({
   const profile = await getProfileByUserId(user.id)
   const youName = profile ? `${profile.first_name} ${profile.last_name}` : (user.email ?? 'You')
 
+  let managers: { membershipId: string; userId: string; name: string }[] = []
   let trainers: { membershipId: string; userId: string; name: string }[] = []
   let riders: { membershipId: string; userId: string; name: string }[] = []
 
   if (membership.role === 'manager') {
-    ;[trainers, riders] = await Promise.all([
+    ;[managers, trainers, riders] = await Promise.all([
+      getActiveMembersWithProfiles(barn.id, 'manager'),
       getActiveMembersWithProfiles(barn.id, 'trainer'),
       getActiveMembersWithProfiles(barn.id, 'rider'),
     ])
+    managers = managers.filter((m) => m.membershipId !== membership.id)
   } else if (membership.role === 'trainer') {
     riders = await getActiveMembersWithProfiles(barn.id, 'rider')
   }
@@ -53,6 +56,30 @@ export default async function MembersPage({
           {youName}
         </Link>
       </section>
+
+      {membership.role === 'manager' && (
+        <section className="mb-10">
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Managers
+          </h2>
+          {managers.length > 0 ? (
+            <ul className="space-y-2">
+              {managers.map((m) => (
+                <li key={m.membershipId}>
+                  <Link
+                    href={`/barn/${slug}/members/${m.membershipId}`}
+                    className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                  >
+                    {m.name}
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">No managers yet.</p>
+          )}
+        </section>
+      )}
 
       {membership.role === 'manager' && (
         <section className="mb-10">
