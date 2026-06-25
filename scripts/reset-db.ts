@@ -99,7 +99,7 @@ async function run() {
 
   const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
-  console.log('Tearing down existing dev fixtures…')
+  console.log('Tearing down all data…')
 
   await teardownAllData(supabase)
 
