@@ -44,7 +44,7 @@ Tap any member card to open their detail page. Documents are shown in a table wi
 
 **Delete a lesson** — From the Lessons list, click the delete icon on any lesson.
 
-**Lesson notes** — Open any lesson to see per-horse and per-rider note fields. Tap any note field to edit it inline; changes are saved immediately. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
+**Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
 
 ## Finances
 

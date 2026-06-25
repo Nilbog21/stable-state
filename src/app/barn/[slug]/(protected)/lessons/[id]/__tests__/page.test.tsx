@@ -348,7 +348,6 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('watch left lead')).toBeDefined()
-    expect(screen.queryByDisplayValue('watch left lead')).toBeNull()
   })
 
   it('should_show_horse_notes_inline_for_manager', async () => {
@@ -356,7 +355,6 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('watch left lead')).toBeDefined()
-    expect(screen.queryByDisplayValue('watch left lead')).toBeNull()
   })
 
   it('should_not_show_horse_notes_for_rider', async () => {
@@ -370,7 +368,6 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('good position')).toBeDefined()
-    expect(screen.queryByDisplayValue('good position')).toBeNull()
   })
 
   it('should_show_rider_notes_inline_for_manager', async () => {
@@ -378,14 +375,12 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('good position')).toBeDefined()
-    expect(screen.queryByDisplayValue('good position')).toBeNull()
   })
 
   it('should_show_private_notes_inline_for_trainer', async () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('struggling with confidence')).toBeDefined()
-    expect(screen.queryByDisplayValue('struggling with confidence')).toBeNull()
   })
 
   it('should_show_private_notes_inline_for_manager', async () => {
@@ -393,7 +388,6 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('struggling with confidence')).toBeDefined()
-    expect(screen.queryByDisplayValue('struggling with confidence')).toBeNull()
   })
 
   it('should_not_render_any_notes_textareas_on_detail_page', async () => {
@@ -455,6 +449,21 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('needs work')).toBeNull()
+  })
+
+  it('should_show_own_notes_for_rider_in_group_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: 'good position', private_notes: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: 'needs work', private_notes: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('good position')).toBeDefined()
   })
 
   it('should_render_dash_for_null_rider_name_in_group_lesson_for_rider_role', async () => {
