@@ -12,12 +12,50 @@ export function createServiceClient(url: string, key: string): SupabaseClient {
   })
 }
 
+async function removeDocumentStorage(
+  table: string,
+  query: { data: { storage_path: string }[] | null; error: unknown },
+  supabase: SupabaseClient
+): Promise<void> {
+  const paths = (query.data ?? []).map((d) => d.storage_path)
+  if (!paths.length) return
+  const { error } = await supabase.storage.from('documents').remove(paths)
+  if (error) throw new Error(`remove storage ${table}: ${(error as { message?: string }).message}`)
+}
+
 export async function teardownBarnData(barnId: string, supabase: SupabaseClient): Promise<void> {
   mustSucceed(await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId }), 'teardown lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', barnId), 'delete lesson_tiers')
   mustSucceed(await supabase.from('notifications').delete().eq('barn_id', barnId), 'delete notifications')
+  for (const table of ['horse_documents', 'trainer_documents', 'rider_documents']) {
+    await removeDocumentStorage(table, await supabase.from(table).select('storage_path').eq('barn_id', barnId), supabase)
+    mustSucceed(await supabase.from(table).delete().eq('barn_id', barnId), `delete ${table}`)
+  }
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', barnId), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
+}
+
+export async function teardownAllData(supabase: SupabaseClient): Promise<void> {
+  mustSucceed(await supabase.rpc('teardown_all_lesson_data'), 'teardown all lessons')
+  mustSucceed(await supabase.from('lesson_tiers').delete().not('id', 'is', null), 'delete lesson_tiers')
+  mustSucceed(await supabase.from('notifications').delete().not('id', 'is', null), 'delete notifications')
+  for (const table of ['horse_documents', 'trainer_documents', 'rider_documents']) {
+    await removeDocumentStorage(table, await supabase.from(table).select('storage_path').not('id', 'is', null), supabase)
+    mustSucceed(await supabase.from(table).delete().not('id', 'is', null), `delete ${table}`)
+  }
+  mustSucceed(await supabase.from('horses').delete().not('id', 'is', null), 'delete horses')
+  mustSucceed(await supabase.from('barn_memberships').delete().not('id', 'is', null), 'delete barn_memberships')
+  mustSucceed(await supabase.from('profiles').delete().not('id', 'is', null), 'delete profiles')
+  mustSucceed(await supabase.from('barns').delete().not('id', 'is', null), 'delete barns')
+  while (true) {
+    const { data, error } = await supabase.auth.admin.listUsers({ page: 1, perPage: 50 })
+    if (error) throw new Error(`list auth users: ${error.message}`)
+    if (!data || data.users.length === 0) break
+    for (const user of data.users) {
+      const { error: delErr } = await supabase.auth.admin.deleteUser(user.id)
+      if (delErr) throw new Error(`delete auth user ${user.id}: ${delErr.message}`)
+    }
+  }
 }
 
 export async function findAuthUserIdsByEmails(emails: string[], supabase: SupabaseClient): Promise<string[]> {

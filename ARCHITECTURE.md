@@ -146,7 +146,9 @@ No API routes. All mutations go through Next.js Server Actions.
 
 `set_can_instruct(p_membership_id uuid, p_barn_id uuid, p_value boolean)` — sets `can_instruct` on a single `barn_memberships` row. `SECURITY DEFINER`; verifies the caller is a manager of `p_barn_id` then updates only the `can_instruct` column. `EXECUTE` revoked from `PUBLIC` and granted to `authenticated`.
 
-`teardown_dev_barn_lessons(p_barn_id uuid)` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows for a barn in a single transaction, so the deferred participant-count triggers see the lesson rows gone at commit and skip enforcement. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called exclusively by `scripts/reset-db.ts`.
+`teardown_dev_barn_lessons(p_barn_id uuid)` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows for a barn in a single transaction, so the deferred participant-count triggers see the lesson rows gone at commit and skip enforcement. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called by `teardownBarnData` in `scripts/script-utils.ts`.
+
+`teardown_all_lesson_data()` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows across all barns in a single transaction, satisfying the deferred participant-count triggers at commit. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called by `teardownAllData` in `scripts/script-utils.ts`.
 
 `get_horse_exertion_summary(p_barn_id uuid, p_since timestamptz)` — returns one row per horse in the barn with `is_available` and aggregated `lesson_count`, `total_exertion`, and `jumping_count` for lessons on or after `p_since`. Uses a subquery JOIN + GROUP BY so horses with zero in-window lessons appear with zero counts. `SECURITY INVOKER`; `EXECUTE` granted to `authenticated`. Used by `getHorseExertionSummary` in `horses.ts`.
 

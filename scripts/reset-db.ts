@@ -5,7 +5,7 @@ import { createTier } from '@/lib/db/lesson-tiers'
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
-import { mustSucceed, createServiceClient, teardownBarnData, findAuthUserIdsByEmails } from './script-utils'
+import { mustSucceed, createServiceClient, teardownAllData } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -99,41 +99,9 @@ async function run() {
 
   const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
-  console.log('Tearing down existing dev fixtures…')
+  console.log('Tearing down all data…')
 
-  const memberships = mustSucceed(
-    await supabase.from('barn_memberships').select('user_id').eq('barn_id', DEV_BARN_ID),
-    'fetch memberships'
-  )
-  const devUserIdSet = new Set((memberships ?? []).map((m: { user_id: string }) => m.user_id))
-
-  const devEmails = [
-    DEV_MANAGER_2.email,
-    ...DEV_TRAINERS.map((t) => t.email),
-    ...DEV_RIDERS.map((r) => r.email),
-    DEV_PENDING_RIDER.email,
-  ]
-  const orphanIds = await findAuthUserIdsByEmails(devEmails, supabase)
-  for (const id of orphanIds) devUserIdSet.add(id)
-  const devUserIds = [...devUserIdSet]
-
-  await teardownBarnData(DEV_BARN_ID, supabase)
-  mustSucceed(
-    await supabase.from('profiles').delete().eq('barn_id', DEV_BARN_ID),
-    'delete dev profiles'
-  )
-  mustSucceed(await supabase.from('barns').delete().eq('id', DEV_BARN_ID), 'delete barn')
-
-  if (devUserIds.length > 0) {
-    mustSucceed(
-      await supabase.from('profiles').delete().in('user_id', devUserIds),
-      'delete profiles'
-    )
-    for (const userId of devUserIds) {
-      const { error } = await supabase.auth.admin.deleteUser(userId)
-      if (error) throw new Error(`delete auth user ${userId}: ${error.message}`)
-    }
-  }
+  await teardownAllData(supabase)
 
   console.log('Re-seeding dev fixtures…')
 
