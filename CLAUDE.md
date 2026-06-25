@@ -34,6 +34,9 @@ Mobile is the primary platform. All interactions must work on touch and small sc
 ### View switchers
 Use pill-style segmented controls (tab pills) for switching between data views. This is the standard SaaS pattern (Stripe, Linear, GitHub). Do not use tabs, dropdowns, or radio buttons for view-switching.
 
+### Time display
+Always display times in 12-hour AM/PM format (e.g. "12:00 AM", "1:00 PM"). Never display 24-hour/military time in the UI. Internal storage and form values remain in 24-hour format.
+
 ## Release Workflow
 
 - Features branch off `release/release-N`
