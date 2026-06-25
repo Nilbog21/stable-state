@@ -33,7 +33,7 @@ async function hydrateParticipants(
     horseIds.length
       ? supabase.from('horses').select('id, name').in('id', horseIds)
       : Promise.resolve({ data: [], error: null }),
-    resolveMemberNames(riderIds, supabase),
+    resolveMemberNames(riderIds, barnId, supabase),
   ])
 
   if (horsesError) throw horsesError

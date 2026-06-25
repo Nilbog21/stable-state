@@ -121,7 +121,7 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
 
   const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
 
-  const membershipNameMap = await resolveMemberNames(riderIds, supabase)
+  const membershipNameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
   return outstandingRaw.map((lesson) => {
     const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
@@ -234,7 +234,7 @@ export async function getRiderIncomeSummary(
 
   const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
 
-  const memberNameMap = await resolveMemberNames(riderIds, supabase)
+  const memberNameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
   const incomeMap = new Map<string, number>()
 

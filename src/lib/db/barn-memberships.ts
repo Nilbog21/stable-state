@@ -212,6 +212,7 @@ export async function getActiveMembersWithProfiles(
 
 export async function resolveMemberNames(
   membershipIds: string[],
+  barnId: string,
   client?: SupabaseClient
 ): Promise<Map<string, string>> {
   if (!membershipIds.length) return new Map()
@@ -222,6 +223,7 @@ export async function resolveMemberNames(
   const { data: members, error: membersError } = await supabase
     .from('barn_memberships')
     .select('id, user_id')
+    .eq('barn_id', barnId)
     .in('id', membershipIds) as { data: MemberRow[] | null; error: Error | null }
 
   if (membersError) throw membersError
