@@ -75,7 +75,7 @@ describe('ProfilePage', () => {
     mockAuth({ id: 'user-1', email: 'user@example.com' })
     vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
 
-    const jsx = await ProfilePage()
+    const jsx = await ProfilePage({ searchParams: Promise.resolve({}) })
     render(jsx as React.ReactElement)
 
     expect(screen.getByRole('heading', { name: /edit profile/i })).toBeDefined()
@@ -121,6 +121,18 @@ describe('ProfilePage - redirectAfterSave', () => {
     render((await ProfilePage()) as React.ReactElement)
     const [props] = vi.mocked(ProfileForm).mock.calls[0]
     expect(props.redirectAfterSave).toBe('/barns')
+  })
+
+  it('should_pass_redirect_to_barn_slug_when_barn_param_is_present', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      { barn: createMockBarn({ slug: 'barn-a' }), membership: createMockMembership({ status: 'active' }) },
+      { barn: createMockBarn({ id: 'barn-2', slug: 'barn-b' }), membership: createMockMembership({ id: 'mem-2', barn_id: 'barn-2', status: 'active' }) },
+    ])
+    render((await ProfilePage({ searchParams: Promise.resolve({ barn: 'barn-a' }) })) as React.ReactElement)
+    const [props] = vi.mocked(ProfileForm).mock.calls[0]
+    expect(props.redirectAfterSave).toBe('/barn/barn-a')
   })
 })
 

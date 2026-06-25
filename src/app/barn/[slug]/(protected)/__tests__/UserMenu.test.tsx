@@ -91,10 +91,10 @@ describe('UserMenu - Profile link', () => {
     expect(screen.getByRole('link', { name: /profile/i })).toBeDefined()
   })
 
-  it('should_profile_link_point_to_profile_route', () => {
+  it('should_profile_link_point_to_profile_route_with_barn_param', () => {
     render(<UserMenu {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
-    expect((screen.getByRole('link', { name: /profile/i }) as HTMLAnchorElement).href).toContain('/profile')
+    expect((screen.getByRole('link', { name: /profile/i }) as HTMLAnchorElement).href).toContain('/profile?barn=test-barn')
   })
 
   it('should_close_dropdown_when_profile_link_is_clicked', () => {
@@ -128,6 +128,27 @@ describe('UserMenu - outside click/touch closes dropdown', () => {
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     fireEvent.touchStart(screen.getByTestId('outside'))
     expect(screen.queryByText('Sign out')).toBeNull()
+  })
+})
+
+describe('UserMenu - Switch Barn link', () => {
+  it('should_show_switch_barn_link_when_show_switch_barn_is_true', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: /switch barn/i })).toBeDefined()
+  })
+
+  it('should_close_dropdown_when_switch_barn_link_is_clicked', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /switch barn/i }))
+    expect(screen.queryByText('Sign out')).toBeNull()
+  })
+
+  it('should_not_show_switch_barn_link_when_show_switch_barn_is_false', () => {
+    render(<UserMenu {...baseProps} showSwitchBarn={false} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.queryByRole('link', { name: /switch barn/i })).toBeNull()
   })
 })
 
@@ -184,11 +205,11 @@ describe('UserMenu - dirty navigation blocking', () => {
     } as any)
   })
 
-  it('should_set_pending_nav_to_profile_when_dirty_and_profile_link_clicked', () => {
+  it('should_set_pending_nav_to_profile_with_barn_param_when_dirty_and_profile_link_clicked', () => {
     render(<UserMenu {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     fireEvent.click(screen.getByRole('link', { name: /profile/i }))
-    expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/profile' })
+    expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/profile?barn=test-barn' })
   })
 
   it('should_set_pending_nav_to_guide_when_dirty_and_user_guide_link_clicked', () => {

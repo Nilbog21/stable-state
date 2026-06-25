@@ -35,6 +35,7 @@ const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] } }
 
 describe('proxy', () => {
   beforeEach(() => {
+    mockNextResponseNext.mockClear()
     mockNextResponseNext.mockReturnValue(mockResponse)
     mockNextResponseRedirect.mockReturnValue(mockResponse)
     mockCreateServerClient.mockImplementation((_url: string, _key: string, _config: any) => ({
@@ -50,6 +51,15 @@ describe('proxy', () => {
 
       expect(mockNextResponseNext).toHaveBeenCalled()
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
+    })
+
+    it('should_set_x_url_header_with_request_url', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+
+      await proxy(makeRequest('http://localhost:3000/profile?barn=green-acres'))
+
+      const arg = mockNextResponseNext.mock.calls[0][0]
+      expect(arg.request.headers.get('x-url')).toBe('http://localhost:3000/profile?barn=green-acres')
     })
   })
 
