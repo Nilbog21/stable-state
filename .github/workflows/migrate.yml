@@ -1,3 +1,6 @@
+# SUPABASE_PROJECT_REF must be the production project ref (Supabase dashboard → Settings → General → Reference ID).
+# SUPABASE_ACCESS_TOKEN is a personal access token from app.supabase.com/account/tokens.
+# Both secrets live in GitHub → Settings → Secrets and variables → Actions.
 name: Migrate
 
 on:
