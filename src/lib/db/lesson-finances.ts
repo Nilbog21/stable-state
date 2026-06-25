@@ -166,6 +166,7 @@ export async function getHorseIncomeSummary(
   const { data: lessonHorses, error: lhError } = await supabase
     .from('lesson_horses')
     .select('lesson_id, horse_id')
+    .eq('barn_id', barnId)
     .in('lesson_id', lessonIds)
 
   if (lhError) throw lhError
