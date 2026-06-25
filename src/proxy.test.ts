@@ -31,7 +31,7 @@ function makeRequest(url: string, cookies: Record<string, string> = {}) {
   } as any
 }
 
-const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] } }
+const mockResponse = { cookies: { set: vi.fn(), getAll: () => [] }, headers: { set: vi.fn() } }
 
 describe('proxy', () => {
   beforeEach(() => {
@@ -50,6 +50,14 @@ describe('proxy', () => {
 
       expect(mockNextResponseNext).toHaveBeenCalled()
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
+    })
+
+    it('should_set_x_url_header_with_request_url', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+
+      await proxy(makeRequest('http://localhost:3000/profile?barn=green-acres'))
+
+      expect(mockResponse.headers.set).toHaveBeenCalledWith('x-url', 'http://localhost:3000/profile?barn=green-acres')
     })
   })
 
