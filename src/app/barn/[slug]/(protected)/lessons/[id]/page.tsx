@@ -57,7 +57,7 @@ export default async function LessonDetailPage({
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
       <div className="w-full max-w-2xl">
         <div className="mb-6 flex items-center gap-4">
-          <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
             Lesson Detail
           </h1>
           <span className="rounded-full bg-zinc-100 px-3 py-1 text-sm font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">

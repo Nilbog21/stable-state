@@ -40,7 +40,7 @@ export default async function LessonNewPage({
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
-      <h1 className="text-4xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+      <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         New Lesson
       </h1>
       <LessonForm
