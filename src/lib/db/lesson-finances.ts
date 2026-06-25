@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getRiderEnrolledLessonIds } from './lesson-participants'
 import type { FinancialSummary, HorseIncomeDetailRow, HorseIncomeSummary, OutstandingLesson, RiderIncomeDetailRow, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
 
 export async function getFinancialSummary(
@@ -69,23 +70,7 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
   let outstandingRaw: LessonRow[]
 
   if (role === 'rider' && userId) {
-    const { data: rider, error: riderErr } = await supabase
-      .from('barn_memberships')
-      .select('id')
-      .eq('barn_id', barnId)
-      .eq('user_id', userId)
-      .eq('role', 'rider')
-      .maybeSingle()
-    if (riderErr) throw riderErr
-    if (!rider) return []
-
-    const { data: riderLessons, error: rlErr } = await supabase
-      .from('lesson_riders')
-      .select('lesson_id')
-      .eq('barn_id', barnId)
-      .eq('rider_id', rider.id)
-    if (rlErr) throw rlErr
-    const lessonIds = (riderLessons ?? []).map((r: { lesson_id: string }) => r.lesson_id)
+    const lessonIds = await getRiderEnrolledLessonIds(barnId, userId)
     if (!lessonIds.length) return []
 
     const { data, error } = await supabase
