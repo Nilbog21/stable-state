@@ -176,6 +176,7 @@ describe('getLessonsByBarn', () => {
       ...lesson,
       instructor_name: 'John Doe',
       horse_names: ['Thunderbolt'],
+      horse_ids: ['horse-1'],
       rider_names: ['Alice Rider'],
       rider_ids: ['mem-1'],
       rider_count: 1,
@@ -264,6 +265,22 @@ describe('getLessonsByBarn', () => {
     const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
     expect(result[0].horse_names).toEqual([])
+  })
+
+  it('should_return_horse_ids_alongside_horse_names', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([lesson])
+      if (table === 'lesson_horses') return makeInChain([{ lesson_id: lesson.id, horse_id: 'horse-1' }])
+      if (table === 'lesson_riders') return makeInChain([])
+      if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+
+    expect(result[0].horse_ids).toEqual(['horse-1'])
   })
 
   it('should_include_lesson_type_in_results', async () => {
@@ -1318,6 +1335,7 @@ describe('getUpcomingLessons', () => {
       ...lesson,
       instructor_name: 'John Doe',
       horse_names: ['Thunderbolt'],
+      horse_ids: ['horse-1'],
       rider_names: ['Alice Rider'],
       rider_ids: ['mem-1'],
       rider_count: 1,

@@ -43,9 +43,11 @@ async function hydrateParticipants(
   return lessons.map((lesson) => {
     const profile = lesson.instructor_id ? profileMap.get(lesson.instructor_id) : undefined
     const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
-    const horseNames = horseJunctionRows
-      .map((lh) => horseNameMap.get(lh.horse_id))
-      .filter((name): name is string => Boolean(name))
+    const horseParticipants = horseJunctionRows
+      .map((lh) => ({ id: lh.horse_id, name: horseNameMap.get(lh.horse_id) }))
+      .filter((p): p is { id: string; name: string } => Boolean(p.name))
+    const horseNames = horseParticipants.map((p) => p.name)
+    const horseIds = horseParticipants.map((p) => p.id)
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
     const riderParticipants = riderJunctionRows
       .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id) }))
@@ -56,6 +58,7 @@ async function hydrateParticipants(
       ...lesson,
       instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
       horse_names: horseNames,
+      horse_ids: horseIds,
       horse_count: horseJunctionRows.length,
       rider_names: riderNames,
       rider_ids: riderIds,
