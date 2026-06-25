@@ -193,6 +193,26 @@ describe('uploadDocumentAction', () => {
     await expect(uploadDocumentAction('green-acres', 'mem-target-rdr', fd)).rejects.toThrow()
   })
 
+  it('should_accept_other_as_valid_trainer_record_type', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const fd = makeUploadFormData(makePdfFile(), 'other')
+    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+
+    expect(createTrainerDocument).toHaveBeenCalled()
+  })
+
+  it('should_accept_other_as_valid_rider_record_type', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+
+    const fd = makeUploadFormData(makePdfFile(), 'other')
+    await uploadDocumentAction('green-acres', 'mem-target-rdr', fd)
+
+    expect(createRiderDocument).toHaveBeenCalled()
+  })
+
   it('should_revalidate_member_detail_path_after_upload', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
