@@ -155,8 +155,7 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    const badges = screen.getAllByText('Default')
-    expect(badges.some((el) => el.tagName.toLowerCase() === 'span')).toBe(true)
+    expect(screen.getAllByText('Default').length).toBe(2)
   })
 
   it('should_render_em_dash_when_tier_price_is_null', async () => {
@@ -171,6 +170,20 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByText('—')).toBeDefined()
+  })
+
+  it('should_render_dollar_price_when_tier_price_is_set', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', price: 50 }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('$50')).toBeDefined()
   })
 
   it('should_render_edit_link_for_active_tier', async () => {

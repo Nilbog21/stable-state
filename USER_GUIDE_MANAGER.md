@@ -56,7 +56,7 @@ In the **By Rider** tab, tap any rider name to open a drill-down page listing ea
 
 ## Settings
 
-Go to **Settings** to manage fee tiers. You can add a new tier, edit an existing tier's name or price, set a default exertion level and jumping preference for a tier, set a tier as the default for new lessons, or deactivate a tier. The default tier cannot be deactivated until a different tier is set as default first.
+Go to **Settings** to manage fee tiers. The tier list shows each tier's name, price, default status, and active/inactive state. Tap **Edit** next to any tier to open its detail page, where you can rename it, change the price, set jumping and exertion defaults, set it as the default for new lessons, or deactivate it. Tap **Add tier** to create a new tier.
 
 ## Approvals
 
