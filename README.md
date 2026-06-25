@@ -43,7 +43,7 @@ To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 a
 bash scripts/reset-db.sh
 ```
 
-Requires `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to pre-authorize your manager account, then opens `change-user.sh` to let you select a dev role to sign in as.
+Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to pre-authorize your manager account, then opens `change-user.sh` to let you select a dev role to sign in as.
 
 ## Database setup
 
@@ -53,7 +53,7 @@ Run all migration files in `supabase/migrations/` against your Supabase project 
 
 ### Seed a manager account
 
-Pre-authorize a Google account to sign in as a barn manager. The script inserts a row into `seeded_accounts`; on first Google sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row, then deletes the staging row.
+Pre-authorize a Google account to sign in as a barn manager. The script inserts a row into `seeded_accounts`; on first sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row, then deletes the staging row.
 
 **Prerequisites:**
 - The barn slug must already exist (create via the Supabase dashboard if needed)
@@ -88,7 +88,7 @@ Pre-authorize the barn manager's Google email before their first sign-in. The ba
 bash scripts/seed-account.sh
 ```
 
-On first Google OAuth sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row automatically.
+On first OAuth sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row automatically.
 
 ### 3. Add redirect URLs to Supabase
 
