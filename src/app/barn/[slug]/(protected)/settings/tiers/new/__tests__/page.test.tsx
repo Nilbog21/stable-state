@@ -51,21 +51,33 @@ describe('TierNewPage', () => {
     await expect(
       TierNewPage({ params: Promise.resolve({ slug: 'unknown' }) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_call_notFound_fn_when_barn_does_not_exist', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+
+    try { await TierNewPage({ params: Promise.resolve({ slug: 'unknown' }) }) } catch {}
 
     expect(mockNotFound).toHaveBeenCalled()
   })
 
-  it('should_redirect_to_login_when_user_is_not_authenticated', async () => {
+  it('should_redirect_when_user_is_not_authenticated', async () => {
     setupAuth(null)
 
     await expect(
       TierNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     ).rejects.toThrow('NEXT_REDIRECT')
+  })
+
+  it('should_redirect_to_login_when_user_is_not_authenticated', async () => {
+    setupAuth(null)
+
+    try { await TierNewPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_redirect_to_login_when_user_is_not_manager', async () => {
+  it('should_redirect_when_user_is_not_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(
       createMockMembership({ role: 'trainer', status: 'active' })
     )
@@ -73,6 +85,14 @@ describe('TierNewPage', () => {
     await expect(
       TierNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     ).rejects.toThrow('NEXT_REDIRECT')
+  })
+
+  it('should_redirect_to_login_when_user_is_not_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(
+      createMockMembership({ role: 'trainer', status: 'active' })
+    )
+
+    try { await TierNewPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })

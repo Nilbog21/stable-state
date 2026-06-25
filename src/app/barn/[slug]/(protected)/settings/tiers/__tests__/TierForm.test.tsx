@@ -41,10 +41,15 @@ describe('TierForm — new mode', () => {
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
   })
 
-  it('should_not_render_deactivate_or_activate_button', () => {
-    render(<TierForm mode="new" slug="green-acres" onSave={mockSave} />)
+  it('should_not_render_deactivate_button_in_new_mode', () => {
+    render(<TierForm mode="new" onSave={mockSave} />)
 
     expect(screen.queryByRole('button', { name: /deactivate/i })).toBeNull()
+  })
+
+  it('should_not_render_activate_button_in_new_mode', () => {
+    render(<TierForm mode="new" onSave={mockSave} />)
+
     expect(screen.queryByRole('button', { name: /activate/i })).toBeNull()
   })
 
@@ -68,8 +73,7 @@ describe('TierForm — edit mode, active tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={activeTier}
+               initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -83,8 +87,7 @@ describe('TierForm — edit mode, active tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={activeTier}
+               initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -98,8 +101,7 @@ describe('TierForm — edit mode, active tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={activeTier}
+               initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -113,8 +115,7 @@ describe('TierForm — edit mode, active tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={activeTier}
+               initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -128,8 +129,7 @@ describe('TierForm — edit mode, active tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={activeTier}
+               initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -143,8 +143,7 @@ describe('TierForm — edit mode, active tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={activeTier}
+               initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -160,8 +159,7 @@ describe('TierForm — edit mode, active tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={activeTier}
+               initialTier={activeTier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -189,8 +187,7 @@ describe('TierForm — default_jumping pre-selected', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={tier}
+               initialTier={tier}
         onSave={mockSave}
         onDeactivate={mockDeactivate}
         onSetDefault={mockSetDefault}
@@ -210,8 +207,7 @@ describe('TierForm — edit mode, inactive tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={inactiveTier}
+               initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
         onSetDefault={mockSetDefault}
@@ -225,8 +221,7 @@ describe('TierForm — edit mode, inactive tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={inactiveTier}
+               initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
         onSetDefault={mockSetDefault}
@@ -240,8 +235,7 @@ describe('TierForm — edit mode, inactive tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={inactiveTier}
+               initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
         onSetDefault={mockSetDefault}
@@ -255,8 +249,7 @@ describe('TierForm — edit mode, inactive tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={inactiveTier}
+               initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
         onSetDefault={mockSetDefault}
@@ -270,8 +263,7 @@ describe('TierForm — edit mode, inactive tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={inactiveTier}
+               initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
         onSetDefault={mockSetDefault}
@@ -285,8 +277,7 @@ describe('TierForm — edit mode, inactive tier', () => {
     render(
       <TierForm
         mode="edit"
-        slug="green-acres"
-        initialTier={inactiveTier}
+               initialTier={inactiveTier}
         onSave={mockSave}
         onActivate={mockActivate}
         onSetDefault={mockSetDefault}

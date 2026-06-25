@@ -6,7 +6,6 @@ import { DeactivateButton } from '../DeactivateButton'
 
 type TierFormProps = {
   mode: 'new' | 'edit'
-  slug: string
   initialTier?: LessonTier
   onSave: (fd: FormData) => Promise<void>
   onDeactivate?: () => Promise<void>

@@ -43,7 +43,6 @@ export default async function TierEditPage({
       </h1>
       <TierForm
         mode="edit"
-        slug={slug}
         initialTier={tier}
         onSave={save}
         onDeactivate={deactivate}
