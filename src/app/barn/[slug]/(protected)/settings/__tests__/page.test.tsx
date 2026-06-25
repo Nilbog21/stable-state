@@ -12,56 +12,10 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
-vi.mock('../actions', () => ({
-  createTierAction: vi.fn(),
-  updateTierAction: vi.fn(),
-  setDefaultTierAction: vi.fn(),
-  deactivateTierAction: vi.fn(),
-}))
 vi.mock('../approvals/actions', () => ({
   approveMembershipAction: vi.fn(),
   rejectMembershipAction: vi.fn(),
   removeMembershipAction: vi.fn(),
-}))
-vi.mock('../TierRow', () => ({
-  TierRow: ({ tier, formId, showError }: { tier: import('@/lib/db/types').LessonTier; formId?: string; showError?: boolean }) => (
-    <>
-      <tr>
-        <td>
-          <input type="text" name="name" form={formId} defaultValue={tier.name} disabled={!tier.is_active} />
-          {tier.is_default && <span>Default</span>}
-        </td>
-        <td>
-          <input type="number" name="price" form={formId} defaultValue={tier.price ?? ''} disabled={!tier.is_active} />
-        </td>
-        <td>
-          {tier.is_active ? <span>Active</span> : <span>Inactive</span>}
-          {showError && <p>Cannot deactivate the default tier</p>}
-        </td>
-        <td>{tier.is_active && <button type="submit" form={formId}>Save</button>}</td>
-        <td></td>
-      </tr>
-      <tr>
-        <td colSpan={5}>
-          <label htmlFor={`jumping-${tier.id}`}>Jumping</label>
-          <select id={`jumping-${tier.id}`} name="default_jumping" form={formId} defaultValue={tier.default_jumping === null ? '' : String(tier.default_jumping)} disabled={!tier.is_active}>
-            <option value="">— no default</option>
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-          <label htmlFor={`exertion-${tier.id}`}>Exertion</label>
-          <select id={`exertion-${tier.id}`} name="default_exertion_level" form={formId} defaultValue={tier.default_exertion_level === null ? '' : String(tier.default_exertion_level)} disabled={!tier.is_active}>
-            <option value="">— no default</option>
-            <option value="1">1</option>
-            <option value="2">2</option>
-            <option value="3">3</option>
-            <option value="4">4</option>
-            <option value="5">5</option>
-          </select>
-        </td>
-      </tr>
-    </>
-  ),
 }))
 vi.mock('../InviteLink', () => ({
   default: ({ slug }: { slug: string }) => (
@@ -148,7 +102,7 @@ describe('SettingsPage', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Manage Barn')
   })
 
-  it('should_render_active_tier_in_list', async () => {
+  it('should_render_tier_name_as_text_in_list', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
       createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
     ])
@@ -159,12 +113,12 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    expect(screen.getByDisplayValue('Standard')).toBeDefined()
+    expect(screen.getByText('Standard')).toBeDefined()
   })
 
-  it('should_render_inactive_tier_in_list', async () => {
+  it('should_render_active_status_for_active_tier', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-2', name: 'Premium', is_active: false }),
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
     ])
 
     const jsx = await SettingsPage({
@@ -173,21 +127,7 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    expect(screen.getByDisplayValue('Premium')).toBeDefined()
-  })
-
-  it('should_render_default_badge_for_default_tier', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_default: true }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    expect(screen.getByText('Default')).toBeDefined()
+    expect(screen.getByText('Active')).toBeDefined()
   })
 
   it('should_render_inactive_status_for_inactive_tier', async () => {
@@ -201,20 +141,24 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    expect(screen.getByText(/inactive/i)).toBeDefined()
+    expect(screen.getByText('Inactive')).toBeDefined()
   })
 
-  it('should_render_add_tier_form', async () => {
+  it('should_render_default_badge_for_default_tier', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_default: true }),
+    ])
+
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({}),
     })
     render(jsx)
 
-    expect(screen.getByRole('button', { name: /add tier/i })).toBeDefined()
+    expect(screen.getAllByText('Default').length).toBe(2)
   })
 
-  it('should_render_empty_price_input_when_tier_price_is_null', async () => {
+  it('should_render_em_dash_when_tier_price_is_null', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
       createMockLessonTier({ id: 'tier-1', name: 'Standard', price: null }),
     ])
@@ -225,13 +169,24 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    const priceInputs = screen
-      .getAllByDisplayValue('')
-      .filter((el) => (el as HTMLInputElement).name === 'price' && !(el as HTMLInputElement).id)
-    expect(priceInputs.length).toBe(1)
+    expect(screen.getByText('—')).toBeDefined()
   })
 
-  it('should_render_save_button_for_active_tier', async () => {
+  it('should_render_dollar_price_when_tier_price_is_set', async () => {
+    vi.mocked(getAllTiersByBarn).mockResolvedValue([
+      createMockLessonTier({ id: 'tier-1', name: 'Standard', price: 50 }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('$50')).toBeDefined()
+  })
+
+  it('should_render_edit_link_for_active_tier', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
       createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
     ])
@@ -242,12 +197,13 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    expect(screen.getByRole('button', { name: /^save$/i })).toBeDefined()
+    const link = screen.getByRole('link', { name: /^edit$/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/settings/tiers/tier-1')
   })
 
-  it('should_not_render_save_button_for_inactive_tier', async () => {
+  it('should_render_edit_link_for_inactive_tier', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: false }),
+      createMockLessonTier({ id: 'tier-2', name: 'Premium', is_active: false }),
     ])
 
     const jsx = await SettingsPage({
@@ -256,39 +212,19 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    expect(screen.queryByRole('button', { name: /^save$/i })).toBeNull()
+    const link = screen.getByRole('link', { name: /^edit$/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/settings/tiers/tier-2')
   })
 
-  it('should_render_disabled_name_input_for_inactive_tier', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: false }),
-    ])
-
+  it('should_render_add_tier_link_navigating_to_new_page', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({}),
     })
     render(jsx)
 
-    const input = screen.getByDisplayValue('Standard') as HTMLInputElement
-    expect(input.disabled).toBe(true)
-  })
-
-  it('should_display_error_message_when_error_search_param_matches_tier_id', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_default: true }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({
-        error: 'cannot_deactivate_default',
-        errorTierId: 'tier-1',
-      }),
-    })
-    render(jsx)
-
-    expect(screen.getByText(/cannot deactivate the default tier/i)).toBeDefined()
+    const link = screen.getByRole('link', { name: /add tier/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/settings/tiers/new')
   })
 
   it('should_render_invite_link_section', async () => {
@@ -418,98 +354,5 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByText('Bob Smith')).toBeDefined()
-  })
-
-  it('should_render_jumping_select_for_active_tier', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    // Two jumping selects: one from TierRow, one from Add Tier form
-    const jumpingSelects = screen.getAllByRole('combobox', { name: /jumping/i })
-    expect(jumpingSelects.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('should_render_exertion_select_for_active_tier', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    // Two exertion selects: one from TierRow, one from Add Tier form
-    const exertionSelects = screen.getAllByRole('combobox', { name: /exertion/i })
-    expect(exertionSelects.length).toBeGreaterThanOrEqual(2)
-  })
-
-  it('should_render_jumping_and_exertion_selects_disabled_for_inactive_tier', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: false }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    // TierRow renders first (disabled); Add Tier form renders second (enabled)
-    const jumpingSelects = screen.getAllByRole('combobox', { name: /jumping/i }) as HTMLSelectElement[]
-    const exertionSelects = screen.getAllByRole('combobox', { name: /exertion/i }) as HTMLSelectElement[]
-    expect(jumpingSelects[0].disabled).toBe(true)
-    expect(exertionSelects[0].disabled).toBe(true)
-  })
-
-  it('should_pre_fill_jumping_select_when_tier_has_default_jumping_true', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true, default_jumping: true }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    const jumpingSelects = screen.getAllByRole('combobox', { name: /jumping/i }) as HTMLSelectElement[]
-    expect(jumpingSelects.some((s) => s.value === 'true')).toBe(true)
-  })
-
-  it('should_pre_fill_exertion_select_when_tier_has_default_exertion', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true, default_exertion_level: 3 }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    const exertionSelects = screen.getAllByRole('combobox', { name: /exertion/i }) as HTMLSelectElement[]
-    expect(exertionSelects.some((s) => s.value === '3')).toBe(true)
-  })
-
-  it('should_render_jumping_and_exertion_selects_in_add_tier_form', async () => {
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    const selects = screen.getAllByRole('combobox')
-    expect(selects.length).toBeGreaterThanOrEqual(2)
-    expect(selects.some((s) => (s as HTMLSelectElement).name === 'default_jumping')).toBe(true)
-    expect(selects.some((s) => (s as HTMLSelectElement).name === 'default_exertion_level')).toBe(true)
   })
 })

@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -9,17 +10,10 @@ import {
 } from '@/lib/db/barn-memberships'
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import {
-  createTierAction,
-  updateTierAction,
-  setDefaultTierAction,
-  deactivateTierAction,
-} from './actions'
-import {
   approveMembershipAction,
   rejectMembershipAction,
   removeMembershipAction,
 } from '../approvals/actions'
-import { TierRow } from './TierRow'
 import InviteLink from './InviteLink'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
@@ -61,10 +55,10 @@ function MemberRow({
 
 export default async function SettingsPage({
   params,
-  searchParams,
+  searchParams: _searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ error?: string; errorTierId?: string }>
+  searchParams: Promise<Record<string, string>>
 }) {
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
@@ -83,7 +77,6 @@ export default async function SettingsPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const { error, errorTierId } = await searchParams
   const [tiers, pending, active] = await Promise.all([
     getAllTiersByBarn(barn.id),
     getPendingMemberships(barn.id),
@@ -191,16 +184,6 @@ export default async function SettingsPage({
         )}
       </section>
 
-      {/* <form> cannot be a valid child of <tr>, so save forms live here and
-          are associated to their row controls via the HTML `form` attribute. */}
-      {tiers.map((tier) => (
-        <form
-          key={`update-${tier.id}`}
-          id={`update-tier-${tier.id}`}
-          action={updateTierAction.bind(null, slug, tier.id)}
-        />
-      ))}
-
       <section className="mb-12">
         <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
           Lesson Tiers
@@ -210,113 +193,60 @@ export default async function SettingsPage({
           <table className="w-full">
             <thead>
               <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-4">Name</th>
-                <th className="pb-2 pr-4">Price</th>
-                <th className="pb-2 pr-4">Status</th>
-                <th className="pb-2 pr-4">Save</th>
-                <th className="pb-2"></th>
+                <th className="pb-2 pr-6">Name</th>
+                <th className="pb-2 pr-6">Price</th>
+                <th className="pb-2 pr-6">Default</th>
+                <th className="pb-2 pr-6">Status</th>
+                <th className="pb-2">Actions</th>
               </tr>
             </thead>
             <tbody>
               {tiers.map((tier) => (
-                <TierRow
-                  key={tier.id}
-                  tier={tier}
-                  formId={`update-tier-${tier.id}`}
-                  setDefaultAction={setDefaultTierAction.bind(null, slug, tier.id)}
-                  deactivateAction={deactivateTierAction.bind(null, slug, tier.id)}
-                  showError={!!(error && errorTierId === tier.id)}
-                />
+                <tr key={tier.id} className="border-b border-zinc-100 dark:border-zinc-800">
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                    {tier.name}
+                  </td>
+                  <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">
+                    {tier.price != null ? `$${tier.price}` : '—'}
+                  </td>
+                  <td className="py-3 pr-6 text-sm">
+                    {tier.is_default && (
+                      <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
+                        Default
+                      </span>
+                    )}
+                  </td>
+                  <td className="py-3 pr-6 text-sm">
+                    {tier.is_active ? (
+                      <span className="text-zinc-700 dark:text-zinc-300">Active</span>
+                    ) : (
+                      <span className="text-zinc-400 dark:text-zinc-500">Inactive</span>
+                    )}
+                  </td>
+                  <td className="py-3 text-sm">
+                    <Link
+                      href={`/barn/${slug}/settings/tiers/${tier.id}`}
+                      className="text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
+                    >
+                      Edit
+                    </Link>
+                  </td>
+                </tr>
               ))}
             </tbody>
           </table>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">No tiers yet.</p>
         )}
-      </section>
 
-      <section>
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Add Tier
-        </h2>
-        <form action={createTierAction.bind(null, slug)} className="flex flex-wrap items-end gap-4">
-          <div>
-            <label
-              htmlFor="new-tier-name"
-              className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-            >
-              Name
-            </label>
-            <input
-              id="new-tier-name"
-              type="text"
-              name="name"
-              required
-              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="new-tier-price"
-              className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-            >
-              Price
-            </label>
-            <input
-              id="new-tier-price"
-              type="number"
-              name="price"
-              step="0.01"
-              min="0"
-              className="w-24 rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-            />
-          </div>
-          <div>
-            <label
-              htmlFor="new-tier-jumping"
-              className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-            >
-              Jumping
-            </label>
-            <select
-              id="new-tier-jumping"
-              name="default_jumping"
-              defaultValue=""
-              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-            >
-              <option value="">— no default</option>
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
-          </div>
-          <div>
-            <label
-              htmlFor="new-tier-exertion"
-              className="mb-1 block text-xs font-medium text-zinc-600 dark:text-zinc-400"
-            >
-              Exertion
-            </label>
-            <select
-              id="new-tier-exertion"
-              name="default_exertion_level"
-              defaultValue=""
-              className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-            >
-              <option value="">— no default</option>
-              <option value="1">1</option>
-              <option value="2">2</option>
-              <option value="3">3</option>
-              <option value="4">4</option>
-              <option value="5">5</option>
-            </select>
-          </div>
-          <button
-            type="submit"
+        <div className="mt-4">
+          <Link
+            href={`/barn/${slug}/settings/tiers/new`}
             className="rounded bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
           >
             Add tier
-          </button>
-        </form>
+          </Link>
+        </div>
       </section>
     </main>
   )
