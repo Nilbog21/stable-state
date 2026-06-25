@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { upsertProfile, getProfilesByUserIds, seedManagerProfile, updateContactInfo, getProfileByUserId, updateProfile } from '../profiles'
+import { upsertProfile, getProfilesByUserIds, updateContactInfo, getProfileByUserId, updateProfile } from '../profiles'
 
 const mockProfile = createMockProfile()
 
@@ -174,80 +174,6 @@ describe('getProfilesByUserIds', () => {
     const result = await getProfilesByUserIds(['user-1'])
 
     expect(result).toEqual([])
-  })
-})
-
-describe('seedManagerProfile', () => {
-  describe('when_client_is_injected', () => {
-    beforeEach(() => {
-      vi.mocked(createClient).mockReset()
-    })
-
-    it('should_not_call_createClient_when_client_is_injected', async () => {
-      const injectedClient = {
-        from: vi.fn().mockReturnValue({
-          insert: vi.fn().mockResolvedValue({ error: null }),
-        }),
-      } as any
-
-      await seedManagerProfile('manager@example.com', 'Dev', 'Manager', 'barn-1', 'manager', injectedClient)
-
-      expect(vi.mocked(createClient)).not.toHaveBeenCalled()
-    })
-
-    it('should_use_injected_client_for_db_operation', async () => {
-      const mockFrom = vi.fn().mockReturnValue({
-        insert: vi.fn().mockResolvedValue({ error: null }),
-      })
-      const injectedClient = { from: mockFrom } as any
-
-      await seedManagerProfile('manager@example.com', 'Dev', 'Manager', 'barn-1', 'manager', injectedClient)
-
-      expect(mockFrom).toHaveBeenCalled()
-    })
-  })
-
-  it('should_insert_pre_auth_profile_with_email_barn_and_role', async () => {
-    const mockInsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await seedManagerProfile('manager@example.com', 'Dev', 'Manager', 'barn-1', 'manager')
-
-    expect(mockInsert).toHaveBeenCalledWith({
-      email: 'manager@example.com',
-      first_name: 'Dev',
-      last_name: 'Manager',
-      barn_id: 'barn-1',
-      role: 'manager',
-    })
-  })
-
-  it('should_not_include_user_id_in_insert', async () => {
-    const mockInsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await seedManagerProfile('manager@example.com', 'Dev', 'Manager', 'barn-1', 'manager')
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.not.objectContaining({ user_id: expect.anything() })
-    )
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('insert failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockResolvedValue({ error: dbError }),
-      }),
-    } as any)
-
-    await expect(
-      seedManagerProfile('manager@example.com', 'Dev', 'Manager', 'barn-1', 'manager')
-    ).rejects.toThrow('insert failed')
   })
 })
 

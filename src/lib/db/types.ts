@@ -11,13 +11,21 @@ export interface Profile {
   id: string
   user_id: string | null
   email: string
-  barn_id: string | null
-  role: Role | null
   first_name: string
   last_name: string
   phone: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  created_at: string
+}
+
+export interface SeededAccount {
+  id: string
+  email: string
+  first_name: string
+  last_name: string
+  barn_id: string
+  role: Role
   created_at: string
 }
 

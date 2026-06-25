@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Profile, Role } from './types'
+import type { Profile } from './types'
 
 export async function upsertProfile(
   userId: string,
@@ -25,26 +25,6 @@ export async function upsertProfile(
   return data
 }
 
-export async function seedManagerProfile(
-  email: string,
-  firstName: string,
-  lastName: string,
-  barnId: string,
-  role: Role,
-  client?: SupabaseClient
-): Promise<void> {
-  // optional client for service-role injection from scripts; omitting defaults to SSR client
-  const supabase = client ?? await createClient()
-  const { error } = await supabase.from('profiles').insert({
-    email,
-    first_name: firstName,
-    last_name: lastName,
-    barn_id: barnId,
-    role,
-  })
-
-  if (error) throw error
-}
 
 export async function getProfileByUserId(userId: string): Promise<Profile | null> {
   const supabase = await createClient()

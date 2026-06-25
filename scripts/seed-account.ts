@@ -1,6 +1,8 @@
 import { fileURLToPath } from 'url'
 import { createClient } from '@supabase/supabase-js'
 import { getBarnBySlug } from '@/lib/db/barns'
+import { upsertProfile } from '@/lib/db/profiles'
+import { createSeededAccount } from '@/lib/db/seeded-accounts'
 
 async function run() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -24,12 +26,6 @@ async function run() {
   const barn = await getBarnBySlug(barnSlug, supabase)
   if (!barn) throw new Error(`Barn slug not found: "${barnSlug}"`)
 
-  const { error: profileError } = await supabase.from('profiles').upsert(
-    { email, first_name: firstName, last_name: lastName, barn_id: barn.id, role: 'manager' },
-    { onConflict: 'email' }
-  )
-  if (profileError) throw new Error(`upsert profile: ${profileError.message}`)
-
   // If the dev already has an auth user (logged in before), link the profile and
   // create the membership directly so change-user.sh works without another login.
   let authUserId: string | null = null
@@ -47,8 +43,7 @@ async function run() {
   }
 
   if (authUserId) {
-    const { error: linkError } = await supabase.from('profiles').update({ user_id: authUserId }).eq('email', email)
-    if (linkError) throw new Error(`link profile: ${linkError.message}`)
+    await upsertProfile(authUserId, email, firstName, lastName, supabase)
 
     const { error: memberError } = await supabase.from('barn_memberships').upsert(
       { user_id: authUserId, barn_id: barn.id, role: 'manager', status: 'active', can_instruct: false },
@@ -58,6 +53,8 @@ async function run() {
 
     console.log(`\nLinked ${firstName} ${lastName} <${email}> as manager for barn "${barnSlug}".`)
   } else {
+    await createSeededAccount(email, firstName, lastName, barn.id, 'manager', supabase)
+
     console.log(`\nSeeded ${firstName} ${lastName} <${email}> as manager for barn "${barnSlug}".`)
     console.log('Log in with Google to activate your account.')
   }

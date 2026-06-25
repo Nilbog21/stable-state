@@ -26,8 +26,6 @@ export function createMockProfile(overrides: Partial<Profile> = {}): Profile {
     id: 'profile-1',
     user_id: 'user-1',
     email: 'user@example.com',
-    barn_id: null,
-    role: null,
     first_name: 'Jane',
     last_name: 'Doe',
     phone: null,

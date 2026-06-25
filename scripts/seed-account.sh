@@ -17,6 +17,7 @@ SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 DEV_EMAIL="$(parse_var DEV_EMAIL || true)"
 DEV_NAME="$(parse_var DEV_NAME || true)"
 DEV_BARN="$(parse_var DEV_BARN || true)"
+DEV_BARN="${DEV_BARN:-dev-barn}"
 
 for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
   if [ -z "${!var_name}" ]; then
