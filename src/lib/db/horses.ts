@@ -93,6 +93,22 @@ export async function getHorseById(horseId: string, barnId: string): Promise<Hor
   return data
 }
 
+export async function resolveHorseNames(
+  horseIds: string[],
+  barnId: string,
+  client?: SupabaseClient
+): Promise<Map<string, string>> {
+  if (!horseIds.length) return new Map()
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('horses')
+    .select('id, name')
+    .eq('barn_id', barnId)
+    .in('id', horseIds)
+  if (error) throw error
+  return new Map((data ?? []).map((h: { id: string; name: string }) => [h.id, h.name]))
+}
+
 export async function setHorseAvailability(
   horseId: string,
   barnId: string,
