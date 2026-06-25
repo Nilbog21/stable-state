@@ -631,3 +631,64 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     expect(mockEvent.preventDefault).toHaveBeenCalled()
   })
 })
+
+describe('LessonForm notes fields', () => {
+  const notesProps = {
+    ...baseProps,
+    initialNotes: {
+      horses: [{ id: 'horse-1', name: 'Thunderbolt', horse_notes: 'watch left lead' }],
+      riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: 'good position', private_notes: 'private info' }],
+    },
+  }
+
+  it('should_render_horse_notes_textarea_when_initialNotes_provided', () => {
+    render(<LessonForm {...notesProps} />)
+    expect(screen.getByDisplayValue('watch left lead')).toBeDefined()
+  })
+
+  it('should_render_rider_notes_textarea_when_initialNotes_provided', () => {
+    render(<LessonForm {...notesProps} />)
+    expect(screen.getByDisplayValue('good position')).toBeDefined()
+  })
+
+  it('should_render_private_notes_textarea_when_initialNotes_provided', () => {
+    render(<LessonForm {...notesProps} />)
+    expect(screen.getByDisplayValue('private info')).toBeDefined()
+  })
+
+  it('should_render_empty_textarea_when_horse_notes_is_null', () => {
+    const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, horses: [{ id: 'horse-1', name: 'Thunderbolt', horse_notes: null }] } }
+    render(<LessonForm {...props} />)
+    expect(screen.getByLabelText('Thunderbolt', { selector: 'textarea' })).toBeDefined()
+  })
+
+  it('should_render_empty_textarea_when_rider_notes_is_null', () => {
+    const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: null, private_notes: 'private info' }] } }
+    render(<LessonForm {...props} />)
+    expect(screen.getByText('Rider Notes')).toBeDefined()
+  })
+
+  it('should_render_empty_textarea_when_private_notes_is_null', () => {
+    const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: 'good position', private_notes: null }] } }
+    render(<LessonForm {...props} />)
+    expect(screen.getByText('Private')).toBeDefined()
+  })
+
+  it('should_not_render_notes_section_when_initialNotes_not_provided', () => {
+    render(<LessonForm {...baseProps} />)
+    expect(screen.queryByText('Notes')).toBeNull()
+  })
+
+  it('should_set_dirty_when_notes_changed', async () => {
+    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...notesProps} initialLesson={futureLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+})

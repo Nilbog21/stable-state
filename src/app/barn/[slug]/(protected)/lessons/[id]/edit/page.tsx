@@ -61,6 +61,15 @@ export default async function EditLessonPage({
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
 
+  const initialNotes = {
+    horses: lesson.lesson_horses
+      .filter(lh => lh.horses?.id)
+      .map(lh => ({ id: lh.horses!.id, name: lh.horses!.name, horse_notes: lh.horse_notes })),
+    riders: lesson.lesson_riders
+      .filter(lr => lr.barn_membership?.id)
+      .map(lr => ({ membershipId: lr.barn_membership!.id, name: lr.barn_membership!.name, rider_notes: lr.rider_notes, private_notes: lr.private_notes })),
+  }
+
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white pt-8 dark:bg-black">
       <h1 className="w-full max-w-sm text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
@@ -76,6 +85,7 @@ export default async function EditLessonPage({
         currentUserId={user.id}
         tiers={tiers}
         action={update}
+        initialNotes={initialNotes}
       />
     </main>
   )
