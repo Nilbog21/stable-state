@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
+import { resolveMemberNames } from './barn-memberships'
 import type { FinancialSummary, HorseIncomeDetailRow, HorseIncomeSummary, OutstandingLesson, RiderIncomeDetailRow, RiderIncomeSummary, Role, TrainerIncomeSummary } from './types'
 
 export async function getFinancialSummary(
@@ -120,29 +121,7 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
 
   const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
 
-  type MembershipRow = { id: string; user_id: string | null }
-  const { data: members, error: ridersError } = riderIds.length
-    ? await supabase.from('barn_memberships').select('id, user_id').in('id', riderIds) as { data: MembershipRow[] | null; error: Error | null }
-    : { data: [] as MembershipRow[], error: null }
-
-  if (ridersError) throw ridersError
-
-  const riderUserIds = [...new Set((members ?? []).map((bm) => bm.user_id).filter((uid): uid is string => uid !== null))]
-  const { data: riderProfiles, error: riderProfilesError } = riderUserIds.length
-    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', riderUserIds)
-    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
-
-  if (riderProfilesError) throw riderProfilesError
-
-  const riderProfileMap = new Map((riderProfiles ?? []).map((p) => [p.user_id, p]))
-  const membershipNameMap = new Map(
-    (members ?? []).map((bm: MembershipRow) => [
-      bm.id,
-      bm.user_id && riderProfileMap.get(bm.user_id)
-        ? `${riderProfileMap.get(bm.user_id)!.first_name} ${riderProfileMap.get(bm.user_id)!.last_name}`
-        : bm.id,
-    ])
-  )
+  const membershipNameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
   return outstandingRaw.map((lesson) => {
     const profile = (profiles ?? []).find((p) => p.user_id === lesson.instructor_id)
@@ -255,30 +234,7 @@ export async function getRiderIncomeSummary(
 
   const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
 
-  type MemberRow = { id: string; user_id: string | null }
-  const { data: members, error: ridersError } = await supabase
-    .from('barn_memberships')
-    .select('id, user_id')
-    .in('id', riderIds) as { data: MemberRow[] | null; error: Error | null }
-
-  if (ridersError) throw ridersError
-
-  const memberUserIds = [...new Set((members ?? []).map((bm) => bm.user_id).filter((uid): uid is string => uid !== null))]
-  const { data: memberProfiles, error: memberProfilesError } = memberUserIds.length
-    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', memberUserIds)
-    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
-
-  if (memberProfilesError) throw memberProfilesError
-
-  const memberProfileMap = new Map((memberProfiles ?? []).map((p) => [p.user_id, p]))
-  const memberNameMap = new Map(
-    (members ?? []).map((bm: MemberRow) => [
-      bm.id,
-      bm.user_id && memberProfileMap.get(bm.user_id)
-        ? `${memberProfileMap.get(bm.user_id)!.first_name} ${memberProfileMap.get(bm.user_id)!.last_name}`
-        : bm.id,
-    ])
-  )
+  const memberNameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
   const incomeMap = new Map<string, number>()
 

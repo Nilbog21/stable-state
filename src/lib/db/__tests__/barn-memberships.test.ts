@@ -19,6 +19,7 @@ import {
   applyPreAuthProfile,
   getInstructorsByBarn,
   getActiveMembersWithProfiles,
+  resolveMemberNames,
 } from '../barn-memberships'
 
 const mockMembership = createMockMembership()
@@ -1142,5 +1143,83 @@ describe('getActiveMembersWithProfiles', () => {
     const dbError = new Error('profiles query failed')
     vi.mocked(createClient).mockResolvedValue(makeClient([{ id: 'mem-1', user_id: 'user-1' }], null, null, dbError))
     await expect(getActiveMembersWithProfiles('barn-1', 'rider')).rejects.toThrow('profiles query failed')
+  })
+})
+
+describe('resolveMemberNames', () => {
+  function makeClient(membershipsData: unknown, membershipsError: unknown, profilesData: unknown, profilesError: unknown) {
+    return {
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'barn_memberships') {
+          return {
+            select: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                in: vi.fn().mockResolvedValue({ data: membershipsData, error: membershipsError }),
+              }),
+            }),
+          }
+        }
+        return {
+          select: vi.fn().mockReturnValue({
+            in: vi.fn().mockResolvedValue({ data: profilesData, error: profilesError }),
+          }),
+        }
+      }),
+    } as any
+  }
+
+  it('should_return_empty_map_when_membership_ids_is_empty', async () => {
+    const result = await resolveMemberNames([], 'barn-1')
+    expect(result).toEqual(new Map())
+  })
+
+  it('should_return_map_with_full_name_for_known_membership', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient(
+        [{ id: 'mem-1', user_id: 'user-1' }],
+        null,
+        [{ user_id: 'user-1', first_name: 'Jane', last_name: 'Rider' }],
+        null
+      )
+    )
+    const result = await resolveMemberNames(['mem-1'], 'barn-1')
+    expect(result).toEqual(new Map([['mem-1', 'Jane Rider']]))
+  })
+
+  it('should_fall_back_to_membership_id_when_profile_is_missing', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-1', user_id: 'user-1' }], null, [], null)
+    )
+    const result = await resolveMemberNames(['mem-1'], 'barn-1')
+    expect(result).toEqual(new Map([['mem-1', 'mem-1']]))
+  })
+
+  it('should_fall_back_to_membership_id_when_user_id_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-1', user_id: null }], null, [], null)
+    )
+    const result = await resolveMemberNames(['mem-1'], 'barn-1')
+    expect(result).toEqual(new Map([['mem-1', 'mem-1']]))
+  })
+
+  it('should_not_query_profiles_when_no_user_ids_present', async () => {
+    const client = makeClient([{ id: 'mem-1', user_id: null }], null, null, null)
+    vi.mocked(createClient).mockResolvedValue(client)
+    await resolveMemberNames(['mem-1'], 'barn-1')
+    expect(vi.mocked(client.from).mock.calls.filter(([t]) => t === 'profiles')).toHaveLength(0)
+  })
+
+  it('should_throw_when_barn_memberships_query_fails', async () => {
+    const dbError = new Error('memberships query failed')
+    vi.mocked(createClient).mockResolvedValue(makeClient(null, dbError, null, null))
+    await expect(resolveMemberNames(['mem-1'], 'barn-1')).rejects.toThrow('memberships query failed')
+  })
+
+  it('should_throw_when_profiles_query_fails', async () => {
+    const dbError = new Error('profiles query failed')
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-1', user_id: 'user-1' }], null, null, dbError)
+    )
+    await expect(resolveMemberNames(['mem-1'], 'barn-1')).rejects.toThrow('profiles query failed')
   })
 })
