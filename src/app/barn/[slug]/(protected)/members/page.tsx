@@ -4,6 +4,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
+import { EmptyState } from '@/components/EmptyState'
 
 export default async function MembersPage({
   params,
@@ -72,7 +73,10 @@ export default async function MembersPage({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No trainers yet.</p>
+            <EmptyState
+              heading="No trainers yet"
+              subtext="Trainers can request access using the invite link in Manage Barn."
+            />
           )}
         </section>
       )}
@@ -96,7 +100,10 @@ export default async function MembersPage({
               ))}
             </ul>
           ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No riders yet.</p>
+            <EmptyState
+              heading="No riders yet"
+              subtext="Riders can request access using the invite link in Manage Barn."
+            />
           )}
         </section>
       )}

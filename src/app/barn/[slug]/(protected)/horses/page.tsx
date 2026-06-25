@@ -5,6 +5,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseExertionSummary } from '@/lib/db/horses'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
+import { EmptyState } from '@/components/EmptyState'
 
 export default async function HorsesPage({
   params,
@@ -32,6 +33,7 @@ export default async function HorsesPage({
     .sort((a, b) => a.totalExertion - b.totalExertion)
   const unavailable = horses.filter((h) => h.is_active && !h.is_available)
   const inactive = horses.filter((h) => !h.is_active)
+  const allEmpty = available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -85,6 +87,13 @@ export default async function HorsesPage({
             ))}
           </div>
         </section>
+      )}
+
+      {allEmpty && (
+        <EmptyState
+          heading="No horses yet"
+          subtext={isManager ? 'Use the form above to add your first horse.' : 'No horses have been added yet.'}
+        />
       )}
     </main>
   )

@@ -175,4 +175,33 @@ describe('HorsesPage', () => {
     const links = screen.getAllByRole('link')
     expect(links[0].textContent).toBe('Lazy')
   })
+
+  it('should_show_empty_state_when_no_horses', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No horses yet')).toBeDefined()
+  })
+
+  it('should_show_manager_subtext_in_empty_state_for_manager', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Use the form above to add your first horse.')).toBeDefined()
+  })
+
+  it('should_show_default_subtext_in_empty_state_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('No horses have been added yet.')).toBeDefined()
+  })
+
+  it('should_not_show_empty_state_when_horses_exist', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('No horses yet')).toBeNull()
+  })
 })

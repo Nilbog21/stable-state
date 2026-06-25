@@ -7,6 +7,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { deleteLessonAction } from '@/app/actions/lessons'
 import { OlderLessonsToggle } from './OlderLessonsToggle'
 import { LessonListItem } from './LessonListItem'
+import { EmptyState } from '@/components/EmptyState'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 const OLDER_LESSON_CUTOFF_DAYS = 7
@@ -169,7 +170,11 @@ export default async function LessonsPage({
       )}
 
       {lessons.length === 0 ? (
-        <p className="text-zinc-500">No lessons recorded yet.</p>
+        <EmptyState
+          heading="No lessons yet"
+          subtext="Lessons you record will appear here."
+          cta={canCreateLesson ? { label: 'New Lesson', href: `/barn/${slug}/lessons/new` } : undefined}
+        />
       ) : (
         <>
           {recentLessons.length > 0 && (
