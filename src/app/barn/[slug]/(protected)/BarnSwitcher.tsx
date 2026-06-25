@@ -5,11 +5,11 @@ import { BlockingLink } from './NavigationBlocker'
 interface Props {
   barnName: string
   barnSlug: string
-  showSwitchBarn: boolean
   activeBarnMemberships: { slug: string; name: string }[]
 }
 
-export function BarnSwitcher({ barnName, barnSlug, showSwitchBarn, activeBarnMemberships }: Props) {
+export function BarnSwitcher({ barnName, barnSlug, activeBarnMemberships }: Props) {
+  const showSwitchBarn = activeBarnMemberships.length > 1
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
 
@@ -42,6 +42,7 @@ export function BarnSwitcher({ barnName, barnSlug, showSwitchBarn, activeBarnMem
       <BlockingLink
         href={`/barn/${barnSlug}`}
         className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+        onClick={() => setOpen(false)}
       >
         {barnName}
       </BlockingLink>
@@ -77,6 +78,7 @@ export function BarnSwitcher({ barnName, barnSlug, showSwitchBarn, activeBarnMem
                 key={m.slug}
                 href={`/barn/${m.slug}`}
                 className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                onClick={() => setOpen(false)}
               >
                 {m.name}
               </BlockingLink>

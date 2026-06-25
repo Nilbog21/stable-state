@@ -52,7 +52,6 @@ export default async function ProtectedBarnLayout({
       : (user.email?.[0] ?? '?').toUpperCase()
   const fullName = profile ? `${profile.first_name} ${profile.last_name}` : null
   const activeMemberships = allMemberships.filter((m) => m.membership.status === 'active')
-  const showSwitchBarn = activeMemberships.length > 1
   const activeBarnMemberships = activeMemberships.map((m) => ({ slug: m.barn.slug, name: m.barn.name }))
   const email = user.email ?? ''
 
@@ -87,7 +86,6 @@ export default async function ProtectedBarnLayout({
         <BarnSwitcher
           barnName={barn.name}
           barnSlug={slug}
-          showSwitchBarn={showSwitchBarn}
           activeBarnMemberships={activeBarnMemberships}
         />
         {navLinks.map((link) => (

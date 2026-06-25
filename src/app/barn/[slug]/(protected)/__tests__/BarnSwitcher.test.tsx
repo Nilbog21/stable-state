@@ -8,12 +8,14 @@ vi.mock('../NavigationBlocker', () => ({
     href,
     children,
     className,
+    onClick,
   }: {
     href: string
     children: React.ReactNode
     className?: string
+    onClick?: () => void
   }) => (
-    <a href={href} className={className}>
+    <a href={href} className={className} onClick={onClick}>
       {children}
     </a>
   ),
@@ -24,14 +26,12 @@ import { BarnSwitcher } from '../BarnSwitcher'
 const singleBarnProps = {
   barnName: 'Sunset Stables',
   barnSlug: 'sunset-stables',
-  showSwitchBarn: false,
   activeBarnMemberships: [{ slug: 'sunset-stables', name: 'Sunset Stables' }],
 }
 
 const multiBarnProps = {
   barnName: 'Sunset Stables',
   barnSlug: 'sunset-stables',
-  showSwitchBarn: true,
   activeBarnMemberships: [
     { slug: 'sunset-stables', name: 'Sunset Stables' },
     { slug: 'meadow-farm', name: 'Meadow Farm' },
@@ -88,6 +88,12 @@ describe('BarnSwitcher - dropdown open state', () => {
     fireEvent.click(screen.getByRole('button', { name: /switch barn/i }))
     expect(screen.queryByText('Meadow Farm')).toBeNull()
   })
+
+  it('should_close_dropdown_on_barn_name_link_click', () => {
+    fireEvent.click(screen.getByRole('button', { name: /switch barn/i }))
+    fireEvent.click(screen.getByRole('link', { name: 'Sunset Stables' }))
+    expect(screen.queryByText('Meadow Farm')).toBeNull()
+  })
 })
 
 describe('BarnSwitcher - outside dismiss', () => {
@@ -131,15 +137,26 @@ describe('BarnSwitcher - dropdown content', () => {
     expect(checkmarkEl.parentElement?.tagName).toBe('SPAN')
   })
 
-  it('should_list_other_barns_as_links', () => {
+  it('should_list_meadow_farm_as_link', () => {
     expect(screen.getByRole('link', { name: 'Meadow Farm' })).toBeDefined()
+  })
+
+  it('should_list_oak_ridge_as_link', () => {
     expect(screen.getByRole('link', { name: 'Oak Ridge' })).toBeDefined()
   })
 
-  it('should_other_barn_links_point_to_barn_dashboards', () => {
+  it('should_meadow_farm_link_point_to_barn_dashboard', () => {
     const meadow = screen.getByRole('link', { name: 'Meadow Farm' }) as HTMLAnchorElement
-    const oak = screen.getByRole('link', { name: 'Oak Ridge' }) as HTMLAnchorElement
     expect(meadow.href).toContain('/barn/meadow-farm')
+  })
+
+  it('should_oak_ridge_link_point_to_barn_dashboard', () => {
+    const oak = screen.getByRole('link', { name: 'Oak Ridge' }) as HTMLAnchorElement
     expect(oak.href).toContain('/barn/oak-ridge')
+  })
+
+  it('should_close_dropdown_on_other_barn_link_click', () => {
+    fireEvent.click(screen.getByRole('link', { name: 'Meadow Farm' }))
+    expect(screen.queryByText('Meadow Farm')).toBeNull()
   })
 })
