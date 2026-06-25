@@ -842,10 +842,31 @@ describe('updateLessonAction', () => {
     expect(updateLessonRiderNotes).toHaveBeenCalledWith('lesson-1', 'mem-1', 'barn-1', null, null)
   })
 
-  it('should_not_call_notes_functions_when_no_note_ids_present', async () => {
+  it('should_not_call_updateLessonHorseNotes_when_no_note_ids_present', async () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonHorseNotes).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_updateLessonRiderNotes_when_no_note_ids_present', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonRiderNotes).not.toHaveBeenCalled()
+  })
+
+  it('should_skip_horse_notes_for_removed_horse', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteHorseId', 'horse-2')
+    fd.set('horse_notes_horse-2', 'stale notes')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonHorseNotes).not.toHaveBeenCalled()
+  })
+
+  it('should_skip_rider_notes_for_removed_rider', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteRiderId', 'mem-2')
+    fd.set('rider_notes_mem-2', 'stale notes')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonRiderNotes).not.toHaveBeenCalled()
   })
 

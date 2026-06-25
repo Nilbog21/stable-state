@@ -89,6 +89,7 @@ export function LessonForm({
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
+  const [notesDirty, setNotesDirty] = useState(false)
 
   const { setDirty, setMessage } = useNavigationBlocker()
   const unpaidPastDue =
@@ -96,13 +97,15 @@ export function LessonForm({
     (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
     new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
     (initialLesson?.fee ?? 0) > 0
-  const shouldWarn = unpaidPastDue && paymentType === ''
+  const unpaidWarn = unpaidPastDue && paymentType === ''
+  const shouldWarn = unpaidWarn || notesDirty
 
   useEffect(() => {
     setDirty(shouldWarn)
-    if (shouldWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
+    if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
+    else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
     return () => setDirty(false)
-  }, [shouldWarn])
+  }, [shouldWarn, unpaidWarn, notesDirty])
 
   useEffect(() => {
     if (!shouldWarn) return
@@ -523,13 +526,14 @@ export function LessonForm({
       </div>
 
       {initialNotes && (
-        <div className="flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-700">
+        <div className="flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-700" onChange={() => setNotesDirty(true)}>
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Notes</p>
           {initialNotes.horses.map((h) => (
             <div key={h.id} className="flex flex-col gap-1">
               <input type="hidden" name="noteHorseId" value={h.id} />
-              <label className="text-xs font-medium text-zinc-500">{h.name}</label>
+              <label htmlFor={`horse_notes_${h.id}`} className="text-xs font-medium text-zinc-500">{h.name}</label>
               <textarea
+                id={`horse_notes_${h.id}`}
                 name={`horse_notes_${h.id}`}
                 defaultValue={h.horse_notes ?? ''}
                 rows={2}

@@ -193,8 +193,10 @@ export async function updateLessonAction(
       riderIds,
     })
 
-    const noteHorseIds = formData.getAll('noteHorseId') as string[]
-    const noteRiderIds = formData.getAll('noteRiderId') as string[]
+    const horseIdSet = new Set(horseIds)
+    const riderIdSet = new Set(riderIds)
+    const noteHorseIds = (formData.getAll('noteHorseId') as string[]).filter(id => horseIdSet.has(id))
+    const noteRiderIds = (formData.getAll('noteRiderId') as string[]).filter(id => riderIdSet.has(id))
     await Promise.all([
       ...noteHorseIds.map(hId =>
         updateLessonHorseNotes(lessonId, hId, barnId, (formData.get(`horse_notes_${hId}`) as string) || null)

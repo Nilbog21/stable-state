@@ -659,7 +659,7 @@ describe('LessonForm notes fields', () => {
   it('should_render_empty_textarea_when_horse_notes_is_null', () => {
     const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, horses: [{ id: 'horse-1', name: 'Thunderbolt', horse_notes: null }] } }
     render(<LessonForm {...props} />)
-    expect(screen.getByLabelText('Thunderbolt')).toBeDefined()
+    expect(screen.getByLabelText('Thunderbolt', { selector: 'textarea' })).toBeDefined()
   })
 
   it('should_render_empty_textarea_when_rider_notes_is_null', () => {
@@ -677,5 +677,18 @@ describe('LessonForm notes fields', () => {
   it('should_not_render_notes_section_when_initialNotes_not_provided', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByText('Notes')).toBeNull()
+  })
+
+  it('should_set_dirty_when_notes_changed', async () => {
+    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...notesProps} initialLesson={futureLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    fireEvent.change(screen.getByDisplayValue('watch left lead'), { target: { value: 'changed' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
 })
