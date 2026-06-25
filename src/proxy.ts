@@ -27,6 +27,9 @@ export async function proxy(request: NextRequest) {
 
   const { data } = await supabase.auth.getUser()
 
+  // Inject full URL so server component layouts can read ?barn= via headers()
+  response.headers.set('x-url', request.url)
+
   const { pathname } = new URL(request.url)
   const barnMatch = BARN_ROUTE.exec(pathname)
 

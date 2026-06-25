@@ -47,13 +47,13 @@ export function UserMenu({ initials, email, fullName, barnSlug }: Props) {
             <p className="text-xs text-zinc-500">{email}</p>
           </div>
           <Link
-            href="/profile"
+            href={`/profile?barn=${barnSlug}`}
             onClick={() => setOpen(false)}
             onNavigate={(e) => {
               if (dirty) {
                 e.preventDefault()
                 setOpen(false)
-                setPendingNav({ type: 'push', href: '/profile' })
+                setPendingNav({ type: 'push', href: `/profile?barn=${barnSlug}` })
               }
             }}
             className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
