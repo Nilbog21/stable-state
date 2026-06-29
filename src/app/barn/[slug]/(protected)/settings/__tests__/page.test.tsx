@@ -355,4 +355,18 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText('Bob Smith')).toBeDefined()
   })
+
+  it('should_show_unknown_for_active_member_with_null_user_id', async () => {
+    const activeMember = createMockMembership({ id: 'mem-b', user_id: null as any, created_at: '2026-01-01T00:00:00Z' })
+    vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('Unknown')).toBeDefined()
+  })
 })

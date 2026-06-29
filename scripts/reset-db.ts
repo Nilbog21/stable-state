@@ -176,8 +176,8 @@ async function run() {
   if (pendingErr) throw new Error(`create pending rider: ${pendingErr.message}`)
   const pendingUserId = pendingData.user.id
 
-  await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
-  await createPendingMembership(pendingUserId, DEV_BARN_ID, 'rider', supabase)
+  const pendingProfile = await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
+  await createPendingMembership(pendingUserId, DEV_BARN_ID, 'rider', pendingProfile.id, supabase)
 
   const allRiderMembers = await getActiveMembersWithProfiles(DEV_BARN_ID, 'rider', supabase)
   const riderRowIds = riderIds.map((uid) => {

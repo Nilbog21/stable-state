@@ -26,9 +26,9 @@ export default async function MembersPage({
   const profile = await getProfileByUserId(user.id)
   const youName = profile ? `${profile.first_name} ${profile.last_name}` : (user.email ?? 'You')
 
-  let managers: { membershipId: string; userId: string; name: string }[] = []
-  let trainers: { membershipId: string; userId: string; name: string }[] = []
-  let riders: { membershipId: string; userId: string; name: string }[] = []
+  let managers: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
+  let trainers: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
+  let riders: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
 
   if (membership.role === 'manager') {
     ;[managers, trainers, riders] = await Promise.all([

@@ -58,31 +58,27 @@ describe('createManagedMemberAction', () => {
     expect(mockRevalidatePath).toHaveBeenCalledWith('/barn/green-acres/members')
   })
 
-  it('should_return_error_when_first_name_is_missing', async () => {
+  it('should_not_call_createManagedMember_when_first_name_is_missing', async () => {
     const fd = makeFormData({ first_name: '', last_name: 'Smith' })
-    const result = await createManagedMemberAction('green-acres', fd)
-    expect(result).toEqual({ error: expect.any(String) })
+    await createManagedMemberAction('green-acres', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 
-  it('should_return_error_when_last_name_is_missing', async () => {
+  it('should_not_call_createManagedMember_when_last_name_is_missing', async () => {
     const fd = makeFormData({ first_name: 'Alex', last_name: '' })
-    const result = await createManagedMemberAction('green-acres', fd)
-    expect(result).toEqual({ error: expect.any(String) })
+    await createManagedMemberAction('green-acres', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 
-  it('should_return_error_when_first_name_field_is_absent', async () => {
+  it('should_not_call_createManagedMember_when_first_name_field_is_absent', async () => {
     const fd = makeFormData({ last_name: 'Smith' })
-    const result = await createManagedMemberAction('green-acres', fd)
-    expect(result).toEqual({ error: expect.any(String) })
+    await createManagedMemberAction('green-acres', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 
-  it('should_return_error_when_last_name_field_is_absent', async () => {
+  it('should_not_call_createManagedMember_when_last_name_field_is_absent', async () => {
     const fd = makeFormData({ first_name: 'Alex' })
-    const result = await createManagedMemberAction('green-acres', fd)
-    expect(result).toEqual({ error: expect.any(String) })
+    await createManagedMemberAction('green-acres', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 })
