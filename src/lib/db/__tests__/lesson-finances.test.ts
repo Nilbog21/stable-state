@@ -807,8 +807,8 @@ describe('getRiderIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1' }])
-      if (table === 'profiles') return makeInChain([{ user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profile_id: 'prof-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-1', user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -939,8 +939,8 @@ describe('getRiderIncomeSummary', () => {
         { lesson_id: lesson1.id, rider_id: 'mem-1' },
         { lesson_id: lesson2.id, rider_id: 'mem-1' },
       ])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1' }])
-      if (table === 'profiles') return makeInChain([{ user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profile_id: 'prof-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-1', user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1079,8 +1079,8 @@ describe('getRiderIncomeSummary', () => {
       if (table === 'lesson_riders') return makeInChain([
         { lesson_id: lesson1.id, rider_id: 'mem-1' },
       ])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1' }])
-      if (table === 'profiles') return makeInChain([{ user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profile_id: 'prof-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-1', user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1136,7 +1136,7 @@ describe('getRiderIncomeSummary', () => {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain([{ id: lesson.id, fee: 100 }])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1', profile_id: 'prof-1' }])
       if (table === 'profiles') return makeInChain(null, new Error('rider profiles error'))
       return makeInChain([])
     })
@@ -1321,8 +1321,8 @@ describe('getOutstandingLessons', () => {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeOutstandingChain([lesson])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1' }])
-      if (table === 'profiles') return makeInChain([{ user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profile_id: 'prof-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-1', user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
@@ -1803,7 +1803,7 @@ describe('getOutstandingLessons', () => {
     const from = vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeOutstandingChain([lesson])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1', profile_id: 'prof-1' }])
       if (table === 'profiles') return makeInChain(null, new Error('rider profiles error'))
       return makeInChain([])
     })

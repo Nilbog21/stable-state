@@ -5,6 +5,8 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { EmptyState } from '@/components/EmptyState'
+import { ManagedRiderRow } from './ManagedRiderRow'
+import { createManagedMemberAction } from './actions'
 
 export default async function MembersPage({
   params,
@@ -113,26 +115,61 @@ export default async function MembersPage({
 
       {(membership.role === 'manager' || membership.role === 'trainer') && (
         <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Riders
-          </h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Riders
+            </h2>
+            {membership.role === 'manager' && (
+              <form action={createManagedMemberAction.bind(null, slug)} className="flex items-center gap-2">
+                <input
+                  name="first_name"
+                  required
+                  placeholder="First name"
+                  className="rounded border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+                <input
+                  name="last_name"
+                  required
+                  placeholder="Last name"
+                  className="rounded border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                />
+                <button
+                  type="submit"
+                  className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  Add Rider
+                </button>
+              </form>
+            )}
+          </div>
           {riders.length > 0 ? (
             <ul className="space-y-2">
-              {riders.map((r) => (
-                <li key={r.membershipId}>
-                  <Link
-                    href={`/barn/${slug}/members/${r.membershipId}`}
-                    className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    {r.name}
-                  </Link>
-                </li>
-              ))}
+              {riders.map((r) =>
+                r.isManaged && r.inviteToken ? (
+                  <li key={r.membershipId}>
+                    <ManagedRiderRow
+                      name={r.name}
+                      barnSlug={slug}
+                      membershipId={r.membershipId}
+                      inviteToken={r.inviteToken}
+                    />
+                  </li>
+                ) : (
+                  <li key={r.membershipId}>
+                    <Link
+                      href={`/barn/${slug}/members/${r.membershipId}`}
+                      className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                    >
+                      {r.name}
+                    </Link>
+                  </li>
+                )
+              )}
             </ul>
           ) : (
             <EmptyState
               heading="No riders yet"
-              subtext="Riders can request access using the invite link in Manage Barn."
+              subtext="Riders can request access using the invite link in Manage Barn, or add one directly above."
             />
           )}
         </section>
