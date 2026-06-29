@@ -45,3 +45,15 @@ Always display times in 12-hour AM/PM format (e.g. "12:00 AM", "1:00 PM"). Never
 - `vN.0.0` tag is created at the merge commit on `main`
 - Release branch is deleted after the tag is confirmed
 - `release/release-(N+1)` is cut from the new `main` HEAD immediately after merge
+- `patch-N` label is created (N = the just-released series) so patches can be tied to that release
+
+## Patch Workflow
+
+Patches land on `main` without waiting for the next release.
+
+- Patches branch off `main` HEAD (same branch naming as features: `{issue-number}-{slug}`)
+- PRs use the `patch-N` label (N = the release series being patched, e.g. `patch-2` for v2.0.0)
+- PRs target `main` directly
+- After merge, tag is auto-incremented: `vN.0.1`, `vN.0.2`, etc.
+- `CHANGELOG.md` is updated at tag time (same as release ceremony)
+- `release/release-(N+1)` is rebased onto the new `main` HEAD after merge so it picks up the patch
