@@ -998,7 +998,6 @@ describe('createManagedMember', () => {
   beforeEach(() => { vi.mocked(createClient).mockReset() })
 
   function makeClient(profileData: unknown, profileError: unknown, membershipData: unknown, membershipError: unknown) {
-    let insertCallCount = 0
     return {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'profiles') {
