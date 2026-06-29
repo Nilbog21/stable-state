@@ -71,6 +71,20 @@ describe('createManagedMemberAction', () => {
     expect(result).toEqual({ error: expect.any(String) })
     expect(createManagedMember).not.toHaveBeenCalled()
   })
+
+  it('should_return_error_when_first_name_field_is_absent', async () => {
+    const fd = makeFormData({ last_name: 'Smith' })
+    const result = await createManagedMemberAction('green-acres', fd)
+    expect(result).toEqual({ error: expect.any(String) })
+    expect(createManagedMember).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_last_name_field_is_absent', async () => {
+    const fd = makeFormData({ first_name: 'Alex' })
+    const result = await createManagedMemberAction('green-acres', fd)
+    expect(result).toEqual({ error: expect.any(String) })
+    expect(createManagedMember).not.toHaveBeenCalled()
+  })
 })
 
 describe('revokeInviteTokenAction', () => {

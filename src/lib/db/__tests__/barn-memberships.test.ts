@@ -984,6 +984,14 @@ describe('resolveMemberNames', () => {
     )
     await expect(resolveMemberNames(['mem-1'], 'barn-1')).rejects.toThrow('profiles query failed')
   })
+
+  it('should_fall_back_to_membership_id_when_profiles_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-1', profile_id: 'profile-1' }], null, null, null)
+    )
+    const result = await resolveMemberNames(['mem-1'], 'barn-1')
+    expect(result).toEqual(new Map([['mem-1', 'mem-1']]))
+  })
 })
 
 describe('createManagedMember', () => {

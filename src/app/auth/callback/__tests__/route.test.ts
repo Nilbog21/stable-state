@@ -990,5 +990,13 @@ describe('GET /auth/callback', () => {
       await GET(request as any)
       expect(claimManagedMember).not.toHaveBeenCalled()
     })
+
+    it('should_call_claim_with_empty_string_when_user_email_is_null', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-99', email: null } as any)
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=tok-123')
+      await GET(request as any)
+      expect(claimManagedMember).toHaveBeenCalledWith('tok-123', 'user-99', '')
+    })
   })
 })
