@@ -38,7 +38,7 @@ describe('upsertProfile', () => {
 
     expect(mock._mocks.upsert).toHaveBeenCalledWith(
       { user_id: 'user-1', email: 'test@example.com', first_name: 'Jane', last_name: 'Doe' },
-      { onConflict: 'email' }
+      { onConflict: 'user_id' }
     )
   })
 

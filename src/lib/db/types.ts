@@ -10,7 +10,8 @@ export type MembershipStatus = 'active' | 'pending'
 export interface Profile {
   id: string
   user_id: string | null
-  email: string
+  email: string | null
+  is_managed: boolean
   first_name: string
   last_name: string
   phone: string | null
@@ -38,11 +39,13 @@ export interface Barn {
 
 export interface BarnMembership {
   id: string
-  user_id: string
+  user_id: string | null
+  profile_id: string
   barn_id: string
   role: Role
   status: MembershipStatus
   can_instruct: boolean
+  invite_token: string | null
   created_at: string
 }
 
