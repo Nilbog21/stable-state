@@ -125,17 +125,17 @@ export default async function MembersPage({
                   name="first_name"
                   required
                   placeholder="First name"
-                  className="rounded border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                 />
                 <input
                   name="last_name"
                   required
                   placeholder="Last name"
-                  className="rounded border border-zinc-200 px-2 py-1 text-xs dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                  className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
                 />
                 <button
                   type="submit"
-                  className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                  className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
                 >
                   Add Rider
                 </button>
@@ -169,7 +169,11 @@ export default async function MembersPage({
           ) : (
             <EmptyState
               heading="No riders yet"
-              subtext="Riders can request access using the invite link in Manage Barn, or add one directly above."
+              subtext={
+                membership.role === 'manager'
+                  ? 'Add a rider above, or share the invite link from Manage Barn.'
+                  : 'Riders can request access using the invite link in Manage Barn.'
+              }
             />
           )}
         </section>

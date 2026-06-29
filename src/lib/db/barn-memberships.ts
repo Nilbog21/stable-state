@@ -133,7 +133,8 @@ export async function getInstructorsByBarn(
   if (memError) throw memError
   if (!memberships?.length) return []
 
-  const userIds = memberships.map((m) => m.user_id)
+  const userIds = memberships.map((m) => m.user_id).filter((id): id is string => id !== null)
+  if (!userIds.length) return []
 
   const { data: profiles, error: profError } = await supabase
     .from('profiles')
@@ -142,9 +143,9 @@ export async function getInstructorsByBarn(
 
   if (profError) throw profError
 
-  return memberships.map((m) => {
-    const p = (profiles ?? []).find((pr) => pr.user_id === m.user_id)
-    return { userId: m.user_id, name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Instructor' }
+  return userIds.map((uid) => {
+    const p = (profiles ?? []).find((pr) => pr.user_id === uid)
+    return { userId: uid, name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Instructor' }
   })
 }
 
@@ -276,7 +277,10 @@ export async function createManagedMember(
     .select('id')
     .single()
 
-  if (memError) throw memError
+  if (memError) {
+    try { await supabase.from('profiles').delete().eq('id', profile.id) } catch { /* ignore cleanup */ }
+    throw memError
+  }
 
   return { membershipId: membership.id }
 }
@@ -284,7 +288,7 @@ export async function createManagedMember(
 export async function claimManagedMember(
   token: string,
   userId: string,
-  email: string,
+  email: string | null,
   client?: SupabaseClient
 ): Promise<void> {
   const supabase = client ?? await createClient()

@@ -10,8 +10,6 @@ interface Props {
 }
 
 export function ManagedRiderRow({ name, barnSlug, membershipId, inviteToken }: Props) {
-  const inviteUrl = `${window.location.origin}/barn/${barnSlug}/login?token=${inviteToken}`
-
   return (
     <div className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700">
       <span className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">
@@ -23,8 +21,11 @@ export function ManagedRiderRow({ name, barnSlug, membershipId, inviteToken }: P
       <div className="flex items-center gap-2">
         <button
           type="button"
-          onClick={() => navigator.clipboard.writeText(inviteUrl)}
-          className="rounded px-3 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
+          onClick={() => {
+            const url = `${window.location.origin}/barn/${barnSlug}/login?token=${inviteToken}`
+            navigator.clipboard.writeText(url)
+          }}
+          className="flex min-h-[44px] items-center rounded px-3 text-sm font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
         >
           Copy invite
         </button>
@@ -33,7 +34,7 @@ export function ManagedRiderRow({ name, barnSlug, membershipId, inviteToken }: P
         >
           <button
             type="submit"
-            className="rounded px-3 py-1.5 text-xs font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
+            className="flex min-h-[44px] items-center rounded px-3 text-sm font-medium text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/30"
           >
             Revoke
           </button>

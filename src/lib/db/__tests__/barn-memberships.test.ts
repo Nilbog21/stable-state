@@ -792,6 +792,14 @@ describe('getInstructorsByBarn', () => {
 
     expect(result).toEqual([{ userId: 'trainer-1', name: 'Unknown Instructor' }])
   })
+
+  it('should_return_empty_when_all_membership_user_ids_are_null', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient([{ user_id: null }], null, [], null))
+
+    const result = await getInstructorsByBarn('barn-1')
+
+    expect(result).toEqual([])
+  })
 })
 
 describe('getActiveMembersWithProfiles', () => {
@@ -1007,6 +1015,9 @@ describe('createManagedMember', () => {
                 single: vi.fn().mockResolvedValue({ data: profileData, error: profileError }),
               }),
             }),
+            delete: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: null }),
+            }),
           }
         }
         if (table === 'barn_memberships') {
@@ -1042,6 +1053,13 @@ describe('createManagedMember', () => {
     vi.mocked(createClient).mockResolvedValue(makeClient({ id: 'profile-99' }, null, null, dbError))
     await expect(createManagedMember('barn-1', 'Alex', 'Smith')).rejects.toThrow('membership insert failed')
   })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = makeClient({ id: 'profile-99' }, null, { id: 'mem-99' }, null)
+    await createManagedMember('barn-1', 'Alex', 'Smith', undefined, injectedClient)
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
 })
 
 describe('claimManagedMember', () => {
@@ -1068,6 +1086,24 @@ describe('claimManagedMember', () => {
     const dbError = new Error('user_already_claimed')
     vi.mocked(createClient).mockResolvedValue({ rpc: vi.fn().mockResolvedValue({ error: dbError }) } as any)
     await expect(claimManagedMember('tok-abc', 'user-99', 'u@e.com')).rejects.toThrow('user_already_claimed')
+  })
+
+  it('should_pass_null_email_to_rpc', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+    await claimManagedMember('tok-abc', 'user-99', null)
+    expect(rpc).toHaveBeenCalledWith('claim_managed_member', {
+      p_token: 'tok-abc',
+      p_user_id: 'user-99',
+      p_email: null,
+    })
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    await claimManagedMember('tok-abc', 'user-99', 'u@e.com', { rpc } as any)
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 })
 
@@ -1109,5 +1145,24 @@ describe('revokeInviteToken', () => {
       }),
     } as any)
     await expect(revokeInviteToken('mem-1', 'barn-1')).rejects.toThrow('update failed')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = {
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              select: vi.fn().mockReturnValue({
+                single: vi.fn().mockResolvedValue({ data: { invite_token: 'new-tok' }, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any
+    await revokeInviteToken('mem-1', 'barn-1', injectedClient)
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 })

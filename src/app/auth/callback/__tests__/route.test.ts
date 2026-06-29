@@ -991,12 +991,19 @@ describe('GET /auth/callback', () => {
       expect(claimManagedMember).not.toHaveBeenCalled()
     })
 
-    it('should_call_claim_with_empty_string_when_user_email_is_null', async () => {
+    it('should_call_claim_with_null_when_user_email_is_null', async () => {
       vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-99', email: null } as any)
       vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
       const request = new Request('http://localhost:3000/auth/callback?code=code&token=tok-123')
       await GET(request as any)
-      expect(claimManagedMember).toHaveBeenCalledWith('tok-123', 'user-99', '')
+      expect(claimManagedMember).toHaveBeenCalledWith('tok-123', 'user-99', null)
+    })
+
+    it('should_redirect_to_barn_login_on_claim_error_when_barn_slug_present', async () => {
+      vi.mocked(claimManagedMember).mockRejectedValue(new Error('token_not_found'))
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=bad-tok&barn=green-acres')
+      await GET(request as any)
+      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('/barn/green-acres/login'))
     })
   })
 })

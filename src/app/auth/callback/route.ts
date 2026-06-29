@@ -68,9 +68,10 @@ export async function GET(request: NextRequest) {
 
       if (inviteToken && user) {
         try {
-          await claimManagedMember(inviteToken, user.id, user.email ?? '')
+          await claimManagedMember(inviteToken, user.id, user.email ?? null)
         } catch {
-          return NextResponse.redirect(`${origin}/login?error=invite_claim_failed`)
+          const base = barnSlug ? `${origin}/barn/${barnSlug}/login` : `${origin}/login`
+          return NextResponse.redirect(`${base}?error=invite_claim_failed`)
         }
       }
 

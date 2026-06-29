@@ -13,17 +13,9 @@ export async function createManagedMemberAction(
 
   if (!firstName || !lastName) return
 
-  const phone = (formData.get('phone') as string | null)?.trim() || undefined
-  const emergencyName = (formData.get('emergency_contact_name') as string | null)?.trim() || undefined
-  const emergencyPhone = (formData.get('emergency_contact_phone') as string | null)?.trim() || undefined
-
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
-  await createManagedMember(barn.id, firstName, lastName, {
-    phone,
-    emergency_contact_name: emergencyName,
-    emergency_contact_phone: emergencyPhone,
-  })
+  await createManagedMember(barn.id, firstName, lastName)
 
   revalidatePath(`/barn/${barnSlug}/members`)
 }
