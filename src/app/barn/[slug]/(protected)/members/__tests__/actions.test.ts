@@ -42,8 +42,7 @@ describe('createManagedMemberAction', () => {
       'barn-1',
       'Alex',
       'Smith',
-      expect.objectContaining({}),
-      expect.anything()
+      expect.objectContaining({})
     )
   })
 
