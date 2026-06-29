@@ -4,17 +4,20 @@ import { signInWithGoogleForBarn } from '@/app/actions/auth'
 
 export default async function BarnLoginPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>
+  searchParams: Promise<{ token?: string }>
 }) {
   const { slug } = await params
+  const { token } = await searchParams
   const barn = await getBarnBySlug(slug)
 
   if (!barn) {
     notFound()
   }
 
-  const signIn = signInWithGoogleForBarn.bind(null, slug)
+  const signIn = signInWithGoogleForBarn.bind(null, slug, token)
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">

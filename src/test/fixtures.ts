@@ -12,10 +12,12 @@ export function createMockMembership(overrides: Partial<BarnMembership> = {}): B
   return {
     id: 'mem-1',
     user_id: 'user-1',
+    profile_id: 'profile-1',
     barn_id: 'barn-1',
     role: 'trainer',
     status: 'active',
     can_instruct: true,
+    invite_token: null,
     created_at: '',
     ...overrides,
   }
@@ -26,6 +28,7 @@ export function createMockProfile(overrides: Partial<Profile> = {}): Profile {
     id: 'profile-1',
     user_id: 'user-1',
     email: 'user@example.com',
+    is_managed: false,
     first_name: 'Jane',
     last_name: 'Doe',
     phone: null,

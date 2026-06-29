@@ -118,10 +118,11 @@ async function run() {
     email_confirm: true,
   })
   if (m2Err) throw new Error(`create manager2: ${m2Err.message}`)
-  await upsertProfile(m2Data.user.id, DEV_MANAGER_2.email, DEV_MANAGER_2.firstName, DEV_MANAGER_2.lastName, supabase)
+  const m2Profile = await upsertProfile(m2Data.user.id, DEV_MANAGER_2.email, DEV_MANAGER_2.firstName, DEV_MANAGER_2.lastName, supabase)
   mustSucceed(
     await supabase.from('barn_memberships').insert({
       user_id: m2Data.user.id,
+      profile_id: m2Profile.id,
       barn_id: DEV_BARN_ID,
       role: 'manager',
       status: 'active',
@@ -147,24 +148,28 @@ async function run() {
     riderIds.push(data.user.id)
   }
 
+  const trainerProfileIds: string[] = []
   for (let i = 0; i < DEV_TRAINERS.length; i++) {
-    await upsertProfile(trainerIds[i], DEV_TRAINERS[i].email, DEV_TRAINERS[i].firstName, DEV_TRAINERS[i].lastName, supabase)
+    const p = await upsertProfile(trainerIds[i], DEV_TRAINERS[i].email, DEV_TRAINERS[i].firstName, DEV_TRAINERS[i].lastName, supabase)
+    trainerProfileIds.push(p.id)
   }
 
+  const riderProfileIds: string[] = []
   for (let i = 0; i < DEV_RIDERS.length; i++) {
-    await upsertProfile(riderIds[i], DEV_RIDERS[i].email, DEV_RIDERS[i].firstName, DEV_RIDERS[i].lastName, supabase)
+    const p = await upsertProfile(riderIds[i], DEV_RIDERS[i].email, DEV_RIDERS[i].firstName, DEV_RIDERS[i].lastName, supabase)
+    riderProfileIds.push(p.id)
   }
 
   mustSucceed(
     await supabase.from('barn_memberships').insert(
-      trainerIds.map((id) => ({ user_id: id, barn_id: DEV_BARN_ID, role: 'trainer', status: 'active', can_instruct: true }))
+      trainerIds.map((id, i) => ({ user_id: id, profile_id: trainerProfileIds[i], barn_id: DEV_BARN_ID, role: 'trainer', status: 'active', can_instruct: true }))
     ),
     'insert trainer memberships'
   )
 
   mustSucceed(
     await supabase.from('barn_memberships').insert(
-      riderIds.map((id) => ({ user_id: id, barn_id: DEV_BARN_ID, role: 'rider', status: 'active' }))
+      riderIds.map((id, i) => ({ user_id: id, profile_id: riderProfileIds[i], barn_id: DEV_BARN_ID, role: 'rider', status: 'active' }))
     ),
     'insert rider memberships'
   )
@@ -176,8 +181,8 @@ async function run() {
   if (pendingErr) throw new Error(`create pending rider: ${pendingErr.message}`)
   const pendingUserId = pendingData.user.id
 
-  await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
-  await createPendingMembership(pendingUserId, DEV_BARN_ID, 'rider', supabase)
+  const pendingProfile = await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
+  await createPendingMembership(pendingUserId, DEV_BARN_ID, 'rider', pendingProfile.id, supabase)
 
   const allRiderMembers = await getActiveMembersWithProfiles(DEV_BARN_ID, 'rider', supabase)
   const riderRowIds = riderIds.map((uid) => {

@@ -33,11 +33,12 @@ export async function activateSeededAccount(
 
   if (!seeded) return
 
-  await upsertProfile(userId, email, seeded.first_name, seeded.last_name, supabase)
+  const profile = await upsertProfile(userId, email, seeded.first_name, seeded.last_name, supabase)
 
   const { error: memErr } = await supabase.from('barn_memberships').upsert(
     {
       user_id: userId,
+      profile_id: profile.id,
       barn_id: seeded.barn_id,
       role: seeded.role,
       status: 'active',

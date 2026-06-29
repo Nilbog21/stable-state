@@ -211,6 +211,21 @@ describe('signInWithGoogleForBarn', () => {
     expect(callArgs.options.redirectTo).toMatch(/^https:\/\/myapp\.vercel\.app/)
   })
 
+  it('should_include_invite_token_in_redirect_url_when_token_provided', async () => {
+    const mockSignInWithOAuth = vi.fn().mockResolvedValue({
+      data: { url: 'https://accounts.google.com/oauth' },
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      auth: { signInWithOAuth: mockSignInWithOAuth },
+    } as any)
+
+    await signInWithGoogleForBarn('green-acres', 'tok-abc')
+
+    const callArgs = mockSignInWithOAuth.mock.calls[0][0]
+    expect(callArgs.options.redirectTo).toContain('token=tok-abc')
+  })
+
   it('should_include_barn_slug_in_redirect_to_when_origin_is_from_headers', async () => {
     mockHeaders('https', 'myapp.vercel.app')
     const mockSignInWithOAuth = vi.fn().mockResolvedValue({

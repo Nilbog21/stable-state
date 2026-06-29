@@ -66,7 +66,7 @@ describe('registerForBarn', () => {
 
     await registerForBarn('green-acres', null, fd).catch(() => {})
 
-    expect(createPendingMembership).toHaveBeenCalledWith('user-1', 'barn-1', 'trainer')
+    expect(createPendingMembership).toHaveBeenCalledWith('user-1', 'barn-1', 'trainer', 'profile-1')
   })
 
   it('should_redirect_to_pending_page_after_successful_registration', async () => {

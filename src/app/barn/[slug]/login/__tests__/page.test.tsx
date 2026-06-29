@@ -24,7 +24,7 @@ describe('BarnLoginPage', () => {
   it('should_render_login_page_with_barn_name_when_slug_is_valid', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
 
-    const jsx = await BarnLoginPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await BarnLoginPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     render(jsx)
 
     expect(screen.getByText(/green acres/i)).toBeDefined()
@@ -33,7 +33,7 @@ describe('BarnLoginPage', () => {
   it('should_render_sign_in_button_when_slug_is_valid', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
 
-    const jsx = await BarnLoginPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await BarnLoginPage({ params: Promise.resolve({ slug: 'green-acres' }), searchParams: Promise.resolve({}) })
     render(jsx)
 
     expect(screen.getByRole('button', { name: /sign in with google/i })).toBeDefined()
@@ -46,7 +46,7 @@ describe('BarnLoginPage', () => {
     })
 
     await expect(
-      BarnLoginPage({ params: Promise.resolve({ slug: 'unknown-slug' }) })
+      BarnLoginPage({ params: Promise.resolve({ slug: 'unknown-slug' }), searchParams: Promise.resolve({}) })
     ).rejects.toThrow('NEXT_NOT_FOUND')
 
     expect(notFound).toHaveBeenCalled()

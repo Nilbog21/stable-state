@@ -120,8 +120,8 @@ export async function getLessonsByBarn(
 export async function getLessonById(lessonId: string, barnId: string, role: Role, userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, barn_memberships ( id, user_id )'
-    : 'rider_notes, private_notes, barn_memberships ( id, user_id )'
+    ? 'rider_notes, barn_memberships ( id, user_id, profile_id )'
+    : 'rider_notes, private_notes, barn_memberships ( id, user_id, profile_id )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
@@ -139,24 +139,32 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   type RawLessonRider = {
     rider_notes: string | null
     private_notes?: string | null
-    barn_memberships: { id: string; user_id: string | null } | null
+    barn_memberships: { id: string; user_id: string | null; profile_id: string } | null
   }
 
-  const riderUserIds = (data.lesson_riders as RawLessonRider[])
-    .map((lr) => lr.barn_memberships?.user_id)
-    .filter((uid): uid is string => uid !== null && uid !== undefined)
-  const allProfileIds = [...new Set([...(data.instructor_id ? [data.instructor_id] : []), ...riderUserIds])]
+  // Resolve rider names via profile_id so managed members (user_id = null) get their name
+  const riderProfileIds = [...new Set(
+    (data.lesson_riders as RawLessonRider[])
+      .map((lr) => lr.barn_memberships?.profile_id)
+      .filter((id): id is string => id != null)
+  )]
 
-  const { data: profilesData, error: profilesError } = allProfileIds.length
-    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', allProfileIds)
-    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
+  const { data: riderProfilesData, error: riderProfilesError } = riderProfileIds.length
+    ? await supabase.from('profiles').select('id, first_name, last_name').in('id', riderProfileIds)
+    : { data: [] as { id: string; first_name: string; last_name: string }[], error: null }
 
-  if (profilesError) throw profilesError
+  if (riderProfilesError) throw riderProfilesError
 
-  const profileMap = new Map((profilesData ?? []).map((p) => [p.user_id, p]))
-  const instructor_name = data.instructor_id && profileMap.get(data.instructor_id)
-    ? `${profileMap.get(data.instructor_id)!.first_name} ${profileMap.get(data.instructor_id)!.last_name}`
-    : null
+  const riderProfileMap = new Map((riderProfilesData ?? []).map((p) => [p.id, p]))
+
+  // Instructor always has a real auth account — look up by user_id
+  let instructor_name: string | null = null
+  if (data.instructor_id) {
+    const { data: ip, error: ipError } = await supabase
+      .from('profiles').select('first_name, last_name').eq('user_id', data.instructor_id).maybeSingle()
+    if (ipError) throw ipError
+    if (ip) instructor_name = `${ip.first_name} ${ip.last_name}`
+  }
 
   type NormalizedLr = {
     rider_notes: string | null
@@ -171,8 +179,8 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
       ? {
           id: lr.barn_memberships.id,
           user_id: lr.barn_memberships.user_id,
-          name: lr.barn_memberships.user_id && profileMap.get(lr.barn_memberships.user_id)
-            ? `${profileMap.get(lr.barn_memberships.user_id)!.first_name} ${profileMap.get(lr.barn_memberships.user_id)!.last_name}`
+          name: lr.barn_memberships.profile_id && riderProfileMap.has(lr.barn_memberships.profile_id)
+            ? `${riderProfileMap.get(lr.barn_memberships.profile_id)!.first_name} ${riderProfileMap.get(lr.barn_memberships.profile_id)!.last_name}`
             : lr.barn_memberships.id,
         }
       : null,

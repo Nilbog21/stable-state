@@ -350,4 +350,16 @@ describe('MembersPage', () => {
     render(jsx)
     expect(screen.queryByRole('heading', { name: /managers/i })).toBeNull()
   })
+
+  it('should_render_unlinked_badge_for_managed_rider', async () => {
+    const managedRiders = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Unlinked')).toBeDefined()
+  })
 })

@@ -13,6 +13,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
   getBarnMembershipsForUser: vi.fn(),
   getActiveMemberships: vi.fn(),
+  claimManagedMember: vi.fn(),
 }))
 
 vi.mock('@/lib/db/seeded-accounts', () => ({
@@ -49,7 +50,7 @@ vi.mock('next/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships, claimManagedMember } from '@/lib/db/barn-memberships'
 import { activateSeededAccount } from '@/lib/db/seeded-accounts'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
@@ -84,6 +85,8 @@ describe('GET /auth/callback', () => {
     vi.mocked(getActiveMemberships).mockResolvedValue([])
     vi.mocked(getProfilesByUserIds).mockReset()
     vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    vi.mocked(claimManagedMember).mockReset()
+    vi.mocked(claimManagedMember).mockResolvedValue(undefined)
     mockCookiesSet.mockReset()
     mockRedirect.mockImplementation((url: string | URL) => ({
       url: url.toString(),
@@ -949,6 +952,58 @@ describe('GET /auth/callback', () => {
       await GET(request as any)
 
       expect(deleteNotificationByType).toHaveBeenCalledWith('user-1', 'barn-1', 'member_incomplete_profile')
+    })
+  })
+
+  describe('invite token claim', () => {
+    beforeEach(() => {
+      vi.mocked(createClient).mockResolvedValue({
+        auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
+      } as any)
+      vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-99', email: 'new@example.com' } as any)
+    })
+
+    it('should_call_claimManagedMember_when_token_param_present', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=tok-123')
+      await GET(request as any)
+      expect(claimManagedMember).toHaveBeenCalledWith('tok-123', 'user-99', 'new@example.com')
+    })
+
+    it('should_redirect_to_error_when_claim_throws_user_already_claimed', async () => {
+      vi.mocked(claimManagedMember).mockRejectedValue(new Error('user_already_claimed'))
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=tok-123')
+      await GET(request as any)
+      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('invite_claim_failed'))
+    })
+
+    it('should_redirect_to_error_when_claim_throws_token_not_found', async () => {
+      vi.mocked(claimManagedMember).mockRejectedValue(new Error('token_not_found'))
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=bad-tok')
+      await GET(request as any)
+      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('invite_claim_failed'))
+    })
+
+    it('should_not_call_claimManagedMember_when_no_token_param', async () => {
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+      expect(claimManagedMember).not.toHaveBeenCalled()
+    })
+
+    it('should_call_claim_with_null_when_user_email_is_null', async () => {
+      vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-99', email: null } as any)
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=tok-123')
+      await GET(request as any)
+      expect(claimManagedMember).toHaveBeenCalledWith('tok-123', 'user-99', null)
+    })
+
+    it('should_redirect_to_barn_login_on_claim_error_when_barn_slug_present', async () => {
+      vi.mocked(claimManagedMember).mockRejectedValue(new Error('token_not_found'))
+      const request = new Request('http://localhost:3000/auth/callback?code=code&token=bad-tok&barn=green-acres')
+      await GET(request as any)
+      expect(mockRedirect).toHaveBeenCalledWith(expect.stringContaining('/barn/green-acres/login'))
     })
   })
 })

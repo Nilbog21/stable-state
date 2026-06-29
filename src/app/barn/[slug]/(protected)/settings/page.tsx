@@ -17,7 +17,8 @@ import {
 import InviteLink from './InviteLink'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
-function profileName(profiles: Profile[], userId: string): string {
+function profileName(profiles: Profile[], userId: string | null): string {
+  if (!userId) return 'Unknown'
   const p = profiles.find((p) => p.user_id === userId)
   return p ? `${p.first_name} ${p.last_name}` : 'Unknown'
 }
@@ -85,7 +86,7 @@ export default async function SettingsPage({
 
   const removable = active.filter((m) => m.user_id !== user!.id)
 
-  const allUserIds = [...new Set([...pending, ...active].map((m) => m.user_id))]
+  const allUserIds = [...new Set([...pending, ...active].map((m) => m.user_id).filter((id): id is string => id !== null))]
   const profiles = await getProfilesByUserIds(allUserIds)
 
   return (

@@ -5,6 +5,8 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { EmptyState } from '@/components/EmptyState'
+import { ManagedRiderRow } from './ManagedRiderRow'
+import { createManagedMemberAction } from './actions'
 
 export default async function MembersPage({
   params,
@@ -24,9 +26,9 @@ export default async function MembersPage({
   const profile = await getProfileByUserId(user.id)
   const youName = profile ? `${profile.first_name} ${profile.last_name}` : (user.email ?? 'You')
 
-  let managers: { membershipId: string; userId: string; name: string }[] = []
-  let trainers: { membershipId: string; userId: string; name: string }[] = []
-  let riders: { membershipId: string; userId: string; name: string }[] = []
+  let managers: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
+  let trainers: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
+  let riders: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
 
   if (membership.role === 'manager') {
     ;[managers, trainers, riders] = await Promise.all([
@@ -116,23 +118,60 @@ export default async function MembersPage({
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Riders
           </h2>
+          {membership.role === 'manager' && (
+            <form action={createManagedMemberAction.bind(null, slug)} className="mb-4 flex items-center gap-2">
+              <input
+                name="first_name"
+                required
+                placeholder="First name"
+                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+              <input
+                name="last_name"
+                required
+                placeholder="Last name"
+                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+              <button
+                type="submit"
+                className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                Add Rider
+              </button>
+            </form>
+          )}
           {riders.length > 0 ? (
             <ul className="space-y-2">
-              {riders.map((r) => (
-                <li key={r.membershipId}>
-                  <Link
-                    href={`/barn/${slug}/members/${r.membershipId}`}
-                    className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    {r.name}
-                  </Link>
-                </li>
-              ))}
+              {riders.map((r) =>
+                r.isManaged && r.inviteToken ? (
+                  <li key={r.membershipId}>
+                    <ManagedRiderRow
+                      name={r.name}
+                      barnSlug={slug}
+                      membershipId={r.membershipId}
+                      inviteToken={r.inviteToken}
+                    />
+                  </li>
+                ) : (
+                  <li key={r.membershipId}>
+                    <Link
+                      href={`/barn/${slug}/members/${r.membershipId}`}
+                      className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                    >
+                      {r.name}
+                    </Link>
+                  </li>
+                )
+              )}
             </ul>
           ) : (
             <EmptyState
               heading="No riders yet"
-              subtext="Riders can request access using the invite link in Manage Barn."
+              subtext={
+                membership.role === 'manager'
+                  ? 'Add a rider above, or share the invite link from Manage Barn.'
+                  : 'Riders can request access using the invite link in Manage Barn.'
+              }
             />
           )}
         </section>

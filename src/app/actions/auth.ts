@@ -27,16 +27,17 @@ export async function signInWithGoogle() {
   redirect(data.url)
 }
 
-export async function signInWithGoogleForBarn(barnSlug: string) {
+export async function signInWithGoogleForBarn(barnSlug: string, inviteToken?: string) {
   if (!/^[a-z0-9-]+$/.test(barnSlug)) {
     redirect('/login?error=invalid_barn')
   }
 
   const supabase = await createClient()
+  const tokenParam = inviteToken ? `&token=${encodeURIComponent(inviteToken)}` : ''
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
     options: {
-      redirectTo: `${await getOrigin()}/auth/callback?barn=${barnSlug}`,
+      redirectTo: `${await getOrigin()}/auth/callback?barn=${barnSlug}${tokenParam}`,
     },
   })
 

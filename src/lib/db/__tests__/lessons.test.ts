@@ -164,8 +164,8 @@ describe('getLessonsByBarn', () => {
       if (table === 'lesson_horses') return makeInChain([{ lesson_id: lesson.id, horse_id: 'horse-1' }])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
       if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1' }])
-      if (table === 'profiles') return makeInChain([{ user_id: 'user-1', first_name: 'John', last_name: 'Doe' }, { user_id: 'rider-user-1', first_name: 'Alice', last_name: 'Rider' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1', profile_id: 'prof-rider-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-instructor-1', user_id: 'user-1', first_name: 'John', last_name: 'Doe' }, { id: 'prof-rider-1', user_id: 'rider-user-1', first_name: 'Alice', last_name: 'Rider' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
@@ -195,12 +195,12 @@ describe('getLessonsByBarn', () => {
       ])
       if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
       if (table === 'barn_memberships') return makeInChain([
-        { id: 'mem-1', user_id: 'user-1' },
-        { id: 'mem-2', user_id: 'user-2' },
+        { id: 'mem-1', user_id: 'user-1', profile_id: 'prof-rider-1' },
+        { id: 'mem-2', user_id: 'user-2', profile_id: 'prof-rider-2' },
       ])
       if (table === 'profiles') return makeInChain([
-        { user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' },
-        { user_id: 'user-2', first_name: 'Bob', last_name: 'Rider' },
+        { id: 'prof-rider-1', user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' },
+        { id: 'prof-rider-2', user_id: 'user-2', first_name: 'Bob', last_name: 'Rider' },
       ])
       return makeInChain([])
     })
@@ -429,8 +429,8 @@ describe('getLessonsByBarn', () => {
       if (table === 'lessons') return makeLessonsChain([lesson])
       if (table === 'lesson_horses') return makeInChain([])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1' }])
-      if (table === 'profiles') return makeInChain([{ user_id: 'rider-user-1', first_name: 'Alice', last_name: 'Rider' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1', profile_id: 'prof-rider-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-rider-1', user_id: 'rider-user-1', first_name: 'Alice', last_name: 'Rider' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
@@ -446,7 +446,7 @@ describe('getLessonsByBarn', () => {
       if (table === 'lessons') return makeLessonsChain([lesson])
       if (table === 'lesson_horses') return makeInChain([])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1', profile_id: 'prof-rider-1' }])
       if (table === 'profiles') return makeInChain(null, new Error('rider profiles error'))
       return makeInChain([])
     })
@@ -755,24 +755,39 @@ describe('getLessonById', () => {
     return { select: mockSelect, mockEq1, mockEq2, mockMaybeSingle }
   }
 
-  function makeProfileInChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
-    return { select: mockSelect }
-  }
-
-  function makeFrom(lessonData: unknown, profileData: unknown[] | null = null, lessonError: Error | null = null, profileError: Error | null = null) {
+  function makeFrom(
+    lessonData: unknown,
+    riderProfileData: unknown[] | null = null,
+    instructorProfileData: unknown | null = null,
+    lessonError: Error | null = null,
+    riderProfileError: Error | null = null,
+    instructorProfileError: Error | null = null,
+  ) {
     const lessonChain = makeLessonByIdChain(lessonData, lessonError)
-    const profileChain = makeProfileInChain(profileData, profileError)
     return vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return { select: lessonChain.select }
-      if (table === 'profiles') return profileChain
-      return makeProfileInChain(null)
+      if (table === 'profiles') {
+        return {
+          select: vi.fn().mockImplementation((cols: string) => {
+            if (cols === 'id, first_name, last_name') {
+              // Rider profiles query: .select('id, first_name, last_name').in('id', [...])
+              return { in: vi.fn().mockResolvedValue({ data: riderProfileData, error: riderProfileError }) }
+            }
+            // Instructor profile query: .select('first_name, last_name').eq('user_id', ...).maybeSingle()
+            return {
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: instructorProfileData, error: instructorProfileError }),
+              }),
+            }
+          }),
+        }
+      }
+      return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data: null, error: null }) }) }
     })
   }
 
   it('should_return_lesson_with_instructor_name', async () => {
-    const from = makeFrom(rawLessonData, [{ user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' }])
+    const from = makeFrom(rawLessonData, null, { first_name: 'Jane', last_name: 'Smith' })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
@@ -793,7 +808,7 @@ describe('getLessonById', () => {
   })
 
   it('should_return_null_instructor_name_when_profile_not_found', async () => {
-    const from = makeFrom(rawLessonData, null)
+    const from = makeFrom(rawLessonData, null, null)
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
@@ -853,14 +868,14 @@ describe('getLessonById', () => {
     await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('db error')
   })
 
-  it('should_throw_when_profiles_query_returns_error', async () => {
-    const from = makeFrom(rawLessonData, null, null, new Error('profiles error'))
+  it('should_throw_when_instructor_profiles_query_returns_error', async () => {
+    const from = makeFrom(rawLessonData, null, null, null, null, new Error('instructor profiles error'))
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
-    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('profiles error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('instructor profiles error')
   })
 
-  it('should_include_jumping_true_in_result', async () => {
+it('should_include_jumping_true_in_result', async () => {
     const jumpingData = {
       ...createMockLesson({ jumping: true, instructor_id: null }),
       lesson_horses: [],
@@ -1008,49 +1023,55 @@ describe('getLessonById', () => {
   })
 
   it('should_resolve_rider_name_from_separate_profiles_query_in_get_lesson_by_id', async () => {
-    const makeIn = (data: unknown[] | null, error: Error | null = null) => {
-      const mockIn = vi.fn().mockResolvedValue({ data, error })
-      const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
-      return { select: mockSelect }
-    }
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: 'rider-user-1' } }],
+      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: 'rider-user-1', profile_id: 'rider-profile-1' } }],
     }
-    const { select } = makeLessonByIdChain(lessonData)
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'lessons') return { select }
-        if (table === 'profiles') return makeIn([{ user_id: 'rider-user-1', first_name: 'Alice', last_name: 'Rider' }])
-        return makeIn([])
-      }),
-    } as any)
+    const from = makeFrom(lessonData, [{ id: 'rider-profile-1', first_name: 'Alice', last_name: 'Rider' }])
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.lesson_riders[0].barn_membership?.name).toBe('Alice Rider')
   })
 
-  it('should_throw_when_rider_profiles_query_fails_in_get_lesson_by_id', async () => {
-    const makeIn = (data: unknown[] | null, error: Error | null = null) => {
-      const mockIn = vi.fn().mockResolvedValue({ data, error })
-      const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
-      return { select: mockSelect }
-    }
+  it('should_use_membership_id_as_fallback_when_rider_profiles_returns_null_data', async () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: 'rider-user-1' } }],
+      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: null, profile_id: 'prof-1' } }],
     }
-    const { select } = makeLessonByIdChain(lessonData)
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'lessons') return { select }
-        if (table === 'profiles') return makeIn(null, new Error('rider profiles error'))
-        return makeIn([])
-      }),
-    } as any)
+    const from = makeFrom(lessonData, null)
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.lesson_riders[0].barn_membership?.name).toBe('mem-1')
+  })
+
+  it('should_resolve_managed_member_name_by_profile_id', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: null, profile_id: 'managed-profile-1' } }],
+    }
+    const from = makeFrom(lessonData, [{ id: 'managed-profile-1', first_name: 'Alice', last_name: 'Managed' }])
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.lesson_riders[0].barn_membership?.name).toBe('Alice Managed')
+  })
+
+  it('should_throw_when_rider_profiles_query_fails_in_get_lesson_by_id', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: 'rider-user-1', profile_id: 'rider-profile-1' } }],
+    }
+    const from = makeFrom(lessonData, null, null, null, new Error('rider profiles error'))
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('rider profiles error')
   })
@@ -1323,8 +1344,8 @@ describe('getUpcomingLessons', () => {
       if (table === 'lesson_horses') return makeInChain([{ lesson_id: lesson.id, horse_id: 'horse-1' }])
       if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1' }])
       if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
-      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1' }])
-      if (table === 'profiles') return makeInChain([{ user_id: 'user-1', first_name: 'John', last_name: 'Doe' }, { user_id: 'rider-user-1', first_name: 'Alice', last_name: 'Rider' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'rider-user-1', profile_id: 'prof-rider-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-instructor-1', user_id: 'user-1', first_name: 'John', last_name: 'Doe' }, { id: 'prof-rider-1', user_id: 'rider-user-1', first_name: 'Alice', last_name: 'Rider' }])
       return makeInChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: from2 } as any)
@@ -1354,12 +1375,12 @@ describe('getUpcomingLessons', () => {
       ])
       if (table === 'horses') return makeInChain([{ id: 'horse-1', name: 'Thunderbolt' }])
       if (table === 'barn_memberships') return makeInChain([
-        { id: 'mem-1', user_id: 'user-1' },
-        { id: 'mem-2', user_id: 'user-2' },
+        { id: 'mem-1', user_id: 'user-1', profile_id: 'prof-rider-1' },
+        { id: 'mem-2', user_id: 'user-2', profile_id: 'prof-rider-2' },
       ])
       if (table === 'profiles') return makeInChain([
-        { user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' },
-        { user_id: 'user-2', first_name: 'Bob', last_name: 'Rider' },
+        { id: 'prof-rider-1', user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' },
+        { id: 'prof-rider-2', user_id: 'user-2', first_name: 'Bob', last_name: 'Rider' },
       ])
       return makeInChain([])
     })
