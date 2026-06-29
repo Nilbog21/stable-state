@@ -15,7 +15,7 @@ export async function upsertProfile(
     .from('profiles')
     .upsert(
       { user_id: userId, email, first_name: firstName, last_name: lastName },
-      { onConflict: 'email' }
+      { onConflict: 'user_id' }
     )
     .select()
     .single()

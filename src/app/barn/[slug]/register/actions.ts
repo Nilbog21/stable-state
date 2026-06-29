@@ -46,8 +46,8 @@ export async function registerForBarn(
   }
 
   try {
-    await upsertProfile(user.id, user.email, firstName, lastName)
-    await createPendingMembership(user.id, barn.id, role)
+    const profile = await upsertProfile(user.id, user.email, firstName, lastName)
+    await createPendingMembership(user.id, barn.id, role, profile.id)
   } catch {
     return { error: 'Something went wrong. Please try again.' }
   }

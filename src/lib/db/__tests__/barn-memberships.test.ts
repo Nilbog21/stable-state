@@ -115,7 +115,7 @@ describe('createPendingMembership', () => {
       from: vi.fn().mockReturnValue({ insert: mockInsert }),
     } as any)
 
-    await createPendingMembership('user-1', 'barn-1', 'trainer')
+    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')
 
     expect(mockInsert).toHaveBeenCalledWith(
       expect.objectContaining({ status: 'pending' })
@@ -166,7 +166,7 @@ describe('createPendingMembership', () => {
       }),
     } as any
 
-    await createPendingMembership('user-1', 'barn-1', 'trainer', injectedClient)
+    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1', injectedClient)
 
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
@@ -182,7 +182,7 @@ describe('createPendingMembership', () => {
     })
     const injectedClient = { from: mockFrom } as any
 
-    await createPendingMembership('user-1', 'barn-1', 'trainer', injectedClient)
+    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1', injectedClient)
 
     expect(mockFrom).toHaveBeenCalled()
   })
