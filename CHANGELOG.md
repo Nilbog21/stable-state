@@ -4,6 +4,12 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
+## v2.0.1 — June 2026
+
+**You can now add riders before they have an account.** On the Members page, use the new **Add Rider** form to create a rider record right away — no sign-in required. Add them to lessons immediately, then share their personal invite link when you're ready. When they tap the link and sign in, their account links automatically and all lesson history carries over. Use **Revoke** to invalidate and regenerate a link if it's shared with the wrong person.
+
+---
+
 ## v2.0.0 — June 2026
 
 ### Profile & Contact Info
