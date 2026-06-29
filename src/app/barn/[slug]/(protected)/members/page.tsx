@@ -115,33 +115,31 @@ export default async function MembersPage({
 
       {(membership.role === 'manager' || membership.role === 'trainer') && (
         <section className="mb-10">
-          <div className="mb-3 flex items-center justify-between">
-            <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Riders
-            </h2>
-            {membership.role === 'manager' && (
-              <form action={createManagedMemberAction.bind(null, slug)} className="flex items-center gap-2">
-                <input
-                  name="first_name"
-                  required
-                  placeholder="First name"
-                  className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-                <input
-                  name="last_name"
-                  required
-                  placeholder="Last name"
-                  className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-                />
-                <button
-                  type="submit"
-                  className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                >
-                  Add Rider
-                </button>
-              </form>
-            )}
-          </div>
+          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Riders
+          </h2>
+          {membership.role === 'manager' && (
+            <form action={createManagedMemberAction.bind(null, slug)} className="mb-4 flex items-center gap-2">
+              <input
+                name="first_name"
+                required
+                placeholder="First name"
+                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+              <input
+                name="last_name"
+                required
+                placeholder="Last name"
+                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              />
+              <button
+                type="submit"
+                className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+              >
+                Add Rider
+              </button>
+            </form>
+          )}
           {riders.length > 0 ? (
             <ul className="space-y-2">
               {riders.map((r) =>

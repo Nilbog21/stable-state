@@ -250,39 +250,16 @@ export async function createManagedMember(
   barnId: string,
   firstName: string,
   lastName: string,
-  contactInfo?: { phone?: string; emergency_contact_name?: string; emergency_contact_phone?: string },
   client?: SupabaseClient
 ): Promise<{ membershipId: string }> {
   const supabase = client ?? await createClient()
-
-  const { data: profile, error: profError } = await supabase
-    .from('profiles')
-    .insert({ first_name: firstName, last_name: lastName, is_managed: true, ...contactInfo })
-    .select('id')
-    .single()
-
-  if (profError) throw profError
-
-  const inviteToken = crypto.randomUUID()
-
-  const { data: membership, error: memError } = await supabase
-    .from('barn_memberships')
-    .insert({
-      barn_id: barnId,
-      profile_id: profile.id,
-      role: 'rider',
-      status: 'active',
-      invite_token: inviteToken,
-    })
-    .select('id')
-    .single()
-
-  if (memError) {
-    try { await supabase.from('profiles').delete().eq('id', profile.id) } catch { /* ignore cleanup */ }
-    throw memError
-  }
-
-  return { membershipId: membership.id }
+  const { data, error } = await supabase.rpc('create_managed_member', {
+    p_barn_id: barnId,
+    p_first_name: firstName,
+    p_last_name: lastName,
+  })
+  if (error) throw error
+  return { membershipId: data as string }
 }
 
 export async function claimManagedMember(

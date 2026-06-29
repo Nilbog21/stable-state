@@ -1005,59 +1005,34 @@ describe('resolveMemberNames', () => {
 describe('createManagedMember', () => {
   beforeEach(() => { vi.mocked(createClient).mockReset() })
 
-  function makeClient(profileData: unknown, profileError: unknown, membershipData: unknown, membershipError: unknown) {
-    return {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'profiles') {
-          return {
-            insert: vi.fn().mockReturnValue({
-              select: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({ data: profileData, error: profileError }),
-              }),
-            }),
-            delete: vi.fn().mockReturnValue({
-              eq: vi.fn().mockResolvedValue({ error: null }),
-            }),
-          }
-        }
-        if (table === 'barn_memberships') {
-          return {
-            insert: vi.fn().mockReturnValue({
-              select: vi.fn().mockReturnValue({
-                single: vi.fn().mockResolvedValue({ data: membershipData, error: membershipError }),
-              }),
-            }),
-          }
-        }
-        return {}
-      }),
-    } as any
-  }
-
   it('should_return_membership_id_on_success', async () => {
-    vi.mocked(createClient).mockResolvedValue(
-      makeClient({ id: 'profile-99' }, null, { id: 'mem-99' }, null)
-    )
+    const rpc = vi.fn().mockResolvedValue({ data: 'mem-99', error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
     const result = await createManagedMember('barn-1', 'Alex', 'Smith')
     expect(result).toEqual({ membershipId: 'mem-99' })
   })
 
-  it('should_throw_when_profile_insert_fails', async () => {
-    const dbError = new Error('profile insert failed')
-    vi.mocked(createClient).mockResolvedValue(makeClient(null, dbError, null, null))
-    await expect(createManagedMember('barn-1', 'Alex', 'Smith')).rejects.toThrow('profile insert failed')
+  it('should_call_rpc_with_correct_args', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: 'mem-99', error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+    await createManagedMember('barn-1', 'Alex', 'Smith')
+    expect(rpc).toHaveBeenCalledWith('create_managed_member', {
+      p_barn_id: 'barn-1',
+      p_first_name: 'Alex',
+      p_last_name: 'Smith',
+    })
   })
 
-  it('should_throw_when_membership_insert_fails', async () => {
-    const dbError = new Error('membership insert failed')
-    vi.mocked(createClient).mockResolvedValue(makeClient({ id: 'profile-99' }, null, null, dbError))
-    await expect(createManagedMember('barn-1', 'Alex', 'Smith')).rejects.toThrow('membership insert failed')
+  it('should_throw_when_rpc_fails', async () => {
+    const dbError = new Error('rpc failed')
+    vi.mocked(createClient).mockResolvedValue({ rpc: vi.fn().mockResolvedValue({ data: null, error: dbError }) } as any)
+    await expect(createManagedMember('barn-1', 'Alex', 'Smith')).rejects.toThrow('rpc failed')
   })
 
   it('should_not_call_createClient_when_client_is_injected', async () => {
     vi.mocked(createClient).mockReset()
-    const injectedClient = makeClient({ id: 'profile-99' }, null, { id: 'mem-99' }, null)
-    await createManagedMember('barn-1', 'Alex', 'Smith', undefined, injectedClient)
+    const rpc = vi.fn().mockResolvedValue({ data: 'mem-99', error: null })
+    await createManagedMember('barn-1', 'Alex', 'Smith', { rpc } as any)
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 })
