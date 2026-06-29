@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships, claimManagedMember } from '@/lib/db/barn-memberships'
 import { activateSeededAccount } from '@/lib/db/seeded-accounts'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
@@ -30,7 +30,9 @@ async function generateLoginNotifications(
     }
     if (membership.role === 'manager') {
       const members = await getActiveMemberships(barn.id)
-      const otherIds = members.filter(m => m.user_id !== userId).map(m => m.user_id)
+      const otherIds = members
+        .map(m => m.user_id)
+        .filter((uid): uid is string => uid !== null && uid !== userId)
       let hasIncomplete = false
       if (otherIds.length > 0) {
         const memberProfiles = await getProfilesByUserIds(otherIds)
@@ -56,12 +58,22 @@ export async function GET(request: NextRequest) {
   const { searchParams, origin } = new URL(request.url)
   const code = searchParams.get('code')
   const barnSlug = searchParams.get('barn')
+  const inviteToken = searchParams.get('token')
 
   if (code) {
     const supabase = await createClient()
     const { error } = await supabase.auth.exchangeCodeForSession(code)
     if (!error) {
       const user = await getAuthenticatedUser()
+
+      if (inviteToken && user) {
+        try {
+          await claimManagedMember(inviteToken, user.id, user.email ?? '')
+        } catch {
+          return NextResponse.redirect(`${origin}/login?error=invite_claim_failed`)
+        }
+      }
+
       if (user?.email) {
         try {
           await activateSeededAccount(user.id, user.email)
