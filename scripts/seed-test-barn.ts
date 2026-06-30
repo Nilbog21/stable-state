@@ -62,7 +62,7 @@ async function run() {
     if (error) throw new Error(`create ${role}: ${error.message}`)
     if (!data?.user) throw new Error(`create ${role}: no user returned`)
     const userId = data.user.id
-    await upsertProfile(userId, email, firstName, lastName, supabase)
+    const profile = await upsertProfile(userId, email, firstName, lastName, supabase)
     mustSucceed(
       await supabase.from('profiles').update({
         phone: '555-0100',
@@ -71,20 +71,20 @@ async function run() {
       }).eq('user_id', userId),
       `update ${role} contact fields`
     )
-    return userId
+    return { userId, profileId: profile.id }
   }
 
-  const managerId = await createUser('manager', 'Test', 'Manager')
-  const trainerId = await createUser('trainer', 'Test', 'Trainer')
-  const riderId = await createUser('rider', 'Test', 'Rider')
-  const rider2Id = await createUser('rider2', 'Test', 'Rider2')
+  const { userId: managerId, profileId: managerProfileId } = await createUser('manager', 'Test', 'Manager')
+  const { userId: trainerId, profileId: trainerProfileId } = await createUser('trainer', 'Test', 'Trainer')
+  const { userId: riderId,   profileId: riderProfileId   } = await createUser('rider', 'Test', 'Rider')
+  const { userId: rider2Id,  profileId: rider2ProfileId  } = await createUser('rider2', 'Test', 'Rider2')
 
   mustSucceed(
     await supabase.from('barn_memberships').insert([
-      { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active', can_instruct: true },
-      { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active', can_instruct: true },
-      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false },
-      { user_id: rider2Id,  barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false },
+      { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active', can_instruct: true,  profile_id: managerProfileId },
+      { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active', can_instruct: true,  profile_id: trainerProfileId },
+      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false, profile_id: riderProfileId   },
+      { user_id: rider2Id,  barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false, profile_id: rider2ProfileId  },
     ]),
     'insert memberships'
   )
