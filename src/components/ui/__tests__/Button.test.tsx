@@ -77,5 +77,25 @@ describe('Button', () => {
       render(<Button type="submit">Save</Button>)
       expect(screen.getByRole('button').getAttribute('type')).toBe('submit')
     })
+
+    it('should_default_type_to_button', () => {
+      render(<Button>Save</Button>)
+      expect(screen.getByRole('button').getAttribute('type')).toBe('button')
+    })
+
+    it('should_merge_caller_class_name', () => {
+      render(<Button className="w-full">Save</Button>)
+      expect(screen.getByRole('button').className).toContain('w-full')
+    })
+
+    it('should_keep_variant_classes_when_class_name_passed', () => {
+      render(<Button className="w-full">Save</Button>)
+      expect(screen.getByRole('button').className).toContain('bg-zinc-900')
+    })
+
+    it('should_meet_minimum_touch_target_height', () => {
+      render(<Button>Save</Button>)
+      expect(screen.getByRole('button').className).toContain('min-h-11')
+    })
   })
 })
