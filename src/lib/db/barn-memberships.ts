@@ -1,7 +1,7 @@
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Barn, BarnMembership } from './types'
+import type { Barn, BarnMembership, Role } from './types'
 
 export async function getUserMembership(
   userId: string,
@@ -250,6 +250,7 @@ export async function createManagedMember(
   barnId: string,
   firstName: string,
   lastName: string,
+  role: Role,
   client?: SupabaseClient
 ): Promise<{ membershipId: string }> {
   const supabase = client ?? await createClient()
@@ -257,6 +258,7 @@ export async function createManagedMember(
     p_barn_id: barnId,
     p_first_name: firstName,
     p_last_name: lastName,
+    p_role: role,
   })
   if (error) throw error
   return { membershipId: data as string }

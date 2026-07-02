@@ -15,7 +15,7 @@ export async function createManagedMemberAction(
 
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
-  await createManagedMember(barn.id, firstName, lastName)
+  await createManagedMember(barn.id, firstName, lastName, 'rider')
 
   revalidatePath(`/barn/${barnSlug}/members`)
 }
