@@ -118,4 +118,9 @@ describe('TableActions', () => {
     renderTd(<TableActions>Edit</TableActions>)
     expect(screen.getByRole('cell').className).toContain('py-3')
   })
+
+  it('should_merge_caller_class_name', () => {
+    renderTd(<TableActions className="whitespace-nowrap">Edit</TableActions>)
+    expect(screen.getByRole('cell').className).toContain('whitespace-nowrap')
+  })
 })
