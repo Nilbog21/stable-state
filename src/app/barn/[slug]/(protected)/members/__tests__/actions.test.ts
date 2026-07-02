@@ -38,7 +38,7 @@ describe('createManagedMemberAction', () => {
   it('should_call_createManagedMember_with_name_fields', async () => {
     const fd = makeFormData({ first_name: 'Alex', last_name: 'Smith' })
     await createManagedMemberAction('green-acres', fd)
-    expect(createManagedMember).toHaveBeenCalledWith('barn-1', 'Alex', 'Smith')
+    expect(createManagedMember).toHaveBeenCalledWith('barn-1', 'Alex', 'Smith', 'rider')
   })
 
   it('should_require_manager_role', async () => {

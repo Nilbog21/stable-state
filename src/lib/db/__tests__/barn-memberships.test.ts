@@ -1008,31 +1008,44 @@ describe('createManagedMember', () => {
   it('should_return_membership_id_on_success', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: 'mem-99', error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc } as any)
-    const result = await createManagedMember('barn-1', 'Alex', 'Smith')
+    const result = await createManagedMember('barn-1', 'Alex', 'Smith', 'rider')
     expect(result).toEqual({ membershipId: 'mem-99' })
   })
 
   it('should_call_rpc_with_correct_args', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: 'mem-99', error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc } as any)
-    await createManagedMember('barn-1', 'Alex', 'Smith')
+    await createManagedMember('barn-1', 'Alex', 'Smith', 'rider')
     expect(rpc).toHaveBeenCalledWith('create_managed_member', {
       p_barn_id: 'barn-1',
       p_first_name: 'Alex',
       p_last_name: 'Smith',
+      p_role: 'rider',
+    })
+  })
+
+  it('should_pass_role_in_rpc_args', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: 'mem-99', error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+    await createManagedMember('barn-1', 'Alex', 'Smith', 'trainer')
+    expect(rpc).toHaveBeenCalledWith('create_managed_member', {
+      p_barn_id: 'barn-1',
+      p_first_name: 'Alex',
+      p_last_name: 'Smith',
+      p_role: 'trainer',
     })
   })
 
   it('should_throw_when_rpc_fails', async () => {
     const dbError = new Error('rpc failed')
     vi.mocked(createClient).mockResolvedValue({ rpc: vi.fn().mockResolvedValue({ data: null, error: dbError }) } as any)
-    await expect(createManagedMember('barn-1', 'Alex', 'Smith')).rejects.toThrow('rpc failed')
+    await expect(createManagedMember('barn-1', 'Alex', 'Smith', 'rider')).rejects.toThrow('rpc failed')
   })
 
   it('should_not_call_createClient_when_client_is_injected', async () => {
     vi.mocked(createClient).mockReset()
     const rpc = vi.fn().mockResolvedValue({ data: 'mem-99', error: null })
-    await createManagedMember('barn-1', 'Alex', 'Smith', { rpc } as any)
+    await createManagedMember('barn-1', 'Alex', 'Smith', 'rider', { rpc } as any)
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 })
