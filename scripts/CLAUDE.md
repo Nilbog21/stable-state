@@ -42,7 +42,7 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 |---|---|---|---|---|---|
 | `reset-db` | ✓ | ✓ | ✓ | ✓ | Canonical model |
 | `change-user` | ✓ | ✓ | ✓ | ✓ | `.ts` uses `readline` for numbered-list selection; bash can't do this cleanly |
-| `seed-account` | ✓ | ✓ | — | — | No extractable pure functions (all operations are DB calls); no non-trivial shell branching |
+| `seed-account` | ✓ | ✓ | ✓ | — | Creates a managed-manager stub (direct service-role inserts) and prints the invite path; `.test.ts` covers `buildInvitePath`; no non-trivial shell branching |
 | `seed-test-barn` | ✓ | ✓ | ✓ | ✓ | Positional arg: barn slug; teardown-first for idempotency; email/password auth users |
 | `teardown-test-barn` | ✓ | ✓ | ✓ | ✓ | Exports `teardown(slug, supabase)` reused by `seed-test-barn.ts`; exports `TEST_ROLES` for test coverage |
 | `script-utils` | — | ✓ | ✓ | — | Shared utilities (`mustSucceed`, `createServiceClient`, `teardownBarnData`, `teardownAllData`, `findAuthUserIdsByEmails`); import from here to reduce duplication across seed/teardown scripts |

@@ -14,7 +14,6 @@ parse_var() {
 
 NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
 SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
-DEV_EMAIL="$(parse_var DEV_EMAIL || true)"
 DEV_NAME="$(parse_var DEV_NAME || true)"
 DEV_BARN="$(parse_var DEV_BARN || true)"
 DEV_BARN="${DEV_BARN:-dev-barn}"
@@ -33,9 +32,6 @@ else
   default_last="${DEV_NAME#* }"
 fi
 
-read -r -p "Email${DEV_EMAIL:+ [$DEV_EMAIL]}: " email_input
-email="${email_input:-$DEV_EMAIL}"
-
 read -r -p "First name${default_first:+ [$default_first]}: " first_input
 first="${first_input:-$default_first}"
 
@@ -45,14 +41,12 @@ last="${last_input:-$default_last}"
 read -r -p "Barn slug${DEV_BARN:+ [$DEV_BARN]}: " slug_input
 slug="${slug_input:-$DEV_BARN}"
 
-if [ -z "$email" ]; then echo "Error: email is required" >&2; exit 1; fi
 if [ -z "$first" ]; then echo "Error: first name is required" >&2; exit 1; fi
 if [ -z "$last" ]; then echo "Error: last name is required" >&2; exit 1; fi
 if [ -z "$slug" ]; then echo "Error: barn slug is required" >&2; exit 1; fi
 
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
-  SEED_EMAIL="$email" \
   SEED_FIRST_NAME="$first" \
   SEED_LAST_NAME="$last" \
   SEED_BARN_SLUG="$slug" \

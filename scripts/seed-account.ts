@@ -1,63 +1,56 @@
 import { fileURLToPath } from 'url'
-import { createClient } from '@supabase/supabase-js'
+import { randomUUID } from 'crypto'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { upsertProfile } from '@/lib/db/profiles'
-import { createSeededAccount } from '@/lib/db/seeded-accounts'
+import { mustSucceed, createServiceClient } from './script-utils'
+
+export function buildInvitePath(slug: string, token: string): string {
+  return `/barn/${slug}/login?token=${token}`
+}
 
 async function run() {
   const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-  const email = process.env.SEED_EMAIL
   const firstName = process.env.SEED_FIRST_NAME
   const lastName = process.env.SEED_LAST_NAME
   const barnSlug = process.env.SEED_BARN_SLUG
 
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
-  if (!email) throw new Error('SEED_EMAIL is required')
   if (!firstName) throw new Error('SEED_FIRST_NAME is required')
   if (!lastName) throw new Error('SEED_LAST_NAME is required')
   if (!barnSlug) throw new Error('SEED_BARN_SLUG is required')
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
   const barn = await getBarnBySlug(barnSlug, supabase)
   if (!barn) throw new Error(`Barn slug not found: "${barnSlug}"`)
 
-  // If the dev already has an auth user (logged in before), link the profile and
-  // create the membership directly so change-user.sh works without another login.
-  let authUserId: string | null = null
-  let page = 1
-  let hasMore = true
-  while (hasMore && !authUserId) {
-    const { data: listData, error: listErr } = await supabase.auth.admin.listUsers({ page, perPage: 50 })
-    if (listErr) throw new Error(`list auth users: ${listErr.message}`)
-    if (!listData) break
-    for (const user of listData.users) {
-      if (user.email === email) { authUserId = user.id; break }
-    }
-    hasMore = listData.users.length === 50
-    page++
-  }
+  // Direct inserts, not the create_managed_member RPC: its auth_is_barn_manager
+  // check fails for service-role callers (auth.uid() is null).
+  const profile = mustSucceed<{ id: string }>(
+    await supabase
+      .from('profiles')
+      .insert({ first_name: firstName, last_name: lastName, is_managed: true })
+      .select('id')
+      .single(),
+    'insert stub profile'
+  )
 
-  if (authUserId) {
-    await upsertProfile(authUserId, email, firstName, lastName, supabase)
+  const inviteToken = randomUUID()
+  mustSucceed(
+    await supabase.from('barn_memberships').insert({
+      barn_id: barn.id,
+      profile_id: profile.id,
+      role: 'manager',
+      status: 'active',
+      can_instruct: false,
+      invite_token: inviteToken,
+    }),
+    'insert stub membership'
+  )
 
-    const { error: memberError } = await supabase.from('barn_memberships').upsert(
-      { user_id: authUserId, barn_id: barn.id, role: 'manager', status: 'active', can_instruct: false },
-      { onConflict: 'user_id,barn_id' }
-    )
-    if (memberError) throw new Error(`upsert membership: ${memberError.message}`)
-
-    console.log(`\nLinked ${firstName} ${lastName} <${email}> as manager for barn "${barnSlug}".`)
-  } else {
-    await createSeededAccount(email, firstName, lastName, barn.id, 'manager', supabase)
-
-    console.log(`\nSeeded ${firstName} ${lastName} <${email}> as manager for barn "${barnSlug}".`)
-    console.log('Log in with Google to activate your account.')
-  }
+  console.log(`\nCreated managed manager stub ${firstName} ${lastName} for barn "${barnSlug}".`)
+  console.log(`Invite path: ${buildInvitePath(barnSlug, inviteToken)}`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
