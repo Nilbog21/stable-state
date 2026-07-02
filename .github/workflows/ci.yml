@@ -21,6 +21,7 @@ jobs:
   e2e:
     runs-on: ubuntu-latest
     needs: ci
+    if: github.event_name == 'pull_request'
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
@@ -61,8 +62,8 @@ jobs:
       - name: Set env vars from secrets
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
-          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_PROJECT_REF }}
-          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          SUPABASE_PROJECT_REF: ${{ secrets.SUPABASE_DEV_PROJECT_REF }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEV_SERVICE_ROLE_KEY }}
           VERCEL_AUTOMATION_BYPASS_SECRET: ${{ secrets.VERCEL_AUTOMATION_BYPASS_SECRET }}
         run: |
           ANON_KEY=$(curl -sf \

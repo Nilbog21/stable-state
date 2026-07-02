@@ -1,4 +1,4 @@
-# SUPABASE_DB_POOLER_URL secret format:
+# SUPABASE_PROD_DB_POOLER_URL secret format:
 #   postgresql://postgres.[project-ref]:[password]@aws-0-[region].pooler.supabase.com:5432/postgres
 # Find it in Supabase dashboard → Connect button (top of project overview) → Session mode (port 5432, pooled).
 # Use the session-mode pooler URL (not the direct connection URI) — the direct host is IPv6-only and
@@ -24,7 +24,7 @@ jobs:
 
       - name: Dump database
         env:
-          SUPABASE_DB_POOLER_URL: ${{ secrets.SUPABASE_DB_POOLER_URL }}
+          SUPABASE_DB_POOLER_URL: ${{ secrets.SUPABASE_PROD_DB_POOLER_URL }}
         run: /usr/lib/postgresql/17/bin/pg_dump "$SUPABASE_DB_POOLER_URL" --format=custom --no-acl --no-owner -f backup.dump
 
       - name: Upload artifact
