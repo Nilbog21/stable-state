@@ -10,11 +10,12 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('next/headers', () => ({
   headers: vi.fn(),
+  cookies: vi.fn(),
 }))
 
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { signInWithGoogle, signOut, signInWithGoogleForBarn } from '../auth'
 
 function mockHeaders(proto: string, host: string) {
@@ -27,9 +28,33 @@ function mockHeaders(proto: string, host: string) {
   } as any)
 }
 
+function mockCookieStore() {
+  const set = vi.fn()
+  vi.mocked(cookies).mockResolvedValue({ set } as any)
+  return set
+}
+
+function mockOauthSuccess() {
+  vi.mocked(createClient).mockResolvedValue({
+    auth: {
+      signInWithOAuth: vi.fn().mockResolvedValue({
+        data: { url: 'https://accounts.google.com/oauth' },
+        error: null,
+      }),
+    },
+  } as any)
+}
+
+function formDataWithRemember() {
+  const fd = new FormData()
+  fd.set('remember', 'on')
+  return fd
+}
+
 describe('signInWithGoogle', () => {
   beforeEach(() => {
     mockHeaders('https', 'localhost:3000')
+    mockCookieStore()
   })
 
   it('should_call_signInWithOAuth_with_google_provider', async () => {
@@ -41,7 +66,7 @@ describe('signInWithGoogle', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogle()
+    await signInWithGoogle(new FormData())
 
     expect(mockSignInWithOAuth).toHaveBeenCalledWith(
       expect.objectContaining({ provider: 'google' })
@@ -59,7 +84,7 @@ describe('signInWithGoogle', () => {
       },
     } as any)
 
-    await signInWithGoogle()
+    await signInWithGoogle(new FormData())
 
     expect(redirect).toHaveBeenCalledWith(oauthUrl)
   })
@@ -74,7 +99,7 @@ describe('signInWithGoogle', () => {
       },
     } as any)
 
-    await signInWithGoogle()
+    await signInWithGoogle(new FormData())
 
     expect(redirect).toHaveBeenCalledWith('/login?error=oauth_failed')
   })
@@ -89,7 +114,7 @@ describe('signInWithGoogle', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogle()
+    await signInWithGoogle(new FormData())
 
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toMatch(/^https:\/\/myapp\.vercel\.app/)
@@ -110,7 +135,7 @@ describe('signInWithGoogle', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogle()
+    await signInWithGoogle(new FormData())
 
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toMatch(/^http:\/\//)
@@ -131,16 +156,79 @@ describe('signInWithGoogle', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogle()
+    await signInWithGoogle(new FormData())
 
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toMatch(/^https:\/\/localhost:3000/)
+  })
+
+  it('should_set_remember_me_cookie_to_1_when_remember_checked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith('remember_me', '1', expect.anything())
+  })
+
+  it('should_set_remember_me_pref_cookie_to_1_when_remember_checked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith('remember_me_pref', '1', expect.anything())
+  })
+
+  it('should_set_remember_me_cookie_with_5_minute_ttl', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me',
+      expect.anything(),
+      expect.objectContaining({ maxAge: 300 })
+    )
+  })
+
+  it('should_set_remember_me_pref_cookie_with_1_year_ttl', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me_pref',
+      expect.anything(),
+      expect.objectContaining({ maxAge: 31536000 })
+    )
+  })
+
+  it('should_set_remember_me_cookie_to_0_when_remember_unchecked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(new FormData())
+
+    expect(set).toHaveBeenCalledWith('remember_me', '0', expect.anything())
+  })
+
+  it('should_set_remember_me_pref_cookie_to_0_when_remember_unchecked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(new FormData())
+
+    expect(set).toHaveBeenCalledWith('remember_me_pref', '0', expect.anything())
   })
 })
 
 describe('signInWithGoogleForBarn', () => {
   beforeEach(() => {
     mockHeaders('https', 'localhost:3000')
+    mockCookieStore()
   })
 
   it('should_include_barn_slug_in_callback_redirect_url', async () => {
@@ -152,7 +240,7 @@ describe('signInWithGoogleForBarn', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogleForBarn('green-acres')
+    await signInWithGoogleForBarn('green-acres', undefined, new FormData())
 
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toContain('barn=green-acres')
@@ -169,13 +257,13 @@ describe('signInWithGoogleForBarn', () => {
       },
     } as any)
 
-    await signInWithGoogleForBarn('green-acres')
+    await signInWithGoogleForBarn('green-acres', undefined, new FormData())
 
     expect(redirect).toHaveBeenCalledWith(oauthUrl)
   })
 
   it('should_redirect_to_login_error_when_slug_contains_invalid_characters', async () => {
-    await signInWithGoogleForBarn('../../etc')
+    await signInWithGoogleForBarn('../../etc', undefined, new FormData())
 
     expect(redirect).toHaveBeenCalledWith('/login?error=invalid_barn')
   })
@@ -190,7 +278,7 @@ describe('signInWithGoogleForBarn', () => {
       },
     } as any)
 
-    await signInWithGoogleForBarn('green-acres')
+    await signInWithGoogleForBarn('green-acres', undefined, new FormData())
 
     expect(redirect).toHaveBeenCalledWith('/barn/green-acres/login?error=oauth_failed')
   })
@@ -205,7 +293,7 @@ describe('signInWithGoogleForBarn', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogleForBarn('green-acres')
+    await signInWithGoogleForBarn('green-acres', undefined, new FormData())
 
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toMatch(/^https:\/\/myapp\.vercel\.app/)
@@ -220,7 +308,7 @@ describe('signInWithGoogleForBarn', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogleForBarn('green-acres', 'tok-abc')
+    await signInWithGoogleForBarn('green-acres', 'tok-abc', new FormData())
 
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toContain('token=tok-abc')
@@ -236,10 +324,72 @@ describe('signInWithGoogleForBarn', () => {
       auth: { signInWithOAuth: mockSignInWithOAuth },
     } as any)
 
-    await signInWithGoogleForBarn('green-acres')
+    await signInWithGoogleForBarn('green-acres', undefined, new FormData())
 
     const callArgs = mockSignInWithOAuth.mock.calls[0][0]
     expect(callArgs.options.redirectTo).toContain('barn=green-acres')
+  })
+
+  it('should_set_remember_me_cookie_to_1_when_remember_checked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith('remember_me', '1', expect.anything())
+  })
+
+  it('should_set_remember_me_pref_cookie_to_1_when_remember_checked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith('remember_me_pref', '1', expect.anything())
+  })
+
+  it('should_set_remember_me_cookie_with_5_minute_ttl', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me',
+      expect.anything(),
+      expect.objectContaining({ maxAge: 300 })
+    )
+  })
+
+  it('should_set_remember_me_pref_cookie_with_1_year_ttl', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me_pref',
+      expect.anything(),
+      expect.objectContaining({ maxAge: 31536000 })
+    )
+  })
+
+  it('should_set_remember_me_cookie_to_0_when_remember_unchecked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, new FormData())
+
+    expect(set).toHaveBeenCalledWith('remember_me', '0', expect.anything())
+  })
+
+  it('should_set_remember_me_pref_cookie_to_0_when_remember_unchecked', async () => {
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, new FormData())
+
+    expect(set).toHaveBeenCalledWith('remember_me_pref', '0', expect.anything())
   })
 })
 

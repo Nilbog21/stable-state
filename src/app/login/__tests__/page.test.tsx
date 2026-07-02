@@ -11,13 +11,27 @@ vi.mock('@/lib/db/auth', () => ({
   getAuthenticatedUser: vi.fn(),
 }))
 
+vi.mock('next/headers', () => ({
+  cookies: vi.fn(),
+}))
+
 import { getAuthenticatedUser } from '@/lib/db/auth'
+import { cookies } from 'next/headers'
 import LoginPage from '../page'
+
+function mockPrefCookie(value?: string) {
+  vi.mocked(cookies).mockResolvedValue({
+    get: (name: string) =>
+      name === 'remember_me_pref' && value !== undefined ? { name, value } : undefined,
+  } as any)
+}
 
 describe('LoginPage', () => {
   beforeEach(() => {
     vi.mocked(getAuthenticatedUser).mockReset()
+    vi.mocked(cookies).mockReset()
     setupAuth(null)
+    mockPrefCookie()
   })
 
   it('should_render_sign_in_with_google_button', async () => {
@@ -72,6 +86,31 @@ describe('LoginPage', () => {
     const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
     render(jsx)
     expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull()
+  })
+
+  describe('keep me logged in checkbox', () => {
+    it('should_render_checkbox_checked_when_no_pref_cookie', async () => {
+      const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
+      render(jsx)
+      const checkbox = screen.getByRole('checkbox', { name: /keep me logged in/i }) as HTMLInputElement
+      expect(checkbox.checked).toBe(true)
+    })
+
+    it('should_render_checkbox_unchecked_when_pref_cookie_is_0', async () => {
+      mockPrefCookie('0')
+      const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
+      render(jsx)
+      const checkbox = screen.getByRole('checkbox', { name: /keep me logged in/i }) as HTMLInputElement
+      expect(checkbox.checked).toBe(false)
+    })
+
+    it('should_render_checkbox_checked_when_pref_cookie_is_1', async () => {
+      mockPrefCookie('1')
+      const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
+      render(jsx)
+      const checkbox = screen.getByRole('checkbox', { name: /keep me logged in/i }) as HTMLInputElement
+      expect(checkbox.checked).toBe(true)
+    })
   })
 
   describe('connection status', () => {
