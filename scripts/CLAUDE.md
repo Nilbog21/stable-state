@@ -22,7 +22,7 @@ await createHorse(barnId, name, supabase)
 
 `createServiceClient` (from `./script-utils`) sets the standard `auth` options and avoids repeating the same three-liner across scripts.
 
-Raw `supabase.from(...)` calls are used only when no db layer equivalent exists (e.g. barn insert, active membership insert, teardown deletes, `auth.admin.*` calls).
+Raw `supabase.from(...)` calls are used only when no db layer equivalent exists (e.g. barn insert, active membership insert, teardown deletes, `auth.admin.*` calls), or when the equivalent is RPC-backed with an auth check that blocks service-role callers (`auth.uid()` is null under a service-role client) — e.g. `createManagedMember` → `create_managed_member`'s `auth_is_barn_manager` check; see `seed-account.ts`. Do not "fix" such scripts by switching them to the DAL function — they will fail at runtime with `not_authorized`.
 
 ## Responsibility split
 
