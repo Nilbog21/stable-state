@@ -58,6 +58,7 @@ export interface Horse {
   is_active: boolean
   is_available: boolean
   unavailability_reason: string | null
+  deactivated_at: string | null
   created_at: string
   updated_at: string
 }

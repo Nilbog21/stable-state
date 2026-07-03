@@ -131,9 +131,23 @@ export async function updateHorseDetails(
   updates: { name?: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null }
 ): Promise<void> {
   const supabase = await createClient()
+
+  const { data: current, error: fetchError } = await supabase
+    .from('horses')
+    .select('is_active')
+    .eq('id', horseId)
+    .eq('barn_id', barnId)
+    .single()
+  if (fetchError) throw fetchError
+
+  const deactivatedAt =
+    current.is_active === updates.is_active ? undefined
+    : updates.is_active ? null
+    : new Date().toISOString()
+
   const { error } = await supabase
     .from('horses')
-    .update(updates)
+    .update({ ...updates, ...(deactivatedAt !== undefined ? { deactivated_at: deactivatedAt } : {}) })
     .eq('id', horseId)
     .eq('barn_id', barnId)
   if (error) throw error

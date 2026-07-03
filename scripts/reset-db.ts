@@ -218,6 +218,15 @@ async function run() {
     }, supabase)
   }
 
+  const retiredHorseId = horseIds[horseIds.length - 1]
+  mustSucceed(
+    await supabase.from('horses').update({
+      is_active: false,
+      deactivated_at: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
+    }).eq('id', retiredHorseId),
+    'retire seed horse'
+  )
+
   mustSucceed(
     await supabase.from('lessons').update({ tier_name: DEV_TIER_NAME }).eq('barn_id', DEV_BARN_ID).eq('fee', DEV_TIER_PRICE),
     'update lesson tier names tier 1'
@@ -258,7 +267,7 @@ async function run() {
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`)
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
-  console.log(`  Horses:   ${DEV_HORSES.join(', ')}`)
+  console.log(`  Horses:   ${DEV_HORSES.join(', ')} (${DEV_HORSES[DEV_HORSES.length - 1]} retired, deactivated_at 30 days ago)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  34 (${groupCount} group, ${34 - groupCount} normal; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid`)
 }
