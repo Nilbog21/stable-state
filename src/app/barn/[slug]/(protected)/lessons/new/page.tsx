@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
@@ -33,6 +33,10 @@ export default async function LessonNewPage({
     getInstructorsByBarn(barn.id),
   ])
   const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
+
+  if (membership?.role === 'rider') {
+    redirect(`/barn/${slug}/lessons`)
+  }
 
   const isManager = membership?.role === 'manager'
 
