@@ -37,6 +37,17 @@ Use pill-style segmented controls (tab pills) for switching between data views. 
 ### Time display
 Always display times in 12-hour AM/PM format (e.g. "12:00 AM", "1:00 PM"). Never display 24-hour/military time in the UI. Internal storage and form values remain in 24-hour format.
 
+### Shared UI components
+New UI must use the primitives in `src/components/ui/` — do not hand-roll raw Tailwind for cards, buttons, or table cells.
+
+- `<Card href?>` (`Card.tsx`) — browseable item collections (horses, upcoming lessons, members). With `href` it renders as a full-card link with hover states.
+- `<Button variant? loading?>` (`Button.tsx`) — all interactive actions. Variants: `primary` (default), `danger` for destructive actions, `ghost` for secondary actions. `loading` disables the button and shows a spinner.
+- `<Th>` / `<Td tone?>` / `<TableActions>` (`Table.tsx`) — all data tables. Use `tone="secondary"` on `<Td>` for secondary text cells. `<TableActions>` is a right-aligned `<Td>` for row action buttons.
+
+Placement rules:
+- "Add" / "Create" buttons go top-right of the section header, next to the section title — never at the bottom of a section.
+- Row actions always go in the rightmost table column (use `<TableActions>`), never in the first column or mixed with data columns.
+
 ## Release Workflow
 
 - Features branch off `release/release-N`
