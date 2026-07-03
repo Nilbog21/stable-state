@@ -1,7 +1,37 @@
-import type { Barn, BarnMembership, Horse, HorseExertionSummary, Lesson, LessonTier, Profile } from '@/lib/db/types'
+import type { Agreement, AgreementCharge, Barn, BarnMembership, Horse, HorseExertionSummary, Lesson, LessonTier, Profile } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
-  return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', ...overrides }
+  return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_board_fee: 1000, created_at: '', ...overrides }
+}
+
+export function createMockAgreement(overrides: Partial<Agreement> = {}): Agreement {
+  return {
+    id: 'agreement-1',
+    barn_id: 'barn-1',
+    rider_id: 'rider-1',
+    horse_id: 'horse-1',
+    fee: 200,
+    kind: 'lease',
+    cadence: 'monthly',
+    start_date: '2026-07-01',
+    is_active: true,
+    created_at: '',
+    updated_at: '',
+    ...overrides,
+  }
+}
+
+export function createMockAgreementCharge(overrides: Partial<AgreementCharge> = {}): AgreementCharge {
+  return {
+    id: 'charge-1',
+    barn_id: 'barn-1',
+    agreement_id: 'agreement-1',
+    period: '2026-07-01',
+    fee: 200,
+    payment_type: null,
+    created_at: '',
+    ...overrides,
+  }
 }
 
 export function createMockUser(overrides: Record<string, unknown> = {}) {
