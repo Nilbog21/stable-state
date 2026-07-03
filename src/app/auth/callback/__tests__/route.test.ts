@@ -979,8 +979,8 @@ describe('GET /auth/callback', () => {
     })
 
     it('should_not_clear_remember_me_cookie_when_absent', async () => {
-      const request = new Request('http://localhost:3000/auth/callback?code=code')
-      await GET(request as any)
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code')
+      await GET(request)
 
       expect(mockCookiesSet).not.toHaveBeenCalledWith('remember_me', expect.anything(), expect.anything())
     })

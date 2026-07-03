@@ -1,5 +1,6 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
+import { applyRememberMe } from '@/lib/supabase/cookie-options'
 
 const BARN_ROUTE = /^\/barn\/([^/]+)\//
 
@@ -17,10 +18,13 @@ export async function proxy(request: NextRequest) {
           return request.cookies.getAll()
         },
         setAll(cookiesToSet) {
+          const remember =
+            request.cookies.get('remember_me')?.value ||
+            request.cookies.get('remember_me_pref')?.value
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request: { headers: requestHeaders } })
           cookiesToSet.forEach(({ name, value, options }) =>
-            response.cookies.set(name, value, options)
+            response.cookies.set(name, value, applyRememberMe(options, value, remember))
           )
         },
       },
