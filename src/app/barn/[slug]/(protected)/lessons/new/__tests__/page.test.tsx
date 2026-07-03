@@ -40,7 +40,7 @@ import { getHorsesByBarn } from '@/lib/db/horses'
 import { getUserMembership, getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import LessonNewPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -248,6 +248,19 @@ describe('LessonNewPage', () => {
   it('should_call_getTiersByBarn_with_barn_id', async () => {
     await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getTiersByBarn).mock.calls[0][0]).toBe('barn-1')
+  })
+
+  it('should_redirect_rider_to_lessons_page', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
+    vi.mocked(redirect).mockImplementation(() => {
+      throw new Error('NEXT_REDIRECT')
+    })
+
+    await expect(
+      LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(redirect).toHaveBeenCalledWith('/barn/green-acres/lessons')
   })
 
   it('should_show_blocked_state_when_no_tiers_configured', async () => {
