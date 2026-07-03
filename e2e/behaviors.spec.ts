@@ -28,7 +28,9 @@ test('older_lessons_hidden_until_toggle_clicked', async ({ page }, testInfo) => 
   const lessonLinks = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`)
   const visibleBefore = await lessonLinks.count()
   if (visibleBefore === 0) throw new Error(`no lesson links found on /barn/${barnSlug}/lessons — is seed data present?`)
-  await page.getByRole('button', { name: 'Show older lessons' }).click()
+  const toggle = page.getByRole('button', { name: 'Show older lessons' })
+  await toggle.focus()
+  await toggle.press('Enter')
   await expect.poll(() => lessonLinks.count()).toBeGreaterThan(visibleBefore)
 })
 
