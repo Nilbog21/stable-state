@@ -61,7 +61,8 @@ export async function GET(request: NextRequest) {
   const inviteToken = searchParams.get('token')
   const remember = request.cookies?.get('remember_me')?.value
 
-  // remember_me is single-use: consumed here, cleared on every exit path
+  // remember_me is single-use: cleared on every normal return via redirect() below.
+  // An unhandled throw skips this, but the cookie's own 5-minute TTL covers that case.
   const redirect = (url: string) => {
     const response = NextResponse.redirect(url)
     if (remember !== undefined) {

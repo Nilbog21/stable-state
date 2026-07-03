@@ -19,7 +19,7 @@ export async function proxy(request: NextRequest) {
         },
         setAll(cookiesToSet) {
           const remember =
-            request.cookies.get('remember_me')?.value ||
+            request.cookies.get('remember_me')?.value ??
             request.cookies.get('remember_me_pref')?.value
           cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
           response = NextResponse.next({ request: { headers: requestHeaders } })

@@ -14,7 +14,7 @@ export async function createClient() {
         },
         setAll(cookiesToSet) {
           const remember =
-            cookieStore.get("remember_me")?.value ||
+            cookieStore.get("remember_me")?.value ??
             cookieStore.get("remember_me_pref")?.value;
           cookiesToSet.forEach(({ name, value, options }) =>
             cookieStore.set(name, value, applyRememberMe(options, value, remember))
