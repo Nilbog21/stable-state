@@ -16,12 +16,19 @@ async function getOrigin(): Promise<string> {
 async function setRememberCookies(formData: FormData) {
   const val = formData.get('remember') ? '1' : '0'
   const store = await cookies()
-  store.set('remember_me', val, { maxAge: 300, path: '/', httpOnly: true, sameSite: 'lax' })
+  store.set('remember_me', val, {
+    maxAge: 300,
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
   store.set('remember_me_pref', val, {
     maxAge: 31536000,
     path: '/',
     httpOnly: true,
     sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
   })
 }
 

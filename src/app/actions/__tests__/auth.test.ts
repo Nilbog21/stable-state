@@ -223,6 +223,36 @@ describe('signInWithGoogle', () => {
 
     expect(set).toHaveBeenCalledWith('remember_me_pref', '0', expect.anything())
   })
+
+  it('should_set_remember_me_cookie_with_secure_flag_in_production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me',
+      expect.anything(),
+      expect.objectContaining({ secure: true })
+    )
+    vi.unstubAllEnvs()
+  })
+
+  it('should_set_remember_me_pref_cookie_with_secure_flag_in_production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogle(formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me_pref',
+      expect.anything(),
+      expect.objectContaining({ secure: true })
+    )
+    vi.unstubAllEnvs()
+  })
 })
 
 describe('signInWithGoogleForBarn', () => {
@@ -390,6 +420,36 @@ describe('signInWithGoogleForBarn', () => {
     await signInWithGoogleForBarn('green-acres', undefined, new FormData())
 
     expect(set).toHaveBeenCalledWith('remember_me_pref', '0', expect.anything())
+  })
+
+  it('should_set_remember_me_cookie_with_secure_flag_in_production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me',
+      expect.anything(),
+      expect.objectContaining({ secure: true })
+    )
+    vi.unstubAllEnvs()
+  })
+
+  it('should_set_remember_me_pref_cookie_with_secure_flag_in_production', async () => {
+    vi.stubEnv('NODE_ENV', 'production')
+    const set = mockCookieStore()
+    mockOauthSuccess()
+
+    await signInWithGoogleForBarn('green-acres', undefined, formDataWithRemember())
+
+    expect(set).toHaveBeenCalledWith(
+      'remember_me_pref',
+      expect.anything(),
+      expect.objectContaining({ secure: true })
+    )
+    vi.unstubAllEnvs()
   })
 })
 
