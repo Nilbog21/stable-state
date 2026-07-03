@@ -25,18 +25,19 @@ export default async function LessonNewPage({
     notFound()
   }
 
-  const [horses, riderMembers, membership, tiers, instructors] = await Promise.all([
-    getHorsesByBarn(barn.id),
-    getActiveMembersWithProfiles(barn.id, 'rider'),
-    getUserMembership(user.id, barn.id),
-    getTiersByBarn(barn.id),
-    getInstructorsByBarn(barn.id),
-  ])
-  const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
+  const membership = await getUserMembership(user.id, barn.id)
 
   if (membership?.role === 'rider') {
     redirect(`/barn/${slug}/lessons`)
   }
+
+  const [horses, riderMembers, tiers, instructors] = await Promise.all([
+    getHorsesByBarn(barn.id),
+    getActiveMembersWithProfiles(barn.id, 'rider'),
+    getTiersByBarn(barn.id),
+    getInstructorsByBarn(barn.id),
+  ])
+  const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
   const isManager = membership?.role === 'manager'
 

@@ -250,7 +250,7 @@ describe('LessonNewPage', () => {
     expect(vi.mocked(getTiersByBarn).mock.calls[0][0]).toBe('barn-1')
   })
 
-  it('should_redirect_rider_to_lessons_page', async () => {
+  it('should_throw_when_rider_visits_new_lesson_page', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
     vi.mocked(redirect).mockImplementation(() => {
       throw new Error('NEXT_REDIRECT')
@@ -259,6 +259,15 @@ describe('LessonNewPage', () => {
     await expect(
       LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     ).rejects.toThrow('NEXT_REDIRECT')
+  })
+
+  it('should_redirect_rider_to_lessons_page', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
+    vi.mocked(redirect).mockImplementation(() => {
+      throw new Error('NEXT_REDIRECT')
+    })
+
+    await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) }).catch(() => {})
 
     expect(redirect).toHaveBeenCalledWith('/barn/green-acres/lessons')
   })

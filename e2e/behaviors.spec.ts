@@ -27,6 +27,7 @@ test('older_lessons_hidden_until_toggle_clicked', async ({ page }, testInfo) => 
   await page.goto(`/barn/${barnSlug}/lessons`)
   const lessonLinks = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`)
   const visibleBefore = await lessonLinks.count()
+  if (visibleBefore === 0) throw new Error(`no lesson links found on /barn/${barnSlug}/lessons — is seed data present?`)
   await page.getByRole('button', { name: 'Show older lessons' }).click()
   await expect.poll(() => lessonLinks.count()).toBeGreaterThan(visibleBefore)
 })
@@ -41,11 +42,11 @@ test('rider_lesson_detail_has_no_private_notes_section', async ({ page }, testIn
   await expect(page.getByText('Private', { exact: true })).toHaveCount(0)
 })
 
-test('manager_finance_tabs_update_tab_param', async ({ page }, testInfo) => {
-  test.skip(skipUnless('manager')(testInfo.project.name))
-  await page.goto(`/barn/${barnSlug}/finances`)
-  for (const tab of ['Horse', 'Rider', 'Trainer']) {
+for (const tab of ['Horse', 'Rider', 'Trainer']) {
+  test(`manager_finance_${tab.toLowerCase()}_tab_updates_tab_param`, async ({ page }, testInfo) => {
+    test.skip(skipUnless('manager')(testInfo.project.name))
+    await page.goto(`/barn/${barnSlug}/finances`)
     await page.getByRole('link', { name: `By ${tab}` }).click()
     await expect(page).toHaveURL(new RegExp(`tab=${tab.toLowerCase()}`))
-  }
-})
+  })
+}
