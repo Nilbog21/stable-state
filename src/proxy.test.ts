@@ -171,5 +171,55 @@ describe('proxy', () => {
       expect(request.cookies.set).toHaveBeenCalledWith('token', 'xyz')
       expect(mockResponse.cookies.set).toHaveBeenCalledWith('token', 'xyz', { httpOnly: true })
     })
+
+    async function captureSetAll(cookies: Record<string, string>) {
+      let capturedConfig: any
+      mockCreateServerClient.mockImplementationOnce((_url: string, _key: string, config: any) => {
+        capturedConfig = config
+        return { auth: { getUser: mockGetUser } }
+      })
+      mockGetUser.mockResolvedValue({ data: { user: null } })
+      await proxy(makeRequest('http://localhost:3000/login', cookies))
+      mockResponse.cookies.set.mockClear()
+      return capturedConfig.cookies.setAll
+    }
+
+    it('should_add_max_age_when_remember_me_cookie_is_1', async () => {
+      const setAll = await captureSetAll({ remember_me: '1' })
+
+      setAll([{ name: 'sb-token', value: 'xyz', options: { httpOnly: true } }])
+
+      expect(mockResponse.cookies.set).toHaveBeenCalledWith(
+        'sb-token', 'xyz', expect.objectContaining({ maxAge: 2592000 })
+      )
+    })
+
+    it('should_add_max_age_when_remember_me_pref_cookie_is_1', async () => {
+      const setAll = await captureSetAll({ remember_me_pref: '1' })
+
+      setAll([{ name: 'sb-token', value: 'xyz', options: { httpOnly: true } }])
+
+      expect(mockResponse.cookies.set).toHaveBeenCalledWith(
+        'sb-token', 'xyz', expect.objectContaining({ maxAge: 2592000 })
+      )
+    })
+
+    it('should_strip_max_age_when_remember_me_pref_cookie_is_0', async () => {
+      const setAll = await captureSetAll({ remember_me_pref: '0' })
+
+      setAll([{ name: 'sb-token', value: 'xyz', options: { httpOnly: true, maxAge: 34560000 } }])
+
+      expect(mockResponse.cookies.set).toHaveBeenCalledWith(
+        'sb-token', 'xyz', expect.not.objectContaining({ maxAge: expect.anything() })
+      )
+    })
+
+    it('should_not_modify_options_for_deletion_cookies_when_remember_me_pref_is_1', async () => {
+      const setAll = await captureSetAll({ remember_me_pref: '1' })
+
+      setAll([{ name: 'sb-token', value: '', options: { maxAge: 0 } }])
+
+      expect(mockResponse.cookies.set).toHaveBeenCalledWith('sb-token', '', { maxAge: 0 })
+    })
   })
 })
