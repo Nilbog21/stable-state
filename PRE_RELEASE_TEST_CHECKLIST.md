@@ -25,7 +25,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] You are redirected to `/profile/complete` (fresh claimed stub has no contact info)
 - [ ] Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app as manager of Dev Barn
 
-**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; pending rider Quinn Pending; second manager Morgan Manager; horses Apple, Butter, Clover; tiers Normal Tier ($100, default) and Premium Tier ($150); ~34 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
+**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; pending rider Quinn Pending; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 2 past lessons — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~36 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
 
 ## Phase 2 — Manager seeding
 

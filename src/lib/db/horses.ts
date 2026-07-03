@@ -131,10 +131,13 @@ export async function updateHorseDetails(
   updates: { name?: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null }
 ): Promise<void> {
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('horses')
-    .update(updates)
-    .eq('id', horseId)
-    .eq('barn_id', barnId)
+  const { error } = await supabase.rpc('update_horse_details', {
+    p_horse_id: horseId,
+    p_barn_id: barnId,
+    p_name: updates.name ?? null,
+    p_is_active: updates.is_active,
+    p_is_available: updates.is_available,
+    p_unavailability_reason: updates.unavailability_reason,
+  })
   if (error) throw error
 }

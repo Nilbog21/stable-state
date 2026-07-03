@@ -642,50 +642,40 @@ describe('resolveHorseNames', () => {
 })
 
 describe('updateHorseDetails', () => {
-  function makeUpdateChain(error: Error | null = null) {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    return { update: vi.fn().mockReturnValue({ eq: mockEqId }) }
-  }
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
 
   it('should_resolve_when_called_with_valid_updates', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeUpdateChain()),
-    } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
     await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).resolves.toBeUndefined()
   })
 
-  it('should_pass_updates_object_to_supabase_update', async () => {
-    const chain = makeUpdateChain()
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
-    expect(chain.update).toHaveBeenCalledWith({ name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
+  it('should_call_rpc_with_correct_arguments', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { name: 'Blaze', is_active: false, is_available: false, unavailability_reason: 'stall rest' })
+    expect(mockRpc).toHaveBeenCalledWith('update_horse_details', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_name: 'Blaze',
+      p_is_active: false,
+      p_is_available: false,
+      p_unavailability_reason: 'stall rest',
+    })
   })
 
-  it('should_scope_update_to_horse_id', async () => {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error: null })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
-    } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
-    expect(mockEqId).toHaveBeenCalledWith('id', 'horse-1')
+  it('should_pass_null_name_when_name_is_omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })
+    expect(mockRpc.mock.calls[0][1]).toMatchObject({ p_name: null })
   })
 
-  it('should_scope_update_to_barn_id', async () => {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error: null })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
-    } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
-    expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeUpdateChain(new Error('db error'))),
-    } as any)
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
     await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).rejects.toThrow('db error')
   })
 })

@@ -47,6 +47,7 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
     is_active: true,
     is_available: true,
     unavailability_reason: null,
+    deactivated_at: null,
     created_at: '',
     updated_at: '',
     ...overrides,
