@@ -124,39 +124,22 @@ export async function updateCharge(
 
 export async function generateChargeForMonth(
   agreementId: string,
+  barnId: string,
   period: Date,
   client?: SupabaseClient
 ): Promise<AgreementCharge> {
   const supabase = client ?? await createClient()
-
-  const { data: agreement, error: agreementError } = await supabase
-    .from('agreements')
-    .select('barn_id, fee')
-    .eq('id', agreementId)
-    .single()
-  if (agreementError) throw agreementError
-
   const periodDate = new Date(Date.UTC(period.getUTCFullYear(), period.getUTCMonth(), 1))
     .toISOString()
     .slice(0, 10)
 
-  const { error: upsertError } = await supabase
-    .from('agreement_charges')
-    .upsert(
-      { barn_id: agreement.barn_id, agreement_id: agreementId, period: periodDate, fee: agreement.fee },
-      { onConflict: 'agreement_id,period', ignoreDuplicates: true }
-    )
-  if (upsertError) throw upsertError
-
-  const { data, error } = await supabase
-    .from('agreement_charges')
-    .select('*')
-    .eq('agreement_id', agreementId)
-    .eq('period', periodDate)
-    .single()
-
+  const { data, error } = await supabase.rpc('generate_agreement_charge', {
+    p_agreement_id: agreementId,
+    p_barn_id: barnId,
+    p_period: periodDate,
+  })
   if (error) throw error
-  return data
+  return data as AgreementCharge
 }
 
 export async function getBarnDefaultBoardFee(barnId: string, client?: SupabaseClient): Promise<number> {

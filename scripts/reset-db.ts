@@ -295,13 +295,13 @@ async function run() {
     { barnId: DEV_BARN_ID, riderId: riderRowIds[0], horseId: horseIds[0], fee: defaultBoardFee, kind: 'board', cadence: 'monthly' },
     supabase
   )
-  const boardLastMonthCharge = await generateChargeForMonth(boardAgreement.id, lastMonth, supabase)
+  const boardLastMonthCharge = await generateChargeForMonth(boardAgreement.id, DEV_BARN_ID, lastMonth, supabase)
 
   const leaseAgreement = await createAgreement(
     { barnId: DEV_BARN_ID, riderId: riderRowIds[1], horseId: horseIds[1], fee: 200, kind: 'lease', cadence: 'monthly' },
     supabase
   )
-  const leaseLastMonthCharge = await generateChargeForMonth(leaseAgreement.id, lastMonth, supabase)
+  const leaseLastMonthCharge = await generateChargeForMonth(leaseAgreement.id, DEV_BARN_ID, lastMonth, supabase)
 
   mustSucceed(
     await supabase.from('agreement_charges').update({ payment_type: 'zelle' }).in('id', [boardLastMonthCharge.id, leaseLastMonthCharge.id]),

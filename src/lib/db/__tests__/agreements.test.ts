@@ -312,102 +312,40 @@ describe('generateChargeForMonth', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeAgreementLookupChain(data: unknown | null, error: Error | null = null) {
-    const mockSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect }
-  }
+  it('should_call_rpc_with_barn_id_agreement_id_and_normalized_period', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-  function makeUpsertChain(error: Error | null = null) {
-    const mockUpsert = vi.fn().mockResolvedValue({ error })
-    return { upsert: mockUpsert, mockUpsert }
-  }
+    await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
 
-  function makeSelectBackChain(data: unknown | null, error: Error | null = null) {
-    const mockSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEq2 = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
-    return { select: mockSelect }
-  }
-
-  it('should_upsert_with_conflict_target_and_ignore_duplicates', async () => {
-    const agreementChain = makeAgreementLookupChain({ barn_id: 'barn-1', fee: 200 })
-    const upsertChain = makeUpsertChain()
-    const selectBackChain = makeSelectBackChain(mockCharge)
-    const mockFrom = vi.fn()
-      .mockReturnValueOnce({ select: agreementChain.select })
-      .mockReturnValueOnce({ upsert: upsertChain.upsert })
-      .mockReturnValueOnce({ select: selectBackChain.select })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
-
-    await generateChargeForMonth('agreement-1', new Date('2026-07-15T00:00:00Z'))
-
-    expect(upsertChain.mockUpsert).toHaveBeenCalledWith(
-      { barn_id: 'barn-1', agreement_id: 'agreement-1', period: '2026-07-01', fee: 200 },
-      { onConflict: 'agreement_id,period', ignoreDuplicates: true }
-    )
+    expect(mockRpc).toHaveBeenCalledWith('generate_agreement_charge', {
+      p_agreement_id: 'agreement-1', p_barn_id: 'barn-1', p_period: '2026-07-01',
+    })
   })
 
-  it('should_return_select_back_charge', async () => {
-    const agreementChain = makeAgreementLookupChain({ barn_id: 'barn-1', fee: 200 })
-    const upsertChain = makeUpsertChain()
-    const selectBackChain = makeSelectBackChain(mockCharge)
-    const mockFrom = vi.fn()
-      .mockReturnValueOnce({ select: agreementChain.select })
-      .mockReturnValueOnce({ upsert: upsertChain.upsert })
-      .mockReturnValueOnce({ select: selectBackChain.select })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+  it('should_return_rpc_data', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    const result = await generateChargeForMonth('agreement-1', new Date('2026-07-15T00:00:00Z'))
+    const result = await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
 
     expect(result).toEqual(mockCharge)
   })
 
-  it('should_throw_when_agreement_lookup_fails', async () => {
-    const agreementChain = makeAgreementLookupChain(null, new Error('agreement lookup failed'))
-    const mockFrom = vi.fn().mockReturnValueOnce({ select: agreementChain.select })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('rpc failed') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await expect(generateChargeForMonth('agreement-1', new Date('2026-07-15T00:00:00Z'))).rejects.toThrow('agreement lookup failed')
-  })
-
-  it('should_throw_when_upsert_fails', async () => {
-    const agreementChain = makeAgreementLookupChain({ barn_id: 'barn-1', fee: 200 })
-    const upsertChain = makeUpsertChain(new Error('upsert failed'))
-    const mockFrom = vi.fn()
-      .mockReturnValueOnce({ select: agreementChain.select })
-      .mockReturnValueOnce({ upsert: upsertChain.upsert })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
-
-    await expect(generateChargeForMonth('agreement-1', new Date('2026-07-15T00:00:00Z'))).rejects.toThrow('upsert failed')
-  })
-
-  it('should_throw_when_select_back_fails', async () => {
-    const agreementChain = makeAgreementLookupChain({ barn_id: 'barn-1', fee: 200 })
-    const upsertChain = makeUpsertChain()
-    const selectBackChain = makeSelectBackChain(null, new Error('select back failed'))
-    const mockFrom = vi.fn()
-      .mockReturnValueOnce({ select: agreementChain.select })
-      .mockReturnValueOnce({ upsert: upsertChain.upsert })
-      .mockReturnValueOnce({ select: selectBackChain.select })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
-
-    await expect(generateChargeForMonth('agreement-1', new Date('2026-07-15T00:00:00Z'))).rejects.toThrow('select back failed')
+    await expect(
+      generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'))
+    ).rejects.toThrow('rpc failed')
   })
 
   it('should_use_injected_client_when_provided', async () => {
-    const agreementChain = makeAgreementLookupChain({ barn_id: 'barn-1', fee: 200 })
-    const upsertChain = makeUpsertChain()
-    const selectBackChain = makeSelectBackChain(mockCharge)
-    const mockFrom = vi.fn()
-      .mockReturnValueOnce({ select: agreementChain.select })
-      .mockReturnValueOnce({ upsert: upsertChain.upsert })
-      .mockReturnValueOnce({ select: selectBackChain.select })
-    const mockClient = { from: mockFrom } as any
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockCharge, error: null })
+    const mockClient = { rpc: mockRpc } as any
 
-    const result = await generateChargeForMonth('agreement-1', new Date('2026-07-15T00:00:00Z'), mockClient)
+    const result = await generateChargeForMonth('agreement-1', 'barn-1', new Date('2026-07-15T00:00:00Z'), mockClient)
 
     expect(result).toEqual(mockCharge)
   })
