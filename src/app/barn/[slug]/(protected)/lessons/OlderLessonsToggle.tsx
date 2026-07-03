@@ -8,10 +8,11 @@ interface Props {
   lessons: LessonWithDetails[]
   slug: string
   isManager: boolean
-  deleteAction: (lessonId: string) => Promise<{ error: string } | void>
+  isTrainer: boolean
+  currentUserId: string
 }
 
-export function OlderLessonsToggle({ lessons, slug, isManager, deleteAction }: Props) {
+export function OlderLessonsToggle({ lessons, slug, isManager, isTrainer, currentUserId }: Props) {
   const [show, setShow] = useState(false)
 
   if (lessons.length === 0) return null
@@ -33,7 +34,8 @@ export function OlderLessonsToggle({ lessons, slug, isManager, deleteAction }: P
               lesson={lesson}
               slug={slug}
               isManager={isManager}
-              deleteAction={deleteAction}
+              isTrainer={isTrainer}
+              currentUserId={currentUserId}
             />
           ))}
         </ul>

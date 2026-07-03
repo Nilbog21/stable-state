@@ -4,7 +4,6 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonsByBarn } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { deleteLessonAction } from '@/app/actions/lessons'
 import { OlderLessonsToggle } from './OlderLessonsToggle'
 import { LessonListItem } from './LessonListItem'
 import { EmptyState } from '@/components/EmptyState'
@@ -94,7 +93,6 @@ export default async function LessonsPage({
     }
   }
   const canCreateLesson = isManager || isTrainer
-  const deleteAction = deleteLessonAction.bind(null, barn.id, slug)
 
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - OLDER_LESSON_CUTOFF_DAYS)
@@ -215,7 +213,8 @@ export default async function LessonsPage({
                   lesson={lesson}
                   slug={slug}
                   isManager={isManager}
-                  deleteAction={deleteAction}
+                  isTrainer={isTrainer}
+                  currentUserId={user.id}
                 />
               ))}
             </ul>
@@ -224,7 +223,8 @@ export default async function LessonsPage({
             lessons={olderLessons}
             slug={slug}
             isManager={isManager}
-            deleteAction={deleteAction}
+            isTrainer={isTrainer}
+            currentUserId={user.id}
           />
         </>
       )}

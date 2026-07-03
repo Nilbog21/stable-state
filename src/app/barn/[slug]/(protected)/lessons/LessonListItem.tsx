@@ -1,15 +1,22 @@
 import Link from 'next/link'
 import type { LessonWithDetails } from '@/lib/db/types'
-import { DeleteLessonButton } from './DeleteLessonButton'
 
 interface Props {
   lesson: LessonWithDetails
   slug: string
   isManager: boolean
-  deleteAction: (lessonId: string) => Promise<{ error: string } | void>
+  isTrainer: boolean
+  currentUserId: string
 }
 
-export function LessonListItem({ lesson, slug, isManager, deleteAction }: Props) {
+export function LessonListItem({ lesson, slug, isManager, isTrainer, currentUserId }: Props) {
+  const isCancelled = lesson.cancelled_at !== null
+  const canManageLesson = isManager || (isTrainer && lesson.instructor_id === currentUserId)
+  const canCancel =
+    canManageLesson &&
+    !isCancelled &&
+    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+
   return (
     <li className="flex items-center justify-between py-4">
       <Link href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 hover:underline">
@@ -33,13 +40,21 @@ export function LessonListItem({ lesson, slug, isManager, deleteAction }: Props)
         )}
         <span className="flex items-center gap-2 text-sm text-zinc-500">
           {lesson.fee != null ? `$${lesson.fee} · ${lesson.tier_name}` : lesson.tier_name}
-          {lesson.payment_type === null && (lesson.fee ?? 0) > 0 && new Date(lesson.lesson_at) < new Date() && (
+          {isCancelled && (
+            <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+          )}
+          {!isCancelled && lesson.payment_type === null && (lesson.fee ?? 0) > 0 && new Date(lesson.lesson_at) < new Date() && (
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
           )}
         </span>
       </Link>
-      {isManager && (
-        <DeleteLessonButton action={deleteAction.bind(null, lesson.id)} />
+      {canCancel && (
+        <Link
+          href={`/barn/${slug}/lessons/${lesson.id}/cancel`}
+          className="min-h-11 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
+        >
+          Cancel
+        </Link>
       )}
     </li>
   )
