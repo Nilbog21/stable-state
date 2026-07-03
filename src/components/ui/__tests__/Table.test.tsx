@@ -101,6 +101,21 @@ describe('Td', () => {
     renderTd(<Td colSpan={3}>Willow</Td>)
     expect(screen.getByRole('cell').getAttribute('colspan')).toBe('3')
   })
+
+  it('should_apply_secondary_tone_text_color', () => {
+    renderTd(<Td tone="secondary">Willow</Td>)
+    expect(screen.getByRole('cell').className).toContain('text-zinc-500')
+  })
+
+  it('should_apply_secondary_tone_dark_text_color', () => {
+    renderTd(<Td tone="secondary">Willow</Td>)
+    expect(screen.getByRole('cell').className).toContain('dark:text-zinc-400')
+  })
+
+  it('should_not_apply_primary_text_color_when_secondary_tone', () => {
+    renderTd(<Td tone="secondary">Willow</Td>)
+    expect(screen.getByRole('cell').className).not.toContain('text-zinc-900')
+  })
 })
 
 describe('TableActions', () => {
@@ -122,5 +137,10 @@ describe('TableActions', () => {
   it('should_merge_caller_class_name', () => {
     renderTd(<TableActions className="whitespace-nowrap">Edit</TableActions>)
     expect(screen.getByRole('cell').className).toContain('whitespace-nowrap')
+  })
+
+  it('should_forward_tone_to_td', () => {
+    renderTd(<TableActions tone="secondary">Edit</TableActions>)
+    expect(screen.getByRole('cell').className).toContain('text-zinc-500')
   })
 })
