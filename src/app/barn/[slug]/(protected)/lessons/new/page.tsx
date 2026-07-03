@@ -1,4 +1,4 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
@@ -25,10 +25,15 @@ export default async function LessonNewPage({
     notFound()
   }
 
-  const [horses, riderMembers, membership, tiers, instructors] = await Promise.all([
+  const membership = await getUserMembership(user.id, barn.id)
+
+  if (membership?.role === 'rider') {
+    redirect(`/barn/${slug}/lessons`)
+  }
+
+  const [horses, riderMembers, tiers, instructors] = await Promise.all([
     getHorsesByBarn(barn.id),
     getActiveMembersWithProfiles(barn.id, 'rider'),
-    getUserMembership(user.id, barn.id),
     getTiersByBarn(barn.id),
     getInstructorsByBarn(barn.id),
   ])

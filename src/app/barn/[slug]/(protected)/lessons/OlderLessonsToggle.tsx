@@ -21,7 +21,7 @@ export function OlderLessonsToggle({ lessons, slug, isManager, deleteAction }: P
       <button
         type="button"
         onClick={() => setShow((v) => !v)}
-        className="text-sm text-zinc-500 underline hover:text-zinc-700 dark:hover:text-zinc-300"
+        className="min-h-11 px-4 py-3 text-sm text-zinc-500 underline hover:text-zinc-700 dark:hover:text-zinc-300"
       >
         {show ? 'Hide older lessons' : 'Show older lessons'}
       </button>
