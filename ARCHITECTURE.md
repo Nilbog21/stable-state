@@ -16,6 +16,8 @@ Barn slug is the org boundary. All barn-scoped routes live under `/barn/[slug]`.
 
 Three roles: `manager`, `trainer`, `rider`.
 
+**Glossary:** a **boarder** is a rider who boards their horse at the stable.
+
 ### Permissions matrix
 
 | Table | manager | trainer | rider |
@@ -32,6 +34,8 @@ Three roles: `manager`, `trainer`, `rider`.
 | horse_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT (barn-scoped) | — |
 | trainer_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, DELETE own rows only | — |
 | rider_documents | SELECT, INSERT, UPDATE, DELETE | SELECT (barn-scoped) | SELECT, INSERT, DELETE own rows only |
+| agreements | SELECT, INSERT, UPDATE, DELETE (barn-scoped, both kinds) | — | SELECT own rows only (both kinds) |
+| agreement_charges | SELECT, INSERT, UPDATE, DELETE (barn-scoped, both kinds) | — | SELECT own rows only (via parent agreement, both kinds) |
 
 ## DB schema
 
@@ -40,7 +44,7 @@ All tables are in the `public` schema with RLS enabled.
 | Table | Key columns | Notes |
 |---|---|---|
 | `roles` | `name TEXT PK CHECK IN ('manager','trainer','rider')` | Lookup table |
-| `barns` | `id UUID PK`, `name TEXT NOT NULL`, `slug TEXT UNIQUE NOT NULL`, `created_at TIMESTAMPTZ` | |
+| `barns` | `id UUID PK`, `name TEXT NOT NULL`, `slug TEXT UNIQUE NOT NULL`, `default_board_fee NUMERIC NOT NULL DEFAULT 1000`, `created_at TIMESTAMPTZ` | `default_board_fee` seeds the fee suggested on new boarding agreements; non-retroactive to existing agreements |
 | `barn_memberships` | `id UUID PK`, `user_id UUID→auth.users` (nullable — null for managed stubs), `barn_id UUID NOT NULL→barns`, `profile_id UUID NOT NULL→profiles`, `role TEXT→roles`, `status TEXT CHECK('active','pending') DEFAULT 'pending'`, `can_instruct BOOLEAN NOT NULL DEFAULT false`, `invite_token UUID` (nullable, partial unique index when not null), `created_at TIMESTAMPTZ`; `UNIQUE(user_id, barn_id)` (partial, where user_id IS NOT NULL); `UNIQUE(barn_id, id)` | `can_instruct` is set to `true` for trainer role on activation. The composite `UNIQUE(barn_id, id)` is used as the FK target from `lesson_riders(barn_id, rider_id)`. `profile_id` is the direct join key to `profiles` (replaces the two-hop `user_id → auth.users → profiles`). Managed rider stubs have `user_id = NULL`, `invite_token` set; claiming sets both fields and clears the token. |
 | `horses` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `name TEXT NOT NULL`, `is_active BOOLEAN NOT NULL DEFAULT true`, `is_available BOOLEAN NOT NULL DEFAULT true`, `unavailability_reason TEXT`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | `is_active=false` soft-deletes a horse; `is_available=false` temporarily marks a horse out of rotation — still returned by `getHorsesByBarn`, shown as disabled in lesson forms; management queries filter to `is_active=true`; lesson history resolves horse names regardless |
 
@@ -53,6 +57,10 @@ All tables are in the `public` schema with RLS enabled.
 | `horse_documents` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `horse_id UUID NOT NULL`, `record_type horse_document_type NOT NULL`, `storage_path TEXT NOT NULL`, `file_name TEXT NOT NULL`, `file_size INTEGER NOT NULL`, `notes TEXT`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)`; `FK(barn_id, horse_id)→horses` | Enum `horse_document_type`: `insurance_binder`, `coggins`, `shot_record`, `contract`, `other`. No unique constraint on `(horse_id, record_type)` — multiple records per type allowed. Storage objects at `{barn_id}/horses/{horse_id}/{filename}` in the `documents` bucket. |
 | `trainer_documents` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `trainer_id UUID NOT NULL→auth.users`, `record_type trainer_document_type NOT NULL`, `storage_path TEXT NOT NULL`, `file_name TEXT NOT NULL`, `file_size INTEGER NOT NULL`, `notes TEXT`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | Enum `trainer_document_type`: `instructor_contract`, `other`. Storage objects at `{barn_id}/trainers/{trainer_user_id}/{filename}` in the `documents` bucket. |
 | `rider_documents` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `rider_id UUID NOT NULL→auth.users`, `record_type rider_document_type NOT NULL`, `storage_path TEXT NOT NULL`, `file_name TEXT NOT NULL`, `file_size INTEGER NOT NULL`, `notes TEXT`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)` | Enum `rider_document_type`: `liability_waiver`, `lease_agreement`, `boarding_contract`, `other`. Storage objects at `{barn_id}/riders/{rider_user_id}/{filename}` in the `documents` bucket. |
+| `agreements` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `rider_id UUID NOT NULL→barn_memberships(barn_id,id)`, `horse_id UUID NOT NULL→horses(barn_id,id)`, `fee NUMERIC NOT NULL`, `kind agreement_kind NOT NULL DEFAULT 'lease'`, `cadence agreement_cadence NOT NULL`, `start_date DATE NOT NULL DEFAULT current_date`, `is_active BOOLEAN NOT NULL DEFAULT true`, `created_at/updated_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)`; `CHECK(kind <> 'board' OR cadence = 'monthly')` | Persistent lease or boarding arrangement. Enum `agreement_kind`: `lease` (horse lease; one-time e.g. a horse show, or recurring month-to-month), `board` (boarding agreement / stall rent; always recurring monthly). Enum `agreement_cadence`: `one_time`, `monthly`. Manager-authored; rider is the counterparty. |
+| `agreement_charges` | `id UUID PK`, `barn_id UUID NOT NULL→barns`, `agreement_id UUID NOT NULL→agreements(barn_id,id)`, `period DATE NOT NULL` (pinned to the 1st of the month via `CHECK`), `fee NUMERIC NOT NULL` (snapshot), `payment_type payment_type_enum` (nullable; NULL = unpaid), `created_at TIMESTAMPTZ`; `UNIQUE(barn_id, id)`; `UNIQUE(agreement_id, period)` | Billable income lines generated from an agreement — behave like lesson fees, each independently markable paid and folded into Finances totals. The `UNIQUE(agreement_id, period)` guards against duplicate charges for the same month. |
+
+If a 3rd+ distinct revenue type appears or the Finances UNION gets painful, consolidate `agreement_charges` + `expenses` into a `financial_impacts` ledger keyed by `date_realized`; lessons fold in last.
 
 ## RLS conventions
 
@@ -159,6 +167,8 @@ No API routes. All mutations go through Next.js Server Actions.
 `teardown_all_lesson_data()` — dev-only helper that deletes all `lesson_riders`, `lesson_horses`, and `lessons` rows across all barns in a single transaction, satisfying the deferred participant-count triggers at commit. `SECURITY DEFINER`; `EXECUTE` revoked from `PUBLIC` and granted to `service_role` only. Called by `teardownAllData` in `scripts/script-utils.ts`.
 
 `get_horse_exertion_summary(p_barn_id uuid, p_since timestamptz)` — returns one row per horse in the barn with `is_available` and aggregated `lesson_count`, `total_exertion`, and `jumping_count` for lessons on or after `p_since`. Uses a subquery JOIN + GROUP BY so horses with zero in-window lessons appear with zero counts. `SECURITY INVOKER`; `EXECUTE` granted to `authenticated`. Used by `getHorseExertionSummary` in `horses.ts`.
+
+`create_agreement_with_first_charge(p_barn_id, p_rider_id, p_horse_id, p_fee, p_kind, p_cadence, p_start_date)` — atomically inserts an `agreements` row and its first `agreement_charges` row in one transaction. `p_start_date` defaults to `current_date`. The first charge's `period` is the current month when `cadence = 'monthly'`, or the agreement's `start_date`'s month when `cadence = 'one_time'`. Works for both `kind` values (`lease`, `board`); the `kind`/`cadence` invariant ("board is always monthly") is enforced by a table `CHECK` constraint, not by this function. `SECURITY INVOKER`; the caller's own manager RLS policy authorizes the insert; `EXECUTE` granted to `authenticated`.
 
 ## Feature anatomy
 
