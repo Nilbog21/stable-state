@@ -1,0 +1,1 @@
+ALTER TABLE public.barns ADD COLUMN default_board_fee NUMERIC NOT NULL DEFAULT 1000;
