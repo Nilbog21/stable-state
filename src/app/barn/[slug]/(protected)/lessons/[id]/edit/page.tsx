@@ -54,6 +54,7 @@ export default async function EditLessonPage({
       is_active: false,
       is_available: true,
       unavailability_reason: null,
+      deactivated_at: null,
       created_at: '',
       updated_at: '',
     }))
