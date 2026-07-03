@@ -31,7 +31,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `NEXT_PUBLIC_SUPABASE_URL` | App + reset script | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | App | Supabase anon (public) key |
 | `SUPABASE_SERVICE_ROLE_KEY` | Reset script only | Service role key — bypasses RLS; never expose client-side |
-| `DEV_EMAIL` | Reset script only | Your Google email — pre-authorized as dev barn manager; used as default by seed-account.sh |
+| `DEV_EMAIL` | Reset script only | Your Google email — used by change-user.sh; must match the Google account you claim the seed invite with |
 | `DEV_NAME` | Reset script only | Your full name (first last) — split on first space for first/last name defaults in seed-account.sh |
 | `DEV_BARN` | Reset script only (optional) | Default barn slug for seed-account.sh (defaults to `dev-barn`) |
 
@@ -43,7 +43,7 @@ To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 a
 bash scripts/reset-db.sh
 ```
 
-Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to pre-authorize your manager account, then opens `change-user.sh` to let you select a dev role to sign in as.
+Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment and sign in with Google to claim the account, then `change-user.sh` lets you select a dev role to sign in as.
 
 ## Database setup
 
@@ -53,7 +53,13 @@ Run all migration files in `supabase/migrations/` against your Supabase project 
 
 ### Seed a manager account
 
-Pre-authorize a Google account to sign in as a barn manager. The script inserts a row into `seeded_accounts`; on first sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row, then deletes the staging row.
+Create an unclaimed managed-manager stub for a barn. The script inserts a stub profile (`is_managed=true`, no email) and an active manager membership with an invite token, then prints the invite path:
+
+```
+Invite path: /barn/<slug>/login?token=<token>
+```
+
+Open that path in the app and sign in with Google to claim the account — `claim_managed_member` links your auth user to the stub and clears the token.
 
 **Prerequisites:**
 - The barn slug must already exist (create via the Supabase dashboard if needed)
@@ -63,7 +69,7 @@ Pre-authorize a Google account to sign in as a barn manager. The script inserts 
 bash scripts/seed-account.sh
 ```
 
-The script prompts for email, first name, last name, and barn slug (defaults to `DEV_EMAIL`, `DEV_NAME`, and `DEV_BARN` from `.env.local` if set). Once the manager signs in with Google, their account is immediately active. To enable instructor access (so the manager can be assigned as a lesson instructor), toggle "Can instruct" in barn Settings → Members.
+The script prompts for first name, last name, and barn slug (defaults to `DEV_NAME` and `DEV_BARN` from `.env.local` if set). Each run creates a fresh stub — if your Google account has already claimed a profile, claiming a new invite will fail; run the full `reset-db.sh` instead. To enable instructor access (so the manager can be assigned as a lesson instructor), toggle "Can instruct" in barn Settings → Members.
 
 ## Production bootstrap
 
@@ -82,13 +88,13 @@ The `<project-ref>` is the string in the Supabase dashboard URL: `https://supaba
 
 ### 2. Seed the initial manager account
 
-Pre-authorize the barn manager's Google email before their first sign-in. The barn slug must exist first (create it via the Supabase SQL editor or dashboard if needed).
+Create the barn manager's account stub before their first sign-in. The barn slug must exist first (create it via the Supabase SQL editor or dashboard if needed).
 
 ```bash
 bash scripts/seed-account.sh
 ```
 
-On first OAuth sign-in, `activateSeededAccount` in the auth callback creates the profile and active membership row automatically.
+The script prints an invite path (`/barn/<slug>/login?token=<token>`). Send the full URL (production domain + invite path) to the barn manager — they open it and sign in with Google to claim the account. A plain sign-in without the invite link will **not** activate the account.
 
 ### 3. Add redirect URLs to Supabase
 

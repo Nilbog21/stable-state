@@ -31,7 +31,7 @@ NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 bash scripts/seed-account.sh
 
 echo ""
-echo "Log in to your Vercel preview now."
+echo "Open the invite path printed above on your Vercel preview to claim the manager account."
 printf "Press Enter when logged in, or Escape to skip role selection: "
 IFS= read -rsn1 key || true
 echo ""
