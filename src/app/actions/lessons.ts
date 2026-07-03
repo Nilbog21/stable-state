@@ -262,7 +262,7 @@ export async function cancelLessonAction(
     recipientIds = lesson.instructor_id ? [lesson.instructor_id, ...riderUserIds] : riderUserIds
   }
 
-  await Promise.all(
+  await Promise.allSettled(
     recipientIds.map((userId) =>
       createNotification({
         userId,

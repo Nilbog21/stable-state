@@ -1,4 +1,5 @@
 import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 interface Props {
@@ -49,12 +50,9 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentUser
         </span>
       </Link>
       {canCancel && (
-        <Link
-          href={`/barn/${slug}/lessons/${lesson.id}/cancel`}
-          className="min-h-11 rounded-md bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 dark:bg-red-700 dark:hover:bg-red-600"
-        >
+        <Button href={`/barn/${slug}/lessons/${lesson.id}/cancel`} variant="danger">
           Cancel
-        </Link>
+        </Button>
       )}
     </li>
   )

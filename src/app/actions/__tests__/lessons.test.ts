@@ -634,12 +634,19 @@ describe('cancelLessonAction', () => {
     expect(createNotification).not.toHaveBeenCalled()
   })
 
-  it('should_notify_all_enrolled_riders_with_linked_accounts', async () => {
+  it('should_notify_first_enrolled_rider_with_linked_account', async () => {
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'])
     )
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-1' }))
+  })
+
+  it('should_notify_second_enrolled_rider_with_linked_account', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'])
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-2' }))
   })
 

@@ -128,10 +128,15 @@ describe('cancelLesson', () => {
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancellation_notes: null }))
   })
 
-  it('should_filter_by_lesson_id_and_barn_id', async () => {
-    const { mockEq1, mockEq2 } = makeCancelChain()
+  it('should_filter_by_lesson_id', async () => {
+    const { mockEq1 } = makeCancelChain()
     await cancelLesson('lesson-1', 'barn-1')
     expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockEq2 } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1')
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 

@@ -72,6 +72,36 @@ describe('Button', () => {
     })
   })
 
+  describe('href', () => {
+    it('should_render_as_link_when_href_provided', () => {
+      render(<Button href="/somewhere">Cancel</Button>)
+      expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+    })
+
+    it('should_set_href_attribute_on_link', () => {
+      render(<Button href="/somewhere">Cancel</Button>)
+      expect(screen.getByRole('link').getAttribute('href')).toBe('/somewhere')
+    })
+
+    it('should_apply_variant_classes_to_link', () => {
+      render(
+        <Button href="/somewhere" variant="danger">
+          Cancel
+        </Button>
+      )
+      expect(screen.getByRole('link').className).toContain('bg-red-600')
+    })
+
+    it('should_merge_caller_class_name_on_link', () => {
+      render(
+        <Button href="/somewhere" className="w-full">
+          Cancel
+        </Button>
+      )
+      expect(screen.getByRole('link').className).toContain('w-full')
+    })
+  })
+
   describe('native props', () => {
     it('should_forward_native_button_props', () => {
       render(<Button type="submit">Save</Button>)
