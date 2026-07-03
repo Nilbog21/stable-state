@@ -45,7 +45,6 @@ export async function teardownAllData(supabase: SupabaseClient): Promise<void> {
   }
   mustSucceed(await supabase.from('horses').delete().not('id', 'is', null), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().not('id', 'is', null), 'delete barn_memberships')
-  mustSucceed(await supabase.from('seeded_accounts').delete().not('id', 'is', null), 'delete seeded_accounts')
   mustSucceed(await supabase.from('profiles').delete().not('id', 'is', null), 'delete profiles')
   mustSucceed(await supabase.from('barns').delete().not('id', 'is', null), 'delete barns')
   while (true) {

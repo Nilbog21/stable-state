@@ -16,10 +16,6 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   claimManagedMember: vi.fn(),
 }))
 
-vi.mock('@/lib/db/seeded-accounts', () => ({
-  activateSeededAccount: vi.fn().mockResolvedValue(undefined),
-}))
-
 vi.mock('@/lib/db/profiles', () => ({
   getProfileByUserId: vi.fn(),
   getProfilesByUserIds: vi.fn(),
@@ -51,7 +47,6 @@ vi.mock('next/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships, claimManagedMember } from '@/lib/db/barn-memberships'
-import { activateSeededAccount } from '@/lib/db/seeded-accounts'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
@@ -70,8 +65,6 @@ const completeProfile = createMockProfile({
 
 describe('GET /auth/callback', () => {
   beforeEach(() => {
-    vi.mocked(activateSeededAccount).mockReset()
-    vi.mocked(activateSeededAccount).mockResolvedValue(undefined)
     vi.mocked(getBarnMembershipsForUser).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
     vi.mocked(getProfileByUserId).mockReset()
@@ -93,44 +86,6 @@ describe('GET /auth/callback', () => {
       status: 302,
       cookies: { set: mockCookiesSet },
     }))
-  })
-
-  it('should_activate_seeded_account_after_successful_session_exchange', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
-    } as any)
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: 'manager@example.com' } as any)
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    await GET(request as any)
-
-    expect(activateSeededAccount).toHaveBeenCalledWith('user-1', 'manager@example.com')
-  })
-
-  it('should_proceed_with_login_when_activate_seeded_account_throws', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
-    } as any)
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: 'manager@example.com' } as any)
-    vi.mocked(activateSeededAccount).mockRejectedValue(new Error('db error'))
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    const response = await GET(request as any)
-
-    expect(response.url).toContain('/login?no_barns=true')
-  })
-
-  it('should_not_activate_seeded_account_when_user_has_no_email', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
-    } as any)
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: null } as any)
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    await GET(request as any)
-
-    expect(activateSeededAccount).not.toHaveBeenCalled()
   })
 
   it('should_exchange_code_for_session_when_code_is_present', async () => {
