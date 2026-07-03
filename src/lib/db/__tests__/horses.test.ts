@@ -642,87 +642,40 @@ describe('resolveHorseNames', () => {
 })
 
 describe('updateHorseDetails', () => {
-  function makeClient(
-    current: { is_active: boolean } | null,
-    opts: { fetchError?: Error | null; updateError?: Error | null } = {}
-  ) {
-    const singleMock = vi.fn().mockResolvedValue({ data: current, error: opts.fetchError ?? null })
-    const selectEqBarnId = vi.fn().mockReturnValue({ single: singleMock })
-    const selectEqId = vi.fn().mockReturnValue({ eq: selectEqBarnId })
-    const selectMock = vi.fn().mockReturnValue({ eq: selectEqId })
-
-    const updateEqBarnId = vi.fn().mockResolvedValue({ data: null, error: opts.updateError ?? null })
-    const updateEqId = vi.fn().mockReturnValue({ eq: updateEqBarnId })
-    const updateMock = vi.fn().mockReturnValue({ eq: updateEqId })
-
-    const from = vi.fn().mockReturnValue({ select: selectMock, update: updateMock })
-    return { from, updateMock, updateEqId, updateEqBarnId }
-  }
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
 
   it('should_resolve_when_called_with_valid_updates', async () => {
-    const { from } = makeClient({ is_active: true })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
     await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).resolves.toBeUndefined()
   })
 
-  it('should_pass_updates_object_to_supabase_update_when_is_active_unchanged', async () => {
-    const { from, updateMock } = makeClient({ is_active: true })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
-    expect(updateMock).toHaveBeenCalledWith({ name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
+  it('should_call_rpc_with_correct_arguments', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { name: 'Blaze', is_active: false, is_available: false, unavailability_reason: 'stall rest' })
+    expect(mockRpc).toHaveBeenCalledWith('update_horse_details', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_name: 'Blaze',
+      p_is_active: false,
+      p_is_available: false,
+      p_unavailability_reason: 'stall rest',
+    })
   })
 
-  it('should_scope_update_to_horse_id', async () => {
-    const { from, updateEqId } = makeClient({ is_active: false })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
-    expect(updateEqId).toHaveBeenCalledWith('id', 'horse-1')
+  it('should_pass_null_name_when_name_is_omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })
+    expect(mockRpc.mock.calls[0][1]).toMatchObject({ p_name: null })
   })
 
-  it('should_scope_update_to_barn_id', async () => {
-    const { from, updateEqBarnId } = makeClient({ is_active: false })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
-    expect(updateEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_throw_when_supabase_update_returns_an_error', async () => {
-    const { from } = makeClient({ is_active: true }, { updateError: new Error('db error') })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
     await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).rejects.toThrow('db error')
-  })
-
-  it('should_set_deactivated_at_when_is_active_transitions_to_false', async () => {
-    const { from, updateMock } = makeClient({ is_active: true })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: 'retired' })
-    expect(updateMock.mock.calls[0][0]).toMatchObject({ deactivated_at: expect.any(String) })
-  })
-
-  it('should_clear_deactivated_at_when_is_active_transitions_to_true', async () => {
-    const { from, updateMock } = makeClient({ is_active: false })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })
-    expect(updateMock).toHaveBeenCalledWith(expect.objectContaining({ deactivated_at: null }))
-  })
-
-  it('should_not_include_deactivated_at_when_staying_active', async () => {
-    const { from, updateMock } = makeClient({ is_active: true })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })
-    expect(updateMock.mock.calls[0][0]).not.toHaveProperty('deactivated_at')
-  })
-
-  it('should_not_include_deactivated_at_when_staying_inactive', async () => {
-    const { from, updateMock } = makeClient({ is_active: false })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: 'still resting' })
-    expect(updateMock.mock.calls[0][0]).not.toHaveProperty('deactivated_at')
-  })
-
-  it('should_throw_when_fetching_current_state_fails', async () => {
-    const { from } = makeClient(null, { fetchError: new Error('fetch error') })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).rejects.toThrow('fetch error')
   })
 })

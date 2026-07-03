@@ -27,6 +27,7 @@ const DEV_RIDERS = [
 ]
 
 const DEV_HORSES = ['Apple', 'Butter', 'Clover']
+const DEV_RETIRED_HORSE = 'Willow'
 
 export const DEV_PENDING_RIDER = { email: 'pending1@dev.local', firstName: 'Quinn', lastName: 'Pending' }
 export const DEV_MANAGER_2 = { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' }
@@ -197,6 +198,8 @@ async function run() {
     horseIds.push(horse.id)
   }
 
+  const retiredHorse = await createHorse(DEV_BARN_ID, DEV_RETIRED_HORSE, supabase)
+
   const lessonDates = buildLessonDates(now)
 
   for (let i = 0; i < lessonDates.length; i++) {
@@ -218,12 +221,26 @@ async function run() {
     }, supabase)
   }
 
-  const retiredHorseId = horseIds[horseIds.length - 1]
+  for (const daysAgo of [75, 60]) {
+    await createLessonWithParticipants({
+      barnId: DEV_BARN_ID,
+      instructorId: trainerIds[0],
+      lessonAt: dayOffset(now, -daysAgo).toISOString(),
+      fee: tier1.price,
+      horseIds: [retiredHorse.id],
+      exertionLevels: [3],
+      riderIds: [riderRowIds[0]],
+      lessonType: 'normal',
+      jumping: false,
+      tierName: tier1.name,
+    }, supabase)
+  }
+
   mustSucceed(
     await supabase.from('horses').update({
       is_active: false,
       deactivated_at: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    }).eq('id', retiredHorseId),
+    }).eq('id', retiredHorse.id),
     'retire seed horse'
   )
 
@@ -267,9 +284,9 @@ async function run() {
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`)
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
-  console.log(`  Horses:   ${DEV_HORSES.join(', ')} (${DEV_HORSES[DEV_HORSES.length - 1]} retired, deactivated_at 30 days ago)`)
+  console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 2 past lessons)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
-  console.log(`  Lessons:  34 (${groupCount} group, ${34 - groupCount} normal; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid`)
+  console.log(`  Lessons:  ${lessonDates.length + 2} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
