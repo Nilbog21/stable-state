@@ -1,6 +1,6 @@
 'use server'
 
-import { headers } from 'next/headers'
+import { headers, cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
@@ -11,7 +11,29 @@ async function getOrigin(): Promise<string> {
   return `${proto}://${host}`
 }
 
-export async function signInWithGoogle() {
+// remember_me survives the OAuth round-trip for the callback; remember_me_pref
+// pre-fills the checkbox on the user's next visit.
+async function setRememberCookies(formData: FormData) {
+  const val = formData.get('remember') ? '1' : '0'
+  const store = await cookies()
+  store.set('remember_me', val, {
+    maxAge: 300,
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
+  store.set('remember_me_pref', val, {
+    maxAge: 31536000,
+    path: '/',
+    httpOnly: true,
+    sameSite: 'lax',
+    secure: process.env.NODE_ENV === 'production',
+  })
+}
+
+export async function signInWithGoogle(formData: FormData) {
+  await setRememberCookies(formData)
   const supabase = await createClient()
   const { data, error } = await supabase.auth.signInWithOAuth({
     provider: 'google',
@@ -27,11 +49,16 @@ export async function signInWithGoogle() {
   redirect(data.url)
 }
 
-export async function signInWithGoogleForBarn(barnSlug: string, inviteToken?: string) {
+export async function signInWithGoogleForBarn(
+  barnSlug: string,
+  inviteToken: string | undefined,
+  formData: FormData
+) {
   if (!/^[a-z0-9-]+$/.test(barnSlug)) {
     redirect('/login?error=invalid_barn')
   }
 
+  await setRememberCookies(formData)
   const supabase = await createClient()
   const tokenParam = inviteToken ? `&token=${encodeURIComponent(inviteToken)}` : ''
   const { data, error } = await supabase.auth.signInWithOAuth({

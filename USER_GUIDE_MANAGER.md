@@ -1,6 +1,6 @@
 # Stable State — Manager Guide
 
-Stable State is a barn management app for scheduling lessons, tracking horses and riders, and managing finances. Sign in with Google, then select your barn. The nav bar shows all sections available to you as a manager.
+Stable State is a barn management app for scheduling lessons, tracking horses and riders, and managing finances. Sign in with Google, then select your barn. Leave "Keep me logged in" checked on the sign-in page to stay signed in after closing your browser. The nav bar shows all sections available to you as a manager.
 
 ---
 
