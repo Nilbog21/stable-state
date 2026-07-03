@@ -6,7 +6,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 
 ## Prerequisites
 
-- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME`, `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN`; defaults to `dev-barn`)
+- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — only `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 has no default and requires it set or typed manually)
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
 - [ ] A **secondary Google account** (not `DEV_EMAIL`) available for the stub-claim step in Phase 2 — one Google account can only claim one managed stub
 - [ ] Email provider enabled in the Supabase dashboard (required by `seed-test-barn.sh` in Phase 7)
@@ -19,8 +19,9 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
   bash scripts/reset-db.sh
   ```
 
-  At the `Press Enter when logged in, or Escape to skip role selection:` prompt, press **Escape** — you stay manager for now.
-- [ ] The script prints `Invite path: /barn/dev-barn/login?token=<uuid>` — open that path on your app origin and sign in with the **`DEV_EMAIL`** Google account
+  This chains `seed-account.sh`, which prompts for **First name**, **Last name**, and **Barn slug** — each pre-filled from `.env.local` (`DEV_NAME`, `DEV_BARN`), so press **Enter** through all three to accept the defaults. Then, at `reset-db.sh`'s own `Press Enter when logged in, or Escape to skip role selection:` prompt, press **Escape** — you stay manager for now.
+- [ ] The script prints `Invite path: /barn/dev-barn/login?token=<uuid>` — open that path on your app origin
+- [ ] The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox (checked by default) — sign in with the **`DEV_EMAIL`** Google account
 - [ ] You are redirected to `/profile/complete` (fresh claimed stub has no contact info)
 - [ ] Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app as manager of Dev Barn
 
@@ -133,14 +134,21 @@ Notifications and profile:
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders; edit phone → Save → redirected back to the barn
 - [ ] Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
 
+Mobile spot-check (resize the browser to ~390px wide, or use your browser's device toolbar):
+
+- [ ] Nav bar and its dropdowns (avatar menu, notification bell) remain usable — reachable and dismissible by tap, with no reliance on hover
+- [ ] Lessons and Horses lists stay readable without horizontal scrolling
+
 ## Phase 5 — Trainer
 
-Switch role (interactive — pick **Alex** from the list):
+Switch role (interactive):
 
 ```bash
 bash scripts/change-user.sh
 ```
 
+> First prompt is **Barn slug** — type `dev-barn` if `DEV_BARN` isn't set in `.env.local` (unlike `seed-account.sh`, this script has no built-in default and errors on a blank input). Then pick **Alex** from the profile list — this list is global (every profile, not barn-scoped), so pick carefully.
+>
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn**
@@ -154,7 +162,7 @@ bash scripts/change-user.sh
 
 ## Phase 6 — Rider
 
-Switch role (pick **Dana** from the list):
+Switch role (pick **Dana** from the list — same `Barn slug` prompt as Phase 5):
 
 ```bash
 bash scripts/change-user.sh
@@ -170,7 +178,7 @@ bash scripts/change-user.sh
 
 ## Phase 7 — Multi-barn
 
-Restore yourself to manager first (pick **your own name** from the list):
+Restore yourself to manager first (pick **your own name** from the list — same `Barn slug` prompt as Phase 5):
 
 ```bash
 bash scripts/change-user.sh
@@ -182,9 +190,12 @@ Create a second barn:
 bash scripts/seed-test-barn.sh test-barn-checklist
 ```
 
+> **Caution:** `reset-db.sh` (Phase 1) wipes **all** barns project-wide, not just Dev Barn. If you need to restart this checklist from the top after this point, re-running it will also delete `test-barn-checklist`.
+
 - [ ] As `DEV_EMAIL`, open `/barn/test-barn-checklist/register` → request access as **rider** → redirected to the pending page
 - [ ] In a private/incognito window, sign in at `/barn/test-barn-checklist/login` as `manager@test-barn-checklist.e2e` / `TestPass123!` → approve the pending request in Manage Barn → sign out
 - [ ] Back as `DEV_EMAIL`: the nav barn name now has a caret — the **BarnSwitcher** dropdown lists both barns, current one checkmarked; clicking the other navigates to its dashboard
+- [ ] At a mobile viewport (~390px wide, or your browser's device toolbar), the BarnSwitcher caret is still tappable (≥44px target) and the dropdown behaves the same as desktop
 - [ ] Visit `/barns` — one card per membership showing role, each linking to its barn
 - [ ] Visit `/` — as a multi-barn member you are redirected to `/barns`
 - [ ] Sign out, then visit `/login` — connection status dot is green and the "Keep me logged in" checkbox is present and checked
