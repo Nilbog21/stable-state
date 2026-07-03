@@ -78,6 +78,8 @@ export interface Lesson {
   jumping: boolean
   payment_type: PaymentType | null
   tier_name: string
+  cancelled_at: string | null
+  cancellation_notes: string | null
 }
 
 export interface LessonWithDetails extends Lesson {
