@@ -20,16 +20,6 @@ export interface Profile {
   created_at: string
 }
 
-export interface SeededAccount {
-  id: string
-  email: string
-  first_name: string
-  last_name: string
-  barn_id: string
-  role: Role
-  created_at: string
-}
-
 export interface Barn {
   id: string
   name: string

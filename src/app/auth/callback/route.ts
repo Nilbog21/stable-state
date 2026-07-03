@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships, claimManagedMember } from '@/lib/db/barn-memberships'
-import { activateSeededAccount } from '@/lib/db/seeded-accounts'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
@@ -72,14 +71,6 @@ export async function GET(request: NextRequest) {
         } catch {
           const base = barnSlug ? `${origin}/barn/${barnSlug}/login` : `${origin}/login`
           return NextResponse.redirect(`${base}?error=invite_claim_failed`)
-        }
-      }
-
-      if (user?.email) {
-        try {
-          await activateSeededAccount(user.id, user.email)
-        } catch {
-          // transient DB error — activation will retry on next sign-in
         }
       }
 
