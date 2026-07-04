@@ -127,4 +127,13 @@ describe('AgreementsPage', () => {
     const link = screen.getByRole('link', { name: /edit/i })
     expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/agreements/agreement-9/edit')
   })
+
+  it('should_render_view_link_to_agreement_detail_page', async () => {
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ id: 'agreement-9' })])
+    const jsx = await callPage('lease')
+    render(jsx)
+    const link = screen.getByRole('link', { name: /view/i })
+    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/agreements/agreement-9')
+    expect((link as HTMLAnchorElement).href).not.toContain('/edit')
+  })
 })

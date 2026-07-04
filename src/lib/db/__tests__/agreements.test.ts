@@ -14,6 +14,7 @@ import {
   endAgreement,
   getChargesForAgreement,
   updateCharge,
+  updateChargePaymentType,
   generateChargeForMonth,
   getBarnDefaultBoardFee,
 } from '../agreements'
@@ -304,6 +305,46 @@ describe('updateCharge', () => {
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
 
     await expect(updateCharge('charge-1', 'barn-1', 300)).rejects.toThrow('db error')
+  })
+})
+
+describe('updateChargePaymentType', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeChain(data: unknown | null, error: Error | null = null) {
+    const mockSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEq2 = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
+    return { update: mockUpdate, mockUpdate }
+  }
+
+  it('should_update_payment_type', async () => {
+    const { update, mockUpdate } = makeChain({ ...mockCharge, payment_type: 'venmo' })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await updateChargePaymentType('charge-1', 'barn-1', 'venmo')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ payment_type: 'venmo' })
+  })
+
+  it('should_clear_payment_type_when_null', async () => {
+    const { update, mockUpdate } = makeChain({ ...mockCharge, payment_type: null })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await updateChargePaymentType('charge-1', 'barn-1', null)
+
+    expect(mockUpdate).toHaveBeenCalledWith({ payment_type: null })
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const { update } = makeChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await expect(updateChargePaymentType('charge-1', 'barn-1', 'venmo')).rejects.toThrow('db error')
   })
 })
 
