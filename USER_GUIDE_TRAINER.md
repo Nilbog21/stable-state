@@ -20,6 +20,8 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 **Cancel a lesson** — For eligible lessons you instruct (upcoming, or unpaid), click **Cancel** on the Lessons list, optionally add a note explaining why, and confirm. The lesson stays on the list with a **Cancelled** badge instead of being removed, its fee is zeroed, and it drops off Outstanding. Cancelling notifies your barn manager(s) and enrolled riders.
 
+**Cancel one rider's spot** — To drop a single rider from a lesson you instruct without cancelling the whole thing (e.g. a no-show, or a group lesson where only one rider can't make it), open the lesson and click **Cancel** next to that rider's name. Choose **Cancelled by Rider** (the rider backed out — the standard 24-hour policy applies: cancelling within 24 hours of the lesson keeps the fee, earlier cancellations waive it) or **Cancelled by Instructor** (your call — the fee is always waived). Add an optional note and confirm; that rider's row shows a **Cancelled** badge, the rest of the lesson is unaffected, and the affected rider is notified (plus your barn manager(s), since you initiated it).
+
 **Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only.
 
 ## Outstanding payments
