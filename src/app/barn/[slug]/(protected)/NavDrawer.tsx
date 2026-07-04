@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
+import { usePathname } from 'next/navigation'
 import { BlockingLink } from './NavigationBlocker'
 
 interface Props {
@@ -9,10 +10,15 @@ interface Props {
 export function NavDrawer({ navLinks }: Props) {
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
+  const pathname = usePathname()
 
   useEffect(() => {
     if (open) panelRef.current!.focus()
   }, [open])
+
+  useEffect(() => {
+    setOpen(false)
+  }, [pathname])
 
   useEffect(() => {
     if (!open) return

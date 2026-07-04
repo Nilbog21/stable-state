@@ -1,8 +1,19 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 import { useEffect } from 'react'
 
 afterEach(cleanup)
+
+const mockUsePathname = vi.hoisted(() => vi.fn(() => '/barn/test-barn/lessons'))
+
+beforeEach(() => {
+  mockUsePathname.mockReset()
+  mockUsePathname.mockReturnValue('/barn/test-barn/lessons')
+})
+
+vi.mock('next/navigation', () => ({
+  usePathname: mockUsePathname,
+}))
 
 vi.mock('next/link', () => ({
   default: ({ href, children, onClick, onNavigate }: {
@@ -68,11 +79,21 @@ describe('NavDrawer - opening', () => {
     expect(screen.getByRole('dialog')).toBeDefined()
   })
 
-  it('should_render_nav_links_when_open', () => {
+  it('should_render_lessons_link_when_open', () => {
     renderDrawer()
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
     expect(screen.getByRole('link', { name: 'Lessons' })).toBeDefined()
+  })
+
+  it('should_render_horses_link_when_open', () => {
+    renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
     expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
+  })
+
+  it('should_render_guide_link_when_open', () => {
+    renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
     expect(screen.getByRole('link', { name: 'Guide' })).toBeDefined()
   })
 
@@ -110,6 +131,22 @@ describe('NavDrawer - closing', () => {
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
     fireEvent.keyDown(document, { key: 'Enter' })
     expect(screen.getByRole('dialog')).toBeDefined()
+  })
+
+  it('should_close_drawer_when_pathname_changes', () => {
+    const { rerender } = render(
+      <NavigationBlockerProvider>
+        <NavDrawer navLinks={navLinks} />
+      </NavigationBlockerProvider>
+    )
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    mockUsePathname.mockReturnValue('/barn/test-barn/horses')
+    rerender(
+      <NavigationBlockerProvider>
+        <NavDrawer navLinks={navLinks} />
+      </NavigationBlockerProvider>
+    )
+    expect(screen.queryByRole('dialog')).toBeNull()
   })
 })
 
