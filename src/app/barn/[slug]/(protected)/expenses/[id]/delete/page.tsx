@@ -1,8 +1,6 @@
 import { notFound } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
+import { requireMembership } from '@/lib/auth/guard'
 import { getExpenseById } from '@/lib/db/expenses'
-import { getUserMembership } from '@/lib/db/barn-memberships'
 import { deleteExpenseAction } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
 import { formatExpenseDate, formatExpenseAmount } from '../../ExpenseRow'
@@ -13,14 +11,7 @@ export default async function DeleteExpensePage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
-
-  const user = await getAuthenticatedUser()
-  if (!user) notFound()
-
-  const membership = await getUserMembership(user.id, barn.id)
-  if (!membership || membership.status !== 'active' || membership.role !== 'manager') notFound()
+  const { barn } = await requireMembership(slug, ['manager'])
 
   const expense = await getExpenseById(id, barn.id)
   if (!expense) notFound()

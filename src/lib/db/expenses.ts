@@ -26,6 +26,7 @@ export async function getExpensesByBarn(barnId: string): Promise<ExpenseWithHors
     .select('*')
     .eq('barn_id', barnId)
     .order('expense_date', { ascending: false })
+    .order('created_at', { ascending: false })
   if (error) throw error
 
   const expenses = data ?? []

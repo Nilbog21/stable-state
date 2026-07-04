@@ -1,7 +1,4 @@
-import { notFound, redirect } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import { getExpensesByBarn } from '@/lib/db/expenses'
 import { Button } from '@/components/ui/Button'
 import { Th } from '@/components/ui/Table'
@@ -17,16 +14,7 @@ export default async function ExpensesPage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = await params
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
-
-  const user = await getAuthenticatedUser()
-  if (!user) redirect(`/barn/${slug}/login`)
-
-  const membership = await getUserMembership(user.id, barn.id)
-  if (!membership || membership.status !== 'active' || membership.role !== 'manager') {
-    redirect(`/barn/${slug}/login`)
-  }
+  const { barn } = await requireMembership(slug, ['manager'])
 
   const expenses = await getExpensesByBarn(barn.id)
 
