@@ -148,18 +148,29 @@ describe('CancelRiderParticipationPage', () => {
     expect(screen.getByRole('button', { name: /confirm cancellation/i })).toBeDefined()
   })
 
-  it('should_render_type_selector_for_manager', async () => {
+  it('should_render_rider_option_in_type_selector_for_manager', async () => {
     const jsx = await CancelRiderParticipationPage({ params })
     render(jsx)
     expect(screen.getByLabelText(/cancelled by rider/i)).toBeDefined()
+  })
+
+  it('should_render_instructor_option_in_type_selector_for_manager', async () => {
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
     expect(screen.getByLabelText(/cancelled by instructor/i)).toBeDefined()
   })
 
-  it('should_render_type_selector_for_trainer', async () => {
+  it('should_render_rider_option_in_type_selector_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
     const jsx = await CancelRiderParticipationPage({ params })
     render(jsx)
     expect(screen.getByLabelText(/cancelled by rider/i)).toBeDefined()
+  })
+
+  it('should_render_instructor_option_in_type_selector_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
     expect(screen.getByLabelText(/cancelled by instructor/i)).toBeDefined()
   })
 
@@ -174,6 +185,12 @@ describe('CancelRiderParticipationPage', () => {
     const jsx = await CancelRiderParticipationPage({ params })
     render(jsx)
     expect(screen.getByText(/cancelled by rider/i)).toBeDefined()
+  })
+
+  it('should_not_render_instructor_selector_option_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const, user_id: 'rider-user-1' })
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
     expect(screen.queryByLabelText(/cancelled by instructor/i)).toBeNull()
   })
 

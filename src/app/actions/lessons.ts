@@ -354,7 +354,7 @@ export async function cancelRiderParticipationAction(
       createNotification({
         userId,
         barnId,
-        type: 'lesson_cancelled',
+        type: 'rider_participation_cancelled',
         title: 'Lesson participation cancelled',
         link: `/barn/${barnSlug}/lessons/${lessonId}`,
       })

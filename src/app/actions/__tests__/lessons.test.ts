@@ -891,7 +891,7 @@ describe('cancelRiderParticipationAction', () => {
     expect(cancelRiderParticipation).toHaveBeenCalledWith('lesson-1', 'barn-1', 'rider-mem-1', null, true)
   })
 
-  it('should_notify_instructor_and_managers_when_rider_self_cancels', async () => {
+  it('should_notify_instructor_when_rider_self_cancels', async () => {
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
@@ -901,11 +901,36 @@ describe('cancelRiderParticipationAction', () => {
     )
     vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'instructor-1', type: 'lesson_cancelled' }))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'lesson_cancelled' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'instructor-1', type: 'rider_participation_cancelled' }))
   })
 
-  it('should_notify_only_managers_when_rider_self_cancels_and_instructor_id_is_null', async () => {
+  it('should_notify_managers_when_rider_self_cancels', async () => {
+    guardAs(mockRiderMembership)
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'user-1' }]
+      )
+    )
+    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
+  })
+
+  it('should_notify_managers_when_rider_self_cancels_and_instructor_id_is_null', async () => {
+    guardAs(mockRiderMembership)
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: null, lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'user-1' }]
+      )
+    )
+    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
+  })
+
+  it('should_not_notify_a_second_recipient_when_instructor_id_is_null', async () => {
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
@@ -916,10 +941,9 @@ describe('cancelRiderParticipationAction', () => {
     vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledTimes(1)
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'lesson_cancelled' }))
   })
 
-  it('should_notify_affected_rider_and_managers_when_trainer_cancels_on_behalf', async () => {
+  it('should_notify_affected_rider_when_trainer_cancels_on_behalf', async () => {
     guardAs(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
@@ -929,14 +953,30 @@ describe('cancelRiderParticipationAction', () => {
     )
     vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1', type: 'lesson_cancelled' }))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'lesson_cancelled' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1', type: 'rider_participation_cancelled' }))
   })
 
-  it('should_notify_only_affected_rider_when_manager_cancels_on_behalf', async () => {
+  it('should_notify_managers_when_trainer_cancels_on_behalf', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'user-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }]
+      )
+    )
+    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
+  })
+
+  it('should_notify_affected_rider_when_manager_cancels_on_behalf', async () => {
+    await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1' }))
+  })
+
+  it('should_not_notify_a_second_recipient_when_manager_cancels_on_behalf', async () => {
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledTimes(1)
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1' }))
   })
 
   it('should_not_call_getActiveMemberships_when_manager_cancels', async () => {

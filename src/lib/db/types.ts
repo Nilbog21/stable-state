@@ -3,6 +3,7 @@ export type NotificationType =
   | 'outstanding_payment'
   | 'pending_approval'
   | 'lesson_cancelled'
+  | 'rider_participation_cancelled'
   | 'incomplete_profile'
   | 'member_incomplete_profile'
 export type MembershipStatus = 'active' | 'pending'

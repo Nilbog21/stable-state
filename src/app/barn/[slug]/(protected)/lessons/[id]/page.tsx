@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
+import { Button } from '@/components/ui/Button'
 
 function RiderParticipationAction({
   slug,
@@ -26,12 +27,9 @@ function RiderParticipationAction({
   }
   if (!eligible) return null
   return (
-    <a
-      href={`/barn/${slug}/lessons/${lessonId}/cancel-rider/${riderId}`}
-      className="ml-2 text-xs font-medium text-red-600 hover:underline dark:text-red-400"
-    >
+    <Button href={`/barn/${slug}/lessons/${lessonId}/cancel-rider/${riderId}`} variant="danger" className="ml-2">
       Cancel
-    </a>
+    </Button>
   )
 }
 
