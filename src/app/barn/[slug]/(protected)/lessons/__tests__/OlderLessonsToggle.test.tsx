@@ -21,9 +21,12 @@ const mockLesson: LessonWithDetails = {
   cancelled_at: null,
   cancellation_notes: null,
   horse_names: ['Comet'],
+  horse_ids: ['horse-1'],
   horse_count: 1,
   rider_names: ['Bob'],
+  rider_ids: ['rider-mem-1'],
   rider_count: 1,
+  rider_cancelled_ats: [null],
 }
 
 describe('OlderLessonsToggle', () => {
@@ -181,5 +184,20 @@ describe('OlderLessonsToggle', () => {
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_pass_viewer_membership_id_through_to_lesson_list_item', () => {
+    render(
+      <OlderLessonsToggle
+        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }]}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
+    expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-old-1/cancel-rider/viewer-mem-1')
   })
 })

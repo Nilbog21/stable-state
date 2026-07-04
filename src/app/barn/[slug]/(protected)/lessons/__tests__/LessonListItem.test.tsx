@@ -377,4 +377,103 @@ describe('LessonListItem', () => {
     )
     expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/cancel')
   })
+
+  it('should_show_cancel_button_for_rider_when_own_participation_not_cancelled', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+  })
+
+  it('should_show_cancel_button_for_rider_on_eligible_unpaid_past_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-01-01T10:00:00Z', payment_type: null, rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+  })
+
+  it('should_link_rider_cancel_button_to_cancel_rider_route_with_viewer_membership_id', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/cancel-rider/viewer-mem-1')
+  })
+
+  it('should_not_show_cancel_button_for_rider_when_own_participation_already_cancelled', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_not_show_cancel_button_for_rider_when_whole_lesson_cancelled', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', cancelled_at: '2026-01-01T00:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_show_cancelled_badge_for_rider_own_cancelled_participation', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.getByText('Cancelled')).toBeDefined()
+  })
+
+  it('should_not_show_participation_badge_for_rider_when_not_enrolled_in_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['other-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.queryByText('Cancelled')).toBeNull()
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
 })

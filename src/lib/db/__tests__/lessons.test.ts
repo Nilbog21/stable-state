@@ -212,7 +212,25 @@ describe('getLessonsByBarn', () => {
       rider_ids: ['mem-1'],
       rider_count: 1,
       horse_count: 1,
+      rider_cancelled_ats: [null],
     }])
+  })
+
+  it('should_include_non_null_cancelled_at_for_cancelled_rider_participation', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lessons') return makeLessonsChain([lesson])
+      if (table === 'lesson_horses') return makeInChain([])
+      if (table === 'lesson_riders') return makeInChain([{ lesson_id: lesson.id, rider_id: 'mem-1', cancelled_at: '2026-06-01T00:00:00Z' }])
+      if (table === 'barn_memberships') return makeInChain([{ id: 'mem-1', user_id: 'user-1', profile_id: 'prof-rider-1' }])
+      if (table === 'profiles') return makeInChain([{ id: 'prof-rider-1', user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
+      return makeInChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+
+    expect(result[0].rider_cancelled_ats).toEqual(['2026-06-01T00:00:00Z'])
   })
 
   it('should_return_all_rider_names_for_group_lesson', async () => {
@@ -764,6 +782,28 @@ describe('getLessonsByBarn', () => {
 
       await expect(getLessonsByBarn('barn-1', 'user-1', 'rider')).rejects.toThrow('lessons error')
     })
+
+    it('should_include_lessons_for_rider_role_when_their_own_participation_is_cancelled', async () => {
+      // Regression lock-in: getRiderEnrolledLessonIds applies no cancelled_at filter,
+      // so a rider's cancelled participation must still surface in their lesson list.
+      const lesson = createMockLesson({ instructor_id: null })
+      let lessonRidersCallCount = 0
+      const fromFn = vi.fn().mockImplementation((table: string) => {
+        if (table === 'barn_memberships') return makeMembershipLookupChain({ id: 'rider-1' })
+        if (table === 'lesson_riders') {
+          lessonRidersCallCount++
+          if (lessonRidersCallCount === 1) return makeEnrollmentChain([{ lesson_id: lesson.id, cancelled_at: '2026-06-01T00:00:00Z' }])
+          return makeInChain([])
+        }
+        if (table === 'lessons') return makeRiderLessonsInChain([lesson])
+        return makeInChain([])
+      })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+
+      expect(result).toHaveLength(1)
+    })
   })
 })
 
@@ -956,6 +996,62 @@ it('should_include_jumping_true_in_result', async () => {
     await getLessonById('lesson-1', 'barn-1', 'rider')
 
     expect(select).not.toHaveBeenCalledWith(expect.stringContaining('private_notes'))
+  })
+
+  it('should_select_cancelled_at_for_rider_role', async () => {
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = makeLessonByIdChain(noInstructorData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getLessonById('lesson-1', 'barn-1', 'rider')
+
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('cancelled_at'))
+  })
+
+  it('should_select_cancelled_at_for_manager_role', async () => {
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = makeLessonByIdChain(noInstructorData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    await getLessonById('lesson-1', 'barn-1', 'manager')
+
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('cancelled_at'))
+  })
+
+  it('should_map_cancelled_at_onto_normalized_lesson_rider', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, cancelled_at: '2026-06-01T00:00:00Z', barn_memberships: { id: 'mem-1', user_id: null } }],
+    }
+    const { select } = makeLessonByIdChain(lessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.lesson_riders[0].cancelled_at).toBe('2026-06-01T00:00:00Z')
+  })
+
+  it('should_default_cancelled_at_to_null_when_absent_on_normalized_lesson_rider', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: null } }],
+    }
+    const { select } = makeLessonByIdChain(lessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.lesson_riders[0].cancelled_at).toBeNull()
   })
 
   it('should_set_private_notes_to_null_for_rider_role', async () => {
@@ -1392,6 +1488,7 @@ describe('getUpcomingLessons', () => {
       rider_ids: ['mem-1'],
       rider_count: 1,
       horse_count: 1,
+      rider_cancelled_ats: [null],
     }])
   })
 

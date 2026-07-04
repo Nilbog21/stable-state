@@ -4,8 +4,8 @@ import { render, screen, cleanup } from '@testing-library/react'
 afterEach(cleanup)
 
 vi.mock('../UpcomingLessonCard', () => ({
-  UpcomingLessonCard: ({ role, slug, lesson }: { role: string; slug: string; lesson: { id: string } }) => (
-    <div data-testid="upcoming-card" data-role={role} data-slug={slug} data-lesson-id={lesson.id} />
+  UpcomingLessonCard: ({ role, slug, lesson, viewerMembershipId }: { role: string; slug: string; lesson: { id: string }; viewerMembershipId?: string }) => (
+    <div data-testid="upcoming-card" data-role={role} data-slug={slug} data-lesson-id={lesson.id} data-viewer-membership-id={viewerMembershipId} />
   ),
 }))
 
@@ -256,6 +256,23 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     expect(screen.queryByText(/pending request/i)).toBeNull()
+  })
+
+  it('should_pass_viewer_membership_id_to_upcoming_lesson_card', async () => {
+    const lesson = {
+      ...createMockLesson(),
+      instructor_name: null,
+      horse_names: [],
+      horse_count: 0,
+      rider_names: [],
+      rider_count: 0,
+    }
+    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-viewer-membership-id')).toBe(mockManagerMembership.id)
   })
 
   it('should_use_plural_pending_requests_when_count_is_greater_than_one', async () => {
