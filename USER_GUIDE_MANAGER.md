@@ -70,6 +70,12 @@ Tap any member card to open their detail page. Documents are shown in a table wi
 
 **Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
 
+## Expenses
+
+**View expenses** — Go to **Expenses** to see recent spending. Older expenses are hidden by default; tap **Show older expenses** to expand them. Each row shows the date, time (if scheduled), who was paid, the expense type, which horse(s) it covers (or "Entire Barn"), and the amount — shown as a dash if not yet entered.
+
+**Delete an expense** — Click **Delete** on any expense row, then confirm. This cannot be undone.
+
 ## Finances
 
 Go to **Finances** to review payment status. The **Outstanding** section at the top lists all past unpaid lessons with a non-zero fee — select a payment type from the dropdown next to any lesson to mark it paid, or tap **View all outstanding** to open a full read-only list at a glance. Below that, use the **←** / **→** arrows to browse monthly summaries of collected and pending income, with breakdowns by tier, horse, rider, and trainer.
