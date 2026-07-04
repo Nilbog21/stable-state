@@ -139,6 +139,8 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] **By Rider** tab: same, with drill-down `/barn/dev-barn/finances/riders/[id]`
 - [ ] **By Trainer** tab: collected income per trainer full name
 - [ ] Collected vs Pending income figures are consistent with what you marked paid
+- [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding"); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's/Dana's row shows a Leases & Boarding table with a working link back to the agreement
+- [ ] **By Trainer** tab also shows the same **Non-lesson income** row
 
 Manage Barn (`/barn/dev-barn/settings`):
 
@@ -200,7 +202,7 @@ bash scripts/change-user.sh
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
 - [ ] `/barn/dev-barn/finances` is blocked (redirect)
-- [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons
+- [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
 - [ ] `/barn/dev-barn/members` shows only the "You" card — no Managers/Trainers/Riders management sections
 
 ## Phase 7 — Multi-barn

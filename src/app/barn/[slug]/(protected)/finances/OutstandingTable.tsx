@@ -2,9 +2,17 @@
 
 import { useRouter } from 'next/navigation'
 import { updatePaymentTypeAction } from '@/app/actions/lessons'
-import type { OutstandingLesson } from '@/lib/db/types'
+import { updateChargePaymentTypeAction } from '../agreements/actions'
+import type { OutstandingItem } from '@/lib/db/types'
+import { Th, Td } from '@/components/ui/Table'
 
 const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
+
+const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
+  lesson: 'Lesson',
+  lease: 'Lease',
+  board: 'Boarding',
+}
 
 function formatDate(isoString: string): string {
   return new Date(isoString).toLocaleDateString('en-US', {
@@ -16,53 +24,53 @@ function formatDate(isoString: string): string {
 }
 
 export function OutstandingTable({
-  outstandingLessons,
+  items,
   barnSlug,
 }: {
-  outstandingLessons: OutstandingLesson[]
+  items: OutstandingItem[]
   barnSlug: string
 }) {
   const router = useRouter()
 
-  if (outstandingLessons.length === 0) return null
+  if (items.length === 0) return null
 
-  async function handleChange(lessonId: string, value: string) {
-    await updatePaymentTypeAction(lessonId, barnSlug, value || null)
+  async function handleChange(item: OutstandingItem, value: string) {
+    if (item.itemType === 'lesson') {
+      await updatePaymentTypeAction(item.id, barnSlug, value || null)
+    } else {
+      await updateChargePaymentTypeAction(barnSlug, item.id, value || null)
+    }
     router.refresh()
   }
 
   return (
     <table className="w-full">
       <thead>
-        <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-          <th className="pb-2 pr-6">Date</th>
-          <th className="pb-2 pr-6">Rider(s)</th>
-          <th className="pb-2 pr-6">Instructor</th>
-          <th className="pb-2 pr-6">Fee</th>
-          <th className="pb-2">Payment Type</th>
+        <tr>
+          <Th>Date</Th>
+          <Th>Type</Th>
+          <Th>Rider(s)</Th>
+          <Th>Instructor</Th>
+          <Th>Fee</Th>
+          <Th>Payment Type</Th>
         </tr>
       </thead>
       <tbody>
-        {outstandingLessons.map((lesson) => (
-          <tr key={lesson.id} className="border-b border-zinc-100 dark:border-zinc-800">
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {formatDate(lesson.lesson_at)}
-            </td>
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {lesson.rider_names.join(', ') || '—'}
-            </td>
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {lesson.instructor_name ?? '—'}
-            </td>
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {lesson.fee !== null
-                ? lesson.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+        {items.map((item) => (
+          <tr key={item.id}>
+            <Td>{formatDate(item.date)}</Td>
+            <Td>{TYPE_LABELS[item.itemType]}</Td>
+            <Td>{item.riderNames.join(', ') || '—'}</Td>
+            <Td>{item.instructorName ?? '—'}</Td>
+            <Td>
+              {item.fee !== null
+                ? item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                 : '—'}
-            </td>
-            <td className="py-3 text-sm">
+            </Td>
+            <Td>
               <select
                 defaultValue=""
-                onChange={(e) => handleChange(lesson.id, e.target.value)}
+                onChange={(e) => handleChange(item, e.target.value)}
                 className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
               >
                 <option value="">Unpaid</option>
@@ -72,7 +80,7 @@ export function OutstandingTable({
                   </option>
                 ))}
               </select>
-            </td>
+            </Td>
           </tr>
         ))}
       </tbody>

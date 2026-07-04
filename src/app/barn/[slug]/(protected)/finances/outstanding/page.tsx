@@ -1,7 +1,15 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
-import { getOutstandingLessons } from '@/lib/db/lesson-finances'
-import type { Role } from '@/lib/db/types'
+import { getOutstandingLessons, mergeOutstandingItems } from '@/lib/db/lesson-finances'
+import { getOutstandingCharges } from '@/lib/db/agreements'
+import type { OutstandingItem, Role } from '@/lib/db/types'
+import { Th, Td } from '@/components/ui/Table'
+
+const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
+  lesson: 'Lesson',
+  lease: 'Lease',
+  board: 'Boarding',
+}
 
 function formatDate(isoString: string): string {
   return new Date(isoString).toLocaleDateString('en-US', {
@@ -20,7 +28,12 @@ export default async function OutstandingPage({
   const { slug } = await params
   const { user, barn, membership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
 
-  const lessons = await getOutstandingLessons(barn.id, user.id, membership.role as Role)
+  const role = membership.role as Role
+  const [lessons, charges] = await Promise.all([
+    getOutstandingLessons(barn.id, user.id, role),
+    getOutstandingCharges(barn.id, user.id, role),
+  ])
+  const items = mergeOutstandingItems(lessons, charges)
 
   const backHref = membership.role === 'manager' ? `/barn/${slug}/finances` : `/barn/${slug}`
 
@@ -38,41 +51,43 @@ export default async function OutstandingPage({
         Outstanding Payments
       </h1>
 
-      {lessons.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No outstanding lessons.</p>
+      {items.length === 0 ? (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">No outstanding items.</p>
       ) : (
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Date</th>
-              <th className="pb-2 pr-6">Instructor</th>
-              <th className="pb-2 pr-6">Rider(s)</th>
-              <th className="pb-2">Fee</th>
+            <tr>
+              <Th>Date</Th>
+              <Th>Type</Th>
+              <Th>Instructor</Th>
+              <Th>Rider(s)</Th>
+              <Th>Fee</Th>
             </tr>
           </thead>
           <tbody>
-            {lessons.map((lesson) => (
-              <tr key={lesson.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  <Link
-                    href={`/barn/${slug}/lessons/${lesson.id}`}
-                    className="hover:underline"
-                  >
-                    {formatDate(lesson.lesson_at)}
-                  </Link>
-                </td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.instructor_name ?? '—'}
-                </td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.rider_names.join(', ') || '—'}
-                </td>
-                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.fee !== null
-                    ? lesson.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+            {items.map((item) => (
+              <tr key={item.id}>
+                <Td>
+                  {item.itemType === 'lesson' ? (
+                    <Link
+                      href={`/barn/${slug}/lessons/${item.id}`}
+                      className="underline"
+                    >
+                      {formatDate(item.date)}
+                    </Link>
+                  ) : (
+                    formatDate(item.date)
+                  )}
+                </Td>
+                <Td>{TYPE_LABELS[item.itemType]}</Td>
+                <Td>{item.instructorName ?? '—'}</Td>
+                <Td>{item.riderNames.join(', ') || '—'}</Td>
+                <Td>
+                  {item.fee !== null
+                    ? item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                     : '—'}
-                </td>
+                </Td>
               </tr>
             ))}
           </tbody>

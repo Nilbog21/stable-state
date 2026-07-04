@@ -3,7 +3,11 @@ import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
-vi.mock('@/lib/db/lesson-finances', () => ({ getOutstandingLessons: vi.fn() }))
+vi.mock('@/lib/db/lesson-finances', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/lesson-finances')>('@/lib/db/lesson-finances')
+  return { ...actual, getOutstandingLessons: vi.fn() }
+})
+vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
@@ -12,6 +16,7 @@ vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons } from '@/lib/db/lesson-finances'
+import { getOutstandingCharges } from '@/lib/db/agreements'
 import OutstandingPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -24,8 +29,10 @@ describe('OutstandingPage', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getOutstandingLessons).mockReset()
+    vi.mocked(getOutstandingCharges).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getOutstandingLessons).mockResolvedValue([])
+    vi.mocked(getOutstandingCharges).mockResolvedValue([])
   })
 
   it('should_render_heading', async () => {
@@ -51,10 +58,15 @@ describe('OutstandingPage', () => {
     expect(getOutstandingLessons).toHaveBeenCalledWith(mockBarn.id, mockUser.id, 'manager')
   })
 
-  it('should_render_empty_state_when_no_outstanding_lessons', async () => {
+  it('should_call_getOutstandingCharges_with_user_id_and_role', async () => {
+    await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, 'manager')
+  })
+
+  it('should_render_empty_state_when_no_outstanding_items', async () => {
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('No outstanding lessons.')).toBeDefined()
+    expect(screen.getByText('No outstanding items.')).toBeDefined()
   })
 
   it('should_render_instructor_name_in_outstanding_table', async () => {
@@ -121,5 +133,43 @@ describe('OutstandingPage', () => {
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_a_charge_row_with_its_type_and_rider_name', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+    ])
+    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Carol Rider')).toBeDefined()
+    expect(screen.getByText('Boarding')).toBeDefined()
+  })
+
+  it('should_sort_the_earlier_charge_row_before_a_later_lesson_row', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{
+      id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-20T10:00:00Z',
+      instructor_name: null, rider_names: [], fee: 75,
+    }])
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', period: '2026-05-01', kind: 'lease', riderName: 'Dana Rider', fee: 200 },
+    ])
+    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows[0].textContent).toContain('Dana Rider')
+  })
+
+  it('should_sort_the_later_lesson_row_after_an_earlier_charge_row', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{
+      id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-20T10:00:00Z',
+      instructor_name: null, rider_names: [], fee: 75,
+    }])
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', period: '2026-05-01', kind: 'lease', riderName: 'Dana Rider', fee: 200 },
+    ])
+    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const rows = screen.getAllByRole('row').slice(1)
+    expect(rows[1].textContent).toContain('75')
   })
 })
