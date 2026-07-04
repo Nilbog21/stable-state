@@ -5,6 +5,7 @@ import { createTier } from '@/lib/db/lesson-tiers'
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
+import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from '@/lib/db/agreements'
 import { mustSucceed, createServiceClient, teardownAllData } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -287,6 +288,26 @@ async function run() {
   const paidCount = pastLessons.filter((_: unknown, i: number) => getPaymentType(i, true) !== null).length - 1
   const groupCount = lessonDates.filter((_, i) => isGroupLesson(i)).length
 
+  const defaultBoardFee = await getBarnDefaultBoardFee(DEV_BARN_ID, supabase)
+  const lastMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1))
+
+  const boardAgreement = await createAgreement(
+    { barnId: DEV_BARN_ID, riderId: riderRowIds[0], horseId: horseIds[0], fee: defaultBoardFee, kind: 'board', cadence: 'monthly' },
+    supabase
+  )
+  const boardLastMonthCharge = await generateChargeForMonth(boardAgreement.id, DEV_BARN_ID, lastMonth, supabase)
+
+  const leaseAgreement = await createAgreement(
+    { barnId: DEV_BARN_ID, riderId: riderRowIds[1], horseId: horseIds[1], fee: 200, kind: 'lease', cadence: 'monthly' },
+    supabase
+  )
+  const leaseLastMonthCharge = await generateChargeForMonth(leaseAgreement.id, DEV_BARN_ID, lastMonth, supabase)
+
+  mustSucceed(
+    await supabase.from('agreement_charges').update({ payment_type: 'zelle' }).in('id', [boardLastMonthCharge.id, leaseLastMonthCharge.id]),
+    'mark last-month agreement charges paid'
+  )
+
   console.log('Done. Dev database reset to known state:')
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
   console.log(`  Manager2: ${DEV_MANAGER_2.email} (can_instruct=true — appears in instructor dropdown)`)
@@ -296,6 +317,7 @@ async function run() {
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 2 past lessons)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 2} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled`)
+  console.log(`  Agreements: 1 board ($${defaultBoardFee}), 1 lease ($200) — each with a paid charge last month and an unpaid charge this month`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

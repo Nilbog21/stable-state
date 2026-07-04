@@ -230,3 +230,30 @@ export interface Notification {
   read_at: string | null
   created_at: string
 }
+
+export type AgreementKind = 'lease' | 'board'
+export type AgreementCadence = 'one_time' | 'monthly'
+
+export interface Agreement {
+  id: string
+  barn_id: string
+  rider_id: string
+  horse_id: string
+  fee: number
+  kind: AgreementKind
+  cadence: AgreementCadence
+  start_date: string
+  is_active: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface AgreementCharge {
+  id: string
+  barn_id: string
+  agreement_id: string
+  period: string
+  fee: number
+  payment_type: PaymentType | null
+  created_at: string
+}
