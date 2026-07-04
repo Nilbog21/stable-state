@@ -141,6 +141,14 @@ describe('drawBar', () => {
   it('should_respect_custom_width', () => {
     expect(drawBar(1, 2, 4)).toBe('[##  ]')
   })
+
+  it('should_return_empty_bar_when_total_is_zero', () => {
+    expect(drawBar(0, 0)).toBe(`[${' '.repeat(20)}]`)
+  })
+
+  it('should_clamp_when_current_exceeds_total', () => {
+    expect(drawBar(35, 34)).toBe(`[${'#'.repeat(20)}]`)
+  })
 })
 
 describe('getPaymentType', () => {

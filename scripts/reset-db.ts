@@ -48,7 +48,8 @@ function dayOffset(base: Date, days: number, hour = 10): Date {
 }
 
 export function drawBar(current: number, total: number, width = 20): string {
-  const filled = Math.round((current / total) * width)
+  const ratio = total <= 0 ? 0 : current / total
+  const filled = Math.min(width, Math.max(0, Math.round(ratio * width)))
   return `[${'#'.repeat(filled)}${' '.repeat(width - filled)}]`
 }
 
