@@ -122,26 +122,27 @@ async function run() {
     'update dev membership'
   )
 
+  const targetBm = mustSucceed<{ id: string }>(
+    await supabase.from('barn_memberships').select('id').eq('user_id', targetUserId).eq('barn_id', barnId).single(),
+    'fetch target barn membership'
+  )
+  const devBm = mustSucceed<{ id: string }>(
+    await supabase.from('barn_memberships').select('id').eq('user_id', devUserId).eq('barn_id', barnId).single(),
+    'fetch dev barn membership'
+  )
+
   if (targetMembership.can_instruct) {
     mustSucceed(
       await supabase
         .from('lessons')
-        .update({ instructor_id: devUserId })
-        .eq('instructor_id', targetUserId)
+        .update({ instructor_id: devBm.id })
+        .eq('instructor_id', targetBm.id)
         .eq('barn_id', barnId),
       'reassign lessons'
     )
   }
 
   if (targetMembership.role === 'rider') {
-    const targetBm = mustSucceed<{ id: string }>(
-      await supabase.from('barn_memberships').select('id').eq('user_id', targetUserId).eq('barn_id', barnId).single(),
-      'fetch target barn membership'
-    )
-    const devBm = mustSucceed<{ id: string }>(
-      await supabase.from('barn_memberships').select('id').eq('user_id', devUserId).eq('barn_id', barnId).single(),
-      'fetch dev barn membership'
-    )
     mustSucceed(
       await supabase
         .from('lesson_riders')
