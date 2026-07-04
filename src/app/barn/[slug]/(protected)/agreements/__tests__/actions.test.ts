@@ -10,6 +10,8 @@ vi.mock('@/lib/db/agreements', () => ({
   updateAgreement: vi.fn(),
   endAgreement: vi.fn(),
   getAgreementById: vi.fn(),
+  updateCharge: vi.fn(),
+  updateChargePaymentType: vi.fn(),
 }))
 
 const mockRedirect = vi.hoisted(() =>
@@ -24,8 +26,21 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { createAgreement, updateAgreement, endAgreement, getAgreementById } from '@/lib/db/agreements'
-import { createAgreementAction, updateAgreementAction, endAgreementAction } from '../actions'
+import {
+  createAgreement,
+  updateAgreement,
+  endAgreement,
+  getAgreementById,
+  updateCharge,
+  updateChargePaymentType,
+} from '@/lib/db/agreements'
+import {
+  createAgreementAction,
+  updateAgreementAction,
+  endAgreementAction,
+  updateChargeFeeAction,
+  updateChargePaymentTypeAction,
+} from '../actions'
 
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
@@ -370,5 +385,119 @@ describe('endAgreementAction', () => {
 
     await expect(endAgreementAction('green-acres', 'agreement-1')).rejects.toThrow()
     expect(endAgreement).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateChargeFeeAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateCharge).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: mockUser as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateCharge).mockResolvedValue(createMockAgreement() as any)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await updateChargeFeeAction('green-acres', 'charge-1', '250')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateCharge_with_parsed_fee', async () => {
+    await updateChargeFeeAction('green-acres', 'charge-1', '250')
+
+    expect(updateCharge).toHaveBeenCalledWith('charge-1', mockBarn.id, 250)
+  })
+
+  it('should_return_no_error_on_success', async () => {
+    const result = await updateChargeFeeAction('green-acres', 'charge-1', '250')
+
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_fee_is_blank', async () => {
+    const result = await updateChargeFeeAction('green-acres', 'charge-1', '')
+
+    expect(result.error).toBe('a valid, non-negative fee is required')
+  })
+
+  it('should_not_call_updateCharge_when_fee_is_blank', async () => {
+    await updateChargeFeeAction('green-acres', 'charge-1', '')
+
+    expect(updateCharge).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_fee_is_negative', async () => {
+    const result = await updateChargeFeeAction('green-acres', 'charge-1', '-5')
+
+    expect(result.error).toBe('a valid, non-negative fee is required')
+  })
+
+  it('should_return_error_when_updateCharge_throws', async () => {
+    vi.mocked(updateCharge).mockRejectedValue(new Error('db error'))
+
+    const result = await updateChargeFeeAction('green-acres', 'charge-1', '250')
+
+    expect(result.error).toBe('Failed to update charge fee')
+  })
+})
+
+describe('updateChargePaymentTypeAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateChargePaymentType).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: mockUser as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateChargePaymentType).mockResolvedValue(createMockAgreement() as any)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await updateChargePaymentTypeAction('green-acres', 'charge-1', 'venmo')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateChargePaymentType_with_value', async () => {
+    await updateChargePaymentTypeAction('green-acres', 'charge-1', 'venmo')
+
+    expect(updateChargePaymentType).toHaveBeenCalledWith('charge-1', mockBarn.id, 'venmo')
+  })
+
+  it('should_call_updateChargePaymentType_with_null_when_cleared', async () => {
+    await updateChargePaymentTypeAction('green-acres', 'charge-1', null)
+
+    expect(updateChargePaymentType).toHaveBeenCalledWith('charge-1', mockBarn.id, null)
+  })
+
+  it('should_return_no_error_on_success', async () => {
+    const result = await updateChargePaymentTypeAction('green-acres', 'charge-1', 'venmo')
+
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_updateChargePaymentType_throws', async () => {
+    vi.mocked(updateChargePaymentType).mockRejectedValue(new Error('db error'))
+
+    const result = await updateChargePaymentTypeAction('green-acres', 'charge-1', 'venmo')
+
+    expect(result.error).toBe('Failed to update payment type')
+  })
+
+  it('should_return_error_when_payment_type_is_invalid', async () => {
+    const result = await updateChargePaymentTypeAction('green-acres', 'charge-1', 'bitcoin')
+
+    expect(result.error).toBe('invalid payment type')
+  })
+
+  it('should_not_call_updateChargePaymentType_when_payment_type_is_invalid', async () => {
+    await updateChargePaymentTypeAction('green-acres', 'charge-1', 'bitcoin')
+
+    expect(updateChargePaymentType).not.toHaveBeenCalled()
   })
 })

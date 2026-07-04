@@ -2,8 +2,17 @@
 
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { createAgreement, updateAgreement, endAgreement, getAgreementById } from '@/lib/db/agreements'
-import type { AgreementKind, AgreementCadence } from '@/lib/db/types'
+import {
+  createAgreement,
+  updateAgreement,
+  endAgreement,
+  getAgreementById,
+  updateCharge,
+  updateChargePaymentType,
+} from '@/lib/db/agreements'
+import type { AgreementKind, AgreementCadence, PaymentType } from '@/lib/db/types'
+
+const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
 
 function parseFee(raw: string | null): number | null {
   if (!raw || raw.trim() === '') return null
@@ -66,4 +75,43 @@ export async function endAgreementAction(barnSlug: string, agreementId: string):
 
   await endAgreement(agreementId, barn.id)
   redirect(`/barn/${barnSlug}/agreements?kind=${agreement.kind}`)
+}
+
+export async function updateChargeFeeAction(
+  barnSlug: string,
+  chargeId: string,
+  feeRaw: string
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const fee = parseFee(feeRaw)
+  if (fee === null) return { error: 'a valid, non-negative fee is required' }
+
+  try {
+    await updateCharge(chargeId, barn.id, fee)
+  } catch {
+    return { error: 'Failed to update charge fee' }
+  }
+
+  return { error: null }
+}
+
+export async function updateChargePaymentTypeAction(
+  barnSlug: string,
+  chargeId: string,
+  paymentType: string | null
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  if (paymentType !== null && !PAYMENT_TYPES.includes(paymentType as PaymentType)) {
+    return { error: 'invalid payment type' }
+  }
+
+  try {
+    await updateChargePaymentType(chargeId, barn.id, paymentType as PaymentType | null)
+  } catch {
+    return { error: 'Failed to update payment type' }
+  }
+
+  return { error: null }
 }
