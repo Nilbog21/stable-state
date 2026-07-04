@@ -20,12 +20,17 @@ export function UpcomingLessonCard({
   lesson,
   role,
   slug,
+  viewerMembershipId,
 }: {
   lesson: LessonWithDetails
   role: 'manager' | 'trainer' | 'rider'
   slug: string
+  viewerMembershipId?: string
 }) {
   const display = formatLessonDate(lesson.lesson_at, new Date())
+
+  const myRiderIndex = role === 'rider' && viewerMembershipId ? lesson.rider_ids.indexOf(viewerMembershipId) : -1
+  const isOwnParticipationCancelled = myRiderIndex >= 0 && lesson.rider_cancelled_ats[myRiderIndex] !== null
 
   return (
     <Link
@@ -35,6 +40,9 @@ export function UpcomingLessonCard({
       {/* suppressHydrationWarning: server (UTC) and client (local TZ) produce different strings */}
       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50" suppressHydrationWarning>{display}</p>
       {lesson.cancelled_at !== null && (
+        <span className="mt-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+      )}
+      {lesson.cancelled_at === null && isOwnParticipationCancelled && (
         <span className="mt-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
       )}
       {lesson.horse_names.length > 0 && (

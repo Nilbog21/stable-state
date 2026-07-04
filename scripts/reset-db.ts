@@ -257,7 +257,7 @@ async function run() {
   const pastLessons = mustSucceed(
     await supabase
       .from('lessons')
-      .select('id')
+      .select('id, lesson_type')
       .eq('barn_id', DEV_BARN_ID)
       .lt('lesson_at', now.toISOString())
       .order('lesson_at', { ascending: true }),
@@ -284,6 +284,18 @@ async function run() {
       .eq('id', cancelledLesson.id),
     'cancel seeded lesson'
   )
+
+  const cancelledRiderLesson = pastLessons.find((l: { id: string; lesson_type: string }) => l.lesson_type === 'group' && l.id !== cancelledLesson.id)
+  if (cancelledRiderLesson) {
+    mustSucceed(
+      await supabase
+        .from('lesson_riders')
+        .update({ cancelled_at: now.toISOString(), rider_notes: 'Seeded example participation cancellation' })
+        .eq('lesson_id', cancelledRiderLesson.id)
+        .eq('rider_id', riderRowIds[0]),
+      'cancel seeded rider participation'
+    )
+  }
 
   const paidCount = pastLessons.filter((_: unknown, i: number) => getPaymentType(i, true) !== null).length - 1
   const groupCount = lessonDates.filter((_, i) => isGroupLesson(i)).length

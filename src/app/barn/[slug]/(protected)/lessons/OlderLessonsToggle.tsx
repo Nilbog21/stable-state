@@ -10,9 +10,10 @@ interface Props {
   isManager: boolean
   isTrainer: boolean
   currentUserId: string
+  viewerMembershipId?: string
 }
 
-export function OlderLessonsToggle({ lessons, slug, isManager, isTrainer, currentUserId }: Props) {
+export function OlderLessonsToggle({ lessons, slug, isManager, isTrainer, currentUserId, viewerMembershipId }: Props) {
   const [show, setShow] = useState(false)
 
   if (lessons.length === 0) return null
@@ -36,6 +37,7 @@ export function OlderLessonsToggle({ lessons, slug, isManager, isTrainer, curren
               isManager={isManager}
               isTrainer={isTrainer}
               currentUserId={currentUserId}
+              viewerMembershipId={viewerMembershipId}
             />
           ))}
         </ul>

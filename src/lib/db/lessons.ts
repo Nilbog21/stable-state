@@ -18,7 +18,7 @@ async function hydrateParticipants(
     { data: lessonRiders, error: lessonRidersError },
   ] = await Promise.all([
     supabase.from('lesson_horses').select('lesson_id, horse_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
-    supabase.from('lesson_riders').select('lesson_id, rider_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
+    supabase.from('lesson_riders').select('lesson_id, rider_id, cancelled_at').eq('barn_id', barnId).in('lesson_id', lessonIds),
   ])
 
   if (lessonHorsesError) throw lessonHorsesError
@@ -50,10 +50,11 @@ async function hydrateParticipants(
     const horseIds = horseParticipants.map((p) => p.id)
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
     const riderParticipants = riderJunctionRows
-      .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id) }))
-      .filter((p): p is { id: string; name: string } => Boolean(p.name))
+      .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id), cancelledAt: lr.cancelled_at ?? null }))
+      .filter((p): p is { id: string; name: string; cancelledAt: string | null } => Boolean(p.name))
     const riderNames = riderParticipants.map((p) => p.name)
     const riderIds = riderParticipants.map((p) => p.id)
+    const riderCancelledAts = riderParticipants.map((p) => p.cancelledAt)
     return {
       ...lesson,
       instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
@@ -63,6 +64,7 @@ async function hydrateParticipants(
       rider_names: riderNames,
       rider_ids: riderIds,
       rider_count: riderJunctionRows.length,
+      rider_cancelled_ats: riderCancelledAts,
     }
   })
 }
@@ -120,8 +122,8 @@ export async function getLessonsByBarn(
 export async function getLessonById(lessonId: string, barnId: string, role: Role, userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, barn_memberships ( id, user_id, profile_id )'
-    : 'rider_notes, private_notes, barn_memberships ( id, user_id, profile_id )'
+    ? 'rider_notes, cancelled_at, barn_memberships ( id, user_id, profile_id )'
+    : 'rider_notes, private_notes, cancelled_at, barn_memberships ( id, user_id, profile_id )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
@@ -139,6 +141,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   type RawLessonRider = {
     rider_notes: string | null
     private_notes?: string | null
+    cancelled_at: string | null
     barn_memberships: { id: string; user_id: string | null; profile_id: string } | null
   }
 
@@ -169,12 +172,14 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   type NormalizedLr = {
     rider_notes: string | null
     private_notes: string | null
+    cancelled_at: string | null
     barn_membership: { id: string; user_id: string | null; name: string } | null
   }
 
   const normalizeLr = (lr: RawLessonRider): NormalizedLr => ({
     rider_notes: lr.rider_notes,
     private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
+    cancelled_at: lr.cancelled_at ?? null,
     barn_membership: lr.barn_memberships
       ? {
           id: lr.barn_memberships.id,

@@ -23,10 +23,12 @@ export default async function BarnDashboardPage({
   let upcomingLessons: LessonWithDetails[] | null = null
   let pendingCount = 0
   let userRole: 'manager' | 'trainer' | 'rider' | null = null
+  let membershipId: string | undefined
 
   if (user) {
     const membership = await getUserMembership(user.id, barn.id)
     if (membership?.role) {
+      membershipId = membership.id
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
@@ -72,6 +74,7 @@ export default async function BarnDashboardPage({
                   lesson={lesson}
                   role={userRole}
                   slug={slug}
+                  viewerMembershipId={membershipId}
                 />
               ))}
             </div>
