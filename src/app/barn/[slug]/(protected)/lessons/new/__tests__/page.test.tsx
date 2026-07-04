@@ -81,6 +81,13 @@ describe('LessonNewPage', () => {
     expect(screen.getByRole('button', { name: /submit/i })).toBeDefined()
   })
 
+  it('should_render_form_when_user_has_no_membership_in_barn', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /submit/i })).toBeDefined()
+  })
+
   it('should_call_notFound_when_user_is_not_authenticated', async () => {
     vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
     vi.mocked(notFound).mockImplementation(() => {

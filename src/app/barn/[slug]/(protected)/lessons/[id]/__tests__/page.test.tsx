@@ -559,6 +559,34 @@ describe('LessonDetailPage', () => {
     expect(link.href).toContain('/barn/green-acres/lessons/lesson-1/cancel-rider/rider-1')
   })
 
+  it('should_hide_cancel_link_and_cancelled_badge_for_ineligible_non_cancelled_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_at: '2026-05-17T10:00:00Z',
+      payment_type: 'cash' as const,
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /^cancel$/i })).toBeNull()
+    expect(screen.queryByText('Cancelled')).toBeNull()
+  })
+
+  it('should_show_cancel_link_next_to_non_cancelled_rider_for_manager_in_group_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: 'good position', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: 'needs work', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByRole('link', { name: /^cancel$/i })).toHaveLength(2)
+  })
+
   it('should_show_cancelled_badge_next_to_cancelled_rider_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({
