@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind } from './types'
+import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, PaymentType } from './types'
 
 export async function createAgreement(
   params: {
@@ -113,6 +113,24 @@ export async function updateCharge(
   const { data, error } = await supabase
     .from('agreement_charges')
     .update({ fee })
+    .eq('id', chargeId)
+    .eq('barn_id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function updateChargePaymentType(
+  chargeId: string,
+  barnId: string,
+  paymentType: PaymentType | null
+): Promise<AgreementCharge> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('agreement_charges')
+    .update({ payment_type: paymentType })
     .eq('id', chargeId)
     .eq('barn_id', barnId)
     .select()

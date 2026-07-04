@@ -28,13 +28,15 @@ On the horse's detail page, managers see a unified form and a documents section:
 
 ## Leases & Boarding
 
-Use **Leases** and **Boarding** in the nav to manage rider agreements for a horse. Each list shows rider, horse, fee, and status (**Active**/**Ended**), with an **Add Lease** / **Add Boarding** button in the page header.
+Use **Leases** and **Boarding** in the nav to manage rider agreements for a horse. Each list shows rider, horse, fee, and status (**Active**/**Ended**), with an **Add Lease** / **Add Boarding** button in the page header and **View** / **Edit** buttons per row.
 
 **Create an agreement** — Tap **Add Lease** or **Add Boarding**, select a rider and horse, set the fee (Boarding pre-fills the barn's default board fee, editable per agreement), and pick a start date (defaults to today). Leases can be billed **One time** or **Monthly**; Boarding agreements are always monthly.
 
 **Edit an agreement** — Open **Edit** from the list to change the fee. Rider, horse, start date, and billing cadence cannot be changed after creation — to change any of those, end the agreement and create a new one.
 
 **End an agreement** — Tap **End Agreement** on the edit page and confirm. This does not delete the record — past charges remain, and the agreement shows as **Ended** in the list.
+
+**View charge history** — Tap **View** from the list to open the agreement detail page. It shows the rider, horse, fee, cadence, and status, followed by every billing charge generated for the agreement. Each charge row has its own **Payment Type** dropdown (mark it paid, or **Unpaid** to clear) and an editable **Fee** field — use the fee field to pro-rate a single occurrence without changing the agreement's ongoing fee.
 
 ## Members
 

@@ -94,4 +94,39 @@ describe('AgreementDetailPage', () => {
     render(jsx)
     expect(screen.getByText(/no charges yet/i)).toBeDefined()
   })
+
+  it('should_render_boarding_label_for_board_kind', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(createMockAgreement({ kind: 'board' }))
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /boarding detail/i })).toBeDefined()
+  })
+
+  it('should_render_one_time_cadence_label', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(createMockAgreement({ cadence: 'one_time' }))
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('One time')).toBeDefined()
+  })
+
+  it('should_render_dash_when_rider_name_not_resolved', async () => {
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_dash_when_horse_name_not_resolved', async () => {
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_ended_status_for_inactive_agreement', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(createMockAgreement({ is_active: false }))
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Ended')).toBeDefined()
+  })
 })

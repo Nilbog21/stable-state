@@ -70,6 +70,9 @@ export default async function AgreementsPage({
                 <Td>{formatFee(a.fee)}</Td>
                 <Td tone="secondary">{a.is_active ? 'Active' : 'Ended'}</Td>
                 <TableActions>
+                  <Button href={`/barn/${slug}/agreements/${a.id}`} variant="ghost">
+                    View
+                  </Button>
                   <Button href={`/barn/${slug}/agreements/${a.id}/edit`} variant="ghost">
                     Edit
                   </Button>
