@@ -6,6 +6,7 @@ import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from '@/lib/db/agreements'
+import { createExpense } from '@/lib/db/expenses'
 import { mustSucceed, createServiceClient, teardownAllData } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -93,6 +94,38 @@ export function getPaymentType(i: number, isPast: boolean): string | null {
   if (!isPast) return null
   if (i % 5 === 4) return null
   return PAYMENT_TYPES[(i - Math.floor(i / 5)) % PAYMENT_TYPES.length]
+}
+
+export type ExpenseSeed = {
+  daysOffset: number
+  time: string | null
+  amount: number | null
+  recipient: string
+  expenseType: string
+  appliesToAllHorses: boolean
+  horseIndex?: number
+}
+
+export function expenseDateFor(now: Date, daysOffset: number): string {
+  const d = new Date(now)
+  d.setUTCDate(d.getUTCDate() + daysOffset)
+  return d.toISOString().slice(0, 10)
+}
+
+export function buildExpenseSeeds(): ExpenseSeed[] {
+  return [
+    { daysOffset: -80, time: null, amount: 450, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
+    { daysOffset: -75, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
+    { daysOffset: -60, time: null, amount: 250, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
+    { daysOffset: -47, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
+    { daysOffset: -40, time: null, amount: 300, recipient: 'Tractor Supply Co.', expenseType: 'Feed', appliesToAllHorses: true },
+    { daysOffset: -30, time: null, amount: 120, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
+    { daysOffset: -19, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 2 },
+    { daysOffset: -10, time: null, amount: 275, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
+    { daysOffset: -5, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
+    { daysOffset: -3, time: null, amount: 65, recipient: 'Saddle Up Supply', expenseType: 'Tack', appliesToAllHorses: false, horseIndex: 2 },
+    { daysOffset: 10, time: '09:00:00', amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
+  ]
 }
 
 async function run() {
@@ -320,6 +353,21 @@ async function run() {
     'mark last-month agreement charges paid'
   )
 
+  const expenseSeeds = buildExpenseSeeds()
+  for (const seed of expenseSeeds) {
+    await createExpense(DEV_BARN_ID, {
+      expenseDate: expenseDateFor(now, seed.daysOffset),
+      expenseTime: seed.time,
+      amount: seed.amount,
+      recipient: seed.recipient,
+      expenseType: seed.expenseType,
+      appliesToAllHorses: seed.appliesToAllHorses,
+      horseIds: seed.appliesToAllHorses ? undefined : [horseIds[seed.horseIndex!]],
+    }, supabase)
+  }
+  const barnWideExpenseCount = expenseSeeds.filter((s) => s.appliesToAllHorses).length
+  const plannedExpenseCount = expenseSeeds.filter((s) => s.amount === null).length
+
   console.log('Done. Dev database reset to known state:')
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
   console.log(`  Manager2: ${DEV_MANAGER_2.email} (can_instruct=true — appears in instructor dropdown)`)
@@ -330,6 +378,7 @@ async function run() {
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 2} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 1 board ($${defaultBoardFee}), 1 lease ($200) — each with a paid charge last month and an unpaid charge this month`)
+  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
