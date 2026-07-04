@@ -42,7 +42,7 @@ export function HorseManagerForm({
         />
       </div>
 
-      <div className="flex flex-col gap-2">
+      <div className="flex min-w-0 flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</span>
         <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-600" role="group">
           {PILL_LABELS.map(({ value, label }) => (
@@ -64,11 +64,9 @@ export function HorseManagerForm({
         </div>
 
         {status === 'inactive' && horse.is_active && (
-          <div className="flex">
-            <p className="flex-1 break-words whitespace-normal text-sm text-amber-700 dark:text-amber-400">
-              Marking this horse inactive will remove it from the roster and lesson scheduling.
-            </p>
-          </div>
+          <p className="min-w-0 break-words text-sm text-amber-700 dark:text-amber-400">
+            Marking this horse inactive will remove it from the roster and lesson scheduling.
+          </p>
         )}
       </div>
 
