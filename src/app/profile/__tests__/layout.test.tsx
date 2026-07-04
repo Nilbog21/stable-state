@@ -42,10 +42,27 @@ const mockRedirect = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
   useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => '/profile',
+  useSearchParams: () => new URLSearchParams(''),
 }))
 
-vi.mock('@/app/barn/[slug]/(protected)/NavigationBlocker', () => ({
-  useNavigationBlocker: vi.fn(() => ({ dirty: false, setDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
+vi.mock('next/link', () => ({
+  default: ({ href, children, className, onNavigate, 'aria-current': ariaCurrent }: {
+    href: string
+    children: React.ReactNode
+    className?: string
+    onNavigate?: (e: { preventDefault: () => void }) => void
+    'aria-current'?: 'page'
+  }) => (
+    <a
+      href={href}
+      className={className}
+      aria-current={ariaCurrent}
+      onClick={(e) => onNavigate?.({ preventDefault: () => e.preventDefault() })}
+    >
+      {children}
+    </a>
+  ),
 }))
 
 import { getAuthenticatedUser } from '@/lib/db/auth'
@@ -204,6 +221,12 @@ describe('ProfileLayout - barn nav (valid barn param + active membership)', () =
     const jsx = await ProfileLayout({ children: <span>child</span> })
     render(jsx as React.ReactElement)
     expect((screen.getByRole('link', { name: 'Green Acres' }) as HTMLAnchorElement).href).toContain('/barn/green-acres')
+  })
+
+  it('should_render_hamburger_menu_button_in_barn_nav', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeDefined()
   })
 
   it('should_not_render_back_link_in_barn_nav', async () => {
