@@ -1,15 +1,16 @@
 'use client'
 
-import { useState } from 'react'
+import { useActionState, useState } from 'react'
 import type { Agreement, AgreementKind } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
+import type { AgreementFormState } from './actions'
 
 type AgreementFormProps = {
   mode: 'new' | 'edit'
   kind: AgreementKind
-  onSave: (fd: FormData) => Promise<void>
+  onSave: (state: AgreementFormState, fd: FormData) => Promise<AgreementFormState>
   riders?: { id: string; name: string }[]
-  horses?: { id: string; name: string }[]
+  horses?: { id: string; name: string; is_available?: boolean; unavailability_reason?: string | null }[]
   defaultStartDate?: string
   defaultBoardFee?: number
   initialAgreement?: Agreement
@@ -35,13 +36,24 @@ export function AgreementForm({
   horseName,
 }: AgreementFormProps) {
   const isEdit = mode === 'edit'
+  const [state, formAction] = useActionState(onSave, { error: null })
   const [fee, setFee] = useState(() => {
-    if (isEdit) return String(initialAgreement!.fee)
+    if (isEdit) return String(initialAgreement?.fee ?? '')
     return kind === 'board' ? String(defaultBoardFee ?? '') : ''
+  })
+  const sortedHorses = [...horses].sort((a, b) => {
+    const aAvail = a.is_available === false ? 1 : 0
+    const bAvail = b.is_available === false ? 1 : 0
+    return aAvail - bAvail
   })
 
   return (
-    <form action={onSave} className="w-full max-w-md space-y-4">
+    <form action={formAction} className="w-full max-w-md space-y-4">
+      {state.error && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {state.error}
+        </p>
+      )}
       <div>
         <span className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">Rider</span>
         {isEdit ? (
@@ -81,11 +93,15 @@ export function AgreementForm({
             <option value="" disabled>
               Select horse
             </option>
-            {horses.map((h) => (
-              <option key={h.id} value={h.id}>
-                {h.name}
-              </option>
-            ))}
+            {sortedHorses.map((h) => {
+              const isUnavailable = h.is_available === false
+              return (
+                <option key={h.id} value={h.id} disabled={isUnavailable}>
+                  {h.name}
+                  {isUnavailable && h.unavailability_reason ? ` — ${h.unavailability_reason}` : isUnavailable ? ' — Unavailable' : ''}
+                </option>
+              )
+            })}
           </select>
         )}
       </div>
@@ -100,7 +116,7 @@ export function AgreementForm({
           </label>
           {isEdit ? (
             <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">
-              {cadenceLabel[initialAgreement!.cadence]}
+              {initialAgreement ? cadenceLabel[initialAgreement.cadence] : '—'}
             </p>
           ) : (
             <select
@@ -124,7 +140,7 @@ export function AgreementForm({
             <span className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Start date
             </span>
-            <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{initialAgreement!.start_date}</p>
+            <p className="mt-1 text-sm text-zinc-900 dark:text-zinc-50">{initialAgreement?.start_date ?? '—'}</p>
           </>
         ) : (
           <>

@@ -11,17 +11,22 @@ function parseFee(raw: string | null): number | null {
   return isNaN(n) || n < 0 ? null : n
 }
 
+export type AgreementFormState = { error: string | null }
+
 export async function createAgreementAction(
   barnSlug: string,
   kind: AgreementKind,
+  _prevState: AgreementFormState,
   formData: FormData
-): Promise<void> {
+): Promise<AgreementFormState> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const riderId = (formData.get('rider_id') as string | null)?.trim()
   const horseId = (formData.get('horse_id') as string | null)?.trim()
   const fee = parseFee(formData.get('fee') as string | null)
-  if (!riderId || !horseId || fee === null) return
+  if (!riderId) return { error: 'rider required' }
+  if (!horseId) return { error: 'horse required' }
+  if (fee === null) return { error: 'a valid, non-negative fee is required' }
 
   const startDate = (formData.get('start_date') as string | null)?.trim() || undefined
   const cadence: AgreementCadence =
@@ -38,12 +43,16 @@ export async function createAgreementAction(
 export async function updateAgreementAction(
   barnSlug: string,
   agreementId: string,
+  _prevState: AgreementFormState,
   formData: FormData
-): Promise<void> {
+): Promise<AgreementFormState> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const fee = parseFee(formData.get('fee') as string | null)
-  if (fee === null) return
+  if (fee === null) return { error: 'a valid, non-negative fee is required' }
+
+  const existing = await getAgreementById(agreementId, barn.id)
+  if (!existing) return { error: 'agreement not found' }
 
   const agreement = await updateAgreement(agreementId, barn.id, { fee })
   redirect(`/barn/${barnSlug}/agreements?kind=${agreement.kind}`)

@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getAgreementsByBarn } from '@/lib/db/agreements'
 import { resolveMemberNames } from '@/lib/db/barn-memberships'
@@ -71,9 +70,9 @@ export default async function AgreementsPage({
                 <Td>{formatFee(a.fee)}</Td>
                 <Td tone="secondary">{a.is_active ? 'Active' : 'Ended'}</Td>
                 <TableActions>
-                  <Link href={`/barn/${slug}/agreements/${a.id}/edit`} className="hover:underline">
+                  <Button href={`/barn/${slug}/agreements/${a.id}/edit`} variant="ghost">
                     Edit
-                  </Link>
+                  </Button>
                 </TableActions>
               </tr>
             ))}

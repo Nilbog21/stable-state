@@ -1,11 +1,11 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { createMockAgreement } from '@/test/fixtures'
 import { AgreementForm } from '../AgreementForm'
 
 const riders = [{ id: 'rider-1', name: 'Dana Rider' }]
 const horses = [{ id: 'horse-1', name: 'Apple' }]
-const onSave = vi.fn()
+const onSave = vi.fn().mockResolvedValue({ error: null })
 
 describe('AgreementForm - new mode', () => {
   it('should_render_cadence_select_for_new_lease_mode', () => {
@@ -86,6 +86,106 @@ describe('AgreementForm - new mode', () => {
     const feeInput = screen.getByLabelText(/fee/i) as HTMLInputElement
     fireEvent.change(feeInput, { target: { value: '300' } })
     expect(feeInput.value).toBe('300')
+  })
+
+  it('should_render_error_message_when_action_returns_error', async () => {
+    const errorAction = vi.fn().mockResolvedValue({ error: 'rider required' })
+    render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={horses} onSave={errorAction} />
+    )
+    const form = screen.getByRole('button', { name: /add lease/i }).closest('form')!
+    fireEvent.submit(form)
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeDefined()
+    })
+  })
+
+  it('should_not_render_error_message_when_form_has_not_been_submitted', () => {
+    render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={horses} onSave={onSave} />
+    )
+    expect(screen.queryByRole('alert')).toBeNull()
+  })
+
+  it('should_sort_unavailable_horses_after_available_horses', () => {
+    const mixedHorses = [
+      { id: 'horse-2', name: 'Butter', is_available: false, unavailability_reason: 'Thrown shoe' },
+      { id: 'horse-1', name: 'Apple', is_available: true, unavailability_reason: null },
+    ]
+    const { container } = render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={mixedHorses} onSave={onSave} />
+    )
+    const horseSelect = container.querySelector('select[name="horse_id"]') as HTMLSelectElement
+    const options = Array.from(horseSelect.options).filter((o) => o.value !== '')
+    expect(options[0].textContent).toContain('Apple')
+  })
+
+  it('should_disable_option_for_unavailable_horse', () => {
+    const mixedHorses = [
+      { id: 'horse-1', name: 'Apple', is_available: false, unavailability_reason: 'Thrown shoe' },
+    ]
+    render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={mixedHorses} onSave={onSave} />
+    )
+    const option = screen.getByRole('option', { name: /Apple/i }) as HTMLOptionElement
+    expect(option.disabled).toBe(true)
+  })
+
+  it('should_show_unavailability_reason_for_unavailable_horse', () => {
+    const mixedHorses = [
+      { id: 'horse-1', name: 'Apple', is_available: false, unavailability_reason: 'Thrown shoe' },
+    ]
+    render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={mixedHorses} onSave={onSave} />
+    )
+    expect(screen.getByText(/Thrown shoe/)).toBeDefined()
+  })
+
+  it('should_show_generic_unavailable_label_when_no_reason_given', () => {
+    const mixedHorses = [
+      { id: 'horse-1', name: 'Apple', is_available: false, unavailability_reason: null },
+    ]
+    render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={mixedHorses} onSave={onSave} />
+    )
+    expect(screen.getByText(/Apple — Unavailable/)).toBeDefined()
+  })
+
+  it('should_not_disable_option_for_available_horse', () => {
+    const mixedHorses = [
+      { id: 'horse-1', name: 'Apple', is_available: true, unavailability_reason: null },
+    ]
+    render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={mixedHorses} onSave={onSave} />
+    )
+    const option = screen.getByRole('option', { name: 'Apple' }) as HTMLOptionElement
+    expect(option.disabled).toBe(false)
+  })
+
+  it('should_keep_order_stable_when_both_horses_are_available', () => {
+    const bothAvailable = [
+      { id: 'horse-1', name: 'Apple', is_available: true, unavailability_reason: null },
+      { id: 'horse-2', name: 'Butter', is_available: true, unavailability_reason: null },
+    ]
+    const { container } = render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={bothAvailable} onSave={onSave} />
+    )
+    const horseSelect = container.querySelector('select[name="horse_id"]') as HTMLSelectElement
+    const options = Array.from(horseSelect.options).filter((o) => o.value !== '')
+    expect(options.map((o) => o.value)).toEqual(['horse-1', 'horse-2'])
+  })
+
+  it('should_keep_order_stable_when_both_horses_are_unavailable', () => {
+    const bothUnavailable = [
+      { id: 'horse-1', name: 'Apple', is_available: false, unavailability_reason: 'Vet visit' },
+      { id: 'horse-2', name: 'Butter', is_available: false, unavailability_reason: 'Thrown shoe' },
+    ]
+    const { container } = render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={bothUnavailable} onSave={onSave} />
+    )
+    const horseSelect = container.querySelector('select[name="horse_id"]') as HTMLSelectElement
+    const options = Array.from(horseSelect.options).filter((o) => o.value !== '')
+    expect(options.map((o) => o.value)).toEqual(['horse-1', 'horse-2'])
   })
 })
 
@@ -174,5 +274,19 @@ describe('AgreementForm - edit mode', () => {
       />
     )
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
+  })
+
+  it('should_render_dash_for_cadence_when_initial_agreement_missing', () => {
+    render(
+      <AgreementForm mode="edit" kind="lease" riderName="Dana Rider" horseName="Apple" onSave={onSave} />
+    )
+    expect(screen.getAllByText('—', { selector: 'p' }).length).toBeGreaterThan(0)
+  })
+
+  it('should_render_empty_fee_when_initial_agreement_missing', () => {
+    render(
+      <AgreementForm mode="edit" kind="lease" riderName="Dana Rider" horseName="Apple" onSave={onSave} />
+    )
+    expect((screen.getByLabelText(/fee/i) as HTMLInputElement).value).toBe('')
   })
 })

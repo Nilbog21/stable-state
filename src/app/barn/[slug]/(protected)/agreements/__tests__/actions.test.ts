@@ -30,6 +30,7 @@ import { createAgreementAction, updateAgreementAction, endAgreementAction } from
 const mockBarn = createMockBarn()
 const mockUser = createMockUser()
 const mockManagerMembership = createMockMembership({ role: 'manager', status: 'active' })
+const noError = { error: null }
 
 function makeFormData(fields: Record<string, string>): FormData {
   const fd = new FormData()
@@ -55,6 +56,7 @@ describe('createAgreementAction', () => {
       createAgreementAction(
         'green-acres',
         'lease',
+        noError,
         makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: '2026-07-01', cadence: 'monthly' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
@@ -67,6 +69,7 @@ describe('createAgreementAction', () => {
       createAgreementAction(
         'green-acres',
         'lease',
+        noError,
         makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: '2026-07-01', cadence: 'one_time' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
@@ -87,6 +90,7 @@ describe('createAgreementAction', () => {
       createAgreementAction(
         'green-acres',
         'board',
+        noError,
         makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', cadence: 'one_time' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
@@ -99,6 +103,7 @@ describe('createAgreementAction', () => {
       createAgreementAction(
         'green-acres',
         'lease',
+        noError,
         makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', cadence: 'one_time' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
@@ -111,6 +116,7 @@ describe('createAgreementAction', () => {
       createAgreementAction(
         'green-acres',
         'lease',
+        noError,
         makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: '2026-08-15' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
@@ -123,6 +129,7 @@ describe('createAgreementAction', () => {
       createAgreementAction(
         'green-acres',
         'lease',
+        noError,
         makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200', start_date: '' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
@@ -135,6 +142,7 @@ describe('createAgreementAction', () => {
       createAgreementAction(
         'green-acres',
         'board',
+        noError,
         makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '200' })
       )
     ).rejects.toThrow('NEXT_REDIRECT')
@@ -146,36 +154,73 @@ describe('createAgreementAction', () => {
     await createAgreementAction(
       'green-acres',
       'lease',
+      noError,
       makeFormData({ rider_id: '', horse_id: 'horse-1', fee: '200' })
     )
 
     expect(createAgreement).not.toHaveBeenCalled()
   })
 
+  it('should_return_rider_required_error_when_rider_id_is_blank', async () => {
+    const result = await createAgreementAction(
+      'green-acres',
+      'lease',
+      noError,
+      makeFormData({ rider_id: '', horse_id: 'horse-1', fee: '200' })
+    )
+
+    expect(result.error).toBe('rider required')
+  })
+
   it('should_return_early_when_horse_id_is_blank', async () => {
     await createAgreementAction(
       'green-acres',
       'lease',
+      noError,
       makeFormData({ rider_id: 'rider-1', horse_id: '', fee: '200' })
     )
 
     expect(createAgreement).not.toHaveBeenCalled()
   })
 
+  it('should_return_horse_required_error_when_horse_id_is_blank', async () => {
+    const result = await createAgreementAction(
+      'green-acres',
+      'lease',
+      noError,
+      makeFormData({ rider_id: 'rider-1', horse_id: '', fee: '200' })
+    )
+
+    expect(result.error).toBe('horse required')
+  })
+
   it('should_return_early_when_fee_is_blank', async () => {
     await createAgreementAction(
       'green-acres',
       'lease',
+      noError,
       makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '' })
     )
 
     expect(createAgreement).not.toHaveBeenCalled()
   })
 
+  it('should_return_fee_error_when_fee_is_blank', async () => {
+    const result = await createAgreementAction(
+      'green-acres',
+      'lease',
+      noError,
+      makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '' })
+    )
+
+    expect(result.error).toBe('a valid, non-negative fee is required')
+  })
+
   it('should_return_early_when_fee_is_negative', async () => {
     await createAgreementAction(
       'green-acres',
       'lease',
+      noError,
       makeFormData({ rider_id: 'rider-1', horse_id: 'horse-1', fee: '-5' })
     )
 
@@ -186,6 +231,7 @@ describe('createAgreementAction', () => {
     await createAgreementAction(
       'green-acres',
       'lease',
+      noError,
       makeFormData({ rider_id: '', horse_id: 'horse-1', fee: '200' })
     )
 
@@ -197,18 +243,20 @@ describe('updateAgreementAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(updateAgreement).mockReset()
+    vi.mocked(getAgreementById).mockReset()
     mockRedirect.mockClear()
     vi.mocked(requireMembership).mockResolvedValue({
       user: mockUser as any,
       barn: mockBarn,
       membership: mockManagerMembership,
     })
+    vi.mocked(getAgreementById).mockResolvedValue(createMockAgreement({ kind: 'lease' }))
     vi.mocked(updateAgreement).mockResolvedValue(createMockAgreement({ kind: 'lease' }))
   })
 
   it('should_call_requireMembership_with_manager_role_for_update', async () => {
     await expect(
-      updateAgreementAction('green-acres', 'agreement-1', makeFormData({ fee: '250' }))
+      updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '250' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
@@ -216,7 +264,7 @@ describe('updateAgreementAction', () => {
 
   it('should_call_updateAgreement_with_parsed_fee_only', async () => {
     await expect(
-      updateAgreementAction('green-acres', 'agreement-1', makeFormData({ fee: '250' }))
+      updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '250' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateAgreement).toHaveBeenCalledWith('agreement-1', mockBarn.id, { fee: 250 })
@@ -226,14 +274,44 @@ describe('updateAgreementAction', () => {
     vi.mocked(updateAgreement).mockResolvedValue(createMockAgreement({ kind: 'board' }))
 
     await expect(
-      updateAgreementAction('green-acres', 'agreement-1', makeFormData({ fee: '250' }))
+      updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '250' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/agreements?kind=board')
   })
 
   it('should_return_early_when_fee_is_blank_on_update', async () => {
-    await updateAgreementAction('green-acres', 'agreement-1', makeFormData({ fee: '' }))
+    await updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '' }))
+
+    expect(updateAgreement).not.toHaveBeenCalled()
+  })
+
+  it('should_return_fee_error_when_fee_is_blank_on_update', async () => {
+    const result = await updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '' }))
+
+    expect(result.error).toBe('a valid, non-negative fee is required')
+  })
+
+  it('should_call_getAgreementById_before_updating', async () => {
+    await expect(
+      updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '250' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(getAgreementById).toHaveBeenCalledWith('agreement-1', mockBarn.id)
+  })
+
+  it('should_return_not_found_error_when_agreement_missing_on_update', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(null)
+
+    const result = await updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '250' }))
+
+    expect(result.error).toBe('agreement not found')
+  })
+
+  it('should_not_call_updateAgreement_when_agreement_missing', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(null)
+
+    await updateAgreementAction('green-acres', 'agreement-1', noError, makeFormData({ fee: '250' }))
 
     expect(updateAgreement).not.toHaveBeenCalled()
   })
