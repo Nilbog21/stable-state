@@ -3,7 +3,8 @@ import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, NON_LESSON_INCOME_LABEL } from '@/lib/db/lesson-finances'
+import { getOutstandingCharges } from '@/lib/db/agreements'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
 
@@ -130,15 +131,17 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
     getTrainerIncomeSummary(barn.id, startDate, endDate),
     getOutstandingLessons(barn.id),
+    getOutstandingCharges(barn.id),
   ])
 
-  const outstandingTotal = outstandingLessons.reduce((sum, l) => sum + (l.fee ?? 0), 0)
+  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges)
+  const outstandingTotal = outstandingItems.reduce((sum, i) => sum + (i.fee ?? 0), 0)
 
   const monthQ = isCurrentMonth ? '' : `&month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
   const tabQ = tab !== 'tier' ? `&tab=${tab}` : ''
@@ -151,17 +154,17 @@ export default async function FinancesPage({
         Finances
       </h1>
 
-      {outstandingLessons.length > 0 && (
+      {outstandingItems.length > 0 && (
         <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
           <p className="text-sm font-medium uppercase tracking-wide">
             Outstanding
-            <InfoPopover text="All-time unpaid lessons with a fee set" />
+            <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
           </p>
           <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
             {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
           </p>
           <div className="mt-4">
-            <OutstandingTable outstandingLessons={outstandingLessons} barnSlug={slug} />
+            <OutstandingTable items={outstandingItems} barnSlug={slug} />
           </div>
           <div className="mt-3">
             <Link
@@ -247,7 +250,10 @@ export default async function FinancesPage({
             <tbody>
               {breakdown.map((tier) => (
                 <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                    {tier.tierName}
+                    {tier.tierName === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" />}
+                  </td>
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
                   </td>
@@ -338,7 +344,10 @@ export default async function FinancesPage({
             <tbody>
               {trainerIncome.map((row) => (
                 <tr key={row.trainerId} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{row.trainerName}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                    {row.trainerName}
+                    {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" />}
+                  </td>
                   <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
                     {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                   </td>

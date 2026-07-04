@@ -8,13 +8,18 @@ vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/lesson-finances', () => ({
-  getFinancialSummary: vi.fn(),
-  getOutstandingLessons: vi.fn(),
-  getHorseIncomeSummary: vi.fn(),
-  getRiderIncomeSummary: vi.fn(),
-  getTrainerIncomeSummary: vi.fn(),
-}))
+vi.mock('@/lib/db/lesson-finances', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/lesson-finances')>('@/lib/db/lesson-finances')
+  return {
+    ...actual,
+    getFinancialSummary: vi.fn(),
+    getOutstandingLessons: vi.fn(),
+    getHorseIncomeSummary: vi.fn(),
+    getRiderIncomeSummary: vi.fn(),
+    getTrainerIncomeSummary: vi.fn(),
+  }
+})
+vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -25,7 +30,8 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL } from '@/lib/db/lesson-finances'
+import { getOutstandingCharges } from '@/lib/db/agreements'
 import FinancesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -39,6 +45,8 @@ describe('FinancesPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 0, breakdown: [] })
     vi.mocked(getOutstandingLessons).mockResolvedValue([])
+    vi.mocked(getOutstandingCharges).mockReset()
+    vi.mocked(getOutstandingCharges).mockResolvedValue([])
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([])
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([])
@@ -632,6 +640,25 @@ describe('FinancesPage', () => {
     expect(link.getAttribute('href')).toBe('/barn/green-acres/finances/outstanding')
   })
 
+  it('should_show_outstanding_section_when_only_outstanding_charges_exist', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Outstanding')).toBeDefined()
+    expect(screen.getByText('Carol Rider')).toBeDefined()
+  })
+
+  it('should_include_outstanding_charges_in_outstanding_total', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByText('$500.00').length).toBeGreaterThanOrEqual(1)
+  })
+
   it('should_render_info_button_on_pending_label', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
@@ -789,6 +816,31 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     expect(screen.getByText('No trainer income in June 2026.')).toBeDefined()
+  })
+
+  it('should_render_non_lesson_income_row_with_info_popover_on_tier_tab', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 300,
+      pendingIncome: 0,
+      breakdown: [{ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300 }],
+    })
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')
+    expect(row?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_render_non_lesson_income_row_with_info_popover_on_trainer_tab', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')
+    expect(row?.querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
   it('should_show_dash_for_custom_tier_price', async () => {
