@@ -28,7 +28,7 @@ export default function InviteLink({ slug }: { slug: string }) {
 
   return (
     <section className="mb-12">
-      <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+      <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Invite Link
       </h2>
       <div className="flex gap-2">

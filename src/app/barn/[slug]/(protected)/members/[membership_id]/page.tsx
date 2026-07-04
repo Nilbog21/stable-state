@@ -91,7 +91,7 @@ export default async function MemberDetailPage({
       </h1>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Documents
         </h2>
         {docsWithUrls.length > 0 ? (
@@ -142,7 +142,7 @@ export default async function MemberDetailPage({
 
       {canUpload && (
         <section>
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Upload Document
           </h2>
           <UploadForm memberRole={targetRole as 'trainer' | 'rider' | 'manager'} action={boundUpload} />
