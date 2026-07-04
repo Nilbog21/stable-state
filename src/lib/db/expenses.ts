@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveHorseNames } from './horses'
 import type { ExpenseFinancialSummary, ExpenseInput, ExpenseWithHorses, HorseExpense, HorseExpenseDetailRow } from './types'
 
@@ -80,70 +81,44 @@ export async function getExpenseById(expenseId: string, barnId: string): Promise
   }
 }
 
-export async function createExpense(barnId: string, data: ExpenseInput): Promise<HorseExpense> {
-  const supabase = await createClient()
-  const { data: expense, error } = await supabase
-    .from('horse_expenses')
-    .insert({
-      barn_id: barnId,
-      expense_date: data.expenseDate,
-      expense_time: data.expenseTime ?? null,
-      amount: data.amount ?? null,
-      recipient: data.recipient,
-      expense_type: data.expenseType ?? 'Unspecified',
-      notes: data.notes ?? null,
-      applies_to_all_horses: data.appliesToAllHorses,
-    })
-    .select()
-    .single()
+export async function createExpense(barnId: string, data: ExpenseInput, client?: SupabaseClient): Promise<HorseExpense> {
+  // optional client for service-role injection from scripts; omitting defaults to SSR client
+  const supabase = client ?? await createClient()
+  const { data: expense, error } = await supabase.rpc('create_expense_with_horses', {
+    p_barn_id: barnId,
+    p_expense_date: data.expenseDate,
+    p_recipient: data.recipient,
+    p_applies_to_all_horses: data.appliesToAllHorses,
+    p_expense_time: data.expenseTime ?? null,
+    p_amount: data.amount ?? null,
+    p_expense_type: data.expenseType ?? 'Unspecified',
+    p_notes: data.notes ?? null,
+    p_horse_ids: data.horseIds ?? null,
+  })
   if (error) throw error
-
-  if (!data.appliesToAllHorses && data.horseIds?.length) {
-    const rows = data.horseIds.map((horseId) => ({ barn_id: barnId, expense_id: expense.id, horse_id: horseId }))
-    const { error: jError } = await supabase.from('expense_horses').insert(rows)
-    if (jError) throw jError
-  }
-
-  return expense
+  return expense as HorseExpense
 }
 
-export async function updateExpense(expenseId: string, barnId: string, updates: ExpenseInput): Promise<HorseExpense> {
-  const supabase = await createClient()
-  const { data: expense, error } = await supabase
-    .from('horse_expenses')
-    .update({
-      expense_date: updates.expenseDate,
-      expense_time: updates.expenseTime ?? null,
-      amount: updates.amount ?? null,
-      recipient: updates.recipient,
-      expense_type: updates.expenseType ?? 'Unspecified',
-      notes: updates.notes ?? null,
-      applies_to_all_horses: updates.appliesToAllHorses,
-    })
-    .eq('id', expenseId)
-    .eq('barn_id', barnId)
-    .select()
-    .single()
+export async function updateExpense(expenseId: string, barnId: string, updates: ExpenseInput, client?: SupabaseClient): Promise<HorseExpense> {
+  const supabase = client ?? await createClient()
+  const { data: expense, error } = await supabase.rpc('update_expense_with_horses', {
+    p_expense_id: expenseId,
+    p_barn_id: barnId,
+    p_expense_date: updates.expenseDate,
+    p_recipient: updates.recipient,
+    p_applies_to_all_horses: updates.appliesToAllHorses,
+    p_expense_time: updates.expenseTime ?? null,
+    p_amount: updates.amount ?? null,
+    p_expense_type: updates.expenseType ?? 'Unspecified',
+    p_notes: updates.notes ?? null,
+    p_horse_ids: updates.horseIds ?? null,
+  })
   if (error) throw error
-
-  const { error: delError } = await supabase
-    .from('expense_horses')
-    .delete()
-    .eq('expense_id', expenseId)
-    .eq('barn_id', barnId)
-  if (delError) throw delError
-
-  if (!updates.appliesToAllHorses && updates.horseIds?.length) {
-    const rows = updates.horseIds.map((horseId) => ({ barn_id: barnId, expense_id: expenseId, horse_id: horseId }))
-    const { error: insError } = await supabase.from('expense_horses').insert(rows)
-    if (insError) throw insError
-  }
-
-  return expense
+  return expense as HorseExpense
 }
 
-export async function deleteExpense(expenseId: string, barnId: string): Promise<void> {
-  const supabase = await createClient()
+export async function deleteExpense(expenseId: string, barnId: string, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
   const { error } = await supabase
     .from('horse_expenses')
     .delete()

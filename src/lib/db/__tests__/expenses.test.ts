@@ -262,182 +262,103 @@ describe('createExpense', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeInsertChain(data: unknown | null, error: Error | null = null) {
-    const mockSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockInsert = vi.fn().mockReturnValue({ select: mockSelect })
-    return { insert: mockInsert, mockInsert }
-  }
-
-  function makeJunctionInsertChain(error: Error | null = null) {
-    const mockInsert = vi.fn().mockResolvedValue({ error })
-    return { insert: mockInsert, mockInsert }
-  }
-
-  it('should_insert_expense_with_provided_fields', async () => {
+  it('should_call_rpc_with_provided_fields', async () => {
     const expense = createMockHorseExpense()
-    const { insert, mockInsert } = makeInsertChain(expense)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createExpense('barn-1', {
       expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false,
+      expenseTime: '14:00', amount: 100, expenseType: 'Farrier', notes: 'note', horseIds: ['horse-1'],
     })
 
-    expect(mockInsert).toHaveBeenCalledWith({
-      barn_id: 'barn-1', expense_date: '2026-07-01', expense_time: null, amount: null,
-      recipient: 'Dr. Smith', expense_type: 'Unspecified', notes: null, applies_to_all_horses: false,
+    expect(mockRpc).toHaveBeenCalledWith('create_expense_with_horses', {
+      p_barn_id: 'barn-1', p_expense_date: '2026-07-01', p_recipient: 'Dr. Smith', p_applies_to_all_horses: false,
+      p_expense_time: '14:00', p_amount: 100, p_expense_type: 'Farrier', p_notes: 'note', p_horse_ids: ['horse-1'],
     })
   })
 
   it('should_default_expense_type_to_unspecified_when_omitted', async () => {
     const expense = createMockHorseExpense()
-    const { insert, mockInsert } = makeInsertChain(expense)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
-    expect(mockInsert.mock.calls[0][0].expense_type).toBe('Unspecified')
-  })
-
-  it('should_use_provided_expense_type_when_given', async () => {
-    const expense = createMockHorseExpense()
-    const { insert, mockInsert } = makeInsertChain(expense)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
-
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', expenseType: 'Farrier', appliesToAllHorses: false })
-
-    expect(mockInsert.mock.calls[0][0].expense_type).toBe('Farrier')
+    expect(mockRpc.mock.calls[0][1].p_expense_type).toBe('Unspecified')
   })
 
   it('should_default_expense_time_to_null_when_omitted', async () => {
     const expense = createMockHorseExpense()
-    const { insert, mockInsert } = makeInsertChain(expense)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
-    expect(mockInsert.mock.calls[0][0].expense_time).toBeNull()
+    expect(mockRpc.mock.calls[0][1].p_expense_time).toBeNull()
   })
 
   it('should_default_amount_to_null_when_omitted', async () => {
     const expense = createMockHorseExpense()
-    const { insert, mockInsert } = makeInsertChain(expense)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
-    expect(mockInsert.mock.calls[0][0].amount).toBeNull()
+    expect(mockRpc.mock.calls[0][1].p_amount).toBeNull()
   })
 
   it('should_default_notes_to_null_when_omitted', async () => {
     const expense = createMockHorseExpense()
-    const { insert, mockInsert } = makeInsertChain(expense)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
-    expect(mockInsert.mock.calls[0][0].notes).toBeNull()
+    expect(mockRpc.mock.calls[0][1].p_notes).toBeNull()
   })
 
-  it('should_insert_expense_horses_junction_rows_when_not_applies_to_all_horses', async () => {
+  it('should_default_horse_ids_to_null_when_omitted', async () => {
     const expense = createMockHorseExpense()
-    const { insert } = makeInsertChain(expense)
-    const { insert: junctionInsert, mockInsert: mockJunctionInsert } = makeJunctionInsertChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { insert }
-      return { insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createExpense('barn-1', {
-      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, horseIds: ['horse-1', 'horse-2'],
-    })
+    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: true })
 
-    expect(mockJunctionInsert).toHaveBeenCalledWith([
-      { barn_id: 'barn-1', expense_id: expense.id, horse_id: 'horse-1' },
-      { barn_id: 'barn-1', expense_id: expense.id, horse_id: 'horse-2' },
-    ])
+    expect(mockRpc.mock.calls[0][1].p_horse_ids).toBeNull()
   })
 
-  it('should_skip_junction_insert_when_applies_to_all_horses_is_true', async () => {
-    const expense = createMockHorseExpense({ applies_to_all_horses: true })
-    const { insert } = makeInsertChain(expense)
-    const { insert: junctionInsert, mockInsert: mockJunctionInsert } = makeJunctionInsertChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { insert }
-      return { insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
-
-    await createExpense('barn-1', {
-      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: true, horseIds: ['horse-1'],
-    })
-
-    expect(mockJunctionInsert).not.toHaveBeenCalled()
-  })
-
-  it('should_skip_junction_insert_when_horse_ids_is_undefined', async () => {
+  it('should_return_rpc_data', async () => {
     const expense = createMockHorseExpense()
-    const { insert } = makeInsertChain(expense)
-    const { insert: junctionInsert, mockInsert: mockJunctionInsert } = makeJunctionInsertChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { insert }
-      return { insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
-
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
-
-    expect(mockJunctionInsert).not.toHaveBeenCalled()
-  })
-
-  it('should_skip_junction_insert_when_horse_ids_is_empty', async () => {
-    const expense = createMockHorseExpense()
-    const { insert } = makeInsertChain(expense)
-    const { insert: junctionInsert, mockInsert: mockJunctionInsert } = makeJunctionInsertChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { insert }
-      return { insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
-
-    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, horseIds: [] })
-
-    expect(mockJunctionInsert).not.toHaveBeenCalled()
-  })
-
-  it('should_return_inserted_expense_row', async () => {
-    const expense = createMockHorseExpense()
-    const { insert } = makeInsertChain(expense)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     const result = await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(result).toEqual(expense)
   })
 
-  it('should_throw_when_expense_insert_errors', async () => {
-    const { insert } = makeInsertChain(null, new Error('insert error'))
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ insert }) } as any)
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('rpc failed') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(
       createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
-    ).rejects.toThrow('insert error')
+    ).rejects.toThrow('rpc failed')
   })
 
-  it('should_throw_when_junction_insert_errors', async () => {
+  it('should_use_injected_client_when_provided', async () => {
     const expense = createMockHorseExpense()
-    const { insert } = makeInsertChain(expense)
-    const { insert: junctionInsert } = makeJunctionInsertChain(new Error('junction insert error'))
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { insert }
-      return { insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    const mockClient = { rpc: mockRpc } as any
 
-    await expect(
-      createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, horseIds: ['horse-1'] })
-    ).rejects.toThrow('junction insert error')
+    const result = await createExpense(
+      'barn-1',
+      { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false },
+      mockClient
+    )
+
+    expect(result).toEqual(expense)
   })
 })
 
@@ -446,165 +367,105 @@ describe('updateExpense', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeUpdateChain(data: unknown | null, error: Error | null = null) {
-    const mockSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEq2 = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
-    return { update: mockUpdate, mockUpdate }
-  }
-
-  function makeDeleteChain(error: Error | null = null) {
-    const mockEq2 = vi.fn().mockResolvedValue({ error })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
-    return { delete: mockDelete, mockDelete }
-  }
-
-  function makeJunctionInsertChain(error: Error | null = null) {
-    const mockInsert = vi.fn().mockResolvedValue({ error })
-    return { insert: mockInsert, mockInsert }
-  }
-
-  it('should_update_expense_fields', async () => {
+  it('should_call_rpc_with_provided_fields', async () => {
     const expense = createMockHorseExpense({ recipient: 'New Vet' })
-    const { update, mockUpdate } = makeUpdateChain(expense)
-    const { delete: del } = makeDeleteChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del }
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateExpense('expense-1', 'barn-1', {
+      expenseDate: '2026-07-01', recipient: 'New Vet', appliesToAllHorses: false,
+      expenseTime: '14:00', amount: 100, expenseType: 'Farrier', notes: 'note', horseIds: ['horse-1'],
     })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'New Vet', appliesToAllHorses: false })
-
-    expect(mockUpdate).toHaveBeenCalledWith({
-      expense_date: '2026-07-01', expense_time: null, amount: null,
-      recipient: 'New Vet', expense_type: 'Unspecified', notes: null, applies_to_all_horses: false,
+    expect(mockRpc).toHaveBeenCalledWith('update_expense_with_horses', {
+      p_expense_id: 'expense-1', p_barn_id: 'barn-1', p_expense_date: '2026-07-01', p_recipient: 'New Vet',
+      p_applies_to_all_horses: false, p_expense_time: '14:00', p_amount: 100, p_expense_type: 'Farrier',
+      p_notes: 'note', p_horse_ids: ['horse-1'],
     })
   })
 
-  it('should_delete_existing_horse_assignments_before_replacing', async () => {
+  it('should_default_expense_type_to_unspecified_when_omitted', async () => {
     const expense = createMockHorseExpense()
-    const { update } = makeUpdateChain(expense)
-    const { delete: del, mockDelete } = makeDeleteChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
-    expect(mockDelete).toHaveBeenCalled()
+    expect(mockRpc.mock.calls[0][1].p_expense_type).toBe('Unspecified')
   })
 
-  it('should_insert_new_horse_assignments_when_not_applies_to_all_horses', async () => {
+  it('should_default_expense_time_to_null_when_omitted', async () => {
     const expense = createMockHorseExpense()
-    const { update } = makeUpdateChain(expense)
-    const { delete: del } = makeDeleteChain()
-    const { insert: junctionInsert, mockInsert } = makeJunctionInsertChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del, insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', {
-      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, horseIds: ['horse-1'],
-    })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
-    expect(mockInsert).toHaveBeenCalledWith([{ barn_id: 'barn-1', expense_id: 'expense-1', horse_id: 'horse-1' }])
+    expect(mockRpc.mock.calls[0][1].p_expense_time).toBeNull()
   })
 
-  it('should_skip_new_horse_assignment_insert_when_applies_to_all_horses_is_true', async () => {
+  it('should_default_amount_to_null_when_omitted', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+
+    expect(mockRpc.mock.calls[0][1].p_amount).toBeNull()
+  })
+
+  it('should_default_notes_to_null_when_omitted', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+
+    expect(mockRpc.mock.calls[0][1].p_notes).toBeNull()
+  })
+
+  it('should_default_horse_ids_to_null_when_omitted', async () => {
     const expense = createMockHorseExpense({ applies_to_all_horses: true })
-    const { update } = makeUpdateChain(expense)
-    const { delete: del } = makeDeleteChain()
-    const { insert: junctionInsert, mockInsert } = makeJunctionInsertChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del, insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await updateExpense('expense-1', 'barn-1', {
-      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: true, horseIds: ['horse-1'],
-    })
+    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: true })
 
-    expect(mockInsert).not.toHaveBeenCalled()
+    expect(mockRpc.mock.calls[0][1].p_horse_ids).toBeNull()
   })
 
-  it('should_skip_new_horse_assignment_insert_when_horse_ids_empty', async () => {
-    const expense = createMockHorseExpense()
-    const { update } = makeUpdateChain(expense)
-    const { delete: del } = makeDeleteChain()
-    const { insert: junctionInsert, mockInsert } = makeJunctionInsertChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del, insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
-
-    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, horseIds: [] })
-
-    expect(mockInsert).not.toHaveBeenCalled()
-  })
-
-  it('should_return_updated_expense_row', async () => {
+  it('should_return_rpc_data', async () => {
     const expense = createMockHorseExpense({ recipient: 'New Vet' })
-    const { update } = makeUpdateChain(expense)
-    const { delete: del } = makeDeleteChain()
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     const result = await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'New Vet', appliesToAllHorses: false })
 
     expect(result).toEqual(expense)
   })
 
-  it('should_throw_when_update_errors', async () => {
-    const { update } = makeUpdateChain(null, new Error('update error'))
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('rpc failed') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(
       updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
-    ).rejects.toThrow('update error')
+    ).rejects.toThrow('rpc failed')
   })
 
-  it('should_throw_when_delete_errors', async () => {
-    const expense = createMockHorseExpense()
-    const { update } = makeUpdateChain(expense)
-    const { delete: del } = makeDeleteChain(new Error('delete error'))
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+  it('should_use_injected_client_when_provided', async () => {
+    const expense = createMockHorseExpense({ recipient: 'New Vet' })
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    const mockClient = { rpc: mockRpc } as any
 
-    await expect(
-      updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
-    ).rejects.toThrow('delete error')
-  })
+    const result = await updateExpense(
+      'expense-1',
+      'barn-1',
+      { expenseDate: '2026-07-01', recipient: 'New Vet', appliesToAllHorses: false },
+      mockClient
+    )
 
-  it('should_throw_when_junction_insert_errors', async () => {
-    const expense = createMockHorseExpense()
-    const { update } = makeUpdateChain(expense)
-    const { delete: del } = makeDeleteChain()
-    const { insert: junctionInsert } = makeJunctionInsertChain(new Error('junction insert error'))
-    const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { update }
-      return { delete: del, insert: junctionInsert }
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
-
-    await expect(
-      updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, horseIds: ['horse-1'] })
-    ).rejects.toThrow('junction insert error')
+    expect(result).toEqual(expense)
   })
 })
 
@@ -634,6 +495,15 @@ describe('deleteExpense', () => {
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ delete: del }) } as any)
 
     await expect(deleteExpense('expense-1', 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const { delete: del } = makeChain()
+    const mockClient = { from: vi.fn().mockReturnValue({ delete: del }) } as any
+
+    await deleteExpense('expense-1', 'barn-1', mockClient)
+
+    expect(del).toHaveBeenCalled()
   })
 })
 
