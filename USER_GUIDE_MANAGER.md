@@ -40,7 +40,7 @@ Use **Leases** and **Boarding** in the nav to manage rider agreements for a hors
 
 Go to **Members** to browse the barn roster. You will see a **Managers** section (other managers in the barn), a **Trainers** section, and a **Riders** section, each listing active members with links to their detail pages. Your own card appears at the top under **You**.
 
-**Adding a trainer without an account** — At the top of the Trainers section, enter a first and last name and tap **Add Trainer**. This creates a record immediately, with instructing permissions already enabled, so you can assign them to lessons right away, even if they have not signed in yet.
+**Adding a trainer without an account** — At the top of the Trainers section, enter a first and last name and tap **Add Trainer**. This creates a record immediately, with instructing permissions already enabled. They cannot be assigned to lessons until they sign in and claim their invite — share the invite link with them to get them started.
 
 **Adding a rider without an account** — At the top of the Riders section, enter a first and last name and tap **Add Rider**. This creates a record immediately so you can enter their lessons right away, even if they have not signed in yet.
 

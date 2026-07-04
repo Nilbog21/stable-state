@@ -138,7 +138,7 @@ export default async function MembersPage({
           ) : (
             <EmptyState
               heading="No trainers yet"
-              subtext="Trainers can request access using the invite link in Manage Barn."
+              subtext="Add a trainer above, or share the invite link from Manage Barn."
             />
           )}
         </section>
