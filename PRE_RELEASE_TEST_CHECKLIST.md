@@ -105,6 +105,12 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] On a lesson's detail page, click **Cancel** next to a rider's name → confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away; that rider shows a **Cancelled** badge and the rest of the lesson is unaffected
 - [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
 
+Expenses (`/barn/dev-barn/expenses`):
+
+- [ ] Nav shows **Expenses** between Lessons and Horses
+- [ ] With no expenses seeded, empty state renders with a CTA (no `/expenses/new` page yet — 404 is expected)
+- [ ] Trainer and rider logins do not see the Expenses nav link and are redirected away from `/barn/dev-barn/expenses` if visited directly
+
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending; cards show exertion, lesson count, jumping count (7d)
@@ -163,7 +169,8 @@ bash scripts/change-user.sh
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
-- [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding**
+- [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
+- [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
 - [ ] Lessons list shows only lessons where you (Alex) are the instructor; filter pills show riders only (`All | <rider> | ...`)
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
@@ -181,7 +188,8 @@ Switch role (pick **Dana** from the list — same `Barn slug` prompt as Phase 5)
 bash scripts/change-user.sh
 ```
 
-- [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link, no Leases, no Boarding**
+- [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link, no Leases, no Boarding, no Expenses**
+- [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
@@ -234,6 +242,7 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/barn/[slug]/lessons/new` | Phases 3, 5 |
 | `/barn/[slug]/lessons/[id]` | Phases 4, 5, 6 |
 | `/barn/[slug]/lessons/[id]/edit` | Phases 4, 5 |
+| `/barn/[slug]/expenses` | Phases 4, 5, 6 |
 | `/barn/[slug]/horses` | Phases 2, 4 |
 | `/barn/[slug]/horses/[id]` | Phases 2, 4, 5 |
 | `/barn/[slug]/agreements` | Phase 2 |
