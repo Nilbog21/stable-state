@@ -214,7 +214,7 @@ export default async function LessonsPage({
                   slug={slug}
                   isManager={isManager}
                   isTrainer={isTrainer}
-                  currentUserId={user.id}
+                  currentMembershipId={membership.id}
                   viewerMembershipId={membership.id}
                 />
               ))}

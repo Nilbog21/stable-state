@@ -44,7 +44,7 @@ const mockBarn = {
 const mockLesson = {
   id: 'lesson-1',
   barn_id: 'barn-1',
-  instructor_id: 'user-1',
+  instructor_id: 'mem-1',
   fee: 75,
   lesson_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   submitted_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
@@ -488,7 +488,7 @@ describe('LessonsPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({ filter: 'trainer', id: 'user-1' }),
+      searchParams: Promise.resolve({ filter: 'trainer', id: 'mem-1' }),
     })
     render(jsx)
     const pills = screen.getAllByRole('link', { name: /john doe/i })

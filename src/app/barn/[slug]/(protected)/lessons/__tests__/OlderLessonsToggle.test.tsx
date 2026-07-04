@@ -41,7 +41,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByRole('button', { name: /show older lessons/i })).toBeNull()
@@ -54,7 +54,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByRole('button', { name: /show older lessons/i })).toBeDefined()
@@ -67,7 +67,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Comet')).toBeNull()
@@ -80,7 +80,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -94,7 +94,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -109,7 +109,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -124,7 +124,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -138,7 +138,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -153,7 +153,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -167,7 +167,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -181,7 +181,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -195,7 +195,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={true}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -209,7 +209,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={true}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -223,7 +223,7 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )

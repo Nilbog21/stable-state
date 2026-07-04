@@ -131,7 +131,7 @@ describe('LessonNewPage', () => {
   it('should_display_trainer_full_name_when_profile_is_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'user-1', name: 'John Trainer' },
+      { membershipId: mockTrainerMembership.id, userId: 'user-1', name: 'John Trainer' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -142,7 +142,7 @@ describe('LessonNewPage', () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'manager-1', name: 'Jane Doe' },
+      { membershipId: mockManagerMembership.id, userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -153,8 +153,8 @@ describe('LessonNewPage', () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'manager-1', name: 'Jane Doe' },
-      { userId: 'trainer-2', name: 'John Smith' },
+      { membershipId: mockManagerMembership.id, userId: 'manager-1', name: 'Jane Doe' },
+      { membershipId: mockTrainerBarnMembership.id, userId: 'trainer-2', name: 'John Smith' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -165,12 +165,12 @@ describe('LessonNewPage', () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'manager-1', name: 'Jane Doe' },
+      { membershipId: mockManagerMembership.id, userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const select = screen.getByLabelText(/instructor/i) as HTMLSelectElement
-    expect(select.value).toBe('manager-1')
+    expect(select.value).toBe(mockManagerMembership.id)
   })
 
   it('should_show_new_horse_input_when_user_is_manager', async () => {
