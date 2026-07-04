@@ -206,7 +206,7 @@ export default async function LessonsPage({
       ) : (
         <>
           {recentLessons.length > 0 && (
-            <ul className="w-full max-w-2xl divide-y divide-zinc-200 dark:divide-zinc-800">
+            <ul className="w-full max-w-2xl space-y-2">
               {recentLessons.map((lesson) => (
                 <LessonListItem
                   key={lesson.id}

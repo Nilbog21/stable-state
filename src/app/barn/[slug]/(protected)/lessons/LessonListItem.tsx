@@ -31,7 +31,7 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentUser
     (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
 
   return (
-    <li className="flex items-center justify-between py-4">
+    <li className="flex items-center justify-between py-5">
       <Link href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 hover:underline">
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
           {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(lesson.lesson_at))}
