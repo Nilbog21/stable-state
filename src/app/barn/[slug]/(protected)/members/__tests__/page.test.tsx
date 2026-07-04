@@ -362,4 +362,29 @@ describe('MembersPage', () => {
     render(jsx)
     expect(screen.getByText('Unlinked')).toBeDefined()
   })
+
+  it('should_render_add_trainer_form_for_manager', async () => {
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /add trainer/i })).toBeDefined()
+  })
+
+  it('should_not_render_add_trainer_form_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /add trainer/i })).toBeNull()
+  })
+
+  it('should_render_unlinked_badge_for_managed_trainer', async () => {
+    const managedTrainers = [
+      { membershipId: 'mem-t1', userId: null, name: 'Ghost Trainer', isManaged: true, inviteToken: 'tok-2' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'trainer' ? managedTrainers : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Unlinked')).toBeDefined()
+  })
 })
