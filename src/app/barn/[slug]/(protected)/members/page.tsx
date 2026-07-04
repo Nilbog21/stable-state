@@ -48,7 +48,7 @@ export default async function MembersPage({
       </h1>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           You
         </h2>
         <Link
@@ -61,7 +61,7 @@ export default async function MembersPage({
 
       {membership.role === 'manager' && (
         <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Managers
           </h2>
           {managers.length > 0 ? (
@@ -88,7 +88,7 @@ export default async function MembersPage({
 
       {membership.role === 'manager' && (
         <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Trainers
           </h2>
           <form action={createManagedMemberAction.bind(null, slug, 'trainer')} className="mb-4 flex items-center gap-2">
@@ -146,7 +146,7 @@ export default async function MembersPage({
 
       {(membership.role === 'manager' || membership.role === 'trainer') && (
         <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Riders
           </h2>
           {membership.role === 'manager' && (

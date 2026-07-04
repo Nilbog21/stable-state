@@ -99,6 +99,12 @@ describe('MembersPage', () => {
     expect(screen.getByText('Jane Doe')).toBeDefined()
   })
 
+  it('should_render_you_heading_in_text_sm', async () => {
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /^you$/i }).className).toContain('text-sm')
+  })
+
   it('should_link_you_card_to_own_detail_page', async () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -113,6 +119,15 @@ describe('MembersPage', () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('heading', { name: /trainers/i })).toBeDefined()
+  })
+
+  it('should_render_trainers_heading_in_text_sm', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /trainers/i }).className).toContain('text-sm')
   })
 
   it('should_render_first_trainer_for_manager', async () => {
@@ -140,6 +155,15 @@ describe('MembersPage', () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('heading', { name: /riders/i })).toBeDefined()
+  })
+
+  it('should_render_riders_heading_in_text_sm', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'trainer' ? mockTrainers : role === 'rider' ? mockRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /riders/i }).className).toContain('text-sm')
   })
 
   it('should_render_first_rider_for_manager', async () => {
@@ -297,6 +321,15 @@ describe('MembersPage', () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('heading', { name: /managers/i })).toBeDefined()
+  })
+
+  it('should_render_managers_heading_in_text_sm', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'manager' ? mockManagers : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /managers/i }).className).toContain('text-sm')
   })
 
   it('should_render_manager_name_card', async () => {

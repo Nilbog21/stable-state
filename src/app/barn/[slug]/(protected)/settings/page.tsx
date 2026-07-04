@@ -98,7 +98,7 @@ export default async function SettingsPage({
       <InviteLink slug={slug} />
 
       <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Pending Requests
         </h2>
         {pending.length === 0 ? (
@@ -147,7 +147,7 @@ export default async function SettingsPage({
       </section>
 
       <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-zinc-50">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Active Members
         </h2>
         {removable.length === 0 ? (
@@ -186,7 +186,7 @@ export default async function SettingsPage({
       </section>
 
       <section className="mb-12">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Lesson Tiers
         </h2>
 

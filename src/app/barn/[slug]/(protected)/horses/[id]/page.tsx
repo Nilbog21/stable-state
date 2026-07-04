@@ -82,7 +82,7 @@ export default async function HorseDetailPage({
 
       {canSeeDocuments && (
         <section className="mt-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Documents
           </h2>
           {docsWithUrls.length > 0 ? (
@@ -131,7 +131,7 @@ export default async function HorseDetailPage({
           )}
 
           <section className="mt-6">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Upload Document
             </h2>
             <HorseDocumentUploadForm action={boundUploadAction} />

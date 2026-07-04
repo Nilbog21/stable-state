@@ -168,6 +168,18 @@ describe('HorseDetailPage', () => {
     expect(screen.queryByText('on stall rest')).toBeNull()
   })
 
+  it('should_render_documents_heading_in_text_sm', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /^documents$/i }).className).toContain('text-sm')
+  })
+
+  it('should_render_upload_document_heading_in_text_sm', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /upload document/i }).className).toContain('text-sm')
+  })
+
   it('should_render_upload_form_for_manager', async () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
