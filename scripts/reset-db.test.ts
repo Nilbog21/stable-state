@@ -7,6 +7,8 @@ import {
   DEV_PENDING_RIDER,
   DEV_MANAGER_2,
   PAYMENT_TYPES,
+  buildExpenseSeeds,
+  expenseDateFor,
 } from './reset-db'
 
 describe('buildLessonDates', () => {
@@ -160,5 +162,62 @@ describe('getPaymentType', () => {
       if (pt !== null) seen.add(pt)
     }
     expect([...seen].sort()).toEqual([...PAYMENT_TYPES].sort())
+  })
+})
+
+describe('buildExpenseSeeds', () => {
+  it('should_include_at_least_one_planned_expense_with_null_amount', () => {
+    const seeds = buildExpenseSeeds()
+    expect(seeds.some((s) => s.amount === null && s.daysOffset > 0)).toBe(true)
+  })
+
+  it('should_include_exactly_one_future_dated_expense', () => {
+    const seeds = buildExpenseSeeds()
+    expect(seeds.filter((s) => s.daysOffset > 0)).toHaveLength(1)
+  })
+
+  it('should_include_a_recurring_farrier_recipient_with_a_consistent_expense_type', () => {
+    const seeds = buildExpenseSeeds()
+    const farrierSeeds = seeds.filter((s) => s.recipient === 'Dr. Hoof Farrier')
+    expect(farrierSeeds.length).toBeGreaterThanOrEqual(2)
+    expect(farrierSeeds.every((s) => s.expenseType === 'Farrier')).toBe(true)
+  })
+
+  it('should_include_a_recurring_vet_recipient_with_a_consistent_expense_type', () => {
+    const seeds = buildExpenseSeeds()
+    const vetSeeds = seeds.filter((s) => s.recipient === 'Riverside Vet Clinic')
+    expect(vetSeeds.length).toBeGreaterThanOrEqual(2)
+    expect(vetSeeds.every((s) => s.expenseType === 'Veterinary')).toBe(true)
+  })
+
+  it('should_include_at_least_one_barn_wide_expense', () => {
+    const seeds = buildExpenseSeeds()
+    expect(seeds.some((s) => s.appliesToAllHorses)).toBe(true)
+  })
+
+  it('should_include_at_least_one_individual_horse_expense', () => {
+    const seeds = buildExpenseSeeds()
+    expect(seeds.some((s) => !s.appliesToAllHorses)).toBe(true)
+  })
+
+  it('should_keep_all_non_future_daysOffset_within_the_barn_age_window', () => {
+    const seeds = buildExpenseSeeds()
+    expect(seeds.filter((s) => s.daysOffset <= 0).every((s) => s.daysOffset >= -85)).toBe(true)
+  })
+})
+
+describe('expenseDateFor', () => {
+  const NOW = new Date('2026-07-04T10:00:00.000Z')
+
+  it('should_format_the_date_as_yyyy_mm_dd', () => {
+    expect(expenseDateFor(NOW, 0)).toBe('2026-07-04')
+  })
+
+  it('should_shift_the_date_backward_for_a_negative_offset', () => {
+    expect(expenseDateFor(NOW, -10)).toBe('2026-06-24')
+  })
+
+  it('should_shift_the_date_forward_for_a_positive_offset', () => {
+    expect(expenseDateFor(NOW, 10)).toBe('2026-07-14')
   })
 })
