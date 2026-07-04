@@ -22,6 +22,7 @@ vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
   useRouter: () => ({ refresh: vi.fn() }),
   usePathname: () => '/barn/test-barn',
+  useSearchParams: () => new URLSearchParams(''),
 }))
 
 vi.mock('@/lib/db/auth', () => ({
