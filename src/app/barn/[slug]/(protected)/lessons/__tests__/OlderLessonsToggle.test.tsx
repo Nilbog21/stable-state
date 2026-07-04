@@ -87,7 +87,7 @@ describe('OlderLessonsToggle', () => {
     expect(screen.getByText('Comet')).toBeDefined()
   })
 
-  it('should_use_spacing_not_divider_borders_between_older_lesson_rows', () => {
+  it('should_use_spacing_between_older_lesson_rows', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
@@ -100,6 +100,20 @@ describe('OlderLessonsToggle', () => {
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     const list = screen.getByRole('list')
     expect(list.className).toContain('space-y-2')
+  })
+
+  it('should_not_use_divider_borders_between_older_lesson_rows', () => {
+    render(
+      <OlderLessonsToggle
+        lessons={[mockLesson]}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
+    const list = screen.getByRole('list')
     expect(list.className).not.toContain('divide-y')
   })
 
