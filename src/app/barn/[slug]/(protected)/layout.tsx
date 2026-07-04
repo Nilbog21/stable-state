@@ -9,6 +9,7 @@ import { UserMenu } from './UserMenu'
 import { BarnSwitcher } from './BarnSwitcher'
 import { NotificationBell } from './NotificationBell'
 import { NavigationBlockerProvider, BlockingLink, NavigationConfirmDialog } from './NavigationBlocker'
+import { NavDrawer } from './NavDrawer'
 
 export async function generateMetadata({
   params,
@@ -86,23 +87,30 @@ export default async function ProtectedBarnLayout({
   return (
     <NavigationBlockerProvider>
       <nav className="flex items-center gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+        <NavDrawer navLinks={navLinks} />
         <BarnSwitcher
           barnName={barn.name}
           barnSlug={slug}
           activeBarnMemberships={activeBarnMemberships}
         />
-        {navLinks.map((link) => (
-          <BlockingLink
-            key={link.href}
-            href={link.href}
-            className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-          >
-            {link.label}
-          </BlockingLink>
-        ))}
+        <div className="hidden items-center gap-4 md:flex">
+          {navLinks.map((link) => (
+            <BlockingLink
+              key={link.href}
+              href={link.href}
+              className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+            >
+              {link.label}
+            </BlockingLink>
+          ))}
+        </div>
         <div className="ml-auto flex items-center gap-2">
-          <UserMenu initials={initials} email={email} fullName={fullName} barnSlug={slug} />
-          <NotificationBell notifications={notifications} barnId={barn.id} />
+          <span className="order-2 md:order-1">
+            <UserMenu initials={initials} email={email} fullName={fullName} barnSlug={slug} />
+          </span>
+          <span className="order-1 md:order-2">
+            <NotificationBell notifications={notifications} barnId={barn.id} />
+          </span>
         </div>
       </nav>
       {children}
