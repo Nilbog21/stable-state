@@ -36,6 +36,8 @@ Three roles: `manager`, `trainer`, `rider`.
 | rider_documents | SELECT, INSERT, UPDATE, DELETE | SELECT (barn-scoped) | SELECT, INSERT, DELETE own rows only |
 | agreements | SELECT, INSERT, UPDATE, DELETE (barn-scoped, both kinds) | — | SELECT own rows only (both kinds) |
 | agreement_charges | SELECT, INSERT, UPDATE, DELETE (barn-scoped, both kinds) | — | SELECT own rows only (via parent agreement, both kinds) |
+| horse_expenses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — |
+| expense_horses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — |
 
 ## DB schema
 
