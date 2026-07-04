@@ -101,6 +101,23 @@ describe('ExpenseForm', () => {
     expect(fd.getAll('horse_id')).toEqual([])
   })
 
+  it('should_uncheck_a_horse_when_clicked_again', () => {
+    const { container } = renderForm()
+    const appleCheckbox = screen.getByRole('checkbox', { name: 'Apple' })
+    fireEvent.click(appleCheckbox)
+    fireEvent.click(appleCheckbox)
+    const form = container.querySelector('form')!
+    const fd = new FormData(form)
+    expect(fd.getAll('horse_id')).toEqual([])
+  })
+
+  it('should_update_expense_type_when_user_edits_it_manually', () => {
+    renderForm()
+    const typeInput = screen.getByLabelText(/expense type/i) as HTMLInputElement
+    fireEvent.change(typeInput, { target: { value: 'Grooming' } })
+    expect(typeInput.value).toBe('Grooming')
+  })
+
   it('should_call_getMostCommonExpenseTypeAction_with_trimmed_recipient_on_blur', async () => {
     renderForm()
     const recipientInput = screen.getByLabelText(/recipient/i)
@@ -135,6 +152,25 @@ describe('ExpenseForm', () => {
     await waitFor(() => {
       expect(screen.getByLabelText(/expense type/i).className).toContain('ring-2')
     })
+  })
+
+  it('should_clear_the_flash_after_the_timeout_elapses', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.mocked(getMostCommonExpenseTypeAction).mockResolvedValue('Farrier')
+    renderForm()
+    const recipientInput = screen.getByLabelText(/recipient/i)
+    fireEvent.change(recipientInput, { target: { value: 'Dr. Hoof Farrier' } })
+    await act(async () => {
+      fireEvent.blur(recipientInput)
+    })
+    await waitFor(() => {
+      expect(screen.getByLabelText(/expense type/i).className).toContain('ring-2')
+    })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    expect(screen.getByLabelText(/expense type/i).className).not.toContain('ring-2')
+    vi.useRealTimers()
   })
 
   it('should_not_call_lookup_again_when_recipient_is_unchanged_since_last_check', async () => {

@@ -30,13 +30,7 @@ export function ExpenseForm({
   const [expenseType, setExpenseType] = useState('')
   const [appliesToAllHorses, setAppliesToAllHorses] = useState(false)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
-  const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
-
-  function flash(keys: string[]) {
-    if (keys.length === 0) return
-    setFlashingKeys(new Set(keys))
-    setTimeout(() => setFlashingKeys(new Set()), 600)
-  }
+  const [typeFlashing, setTypeFlashing] = useState(false)
 
   async function handleRecipientBlur() {
     const trimmed = recipient.trim()
@@ -45,7 +39,8 @@ export function ExpenseForm({
     const suggested = await getMostCommonExpenseTypeAction(barnSlug, trimmed)
     if (suggested) {
       setExpenseType(suggested)
-      flash(['expense_type'])
+      setTypeFlashing(true)
+      setTimeout(() => setTypeFlashing(false), 600)
     }
   }
 
@@ -88,7 +83,7 @@ export function ExpenseForm({
           list="expense-type-options"
           value={expenseType}
           onChange={(e) => setExpenseType(e.target.value)}
-          className={`${inputClassName} transition ${flashingKeys.has('expense_type') ? 'ring-2 ring-blue-400' : ''}`}
+          className={`${inputClassName} transition ${typeFlashing ? 'ring-2 ring-blue-400' : ''}`}
         />
         <datalist id="expense-type-options">
           {recentExpenseTypes.map((t) => (
