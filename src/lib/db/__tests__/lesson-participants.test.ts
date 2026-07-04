@@ -14,6 +14,7 @@ import {
   updateLessonWithParticipants,
   updateLessonRiderNotes,
   updateLessonHorseNotes,
+  cancelRiderParticipation,
 } from '../lesson-participants'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -696,5 +697,68 @@ describe('getRiderEnrolledLessonIds', () => {
     await expect(
       getRiderEnrolledLessonIds('barn-1', 'user-1')
     ).rejects.toThrow('enrollment error')
+  })
+})
+
+describe('cancelRiderParticipation', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_snake_case_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', 'called in sick', true)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation', {
+      p_lesson_id: 'lesson-1',
+      p_barn_id: 'barn-1',
+      p_rider_id: 'rider-1',
+      p_notes: 'called in sick',
+      p_is_late: true,
+    })
+  })
+
+  it('should_default_notes_to_null_when_undefined', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', undefined, false)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation',
+      expect.objectContaining({ p_notes: null })
+    )
+  })
+
+  it('should_pass_is_late_true_through_to_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, true)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation',
+      expect.objectContaining({ p_is_late: true })
+    )
+  })
+
+  it('should_pass_is_late_false_through_to_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation',
+      expect.objectContaining({ p_is_late: false })
+    )
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('rpc error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await expect(
+      cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+    ).rejects.toThrow('rpc error')
   })
 })

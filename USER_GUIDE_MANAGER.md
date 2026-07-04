@@ -60,6 +60,8 @@ Tap any member card to open their detail page. Documents are shown in a table wi
 
 **Cancel a lesson** — For eligible lessons (upcoming, or unpaid), click **Cancel** on the Lessons list, optionally add a note explaining why, and confirm. The lesson stays on the list with a **Cancelled** badge instead of being removed, its fee is zeroed, and it drops off Outstanding and income totals. Cancelling notifies the instructor and enrolled riders.
 
+**Cancel one rider's spot** — To drop a single rider from a lesson without cancelling the whole thing, open the lesson and click **Cancel** next to that rider's name. Choose **Cancelled by Rider** (the rider backed out — cancelling within 24 hours of the lesson keeps the fee, earlier cancellations waive it) or **Cancelled by Instructor** (the fee is always waived). Add an optional note and confirm; that rider's row shows a **Cancelled** badge and the rest of the lesson is unaffected. The affected rider is notified.
+
 **Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
 
 ## Finances

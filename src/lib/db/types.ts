@@ -3,6 +3,7 @@ export type NotificationType =
   | 'outstanding_payment'
   | 'pending_approval'
   | 'lesson_cancelled'
+  | 'rider_participation_cancelled'
   | 'incomplete_profile'
   | 'member_incomplete_profile'
 export type MembershipStatus = 'active' | 'pending'
@@ -90,12 +91,13 @@ export interface LessonWithDetails extends Lesson {
   rider_names: string[]
   rider_ids: string[]
   rider_count: number
+  rider_cancelled_ats: (string | null)[]
 }
 
 export interface LessonDetail extends Lesson {
   instructor_name: string | null
   lesson_horses: { exertion_level: number; horse_notes: string | null; horses: { id: string; name: string } | null }[]
-  lesson_riders: { rider_notes: string | null; private_notes: string | null; barn_membership: { id: string; name: string; user_id: string | null } | null }[]
+  lesson_riders: { rider_notes: string | null; private_notes: string | null; cancelled_at: string | null; barn_membership: { id: string; name: string; user_id: string | null } | null }[]
 }
 
 export interface LessonHorse {
@@ -114,6 +116,7 @@ export interface LessonRider {
   rider_id: string
   rider_notes: string | null
   private_notes: string | null
+  cancelled_at: string | null
 }
 
 export interface OutstandingLesson {

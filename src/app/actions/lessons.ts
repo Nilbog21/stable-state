@@ -2,7 +2,7 @@
 
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
-import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes } from '@/lib/db/lesson-participants'
+import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import type { PaymentType } from '@/lib/db/types'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
@@ -275,6 +275,93 @@ export async function cancelLessonAction(
   )
 
   redirect(`/barn/${barnSlug}/lessons`)
+}
+
+export async function cancelRiderParticipationAction(
+  barnId: string,
+  barnSlug: string,
+  lessonId: string,
+  riderId: string,
+  formData: FormData
+): Promise<void> {
+  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+
+  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  if (!lesson) {
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
+    return
+  }
+
+  if (lesson.cancelled_at !== null) {
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
+    return
+  }
+
+  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) {
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
+    return
+  }
+
+  const targetRider = lesson.lesson_riders.find((lr) => lr.barn_membership?.id === riderId) ?? null
+  if (!targetRider?.barn_membership) {
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
+    return
+  }
+
+  if (membership.role === 'rider' && targetRider.barn_membership.user_id !== user.id) {
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
+    return
+  }
+
+  const isEligible =
+    targetRider.cancelled_at === null &&
+    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+  if (!isEligible) {
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
+    return
+  }
+
+  const cancelledByInstructor = membership.role !== 'rider' && formData.get('cancel_type') === 'instructor'
+  const within24Hours = new Date(lesson.lesson_at).getTime() - Date.now() <= 24 * 60 * 60 * 1000
+  const isLate = cancelledByInstructor ? false : within24Hours
+
+  const notes = (formData.get('notes') as string | null)?.trim() || null
+  await cancelRiderParticipation(lessonId, barnId, riderId, notes, isLate)
+
+  let recipientIds: string[]
+  if (membership.role === 'rider') {
+    const barnMembers = await getActiveMemberships(barnId)
+    const managerUserIds = barnMembers
+      .filter((m) => m.role === 'manager' && m.user_id !== null)
+      .map((m) => m.user_id as string)
+    recipientIds = lesson.instructor_id ? [lesson.instructor_id, ...managerUserIds] : managerUserIds
+  } else {
+    const affectedUserId = targetRider.barn_membership.user_id
+    const riderRecipients = affectedUserId ? [affectedUserId] : []
+    if (membership.role === 'trainer') {
+      const barnMembers = await getActiveMemberships(barnId)
+      const managerUserIds = barnMembers
+        .filter((m) => m.role === 'manager' && m.user_id !== null)
+        .map((m) => m.user_id as string)
+      recipientIds = [...riderRecipients, ...managerUserIds]
+    } else {
+      recipientIds = riderRecipients
+    }
+  }
+
+  await Promise.allSettled(
+    recipientIds.map((userId) =>
+      createNotification({
+        userId,
+        barnId,
+        type: 'rider_participation_cancelled',
+        title: 'Lesson participation cancelled',
+        link: `/barn/${barnSlug}/lessons/${lessonId}`,
+      })
+    )
+  )
+
+  redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
 }
 
 export async function updatePaymentTypeAction(

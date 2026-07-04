@@ -3,6 +3,35 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
+import { Button } from '@/components/ui/Button'
+
+function RiderParticipationAction({
+  slug,
+  lessonId,
+  riderId,
+  cancelledAt,
+  eligible,
+}: {
+  slug: string
+  lessonId: string
+  riderId: string
+  cancelledAt: string | null
+  eligible: boolean
+}) {
+  if (cancelledAt !== null) {
+    return (
+      <span className="ml-2 rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
+        Cancelled
+      </span>
+    )
+  }
+  if (!eligible) return null
+  return (
+    <Button href={`/barn/${slug}/lessons/${lessonId}/cancel-rider/${riderId}`} variant="danger" className="ml-2">
+      Cancel
+    </Button>
+  )
+}
 
 export default async function LessonDetailPage({
   params,
@@ -48,6 +77,11 @@ export default async function LessonDetailPage({
   const myRiderEntry = role === 'rider'
     ? lesson.lesson_riders.find((lr) => lr.barn_membership?.user_id === user.id) ?? null
     : null
+
+  const lessonEligibleWindow = new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null
+  const canManageLesson = role === 'manager' || (role === 'trainer' && lesson.instructor_id === user.id)
+  const showManagerRiderActions = lesson.cancelled_at === null && canManageLesson
+  const showOwnRiderAction = lesson.cancelled_at === null && role === 'rider'
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -112,6 +146,15 @@ export default async function LessonDetailPage({
                     {lesson.lesson_riders.map((lr, i) => (
                       <li key={lr.barn_membership?.id ?? i}>
                         <span>{lr.barn_membership?.name ?? '—'}</span>
+                        {showManagerRiderActions && lr.barn_membership?.id && (
+                          <RiderParticipationAction
+                            slug={slug}
+                            lessonId={lesson.id}
+                            riderId={lr.barn_membership.id}
+                            cancelledAt={lr.cancelled_at}
+                            eligible={lessonEligibleWindow}
+                          />
+                        )}
                         {canSeeNotes && lr.barn_membership?.id && (
                           <div className="mt-1 flex flex-col gap-1">
                             <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
@@ -129,6 +172,15 @@ export default async function LessonDetailPage({
                     <div className="mt-2">
                       <p className="text-xs font-medium text-zinc-500">Your Notes</p>
                       <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
+                      {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
+                        <RiderParticipationAction
+                          slug={slug}
+                          lessonId={lesson.id}
+                          riderId={myRiderEntry.barn_membership.id}
+                          cancelledAt={myRiderEntry.cancelled_at}
+                          eligible={lessonEligibleWindow}
+                        />
+                      )}
                     </div>
                   )}
                 </>
@@ -137,6 +189,15 @@ export default async function LessonDetailPage({
                   {lesson.lesson_riders.map((lr, i) => (
                     <div key={lr.barn_membership?.id ?? i}>
                       <span>{lr.barn_membership?.name ?? '—'}</span>
+                      {showManagerRiderActions && lr.barn_membership?.id && (
+                        <RiderParticipationAction
+                          slug={slug}
+                          lessonId={lesson.id}
+                          riderId={lr.barn_membership.id}
+                          cancelledAt={lr.cancelled_at}
+                          eligible={lessonEligibleWindow}
+                        />
+                      )}
                       {canSeeNotes && lr.barn_membership?.id && (
                         <div className="mt-1 flex flex-col gap-1">
                           <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
@@ -153,6 +214,15 @@ export default async function LessonDetailPage({
                     <div className="mt-2">
                       <p className="text-xs font-medium text-zinc-500">Your Notes</p>
                       <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
+                      {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
+                        <RiderParticipationAction
+                          slug={slug}
+                          lessonId={lesson.id}
+                          riderId={myRiderEntry.barn_membership.id}
+                          cancelledAt={myRiderEntry.cancelled_at}
+                          eligible={lessonEligibleWindow}
+                        />
+                      )}
                     </div>
                   )}
                 </div>

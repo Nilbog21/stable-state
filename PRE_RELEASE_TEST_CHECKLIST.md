@@ -100,6 +100,8 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, save, verify the change on the detail page
 - [ ] Edit the group lesson (Lesson 4) → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
 - [ ] Delete one seeded lesson — it disappears from the list
+- [ ] On a lesson's detail page, click **Cancel** next to a rider's name → confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away; that rider shows a **Cancelled** badge and the rest of the lesson is unaffected
+- [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
@@ -164,6 +166,7 @@ bash scripts/change-user.sh
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons by direct URL (`/barn/dev-barn/lessons/[id]`) — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
+- [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
 - [ ] Horse detail page: documents are listed with working links, upload works, but there is **no delete** button
 - [ ] Members page shows the Riders section only; open your own member detail page and upload a document
 - [ ] `/barn/dev-barn/finances` is blocked (redirect); `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
@@ -180,6 +183,7 @@ bash scripts/change-user.sh
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
+- [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
 - [ ] `/barn/dev-barn/finances` is blocked (redirect)
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons
 - [ ] `/barn/dev-barn/members` shows only the "You" card — no Managers/Trainers/Riders management sections

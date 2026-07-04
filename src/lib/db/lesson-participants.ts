@@ -141,6 +141,24 @@ export async function updateLessonHorseNotes(
   return data
 }
 
+export async function cancelRiderParticipation(
+  lessonId: string,
+  barnId: string,
+  riderId: string,
+  notes: string | null | undefined,
+  isLate: boolean
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('cancel_rider_participation', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+    p_rider_id: riderId,
+    p_notes: notes ?? null,
+    p_is_late: isLate,
+  })
+  if (error) throw error
+}
+
 export async function getRiderEnrolledLessonIds(barnId: string, userId: string): Promise<string[]> {
   const supabase = await createClient()
   const { data: rider, error: riderError } = await supabase

@@ -215,6 +215,7 @@ export default async function LessonsPage({
                   isManager={isManager}
                   isTrainer={isTrainer}
                   currentUserId={user.id}
+                  viewerMembershipId={membership.id}
                 />
               ))}
             </ul>
@@ -225,6 +226,7 @@ export default async function LessonsPage({
             isManager={isManager}
             isTrainer={isTrainer}
             currentUserId={user.id}
+            viewerMembershipId={membership.id}
           />
         </>
       )}
