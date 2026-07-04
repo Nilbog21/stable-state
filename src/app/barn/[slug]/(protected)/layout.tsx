@@ -60,6 +60,8 @@ export default async function ProtectedBarnLayout({
     navLinks = [
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
+      { href: `/barn/${slug}/agreements?kind=lease`, label: 'Leases' },
+      { href: `/barn/${slug}/agreements?kind=board`, label: 'Boarding' },
       { href: `/barn/${slug}/members`, label: 'Members' },
       { href: `/barn/${slug}/finances`, label: 'Finances' },
       { href: `/barn/${slug}/settings`, label: 'Manage Barn' },
