@@ -26,7 +26,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getHorseIncomeDetail).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getHorseIncomeDetail).mockResolvedValue({ horseName: 'Thunderbolt', rows: [], total: 0 })
+    vi.mocked(getHorseIncomeDetail).mockResolvedValue({ horseName: 'Thunderbolt', rows: [], chargeRows: [], total: 0 })
   })
 
   it('should_call_requireMembership_with_manager_only', async () => {
@@ -56,7 +56,7 @@ describe('HorseIncomePage', () => {
   })
 
   it('should_render_horse_name_as_heading', async () => {
-    vi.mocked(getHorseIncomeDetail).mockResolvedValue({ horseName: 'Thunderbolt', rows: [], total: 0 })
+    vi.mocked(getHorseIncomeDetail).mockResolvedValue({ horseName: 'Thunderbolt', rows: [], chargeRows: [], total: 0 })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     expect(screen.getByRole('heading', { name: 'Thunderbolt' })).toBeDefined()
@@ -72,7 +72,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -83,7 +83,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -94,7 +94,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 2, splitAmount: 50 }],
-      total: 50,
+      chargeRows: [], total: 50,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -105,7 +105,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 2, splitAmount: 50 }],
-      total: 50,
+      chargeRows: [], total: 50,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -116,7 +116,7 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -139,11 +139,49 @@ describe('HorseIncomePage', () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     const link = screen.getByRole('link', { name: /May 10, 2026/i })
     expect(link.getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1')
+  })
+
+  it('should_render_a_charge_row_with_its_kind_and_fee', async () => {
+    vi.mocked(getHorseIncomeDetail).mockResolvedValue({
+      horseName: 'Thunderbolt',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      total: 500,
+    })
+    const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getByText('Boarding')).toBeDefined()
+    expect(screen.getAllByText('$500.00').length).toBeGreaterThan(0)
+  })
+
+  it('should_link_charge_row_to_agreement_detail', async () => {
+    vi.mocked(getHorseIncomeDetail).mockResolvedValue({
+      horseName: 'Thunderbolt',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      total: 200,
+    })
+    const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /May 1, 2026/i })
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1')
+  })
+
+  it('should_combine_lesson_and_charge_rows_in_total', async () => {
+    vi.mocked(getHorseIncomeDetail).mockResolvedValue({
+      horseName: 'Thunderbolt',
+      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      total: 600,
+    })
+    const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getAllByText('$600.00').length).toBeGreaterThan(0)
   })
 })

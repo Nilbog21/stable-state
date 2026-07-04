@@ -163,4 +163,12 @@ describe('OutstandingTable', () => {
     })
     expect(vi.mocked(updatePaymentTypeAction)).not.toHaveBeenCalled()
   })
+
+  it('should_pass_null_to_charge_action_when_empty_option_selected', async () => {
+    render(<OutstandingTable items={[boardItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } })
+    })
+    expect(vi.mocked(updateChargePaymentTypeAction)).toHaveBeenCalledWith('green-acres', 'charge-1', null)
+  })
 })
