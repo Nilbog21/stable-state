@@ -83,10 +83,15 @@ describe('getTierPricesByNames', () => {
     return { client: { from } as any, from, mockEq, mockIn }
   }
 
-  it('should_return_empty_array_without_querying_when_names_is_empty', async () => {
+  it('should_not_query_when_names_is_empty', async () => {
     const { client, from } = makeChain([])
-    const result = await getTierPricesByNames(client, 'barn-1', [])
+    await getTierPricesByNames(client, 'barn-1', [])
     expect(from).not.toHaveBeenCalled()
+  })
+
+  it('should_return_empty_array_when_names_is_empty', async () => {
+    const { client } = makeChain([])
+    const result = await getTierPricesByNames(client, 'barn-1', [])
     expect(result).toEqual([])
   })
 
@@ -254,11 +259,17 @@ describe('getOutstandingLessonRows', () => {
   })
 
   describe('rider path', () => {
-    it('should_return_empty_array_without_querying_lessons_when_rider_has_no_enrollments', async () => {
+    it('should_not_query_lessons_when_rider_has_no_enrollments', async () => {
       vi.mocked(getRiderEnrolledLessonIds).mockResolvedValue([])
       const { client, from } = makeRiderChain([])
-      const result = await getOutstandingLessonRows(client, 'barn-1', 'user-rider', 'rider')
+      await getOutstandingLessonRows(client, 'barn-1', 'user-rider', 'rider')
       expect(from).not.toHaveBeenCalled()
+    })
+
+    it('should_return_empty_array_when_rider_has_no_enrollments', async () => {
+      vi.mocked(getRiderEnrolledLessonIds).mockResolvedValue([])
+      const { client } = makeRiderChain([])
+      const result = await getOutstandingLessonRows(client, 'barn-1', 'user-rider', 'rider')
       expect(result).toEqual([])
     })
 
@@ -267,6 +278,13 @@ describe('getOutstandingLessonRows', () => {
       const { client, mockIn } = makeRiderChain([])
       await getOutstandingLessonRows(client, 'barn-1', 'user-rider', 'rider')
       expect(mockIn).toHaveBeenCalledWith('id', ['lesson-1'])
+    })
+
+    it('should_pass_the_injected_client_through_to_getRiderEnrolledLessonIds', async () => {
+      vi.mocked(getRiderEnrolledLessonIds).mockResolvedValue([])
+      const { client } = makeRiderChain([])
+      await getOutstandingLessonRows(client, 'barn-1', 'user-rider', 'rider')
+      expect(getRiderEnrolledLessonIds).toHaveBeenCalledWith('barn-1', 'user-rider', client)
     })
 
     it('should_filter_by_barn_id', async () => {
@@ -344,10 +362,15 @@ describe('getLessonRidersForLessons', () => {
     return { client: { from } as any, from, mockEq, mockIn }
   }
 
-  it('should_return_empty_array_without_querying_when_lesson_ids_is_empty', async () => {
+  it('should_not_query_when_lesson_ids_is_empty', async () => {
     const { client, from } = makeChain([])
-    const result = await getLessonRidersForLessons(client, 'barn-1', [])
+    await getLessonRidersForLessons(client, 'barn-1', [])
     expect(from).not.toHaveBeenCalled()
+  })
+
+  it('should_return_empty_array_when_lesson_ids_is_empty', async () => {
+    const { client } = makeChain([])
+    const result = await getLessonRidersForLessons(client, 'barn-1', [])
     expect(result).toEqual([])
   })
 
@@ -389,10 +412,15 @@ describe('getProfileNamesByUserIds', () => {
     return { client: { from } as any, from, mockIn }
   }
 
-  it('should_return_empty_array_without_querying_when_user_ids_is_empty', async () => {
+  it('should_not_query_when_user_ids_is_empty', async () => {
     const { client, from } = makeChain([])
-    const result = await getProfileNamesByUserIds(client, [])
+    await getProfileNamesByUserIds(client, [])
     expect(from).not.toHaveBeenCalled()
+  })
+
+  it('should_return_empty_array_when_user_ids_is_empty', async () => {
+    const { client } = makeChain([])
+    const result = await getProfileNamesByUserIds(client, [])
     expect(result).toEqual([])
   })
 
@@ -541,10 +569,15 @@ describe('getPaidLessonInstructorFees', () => {
     expect(mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
   })
 
-  it('should_filter_by_date_range', async () => {
-    const { client, mockGte, mockLt } = makeChain([])
+  it('should_filter_by_start_date', async () => {
+    const { client, mockGte } = makeChain([])
     await getPaidLessonInstructorFees(client, 'barn-1', startDate, endDate)
     expect(mockGte).toHaveBeenCalledWith('lesson_at', startDate.toISOString())
+  })
+
+  it('should_filter_by_end_date', async () => {
+    const { client, mockLt } = makeChain([])
+    await getPaidLessonInstructorFees(client, 'barn-1', startDate, endDate)
     expect(mockLt).toHaveBeenCalledWith('lesson_at', endDate.toISOString())
   })
 
@@ -593,10 +626,15 @@ describe('getPaidLessonFeesAt', () => {
     expect(mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
   })
 
-  it('should_filter_by_date_range', async () => {
-    const { client, mockGte, mockLt } = makeChain([])
+  it('should_filter_by_start_date', async () => {
+    const { client, mockGte } = makeChain([])
     await getPaidLessonFeesAt(client, 'barn-1', startDate, endDate)
     expect(mockGte).toHaveBeenCalledWith('lesson_at', startDate.toISOString())
+  })
+
+  it('should_filter_by_end_date', async () => {
+    const { client, mockLt } = makeChain([])
+    await getPaidLessonFeesAt(client, 'barn-1', startDate, endDate)
     expect(mockLt).toHaveBeenCalledWith('lesson_at', endDate.toISOString())
   })
 

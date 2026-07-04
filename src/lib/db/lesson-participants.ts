@@ -159,8 +159,8 @@ export async function cancelRiderParticipation(
   if (error) throw error
 }
 
-export async function getRiderEnrolledLessonIds(barnId: string, userId: string): Promise<string[]> {
-  const supabase = await createClient()
+export async function getRiderEnrolledLessonIds(barnId: string, userId: string, client?: SupabaseClient): Promise<string[]> {
+  const supabase = client ?? await createClient()
   const { data: rider, error: riderError } = await supabase
     .from('barn_memberships')
     .select('id')

@@ -61,7 +61,7 @@ export async function getOutstandingLessonRows(
   const now = new Date()
 
   if (role === 'rider' && userId) {
-    const lessonIds = await getRiderEnrolledLessonIds(barnId, userId)
+    const lessonIds = await getRiderEnrolledLessonIds(barnId, userId, client)
     if (!lessonIds.length) return []
 
     const { data, error } = await client
