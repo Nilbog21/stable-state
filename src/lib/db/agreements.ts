@@ -222,7 +222,14 @@ export async function getPaidCharges(
     .lt('period', endDate.toISOString().slice(0, 10))
 
   if (error) throw error
-  return (data ?? []).map((row: any) => ({
+  type PaidChargeRow = {
+    id: string
+    agreement_id: string
+    period: string
+    fee: number
+    agreements: { kind: AgreementKind; rider_id: string; horse_id: string }
+  }
+  return ((data ?? []) as unknown as PaidChargeRow[]).map((row) => ({
     chargeId: row.id,
     agreementId: row.agreement_id,
     period: row.period,
@@ -276,11 +283,17 @@ export async function getOutstandingCharges(
   const { data, error } = await query.order('period', { ascending: true })
   if (error) throw error
 
-  const rows = data ?? []
-  const riderIds = [...new Set(rows.map((r: any) => r.agreements.rider_id))]
+  type OutstandingChargeRow = {
+    id: string
+    period: string
+    fee: number
+    agreements: { kind: AgreementKind; rider_id: string }
+  }
+  const rows = (data ?? []) as unknown as OutstandingChargeRow[]
+  const riderIds = [...new Set(rows.map((r) => r.agreements.rider_id))]
   const nameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
-  return rows.map((row: any) => ({
+  return rows.map((row) => ({
     id: row.id,
     period: row.period,
     kind: row.agreements.kind,
