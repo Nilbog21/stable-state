@@ -237,6 +237,26 @@ describe('SettingsPage', () => {
     expect(screen.getByTestId('invite-link')).toBeDefined()
   })
 
+  it('should_render_pending_requests_heading_in_label_style', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /pending requests/i }).className).toContain('uppercase')
+  })
+
+  it('should_render_lesson_tiers_heading_in_label_style', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /lesson tiers/i }).className).toContain('uppercase')
+  })
+
   it('should_render_no_pending_requests_message_when_none_exist', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -300,6 +320,16 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByRole('heading', { name: /active members/i })).toBeDefined()
+  })
+
+  it('should_render_active_members_heading_in_label_style', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /active members/i }).className).toContain('uppercase')
   })
 
   it('should_render_no_active_members_message_when_removable_is_empty', async () => {

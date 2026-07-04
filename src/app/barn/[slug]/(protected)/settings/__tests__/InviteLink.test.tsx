@@ -24,6 +24,11 @@ describe('InviteLink', () => {
     expect(screen.getByRole('button', { name: 'Copy' })).toBeDefined()
   })
 
+  it('should_render_heading_in_label_style', () => {
+    render(<InviteLink slug="green-acres" />)
+    expect(screen.getByRole('heading', { name: 'Invite Link' }).className).toContain('uppercase')
+  })
+
   it('should_display_full_invite_url_after_mount', () => {
     render(<InviteLink slug="green-acres" />)
     const input = screen.getByRole('textbox') as HTMLInputElement

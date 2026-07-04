@@ -117,6 +117,13 @@ describe('BarnDashboardPage', () => {
     expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
   })
 
+  it('should_render_upcoming_lessons_heading_in_label_style', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /your upcoming lessons/i }).className).toContain('uppercase')
+  })
+
   it('should_show_empty_state_heading_when_no_upcoming_lessons', async () => {
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
 

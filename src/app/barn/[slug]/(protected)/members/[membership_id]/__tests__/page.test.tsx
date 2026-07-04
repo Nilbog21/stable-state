@@ -123,6 +123,18 @@ describe('MemberDetailPage', () => {
     expect(screen.getByRole('heading', { name: /bob trainer/i })).toBeDefined()
   })
 
+  it('should_render_documents_heading_in_text_sm', async () => {
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /^documents$/i }).className).toContain('text-sm')
+  })
+
+  it('should_render_upload_document_heading_in_text_sm', async () => {
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /upload document/i }).className).toContain('text-sm')
+  })
+
   it('should_show_trainer_documents_for_manager_viewing_trainer', async () => {
     vi.mocked(getTrainerDocuments).mockResolvedValue([mockTrainerDoc])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
