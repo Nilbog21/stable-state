@@ -5,7 +5,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { EmptyState } from '@/components/EmptyState'
-import { ManagedRiderRow } from './ManagedRiderRow'
+import { ManagedMemberRow } from './ManagedMemberRow'
 import { createManagedMemberAction } from './actions'
 
 export default async function MembersPage({
@@ -91,18 +91,49 @@ export default async function MembersPage({
           <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Trainers
           </h2>
+          <form action={createManagedMemberAction.bind(null, slug, 'trainer')} className="mb-4 flex items-center gap-2">
+            <input
+              name="first_name"
+              required
+              placeholder="First name"
+              className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+            <input
+              name="last_name"
+              required
+              placeholder="Last name"
+              className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+            <button
+              type="submit"
+              className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            >
+              Add Trainer
+            </button>
+          </form>
           {trainers.length > 0 ? (
             <ul className="space-y-2">
-              {trainers.map((t) => (
-                <li key={t.membershipId}>
-                  <Link
-                    href={`/barn/${slug}/members/${t.membershipId}`}
-                    className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    {t.name}
-                  </Link>
-                </li>
-              ))}
+              {trainers.map((t) =>
+                t.isManaged && t.inviteToken ? (
+                  <li key={t.membershipId}>
+                    <ManagedMemberRow
+                      name={t.name}
+                      barnSlug={slug}
+                      membershipId={t.membershipId}
+                      inviteToken={t.inviteToken}
+                    />
+                  </li>
+                ) : (
+                  <li key={t.membershipId}>
+                    <Link
+                      href={`/barn/${slug}/members/${t.membershipId}`}
+                      className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                    >
+                      {t.name}
+                    </Link>
+                  </li>
+                )
+              )}
             </ul>
           ) : (
             <EmptyState
@@ -119,7 +150,7 @@ export default async function MembersPage({
             Riders
           </h2>
           {membership.role === 'manager' && (
-            <form action={createManagedMemberAction.bind(null, slug)} className="mb-4 flex items-center gap-2">
+            <form action={createManagedMemberAction.bind(null, slug, 'rider')} className="mb-4 flex items-center gap-2">
               <input
                 name="first_name"
                 required
@@ -145,7 +176,7 @@ export default async function MembersPage({
               {riders.map((r) =>
                 r.isManaged && r.inviteToken ? (
                   <li key={r.membershipId}>
-                    <ManagedRiderRow
+                    <ManagedMemberRow
                       name={r.name}
                       barnSlug={slug}
                       membershipId={r.membershipId}

@@ -40,11 +40,15 @@ Use **Leases** and **Boarding** in the nav to manage rider agreements for a hors
 
 Go to **Members** to browse the barn roster. You will see a **Managers** section (other managers in the barn), a **Trainers** section, and a **Riders** section, each listing active members with links to their detail pages. Your own card appears at the top under **You**.
 
-**Adding a rider without an account** — At the top of the Riders section, enter a first and last name and tap **Add Rider**. This creates a record immediately so you can enter their lessons right away, even if they have not signed in yet. Managed riders show an **Unlinked** badge and two controls instead of a link:
-- **Copy invite** — copies a personal invite link to the clipboard. Share this with the rider; when they tap the link and sign in with Google, their account is automatically linked to the existing record and lesson history.
+**Adding a trainer without an account** — At the top of the Trainers section, enter a first and last name and tap **Add Trainer**. This creates a record immediately, with instructing permissions already enabled, so you can assign them to lessons right away, even if they have not signed in yet.
+
+**Adding a rider without an account** — At the top of the Riders section, enter a first and last name and tap **Add Rider**. This creates a record immediately so you can enter their lessons right away, even if they have not signed in yet.
+
+Managed trainers and riders both show an **Unlinked** badge and two controls instead of a link:
+- **Copy invite** — copies a personal invite link to the clipboard. Share this with them; when they tap the link and sign in with Google, their account is automatically linked to the existing record and lesson history.
 - **Revoke** — invalidates the current invite link and generates a new one. Use this if a link is shared with the wrong person. The previous link stops working immediately.
 
-Once a rider claims their invite, the **Unlinked** badge disappears and their row becomes a normal link to their detail page.
+Once someone claims their invite, the **Unlinked** badge disappears and their row becomes a normal link to their detail page.
 
 Tap any member card to open their detail page. Documents are shown in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap a filename in the **Link** column to open the document (link is valid for 5 minutes). Tap **Delete** to remove it. To add a new file, tap **Choose File**, select a file (the filename appears next to the button once chosen), add optional notes, and tap **Upload**. Accepted file types: PDF, JPG, PNG, DOCX (max 5 MB). Document types for managers and trainers: **Instructor Contract**, **Other**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other**.
 
