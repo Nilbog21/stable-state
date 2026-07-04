@@ -22,6 +22,10 @@ Update `ARCHITECTURE.md` whenever a migration or role change is committed.
 
 When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE_MANAGER.md`, `USER_GUIDE_TRAINER.md`, and/or `USER_GUIDE_RIDER.md`.
 
+## Pre-Release Checklist
+
+When a PR adds or modifies a UI route, workflow, or user-facing feature, update `PRE_RELEASE_TEST_CHECKLIST.md` — add or adjust a step in the relevant phase: Phase 1 (Setup), Phases 2–4 (Manager), Phase 5 (Trainer), Phase 6 (Rider), or Phase 7 (Multi-barn).
+
 ## Working Directory
 
 `specs/` is a personal, gitignored working directory. Ignore its contents.
