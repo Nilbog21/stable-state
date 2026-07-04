@@ -47,6 +47,11 @@ function dayOffset(base: Date, days: number, hour = 10): Date {
   return d
 }
 
+export function drawBar(current: number, total: number, width = 20): string {
+  const filled = Math.round((current / total) * width)
+  return `[${'#'.repeat(filled)}${' '.repeat(width - filled)}]`
+}
+
 export function buildLessonDates(now: Date): Date[] {
   const dates: Date[] = []
   for (let m = 3; m >= 1; m--) {
@@ -202,7 +207,9 @@ async function run() {
   const retiredHorse = await createHorse(DEV_BARN_ID, DEV_RETIRED_HORSE, supabase)
 
   const lessonDates = buildLessonDates(now)
+  const lessonTotal = lessonDates.length
 
+  process.stdout.write(`Seeding lessons ${drawBar(0, lessonTotal)} 0/${lessonTotal}`)
   for (let i = 0; i < lessonDates.length; i++) {
     const instructorId = trainerIds[i % trainerIds.length]
     const { fee, jumping, exertionLevel, tierName } = getLessonVariation(i, tier1, tier2)
@@ -220,7 +227,10 @@ async function run() {
       jumping,
       tierName,
     }, supabase)
+
+    process.stdout.write(`\rSeeding lessons ${drawBar(i + 1, lessonTotal)} ${i + 1}/${lessonTotal}`)
   }
+  process.stdout.write('\n')
 
   for (const daysAgo of [75, 60]) {
     await createLessonWithParticipants({
