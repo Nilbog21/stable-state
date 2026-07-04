@@ -205,11 +205,16 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   return base as LessonDetail
 }
 
-export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
+export async function cancelLesson(lessonId: string, barnId: string, notes?: string | null): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase
     .from('lessons')
-    .delete()
+    .update({
+      cancelled_at: new Date().toISOString(),
+      fee: 0,
+      payment_type: null,
+      cancellation_notes: notes ?? null,
+    })
     .eq('id', lessonId)
     .eq('barn_id', barnId)
 

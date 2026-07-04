@@ -18,6 +18,8 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 **Edit a lesson** — Open any of your lessons and click **Edit**. You can update the date, horse, rider, fee tier, and other fields. The instructor field shows your name and cannot be changed. Adding a new horse or rider inline is not available during an edit — contact your barn manager if you need to add a participant that is not in the list. Unavailable horses that were already assigned to the lesson remain shown (checked but grayed out) and will stay on the lesson when saved.
 
+**Cancel a lesson** — For eligible lessons you instruct (upcoming, or unpaid), click **Cancel** on the Lessons list, optionally add a note explaining why, and confirm. The lesson stays on the list with a **Cancelled** badge instead of being removed, its fee is zeroed, and it drops off Outstanding. Cancelling notifies your barn manager(s) and enrolled riders.
+
 **Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only.
 
 ## Outstanding payments
@@ -26,7 +28,10 @@ If you have past lessons with unpaid balances, you will receive a notification. 
 
 ## Notifications
 
-Tap the bell icon in the nav bar to view your notifications. If your profile is missing a phone number or emergency contact, you will receive a **Complete your profile** notification — tap it to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
+Tap the bell icon in the nav bar to view your notifications.
+
+- **Lesson cancelled** — a lesson you instructed was cancelled by a manager. Tap the notification to open the lesson.
+- **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
 
 ## Horses
 

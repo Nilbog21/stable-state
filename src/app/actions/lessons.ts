@@ -1,10 +1,11 @@
 'use server'
 
 import { requireMembership } from '@/lib/auth/guard'
-import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes } from '@/lib/db/lesson-participants'
 import type { PaymentType } from '@/lib/db/types'
-import { getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 
@@ -216,18 +217,62 @@ export async function updateLessonAction(
   redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
 }
 
-export async function deleteLessonAction(
+export async function cancelLessonAction(
   barnId: string,
   barnSlug: string,
-  lessonId: string
-): Promise<{ error: string }> {
-  await requireMembership(barnSlug, ['manager'])
+  lessonId: string,
+  formData: FormData
+): Promise<void> {
+  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  try {
-    await deleteLesson(lessonId, barnId)
-  } catch {
-    return { error: 'Failed to delete lesson' }
+  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  if (!lesson) {
+    redirect(`/barn/${barnSlug}/lessons`)
+    return
   }
+
+  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) {
+    redirect(`/barn/${barnSlug}/lessons`)
+    return
+  }
+
+  const isEligible =
+    lesson.cancelled_at === null &&
+    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+  if (!isEligible) {
+    redirect(`/barn/${barnSlug}/lessons`)
+    return
+  }
+
+  const notes = (formData.get('notes') as string | null)?.trim() || null
+  await cancelLesson(lessonId, barnId, notes)
+
+  const riderUserIds = lesson.lesson_riders
+    .map((lr) => lr.barn_membership?.user_id)
+    .filter((id): id is string => id != null)
+
+  let recipientIds: string[]
+  if (membership.role === 'trainer') {
+    const barnMembers = await getActiveMemberships(barnId)
+    const managerUserIds = barnMembers
+      .filter((m) => m.role === 'manager' && m.user_id !== null)
+      .map((m) => m.user_id as string)
+    recipientIds = [...managerUserIds, ...riderUserIds]
+  } else {
+    recipientIds = lesson.instructor_id ? [lesson.instructor_id, ...riderUserIds] : riderUserIds
+  }
+
+  await Promise.allSettled(
+    recipientIds.map((userId) =>
+      createNotification({
+        userId,
+        barnId,
+        type: 'lesson_cancelled',
+        title: 'Lesson cancelled',
+        link: `/barn/${barnSlug}/lessons/${lessonId}`,
+      })
+    )
+  )
 
   redirect(`/barn/${barnSlug}/lessons`)
 }

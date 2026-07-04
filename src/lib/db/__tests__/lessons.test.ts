@@ -8,7 +8,7 @@ vi.mock('@/lib/supabase/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import {
   createLesson,
-  deleteLesson,
+  cancelLesson,
   getLessonsByBarn,
   getLessonById,
   getUpcomingLessons,
@@ -83,35 +83,66 @@ describe('createLesson', () => {
   })
 })
 
-describe('deleteLesson', () => {
+describe('cancelLesson', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('should_delete_lesson_by_id_and_barn_id', async () => {
-    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
+  function makeCancelChain(error: Error | null = null) {
+    const mockEq2 = vi.fn().mockResolvedValue({ error })
     const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ delete: mockDelete }),
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
     } as any)
+    return { mockUpdate, mockEq1, mockEq2 }
+  }
 
-    await deleteLesson('lesson-1', 'barn-1')
+  it('should_set_cancelled_at_to_current_timestamp', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1')
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancelled_at: expect.any(String) }))
+  })
 
-    expect(mockDelete).toHaveBeenCalled()
+  it('should_zero_the_fee', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1')
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ fee: 0 }))
+  })
+
+  it('should_null_out_payment_type', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1')
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ payment_type: null }))
+  })
+
+  it('should_save_cancellation_notes_when_provided', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1', 'Trainer unavailable')
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancellation_notes: 'Trainer unavailable' }))
+  })
+
+  it('should_save_null_cancellation_notes_when_omitted', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1')
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancellation_notes: null }))
+  })
+
+  it('should_filter_by_lesson_id', async () => {
+    const { mockEq1 } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1')
     expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockEq2 } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1')
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
-    const mockEq2 = vi.fn().mockResolvedValue({ error: new Error('db error') })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ delete: mockDelete }),
-    } as any)
-
-    await expect(deleteLesson('lesson-1', 'barn-1')).rejects.toThrow('db error')
+    makeCancelChain(new Error('db error'))
+    await expect(cancelLesson('lesson-1', 'barn-1')).rejects.toThrow('db error')
   })
 })
 

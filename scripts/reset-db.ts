@@ -275,7 +275,16 @@ async function run() {
     )
   }
 
-  const paidCount = pastLessons.filter((_: unknown, i: number) => getPaymentType(i, true) !== null).length
+  const cancelledLesson = pastLessons[0]
+  mustSucceed(
+    await supabase
+      .from('lessons')
+      .update({ cancelled_at: now.toISOString(), fee: 0, payment_type: null, cancellation_notes: 'Seeded example cancellation' })
+      .eq('id', cancelledLesson.id),
+    'cancel seeded lesson'
+  )
+
+  const paidCount = pastLessons.filter((_: unknown, i: number) => getPaymentType(i, true) !== null).length - 1
   const groupCount = lessonDates.filter((_, i) => isGroupLesson(i)).length
 
   console.log('Done. Dev database reset to known state:')
@@ -286,7 +295,7 @@ async function run() {
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 2 past lessons)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
-  console.log(`  Lessons:  ${lessonDates.length + 2} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid`)
+  console.log(`  Lessons:  ${lessonDates.length + 2} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

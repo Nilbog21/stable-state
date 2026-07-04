@@ -15,6 +15,8 @@ const baseLesson = {
   jumping: false as const,
   payment_type: null,
   tier_name: 'Custom',
+  cancelled_at: null,
+  cancellation_notes: null,
 }
 
 const normalLesson = {
@@ -35,21 +37,19 @@ const groupLesson = {
   rider_count: 3,
 }
 
-const deleteAction = async () => {}
-
 describe('LessonListItem', () => {
   it('should_show_horse_name_for_normal_lesson', () => {
-    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} deleteAction={deleteAction} />)
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentUserId="user-1" />)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
   it('should_show_rider_name_for_normal_lesson', () => {
-    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} deleteAction={deleteAction} />)
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentUserId="user-1" />)
     expect(screen.getByText('Alice')).toBeDefined()
   })
 
   it('should_show_counts_for_group_lesson', () => {
-    render(<LessonListItem lesson={groupLesson} slug="green-acres" isManager={false} deleteAction={deleteAction} />)
+    render(<LessonListItem lesson={groupLesson} slug="green-acres" isManager={false} isTrainer={false} currentUserId="user-1" />)
     expect(screen.getByText('3 riders, 2 horses')).toBeDefined()
   })
 
@@ -59,7 +59,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, horse_names: [], horse_count: 0 }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText('Thunderbolt')).toBeNull()
@@ -71,7 +72,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, rider_names: [], rider_count: 0 }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText('Alice')).toBeNull()
@@ -83,7 +85,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, fee: 75, tier_name: 'Premium' }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.getByText('$75 · Premium')).toBeDefined()
@@ -95,7 +98,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, fee: null, tier_name: 'Custom' }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.getByText('Custom')).toBeDefined()
@@ -107,7 +111,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, fee: null, tier_name: 'Group Rate' }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.getByText('Group Rate')).toBeDefined()
@@ -119,7 +124,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, jumping: true }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.getByText('Thunderbolt · Jumping')).toBeDefined()
@@ -131,7 +137,8 @@ describe('LessonListItem', () => {
         lesson={normalLesson}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText(/Jumping/)).toBeNull()
@@ -143,7 +150,8 @@ describe('LessonListItem', () => {
         lesson={{ ...groupLesson, jumping: true }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.getByText('3 riders, 2 horses · Jumping')).toBeDefined()
@@ -155,7 +163,8 @@ describe('LessonListItem', () => {
         lesson={groupLesson}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText(/Jumping/)).toBeNull()
@@ -167,7 +176,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: null }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.getByText('Unpaid')).toBeDefined()
@@ -179,7 +189,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -191,7 +202,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: null, payment_type: null }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -203,7 +215,8 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: 'cash' }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -215,9 +228,153 @@ describe('LessonListItem', () => {
         lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', fee: 75, payment_type: null }}
         slug="green-acres"
         isManager={false}
-        deleteAction={deleteAction}
+        isTrainer={false}
+        currentUserId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_show_cancelled_badge_when_cancelled_at_is_set', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, cancelled_at: '2026-01-01T00:00:00Z' }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.getByText('Cancelled')).toBeDefined()
+  })
+
+  it('should_not_show_cancelled_badge_when_cancelled_at_is_null', () => {
+    render(
+      <LessonListItem
+        lesson={normalLesson}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.queryByText('Cancelled')).toBeNull()
+  })
+
+  it('should_not_show_unpaid_badge_when_lesson_is_cancelled', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null, cancelled_at: '2026-01-01T00:00:00Z' }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.queryByText('Unpaid')).toBeNull()
+  })
+
+  it('should_show_cancel_link_for_manager_on_eligible_future_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }}
+        slug="green-acres"
+        isManager={true}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+  })
+
+  it('should_show_cancel_link_for_manager_on_eligible_unpaid_past_lesson', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-01-01T10:00:00Z', payment_type: null }}
+        slug="green-acres"
+        isManager={true}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+  })
+
+  it('should_not_show_cancel_link_when_already_cancelled', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', cancelled_at: '2026-01-01T00:00:00Z' }}
+        slug="green-acres"
+        isManager={true}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_not_show_cancel_link_when_past_and_paid', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-01-01T10:00:00Z', payment_type: 'cash' }}
+        slug="green-acres"
+        isManager={true}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_show_cancel_link_for_trainer_who_is_the_instructor', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, instructor_id: 'user-1', lesson_at: '2099-01-01T10:00:00Z' }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={true}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+  })
+
+  it('should_not_show_cancel_link_for_trainer_who_is_not_the_instructor', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, instructor_id: 'other-trainer', lesson_at: '2099-01-01T10:00:00Z' }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={true}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_not_show_cancel_link_for_rider', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_link_cancel_button_to_cancel_route', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }}
+        slug="green-acres"
+        isManager={true}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/cancel')
   })
 })

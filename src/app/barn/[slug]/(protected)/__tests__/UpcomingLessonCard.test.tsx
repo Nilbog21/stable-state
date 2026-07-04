@@ -84,4 +84,14 @@ describe('UpcomingLessonCard', () => {
     const link = screen.getByRole('link') as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/lessons/lesson-123')
   })
+
+  it('should_show_cancelled_badge_when_cancelled_at_is_set', () => {
+    render(<UpcomingLessonCard lesson={makeLesson({ cancelled_at: '2026-01-01T00:00:00Z' })} role="manager" slug="green-acres" />)
+    expect(screen.getByText('Cancelled')).toBeDefined()
+  })
+
+  it('should_not_show_cancelled_badge_when_cancelled_at_is_null', () => {
+    render(<UpcomingLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
+    expect(screen.queryByText('Cancelled')).toBeNull()
+  })
 })

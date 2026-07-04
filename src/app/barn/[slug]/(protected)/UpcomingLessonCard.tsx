@@ -34,6 +34,9 @@ export function UpcomingLessonCard({
     >
       {/* suppressHydrationWarning: server (UTC) and client (local TZ) produce different strings */}
       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50" suppressHydrationWarning>{display}</p>
+      {lesson.cancelled_at !== null && (
+        <span className="mt-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+      )}
       {lesson.horse_names.length > 0 && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
           {lesson.horse_names.join(', ')}

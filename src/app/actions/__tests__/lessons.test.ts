@@ -7,7 +7,7 @@ vi.mock('@/lib/auth/guard', () => ({
 }))
 
 vi.mock('@/lib/db/lessons', () => ({
-  deleteLesson: vi.fn(),
+  cancelLesson: vi.fn(),
   getLessonById: vi.fn(),
   updateLesson: vi.fn(),
 }))
@@ -22,6 +22,11 @@ vi.mock('@/lib/db/lesson-participants', () => ({
 vi.mock('@/lib/db/barn-memberships', () => ({
   getInstructorsByBarn: vi.fn(),
   getActiveMembersWithProfiles: vi.fn(),
+  getActiveMemberships: vi.fn(),
+}))
+
+vi.mock('@/lib/db/notifications', () => ({
+  createNotification: vi.fn(),
 }))
 
 vi.mock('@/lib/db/horses', () => ({
@@ -34,12 +39,13 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes } from '@/lib/db/lesson-participants'
-import { getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
-import { submitLesson, deleteLessonAction, updateLessonAction, updatePaymentTypeAction } from '../lessons'
+import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction } from '../lessons'
 
 const mockBarn = createMockBarn()
 const mockLesson = createMockLesson({ fee: null, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
@@ -493,35 +499,181 @@ describe('submitLesson', () => {
   })
 })
 
-describe('deleteLessonAction', () => {
+function makeLessonDetail(
+  overrides: Partial<ReturnType<typeof createMockLesson>> = {},
+  riderUserIds: (string | null)[] = []
+) {
+  return {
+    ...createMockLesson(overrides),
+    instructor_name: null,
+    lesson_horses: [],
+    lesson_riders: riderUserIds.map((userId) => ({
+      rider_notes: null,
+      private_notes: null,
+      barn_membership: { id: 'mem', user_id: userId, name: 'Rider' },
+    })),
+  }
+}
+
+const futureIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+const pastIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
+
+describe('cancelLessonAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
-    vi.mocked(deleteLesson).mockReset()
+    vi.mocked(getLessonById).mockReset()
+    vi.mocked(cancelLesson).mockReset()
+    vi.mocked(getActiveMemberships).mockReset()
+    vi.mocked(createNotification).mockReset()
     vi.mocked(redirect).mockReset()
     guardAs(mockManagerMembership)
-    vi.mocked(deleteLesson).mockResolvedValue(undefined)
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null })
+    )
+    vi.mocked(cancelLesson).mockResolvedValue(undefined)
+    vi.mocked(getActiveMemberships).mockResolvedValue([])
+    vi.mocked(createNotification).mockResolvedValue(undefined)
   })
 
-  it('should_call_deleteLesson_when_user_is_manager', async () => {
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
-    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
-  })
-
-  it('should_redirect_after_deletion_when_manager', async () => {
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+  it('should_redirect_to_lessons_list_when_lesson_not_found', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(null)
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
   })
 
-  it('should_return_error_when_deleteLesson_throws', async () => {
-    vi.mocked(deleteLesson).mockRejectedValue(new Error('db error'))
-    const result = await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
-    expect(result).toEqual({ error: 'Failed to delete lesson' })
+  it('should_not_call_cancelLesson_when_lesson_not_found', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(null)
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).not.toHaveBeenCalled()
   })
 
-  it('should_not_redirect_when_deleteLesson_throws', async () => {
-    vi.mocked(deleteLesson).mockRejectedValue(new Error('db error'))
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
-    expect(redirect).not.toHaveBeenCalled()
+  it('should_redirect_to_lessons_list_when_trainer_is_not_the_instructor', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'other-trainer', lesson_at: futureIso }))
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+  })
+
+  it('should_call_cancelLesson_when_manager_cancels_eligible_lesson', async () => {
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+  })
+
+  it('should_call_cancelLesson_when_trainer_cancels_own_eligible_lesson', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'user-1', lesson_at: futureIso }))
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+  })
+
+  it('should_redirect_without_calling_cancelLesson_when_already_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ lesson_at: futureIso, cancelled_at: '2026-01-01T00:00:00Z' })
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_without_calling_cancelLesson_when_past_and_paid', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ lesson_at: pastIso, payment_type: 'cash', cancelled_at: null })
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_allow_cancellation_of_future_paid_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ lesson_at: futureIso, payment_type: 'cash', cancelled_at: null })
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).toHaveBeenCalled()
+  })
+
+  it('should_allow_cancellation_of_past_unpaid_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ lesson_at: pastIso, payment_type: null, cancelled_at: null })
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).toHaveBeenCalled()
+  })
+
+  it('should_trim_and_pass_notes_when_provided', async () => {
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ notes: '  Trainer sick  ' }))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', 'Trainer sick')
+  })
+
+  it('should_pass_null_notes_when_textarea_whitespace_only', async () => {
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ notes: '   ' }))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+  })
+
+  it('should_notify_barn_managers_when_trainer_cancels', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'user-1', lesson_at: futureIso }))
+    vi.mocked(getActiveMemberships).mockResolvedValue([
+      createMockMembership({ role: 'manager', user_id: 'manager-1' }),
+    ])
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'manager-1', type: 'lesson_cancelled' })
+    )
+  })
+
+  it('should_notify_instructor_when_manager_cancels', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }))
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ userId: 'instructor-1', type: 'lesson_cancelled' })
+    )
+  })
+
+  it('should_not_notify_instructor_when_instructor_id_is_null', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: null, lesson_at: futureIso }))
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(createNotification).not.toHaveBeenCalled()
+  })
+
+  it('should_notify_first_enrolled_rider_with_linked_account', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'])
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-1' }))
+  })
+
+  it('should_notify_second_enrolled_rider_with_linked_account', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'])
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-2' }))
+  })
+
+  it('should_not_notify_riders_with_null_user_id', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: null, lesson_at: futureIso }, [null])
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(createNotification).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_getActiveMemberships_when_manager_cancels', async () => {
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(getActiveMemberships).not.toHaveBeenCalled()
+  })
+
+  it('should_link_notification_to_the_lesson_detail_page', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }))
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(createNotification).toHaveBeenCalledWith(
+      expect.objectContaining({ link: '/barn/barn-slug/lessons/lesson-1' })
+    )
+  })
+
+  it('should_redirect_to_lessons_list_after_successful_cancellation', async () => {
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
   })
 })
 

@@ -48,7 +48,7 @@ Tap any member card to open their detail page. Documents are shown in a table wi
 
 **Edit a lesson** — Open any lesson from the Lessons list and click **Edit**. All fields are editable. Downgrading a group lesson to a normal lesson requires selecting one rider and one horse to keep. Unavailable horses that were already assigned to the lesson remain shown (checked but grayed out) and will stay on the lesson when saved.
 
-**Delete a lesson** — From the Lessons list, click the delete icon on any lesson.
+**Cancel a lesson** — For eligible lessons (upcoming, or unpaid), click **Cancel** on the Lessons list, optionally add a note explaining why, and confirm. The lesson stays on the list with a **Cancelled** badge instead of being removed, its fee is zeroed, and it drops off Outstanding and income totals. Cancelling notifies the instructor and enrolled riders.
 
 **Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
 
@@ -79,6 +79,6 @@ If you are a member of more than one barn, a **▾** caret appears next to the b
 You will receive notifications for situations that need attention. Tap the bell icon in the nav bar to view them; tap **Mark all read** to dismiss them.
 
 - **New membership request** — a rider has requested to join the barn. Tap the notification to go to **Settings** and approve or reject the request.
-- **Lesson cancelled** — a lesson you instructed has been cancelled.
+- **Lesson cancelled** — a lesson you instructed was cancelled by another manager, or a trainer cancelled a lesson somewhere in the barn.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go to your profile and fill in the missing fields.
 - **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.

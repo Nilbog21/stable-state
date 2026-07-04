@@ -67,6 +67,8 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
     jumping: false,
     payment_type: null,
     tier_name: 'Custom',
+    cancelled_at: null,
+    cancellation_notes: null,
     ...overrides,
   }
 }

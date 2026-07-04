@@ -23,16 +23,6 @@ vi.mock('next/navigation', () => ({
   notFound: vi.fn(),
 }))
 
-vi.mock('@/app/actions/lessons', () => ({
-  deleteLessonAction: vi.fn(),
-}))
-
-vi.mock('../DeleteLessonButton', () => ({
-  DeleteLessonButton: ({ action }: { action: () => void }) => (
-    <button type="button" onClick={action}>Delete</button>
-  ),
-}))
-
 vi.mock('../OlderLessonsToggle', () => ({
   OlderLessonsToggle: () => null,
 }))
@@ -58,6 +48,12 @@ const mockLesson = {
   fee: 75,
   lesson_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
   submitted_at: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
+  lesson_type: 'normal' as const,
+  jumping: false,
+  payment_type: null,
+  tier_name: 'Custom',
+  cancelled_at: null,
+  cancellation_notes: null,
   instructor_name: 'John Doe',
   horse_names: ['Thunderbolt'],
   horse_ids: ['horse-1'],
@@ -182,18 +178,18 @@ describe('LessonsPage', () => {
     expect(screen.queryByRole('link', { name: /new lesson/i })).toBeNull()
   })
 
-  it('should_not_show_delete_button_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
-  })
-
-  it('should_show_delete_button_for_manager', async () => {
+  it('should_show_cancel_link_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+  })
+
+  it('should_show_cancel_link_for_trainer_on_own_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
   })
 
   it('should_show_new_lesson_link_for_trainer', async () => {
