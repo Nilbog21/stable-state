@@ -74,6 +74,8 @@ Tap any member card to open their detail page. Documents are shown in a table wi
 
 **View expenses** — Go to **Expenses** to see recent spending. Older expenses are hidden by default; tap **Show older expenses** to expand them. Each row shows the date, time (if scheduled), who was paid, the expense type, which horse(s) it covers (or "Entire Barn"), and the amount — shown as a dash if not yet entered.
 
+**Add an expense** — Tap **Add Expense**. Enter who was paid and pick a date; everything else is optional. Leave the amount blank to log a planned visit (like a farrier appointment scheduled for next week) and fill it in later once you know the cost, or enter it right away for something you're paying for on the spot. If you've paid this recipient before, the expense type fills in automatically based on what you've entered for them in the past — you can still change it. Check **Entire Barn** if the expense covers every horse, or check off specific horses instead.
+
 **Delete an expense** — Click **Delete** on any expense row, then confirm. This cannot be undone.
 
 ## Finances
