@@ -587,6 +587,35 @@ describe('getRiderEnrolledLessonIds', () => {
     expect(result).toEqual([])
   })
 
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const mockFrom = vi.fn()
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    })
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await getRiderEnrolledLessonIds('barn-1', 'user-1', injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('should_return_empty_array_when_rider_has_no_enrollments', async () => {
     const mockFrom = vi.fn()
     mockFrom.mockReturnValueOnce({
@@ -646,6 +675,35 @@ describe('getRiderEnrolledLessonIds', () => {
     const result = await getRiderEnrolledLessonIds('barn-1', 'user-1')
 
     expect(result).toEqual(['lesson-1', 'lesson-2'])
+  })
+
+  it('should_treat_null_enrollments_data_as_empty', async () => {
+    const mockFrom = vi.fn()
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    })
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getRiderEnrolledLessonIds('barn-1', 'user-1')
+
+    expect(result).toEqual([])
   })
 
   it('should_throw_when_barn_memberships_query_fails', async () => {
