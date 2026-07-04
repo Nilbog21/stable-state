@@ -202,6 +202,8 @@ No API routes. All mutations go through Next.js Server Actions.
 
 `update_expense_with_horses(p_expense_id, p_barn_id, p_expense_date, p_recipient, p_applies_to_all_horses, p_expense_time, p_amount, p_expense_type, p_notes, p_horse_ids[])` — atomically updates the `horse_expenses` row and replaces its `expense_horses` junction rows (delete then insert) in one transaction, avoiding the partial-write window where a concurrent read (or a failed insert) would see zero horse assignments. `SECURITY INVOKER`; `EXECUTE` granted to `authenticated`. Used by `updateExpense` in `expenses.ts`.
 
+`create_or_update_notification(p_user_id, p_barn_id, p_type, p_title, p_body, p_link)` — atomically upserts a `notifications` row via `INSERT ... ON CONFLICT (user_id, barn_id, type) DO UPDATE`. `SECURITY DEFINER`, since Postgres requires the `DO UPDATE` clause to satisfy the table's `notifications_update_own` (self-only) UPDATE policy even when no conflict actually occurs — this made every cross-user notification (`lesson_cancelled`, `pending_approval`, etc.) fail RLS outright when called directly against the table. No additional authorization check is added; matches `notifications_insert_authenticated`'s existing permissive-by-design trust model (the calling server action has already authorized the recipient). `EXECUTE` revoked from `PUBLIC` and granted to `authenticated`. Used by `createNotification` in `notifications.ts`.
+
 ## Feature anatomy
 
 Canonical file-touch sequence for any new feature:
