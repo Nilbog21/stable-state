@@ -9,7 +9,7 @@ interface Props {
   inviteToken: string
 }
 
-export function ManagedRiderRow({ name, barnSlug, membershipId, inviteToken }: Props) {
+export function ManagedMemberRow({ name, barnSlug, membershipId, inviteToken }: Props) {
   return (
     <div className="flex items-center justify-between rounded-lg border border-zinc-200 px-4 py-3 dark:border-zinc-700">
       <span className="flex items-center gap-2 text-sm font-medium text-zinc-900 dark:text-zinc-50">

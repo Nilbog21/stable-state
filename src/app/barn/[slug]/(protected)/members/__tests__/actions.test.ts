@@ -35,45 +35,51 @@ describe('createManagedMemberAction', () => {
     vi.mocked(createManagedMember).mockResolvedValue({ membershipId: 'mem-new' })
   })
 
-  it('should_call_createManagedMember_with_name_fields', async () => {
+  it('should_call_createManagedMember_with_name_fields_and_rider_role', async () => {
     const fd = makeFormData({ first_name: 'Alex', last_name: 'Smith' })
-    await createManagedMemberAction('green-acres', fd)
+    await createManagedMemberAction('green-acres', 'rider', fd)
     expect(createManagedMember).toHaveBeenCalledWith('barn-1', 'Alex', 'Smith', 'rider')
+  })
+
+  it('should_call_createManagedMember_with_name_fields_and_trainer_role', async () => {
+    const fd = makeFormData({ first_name: 'Alex', last_name: 'Smith' })
+    await createManagedMemberAction('green-acres', 'trainer', fd)
+    expect(createManagedMember).toHaveBeenCalledWith('barn-1', 'Alex', 'Smith', 'trainer')
   })
 
   it('should_require_manager_role', async () => {
     const fd = makeFormData({ first_name: 'Alex', last_name: 'Smith' })
-    await createManagedMemberAction('green-acres', fd)
+    await createManagedMemberAction('green-acres', 'rider', fd)
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
   it('should_revalidate_members_path_after_creation', async () => {
     const fd = makeFormData({ first_name: 'Alex', last_name: 'Smith' })
-    await createManagedMemberAction('green-acres', fd)
+    await createManagedMemberAction('green-acres', 'rider', fd)
     expect(mockRevalidatePath).toHaveBeenCalledWith('/barn/green-acres/members')
   })
 
   it('should_not_call_createManagedMember_when_first_name_is_missing', async () => {
     const fd = makeFormData({ first_name: '', last_name: 'Smith' })
-    await createManagedMemberAction('green-acres', fd)
+    await createManagedMemberAction('green-acres', 'rider', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 
   it('should_not_call_createManagedMember_when_last_name_is_missing', async () => {
     const fd = makeFormData({ first_name: 'Alex', last_name: '' })
-    await createManagedMemberAction('green-acres', fd)
+    await createManagedMemberAction('green-acres', 'rider', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 
   it('should_not_call_createManagedMember_when_first_name_field_is_absent', async () => {
     const fd = makeFormData({ last_name: 'Smith' })
-    await createManagedMemberAction('green-acres', fd)
+    await createManagedMemberAction('green-acres', 'rider', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 
   it('should_not_call_createManagedMember_when_last_name_field_is_absent', async () => {
     const fd = makeFormData({ first_name: 'Alex' })
-    await createManagedMemberAction('green-acres', fd)
+    await createManagedMemberAction('green-acres', 'rider', fd)
     expect(createManagedMember).not.toHaveBeenCalled()
   })
 })
