@@ -163,6 +163,39 @@ export interface RiderIncomeSummary {
   totalIncome: number
 }
 
+export interface OutstandingCharge {
+  id: string
+  period: string
+  kind: AgreementKind
+  riderName: string
+  fee: number
+}
+
+export interface OutstandingItem {
+  id: string
+  itemType: 'lesson' | 'lease' | 'board'
+  date: string
+  instructorName: string | null
+  riderNames: string[]
+  fee: number | null
+}
+
+export interface HorseChargeDetailRow {
+  chargeId: string
+  agreementId: string
+  period: string
+  kind: AgreementKind
+  fee: number
+}
+
+export interface RiderChargeDetailRow {
+  chargeId: string
+  agreementId: string
+  period: string
+  kind: AgreementKind
+  fee: number
+}
+
 export interface HorseIncomeDetailRow {
   lessonId: string
   lessonAt: string
