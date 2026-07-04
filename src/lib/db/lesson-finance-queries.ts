@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
+import { getUserMembership } from './barn-memberships'
 import type { Lesson, Role } from './types'
 
 /**
@@ -85,7 +86,9 @@ export async function getOutstandingLessonRows(
     .lt('lesson_at', now.toISOString())
 
   if (role === 'trainer' && userId) {
-    query = query.eq('instructor_id', userId)
+    const callerMembership = await getUserMembership(userId, barnId)
+    if (!callerMembership) return []
+    query = query.eq('instructor_id', callerMembership.id)
   }
 
   const { data, error } = await query.order('lesson_at', { ascending: true })

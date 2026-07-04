@@ -25,7 +25,6 @@ import {
   getTierPricesByNames,
   getOutstandingLessonRows,
   getLessonRidersForLessons,
-  getProfileNamesByUserIds,
   getPaidLessonFees,
   getLessonHorsesForLessons,
   getPaidLessonInstructorFees,
@@ -391,7 +390,6 @@ describe('getOutstandingLessons', () => {
   beforeEach(() => {
     vi.mocked(getOutstandingLessonRows).mockReset()
     vi.mocked(getLessonRidersForLessons).mockReset()
-    vi.mocked(getProfileNamesByUserIds).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
   })
 
@@ -423,7 +421,6 @@ describe('getOutstandingLessons', () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -435,7 +432,6 @@ describe('getOutstandingLessons', () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -447,7 +443,6 @@ describe('getOutstandingLessons', () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
     const result = await getOutstandingLessons('barn-1')
@@ -459,7 +454,6 @@ describe('getOutstandingLessons', () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-orphan' }])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -467,23 +461,21 @@ describe('getOutstandingLessons', () => {
     expect(result[0].rider_names).toEqual([])
   })
 
-  it('should_include_instructor_name_from_resolved_profiles', async () => {
-    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'user-1' })
+  it('should_include_instructor_name_resolved_from_membership_map', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Doe' }])
-    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-instructor', 'Jane Doe']]))
 
     const result = await getOutstandingLessons('barn-1')
 
     expect(result[0].instructor_name).toBe('Jane Doe')
   })
 
-  it('should_return_null_instructor_name_when_no_matching_profile', async () => {
-    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'user-1' })
+  it('should_return_null_instructor_name_when_not_found_in_membership_map', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -491,24 +483,22 @@ describe('getOutstandingLessons', () => {
     expect(result[0].instructor_name).toBeNull()
   })
 
-  it('should_deduplicate_instructor_ids_before_resolving_profiles', async () => {
-    const lesson1 = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'user-1' })
-    const lesson2 = createMockLesson({ id: 'lesson-2', fee: 50, instructor_id: 'user-1' })
+  it('should_deduplicate_instructor_ids_before_resolving_names', async () => {
+    const lesson1 = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
+    const lesson2 = createMockLesson({ id: 'lesson-2', fee: 50, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson1, lesson2])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     await getOutstandingLessons('barn-1')
 
-    expect(getProfileNamesByUserIds).toHaveBeenCalledWith(expect.anything(), ['user-1'])
+    expect(resolveMemberNames).toHaveBeenCalledWith(['mem-instructor'], 'barn-1', expect.anything())
   })
 
   it('should_resolve_member_names_scoped_to_barn', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     await getOutstandingLessons('barn-1')
@@ -526,18 +516,17 @@ describe('getOutstandingLessons', () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockRejectedValue(new Error('lr error'))
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
 
     await expect(getOutstandingLessons('barn-1')).rejects.toThrow('lr error')
   })
 
-  it('should_throw_when_getProfileNamesByUserIds_rejects', async () => {
-    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'user-1' })
+  it('should_throw_when_resolveMemberNames_rejects', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
-    vi.mocked(getProfileNamesByUserIds).mockRejectedValue(new Error('profiles error'))
+    vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
-    await expect(getOutstandingLessons('barn-1')).rejects.toThrow('profiles error')
+    await expect(getOutstandingLessons('barn-1')).rejects.toThrow('resolve error')
   })
 })
 
@@ -956,7 +945,7 @@ describe('getRiderIncomeSummary', () => {
 describe('getTrainerIncomeSummary', () => {
   beforeEach(() => {
     vi.mocked(getPaidLessonInstructorFees).mockReset()
-    vi.mocked(getProfileNamesByUserIds).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getChargesForSummary).mockReset()
     vi.mocked(getChargesForSummary).mockResolvedValue([])
   })
@@ -981,51 +970,51 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_return_empty_when_all_lessons_have_null_fee', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'user-1', fee: null }])
+    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: null }])
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
     expect(result).toEqual([])
   })
 
-  it('should_not_fetch_profiles_when_no_collected_lessons', async () => {
+  it('should_not_resolve_member_names_when_no_collected_lessons', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
 
     await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(getProfileNamesByUserIds).not.toHaveBeenCalled()
+    expect(resolveMemberNames).not.toHaveBeenCalled()
   })
 
   it('should_return_full_fee_for_single_trainer', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'user-1', fee: 100 }])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' }])
+    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ trainerId: 'user-1', trainerName: 'Jane Smith', totalIncome: 100 }])
+    expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 100 }])
   })
 
   it('should_aggregate_income_across_multiple_lessons_for_same_trainer', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
-      { instructor_id: 'user-1', fee: 100 },
-      { instructor_id: 'user-1', fee: 75 },
+      { instructor_id: 'mem-trainer-1', fee: 100 },
+      { instructor_id: 'mem-trainer-1', fee: 75 },
     ])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' }])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ trainerId: 'user-1', trainerName: 'Jane Smith', totalIncome: 175 }])
+    expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 175 }])
   })
 
   it('should_return_two_entries_for_two_trainers', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
-      { instructor_id: 'user-1', fee: 100 },
-      { instructor_id: 'user-2', fee: 50 },
+      { instructor_id: 'mem-trainer-1', fee: 100 },
+      { instructor_id: 'mem-trainer-2', fee: 50 },
     ])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([
-      { user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' },
-      { user_id: 'user-2', first_name: 'Bob', last_name: 'Jones' },
-    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([
+      ['mem-trainer-1', 'Jane Smith'],
+      ['mem-trainer-2', 'Bob Jones'],
+    ]))
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
@@ -1034,26 +1023,26 @@ describe('getTrainerIncomeSummary', () => {
 
   it('should_sort_descending_by_total_income', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
-      { instructor_id: 'user-1', fee: 50 },
-      { instructor_id: 'user-2', fee: 100 },
+      { instructor_id: 'mem-trainer-1', fee: 50 },
+      { instructor_id: 'mem-trainer-2', fee: 100 },
     ])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([
-      { user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' },
-      { user_id: 'user-2', first_name: 'Bob', last_name: 'Jones' },
-    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([
+      ['mem-trainer-1', 'Jane Smith'],
+      ['mem-trainer-2', 'Bob Jones'],
+    ]))
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
     expect(result[0].totalIncome).toBeGreaterThanOrEqual(result[1].totalIncome)
   })
 
-  it('should_use_trainer_id_as_fallback_when_profile_not_found', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'user-orphan', fee: 80 }])
-    vi.mocked(getProfileNamesByUserIds).mockResolvedValue([])
+  it('should_use_trainer_id_as_fallback_when_not_found_in_membership_map', async () => {
+    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-orphan', fee: 80 }])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result[0].trainerName).toBe('user-orphan')
+    expect(result[0].trainerName).toBe('mem-orphan')
   })
 
   it('should_throw_on_lessons_query_error', async () => {
@@ -1062,11 +1051,11 @@ describe('getTrainerIncomeSummary', () => {
     await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lessons error')
   })
 
-  it('should_throw_on_profiles_query_error', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'user-1', fee: 80 }])
-    vi.mocked(getProfileNamesByUserIds).mockRejectedValue(new Error('profiles error'))
+  it('should_throw_on_resolveMemberNames_error', async () => {
+    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 80 }])
+    vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
-    await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('profiles error')
+    await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('resolve error')
   })
 
   describe('agreement charge folding', () => {
@@ -1082,8 +1071,8 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_not_append_non_lesson_income_row_when_no_charges_are_collected', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'user-1', fee: 100 }])
-      vi.mocked(getProfileNamesByUserIds).mockResolvedValue([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Smith' }])
+      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
       vi.mocked(getChargesForSummary).mockResolvedValue([])
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)

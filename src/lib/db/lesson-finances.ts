@@ -6,7 +6,6 @@ import {
   getTierPricesByNames,
   getOutstandingLessonRows,
   getLessonRidersForLessons,
-  getProfileNamesByUserIds,
   getPaidLessonFees,
   getLessonHorsesForLessons,
   getPaidLessonInstructorFees,
@@ -129,17 +128,13 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
   const outstandingIds = outstandingRaw.map((l) => l.id)
   const instructorIds = [...new Set(outstandingRaw.map((l) => l.instructor_id).filter((id): id is string => id !== null))]
 
-  const [lessonRiders, profiles] = await Promise.all([
-    getLessonRidersForLessons(supabase, barnId, outstandingIds),
-    getProfileNamesByUserIds(supabase, instructorIds),
-  ])
+  const lessonRiders = await getLessonRidersForLessons(supabase, barnId, outstandingIds)
 
   const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
 
-  const membershipNameMap = await resolveMemberNames(riderIds, barnId, supabase)
+  const membershipNameMap = await resolveMemberNames([...riderIds, ...instructorIds], barnId, supabase)
 
   return outstandingRaw.map((lesson) => {
-    const profile = profiles.find((p) => p.user_id === lesson.instructor_id)
     const riderJunctionRows = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
     const rider_names = riderJunctionRows
       .map((lr) => membershipNameMap.get(lr.rider_id))
@@ -148,7 +143,7 @@ export async function getOutstandingLessons(barnId: string, userId?: string, rol
       id: lesson.id,
       barn_id: lesson.barn_id,
       lesson_at: lesson.lesson_at,
-      instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
+      instructor_name: lesson.instructor_id ? membershipNameMap.get(lesson.instructor_id) ?? null : null,
       rider_names,
       fee: lesson.fee,
     }
@@ -269,7 +264,7 @@ export async function getTrainerIncomeSummary(
 
   if (collected.length) {
     const instructorIds = [...new Set(collected.map((l) => l.instructor_id))]
-    const profiles = await getProfileNamesByUserIds(supabase, instructorIds)
+    const memberNameMap = await resolveMemberNames(instructorIds, barnId, supabase)
 
     const incomeMap = new Map<string, number>()
     for (const lesson of collected) {
@@ -277,14 +272,11 @@ export async function getTrainerIncomeSummary(
     }
 
     result = Array.from(incomeMap.entries())
-      .map(([trainerId, totalIncome]) => {
-        const profile = profiles.find((p) => p.user_id === trainerId)
-        return {
-          trainerId,
-          trainerName: profile ? `${profile.first_name} ${profile.last_name}` : trainerId,
-          totalIncome,
-        }
-      })
+      .map(([trainerId, totalIncome]) => ({
+        trainerId,
+        trainerName: memberNameMap.get(trainerId) ?? trainerId,
+        totalIncome,
+      }))
       .sort((a, b) => b.totalIncome - a.totalIncome)
   }
 
