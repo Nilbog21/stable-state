@@ -108,7 +108,10 @@ Lessons (`/barn/dev-barn/lessons`):
 Expenses (`/barn/dev-barn/expenses`):
 
 - [ ] Nav shows **Expenses** between Lessons and Horses
-- [ ] With no expenses seeded, empty state renders with a CTA (no `/expenses/new` page yet — 404 is expected)
+- [ ] Seeded expenses render, split into recent and older (**Show older expenses** toggle), including at least one future-dated planned expense with no amount
+- [ ] Add a new expense (`/barn/dev-barn/expenses/new`): enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills and flashes; leave amount blank to save a planned expense, then re-open the form later and fill it in
+- [ ] Check **Entire Barn** on the new-expense form — horse checkboxes disable; save and verify the row shows "Entire Barn" instead of specific horses
+- [ ] Delete one seeded expense — it disappears from the list
 - [ ] Trainer and rider logins do not see the Expenses nav link and are redirected away from `/barn/dev-barn/expenses` if visited directly
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):

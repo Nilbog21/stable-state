@@ -8,6 +8,8 @@ vi.mock('@/lib/auth/guard', () => ({
 vi.mock('@/lib/db/expenses', () => ({
   getExpenseById: vi.fn(),
   deleteExpense: vi.fn(),
+  createExpense: vi.fn(),
+  getMostCommonTypeForRecipient: vi.fn(),
 }))
 
 vi.mock('next/navigation', () => ({
@@ -15,13 +17,26 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getExpenseById, deleteExpense } from '@/lib/db/expenses'
+import { getExpenseById, deleteExpense, createExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
 import { redirect } from 'next/navigation'
-import { deleteExpenseAction } from '../expenses'
+import { deleteExpenseAction, createExpenseAction, getMostCommonExpenseTypeAction } from '../expenses'
+import { createMockHorseExpense } from '@/test/fixtures'
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ role: 'manager' })
 const mockExpense = createMockExpenseWithHorses()
+
+function makeFormData(fields: Record<string, string | string[]>): FormData {
+  const fd = new FormData()
+  for (const [k, v] of Object.entries(fields)) {
+    if (Array.isArray(v)) {
+      for (const item of v) fd.append(k, item)
+    } else {
+      fd.append(k, v)
+    }
+  }
+  return fd
+}
 
 function guardAs(membership: ReturnType<typeof createMockMembership>) {
   vi.mocked(requireMembership).mockResolvedValue({
@@ -66,5 +81,175 @@ describe('deleteExpenseAction', () => {
   it('should_redirect_to_list_after_delete', async () => {
     await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1')
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/expenses')
+  })
+})
+
+describe('createExpenseAction', () => {
+  const noError = { error: null }
+  const baseFields = {
+    recipient: 'Dr. Hoof Farrier',
+    expense_date: '2026-07-10',
+  }
+
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(createExpense).mockReset()
+    vi.mocked(redirect).mockReset()
+    guardAs(mockManagerMembership)
+    vi.mocked(createExpense).mockResolvedValue(createMockHorseExpense())
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData(baseFields))
+    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
+  })
+
+  it('should_return_error_when_recipient_is_blank', async () => {
+    const result = await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, recipient: '' }))
+    expect(result.error).toBe('recipient required')
+  })
+
+  it('should_not_call_createExpense_when_recipient_is_blank', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, recipient: '' }))
+    expect(createExpense).not.toHaveBeenCalled()
+  })
+
+  it('should_trim_whitespace_from_recipient', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, recipient: '  Dr. Hoof Farrier  ' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ recipient: 'Dr. Hoof Farrier' }))
+  })
+
+  it('should_return_error_when_date_is_blank', async () => {
+    const result = await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, expense_date: '' }))
+    expect(result.error).toBe('date required')
+  })
+
+  it('should_not_call_createExpense_when_date_is_blank', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, expense_date: '' }))
+    expect(createExpense).not.toHaveBeenCalled()
+  })
+
+  it('should_normalize_whitespace_only_expense_type_to_unspecified', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, expense_type: '   ' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ expenseType: 'Unspecified' }))
+  })
+
+  it('should_pass_through_provided_expense_type_unchanged', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, expense_type: 'Farrier' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ expenseType: 'Farrier' }))
+  })
+
+  it('should_default_blank_amount_to_null', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, amount: '' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ amount: null }))
+  })
+
+  it('should_parse_valid_amount_as_a_number', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, amount: '125.50' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ amount: 125.5 }))
+  })
+
+  it('should_return_error_when_amount_is_negative', async () => {
+    const result = await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, amount: '-5' }))
+    expect(result.error).toBe('a valid, non-negative amount is required')
+  })
+
+  it('should_return_error_when_amount_is_non_numeric', async () => {
+    const result = await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, amount: 'abc' }))
+    expect(result.error).toBe('a valid, non-negative amount is required')
+  })
+
+  it('should_not_call_createExpense_when_amount_is_invalid', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, amount: 'abc' }))
+    expect(createExpense).not.toHaveBeenCalled()
+  })
+
+  it('should_pass_null_expense_time_when_blank', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, expense_time: '' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ expenseTime: null }))
+  })
+
+  it('should_pass_provided_expense_time', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, expense_time: '09:00' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ expenseTime: '09:00' }))
+  })
+
+  it('should_pass_null_notes_when_blank', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, notes: '' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ notes: null }))
+  })
+
+  it('should_pass_provided_notes', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, notes: 'Regular trim' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ notes: 'Regular trim' }))
+  })
+
+  it('should_set_appliesToAllHorses_true_and_omit_horseIds_when_entire_barn_checked', async () => {
+    await createExpenseAction(
+      'barn-slug',
+      noError,
+      makeFormData({ ...baseFields, applies_to_all_horses: 'true', horse_id: ['horse-1'] })
+    )
+    expect(createExpense).toHaveBeenCalledWith(
+      'barn-1',
+      expect.objectContaining({ appliesToAllHorses: true, horseIds: undefined })
+    )
+  })
+
+  it('should_collect_horseIds_from_checked_checkboxes_when_not_entire_barn', async () => {
+    await createExpenseAction(
+      'barn-slug',
+      noError,
+      makeFormData({ ...baseFields, horse_id: ['horse-1', 'horse-2'] })
+    )
+    expect(createExpense).toHaveBeenCalledWith(
+      'barn-1',
+      expect.objectContaining({ appliesToAllHorses: false, horseIds: ['horse-1', 'horse-2'] })
+    )
+  })
+
+  it('should_redirect_to_expenses_list_after_create', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData(baseFields))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/expenses')
+  })
+})
+
+describe('getMostCommonExpenseTypeAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getMostCommonTypeForRecipient).mockReset()
+    guardAs(mockManagerMembership)
+    vi.mocked(getMostCommonTypeForRecipient).mockResolvedValue('Farrier')
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await getMostCommonExpenseTypeAction('barn-slug', 'Dr. Hoof Farrier')
+    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
+  })
+
+  it('should_return_null_when_recipient_is_blank', async () => {
+    const result = await getMostCommonExpenseTypeAction('barn-slug', '   ')
+    expect(result).toBeNull()
+  })
+
+  it('should_not_call_getMostCommonTypeForRecipient_when_recipient_is_blank', async () => {
+    await getMostCommonExpenseTypeAction('barn-slug', '   ')
+    expect(getMostCommonTypeForRecipient).not.toHaveBeenCalled()
+  })
+
+  it('should_call_getMostCommonTypeForRecipient_with_trimmed_recipient_and_barn_id', async () => {
+    await getMostCommonExpenseTypeAction('barn-slug', '  Dr. Hoof Farrier  ')
+    expect(getMostCommonTypeForRecipient).toHaveBeenCalledWith('barn-1', 'Dr. Hoof Farrier')
+  })
+
+  it('should_return_null_when_no_history_for_recipient', async () => {
+    vi.mocked(getMostCommonTypeForRecipient).mockResolvedValue(null)
+    const result = await getMostCommonExpenseTypeAction('barn-slug', 'New Vendor')
+    expect(result).toBeNull()
+  })
+
+  it('should_return_the_most_common_type_when_history_exists', async () => {
+    const result = await getMostCommonExpenseTypeAction('barn-slug', 'Dr. Hoof Farrier')
+    expect(result).toBe('Farrier')
   })
 })
