@@ -147,7 +147,7 @@ describe('RiderIncomePage', () => {
     expect(link.getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1')
   })
 
-  it('should_render_a_charge_row_with_its_kind_and_fee', async () => {
+  it('should_render_a_charge_rows_kind', async () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [],
@@ -157,6 +157,17 @@ describe('RiderIncomePage', () => {
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     expect(screen.getByText('Boarding')).toBeDefined()
+  })
+
+  it('should_render_a_charge_rows_fee', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      total: 500,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
     expect(screen.getAllByText('$500.00').length).toBeGreaterThan(0)
   })
 

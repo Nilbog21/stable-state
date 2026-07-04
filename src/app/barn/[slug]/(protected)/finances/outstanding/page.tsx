@@ -3,6 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons, mergeOutstandingItems } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import type { OutstandingItem, Role } from '@/lib/db/types'
+import { Th, Td } from '@/components/ui/Table'
 
 const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lesson: 'Lesson',
@@ -51,48 +52,42 @@ export default async function OutstandingPage({
       </h1>
 
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No outstanding lessons.</p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">No outstanding items.</p>
       ) : (
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Date</th>
-              <th className="pb-2 pr-6">Type</th>
-              <th className="pb-2 pr-6">Instructor</th>
-              <th className="pb-2 pr-6">Rider(s)</th>
-              <th className="pb-2">Fee</th>
+            <tr>
+              <Th>Date</Th>
+              <Th>Type</Th>
+              <Th>Instructor</Th>
+              <Th>Rider(s)</Th>
+              <Th>Fee</Th>
             </tr>
           </thead>
           <tbody>
             {items.map((item) => (
-              <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+              <tr key={item.id}>
+                <Td>
                   {item.itemType === 'lesson' ? (
                     <Link
                       href={`/barn/${slug}/lessons/${item.id}`}
-                      className="hover:underline"
+                      className="underline"
                     >
                       {formatDate(item.date)}
                     </Link>
                   ) : (
                     formatDate(item.date)
                   )}
-                </td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  {TYPE_LABELS[item.itemType]}
-                </td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  {item.instructorName ?? '—'}
-                </td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  {item.riderNames.join(', ') || '—'}
-                </td>
-                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
+                </Td>
+                <Td>{TYPE_LABELS[item.itemType]}</Td>
+                <Td>{item.instructorName ?? '—'}</Td>
+                <Td>{item.riderNames.join(', ') || '—'}</Td>
+                <Td>
                   {item.fee !== null
                     ? item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                     : '—'}
-                </td>
+                </Td>
               </tr>
             ))}
           </tbody>

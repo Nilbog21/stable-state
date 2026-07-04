@@ -647,6 +647,14 @@ describe('FinancesPage', () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Outstanding')).toBeDefined()
+  })
+
+  it('should_render_the_outstanding_charges_rider_name_when_only_outstanding_charges_exist', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByText('Carol Rider')).toBeDefined()
   })
 

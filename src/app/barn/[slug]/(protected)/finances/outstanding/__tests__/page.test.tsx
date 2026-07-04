@@ -66,7 +66,7 @@ describe('OutstandingPage', () => {
   it('should_render_empty_state_when_no_outstanding_items', async () => {
     const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('No outstanding lessons.')).toBeDefined()
+    expect(screen.getByText('No outstanding items.')).toBeDefined()
   })
 
   it('should_render_instructor_name_in_outstanding_table', async () => {
@@ -145,7 +145,7 @@ describe('OutstandingPage', () => {
     expect(screen.getByText('Boarding')).toBeDefined()
   })
 
-  it('should_merge_lesson_and_charge_rows_sorted_by_date', async () => {
+  it('should_sort_the_earlier_charge_row_before_a_later_lesson_row', async () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([{
       id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-20T10:00:00Z',
       instructor_name: null, rider_names: [], fee: 75,
@@ -157,6 +157,19 @@ describe('OutstandingPage', () => {
     render(jsx)
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows[0].textContent).toContain('Dana Rider')
+  })
+
+  it('should_sort_the_later_lesson_row_after_an_earlier_charge_row', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{
+      id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-20T10:00:00Z',
+      instructor_name: null, rider_names: [], fee: 75,
+    }])
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', period: '2026-05-01', kind: 'lease', riderName: 'Dana Rider', fee: 200 },
+    ])
+    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const rows = screen.getAllByRole('row').slice(1)
     expect(rows[1].textContent).toContain('75')
   })
 })

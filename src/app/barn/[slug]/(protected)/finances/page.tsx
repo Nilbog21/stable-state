@@ -252,7 +252,7 @@ export default async function FinancesPage({
                 <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     {tier.tierName}
-                    {tier.tierName === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" />}
+                    {tier.tierName === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
                   </td>
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
@@ -346,7 +346,7 @@ export default async function FinancesPage({
                 <tr key={row.trainerId} className="border-b border-zinc-100 dark:border-zinc-800">
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     {row.trainerName}
-                    {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" />}
+                    {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
                   </td>
                   <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
                     {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}

@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getRiderIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth } from '../../page'
+import { Th, Td } from '@/components/ui/Table'
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -60,33 +61,27 @@ export default async function RiderIncomePage({
           {rows.length > 0 && (
             <table className="mb-8 w-full">
               <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                  <th className="pb-2 pr-6">Date</th>
-                  <th className="pb-2 pr-6">Fee</th>
-                  <th className="pb-2 pr-6">Riders</th>
-                  <th className="pb-2">Split</th>
+                <tr>
+                  <Th>Date</Th>
+                  <Th>Fee</Th>
+                  <Th>Riders</Th>
+                  <Th>Split</Th>
                 </tr>
               </thead>
               <tbody>
                 {rows.map((row) => (
-                  <tr key={row.lessonId} className="border-b border-zinc-100 dark:border-zinc-800">
-                    <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                  <tr key={row.lessonId}>
+                    <Td>
                       <Link
                         href={`/barn/${slug}/lessons/${row.lessonId}`}
                         className="underline"
                       >
                         {formatDate(row.lessonAt)}
                       </Link>
-                    </td>
-                    <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                      {row.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                    </td>
-                    <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                      {row.riderCount}
-                    </td>
-                    <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                      {row.splitAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                    </td>
+                    </Td>
+                    <Td>{row.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Td>
+                    <Td>{row.riderCount}</Td>
+                    <Td>{row.splitAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -94,35 +89,34 @@ export default async function RiderIncomePage({
           )}
 
           {chargeRows.length > 0 && (
-            <table className="mb-8 w-full">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                  <th className="pb-2 pr-6">Date</th>
-                  <th className="pb-2 pr-6">Type</th>
-                  <th className="pb-2">Fee</th>
-                </tr>
-              </thead>
-              <tbody>
-                {chargeRows.map((row) => (
-                  <tr key={row.chargeId} className="border-b border-zinc-100 dark:border-zinc-800">
-                    <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                      <Link
-                        href={`/barn/${slug}/agreements/${row.agreementId}`}
-                        className="underline"
-                      >
-                        {formatDate(row.period)}
-                      </Link>
-                    </td>
-                    <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                      {row.kind === 'lease' ? 'Lease' : 'Boarding'}
-                    </td>
-                    <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                      {row.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                    </td>
+            <>
+              <h2 className="mb-2 text-sm font-semibold text-zinc-900 dark:text-zinc-50">Leases & Boarding</h2>
+              <table className="mb-8 w-full">
+                <thead>
+                  <tr>
+                    <Th>Date</Th>
+                    <Th>Type</Th>
+                    <Th>Fee</Th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {chargeRows.map((row) => (
+                    <tr key={row.chargeId}>
+                      <Td>
+                        <Link
+                          href={`/barn/${slug}/agreements/${row.agreementId}`}
+                          className="underline"
+                        >
+                          {formatDate(row.period)}
+                        </Link>
+                      </Td>
+                      <Td>{row.kind === 'lease' ? 'Lease' : 'Boarding'}</Td>
+                      <Td>{row.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </>
           )}
 
           <div className="flex justify-between border-t border-zinc-300 pt-3 text-sm font-semibold text-zinc-900 dark:border-zinc-600 dark:text-zinc-50">

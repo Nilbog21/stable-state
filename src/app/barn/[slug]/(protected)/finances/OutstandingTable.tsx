@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { updatePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../agreements/actions'
 import type { OutstandingItem } from '@/lib/db/types'
+import { Th, Td } from '@/components/ui/Table'
 
 const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
 
@@ -45,36 +46,28 @@ export function OutstandingTable({
   return (
     <table className="w-full">
       <thead>
-        <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-          <th className="pb-2 pr-6">Date</th>
-          <th className="pb-2 pr-6">Type</th>
-          <th className="pb-2 pr-6">Rider(s)</th>
-          <th className="pb-2 pr-6">Instructor</th>
-          <th className="pb-2 pr-6">Fee</th>
-          <th className="pb-2">Payment Type</th>
+        <tr>
+          <Th>Date</Th>
+          <Th>Type</Th>
+          <Th>Rider(s)</Th>
+          <Th>Instructor</Th>
+          <Th>Fee</Th>
+          <Th>Payment Type</Th>
         </tr>
       </thead>
       <tbody>
         {items.map((item) => (
-          <tr key={item.id} className="border-b border-zinc-100 dark:border-zinc-800">
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {formatDate(item.date)}
-            </td>
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {TYPE_LABELS[item.itemType]}
-            </td>
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {item.riderNames.join(', ') || '—'}
-            </td>
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-              {item.instructorName ?? '—'}
-            </td>
-            <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+          <tr key={item.id}>
+            <Td>{formatDate(item.date)}</Td>
+            <Td>{TYPE_LABELS[item.itemType]}</Td>
+            <Td>{item.riderNames.join(', ') || '—'}</Td>
+            <Td>{item.instructorName ?? '—'}</Td>
+            <Td>
               {item.fee !== null
                 ? item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
                 : '—'}
-            </td>
-            <td className="py-3 text-sm">
+            </Td>
+            <Td>
               <select
                 defaultValue=""
                 onChange={(e) => handleChange(item, e.target.value)}
@@ -87,7 +80,7 @@ export function OutstandingTable({
                   </option>
                 ))}
               </select>
-            </td>
+            </Td>
           </tr>
         ))}
       </tbody>

@@ -82,13 +82,15 @@ export async function getFinancialSummary(
     }
   }
 
+  const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10)
+
   let chargesCollected = 0
   let chargesCount = 0
   for (const charge of charges) {
     if (charge.payment_type !== null) {
       chargesCollected += charge.fee
       chargesCount += 1
-    } else {
+    } else if (charge.period >= firstOfCurrentMonth) {
       pendingIncome += charge.fee
     }
   }

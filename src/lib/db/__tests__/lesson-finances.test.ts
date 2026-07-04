@@ -298,6 +298,11 @@ describe('getFinancialSummary', () => {
   })
 
   describe('agreement charge folding', () => {
+    beforeEach(() => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-05-15T12:00:00Z'))
+    })
+
     it('should_call_getChargesForSummary_with_barn_and_date_range', async () => {
       vi.mocked(getLessonsForSummary).mockResolvedValue([])
 
@@ -309,8 +314,8 @@ describe('getFinancialSummary', () => {
     it('should_add_collected_charge_fees_to_collected_income', async () => {
       vi.mocked(getLessonsForSummary).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([
-        { fee: 300, payment_type: 'venmo' },
-        { fee: 200, payment_type: 'cash' },
+        { period: '2026-05-01', fee: 300, payment_type: 'venmo' },
+        { period: '2026-05-01', fee: 200, payment_type: 'cash' },
       ])
 
       const result = await getFinancialSummary('barn-1', startDate, endDate)
@@ -318,18 +323,28 @@ describe('getFinancialSummary', () => {
       expect(result.collectedIncome).toBe(500)
     })
 
-    it('should_add_unpaid_charge_fees_to_pending_income', async () => {
+    it('should_add_unpaid_charge_fees_to_pending_income_when_period_is_the_current_month', async () => {
       vi.mocked(getLessonsForSummary).mockResolvedValue([])
-      vi.mocked(getChargesForSummary).mockResolvedValue([{ fee: 150, payment_type: null }])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 150, payment_type: null }])
 
       const result = await getFinancialSummary('barn-1', startDate, endDate)
 
       expect(result.pendingIncome).toBe(150)
     })
 
+    it('should_exclude_unpaid_charge_fees_from_pending_income_when_period_is_before_the_current_month', async () => {
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      vi.mocked(getLessonsForSummary).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 150, payment_type: null }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.pendingIncome).toBe(0)
+    })
+
     it('should_append_non_lesson_income_row_when_charges_are_collected', async () => {
       vi.mocked(getLessonsForSummary).mockResolvedValue([])
-      vi.mocked(getChargesForSummary).mockResolvedValue([{ fee: 300, payment_type: 'venmo' }])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
 
       const result = await getFinancialSummary('barn-1', startDate, endDate)
 
@@ -352,8 +367,8 @@ describe('getFinancialSummary', () => {
     it('should_count_only_collected_charges_in_non_lesson_income_row', async () => {
       vi.mocked(getLessonsForSummary).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([
-        { fee: 300, payment_type: 'venmo' },
-        { fee: 150, payment_type: null },
+        { period: '2026-05-01', fee: 300, payment_type: 'venmo' },
+        { period: '2026-05-01', fee: 150, payment_type: null },
       ])
 
       const result = await getFinancialSummary('barn-1', startDate, endDate)
@@ -1057,7 +1072,7 @@ describe('getTrainerIncomeSummary', () => {
   describe('agreement charge folding', () => {
     it('should_append_non_lesson_income_row_when_charges_are_collected', async () => {
       vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
-      vi.mocked(getChargesForSummary).mockResolvedValue([{ fee: 300, payment_type: 'venmo' }])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
@@ -1079,8 +1094,8 @@ describe('getTrainerIncomeSummary', () => {
     it('should_only_count_collected_charges_in_non_lesson_income_row', async () => {
       vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([
-        { fee: 300, payment_type: 'venmo' },
-        { fee: 150, payment_type: null },
+        { period: '2026-05-01', fee: 300, payment_type: 'venmo' },
+        { period: '2026-05-01', fee: 150, payment_type: null },
       ])
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)

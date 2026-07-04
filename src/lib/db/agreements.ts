@@ -174,6 +174,7 @@ export async function getBarnDefaultBoardFee(barnId: string, client?: SupabaseCl
 }
 
 export interface ChargeSummaryRow {
+  period: string
   fee: number
   payment_type: PaymentType | null
 }
@@ -187,7 +188,7 @@ export async function getChargesForSummary(
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('agreement_charges')
-    .select('fee, payment_type')
+    .select('period, fee, payment_type')
     .eq('barn_id', barnId)
     .gte('period', startDate.toISOString().slice(0, 10))
     .lt('period', endDate.toISOString().slice(0, 10))
@@ -215,29 +216,38 @@ export async function getPaidCharges(
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('agreement_charges')
-    .select('id, agreement_id, period, fee, agreements!inner(kind, rider_id, horse_id)')
+    .select('id, agreement_id, period, fee')
     .eq('barn_id', barnId)
     .not('payment_type', 'is', null)
     .gte('period', startDate.toISOString().slice(0, 10))
     .lt('period', endDate.toISOString().slice(0, 10))
 
   if (error) throw error
-  type PaidChargeRow = {
-    id: string
-    agreement_id: string
-    period: string
-    fee: number
-    agreements: { kind: AgreementKind; rider_id: string; horse_id: string }
-  }
-  return ((data ?? []) as unknown as PaidChargeRow[]).map((row) => ({
-    chargeId: row.id,
-    agreementId: row.agreement_id,
-    period: row.period,
-    fee: row.fee,
-    kind: row.agreements.kind,
-    riderId: row.agreements.rider_id,
-    horseId: row.agreements.horse_id,
-  }))
+  const rows = data ?? []
+  if (!rows.length) return []
+
+  const agreementIds = [...new Set(rows.map((r) => r.agreement_id))]
+  const { data: agreements, error: agreementsError } = await supabase
+    .from('agreements')
+    .select('id, kind, rider_id, horse_id')
+    .eq('barn_id', barnId)
+    .in('id', agreementIds)
+  if (agreementsError) throw agreementsError
+
+  const agreementMap = new Map((agreements ?? []).map((a) => [a.id, a]))
+  return rows.flatMap((row) => {
+    const agreement = agreementMap.get(row.agreement_id)
+    if (!agreement) return []
+    return [{
+      chargeId: row.id,
+      agreementId: row.agreement_id,
+      period: row.period,
+      fee: row.fee,
+      kind: agreement.kind,
+      riderId: agreement.rider_id,
+      horseId: agreement.horse_id,
+    }]
+  })
 }
 
 export async function getOutstandingCharges(
@@ -254,7 +264,7 @@ export async function getOutstandingCharges(
     .toISOString()
     .slice(0, 10)
 
-  let riderMembershipId: string | undefined
+  let riderAgreementIds: string[] | undefined
   if (role === 'rider' && userId) {
     const { data: rider, error: riderError } = await supabase
       .from('barn_memberships')
@@ -266,38 +276,55 @@ export async function getOutstandingCharges(
       .maybeSingle()
     if (riderError) throw riderError
     if (!rider) return []
-    riderMembershipId = rider.id
+
+    const { data: riderAgreements, error: riderAgreementsError } = await supabase
+      .from('agreements')
+      .select('id')
+      .eq('barn_id', barnId)
+      .eq('rider_id', rider.id)
+    if (riderAgreementsError) throw riderAgreementsError
+    riderAgreementIds = (riderAgreements ?? []).map((a) => a.id)
+    if (!riderAgreementIds.length) return []
   }
 
   let query = supabase
     .from('agreement_charges')
-    .select('id, period, fee, agreements!inner(kind, rider_id)')
+    .select('id, agreement_id, period, fee')
     .eq('barn_id', barnId)
     .is('payment_type', null)
     .lt('period', firstOfCurrentMonth)
 
-  if (riderMembershipId) {
-    query = query.eq('agreements.rider_id', riderMembershipId)
+  if (riderAgreementIds) {
+    query = query.in('agreement_id', riderAgreementIds)
   }
 
   const { data, error } = await query.order('period', { ascending: true })
   if (error) throw error
 
-  type OutstandingChargeRow = {
-    id: string
-    period: string
-    fee: number
-    agreements: { kind: AgreementKind; rider_id: string }
-  }
-  const rows = (data ?? []) as unknown as OutstandingChargeRow[]
-  const riderIds = [...new Set(rows.map((r) => r.agreements.rider_id))]
+  const rows = data ?? []
+  if (!rows.length) return []
+
+  const agreementIds = [...new Set(rows.map((r) => r.agreement_id))]
+  const { data: agreements, error: agreementsError } = await supabase
+    .from('agreements')
+    .select('id, kind, rider_id')
+    .eq('barn_id', barnId)
+    .in('id', agreementIds)
+  if (agreementsError) throw agreementsError
+
+  const agreementMap = new Map((agreements ?? []).map((a) => [a.id, a]))
+  const riderIds = [...new Set((agreements ?? []).map((a) => a.rider_id))]
   const nameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
-  return rows.map((row) => ({
-    id: row.id,
-    period: row.period,
-    kind: row.agreements.kind,
-    riderName: nameMap.get(row.agreements.rider_id) ?? row.agreements.rider_id,
-    fee: row.fee,
-  }))
+  return rows.flatMap((row) => {
+    const agreement = agreementMap.get(row.agreement_id)
+    if (!agreement) return []
+    return [{
+      id: row.id,
+      period: row.period,
+      kind: agreement.kind,
+      riderName: nameMap.get(agreement.rider_id) ?? agreement.rider_id,
+      fee: row.fee,
+    }]
+  })
 }
