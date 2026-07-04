@@ -648,6 +648,35 @@ describe('getRiderEnrolledLessonIds', () => {
     expect(result).toEqual(['lesson-1', 'lesson-2'])
   })
 
+  it('should_treat_null_enrollments_data_as_empty', async () => {
+    const mockFrom = vi.fn()
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    })
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getRiderEnrolledLessonIds('barn-1', 'user-1')
+
+    expect(result).toEqual([])
+  })
+
   it('should_throw_when_barn_memberships_query_fails', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
