@@ -28,7 +28,7 @@ export function OlderLessonsToggle({ lessons, slug, isManager, isTrainer, curren
         {show ? 'Hide older lessons' : 'Show older lessons'}
       </button>
       {show && (
-        <ul className="w-full max-w-2xl divide-y divide-zinc-200 dark:divide-zinc-800">
+        <ul className="w-full max-w-2xl space-y-2">
           {lessons.map((lesson) => (
             <LessonListItem
               key={lesson.id}
