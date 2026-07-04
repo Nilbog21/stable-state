@@ -12,6 +12,8 @@ import {
 } from '@/lib/db/agreements'
 import type { AgreementKind, AgreementCadence, PaymentType } from '@/lib/db/types'
 
+const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
+
 function parseFee(raw: string | null): number | null {
   if (!raw || raw.trim() === '') return null
   const n = parseFloat(raw)
@@ -100,6 +102,10 @@ export async function updateChargePaymentTypeAction(
   paymentType: string | null
 ): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  if (paymentType !== null && !PAYMENT_TYPES.includes(paymentType as PaymentType)) {
+    return { error: 'invalid payment type' }
+  }
 
   try {
     await updateChargePaymentType(chargeId, barn.id, paymentType as PaymentType | null)

@@ -100,4 +100,68 @@ describe('ChargesTable', () => {
     render(<ChargesTable charges={[{ ...charge, payment_type: 'zelle' }]} barnSlug="green-acres" />)
     expect(screen.getByRole('combobox')).toHaveProperty('value', 'zelle')
   })
+
+  it('should_show_fee_error_message_when_action_returns_error', async () => {
+    vi.mocked(updateChargeFeeAction).mockResolvedValue({ error: 'a valid, non-negative fee is required' })
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    const input = screen.getByDisplayValue('200')
+    fireEvent.change(input, { target: { value: '' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(screen.getByText('a valid, non-negative fee is required')).toBeDefined()
+  })
+
+  it('should_revert_fee_input_to_server_value_when_action_returns_error', async () => {
+    vi.mocked(updateChargeFeeAction).mockResolvedValue({ error: 'a valid, non-negative fee is required' })
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    const input = screen.getByDisplayValue('200')
+    fireEvent.change(input, { target: { value: '' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(screen.getByDisplayValue('200')).toBeDefined()
+  })
+
+  it('should_not_call_router_refresh_when_fee_action_returns_error', async () => {
+    vi.mocked(updateChargeFeeAction).mockResolvedValue({ error: 'a valid, non-negative fee is required' })
+    const mockRefresh = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({ refresh: mockRefresh } as any)
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    const input = screen.getByDisplayValue('200')
+    fireEvent.change(input, { target: { value: '' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(mockRefresh).not.toHaveBeenCalled()
+  })
+
+  it('should_show_payment_type_error_message_when_action_returns_error', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByText('Failed to update payment type')).toBeDefined()
+  })
+
+  it('should_revert_payment_type_select_to_server_value_when_action_returns_error', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByRole('combobox')).toHaveProperty('value', '')
+  })
+
+  it('should_not_call_router_refresh_when_payment_type_action_returns_error', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
+    const mockRefresh = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({ refresh: mockRefresh } as any)
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(mockRefresh).not.toHaveBeenCalled()
+  })
 })

@@ -19,15 +19,31 @@ function formatPeriod(period: string): string {
 function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: string }) {
   const router = useRouter()
   const [fee, setFee] = useState(String(charge.fee))
+  const [paymentType, setPaymentType] = useState(charge.payment_type ?? '')
+  const [feeError, setFeeError] = useState<string | null>(null)
+  const [paymentTypeError, setPaymentTypeError] = useState<string | null>(null)
 
   async function handleFeeBlur() {
     if (fee === String(charge.fee)) return
-    await updateChargeFeeAction(barnSlug, charge.id, fee)
+    const result = await updateChargeFeeAction(barnSlug, charge.id, fee)
+    if (result.error) {
+      setFeeError(result.error)
+      setFee(String(charge.fee))
+      return
+    }
+    setFeeError(null)
     router.refresh()
   }
 
   async function handlePaymentTypeChange(value: string) {
-    await updateChargePaymentTypeAction(barnSlug, charge.id, value || null)
+    setPaymentType(value)
+    const result = await updateChargePaymentTypeAction(barnSlug, charge.id, value || null)
+    if (result.error) {
+      setPaymentTypeError(result.error)
+      setPaymentType(charge.payment_type ?? '')
+      return
+    }
+    setPaymentTypeError(null)
     router.refresh()
   }
 
@@ -44,10 +60,11 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
           onBlur={handleFeeBlur}
           className="w-24 rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
         />
+        {feeError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{feeError}</p>}
       </Td>
       <Td>
         <select
-          defaultValue={charge.payment_type ?? ''}
+          value={paymentType}
           onChange={(e) => handlePaymentTypeChange(e.target.value)}
           className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
         >
@@ -58,6 +75,9 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
             </option>
           ))}
         </select>
+        {paymentTypeError && (
+          <p className="mt-1 text-xs text-red-600 dark:text-red-400">{paymentTypeError}</p>
+        )}
       </Td>
     </tr>
   )

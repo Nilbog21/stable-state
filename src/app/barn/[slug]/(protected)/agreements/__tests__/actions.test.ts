@@ -488,4 +488,16 @@ describe('updateChargePaymentTypeAction', () => {
 
     expect(result.error).toBe('Failed to update payment type')
   })
+
+  it('should_return_error_when_payment_type_is_invalid', async () => {
+    const result = await updateChargePaymentTypeAction('green-acres', 'charge-1', 'bitcoin')
+
+    expect(result.error).toBe('invalid payment type')
+  })
+
+  it('should_not_call_updateChargePaymentType_when_payment_type_is_invalid', async () => {
+    await updateChargePaymentTypeAction('green-acres', 'charge-1', 'bitcoin')
+
+    expect(updateChargePaymentType).not.toHaveBeenCalled()
+  })
 })
