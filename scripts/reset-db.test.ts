@@ -4,6 +4,7 @@ import {
   getLessonVariation,
   getPaymentType,
   isGroupLesson,
+  drawBar,
   DEV_PENDING_RIDER,
   DEV_MANAGER_2,
   PAYMENT_TYPES,
@@ -121,6 +122,32 @@ describe('isGroupLesson', () => {
   it('should_produce_7_group_lessons_across_34_dates', () => {
     const count = Array.from({ length: 34 }, (_, i) => i).filter(isGroupLesson).length
     expect(count).toBe(7)
+  })
+})
+
+describe('drawBar', () => {
+  it('should_return_all_spaces_when_current_is_zero', () => {
+    expect(drawBar(0, 34)).toBe(`[${' '.repeat(20)}]`)
+  })
+
+  it('should_return_partial_bar_for_mid_progress', () => {
+    expect(drawBar(17, 34)).toBe(`[${'#'.repeat(10)}${' '.repeat(10)}]`)
+  })
+
+  it('should_return_all_hashes_when_current_equals_total', () => {
+    expect(drawBar(34, 34)).toBe(`[${'#'.repeat(20)}]`)
+  })
+
+  it('should_respect_custom_width', () => {
+    expect(drawBar(1, 2, 4)).toBe('[##  ]')
+  })
+
+  it('should_return_empty_bar_when_total_is_zero', () => {
+    expect(drawBar(0, 0)).toBe(`[${' '.repeat(20)}]`)
+  })
+
+  it('should_clamp_when_current_exceeds_total', () => {
+    expect(drawBar(35, 34)).toBe(`[${'#'.repeat(20)}]`)
   })
 })
 
