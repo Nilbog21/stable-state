@@ -12,22 +12,18 @@ describe('createNotification', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  it('should_call_from_notifications_table', async () => {
-    const mockFrom = vi.fn().mockReturnValue({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+  it('should_call_rpc_create_or_update_notification', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'outstanding_payment', title: 'You have an outstanding payment' })
 
-    expect(mockFrom).toHaveBeenCalledWith('notifications')
+    expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', expect.any(Object))
   })
 
-  it('should_upsert_with_correct_payload', async () => {
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ upsert: mockUpsert }),
-    } as any)
+  it('should_call_rpc_with_correct_payload', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createNotification({
       userId: 'user-1',
@@ -38,40 +34,32 @@ describe('createNotification', () => {
       link: '/barn/test/finances',
     })
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      {
-        user_id: 'user-1',
-        barn_id: 'barn-1',
-        type: 'outstanding_payment',
-        title: 'You have an outstanding payment',
-        body: 'Check finances',
-        link: '/barn/test/finances',
-        read_at: null,
-      },
-      { onConflict: 'user_id,barn_id,type', ignoreDuplicates: false }
-    )
+    expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', {
+      p_user_id: 'user-1',
+      p_barn_id: 'barn-1',
+      p_type: 'outstanding_payment',
+      p_title: 'You have an outstanding payment',
+      p_body: 'Check finances',
+      p_link: '/barn/test/finances',
+    })
   })
 
-  it('should_upsert_with_null_optional_fields_when_omitted', async () => {
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ upsert: mockUpsert }),
-    } as any)
+  it('should_call_rpc_with_null_optional_fields_when_omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'Pending approval' })
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ body: null, link: null, read_at: null }),
-      expect.any(Object)
+    expect(mockRpc).toHaveBeenCalledWith(
+      'create_or_update_notification',
+      expect.objectContaining({ p_body: null, p_link: null })
     )
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
     const dbError = new Error('insert failed')
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        upsert: vi.fn().mockResolvedValue({ error: dbError }),
-      }),
+      rpc: vi.fn().mockResolvedValue({ error: dbError }),
     } as any)
 
     await expect(
@@ -80,15 +68,13 @@ describe('createNotification', () => {
   })
 
   it('should_use_injected_client_when_provided', async () => {
-    const mockFrom = vi.fn().mockReturnValue({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-    })
-    const injectedClient = { from: mockFrom } as any
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const injectedClient = { rpc: mockRpc } as any
 
     await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'New request' }, injectedClient)
 
     expect(createClient).not.toHaveBeenCalled()
-    expect(mockFrom).toHaveBeenCalledWith('notifications')
+    expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', expect.any(Object))
   })
 })
 
