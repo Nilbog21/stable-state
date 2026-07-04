@@ -92,11 +92,11 @@ describe('submitLesson', () => {
     expect(result).toEqual({ error: 'rider required' })
   })
 
-  it('should_create_lesson_with_instructor_set_to_current_user', async () => {
+  it('should_create_lesson_with_instructor_set_to_callers_own_membership_id', async () => {
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ barnId: 'barn-1', instructorId: 'user-1' })
+      expect.objectContaining({ barnId: 'barn-1', instructorId: mockTrainerMembership.id })
     )
   })
 
@@ -144,31 +144,31 @@ describe('submitLesson', () => {
 
   it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {
     guardAs(mockManagerMembership)
-    vi.mocked(getInstructorsByBarn).mockResolvedValue([{ userId: 'trainer-99', name: 'Bob Trainer' }])
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([{ membershipId: 'mem-trainer-99', userId: 'user-99', name: 'Bob Trainer' }])
     const fd = makeFormData({
       horse_id: 'horse-1',
       rider_id: 'mem-1',
       lesson_at: '2026-05-17T10:00',
-      instructor_id: 'trainer-99',
+      instructor_id: 'mem-trainer-99',
       tier_name: 'Standard',
     })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorId: 'trainer-99' })
+      expect.objectContaining({ instructorId: 'mem-trainer-99' })
     )
   })
 
-  it('should_use_current_user_id_when_user_is_a_trainer', async () => {
+  it('should_ignore_formData_instructor_id_and_use_own_membership_id_when_user_is_a_trainer', async () => {
     const fd = makeFormData({
       horse_id: 'horse-1',
       rider_id: 'mem-1',
       lesson_at: '2026-05-17T10:00',
-      instructor_id: 'trainer-99',
+      instructor_id: 'mem-trainer-99',
       tier_name: 'Standard',
     })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorId: 'user-1' })
+      expect.objectContaining({ instructorId: mockTrainerMembership.id })
     )
   })
 
@@ -198,7 +198,7 @@ describe('submitLesson', () => {
     expect(createLessonWithParticipants).not.toHaveBeenCalled()
   })
 
-  it('should_use_current_user_id_when_manager_omits_instructor_id', async () => {
+  it('should_use_own_membership_id_when_manager_omits_instructor_id', async () => {
     guardAs(mockManagerMembership)
     const fd = makeFormData({
       horse_id: 'horse-1',
@@ -208,7 +208,7 @@ describe('submitLesson', () => {
     })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorId: 'user-1' })
+      expect.objectContaining({ instructorId: mockManagerMembership.id })
     )
   })
 
@@ -502,11 +502,13 @@ describe('submitLesson', () => {
 
 function makeLessonDetail(
   overrides: Partial<ReturnType<typeof createMockLesson>> = {},
-  riderUserIds: (string | null)[] = []
+  riderUserIds: (string | null)[] = [],
+  instructorUserId: string | null = null
 ) {
   return {
     ...createMockLesson(overrides),
     instructor_name: null,
+    instructor_user_id: instructorUserId,
     lesson_horses: [],
     lesson_riders: riderUserIds.map((userId) => ({
       rider_notes: null,
@@ -530,7 +532,7 @@ describe('cancelLessonAction', () => {
     vi.mocked(redirect).mockReset()
     guardAs(mockManagerMembership)
     vi.mocked(getLessonById).mockResolvedValue(
-      makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null })
+      makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null }, [], 'instructor-1')
     )
     vi.mocked(cancelLesson).mockResolvedValue(undefined)
     vi.mocked(getActiveMemberships).mockResolvedValue([])
@@ -563,7 +565,7 @@ describe('cancelLessonAction', () => {
 
   it('should_call_cancelLesson_when_trainer_cancels_own_eligible_lesson', async () => {
     guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'user-1', lesson_at: futureIso }))
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: mockTrainerMembership.id, lesson_at: futureIso }))
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
   })
@@ -612,7 +614,7 @@ describe('cancelLessonAction', () => {
 
   it('should_notify_barn_managers_when_trainer_cancels', async () => {
     guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'user-1', lesson_at: futureIso }))
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: mockTrainerMembership.id, lesson_at: futureIso }))
     vi.mocked(getActiveMemberships).mockResolvedValue([
       createMockMembership({ role: 'manager', user_id: 'manager-1' }),
     ])
@@ -623,22 +625,22 @@ describe('cancelLessonAction', () => {
   })
 
   it('should_notify_instructor_when_manager_cancels', async () => {
-    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }))
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, [], 'instructor-1'))
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'instructor-1', type: 'lesson_cancelled' })
     )
   })
 
-  it('should_not_notify_instructor_when_instructor_id_is_null', async () => {
-    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: null, lesson_at: futureIso }))
+  it('should_not_notify_instructor_when_instructor_user_id_is_null', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: null, lesson_at: futureIso }, [], null))
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).not.toHaveBeenCalled()
   })
 
   it('should_notify_first_enrolled_rider_with_linked_account', async () => {
     vi.mocked(getLessonById).mockResolvedValue(
-      makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'])
+      makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'], 'instructor-1')
     )
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-1' }))
@@ -646,7 +648,7 @@ describe('cancelLessonAction', () => {
 
   it('should_notify_second_enrolled_rider_with_linked_account', async () => {
     vi.mocked(getLessonById).mockResolvedValue(
-      makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'])
+      makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'], 'instructor-1')
     )
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-2' }))
@@ -654,7 +656,7 @@ describe('cancelLessonAction', () => {
 
   it('should_not_notify_riders_with_null_user_id', async () => {
     vi.mocked(getLessonById).mockResolvedValue(
-      makeLessonDetail({ instructor_id: null, lesson_at: futureIso }, [null])
+      makeLessonDetail({ instructor_id: null, lesson_at: futureIso }, [null], null)
     )
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).not.toHaveBeenCalled()
@@ -666,7 +668,7 @@ describe('cancelLessonAction', () => {
   })
 
   it('should_link_notification_to_the_lesson_detail_page', async () => {
-    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'instructor-1', lesson_at: futureIso }))
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, [], 'instructor-1'))
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(
       expect.objectContaining({ link: '/barn/barn-slug/lessons/lesson-1' })
@@ -681,11 +683,13 @@ describe('cancelLessonAction', () => {
 
 function makeLessonDetailWithRiders(
   overrides: Partial<ReturnType<typeof createMockLesson>> = {},
-  riders: { id: string; user_id: string | null; cancelled_at?: string | null }[] = []
+  riders: { id: string; user_id: string | null; cancelled_at?: string | null }[] = [],
+  instructorUserId: string | null = null
 ) {
   return {
     ...createMockLesson(overrides),
     instructor_name: null,
+    instructor_user_id: instructorUserId,
     lesson_horses: [],
     lesson_riders: riders.map((r) => ({
       rider_notes: null,
@@ -757,7 +761,7 @@ describe('cancelRiderParticipationAction', () => {
     guardAs(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
-        { instructor_id: 'user-1', lesson_at: futureIso, cancelled_at: null },
+        { instructor_id: mockTrainerMembership.id, lesson_at: futureIso, cancelled_at: null },
         [{ id: 'rider-mem-1', user_id: 'rider-user-1' }]
       )
     )
@@ -895,8 +899,9 @@ describe('cancelRiderParticipationAction', () => {
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
-        { instructor_id: 'instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
-        [{ id: 'rider-mem-1', user_id: 'user-1' }]
+        { instructor_id: 'mem-instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'user-1' }],
+        'instructor-1'
       )
     )
     vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
@@ -908,8 +913,9 @@ describe('cancelRiderParticipationAction', () => {
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
-        { instructor_id: 'instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
-        [{ id: 'rider-mem-1', user_id: 'user-1' }]
+        { instructor_id: 'mem-instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'user-1' }],
+        'instructor-1'
       )
     )
     vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
@@ -947,7 +953,7 @@ describe('cancelRiderParticipationAction', () => {
     guardAs(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
-        { instructor_id: 'user-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        { instructor_id: mockTrainerMembership.id, lesson_at: futureIso, payment_type: null, cancelled_at: null },
         [{ id: 'rider-mem-1', user_id: 'rider-user-1' }]
       )
     )
@@ -960,7 +966,7 @@ describe('cancelRiderParticipationAction', () => {
     guardAs(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
-        { instructor_id: 'user-1', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        { instructor_id: mockTrainerMembership.id, lesson_at: futureIso, payment_type: null, cancelled_at: null },
         [{ id: 'rider-mem-1', user_id: 'rider-user-1' }]
       )
     )
@@ -1234,11 +1240,11 @@ describe('updateLessonAction', () => {
   })
 
   it('should_use_valid_instructor_when_manager_selects_one', async () => {
-    vi.mocked(getInstructorsByBarn).mockResolvedValue([{ userId: 'trainer-99', name: 'Bob Trainer' }])
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', instructor_id: 'trainer-99', tier_name: 'Custom' })
+    vi.mocked(getInstructorsByBarn).mockResolvedValue([{ membershipId: 'mem-trainer-99', userId: 'user-99', name: 'Bob Trainer' }])
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', instructor_id: 'mem-trainer-99', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorId: 'trainer-99' })
+      expect.objectContaining({ instructorId: 'mem-trainer-99' })
     )
   })
 
@@ -1285,12 +1291,12 @@ describe('updateLessonAction', () => {
     expect(updateLessonWithParticipants).toHaveBeenCalled()
   })
 
-  it('should_use_current_user_id_as_instructor_when_trainer_updates_lesson', async () => {
+  it('should_ignore_formData_instructor_id_and_use_own_membership_id_when_trainer_updates_lesson', async () => {
     guardAs(mockTrainerMembership)
     const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', instructor_id: 'other-trainer', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorId: 'user-1' })
+      expect.objectContaining({ instructorId: mockTrainerMembership.id })
     )
   })
 
@@ -1395,14 +1401,14 @@ describe('updatePaymentTypeAction', () => {
 
   it('should_return_no_error_when_trainer_is_instructor', async () => {
     guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: 'user-1' }))
+    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: mockTrainerMembership.id }))
     const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
     expect(result).toEqual({ error: null })
   })
 
   it('should_call_updateLesson_with_payment_type_when_trainer_is_instructor', async () => {
     guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: 'user-1' }))
+    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: mockTrainerMembership.id }))
     await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
     expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'venmo' })
   })

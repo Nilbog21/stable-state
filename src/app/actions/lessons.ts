@@ -41,15 +41,15 @@ export async function submitLesson(
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
   if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
 
-  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   const isManager = membership.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
-  const instructorId = instructorIdFromForm || user.id
+  const instructorId = instructorIdFromForm || membership.id
 
-  if (isManager && instructorIdFromForm && instructorIdFromForm !== user.id) {
+  if (isManager && instructorIdFromForm && instructorIdFromForm !== membership.id) {
     const instructors = await getInstructorsByBarn(barnId)
-    if (!instructors.some((i) => i.userId === instructorIdFromForm)) return { error: 'Invalid instructor' }
+    if (!instructors.some((i) => i.membershipId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
@@ -137,15 +137,15 @@ export async function updateLessonAction(
   if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
   if (!lessonAt) return { error: 'date and time required' }
 
-  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   const isManager = membership.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
-  const instructorId = instructorIdFromForm || user.id
+  const instructorId = instructorIdFromForm || membership.id
 
-  if (isManager && instructorIdFromForm && instructorIdFromForm !== user.id) {
+  if (isManager && instructorIdFromForm && instructorIdFromForm !== membership.id) {
     const instructors = await getInstructorsByBarn(barnId)
-    if (!instructors.some((i) => i.userId === instructorIdFromForm)) return { error: 'Invalid instructor' }
+    if (!instructors.some((i) => i.membershipId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
   const fee = feeRaw ? parseFloat(feeRaw) : null
@@ -231,7 +231,7 @@ export async function cancelLessonAction(
     return
   }
 
-  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) {
+  if (membership.role === 'trainer' && lesson.instructor_id !== membership.id) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
   }
@@ -259,7 +259,7 @@ export async function cancelLessonAction(
       .map((m) => m.user_id as string)
     recipientIds = [...managerUserIds, ...riderUserIds]
   } else {
-    recipientIds = lesson.instructor_id ? [lesson.instructor_id, ...riderUserIds] : riderUserIds
+    recipientIds = lesson.instructor_user_id ? [lesson.instructor_user_id, ...riderUserIds] : riderUserIds
   }
 
   await Promise.allSettled(
@@ -297,7 +297,7 @@ export async function cancelRiderParticipationAction(
     return
   }
 
-  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) {
+  if (membership.role === 'trainer' && lesson.instructor_id !== membership.id) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return
   }
@@ -334,7 +334,7 @@ export async function cancelRiderParticipationAction(
     const managerUserIds = barnMembers
       .filter((m) => m.role === 'manager' && m.user_id !== null)
       .map((m) => m.user_id as string)
-    recipientIds = lesson.instructor_id ? [lesson.instructor_id, ...managerUserIds] : managerUserIds
+    recipientIds = lesson.instructor_user_id ? [lesson.instructor_user_id, ...managerUserIds] : managerUserIds
   } else {
     const affectedUserId = targetRider.barn_membership.user_id
     const riderRecipients = affectedUserId ? [affectedUserId] : []
@@ -369,12 +369,12 @@ export async function updatePaymentTypeAction(
   barnSlug: string,
   paymentType: string | null
 ): Promise<{ error: string | null }> {
-  const { user, barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   if (membership.role === 'trainer') {
     const lesson = await getLessonById(lessonId, barn.id, 'trainer')
     if (!lesson) return { error: 'lesson not found' }
-    if (lesson.instructor_id !== user.id) return { error: 'not authorized' }
+    if (lesson.instructor_id !== membership.id) return { error: 'not authorized' }
   }
 
   try {
