@@ -16,7 +16,7 @@ Check Supabase migration status, rename pending migrations to the current timest
    - Get the current epoch seconds: `date +%s`
    - Sort the pending migrations by their current filename (ascending)
    - For the first migration, use epoch seconds as-is; for each subsequent one, add 1 second
-   - Format each timestamp: `date -d @{epoch} +%Y%m%d00%M%S`
+   - Format each timestamp in UTC (existing migration filenames are UTC-based): `date -u -d @{epoch} +%Y%m%d%H%M%S`
    - Rename: `mv supabase/migrations/{old} supabase/migrations/{new_timestamp}_{rest_of_name}`
 
 6. Display the planned renames clearly:
