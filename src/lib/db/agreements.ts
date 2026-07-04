@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, PaymentType } from './types'
+import { resolveMemberNames } from './barn-memberships'
+import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, OutstandingCharge, PaymentType, Role } from './types'
 
 export async function createAgreement(
   params: {
@@ -170,4 +171,120 @@ export async function getBarnDefaultBoardFee(barnId: string, client?: SupabaseCl
 
   if (error) throw error
   return data.default_board_fee
+}
+
+export interface ChargeSummaryRow {
+  fee: number
+  payment_type: PaymentType | null
+}
+
+export async function getChargesForSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date,
+  client?: SupabaseClient
+): Promise<ChargeSummaryRow[]> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('agreement_charges')
+    .select('fee, payment_type')
+    .eq('barn_id', barnId)
+    .gte('period', startDate.toISOString().slice(0, 10))
+    .lt('period', endDate.toISOString().slice(0, 10))
+
+  if (error) throw error
+  return data ?? []
+}
+
+export interface PaidCharge {
+  chargeId: string
+  agreementId: string
+  period: string
+  fee: number
+  kind: AgreementKind
+  riderId: string
+  horseId: string
+}
+
+export async function getPaidCharges(
+  barnId: string,
+  startDate: Date,
+  endDate: Date,
+  client?: SupabaseClient
+): Promise<PaidCharge[]> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('agreement_charges')
+    .select('id, agreement_id, period, fee, agreements!inner(kind, rider_id, horse_id)')
+    .eq('barn_id', barnId)
+    .not('payment_type', 'is', null)
+    .gte('period', startDate.toISOString().slice(0, 10))
+    .lt('period', endDate.toISOString().slice(0, 10))
+
+  if (error) throw error
+  return (data ?? []).map((row: any) => ({
+    chargeId: row.id,
+    agreementId: row.agreement_id,
+    period: row.period,
+    fee: row.fee,
+    kind: row.agreements.kind,
+    riderId: row.agreements.rider_id,
+    horseId: row.agreements.horse_id,
+  }))
+}
+
+export async function getOutstandingCharges(
+  barnId: string,
+  userId?: string,
+  role?: Role,
+  client?: SupabaseClient
+): Promise<OutstandingCharge[]> {
+  if (role === 'trainer') return []
+
+  const supabase = client ?? await createClient()
+  const now = new Date()
+  const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    .toISOString()
+    .slice(0, 10)
+
+  let riderMembershipId: string | undefined
+  if (role === 'rider' && userId) {
+    const { data: rider, error: riderError } = await supabase
+      .from('barn_memberships')
+      .select('id')
+      .eq('barn_id', barnId)
+      .eq('user_id', userId)
+      .eq('role', 'rider')
+      .eq('status', 'active')
+      .maybeSingle()
+    if (riderError) throw riderError
+    if (!rider) return []
+    riderMembershipId = rider.id
+  }
+
+  let query = supabase
+    .from('agreement_charges')
+    .select('id, period, fee, agreements!inner(kind, rider_id)')
+    .eq('barn_id', barnId)
+    .is('payment_type', null)
+    .lt('period', firstOfCurrentMonth)
+
+  if (riderMembershipId) {
+    query = query.eq('agreements.rider_id', riderMembershipId)
+  }
+
+  const { data, error } = await query.order('period', { ascending: true })
+  if (error) throw error
+
+  const rows = data ?? []
+  const riderIds = [...new Set(rows.map((r: any) => r.agreements.rider_id))]
+  const nameMap = await resolveMemberNames(riderIds, barnId, supabase)
+
+  return rows.map((row: any) => ({
+    id: row.id,
+    period: row.period,
+    kind: row.agreements.kind,
+    riderName: nameMap.get(row.agreements.rider_id) ?? row.agreements.rider_id,
+    fee: row.fee,
+  }))
 }
