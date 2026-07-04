@@ -13,11 +13,19 @@ BEGIN
 END $$;
 
 -- Backfill: map instructor_id (auth user id) -> matching barn_memberships.id in the same barn.
--- Every existing instructor has a real account and an active membership row, so this is lossless.
 UPDATE public.lessons l
 SET instructor_id = bm.id
 FROM public.barn_memberships bm
 WHERE bm.user_id = l.instructor_id AND bm.barn_id = l.barn_id;
+
+-- Rows whose instructor has since left the barn (membership deleted, auth account intact)
+-- have no matching barn_memberships row and are still holding the raw auth-user id after the
+-- backfill above. Null them out rather than deleting the lesson, matching this column's
+-- existing ON DELETE SET NULL semantics and preserving lesson/fee history.
+UPDATE public.lessons
+SET instructor_id = NULL
+WHERE instructor_id IS NOT NULL
+  AND instructor_id NOT IN (SELECT id FROM public.barn_memberships);
 
 -- New composite FK: lessons(barn_id, instructor_id) -> barn_memberships(barn_id, id).
 -- ON DELETE SET NULL (instructor_id) blanks out only the instructor attribution when a

@@ -9,6 +9,7 @@
 
 import { fileURLToPath } from 'url'
 import { upsertProfile } from '@/lib/db/profiles'
+import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createTier } from '@/lib/db/lesson-tiers'
 
 import { createHorse } from '@/lib/db/horses'
@@ -95,10 +96,10 @@ async function run() {
   const rider1MembershipId = riderMemberships!.find((m) => m.user_id === riderId)!.id
   const rider2MembershipId = riderMemberships!.find((m) => m.user_id === rider2Id)!.id
 
-  const { data: trainerMembership, error: tmErr } = await supabase
-    .from('barn_memberships').select('id').eq('barn_id', barnId).eq('user_id', trainerId).single()
-  if (tmErr) throw tmErr
-  const trainerMembershipId = trainerMembership!.id
+  const trainerMembers = await getActiveMembersWithProfiles(barnId, 'trainer', supabase)
+  const trainerMembership = trainerMembers.find((m) => m.userId === trainerId)
+  if (!trainerMembership) throw new Error('active trainer membership not found')
+  const trainerMembershipId = trainerMembership.membershipId
 
   const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, supabase)
   const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, supabase)
