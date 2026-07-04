@@ -42,6 +42,14 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 - [ ] Open Daisy's detail page → set status pill to **Unavailable**, enter reason "Thrown shoe" → Save
 - [ ] Horses page now shows Daisy under **Unavailable** with the reason visible
 
+Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
+
+- [ ] **Leases** in the nav opens the lease-kind list; **Add Lease** → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
+- [ ] **Boarding** in the nav opens the board-kind list; **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
+- [ ] Both agreements appear in their respective kind-scoped lists with rider, horse, fee, and **Active** status
+- [ ] Open the lease's **Edit** page → rider, horse, start date, and cadence are read-only; change the fee → Save → new fee reflected in the list
+- [ ] **End Agreement** on the boarding agreement (confirm the browser prompt) → it now shows **Ended** in the Boarding list
+
 Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Riders section):
 
 > The UI creates managed **rider** stubs only. Trainer stubs cannot be created from the UI — the trainer phase (Phase 5) uses the seeded trainers via `change-user.sh` instead.
@@ -151,7 +159,7 @@ bash scripts/change-user.sh
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
-- [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn**
+- [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding**
 - [ ] Lessons list shows only lessons where you (Alex) are the instructor; filter pills show riders only (`All | <rider> | ...`)
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
@@ -168,7 +176,7 @@ Switch role (pick **Dana** from the list — same `Barn slug` prompt as Phase 5)
 bash scripts/change-user.sh
 ```
 
-- [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link**
+- [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link, no Leases, no Boarding**
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
@@ -222,6 +230,9 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/barn/[slug]/lessons/[id]/edit` | Phases 4, 5 |
 | `/barn/[slug]/horses` | Phases 2, 4 |
 | `/barn/[slug]/horses/[id]` | Phases 2, 4, 5 |
+| `/barn/[slug]/agreements` | Phase 2 |
+| `/barn/[slug]/agreements/new` | Phase 2 |
+| `/barn/[slug]/agreements/[id]/edit` | Phase 2 |
 | `/barn/[slug]/members` | Phases 2, 4, 5, 6 |
 | `/barn/[slug]/members/[membership_id]` | Phases 4, 5 |
 | `/barn/[slug]/riders` (redirect) | Phase 4 |

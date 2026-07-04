@@ -26,6 +26,16 @@ On the horse's detail page, managers see a unified form and a documents section:
 - **Status** — a three-state pill control: **Active**, **Unavailable**, **Inactive**. Tap a pill to select the new status. When **Unavailable** is selected, a **Reason** textarea appears to record why the horse is out of rotation. When **Inactive** is selected for a currently active horse, a warning appears noting the horse will be removed from the roster and lesson scheduling. Tap **Save** to apply all changes (name, status, and reason) in one step — no separate confirmation is required.
 - **Documents** — displays uploaded files in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap the filename in the **Link** column to open the document (link is valid for 5 minutes). Tap **Delete** in the **Action** column to remove a document. To upload a new file, tap **Choose File** in the Upload Document form, select a file (the filename appears next to the button once chosen), fill in any optional notes, then tap **Upload**. Accepted types: PDF, JPG, PNG, DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**, **Other**.
 
+## Leases & Boarding
+
+Use **Leases** and **Boarding** in the nav to manage rider agreements for a horse. Each list shows rider, horse, fee, and status (**Active**/**Ended**), with an **Add Lease** / **Add Boarding** button in the page header.
+
+**Create an agreement** — Tap **Add Lease** or **Add Boarding**, select a rider and horse, set the fee (Boarding pre-fills the barn's default board fee, editable per agreement), and pick a start date (defaults to today). Leases can be billed **One time** or **Monthly**; Boarding agreements are always monthly.
+
+**Edit an agreement** — Open **Edit** from the list to change the fee. Rider, horse, start date, and billing cadence cannot be changed after creation — to change any of those, end the agreement and create a new one.
+
+**End an agreement** — Tap **End Agreement** on the edit page and confirm. This does not delete the record — past charges remain, and the agreement shows as **Ended** in the list.
+
 ## Members
 
 Go to **Members** to browse the barn roster. You will see a **Managers** section (other managers in the barn), a **Trainers** section, and a **Riders** section, each listing active members with links to their detail pages. Your own card appears at the top under **You**.

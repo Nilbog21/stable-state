@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { createMockAgreement } from '@/test/fixtures'
 import { AgreementForm } from '../AgreementForm'
 
@@ -77,6 +77,15 @@ describe('AgreementForm - new mode', () => {
       <AgreementForm mode="new" kind="board" riders={riders} horses={horses} onSave={onSave} />
     )
     expect(screen.getByRole('button', { name: /add boarding/i })).toBeDefined()
+  })
+
+  it('should_update_fee_value_when_changed', () => {
+    render(
+      <AgreementForm mode="new" kind="lease" riders={riders} horses={horses} onSave={onSave} />
+    )
+    const feeInput = screen.getByLabelText(/fee/i) as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '300' } })
+    expect(feeInput.value).toBe('300')
   })
 })
 

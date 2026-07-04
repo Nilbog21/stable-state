@@ -84,6 +84,20 @@ describe('EditAgreementPage', () => {
     expect(screen.getByText('Apple')).toBeDefined()
   })
 
+  it('should_render_dash_when_rider_name_not_resolved', async () => {
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_dash_when_horse_name_not_resolved', async () => {
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
   it('should_render_end_agreement_button_when_agreement_is_active', async () => {
     vi.mocked(getAgreementById).mockResolvedValue(createMockAgreement({ is_active: true }))
     const jsx = await callPage()
