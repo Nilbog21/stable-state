@@ -5,6 +5,5 @@ export function isNavLinkActive(currentPath: string, href: string): boolean {
   const pathMatches = currentPathname === hrefPathname || currentPathname.startsWith(`${hrefPathname}/`)
   if (!pathMatches) return false
 
-  if (hrefQuery === undefined) return true
-  return currentPathname === hrefPathname && currentQuery === hrefQuery
+  return hrefQuery === undefined || currentQuery === hrefQuery
 }

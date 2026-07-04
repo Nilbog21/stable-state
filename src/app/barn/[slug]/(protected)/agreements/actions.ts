@@ -71,7 +71,7 @@ export async function endAgreementAction(barnSlug: string, agreementId: string):
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const agreement = await getAgreementById(agreementId, barn.id)
-  if (!agreement) redirect(`/barn/${barnSlug}/agreements`)
+  if (!agreement) redirect(`/barn/${barnSlug}/agreements?kind=lease`)
 
   await endAgreement(agreementId, barn.id)
   redirect(`/barn/${barnSlug}/agreements?kind=${agreement.kind}`)

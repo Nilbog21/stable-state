@@ -377,7 +377,7 @@ describe('endAgreementAction', () => {
     vi.mocked(getAgreementById).mockResolvedValue(null)
 
     await expect(endAgreementAction('green-acres', 'agreement-1')).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/agreements')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/agreements?kind=lease')
   })
 
   it('should_not_call_endAgreement_when_agreement_not_found', async () => {

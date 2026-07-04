@@ -1,6 +1,6 @@
 # Stable State — Rider Guide
 
-Stable State is a barn management app for scheduling lessons and tracking horses. Sign in with Google, then select your barn. Leave "Keep me logged in" checked on the sign-in page to stay signed in for up to 30 days, even after closing your browser. The nav bar shows all sections available to you as a rider. On a narrower screen, tap the ☰ button to open a side menu with the same links.
+Stable State is a barn management app for scheduling lessons and tracking horses. Sign in with Google, then select your barn. Leave "Keep me logged in" checked on the sign-in page to stay signed in for up to 30 days, even after closing your browser. The nav bar shows all sections available to you as a rider, with the section you're currently on highlighted. On a narrower screen, tap the ☰ button to open a side menu with the same links.
 
 ---
 

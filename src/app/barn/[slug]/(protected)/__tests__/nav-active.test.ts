@@ -33,4 +33,22 @@ describe('isNavLinkActive', () => {
   it('should_be_active_on_nested_path_ignoring_current_query_when_href_has_no_query', () => {
     expect(isNavLinkActive('/barn/green-acres/lessons/123?foo=bar', '/barn/green-acres/lessons')).toBe(true)
   })
+
+  it('should_be_active_on_nested_path_when_query_matches', () => {
+    expect(
+      isNavLinkActive(
+        '/barn/green-acres/agreements/new?kind=lease',
+        '/barn/green-acres/agreements?kind=lease'
+      )
+    ).toBe(true)
+  })
+
+  it('should_be_inactive_on_nested_path_when_query_differs', () => {
+    expect(
+      isNavLinkActive(
+        '/barn/green-acres/agreements/new?kind=lease',
+        '/barn/green-acres/agreements?kind=board'
+      )
+    ).toBe(false)
+  })
 })

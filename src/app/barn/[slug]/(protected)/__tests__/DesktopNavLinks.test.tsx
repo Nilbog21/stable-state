@@ -49,9 +49,13 @@ function renderLinks() {
 }
 
 describe('DesktopNavLinks', () => {
-  it('should_render_all_links', () => {
+  it('should_render_lessons_link', () => {
     renderLinks()
     expect(screen.getByRole('link', { name: 'Lessons' })).toBeDefined()
+  })
+
+  it('should_render_horses_link', () => {
+    renderLinks()
     expect(screen.getByRole('link', { name: 'Horses' })).toBeDefined()
   })
 
@@ -75,19 +79,31 @@ describe('DesktopNavLinks', () => {
     expect(screen.getByRole('link', { name: 'Horses' }).className).toContain('font-medium')
   })
 
-  it('should_mark_only_leases_active_when_current_query_is_kind_lease', () => {
+  it('should_mark_leases_active_when_current_query_is_kind_lease', () => {
     mockUsePathname.mockReturnValue('/barn/test-barn/agreements')
     mockUseSearchParams.mockReturnValue(new URLSearchParams('kind=lease'))
     renderLinks()
     expect(screen.getByRole('link', { name: 'Leases' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('should_not_mark_boarding_active_when_current_query_is_kind_lease', () => {
+    mockUsePathname.mockReturnValue('/barn/test-barn/agreements')
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('kind=lease'))
+    renderLinks()
     expect(screen.getByRole('link', { name: 'Boarding' }).getAttribute('aria-current')).toBeNull()
   })
 
-  it('should_mark_only_boarding_active_when_current_query_is_kind_board', () => {
+  it('should_mark_boarding_active_when_current_query_is_kind_board', () => {
     mockUsePathname.mockReturnValue('/barn/test-barn/agreements')
     mockUseSearchParams.mockReturnValue(new URLSearchParams('kind=board'))
     renderLinks()
     expect(screen.getByRole('link', { name: 'Boarding' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('should_not_mark_leases_active_when_current_query_is_kind_board', () => {
+    mockUsePathname.mockReturnValue('/barn/test-barn/agreements')
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('kind=board'))
+    renderLinks()
     expect(screen.getByRole('link', { name: 'Leases' }).getAttribute('aria-current')).toBeNull()
   })
 })
