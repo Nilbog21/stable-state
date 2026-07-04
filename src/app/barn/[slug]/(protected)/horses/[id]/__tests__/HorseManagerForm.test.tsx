@@ -144,6 +144,14 @@ describe('HorseManagerForm', () => {
     expect(screen.getByText(/remove it from the roster/i)).toBeDefined()
   })
 
+  it('should_not_wrap_inactive_warning_in_a_nested_flex_container', () => {
+    render(<HorseManagerForm horse={activeHorse} action={mockAction} />)
+    fireEvent.click(screen.getByRole('button', { name: /^inactive$/i }))
+    const warning = screen.getByText(/remove it from the roster/i)
+    expect(warning.parentElement).toBe(screen.getByRole('group').parentElement)
+    expect(warning.classList.contains('min-w-0')).toBe(true)
+  })
+
   it('should_render_save_button', () => {
     render(<HorseManagerForm horse={activeHorse} action={mockAction} />)
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
