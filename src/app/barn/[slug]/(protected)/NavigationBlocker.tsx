@@ -97,11 +97,13 @@ export function BlockingLink({
   className,
   children,
   onClick,
+  'aria-current': ariaCurrent,
 }: {
   href: string
   className?: string
   children: React.ReactNode
   onClick?: () => void
+  'aria-current'?: 'page'
 }) {
   const { dirty, setPendingNav } = useNavigationBlocker()
   return (
@@ -109,6 +111,7 @@ export function BlockingLink({
       href={href}
       className={className}
       onClick={onClick}
+      aria-current={ariaCurrent}
       onNavigate={(e) => {
         if (dirty) {
           e.preventDefault()

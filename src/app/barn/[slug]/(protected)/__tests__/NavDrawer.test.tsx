@@ -20,13 +20,15 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('next/link', () => ({
-  default: ({ href, children, onClick, onNavigate }: {
+  default: ({ href, children, onClick, onNavigate, className, 'aria-current': ariaCurrent }: {
     href: string
     children: React.ReactNode
     onClick?: () => void
     onNavigate?: (e: { preventDefault: () => void }) => void
+    className?: string
+    'aria-current'?: 'page'
   }) => (
-    <a href={href} onClick={(e) => { onNavigate?.({ preventDefault: () => e.preventDefault() }); onClick?.() }}>{children}</a>
+    <a href={href} className={className} aria-current={ariaCurrent} onClick={(e) => { onNavigate?.({ preventDefault: () => e.preventDefault() }); onClick?.() }}>{children}</a>
   ),
 }))
 
@@ -192,6 +194,13 @@ describe('NavDrawer - active link highlighting', () => {
     renderDrawer()
     fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
     expect(screen.getByRole('link', { name: 'Lessons' }).className).toContain('bg-zinc-100')
+  })
+
+  it('should_still_mark_matching_link_active_when_current_url_has_a_query_string', () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('foo=bar'))
+    renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: 'Lessons' }).getAttribute('aria-current')).toBe('page')
   })
 })
 

@@ -19,12 +19,14 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('next/link', () => ({
-  default: ({ href, children, onNavigate }: {
+  default: ({ href, children, onNavigate, className, 'aria-current': ariaCurrent }: {
     href: string
     children: React.ReactNode
     onNavigate?: (e: { preventDefault: () => void }) => void
+    className?: string
+    'aria-current'?: 'page'
   }) => (
-    <a href={href} onClick={(e) => onNavigate?.({ preventDefault: () => e.preventDefault() })}>{children}</a>
+    <a href={href} className={className} aria-current={ariaCurrent} onClick={(e) => onNavigate?.({ preventDefault: () => e.preventDefault() })}>{children}</a>
   ),
 }))
 

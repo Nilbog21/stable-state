@@ -1,16 +1,24 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { BlockingLink } from './NavigationBlocker'
+import { isNavLinkActive } from './nav-active'
 
 interface Props {
   navLinks: { href: string; label: string }[]
 }
 
+const activeClassName =
+  'rounded-lg bg-zinc-100 px-3 py-2 text-sm font-semibold text-zinc-900 dark:bg-zinc-800 dark:text-zinc-50'
+const inactiveClassName =
+  'rounded-lg px-3 py-2 text-sm font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-50'
+
 export function NavDrawer({ navLinks }: Props) {
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
+  const search = useSearchParams().toString()
+  const currentPath = search ? `${pathname}?${search}` : pathname
   const [lastPathname, setLastPathname] = useState(pathname)
 
   if (lastPathname !== pathname) {
@@ -65,16 +73,20 @@ export function NavDrawer({ navLinks }: Props) {
             className="fixed inset-y-0 left-0 z-50 w-64 overflow-y-auto bg-white p-4 shadow-lg outline-none dark:bg-zinc-900"
           >
             <nav className="flex flex-col gap-1">
-              {navLinks.map((link) => (
-                <BlockingLink
-                  key={link.href}
-                  href={link.href}
-                  onClick={close}
-                  className="rounded-lg px-3 py-2 text-sm font-medium text-zinc-900 hover:bg-zinc-100 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                >
-                  {link.label}
-                </BlockingLink>
-              ))}
+              {navLinks.map((link) => {
+                const active = isNavLinkActive(currentPath, link.href)
+                return (
+                  <BlockingLink
+                    key={link.href}
+                    href={link.href}
+                    onClick={close}
+                    aria-current={active ? 'page' : undefined}
+                    className={active ? activeClassName : inactiveClassName}
+                  >
+                    {link.label}
+                  </BlockingLink>
+                )
+              })}
             </nav>
           </div>
         </>

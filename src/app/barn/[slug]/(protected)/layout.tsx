@@ -8,8 +8,9 @@ import { getNotifications } from '@/lib/db/notifications'
 import { UserMenu } from './UserMenu'
 import { BarnSwitcher } from './BarnSwitcher'
 import { NotificationBell } from './NotificationBell'
-import { NavigationBlockerProvider, BlockingLink, NavigationConfirmDialog } from './NavigationBlocker'
+import { NavigationBlockerProvider, NavigationConfirmDialog } from './NavigationBlocker'
 import { NavDrawer } from './NavDrawer'
+import { DesktopNavLinks } from './DesktopNavLinks'
 
 export async function generateMetadata({
   params,
@@ -93,17 +94,7 @@ export default async function ProtectedBarnLayout({
           barnSlug={slug}
           activeBarnMemberships={activeBarnMemberships}
         />
-        <div className="hidden items-center gap-4 md:flex">
-          {navLinks.map((link) => (
-            <BlockingLink
-              key={link.href}
-              href={link.href}
-              className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-            >
-              {link.label}
-            </BlockingLink>
-          ))}
-        </div>
+        <DesktopNavLinks navLinks={navLinks} />
         <div className="ml-auto flex items-center gap-2">
           <span className="order-2 md:order-1">
             <UserMenu initials={initials} email={email} fullName={fullName} barnSlug={slug} />
