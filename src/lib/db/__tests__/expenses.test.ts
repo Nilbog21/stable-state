@@ -26,10 +26,11 @@ describe('getExpensesByBarn', () => {
   })
 
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
-    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockOrder2 = vi.fn().mockResolvedValue({ data, error })
+    const mockOrder = vi.fn().mockReturnValue({ order: mockOrder2 })
     const mockEq = vi.fn().mockReturnValue({ order: mockOrder })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockOrder }
+    return { select: mockSelect, mockEq, mockOrder, mockOrder2 }
   }
 
   function makeJunctionChain(data: unknown[] | null, error: Error | null = null) {
@@ -71,6 +72,15 @@ describe('getExpensesByBarn', () => {
     await getExpensesByBarn('barn-1')
 
     expect(mockOrder).toHaveBeenCalledWith('expense_date', { ascending: false })
+  })
+
+  it('should_tiebreak_same_day_expenses_by_created_at_descending', async () => {
+    const { select, mockOrder2 } = makeExpensesChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getExpensesByBarn('barn-1')
+
+    expect(mockOrder2).toHaveBeenCalledWith('created_at', { ascending: false })
   })
 
   it('should_attach_horse_names_from_junction_rows', async () => {

@@ -59,6 +59,7 @@ export default async function ProtectedBarnLayout({
   if (membership.role === 'manager') {
     navLinks = [
       { href: `/barn/${slug}/lessons`, label: 'Lessons' },
+      { href: `/barn/${slug}/expenses`, label: 'Expenses' },
       { href: `/barn/${slug}/horses`, label: 'Horses' },
       { href: `/barn/${slug}/agreements?kind=lease`, label: 'Leases' },
       { href: `/barn/${slug}/agreements?kind=board`, label: 'Boarding' },
