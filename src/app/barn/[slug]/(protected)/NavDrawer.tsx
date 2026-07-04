@@ -11,14 +11,16 @@ export function NavDrawer({ navLinks }: Props) {
   const [open, setOpen] = useState(false)
   const panelRef = useRef<HTMLDivElement>(null)
   const pathname = usePathname()
+  const [lastPathname, setLastPathname] = useState(pathname)
+
+  if (lastPathname !== pathname) {
+    setLastPathname(pathname)
+    if (open) setOpen(false)
+  }
 
   useEffect(() => {
     if (open) panelRef.current!.focus()
   }, [open])
-
-  useEffect(() => {
-    setOpen(false)
-  }, [pathname])
 
   useEffect(() => {
     if (!open) return
