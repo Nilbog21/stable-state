@@ -43,8 +43,8 @@ const baseProps = {
   initialLesson: normalLesson,
   horses: [mockHorse],
   riders: [mockRider, mockRider2],
-  instructors: [{ userId: 'user-1', name: 'Jane Smith' }],
-  currentUserId: 'user-1',
+  instructors: [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Smith' }],
+  currentMembershipId: 'user-1',
   isManager: true,
   tiers: [mockTier],
   action: vi.fn().mockResolvedValue({ error: null }),
@@ -228,7 +228,7 @@ describe('LessonForm (edit mode)', () => {
     expect(hiddenJumping.value).toBe('true')
   })
 
-  it('should_default_instructor_to_currentUserId_when_instructor_id_is_null', () => {
+  it('should_default_instructor_to_currentMembershipId_when_instructor_id_is_null', () => {
     const lesson = { ...normalLesson, instructor_id: null }
     const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
     const select = container.querySelector('select[name="instructor_id"]') as HTMLSelectElement

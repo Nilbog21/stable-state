@@ -7,13 +7,13 @@ interface Props {
   slug: string
   isManager: boolean
   isTrainer: boolean
-  currentUserId: string
+  currentMembershipId: string
   viewerMembershipId?: string
 }
 
-export function LessonListItem({ lesson, slug, isManager, isTrainer, currentUserId, viewerMembershipId }: Props) {
+export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMembershipId, viewerMembershipId }: Props) {
   const isCancelled = lesson.cancelled_at !== null
-  const canManageLesson = isManager || (isTrainer && lesson.instructor_id === currentUserId)
+  const canManageLesson = isManager || (isTrainer && lesson.instructor_id === currentMembershipId)
   const canCancel =
     canManageLesson &&
     !isCancelled &&

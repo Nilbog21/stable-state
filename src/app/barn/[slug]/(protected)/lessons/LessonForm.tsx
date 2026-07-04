@@ -22,7 +22,7 @@ export function LessonForm({
   isManager,
   action,
   instructors,
-  currentUserId,
+  currentMembershipId,
   tiers,
   initialLesson,
   initialNotes,
@@ -32,8 +32,8 @@ export function LessonForm({
   riders: { id: string; name: string }[]
   isManager: boolean
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
-  instructors: { userId: string; name: string }[]
-  currentUserId: string
+  instructors: { membershipId: string; userId: string | null; name: string }[]
+  currentMembershipId: string
   tiers: LessonTier[]
   initialLesson?: LessonDetail
   initialNotes?: {
@@ -302,20 +302,20 @@ export function LessonForm({
             id="instructor_id"
             name="instructor_id"
             required
-            defaultValue={initialLesson?.instructor_id ?? currentUserId}
+            defaultValue={initialLesson?.instructor_id ?? currentMembershipId}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           >
             {instructors.map((i) => (
-              <option key={i.userId} value={i.userId}>{i.name}</option>
+              <option key={i.membershipId} value={i.membershipId}>{i.name}</option>
             ))}
           </select>
         </div>
       ) : (
         <div className="flex flex-col gap-1">
           <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Instructor</span>
-          <input type="hidden" name="instructor_id" value={currentUserId} />
+          <input type="hidden" name="instructor_id" value={currentMembershipId} />
           <span className="text-sm text-zinc-900 dark:text-zinc-50">
-            {instructors.find(i => i.userId === currentUserId)?.name ?? currentUserId}
+            {instructors.find(i => i.membershipId === currentMembershipId)?.name ?? currentMembershipId}
           </span>
         </div>
       )}

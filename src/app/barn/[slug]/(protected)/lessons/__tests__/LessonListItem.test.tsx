@@ -39,17 +39,17 @@ const groupLesson = {
 
 describe('LessonListItem', () => {
   it('should_show_horse_name_for_normal_lesson', () => {
-    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentUserId="user-1" />)
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentMembershipId="user-1" />)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
   it('should_show_rider_name_for_normal_lesson', () => {
-    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentUserId="user-1" />)
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentMembershipId="user-1" />)
     expect(screen.getByText('Alice')).toBeDefined()
   })
 
   it('should_show_counts_for_group_lesson', () => {
-    render(<LessonListItem lesson={groupLesson} slug="green-acres" isManager={false} isTrainer={false} currentUserId="user-1" />)
+    render(<LessonListItem lesson={groupLesson} slug="green-acres" isManager={false} isTrainer={false} currentMembershipId="user-1" />)
     expect(screen.getByText('3 riders, 2 horses')).toBeDefined()
   })
 
@@ -60,7 +60,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Thunderbolt')).toBeNull()
@@ -73,7 +73,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Alice')).toBeNull()
@@ -86,7 +86,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByText('$75 · Premium')).toBeDefined()
@@ -99,7 +99,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByText('Custom')).toBeDefined()
@@ -112,7 +112,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByText('Group Rate')).toBeDefined()
@@ -125,7 +125,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByText('Thunderbolt · Jumping')).toBeDefined()
@@ -138,7 +138,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText(/Jumping/)).toBeNull()
@@ -151,7 +151,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByText('3 riders, 2 horses · Jumping')).toBeDefined()
@@ -164,7 +164,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText(/Jumping/)).toBeNull()
@@ -177,7 +177,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByText('Unpaid')).toBeDefined()
@@ -190,7 +190,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -203,7 +203,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -216,7 +216,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -229,7 +229,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -242,7 +242,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByText('Cancelled')).toBeDefined()
@@ -255,7 +255,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Cancelled')).toBeNull()
@@ -268,7 +268,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -281,7 +281,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
@@ -294,7 +294,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
@@ -307,7 +307,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
@@ -320,7 +320,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
@@ -333,7 +333,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={true}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
@@ -346,7 +346,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={true}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
@@ -359,7 +359,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
@@ -372,7 +372,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
       />
     )
     expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/cancel')
@@ -385,7 +385,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
@@ -399,7 +399,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
@@ -413,7 +413,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
@@ -427,7 +427,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
@@ -441,7 +441,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
@@ -455,7 +455,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
@@ -469,7 +469,7 @@ describe('LessonListItem', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentUserId="user-1"
+        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
