@@ -5,24 +5,30 @@ import { useEffect } from 'react'
 afterEach(cleanup)
 
 const mockUsePathname = vi.hoisted(() => vi.fn(() => '/barn/test-barn/lessons'))
+const mockUseSearchParams = vi.hoisted(() => vi.fn(() => new URLSearchParams('')))
 
 beforeEach(() => {
   mockUsePathname.mockReset()
   mockUsePathname.mockReturnValue('/barn/test-barn/lessons')
+  mockUseSearchParams.mockReset()
+  mockUseSearchParams.mockReturnValue(new URLSearchParams(''))
 })
 
 vi.mock('next/navigation', () => ({
   usePathname: mockUsePathname,
+  useSearchParams: mockUseSearchParams,
 }))
 
 vi.mock('next/link', () => ({
-  default: ({ href, children, onClick, onNavigate }: {
+  default: ({ href, children, onClick, onNavigate, className, 'aria-current': ariaCurrent }: {
     href: string
     children: React.ReactNode
     onClick?: () => void
     onNavigate?: (e: { preventDefault: () => void }) => void
+    className?: string
+    'aria-current'?: 'page'
   }) => (
-    <a href={href} onClick={(e) => { onNavigate?.({ preventDefault: () => e.preventDefault() }); onClick?.() }}>{children}</a>
+    <a href={href} className={className} aria-current={ariaCurrent} onClick={(e) => { onNavigate?.({ preventDefault: () => e.preventDefault() }); onClick?.() }}>{children}</a>
   ),
 }))
 
@@ -168,6 +174,33 @@ describe('NavDrawer - accessibility', () => {
   it('should_label_trigger_for_screen_readers', () => {
     renderDrawer()
     expect(screen.getByRole('button', { name: /open navigation menu/i }).getAttribute('aria-label')).toBe('Open navigation menu')
+  })
+})
+
+describe('NavDrawer - active link highlighting', () => {
+  it('should_mark_matching_pathname_link_as_current_page', () => {
+    renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: 'Lessons' }).getAttribute('aria-current')).toBe('page')
+  })
+
+  it('should_not_mark_non_matching_link_as_current_page', () => {
+    renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: 'Horses' }).getAttribute('aria-current')).toBeNull()
+  })
+
+  it('should_apply_active_background_class_to_matching_link', () => {
+    renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: 'Lessons' }).className).toContain('bg-zinc-100')
+  })
+
+  it('should_still_mark_matching_link_active_when_current_url_has_a_query_string', () => {
+    mockUseSearchParams.mockReturnValue(new URLSearchParams('foo=bar'))
+    renderDrawer()
+    fireEvent.click(screen.getByRole('button', { name: /open navigation menu/i }))
+    expect(screen.getByRole('link', { name: 'Lessons' }).getAttribute('aria-current')).toBe('page')
   })
 })
 

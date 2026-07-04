@@ -25,6 +25,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] You are redirected to `/profile/complete` (fresh claimed stub has no contact info)
 - [ ] Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app as manager of Dev Barn
 - [ ] Shrink the browser below 768px wide — the nav bar's section links disappear and a ☰ button appears; tapping it opens a left drawer listing the same links, which closes on link tap, backdrop tap, and Escape; the bell icon now sits to the left of the avatar (reversed from desktop's avatar-then-bell order)
+- [ ] **Lessons** is bolded/highlighted in both the desktop nav bar and the drawer while on `/barn/dev-barn/lessons` or a nested page like `/barn/dev-barn/lessons/[id]`; other links stay unhighlighted
 
 **Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; pending rider Quinn Pending; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 2 past lessons — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~36 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
 
@@ -45,8 +46,8 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 
 Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 
-- [ ] **Leases** in the nav opens the lease-kind list; **Add Lease** → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
-- [ ] **Boarding** in the nav opens the board-kind list; **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
+- [ ] **Leases** in the nav opens the lease-kind list and stays highlighted; **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
+- [ ] **Boarding** in the nav opens the board-kind list and stays highlighted; **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
 - [ ] Both agreements appear in their respective kind-scoped lists with rider, horse, fee, and **Active** status
 - [ ] Open the lease's **Edit** page → rider, horse, start date, and cadence are read-only; change the fee → Save → new fee reflected in the list
 - [ ] Open the lease's **View** page → shows rider, horse, fee, cadence, and status, plus a charges table with the first auto-generated charge
