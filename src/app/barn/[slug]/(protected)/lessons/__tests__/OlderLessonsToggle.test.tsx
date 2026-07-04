@@ -87,6 +87,22 @@ describe('OlderLessonsToggle', () => {
     expect(screen.getByText('Comet')).toBeDefined()
   })
 
+  it('should_use_spacing_not_divider_borders_between_older_lesson_rows', () => {
+    render(
+      <OlderLessonsToggle
+        lessons={[mockLesson]}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentUserId="user-1"
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
+    const list = screen.getByRole('list')
+    expect(list.className).toContain('space-y-2')
+    expect(list.className).not.toContain('divide-y')
+  })
+
   it('should_show_hide_older_lessons_button_label_after_expanding', () => {
     render(
       <OlderLessonsToggle

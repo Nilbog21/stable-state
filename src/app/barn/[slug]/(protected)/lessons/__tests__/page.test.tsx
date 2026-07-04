@@ -140,6 +140,14 @@ describe('LessonsPage', () => {
     expect(screen.getByRole('heading', { name: /lessons/i })).toBeDefined()
   })
 
+  it('should_use_spacing_not_divider_borders_between_lesson_rows', async () => {
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const list = screen.getByRole('list')
+    expect(list.className).toContain('space-y-2')
+    expect(list.className).not.toContain('divide-y')
+  })
+
   it('should_show_empty_state_when_no_lessons', async () => {
     vi.mocked(getLessonsByBarn).mockResolvedValue([])
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
