@@ -257,3 +257,52 @@ export interface AgreementCharge {
   payment_type: PaymentType | null
   created_at: string
 }
+
+export interface HorseExpense {
+  id: string
+  barn_id: string
+  expense_date: string
+  expense_time: string | null
+  amount: number | null
+  recipient: string
+  expense_type: string
+  notes: string | null
+  applies_to_all_horses: boolean
+  created_at: string
+  updated_at: string
+}
+
+export interface ExpenseWithHorses extends HorseExpense {
+  horse_names: string[]
+  horse_ids: string[]
+}
+
+export interface ExpenseInput {
+  expenseDate: string
+  expenseTime?: string | null
+  amount?: number | null
+  recipient: string
+  expenseType?: string
+  notes?: string | null
+  appliesToAllHorses: boolean
+  horseIds?: string[]
+}
+
+export interface HorseExpenseSummary {
+  horseId: string
+  horseName: string
+  totalExpenses: number
+}
+
+export interface ExpenseFinancialSummary {
+  totalExpenses: number
+  breakdown: HorseExpenseSummary[]
+}
+
+export interface HorseExpenseDetailRow {
+  expenseId: string
+  expenseDate: string
+  amount: number
+  horseCount: number
+  splitAmount: number
+}
