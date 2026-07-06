@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getBarnBySlug, updateBarnDefaultBoardFee } from '../barns'
+import { getBarnBySlug, updateBarnDefaultBoardFee, setInstructorCut } from '../barns'
 
 const mockBarn = createMockBarn()
 
@@ -130,5 +130,39 @@ describe('updateBarnDefaultBoardFee', () => {
     const result = await updateBarnDefaultBoardFee('barn-1', 1200, mockClient)
 
     expect(result).toEqual(mockBarn)
+  })
+})
+
+describe('setInstructorCut', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_correct_arguments', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await setInstructorCut('barn-1', 30)
+
+    expect(mockRpc).toHaveBeenCalledWith('set_instructor_cut', { p_barn_id: 'barn-1', p_value: 30 })
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const dbError = new Error('not authorized')
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ error: dbError }),
+    } as any)
+
+    await expect(setInstructorCut('barn-1', 30)).rejects.toThrow('not authorized')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const mockClient = { rpc: mockRpc } as any
+
+    await setInstructorCut('barn-1', 30, mockClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(mockRpc).toHaveBeenCalledWith('set_instructor_cut', { p_barn_id: 'barn-1', p_value: 30 })
   })
 })
