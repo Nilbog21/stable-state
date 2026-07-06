@@ -200,6 +200,7 @@ bash scripts/change-user.sh
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
+- [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
 - [ ] `/barn/dev-barn/finances` is blocked (redirect)
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
