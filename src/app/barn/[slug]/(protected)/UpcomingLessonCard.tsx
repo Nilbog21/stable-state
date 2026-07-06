@@ -2,12 +2,17 @@
 import Link from 'next/link'
 import type { LessonWithDetails } from '@/lib/db/types'
 
+export function isSameLocalDay(date: Date, now: Date): boolean {
+  return (
+    date.getFullYear() === now.getFullYear() &&
+    date.getMonth() === now.getMonth() &&
+    date.getDate() === now.getDate()
+  )
+}
+
 export function formatLessonDate(iso: string, now: Date): string {
   const d = new Date(iso)
-  const isToday =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate()
+  const isToday = isSameLocalDay(d, now)
 
   const time = d.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
   if (isToday) return `Today · ${time}`

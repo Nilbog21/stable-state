@@ -6,8 +6,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import type { LessonWithDetails } from '@/lib/db/types'
-import { UpcomingLessonCard } from './UpcomingLessonCard'
-import { EmptyState } from '@/components/EmptyState'
+import { UpcomingLessonsSections } from './UpcomingLessonsSections'
 
 export default async function BarnDashboardPage({
   params,
@@ -57,29 +56,12 @@ export default async function BarnDashboardPage({
         </div>
       )}
       {upcomingLessons !== null && userRole !== null && (
-        <section>
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Your Upcoming Lessons
-          </h2>
-          {upcomingLessons.length === 0 ? (
-            <EmptyState
-              heading="You're all clear"
-              subtext="No lessons scheduled for the next 7 days."
-            />
-          ) : (
-            <div className="space-y-3">
-              {upcomingLessons.map((lesson) => (
-                <UpcomingLessonCard
-                  key={lesson.id}
-                  lesson={lesson}
-                  role={userRole}
-                  slug={slug}
-                  viewerMembershipId={membershipId}
-                />
-              ))}
-            </div>
-          )}
-        </section>
+        <UpcomingLessonsSections
+          lessons={upcomingLessons}
+          role={userRole}
+          slug={slug}
+          viewerMembershipId={membershipId}
+        />
       )}
     </main>
   )

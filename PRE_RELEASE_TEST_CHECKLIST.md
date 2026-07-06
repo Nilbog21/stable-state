@@ -90,7 +90,7 @@ Future:
 
 Dashboard (`/barn/dev-barn`):
 
-- [ ] Upcoming-lessons preview shows lessons in the next 7 days
+- [ ] Upcoming-lessons preview shows lessons in the next 7 days, split into a "Today" section (only when a lesson is today) and a "This Week" section (the remaining 6 days)
 - [ ] Pending-requests badge is visible (Quinn Pending) and links to settings
 
 Lessons (`/barn/dev-barn/lessons`):
