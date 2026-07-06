@@ -11,18 +11,14 @@ export async function createNotification(params: {
   link?: string | null
 }, client?: SupabaseClient): Promise<void> {
   const supabase = client ?? await createClient()
-  const { error } = await supabase.from('notifications').upsert(
-    {
-      user_id: params.userId,
-      barn_id: params.barnId,
-      type: params.type,
-      title: params.title,
-      body: params.body ?? null,
-      link: params.link ?? null,
-      read_at: null,
-    },
-    { onConflict: 'user_id,barn_id,type', ignoreDuplicates: false }
-  )
+  const { error } = await supabase.rpc('create_or_update_notification', {
+    p_user_id: params.userId,
+    p_barn_id: params.barnId,
+    p_type: params.type,
+    p_title: params.title,
+    p_body: params.body ?? null,
+    p_link: params.link ?? null,
+  })
 
   if (error) throw error
 }
