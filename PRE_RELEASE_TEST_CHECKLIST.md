@@ -128,6 +128,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] `/barn/dev-barn/riders` redirects to `/barn/dev-barn/members`
 - [ ] Open a trainer's member detail page → upload a document → it lists with a working link → delete it
 - [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
+- [ ] Rider Emery's member detail page shows **Boarding: $X/month** linking to their boarding agreement; a rider with no boarding agreement shows an **Add boarding** link into `/agreements?kind=board`; a managed (unclaimed) rider's detail page shows the same boarding status line
 
 Finances (`/barn/dev-barn/finances`):
 
@@ -151,6 +152,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → Save
 - [ ] Set a different tier as **default** → new-lesson form pre-selects it
 - [ ] **Deactivate** the Group Special tier → it no longer appears when creating a lesson; **reactivate** it
+- [ ] Edit **Default Board Fee**, confirm the non-retroactive helper text is visible → Save → a pre-existing boarding agreement's fee is unchanged, but a newly created boarding agreement pre-fills the new fee
 
 Notifications and profile:
 

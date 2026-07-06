@@ -54,6 +54,8 @@ Once someone claims their invite, the **Unlinked** badge disappears and their ro
 
 Tap any member card to open their detail page. Documents are shown in a table with columns **Type**, **Notes**, **Link**, and **Action**. Tap a filename in the **Link** column to open the document (link is valid for 5 minutes). Tap **Delete** to remove it. To add a new file, tap **Choose File**, select a file (the filename appears next to the button once chosen), add optional notes, and tap **Upload**. Accepted file types: PDF, JPG, PNG, DOCX (max 5 MB). Document types for managers and trainers: **Instructor Contract**, **Other**. Document types for riders: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other**.
 
+A rider's detail page also shows a **Boarding** status line: if they have an active boarding agreement, it shows the monthly fee linked to the agreement detail page; otherwise it shows an **Add boarding** link straight into the Boarding form. This works even for a rider who hasn't claimed their invite yet.
+
 ## Lessons
 
 **View lessons** — Go to **Lessons** to see recent activity. Older lessons are hidden by default; tap **Show older lessons** to expand them. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
@@ -89,6 +91,8 @@ In the **By Rider** tab, tap any rider name to open a drill-down page listing ea
 ## Settings
 
 Go to **Settings** to manage fee tiers. The tier list shows each tier's name, price, default status, and active/inactive state. Tap **Edit** next to any tier to open its detail page, where you can rename it, change the price, set jumping and exertion defaults, set it as the default for new lessons, or deactivate it. Tap **Add tier** to create a new tier.
+
+**Default Board Fee** — Set the monthly fee suggested when creating a new boarding agreement. Changing this only affects boarding agreements created afterward — existing boarders are unaffected.
 
 ## Approvals
 
