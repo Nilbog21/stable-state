@@ -95,7 +95,7 @@ export async function getFinancialSummary(
   collectedIncome += chargesCollected
 
   const nonCustomTierNames = [...tierMap.keys()].filter((n) => n !== 'Custom')
-  const tierPrices = new Map<string, number | null>()
+  const tierPrices = new Map<string, number>()
   if (nonCustomTierNames.length) {
     const tiers = await getTierPricesByNames(supabase, barnId, nonCustomTierNames)
     for (const t of tiers) tierPrices.set(t.name, t.price)

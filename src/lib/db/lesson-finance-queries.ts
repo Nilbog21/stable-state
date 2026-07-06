@@ -31,7 +31,7 @@ export async function getLessonsForSummary(
 
 export interface TierPriceRow {
   name: string
-  price: number | null
+  price: number
 }
 
 export async function getTierPricesByNames(

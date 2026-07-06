@@ -495,6 +495,18 @@ describe('submitLesson', () => {
     )
   })
 
+  it('should_return_error_when_fee_is_non_numeric_string', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', fee: 'abc' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'fee is required' })
+  })
+
+  it('should_not_call_createLessonWithParticipants_when_fee_is_non_numeric_string', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', fee: 'abc' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
   it('should_pass_tier_name_to_createLessonWithParticipants', async () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -1269,6 +1281,18 @@ describe('updateLessonAction', () => {
     expect(updateLessonWithParticipants).toHaveBeenCalledWith(
       expect.objectContaining({ fee: 0 })
     )
+  })
+
+  it('should_return_error_when_fee_is_non_numeric_string_on_update', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom', fee: 'abc' })
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'fee is required' })
+  })
+
+  it('should_not_call_updateLessonWithParticipants_when_fee_is_non_numeric_string', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom', fee: 'abc' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).not.toHaveBeenCalled()
   })
 
   it('should_use_valid_instructor_when_manager_selects_one', async () => {

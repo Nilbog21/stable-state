@@ -14,6 +14,12 @@ function parseExertionLevel(raw: FormDataEntryValue | null): number {
   return Number.isNaN(n) ? 3 : Math.max(1, Math.min(5, n))
 }
 
+function parseFee(raw: string | null): number | null {
+  if (!raw || raw.trim() === '') return null
+  const n = parseFloat(raw)
+  return isNaN(n) ? null : n
+}
+
 export async function submitLesson(
   barnId: string,
   barnSlug: string,
@@ -76,8 +82,8 @@ export async function submitLesson(
     }
   }
 
-  if (!feeRaw) return { error: 'fee is required' }
-  const fee = parseFloat(feeRaw)
+  const fee = parseFee(feeRaw)
+  if (fee == null) return { error: 'fee is required' }
 
   try {
     if (newHorseName) {
@@ -169,8 +175,8 @@ export async function updateLessonAction(
     if (riderIds.some((id) => !validRiderIds.has(id))) return { error: 'rider not found in this barn' }
   }
 
-  if (!feeRaw) return { error: 'fee is required' }
-  const fee = parseFloat(feeRaw)
+  const fee = parseFee(feeRaw)
+  if (fee == null) return { error: 'fee is required' }
 
   try {
     if (newHorseName) {
