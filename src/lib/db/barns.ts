@@ -14,3 +14,20 @@ export const getBarnBySlug = cache(async function getBarnBySlug(slug: string, cl
   if (error) throw error
   return data
 })
+
+export async function updateBarnDefaultBoardFee(
+  barnId: string,
+  defaultBoardFee: number,
+  client?: SupabaseClient
+): Promise<Barn> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('barns')
+    .update({ default_board_fee: defaultBoardFee })
+    .eq('id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}

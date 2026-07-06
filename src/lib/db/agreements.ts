@@ -60,6 +60,26 @@ export async function getAgreementById(
   return data
 }
 
+export async function getActiveAgreementForRider(
+  barnId: string,
+  riderId: string,
+  kind: AgreementKind,
+  client?: SupabaseClient
+): Promise<Agreement | null> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('agreements')
+    .select('*')
+    .eq('barn_id', barnId)
+    .eq('rider_id', riderId)
+    .eq('kind', kind)
+    .eq('is_active', true)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
 export async function updateAgreement(
   agreementId: string,
   barnId: string,
