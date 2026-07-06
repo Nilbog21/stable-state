@@ -399,4 +399,25 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText('Unknown')).toBeDefined()
   })
+
+  it('should_render_default_board_fee_input_with_current_value', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const input = screen.getByLabelText(/monthly fee/i) as HTMLInputElement
+    expect(input.value).toBe(String(mockBarn.default_board_fee))
+  })
+
+  it('should_render_non_retroactive_helper_text', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText(/applies to new boarding agreements only/i)).toBeDefined()
+  })
 })
