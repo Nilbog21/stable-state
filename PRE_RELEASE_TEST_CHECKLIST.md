@@ -137,11 +137,12 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] **Outstanding** section lists past unpaid lessons; set a payment type on one row via the inline dropdown → it leaves the outstanding list
 - [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, each row linking to its lesson
 - [ ] Month navigation `←`/`→` works and updates `?month=YYYY-MM`; navigate to the previous month and see Lessons 1–2 reflected
-- [ ] **By Tier** tab: your new tiers and seeded tiers listed with price, lesson count, subtotal
-- [ ] **By Horse** tab: collected income per horse; click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` with per-lesson splits; total matches the summary; month param preserved
+- [ ] **By Tier** tab: your new tiers and seeded tiers listed with price, lesson count, an **Instructor Cut** column (`(cut × lessons)`, or `—` when zero), and a net Subtotal; Collected income matches the sum of net Subtotals plus any Non-lesson income
+- [ ] **By Horse** tab: collected income per horse, net of the instructor cut; click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` with per-lesson net fee/splits; total matches the summary; month param preserved
 - [ ] **By Rider** tab: same, with drill-down `/barn/dev-barn/finances/riders/[id]`
-- [ ] **By Trainer** tab: collected income per trainer full name
-- [ ] Collected vs Pending income figures are consistent with what you marked paid
+- [ ] **By Trainer** tab: collected income per trainer full name, net of the instructor cut
+- [ ] Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it) and renders in parentheses, e.g. `($25.00)`, not with a leading minus sign; it's still included in Collected income (not dropped or clamped to zero)
+- [ ] Collected vs Pending income figures are consistent with what you marked paid, net of the instructor cut; the **Outstanding** section above stays at the raw (gross) fee
 - [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding"); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's/Dana's row shows a Leases & Boarding table with a working link back to the agreement
 - [ ] **By Trainer** tab also shows the same **Non-lesson income** row
 
