@@ -9,6 +9,7 @@ vi.mock('../barn-memberships')
 vi.mock('../horses')
 vi.mock('../agreements')
 
+import { createClient } from '@/lib/supabase/server'
 import {
   getFinancialSummary,
   getOutstandingLessons,
@@ -391,6 +392,17 @@ describe('getOutstandingLessons', () => {
     vi.mocked(getOutstandingLessonRows).mockReset()
     vi.mocked(getLessonRidersForLessons).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
+    vi.mocked(createClient).mockClear()
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    vi.mocked(getOutstandingLessonRows).mockResolvedValue([])
+    const injectedClient = {} as any
+
+    await getOutstandingLessons('barn-1', undefined, undefined, injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(getOutstandingLessonRows).toHaveBeenCalledWith(injectedClient, 'barn-1', undefined, undefined)
   })
 
   it('should_return_empty_array_when_no_outstanding_rows', async () => {
