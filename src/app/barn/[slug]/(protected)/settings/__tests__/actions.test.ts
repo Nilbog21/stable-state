@@ -389,6 +389,12 @@ describe('updateInstructorCutAction', () => {
 
     expect(setInstructorCut).not.toHaveBeenCalled()
   })
+
+  it('should_return_early_when_non_numeric', async () => {
+    await updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: 'abc' }))
+
+    expect(setInstructorCut).not.toHaveBeenCalled()
+  })
 })
 
 describe('reactivateTierAction', () => {
