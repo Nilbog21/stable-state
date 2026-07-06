@@ -78,6 +78,10 @@ export default async function LessonDetailPage({
     ? lesson.lesson_riders.find((lr) => lr.barn_membership?.user_id === user.id) ?? null
     : null
 
+  if (role === 'rider' && myRiderEntry === null) {
+    notFound()
+  }
+
   const lessonEligibleWindow = new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null
   const canManageLesson = role === 'manager' || (role === 'trainer' && lesson.instructor_id === membership.id)
   const showManagerRiderActions = lesson.cancelled_at === null && canManageLesson
