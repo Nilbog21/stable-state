@@ -5,6 +5,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, NON_LESSON_INCOME_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
+import { formatCurrency } from '@/lib/format-currency'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
 
@@ -132,10 +133,10 @@ export default async function FinancesPage({
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
   const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges] = await Promise.all([
-    getFinancialSummary(barn.id, startDate, endDate),
-    getHorseIncomeSummary(barn.id, startDate, endDate),
-    getRiderIncomeSummary(barn.id, startDate, endDate),
-    getTrainerIncomeSummary(barn.id, startDate, endDate),
+    getFinancialSummary(barn.id, startDate, endDate, barn.instructor_cut),
+    getHorseIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
+    getRiderIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
+    getTrainerIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
     getOutstandingLessons(barn.id),
     getOutstandingCharges(barn.id),
   ])
@@ -199,10 +200,10 @@ export default async function FinancesPage({
         <section className="mb-6">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Pending income (from scheduled lessons)
-            <InfoPopover text="Lessons scheduled this month that haven't been paid yet" />
+            <InfoPopover text="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut" />
           </p>
           <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+            {formatCurrency(pendingIncome)}
           </p>
         </section>
       )}
@@ -210,10 +211,10 @@ export default async function FinancesPage({
       <section className="mb-4">
         <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           {`Collected income (${monthLabel})`}
-          <InfoPopover text="Lessons paid this month" />
+          <InfoPopover text="Lessons paid this month, net of the per-lesson instructor cut" />
         </p>
         <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+          {formatCurrency(collectedIncome)}
         </p>
       </section>
 
@@ -244,6 +245,7 @@ export default async function FinancesPage({
                 <th className="pb-2 pr-6">Tier</th>
                 <th className="pb-2 pr-6">Price</th>
                 <th className="pb-2 pr-6">Lessons</th>
+                <th className="pb-2 pr-6">Instructor Cut</th>
                 <th className="pb-2">Subtotal</th>
               </tr>
             </thead>
@@ -258,7 +260,10 @@ export default async function FinancesPage({
                     {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
                   </td>
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
+                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                    {tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}
+                  </td>
+                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{formatCurrency(tier.subtotal)}</td>
                 </tr>
               ))}
             </tbody>
@@ -289,7 +294,7 @@ export default async function FinancesPage({
                     </Link>
                   </td>
                   <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                    {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    {formatCurrency(row.totalIncome)}
                   </td>
                 </tr>
               ))}
@@ -321,7 +326,7 @@ export default async function FinancesPage({
                     </Link>
                   </td>
                   <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                    {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    {formatCurrency(row.totalIncome)}
                   </td>
                 </tr>
               ))}
@@ -349,7 +354,7 @@ export default async function FinancesPage({
                     {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
                   </td>
                   <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                    {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                    {formatCurrency(row.totalIncome)}
                   </td>
                 </tr>
               ))}

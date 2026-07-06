@@ -55,7 +55,8 @@ export function mergeOutstandingItems(lessons: OutstandingLesson[], charges: Out
 export async function getFinancialSummary(
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  instructorCut: number = 0
 ): Promise<FinancialSummary> {
   const supabase = await createClient()
   const now = new Date()
@@ -70,13 +71,14 @@ export async function getFinancialSummary(
   let pendingIncome = 0
 
   for (const lesson of lessons) {
+    const netFee = lesson.fee - instructorCut
     if (lesson.payment_type !== null) {
-      collectedIncome += lesson.fee
+      collectedIncome += netFee
       const tierName = lesson.tier_name || 'Custom'
       const existing = tierMap.get(tierName) ?? { lessonCount: 0, subtotal: 0 }
-      tierMap.set(tierName, { lessonCount: existing.lessonCount + 1, subtotal: existing.subtotal + lesson.fee })
+      tierMap.set(tierName, { lessonCount: existing.lessonCount + 1, subtotal: existing.subtotal + netFee })
     } else if (new Date(lesson.lesson_at) > now) {
-      pendingIncome += lesson.fee
+      pendingIncome += netFee
     }
   }
 
@@ -107,11 +109,12 @@ export async function getFinancialSummary(
       price: tierName === 'Custom' ? null : (tierPrices.get(tierName) ?? null),
       lessonCount,
       subtotal,
+      instructorCut: instructorCut * lessonCount,
     }))
     .sort((a, b) => a.tierName.localeCompare(b.tierName))
 
   if (chargesCount > 0) {
-    breakdown.push({ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: chargesCount, subtotal: chargesCollected })
+    breakdown.push({ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: chargesCount, subtotal: chargesCollected, instructorCut: 0 })
   }
 
   return { collectedIncome, pendingIncome, breakdown }
@@ -157,7 +160,8 @@ export async function getOutstandingLessons(
 export async function getHorseIncomeSummary(
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  instructorCut: number = 0
 ): Promise<HorseIncomeSummary[]> {
   const supabase = await createClient()
 
@@ -174,7 +178,7 @@ export async function getHorseIncomeSummary(
     for (const lesson of lessons) {
       const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
       if (!participants.length) continue
-      const split = lesson.fee / participants.length
+      const split = (lesson.fee - instructorCut) / participants.length
       for (const { horse_id } of participants) {
         incomeMap.set(horse_id, (incomeMap.get(horse_id) ?? 0) + split)
       }
@@ -202,7 +206,8 @@ export async function getHorseIncomeSummary(
 export async function getRiderIncomeSummary(
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  instructorCut: number = 0
 ): Promise<RiderIncomeSummary[]> {
   const supabase = await createClient()
 
@@ -219,7 +224,7 @@ export async function getRiderIncomeSummary(
     for (const lesson of lessons) {
       const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
       if (!participants.length) continue
-      const split = lesson.fee / participants.length
+      const split = (lesson.fee - instructorCut) / participants.length
       for (const { rider_id } of participants) {
         incomeMap.set(rider_id, (incomeMap.get(rider_id) ?? 0) + split)
       }
@@ -247,7 +252,8 @@ export async function getRiderIncomeSummary(
 export async function getTrainerIncomeSummary(
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  instructorCut: number = 0
 ): Promise<TrainerIncomeSummary[]> {
   const supabase = await createClient()
 
@@ -268,7 +274,7 @@ export async function getTrainerIncomeSummary(
 
     const incomeMap = new Map<string, number>()
     for (const lesson of collected) {
-      incomeMap.set(lesson.instructor_id, (incomeMap.get(lesson.instructor_id) ?? 0) + lesson.fee)
+      incomeMap.set(lesson.instructor_id, (incomeMap.get(lesson.instructor_id) ?? 0) + (lesson.fee - instructorCut))
     }
 
     result = Array.from(incomeMap.entries())
@@ -292,7 +298,8 @@ export async function getHorseIncomeDetail(
   barnId: string,
   horseId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  instructorCut: number = 0
 ): Promise<{ horseName: string; rows: HorseIncomeDetailRow[]; chargeRows: HorseChargeDetailRow[]; total: number }> {
   const supabase = await createClient()
 
@@ -312,12 +319,13 @@ export async function getHorseIncomeDetail(
       const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
       if (!participants.some((lh) => lh.horse_id === horseId)) continue
       const horseCount = participants.length
+      const netFee = lesson.fee - instructorCut
       rows.push({
         lessonId: lesson.id,
         lessonAt: lesson.lesson_at,
-        fee: lesson.fee,
+        fee: netFee,
         horseCount,
-        splitAmount: lesson.fee / horseCount,
+        splitAmount: netFee / horseCount,
       })
     }
   }
@@ -334,7 +342,8 @@ export async function getRiderIncomeDetail(
   barnId: string,
   riderId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  instructorCut: number = 0
 ): Promise<{ riderName: string; rows: RiderIncomeDetailRow[]; chargeRows: RiderChargeDetailRow[]; total: number }> {
   const supabase = await createClient()
 
@@ -359,12 +368,13 @@ export async function getRiderIncomeDetail(
       const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
       if (!participants.some((lr) => lr.rider_id === riderId)) continue
       const riderCount = participants.length
+      const netFee = lesson.fee - instructorCut
       rows.push({
         lessonId: lesson.id,
         lessonAt: lesson.lesson_at,
-        fee: lesson.fee,
+        fee: netFee,
         riderCount,
-        splitAmount: lesson.fee / riderCount,
+        splitAmount: netFee / riderCount,
       })
     }
   }

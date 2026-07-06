@@ -438,8 +438,8 @@ describe('getFinancialSummary', () => {
 
     it('should_reconcile_sum_of_tier_subtotals_and_charges_to_collected_income', async () => {
       vi.mocked(getLessonsForSummary).mockResolvedValue([
-        createMockLesson({ fee: 75, payment_type: 'venmo', tier_name: 'Standard', lesson_at: '2026-05-10T10:00:00Z' }),
-        createMockLesson({ id: 'lesson-2', fee: 100, payment_type: 'cash', tier_name: 'Group', lesson_at: '2026-05-11T10:00:00Z' }),
+        createMockLesson({ fee: 75, payment_type: 'venmo', tier_name: 'Custom', lesson_at: '2026-05-10T10:00:00Z' }),
+        createMockLesson({ id: 'lesson-2', fee: 100, payment_type: 'cash', tier_name: 'Custom', lesson_at: '2026-05-11T10:00:00Z' }),
       ])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
 
