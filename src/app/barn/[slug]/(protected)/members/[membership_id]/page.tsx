@@ -20,6 +20,10 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
   other: 'Other',
 }
 
+function formatFee(fee: number): string {
+  return fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
 function BoardingStatus({ slug, agreement }: { slug: string; agreement: Agreement | null }) {
   return (
     <section className="mb-8">
@@ -30,7 +34,7 @@ function BoardingStatus({ slug, agreement }: { slug: string; agreement: Agreemen
             href={`/barn/${slug}/agreements/${agreement.id}`}
             className="underline hover:text-zinc-900 dark:hover:text-zinc-50"
           >
-            ${agreement.fee}/month
+            {formatFee(agreement.fee)}/month
           </Link>
         </p>
       ) : (
@@ -83,15 +87,19 @@ export default async function MemberDetailPage({
     (callerRole === 'trainer' && isOwnPage) ||
     (callerRole === 'rider' && isOwnPage)
 
+  // agreements RLS only grants SELECT to the barn manager and the rider themself —
+  // a trainer's query would be silently filtered to zero rows, showing a false "no boarding" status
+  const canViewBoardingStatus = targetRole === 'rider' && (callerRole === 'manager' || isOwnPage)
+
   let boardingAgreement: Agreement | null = null
-  if (targetRole === 'rider') {
+  if (canViewBoardingStatus) {
     boardingAgreement = await getActiveAgreementForRider(barn.id, targetMembership.id, 'board')
   }
 
   if (!targetMembership.user_id) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
-        {targetRole === 'rider' && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
+        {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>
       </main>
     )
@@ -126,7 +134,7 @@ export default async function MemberDetailPage({
         {displayName}
       </h1>
 
-      {targetRole === 'rider' && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
+      {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
 
       <section className="mb-10">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">

@@ -407,4 +407,40 @@ describe('MemberDetailPage', () => {
     render(jsx)
     expect(screen.getByRole('link', { name: /add boarding/i })).toBeDefined()
   })
+
+  it('should_not_render_boarding_section_for_trainer_viewing_rider', async () => {
+    setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileByUserId).mockImplementation(async (uid) =>
+      uid === 'user-trn' ? createMockProfile({ user_id: 'user-trn', first_name: 'Bob', last_name: 'Trainer' })
+        : createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' })
+    )
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    render(jsx)
+    expect(screen.queryByText(/boarding/i)).toBeNull()
+  })
+
+  it('should_not_call_getActiveAgreementForRider_when_trainer_views_rider', async () => {
+    setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileByUserId).mockImplementation(async (uid) =>
+      uid === 'user-trn' ? createMockProfile({ user_id: 'user-trn', first_name: 'Bob', last_name: 'Trainer' })
+        : createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' })
+    )
+    await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    expect(getActiveAgreementForRider).not.toHaveBeenCalled()
+  })
+
+  it('should_render_boarding_section_for_rider_viewing_own_page', async () => {
+    setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileByUserId).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
+    vi.mocked(getActiveAgreementForRider).mockResolvedValue(createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board' }))
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /450/ })).toBeDefined()
+  })
 })

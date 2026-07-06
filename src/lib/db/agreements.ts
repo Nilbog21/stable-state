@@ -67,6 +67,9 @@ export async function getActiveAgreementForRider(
   client?: SupabaseClient
 ): Promise<Agreement | null> {
   const supabase = client ?? await createClient()
+  // a rider can have more than one simultaneously-active agreement of a kind (e.g. boarding
+  // two horses), so this can't assume a single row like .maybeSingle() would; take the most
+  // recent one instead of throwing
   const { data, error } = await supabase
     .from('agreements')
     .select('*')
@@ -74,10 +77,11 @@ export async function getActiveAgreementForRider(
     .eq('rider_id', riderId)
     .eq('kind', kind)
     .eq('is_active', true)
-    .maybeSingle()
+    .order('created_at', { ascending: false })
+    .limit(1)
 
   if (error) throw error
-  return data
+  return data?.[0] ?? null
 }
 
 export async function updateAgreement(

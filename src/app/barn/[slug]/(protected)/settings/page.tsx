@@ -15,6 +15,7 @@ import {
   removeMembershipAction,
 } from '../approvals/actions'
 import { updateDefaultBoardFeeAction } from './actions'
+import { Button } from '@/components/ui/Button'
 import InviteLink from './InviteLink'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
@@ -270,12 +271,7 @@ export default async function SettingsPage({
               className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             />
           </div>
-          <button
-            type="submit"
-            className="rounded bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Save
-          </button>
+          <Button type="submit">Save</Button>
         </form>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           Applies to new boarding agreements only — existing boarders are unchanged.

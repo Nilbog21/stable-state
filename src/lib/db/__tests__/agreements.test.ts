@@ -189,9 +189,10 @@ describe('getActiveAgreementForRider', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeChain(data: unknown | null, error: Error | null = null) {
-    const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEq3 = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+  function makeChain(data: unknown[] | null, error: Error | null = null) {
+    const mockLimit = vi.fn().mockResolvedValue({ data, error })
+    const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit })
+    const mockEq3 = vi.fn().mockReturnValue({ order: mockOrder })
     const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
     const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
     const mockEq0 = vi.fn().mockReturnValue({ eq: mockEq1 })
@@ -200,7 +201,7 @@ describe('getActiveAgreementForRider', () => {
   }
 
   it('should_filter_by_barn_rider_kind_and_is_active', async () => {
-    const { select, mockEq0 } = makeChain(mockAgreement)
+    const { select, mockEq0 } = makeChain([mockAgreement])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
     await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
@@ -209,7 +210,7 @@ describe('getActiveAgreementForRider', () => {
   })
 
   it('should_return_agreement_when_found', async () => {
-    const { select } = makeChain(mockAgreement)
+    const { select } = makeChain([mockAgreement])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
     const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
@@ -218,12 +219,22 @@ describe('getActiveAgreementForRider', () => {
   })
 
   it('should_return_null_when_no_active_agreement', async () => {
-    const { select } = makeChain(null)
+    const { select } = makeChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
     const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
 
     expect(result).toBeNull()
+  })
+
+  it('should_return_most_recent_when_rider_has_multiple_active_agreements', async () => {
+    const olderAgreement = { ...mockAgreement, id: 'agreement-older' }
+    const { select } = makeChain([mockAgreement, olderAgreement])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
+
+    expect(result).toEqual(mockAgreement)
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
@@ -234,7 +245,7 @@ describe('getActiveAgreementForRider', () => {
   })
 
   it('should_use_injected_client_when_provided', async () => {
-    const { select } = makeChain(mockAgreement)
+    const { select } = makeChain([mockAgreement])
     const mockClient = { from: vi.fn().mockReturnValue({ select }) } as any
 
     const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board', mockClient)
