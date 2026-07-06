@@ -162,7 +162,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   let instructor_user_id: string | null = null
   if (data.instructor_id) {
     const { data: im, error: imError } = await supabase
-      .from('barn_memberships').select('user_id, profile_id').eq('id', data.instructor_id).maybeSingle()
+      .from('barn_memberships').select('user_id, profile_id').eq('barn_id', barnId).eq('id', data.instructor_id).maybeSingle()
     if (imError) throw imError
     if (im) {
       instructor_user_id = im.user_id

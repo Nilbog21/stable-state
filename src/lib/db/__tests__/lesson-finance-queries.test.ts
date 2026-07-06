@@ -11,7 +11,6 @@ import {
   getTierPricesByNames,
   getOutstandingLessonRows,
   getLessonRidersForLessons,
-  getProfileNamesByUserIds,
   getPaidLessonFees,
   getLessonHorsesForLessons,
   getPaidLessonInstructorFees,
@@ -414,50 +413,6 @@ describe('getLessonRidersForLessons', () => {
   it('should_throw_when_supabase_returns_an_error', async () => {
     const { client } = makeChain(null, new Error('lr error'))
     await expect(getLessonRidersForLessons(client, 'barn-1', ['lesson-1'])).rejects.toThrow('lr error')
-  })
-})
-
-describe('getProfileNamesByUserIds', () => {
-  function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    return { client: { from } as any, from, mockIn }
-  }
-
-  it('should_not_query_when_user_ids_is_empty', async () => {
-    const { client, from } = makeChain([])
-    await getProfileNamesByUserIds(client, [])
-    expect(from).not.toHaveBeenCalled()
-  })
-
-  it('should_return_empty_array_when_user_ids_is_empty', async () => {
-    const { client } = makeChain([])
-    const result = await getProfileNamesByUserIds(client, [])
-    expect(result).toEqual([])
-  })
-
-  it('should_filter_by_user_ids', async () => {
-    const { client, mockIn } = makeChain([])
-    await getProfileNamesByUserIds(client, ['user-1', 'user-2'])
-    expect(mockIn).toHaveBeenCalledWith('user_id', ['user-1', 'user-2'])
-  })
-
-  it('should_return_the_raw_rows', async () => {
-    const { client } = makeChain([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Doe' }])
-    const result = await getProfileNamesByUserIds(client, ['user-1'])
-    expect(result).toEqual([{ user_id: 'user-1', first_name: 'Jane', last_name: 'Doe' }])
-  })
-
-  it('should_return_empty_array_when_data_is_null', async () => {
-    const { client } = makeChain(null)
-    const result = await getProfileNamesByUserIds(client, ['user-1'])
-    expect(result).toEqual([])
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    const { client } = makeChain(null, new Error('profiles error'))
-    await expect(getProfileNamesByUserIds(client, ['user-1'])).rejects.toThrow('profiles error')
   })
 })
 

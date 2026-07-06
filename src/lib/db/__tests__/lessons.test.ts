@@ -885,11 +885,13 @@ describe('getLessonById', () => {
     return vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return { select: lessonChain.select }
       if (table === 'barn_memberships') {
-        // Instructor membership query: .select('user_id, profile_id').eq('id', ...).maybeSingle()
+        // Instructor membership query: .select('user_id, profile_id').eq('barn_id', ...).eq('id', ...).maybeSingle()
         return {
           select: vi.fn().mockReturnValue({
             eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue({ data: instructorMembershipData, error: instructorMembershipError }),
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: instructorMembershipData, error: instructorMembershipError }),
+              }),
             }),
           }),
         }
@@ -962,13 +964,21 @@ describe('getLessonById', () => {
     expect(result?.instructor_name).toBeNull()
   })
 
-  it('should_return_null_instructor_name_and_user_id_when_instructor_membership_not_found', async () => {
+  it('should_return_null_instructor_name_when_instructor_membership_not_found', async () => {
     const from = makeFrom(rawLessonData, null, null, null)
     vi.mocked(createClient).mockResolvedValue({ from } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.instructor_name).toBeNull()
+  })
+
+  it('should_return_null_instructor_user_id_when_instructor_membership_not_found', async () => {
+    const from = makeFrom(rawLessonData, null, null, null)
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
     expect(result?.instructor_user_id).toBeNull()
   })
 

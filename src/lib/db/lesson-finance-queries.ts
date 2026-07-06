@@ -118,27 +118,6 @@ export async function getLessonRidersForLessons(
   return data ?? []
 }
 
-export interface ProfileNameRow {
-  user_id: string
-  first_name: string
-  last_name: string
-}
-
-export async function getProfileNamesByUserIds(
-  client: SupabaseClient,
-  userIds: string[]
-): Promise<ProfileNameRow[]> {
-  if (!userIds.length) return []
-
-  const { data, error } = await client
-    .from('profiles')
-    .select('user_id, first_name, last_name')
-    .in('user_id', userIds)
-
-  if (error) throw error
-  return data ?? []
-}
-
 export type PaidLessonFeeRow = Pick<Lesson, 'id' | 'fee'>
 
 export async function getPaidLessonFees(
