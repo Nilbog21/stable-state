@@ -704,29 +704,44 @@ describe('getInstructorsByBarn', () => {
     expect(result).toEqual([])
   })
 
-  it('should_return_instructors_with_names_joined_from_profiles', async () => {
+  it('should_return_instructors_with_membership_ids_and_names_joined_via_profile_id', async () => {
     vi.mocked(createClient).mockResolvedValue(
       makeClient(
-        [{ user_id: 'trainer-1' }],
+        [{ id: 'mem-trainer-1', user_id: 'user-trainer-1', profile_id: 'profile-1' }],
         null,
-        [{ user_id: 'trainer-1', first_name: 'Bob', last_name: 'Smith' }],
+        [{ id: 'profile-1', first_name: 'Bob', last_name: 'Smith' }],
         null
       )
     )
 
     const result = await getInstructorsByBarn('barn-1')
 
-    expect(result).toEqual([{ userId: 'trainer-1', name: 'Bob Smith' }])
+    expect(result).toEqual([{ membershipId: 'mem-trainer-1', userId: 'user-trainer-1', name: 'Bob Smith' }])
   })
 
-  it('should_fall_back_to_unknown_instructor_when_profile_not_found', async () => {
+  it('should_include_stub_trainers_with_null_user_id', async () => {
     vi.mocked(createClient).mockResolvedValue(
-      makeClient([{ user_id: 'trainer-1' }], null, [], null)
+      makeClient(
+        [{ id: 'mem-stub-1', user_id: null, profile_id: 'profile-2' }],
+        null,
+        [{ id: 'profile-2', first_name: 'Alex', last_name: 'Managed' }],
+        null
+      )
     )
 
     const result = await getInstructorsByBarn('barn-1')
 
-    expect(result).toEqual([{ userId: 'trainer-1', name: 'Unknown Instructor' }])
+    expect(result).toEqual([{ membershipId: 'mem-stub-1', userId: null, name: 'Alex Managed' }])
+  })
+
+  it('should_fall_back_to_unknown_instructor_when_profile_not_found', async () => {
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-trainer-1', user_id: 'user-trainer-1', profile_id: 'profile-1' }], null, [], null)
+    )
+
+    const result = await getInstructorsByBarn('barn-1')
+
+    expect(result).toEqual([{ membershipId: 'mem-trainer-1', userId: 'user-trainer-1', name: 'Unknown Instructor' }])
   })
 
   it('should_filter_by_barn_id', async () => {
@@ -780,25 +795,21 @@ describe('getInstructorsByBarn', () => {
 
   it('should_throw_when_profiles_query_fails', async () => {
     const dbError = new Error('profiles query failed')
-    vi.mocked(createClient).mockResolvedValue(makeClient([{ user_id: 'trainer-1' }], null, null, dbError))
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-trainer-1', user_id: 'user-trainer-1', profile_id: 'profile-1' }], null, null, dbError)
+    )
 
     await expect(getInstructorsByBarn('barn-1')).rejects.toThrow('profiles query failed')
   })
 
   it('should_fall_back_to_unknown_instructor_when_profiles_data_is_null', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeClient([{ user_id: 'trainer-1' }], null, null, null))
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-trainer-1', user_id: 'user-trainer-1', profile_id: 'profile-1' }], null, null, null)
+    )
 
     const result = await getInstructorsByBarn('barn-1')
 
-    expect(result).toEqual([{ userId: 'trainer-1', name: 'Unknown Instructor' }])
-  })
-
-  it('should_return_empty_when_all_membership_user_ids_are_null', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeClient([{ user_id: null }], null, [], null))
-
-    const result = await getInstructorsByBarn('barn-1')
-
-    expect(result).toEqual([])
+    expect(result).toEqual([{ membershipId: 'mem-trainer-1', userId: 'user-trainer-1', name: 'Unknown Instructor' }])
   })
 })
 

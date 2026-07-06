@@ -119,12 +119,12 @@ export async function getMembershipById(id: string): Promise<BarnMembership | nu
 
 export async function getInstructorsByBarn(
   barnId: string
-): Promise<{ userId: string; name: string }[]> {
+): Promise<{ membershipId: string; userId: string | null; name: string }[]> {
   const supabase = await createClient()
 
   const { data: memberships, error: memError } = await supabase
     .from('barn_memberships')
-    .select('user_id')
+    .select('id, user_id, profile_id')
     .eq('barn_id', barnId)
     .eq('status', 'active')
     .eq('can_instruct', true)
@@ -133,19 +133,22 @@ export async function getInstructorsByBarn(
   if (memError) throw memError
   if (!memberships?.length) return []
 
-  const userIds = memberships.map((m) => m.user_id).filter((id): id is string => id !== null)
-  if (!userIds.length) return []
+  const profileIds = memberships.map((m) => m.profile_id)
 
   const { data: profiles, error: profError } = await supabase
     .from('profiles')
-    .select('user_id, first_name, last_name')
-    .in('user_id', userIds)
+    .select('id, first_name, last_name')
+    .in('id', profileIds)
 
   if (profError) throw profError
 
-  return userIds.map((uid) => {
-    const p = (profiles ?? []).find((pr) => pr.user_id === uid)
-    return { userId: uid, name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Instructor' }
+  return memberships.map((m) => {
+    const p = (profiles ?? []).find((pr) => pr.id === m.profile_id)
+    return {
+      membershipId: m.id,
+      userId: m.user_id,
+      name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Instructor',
+    }
   })
 }
 

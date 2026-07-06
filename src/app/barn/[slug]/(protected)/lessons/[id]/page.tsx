@@ -79,7 +79,7 @@ export default async function LessonDetailPage({
     : null
 
   const lessonEligibleWindow = new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null
-  const canManageLesson = role === 'manager' || (role === 'trainer' && lesson.instructor_id === user.id)
+  const canManageLesson = role === 'manager' || (role === 'trainer' && lesson.instructor_id === membership.id)
   const showManagerRiderActions = lesson.cancelled_at === null && canManageLesson
   const showOwnRiderAction = lesson.cancelled_at === null && role === 'rider'
 

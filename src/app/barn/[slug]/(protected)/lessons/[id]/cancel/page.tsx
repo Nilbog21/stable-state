@@ -25,7 +25,7 @@ export default async function CancelLessonPage({
   const role = membership.role as 'manager' | 'trainer'
   const lesson = await getLessonById(id, barn.id, role, user.id)
   if (!lesson) notFound()
-  if (role === 'trainer' && lesson.instructor_id !== user.id) notFound()
+  if (role === 'trainer' && lesson.instructor_id !== membership.id) notFound()
 
   const isEligible =
     lesson.cancelled_at === null &&

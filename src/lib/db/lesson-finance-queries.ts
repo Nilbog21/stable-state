@@ -1,5 +1,6 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
+import { getUserMembership } from './barn-memberships'
 import type { Lesson, Role } from './types'
 
 /**
@@ -85,7 +86,9 @@ export async function getOutstandingLessonRows(
     .lt('lesson_at', now.toISOString())
 
   if (role === 'trainer' && userId) {
-    query = query.eq('instructor_id', userId)
+    const callerMembership = await getUserMembership(userId, barnId)
+    if (!callerMembership) return []
+    query = query.eq('instructor_id', callerMembership.id)
   }
 
   const { data, error } = await query.order('lesson_at', { ascending: true })
@@ -110,27 +113,6 @@ export async function getLessonRidersForLessons(
     .select('lesson_id, rider_id')
     .eq('barn_id', barnId)
     .in('lesson_id', lessonIds)
-
-  if (error) throw error
-  return data ?? []
-}
-
-export interface ProfileNameRow {
-  user_id: string
-  first_name: string
-  last_name: string
-}
-
-export async function getProfileNamesByUserIds(
-  client: SupabaseClient,
-  userIds: string[]
-): Promise<ProfileNameRow[]> {
-  if (!userIds.length) return []
-
-  const { data, error } = await client
-    .from('profiles')
-    .select('user_id, first_name, last_name')
-    .in('user_id', userIds)
 
   if (error) throw error
   return data ?? []

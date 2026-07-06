@@ -232,6 +232,13 @@ async function run() {
     return m.membershipId
   })
 
+  const allTrainerMembers = await getActiveMembersWithProfiles(DEV_BARN_ID, 'trainer', supabase)
+  const trainerRowIds = trainerIds.map((uid) => {
+    const m = allTrainerMembers.find((mem) => mem.userId === uid)
+    if (!m) throw new Error(`active membership not found for user ${uid}`)
+    return m.membershipId
+  })
+
   const horseIds: string[] = []
   for (const name of DEV_HORSES) {
     const horse = await createHorse(DEV_BARN_ID, name, supabase)
@@ -245,7 +252,7 @@ async function run() {
 
   process.stdout.write(`Seeding lessons ${drawBar(0, lessonTotal)} 0/${lessonTotal}`)
   for (let i = 0; i < lessonDates.length; i++) {
-    const instructorId = trainerIds[i % trainerIds.length]
+    const instructorId = trainerRowIds[i % trainerRowIds.length]
     const { fee, jumping, exertionLevel, tierName } = getLessonVariation(i, tier1, tier2)
     const isGroup = isGroupLesson(i)
 
@@ -269,7 +276,7 @@ async function run() {
   for (const daysAgo of [75, 60]) {
     await createLessonWithParticipants({
       barnId: DEV_BARN_ID,
-      instructorId: trainerIds[0],
+      instructorId: trainerRowIds[0],
       lessonAt: dayOffset(now, -daysAgo).toISOString(),
       fee: tier1.price,
       horseIds: [retiredHorse.id],

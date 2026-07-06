@@ -14,7 +14,7 @@ const baseProps = {
   isManager: false,
   action: vi.fn().mockResolvedValue({ error: null }),
   instructors: [],
-  currentUserId: 'user-1',
+  currentMembershipId: 'user-1',
   tiers: [sampleTier],
 }
 
@@ -35,28 +35,28 @@ describe('LessonForm', () => {
   })
 
   it('should_render_instructor_name_read_only_when_is_manager_is_false', () => {
-    const instructors = [{ userId: 'user-1', name: 'Jane Doe' }]
+    const instructors = [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' }]
     render(<LessonForm {...baseProps} isManager={false} instructors={instructors} />)
     expect(screen.queryByText('Jane Doe')).not.toBeNull()
   })
 
   it('should_render_instructor_select_when_isManager_is_true', () => {
-    const instructors = [{ userId: 'user-1', name: 'Jane Doe' }]
+    const instructors = [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' }]
     render(<LessonForm {...baseProps} isManager={true} instructors={instructors} />)
     expect(screen.queryByLabelText(/instructor/i)).not.toBeNull()
   })
 
-  it('should_default_instructor_select_to_currentUserId', () => {
-    const instructors = [{ userId: 'user-1', name: 'Jane Doe' }]
-    render(<LessonForm {...baseProps} isManager={true} instructors={instructors} currentUserId="user-1" />)
+  it('should_default_instructor_select_to_currentMembershipId', () => {
+    const instructors = [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' }]
+    render(<LessonForm {...baseProps} isManager={true} instructors={instructors} currentMembershipId="user-1" />)
     const select = screen.getByLabelText(/instructor/i) as HTMLSelectElement
     expect(select.value).toBe('user-1')
   })
 
   it('should_render_instructor_options_from_instructors_prop', () => {
     const instructors = [
-      { userId: 'user-1', name: 'Jane Doe' },
-      { userId: 'user-2', name: 'John Smith' },
+      { membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' },
+      { membershipId: 'user-2', userId: 'user-2', name: 'John Smith' },
     ]
     render(<LessonForm {...baseProps} isManager={true} instructors={instructors} />)
     expect(screen.queryByRole('option', { name: 'Jane Doe' })).not.toBeNull()

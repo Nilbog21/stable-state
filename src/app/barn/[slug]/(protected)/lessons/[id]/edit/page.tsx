@@ -37,11 +37,11 @@ export default async function EditLessonPage({
   ])
 
   if (!lesson) notFound()
-  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) notFound()
+  if (membership.role === 'trainer' && lesson.instructor_id !== membership.id) notFound()
   const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
-  const instructors = lesson.instructor_id && instructorList.every((i) => i.userId !== lesson.instructor_id)
-    ? [{ userId: lesson.instructor_id, name: 'Former Instructor' }, ...instructorList]
+  const instructors = lesson.instructor_id && instructorList.every((i) => i.membershipId !== lesson.instructor_id)
+    ? [{ membershipId: lesson.instructor_id, userId: null, name: 'Former Instructor' }, ...instructorList]
     : instructorList
 
   const activeHorseIds = new Set(horses.map((h) => h.id))
@@ -83,7 +83,7 @@ export default async function EditLessonPage({
         riders={riders}
         isManager={membership.role === 'manager'}
         instructors={instructors}
-        currentUserId={user.id}
+        currentMembershipId={membership.id}
         tiers={tiers}
         action={update}
         initialNotes={initialNotes}

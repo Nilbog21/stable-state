@@ -55,7 +55,7 @@ export default async function LessonNewPage({
         action={submit}
         isManager={isManager}
         instructors={instructors}
-        currentUserId={user.id}
+        currentMembershipId={membership?.id ?? ''}
         tiers={tiers}
       />
     </main>
