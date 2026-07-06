@@ -15,8 +15,8 @@ import {
 describe('buildLessonDates', () => {
   const NOW = new Date('2024-06-15T10:00:00.000Z')
 
-  it('should_return_34_dates', () => {
-    expect(buildLessonDates(NOW)).toHaveLength(34)
+  it('should_return_35_dates', () => {
+    expect(buildLessonDates(NOW)).toHaveLength(35)
   })
 
   it('should_place_first_9_dates_in_historical_bucket', () => {
@@ -37,9 +37,17 @@ describe('buildLessonDates', () => {
     expect(dates.slice(19, 29).every(d => d >= sevenDaysAgo && d < NOW)).toBe(true)
   })
 
+  it('should_place_date_29_today', () => {
+    const dates = buildLessonDates(NOW)
+    const today = dates[29]
+    expect(today.getUTCFullYear()).toBe(NOW.getUTCFullYear())
+    expect(today.getUTCMonth()).toBe(NOW.getUTCMonth())
+    expect(today.getUTCDate()).toBe(NOW.getUTCDate())
+  })
+
   it('should_place_dates_30_to_34_in_future_bucket', () => {
     const dates = buildLessonDates(NOW)
-    expect(dates.slice(29, 34).every(d => d > NOW)).toBe(true)
+    expect(dates.slice(30, 35).every(d => d > NOW)).toBe(true)
   })
 })
 
