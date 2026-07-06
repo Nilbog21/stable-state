@@ -6,7 +6,7 @@ export async function createLessonWithParticipants(params: {
   barnId: string
   instructorId: string | null
   lessonAt: string
-  fee: number | null
+  fee: number
   horseIds: string[]
   exertionLevels: number[]
   riderIds: string[]
@@ -39,7 +39,7 @@ export async function updateLessonWithParticipants(params: {
   barnId: string
   lessonAt: string
   instructorId: string | null
-  fee: number | null
+  fee: number
   lessonType: LessonType
   jumping: boolean
   paymentType: PaymentType | null

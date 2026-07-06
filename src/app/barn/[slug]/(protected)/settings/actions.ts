@@ -30,13 +30,19 @@ function parseExertion(raw: string | null): number | null {
   return isNaN(n) || n < 1 || n > 5 ? null : n
 }
 
-export async function createTierAction(barnSlug: string, formData: FormData): Promise<void> {
+export async function createTierAction(
+  barnSlug: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const name = (formData.get('name') as string | null)?.trim()
-  if (!name) return
+  if (!name) return { error: null }
 
   const price = parsePrice(formData.get('price') as string | null)
+  if (price == null) return { error: 'Price is required' }
+
   const defaultJumping = parseBoolean(formData.get('default_jumping') as string | null)
   const defaultExertionLevel = parseExertion(formData.get('default_exertion_level') as string | null)
 
@@ -47,14 +53,17 @@ export async function createTierAction(barnSlug: string, formData: FormData): Pr
 export async function updateTierAction(
   barnSlug: string,
   tierId: string,
+  prevState: { error: string | null },
   formData: FormData
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const name = (formData.get('name') as string | null)?.trim()
-  if (!name) return
+  if (!name) return { error: null }
 
   const price = parsePrice(formData.get('price') as string | null)
+  if (price == null) return { error: 'Price is required' }
+
   const default_jumping = parseBoolean(formData.get('default_jumping') as string | null)
   const default_exertion_level = parseExertion(formData.get('default_exertion_level') as string | null)
 

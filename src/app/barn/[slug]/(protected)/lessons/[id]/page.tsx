@@ -236,8 +236,8 @@ export default async function LessonDetailPage({
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Fee</dt>
             <dd className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-              {lesson.fee != null ? `$${lesson.fee}` : '—'}
-              {lesson.payment_type === null && (lesson.fee ?? 0) > 0 && new Date(lesson.lesson_at) < new Date() && (
+              ${lesson.fee}
+              {lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
                 <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
               )}
             </dd>

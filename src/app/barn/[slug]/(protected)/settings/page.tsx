@@ -240,7 +240,7 @@ export default async function SettingsPage({
                     {tier.name}
                   </td>
                   <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">
-                    {tier.price != null ? `$${tier.price}` : '—'}
+                    ${tier.price}
                   </td>
                   <td className="py-3 pr-6 text-sm">
                     {tier.is_default && (

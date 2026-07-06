@@ -52,14 +52,14 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMemb
           </>
         )}
         <span className="flex items-center gap-2 text-sm text-zinc-500">
-          {lesson.fee != null ? `$${lesson.fee} · ${lesson.tier_name}` : lesson.tier_name}
+          ${lesson.fee} · {lesson.tier_name}
           {isCancelled && (
             <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
           )}
           {!isCancelled && isOwnParticipationCancelled && (
             <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
           )}
-          {!isCancelled && lesson.payment_type === null && (lesson.fee ?? 0) > 0 && new Date(lesson.lesson_at) < new Date() && (
+          {!isCancelled && lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
           )}
         </span>

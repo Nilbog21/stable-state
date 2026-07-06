@@ -96,7 +96,7 @@ export function LessonForm({
     mode === 'edit' &&
     (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
     new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
-    (initialLesson?.fee ?? 0) > 0
+    Number(initialLesson?.fee) > 0
   const unpaidWarn = unpaidPastDue && paymentType === ''
   const shouldWarn = unpaidWarn || notesDirty
 
@@ -256,7 +256,7 @@ export function LessonForm({
         >
           {tiers.map(t => (
             <option key={t.id} value={t.id}>
-              {t.price != null ? `${t.name} - $${t.price}` : t.name}
+              {t.name} - ${t.price}
             </option>
           ))}
           <option value={CUSTOM_ID}>Custom</option>
@@ -488,7 +488,7 @@ export function LessonForm({
       {isCustom ? (
         <div className="flex flex-col gap-1">
           <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Fee{mode === 'edit' ? ' (optional)' : ''}
+            Fee
           </label>
           <input
             id="fee"
@@ -496,13 +496,13 @@ export function LessonForm({
             type="number"
             min="0"
             step="0.01"
-            required={mode === 'new'}
+            required
             defaultValue={initialLesson?.fee ?? ''}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           />
         </div>
       ) : (
-        <input type="hidden" name="fee" value={selectedTier?.price ?? ''} />
+        <input type="hidden" name="fee" value={selectedTier!.price} />
       )}
 
       <div className="flex flex-col gap-1">

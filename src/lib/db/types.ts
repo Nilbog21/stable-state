@@ -46,7 +46,7 @@ export interface LessonTier {
   id: string
   barn_id: string
   name: string
-  price: number | null
+  price: number
   is_default: boolean
   is_active: boolean
   created_at: string
@@ -74,7 +74,7 @@ export interface Lesson {
   id: string
   barn_id: string
   instructor_id: string | null
-  fee: number | null
+  fee: number
   lesson_at: string
   submitted_at: string
   lesson_type: LessonType
@@ -128,7 +128,7 @@ export interface OutstandingLesson {
   lesson_at: string
   instructor_name: string | null
   rider_names: string[]
-  fee: number | null
+  fee: number
 }
 
 export interface FinancialSummary {
@@ -180,7 +180,7 @@ export interface OutstandingItem {
   date: string
   instructorName: string | null
   riderNames: string[]
-  fee: number | null
+  fee: number
 }
 
 export interface HorseChargeDetailRow {

@@ -1,13 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useActionState, useState } from 'react'
 import type { LessonTier } from '@/lib/db/types'
 import { DeactivateButton } from '../DeactivateButton'
 
 type TierFormProps = {
   mode: 'new' | 'edit'
   initialTier?: LessonTier
-  onSave: (fd: FormData) => Promise<void>
+  action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   onDeactivate?: () => Promise<void>
   onActivate?: () => Promise<void>
 }
@@ -15,11 +15,12 @@ type TierFormProps = {
 export function TierForm({
   mode,
   initialTier,
-  onSave,
+  action,
   onDeactivate,
   onActivate,
 }: TierFormProps) {
   const [name, setName] = useState(initialTier?.name ?? '')
+  const [state, formAction] = useActionState(action, { error: null })
   const isActive = initialTier?.is_active ?? true
   const nameChanged = mode === 'edit' && isActive && name !== (initialTier?.name ?? '')
 
@@ -41,7 +42,12 @@ export function TierForm({
         </div>
       )}
 
-      <form action={onSave} className="space-y-4">
+      <form action={formAction} className="space-y-4">
+        {state.error && (
+          <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+            {state.error}
+          </p>
+        )}
         <div>
           <label
             htmlFor="tier-name"
@@ -77,6 +83,7 @@ export function TierForm({
             name="price"
             type="number"
             step="0.01"
+            required
             defaultValue={initialTier?.price ?? ''}
             disabled={!isActive}
             className="mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"

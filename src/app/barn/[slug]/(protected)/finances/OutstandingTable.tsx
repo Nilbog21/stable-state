@@ -63,9 +63,7 @@ export function OutstandingTable({
             <Td>{item.riderNames.join(', ') || '—'}</Td>
             <Td>{item.instructorName ?? '—'}</Td>
             <Td>
-              {item.fee !== null
-                ? item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                : '—'}
+              {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
             </Td>
             <Td>
               <select
