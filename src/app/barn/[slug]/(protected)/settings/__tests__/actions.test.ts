@@ -14,6 +14,10 @@ vi.mock('@/lib/db/lesson-tiers', () => ({
   reactivateTier: vi.fn(),
 }))
 
+vi.mock('@/lib/db/barns', () => ({
+  updateBarnDefaultBoardFee: vi.fn(),
+}))
+
 const mockRedirect = vi.hoisted(() =>
   vi.fn((url: string) => {
     throw Object.assign(new Error('NEXT_REDIRECT'), {
@@ -38,11 +42,13 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
+import { updateBarnDefaultBoardFee } from '@/lib/db/barns'
 import {
   createTierAction,
   updateTierAction,
   deactivateTierAction,
   reactivateTierAction,
+  updateDefaultBoardFeeAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -354,5 +360,55 @@ describe('reactivateTierAction', () => {
     await expect(reactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+})
+
+describe('updateDefaultBoardFeeAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateBarnDefaultBoardFee).mockReset()
+    mockRedirect.mockClear()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateBarnDefaultBoardFee).mockResolvedValue(mockBarn)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await expect(
+      updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: '1200' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateBarnDefaultBoardFee_with_parsed_fee', async () => {
+    await expect(
+      updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: '1200' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateBarnDefaultBoardFee).toHaveBeenCalledWith(mockBarn.id, 1200)
+  })
+
+  it('should_redirect_to_settings_after_update', async () => {
+    await expect(
+      updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: '1200' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+
+  it('should_return_early_when_fee_is_blank', async () => {
+    await updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: '' }))
+
+    expect(updateBarnDefaultBoardFee).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_fee_is_non_numeric', async () => {
+    await updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: 'abc' }))
+
+    expect(updateBarnDefaultBoardFee).not.toHaveBeenCalled()
   })
 })

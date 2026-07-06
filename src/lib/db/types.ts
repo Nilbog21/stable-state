@@ -26,6 +26,7 @@ export interface Barn {
   name: string
   slug: string
   created_at: string
+  default_board_fee: number
 }
 
 export interface BarnMembership {

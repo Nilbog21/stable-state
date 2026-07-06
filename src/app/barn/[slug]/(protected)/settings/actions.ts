@@ -10,6 +10,7 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
+import { updateBarnDefaultBoardFee } from '@/lib/db/barns'
 
 function parsePrice(raw: string | null): number | null {
   if (!raw || raw.trim() === '') return null
@@ -85,5 +86,15 @@ export async function deactivateTierAction(barnSlug: string, tierId: string): Pr
 export async function reactivateTierAction(barnSlug: string, tierId: string): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await reactivateTier(tierId, barn.id)
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+export async function updateDefaultBoardFeeAction(barnSlug: string, formData: FormData): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const fee = parsePrice(formData.get('default_board_fee') as string | null)
+  if (fee === null) return
+
+  await updateBarnDefaultBoardFee(barn.id, fee)
   redirect(`/barn/${barnSlug}/settings`)
 }

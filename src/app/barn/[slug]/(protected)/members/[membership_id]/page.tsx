@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -6,9 +7,10 @@ import { getProfileByUserId } from '@/lib/db/profiles'
 import { getTrainerDocuments } from '@/lib/db/trainer-documents'
 import { getRiderDocuments } from '@/lib/db/rider-documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
+import { getActiveAgreementForRider } from '@/lib/db/agreements'
 import { UploadForm } from './UploadForm'
 import { uploadDocumentAction, deleteDocumentAction } from './actions'
-import type { TrainerDocument, RiderDocument } from '@/lib/db/types'
+import type { TrainerDocument, RiderDocument, Agreement } from '@/lib/db/types'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   instructor_contract: 'Instructor Contract',
@@ -16,6 +18,38 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
   lease_agreement: 'Lease Agreement',
   boarding_contract: 'Boarding Contract',
   other: 'Other',
+}
+
+function formatFee(fee: number): string {
+  return fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+function BoardingStatus({ slug, agreement }: { slug: string; agreement: Agreement | null }) {
+  return (
+    <section className="mb-8">
+      {agreement ? (
+        <p className="text-sm text-zinc-700 dark:text-zinc-300">
+          Boarding:{' '}
+          <Link
+            href={`/barn/${slug}/agreements/${agreement.id}`}
+            className="underline hover:text-zinc-900 dark:hover:text-zinc-50"
+          >
+            {formatFee(agreement.fee)}/month
+          </Link>
+        </p>
+      ) : (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Boarding: none —{' '}
+          <Link
+            href={`/barn/${slug}/agreements?kind=board`}
+            className="underline hover:text-zinc-900 dark:hover:text-zinc-50"
+          >
+            Add boarding
+          </Link>
+        </p>
+      )}
+    </section>
+  )
 }
 
 export default async function MemberDetailPage({
@@ -53,9 +87,19 @@ export default async function MemberDetailPage({
     (callerRole === 'trainer' && isOwnPage) ||
     (callerRole === 'rider' && isOwnPage)
 
+  // agreements RLS only grants SELECT to the barn manager and the rider themself —
+  // a trainer's query would be silently filtered to zero rows, showing a false "no boarding" status
+  const canViewBoardingStatus = targetRole === 'rider' && (callerRole === 'manager' || isOwnPage)
+
+  let boardingAgreement: Agreement | null = null
+  if (canViewBoardingStatus) {
+    boardingAgreement = await getActiveAgreementForRider(barn.id, targetMembership.id, 'board')
+  }
+
   if (!targetMembership.user_id) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
+        {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>
       </main>
     )
@@ -89,6 +133,8 @@ export default async function MemberDetailPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {displayName}
       </h1>
+
+      {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
 
       <section className="mb-10">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
