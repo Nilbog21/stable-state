@@ -134,7 +134,7 @@ export interface OutstandingLesson {
 export interface FinancialSummary {
   collectedIncome: number
   pendingIncome: number
-  breakdown: { tierName: string; price: number | null; lessonCount: number; subtotal: number }[]
+  breakdown: { tierName: string; price: number | null; lessonCount: number; subtotal: number; instructorCut: number }[]
 }
 
 export interface TrainerIncomeSummary {

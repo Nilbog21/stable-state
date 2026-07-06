@@ -111,8 +111,8 @@ describe('FinancesPage', () => {
       collectedIncome: 225,
       pendingIncome: 0,
       breakdown: [
-        { tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75 },
-        { tierName: 'Basic', price: 50, lessonCount: 3, subtotal: 150 },
+        { tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75, instructorCut: 0 },
+        { tierName: 'Basic', price: 50, lessonCount: 3, subtotal: 150, instructorCut: 0 },
       ],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -124,7 +124,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 100,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100 }],
+      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 0 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -135,7 +135,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 0,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 125 }],
+      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 125, instructorCut: 0 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -198,7 +198,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.instructor_cut
     )
   })
 
@@ -279,7 +280,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-04-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.instructor_cut
     )
   })
 
@@ -293,7 +295,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.instructor_cut
     )
   })
 
@@ -308,7 +311,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       'barn-1',
       new Date('2026-03-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      25
     )
   })
 
@@ -322,7 +326,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date)
+      expect.any(Date),
+      mockBarn.instructor_cut
     )
   })
 
@@ -388,7 +393,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-07-01T00:00:00.000Z')
+      new Date('2026-07-01T00:00:00.000Z'),
+      mockBarn.instructor_cut
     )
   })
 
@@ -402,7 +408,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-06-01T00:00:00.000Z')
+      new Date('2026-06-01T00:00:00.000Z'),
+      mockBarn.instructor_cut
     )
   })
 
@@ -711,7 +718,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 0,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75 }],
+      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 1, subtotal: 75, instructorCut: 0 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -722,7 +729,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 100,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100 }],
+      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 0 }],
     })
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -820,7 +827,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 300,
       pendingIncome: 0,
-      breakdown: [{ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300 }],
+      breakdown: [{ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300, instructorCut: 0 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -845,7 +852,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 100,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100 }],
+      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100, instructorCut: 25 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -856,7 +863,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 150,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 2, subtotal: 150 }],
+      breakdown: [{ tierName: 'Standard', price: 75, lessonCount: 2, subtotal: 150, instructorCut: 0 }],
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -894,7 +901,8 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getTrainerIncomeSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      new Date('2026-07-01T00:00:00.000Z')
+      new Date('2026-07-01T00:00:00.000Z'),
+      mockBarn.instructor_cut
     )
   })
 

@@ -127,8 +127,8 @@ describe('getFinancialSummary', () => {
     const result = await getFinancialSummary('barn-1', startDate, endDate)
 
     expect(result.breakdown).toEqual([
-      { tierName: 'Basic', price: 50, lessonCount: 2, subtotal: 100 },
-      { tierName: 'Premium', price: 100, lessonCount: 1, subtotal: 100 },
+      { tierName: 'Basic', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 0 },
+      { tierName: 'Premium', price: 100, lessonCount: 1, subtotal: 100, instructorCut: 0 },
     ])
   })
 
@@ -324,7 +324,7 @@ describe('getFinancialSummary', () => {
       const result = await getFinancialSummary('barn-1', startDate, endDate)
 
       expect(result.breakdown).toContainEqual({
-        tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300,
+        tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300, instructorCut: 0,
       })
     })
 
@@ -349,7 +349,7 @@ describe('getFinancialSummary', () => {
       const result = await getFinancialSummary('barn-1', startDate, endDate)
 
       expect(result.breakdown).toContainEqual({
-        tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300,
+        tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300, instructorCut: 0,
       })
     })
 
@@ -358,6 +358,95 @@ describe('getFinancialSummary', () => {
       vi.mocked(getChargesForSummary).mockRejectedValue(new Error('charges error'))
 
       await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
+    })
+  })
+
+  describe('instructor cut netting', () => {
+    it('should_subtract_cut_from_collected_income_per_lesson', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 75, payment_type: 'venmo' }),
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.collectedIncome).toBe(50)
+    })
+
+    it('should_subtract_cut_once_per_lesson_in_tier_subtotal', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 75, payment_type: 'venmo', tier_name: 'Standard', lesson_at: '2026-05-10T10:00:00Z' }),
+        createMockLesson({ id: 'lesson-2', fee: 75, payment_type: 'cash', tier_name: 'Standard', lesson_at: '2026-05-11T10:00:00Z' }),
+      ])
+      vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Standard', price: 75 }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.breakdown[0].subtotal).toBe(100)
+    })
+
+    it('should_report_total_instructor_cut_per_tier_row', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 75, payment_type: 'venmo', tier_name: 'Standard', lesson_at: '2026-05-10T10:00:00Z' }),
+        createMockLesson({ id: 'lesson-2', fee: 75, payment_type: 'cash', tier_name: 'Standard', lesson_at: '2026-05-11T10:00:00Z' }),
+      ])
+      vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Standard', price: 75 }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.breakdown[0].instructorCut).toBe(50)
+    })
+
+    it('should_set_instructor_cut_to_zero_on_non_lesson_income_row', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.breakdown.find((b) => b.tierName === NON_LESSON_INCOME_LABEL)?.instructorCut).toBe(0)
+    })
+
+    it('should_not_apply_cut_to_charge_income', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.collectedIncome).toBe(300)
+    })
+
+    it('should_subtract_cut_from_pending_income', async () => {
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 60, lesson_at: '2026-06-20T10:00:00Z', payment_type: null }),
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.pendingIncome).toBe(35)
+    })
+
+    it('should_allow_negative_subtotal_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 0, payment_type: 'venmo' }),
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.collectedIncome).toBe(-25)
+    })
+
+    it('should_reconcile_sum_of_tier_subtotals_and_charges_to_collected_income', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 75, payment_type: 'venmo', tier_name: 'Custom', lesson_at: '2026-05-10T10:00:00Z' }),
+        createMockLesson({ id: 'lesson-2', fee: 100, payment_type: 'cash', tier_name: 'Custom', lesson_at: '2026-05-11T10:00:00Z' }),
+      ])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate, 25)
+
+      const breakdownTotal = result.breakdown.reduce((sum, b) => sum + b.subtotal, 0)
+      expect(breakdownTotal).toBe(result.collectedIncome)
     })
   })
 })
@@ -718,6 +807,59 @@ describe('getHorseIncomeSummary', () => {
       await expect(getHorseIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
     })
   })
+
+  describe('instructor cut netting', () => {
+    it('should_subtract_cut_before_splitting_across_two_horses', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+        { lesson_id: 'lesson-1', horse_id: 'horse-1' },
+        { lesson_id: 'lesson-1', horse_id: 'horse-2' },
+      ])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
+
+      const result = await getHorseIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.every((r) => r.totalIncome === 37.5)).toBe(true)
+    })
+
+    it('should_apply_cut_once_per_lesson_regardless_of_horse_count', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+        { lesson_id: 'lesson-1', horse_id: 'horse-1' },
+        { lesson_id: 'lesson-1', horse_id: 'horse-2' },
+        { lesson_id: 'lesson-1', horse_id: 'horse-3' },
+      ])
+      vi.mocked(resolveHorseNames).mockResolvedValue(
+        new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow'], ['horse-3', 'Blaze']])
+      )
+
+      const result = await getHorseIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.every((r) => r.totalIncome === 25)).toBe(true)
+    })
+
+    it('should_not_apply_cut_to_charge_income', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+      ])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+      const result = await getHorseIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 500 }])
+    })
+
+    it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 0 }])
+      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+      const result = await getHorseIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: -25 }])
+    })
+  })
 })
 
 describe('getRiderIncomeSummary', () => {
@@ -919,6 +1061,57 @@ describe('getRiderIncomeSummary', () => {
       await expect(getRiderIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
     })
   })
+
+  describe('instructor cut netting', () => {
+    it('should_subtract_cut_before_splitting_across_two_riders', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+        { lesson_id: 'lesson-1', rider_id: 'mem-1' },
+        { lesson_id: 'lesson-1', rider_id: 'mem-2' },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+      const result = await getRiderIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.every((r) => r.totalIncome === 37.5)).toBe(true)
+    })
+
+    it('should_apply_cut_once_per_lesson_regardless_of_rider_count', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+        { lesson_id: 'lesson-1', rider_id: 'mem-1' },
+        { lesson_id: 'lesson-1', rider_id: 'mem-2' },
+        { lesson_id: 'lesson-1', rider_id: 'mem-3' },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+      const result = await getRiderIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result.every((r) => r.totalIncome === 25)).toBe(true)
+    })
+
+    it('should_not_apply_cut_to_charge_income', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
+
+      const result = await getRiderIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 500 }])
+    })
+
+    it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 0 }])
+      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
+
+      const result = await getRiderIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: -25 }])
+    })
+  })
 })
 
 describe('getTrainerIncomeSummary', () => {
@@ -1070,6 +1263,40 @@ describe('getTrainerIncomeSummary', () => {
       vi.mocked(getChargesForSummary).mockRejectedValue(new Error('charges error'))
 
       await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
+    })
+  })
+
+  describe('instructor cut netting', () => {
+    it('should_subtract_cut_per_lesson_for_trainer_income', async () => {
+      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+        { instructor_id: 'mem-trainer-1', fee: 100 },
+        { instructor_id: 'mem-trainer-1', fee: 75 },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 125 }])
+    })
+
+    it('should_not_apply_cut_to_non_lesson_income_row', async () => {
+      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([
+        { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300 },
+      ])
+    })
+
+    it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 0 }])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: -25 }])
     })
   })
 })
@@ -1256,6 +1483,53 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
       await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('charges error')
+    })
+  })
+
+  describe('instructor cut netting', () => {
+    it('should_net_cut_from_row_fee_when_single_horse_in_lesson', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 25)
+
+      expect(result.rows[0].fee).toBe(75)
+    })
+
+    it('should_net_cut_once_before_splitting_across_two_horses', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+        { lesson_id: 'lesson-1', horse_id: 'horse-1' },
+        { lesson_id: 'lesson-1', horse_id: 'horse-2' },
+      ])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 25)
+
+      expect(result.rows[0].splitAmount).toBe(37.5)
+    })
+
+    it('should_not_apply_cut_to_charge_rows_or_total', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+      ])
+
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 25)
+
+      expect(result.total).toBe(500)
+    })
+
+    it('should_allow_negative_row_fee_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 0, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 25)
+
+      expect(result.total).toBe(-25)
     })
   })
 })
@@ -1503,6 +1777,57 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
       await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('charges error')
+    })
+  })
+
+  describe('instructor cut netting', () => {
+    it('should_net_cut_from_row_fee_when_single_rider_in_lesson', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getRiderMembership).mockResolvedValue({ id: 'mem-1', user_id: 'user-1' })
+      vi.mocked(getProfileNameByUserId).mockResolvedValue(null)
+      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 25)
+
+      expect(result.rows[0].fee).toBe(75)
+    })
+
+    it('should_net_cut_once_before_splitting_across_two_riders', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getRiderMembership).mockResolvedValue({ id: 'mem-1', user_id: 'user-1' })
+      vi.mocked(getProfileNameByUserId).mockResolvedValue(null)
+      vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+        { lesson_id: 'lesson-1', rider_id: 'mem-1' },
+        { lesson_id: 'lesson-1', rider_id: 'mem-2' },
+      ])
+
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 25)
+
+      expect(result.rows[0].splitAmount).toBe(37.5)
+    })
+
+    it('should_not_apply_cut_to_charge_rows_or_total', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getRiderMembership).mockResolvedValue({ id: 'mem-1', user_id: 'user-1' })
+      vi.mocked(getProfileNameByUserId).mockResolvedValue(null)
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
+      ])
+
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 25)
+
+      expect(result.total).toBe(500)
+    })
+
+    it('should_allow_negative_row_fee_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 0, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getRiderMembership).mockResolvedValue({ id: 'mem-1', user_id: 'user-1' })
+      vi.mocked(getProfileNameByUserId).mockResolvedValue(null)
+      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 25)
+
+      expect(result.total).toBe(-25)
     })
   })
 })

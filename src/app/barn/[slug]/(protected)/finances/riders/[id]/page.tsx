@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getRiderIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth } from '../../page'
+import { formatCurrency } from '@/lib/format-currency'
 import { Th, Td } from '@/components/ui/Table'
 
 function pad2(n: number): string {
@@ -34,7 +35,7 @@ export default async function RiderIncomePage({
   const { month: monthParam } = await searchParams
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const { riderName, rows, chargeRows, total } = await getRiderIncomeDetail(barn.id, riderId, startDate, endDate)
+  const { riderName, rows, chargeRows, total } = await getRiderIncomeDetail(barn.id, riderId, startDate, endDate, barn.instructor_cut)
 
   const monthQ = `month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
   const backHref = `/barn/${slug}/finances?tab=rider&${monthQ}`
@@ -79,9 +80,9 @@ export default async function RiderIncomePage({
                         {formatDate(row.lessonAt)}
                       </Link>
                     </Td>
-                    <Td>{row.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Td>
+                    <Td>{formatCurrency(row.fee)}</Td>
                     <Td>{row.riderCount}</Td>
-                    <Td>{row.splitAmount.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Td>
+                    <Td>{formatCurrency(row.splitAmount)}</Td>
                   </tr>
                 ))}
               </tbody>
@@ -121,7 +122,7 @@ export default async function RiderIncomePage({
 
           <div className="flex justify-between border-t border-zinc-300 pt-3 text-sm font-semibold text-zinc-900 dark:border-zinc-600 dark:text-zinc-50">
             <span>Total</span>
-            <span>{total.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</span>
+            <span>{formatCurrency(total)}</span>
           </div>
         </div>
       )}

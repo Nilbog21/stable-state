@@ -52,7 +52,7 @@ describe('RiderIncomePage', () => {
   it('should_call_getRiderIncomeDetail_with_rider_id', async () => {
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(getRiderIncomeDetail).toHaveBeenCalledWith(mockBarn.id, 'rider-1', expect.any(Date), expect.any(Date))
+    expect(getRiderIncomeDetail).toHaveBeenCalledWith(mockBarn.id, 'rider-1', expect.any(Date), expect.any(Date), mockBarn.instructor_cut)
   })
 
   it('should_render_rider_name_as_heading', async () => {
