@@ -90,7 +90,7 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
     id: 'lesson-1',
     barn_id: 'barn-1',
     instructor_id: 'mem-1',
-    fee: null,
+    fee: 50,
     lesson_at: '2026-05-19T10:00:00Z',
     submitted_at: '2026-05-19T09:00:00Z',
     lesson_type: 'normal',

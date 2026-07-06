@@ -92,32 +92,6 @@ describe('LessonListItem', () => {
     expect(screen.getByText('$75 · Premium')).toBeDefined()
   })
 
-  it('should_show_custom_tier_name_when_fee_is_null', () => {
-    render(
-      <LessonListItem
-        lesson={{ ...normalLesson, fee: null, tier_name: 'Custom' }}
-        slug="green-acres"
-        isManager={false}
-        isTrainer={false}
-        currentMembershipId="user-1"
-      />
-    )
-    expect(screen.getByText('Custom')).toBeDefined()
-  })
-
-  it('should_show_tier_name_when_fee_is_null', () => {
-    render(
-      <LessonListItem
-        lesson={{ ...normalLesson, fee: null, tier_name: 'Group Rate' }}
-        slug="green-acres"
-        isManager={false}
-        isTrainer={false}
-        currentMembershipId="user-1"
-      />
-    )
-    expect(screen.getByText('Group Rate')).toBeDefined()
-  })
-
   it('should_show_jumping_after_horse_name_for_jumping_normal_lesson', () => {
     render(
       <LessonListItem
@@ -187,19 +161,6 @@ describe('LessonListItem', () => {
     render(
       <LessonListItem
         lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null }}
-        slug="green-acres"
-        isManager={false}
-        isTrainer={false}
-        currentMembershipId="user-1"
-      />
-    )
-    expect(screen.queryByText('Unpaid')).toBeNull()
-  })
-
-  it('should_not_show_unpaid_badge_when_fee_is_null', () => {
-    render(
-      <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: null, payment_type: null }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}

@@ -235,13 +235,6 @@ describe('LessonForm (edit mode)', () => {
     expect(select).not.toBeNull()
   })
 
-  it('should_render_fee_input_with_empty_value_when_fee_is_null', () => {
-    const lesson = { ...normalLesson, fee: null }
-    render(<LessonForm {...baseProps} initialLesson={lesson} />)
-    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
-    expect(feeInput.defaultValue).toBe('')
-  })
-
   it('should_handle_null_horses_relation_in_lesson_horses', () => {
     const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horses: null }] }
     const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
@@ -361,6 +354,11 @@ describe('LessonForm (edit mode)', () => {
   it('should_show_fee_input_when_custom_tier_selected_in_edit_mode', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByRole('spinbutton', { name: /fee/i })).not.toBeNull()
+  })
+
+  it('should_mark_fee_input_as_required_in_edit_mode', () => {
+    render(<LessonForm {...baseProps} />)
+    expect((screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement).required).toBe(true)
   })
 
   it('should_render_add_new_horse_input_for_managers_in_edit_mode', () => {
@@ -521,17 +519,6 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
       <NavigationBlockerProvider>
         <DirtyDisplay />
         <LessonForm {...baseProps} initialLesson={zeroFeeLesson} />
-      </NavigationBlockerProvider>
-    )
-    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
-  })
-
-  it('should_not_set_dirty_when_fee_is_null', async () => {
-    const nullFeeLesson: LessonDetail = { ...pastLesson, fee: null }
-    render(
-      <NavigationBlockerProvider>
-        <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={nullFeeLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))

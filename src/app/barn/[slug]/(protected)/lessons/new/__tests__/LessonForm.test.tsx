@@ -361,12 +361,6 @@ describe('LessonForm', () => {
     expect(screen.getByRole('option', { name: 'Premium - $100' })).toBeDefined()
   })
 
-  it('should_show_tier_name_only_when_price_is_null', () => {
-    const tier = createMockLessonTier({ name: 'Comp', price: null, is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
-    expect(screen.getByRole('option', { name: 'Comp' })).toBeDefined()
-  })
-
   it('should_show_custom_option_in_tier_dropdown', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.getByRole('option', { name: 'Custom' })).toBeDefined()
@@ -400,11 +394,11 @@ describe('LessonForm', () => {
     expect(feeInput.required).toBe(true)
   })
 
-  it('should_submit_empty_fee_when_non_custom_tier_has_null_price', () => {
-    const tier = createMockLessonTier({ name: 'Comp', price: null, is_default: true })
+  it('should_submit_tier_price_as_hidden_fee_when_named_tier_selected', () => {
+    const tier = createMockLessonTier({ name: 'Standard', price: 60, is_default: true })
     const { container } = render(<LessonForm {...baseProps} tiers={[tier]} />)
     const hiddenFee = container.querySelector('input[name="fee"][type="hidden"]') as HTMLInputElement
-    expect(hiddenFee.value).toBe('')
+    expect(hiddenFee.value).toBe('60')
   })
 
   it('should_show_error_when_normal_mode_submitted_with_no_horse_selected', () => {

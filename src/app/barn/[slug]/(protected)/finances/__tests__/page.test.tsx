@@ -591,17 +591,7 @@ describe('FinancesPage', () => {
 
   it('should_not_highlight_outstanding_section_when_total_is_zero', async () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([
-      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: null },
-    ])
-    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    const container = screen.getByText('Outstanding').closest('section')
-    expect(container?.className).not.toMatch(/amber/)
-  })
-
-  it('should_treat_null_fee_as_zero_in_outstanding_total', async () => {
-    vi.mocked(getOutstandingLessons).mockResolvedValue([
-      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: null },
+      { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: null, rider_names: ['Alice'], fee: 0 },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
