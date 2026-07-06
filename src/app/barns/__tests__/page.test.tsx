@@ -30,7 +30,7 @@ import BarnsPage from '../page'
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
 const mockActiveMembership = {
-  barn: { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' },
+  barn: { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' },
   membership: {
     id: 'mem-1',
     user_id: 'user-1',
@@ -42,7 +42,7 @@ const mockActiveMembership = {
 }
 
 const mockPendingMembership = {
-  barn: { id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', created_at: '' },
+  barn: { id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', instructor_cut: 25, created_at: '' },
   membership: {
     id: 'mem-2',
     user_id: 'user-1',

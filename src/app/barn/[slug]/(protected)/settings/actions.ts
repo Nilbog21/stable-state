@@ -10,7 +10,7 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut } from '@/lib/db/barns'
 
 function parsePrice(raw: string | null): number | null {
   if (!raw || raw.trim() === '') return null
@@ -96,5 +96,21 @@ export async function updateDefaultBoardFeeAction(barnSlug: string, formData: Fo
   if (fee === null) return
 
   await updateBarnDefaultBoardFee(barn.id, fee)
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+function parseNonNegativeNumber(raw: string | null): number | null {
+  if (raw === null || raw.trim() === '') return null
+  const n = parseFloat(raw)
+  return isNaN(n) || n < 0 ? null : n
+}
+
+export async function updateInstructorCutAction(barnSlug: string, formData: FormData): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const value = parseNonNegativeNumber(formData.get('instructor_cut') as string | null)
+  if (value === null) return
+
+  await setInstructorCut(barn.id, value)
   redirect(`/barn/${barnSlug}/settings`)
 }

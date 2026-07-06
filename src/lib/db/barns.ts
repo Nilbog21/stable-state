@@ -31,3 +31,9 @@ export async function updateBarnDefaultBoardFee(
   if (error) throw error
   return data
 }
+
+export async function setInstructorCut(barnId: string, value: number, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
+  const { error } = await supabase.rpc('set_instructor_cut', { p_barn_id: barnId, p_value: value })
+  if (error) throw error
+}

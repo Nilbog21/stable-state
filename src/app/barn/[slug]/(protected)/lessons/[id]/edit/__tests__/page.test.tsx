@@ -28,7 +28,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import EditLessonPage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
 
 const mockLesson = {
   id: 'lesson-1',

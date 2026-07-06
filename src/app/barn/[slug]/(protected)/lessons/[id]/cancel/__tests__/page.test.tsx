@@ -17,7 +17,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import CancelLessonPage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
 
 const mockManagerMembership = {
   id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1',
