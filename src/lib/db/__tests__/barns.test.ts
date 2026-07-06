@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getBarnBySlug } from '../barns'
+import { getBarnBySlug, updateBarnDefaultBoardFee } from '../barns'
 
 const mockBarn = createMockBarn()
 
@@ -80,6 +80,54 @@ describe('getBarnBySlug', () => {
     } as any
 
     const result = await getBarnBySlug('injected-slug', mockClient)
+
+    expect(result).toEqual(mockBarn)
+  })
+})
+
+describe('updateBarnDefaultBoardFee', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeChain(data: unknown | null, error: Error | null = null) {
+    const mockSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+    return { update: mockUpdate, mockUpdate, mockEq }
+  }
+
+  it('should_update_default_board_fee_and_return_updated_barn', async () => {
+    const { update } = makeChain({ ...mockBarn, default_board_fee: 1200 })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    const result = await updateBarnDefaultBoardFee('barn-1', 1200)
+
+    expect(result).toEqual({ ...mockBarn, default_board_fee: 1200 })
+  })
+
+  it('should_scope_update_by_barn_id', async () => {
+    const { update, mockEq } = makeChain(mockBarn)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await updateBarnDefaultBoardFee('barn-1', 1200)
+
+    expect(mockEq).toHaveBeenCalledWith('id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const { update } = makeChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await expect(updateBarnDefaultBoardFee('barn-1', 1200)).rejects.toThrow('db error')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const { update } = makeChain(mockBarn)
+    const mockClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    const result = await updateBarnDefaultBoardFee('barn-1', 1200, mockClient)
 
     expect(result).toEqual(mockBarn)
   })
