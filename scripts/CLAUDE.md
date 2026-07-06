@@ -46,6 +46,7 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 | `seed-test-barn` | ✓ | ✓ | ✓ | ✓ | Positional arg: barn slug; teardown-first for idempotency; email/password auth users |
 | `teardown-test-barn` | ✓ | ✓ | ✓ | ✓ | Exports `teardown(slug, supabase)` reused by `seed-test-barn.ts`; exports `TEST_ROLES` for test coverage |
 | `script-utils` | — | ✓ | ✓ | — | Shared utilities (`mustSucceed`, `createServiceClient`, `teardownBarnData`, `teardownAllData`, `findAuthUserIdsByEmails`); import from here to reduce duplication across seed/teardown scripts |
+| `generate-outstanding-notifications` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only (no interactive `.env.local` flow); `.sh` validates env vars already set by the workflow's `env:` block instead of parsing `.env.local`; no non-trivial shell branching |
 | `ci` | ✓ | — | — | ✓ | Shell-only |
 | `check-coverage` | ✓ | — | — | ✓ | Shell-only |
 

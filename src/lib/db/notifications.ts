@@ -54,9 +54,10 @@ export async function getNotifications(
 export async function deleteNotificationByType(
   userId: string,
   barnId: string,
-  type: NotificationType
+  type: NotificationType,
+  client?: SupabaseClient
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   const { error } = await supabase
     .from('notifications')
     .delete()

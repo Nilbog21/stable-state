@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './barn-memberships'
 import { resolveHorseNames } from './horses'
 import {
@@ -118,8 +119,13 @@ export async function getFinancialSummary(
   return { collectedIncome, pendingIncome, breakdown }
 }
 
-export async function getOutstandingLessons(barnId: string, userId?: string, role?: Role): Promise<OutstandingLesson[]> {
-  const supabase = await createClient()
+export async function getOutstandingLessons(
+  barnId: string,
+  userId?: string,
+  role?: Role,
+  client?: SupabaseClient
+): Promise<OutstandingLesson[]> {
+  const supabase = client ?? await createClient()
 
   const outstandingRaw = await getOutstandingLessonRows(supabase, barnId, userId, role)
 

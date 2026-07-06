@@ -135,6 +135,16 @@ describe('deleteNotificationByType', () => {
 
     await expect(deleteNotificationByType('user-1', 'barn-1', 'incomplete_profile')).rejects.toThrow('delete failed')
   })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const { mockFrom } = makeChain({ error: null })
+    const injectedClient = { from: mockFrom } as any
+
+    await deleteNotificationByType('user-1', 'barn-1', 'incomplete_profile', injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(mockFrom).toHaveBeenCalledWith('notifications')
+  })
 })
 
 describe('markNotificationRead', () => {
