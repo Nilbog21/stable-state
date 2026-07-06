@@ -25,9 +25,9 @@ Three roles: `manager`, `trainer`, `rider`.
 | barns | SELECT | SELECT | SELECT |
 | barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE approve pending in barn; UPDATE `can_instruct` for barn members; DELETE any in barn | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own |
 | horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT |
-| lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (any column; instructor_id locked by RLS) | SELECT, INSERT |
-| lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT, INSERT |
-| lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT, INSERT |
+| lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (any column; instructor_id locked by RLS) | SELECT (enrolled only), INSERT |
+| lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT (enrolled only), INSERT |
+| lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT (enrolled only), INSERT |
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
 | profiles | SELECT own + barn members; UPDATE own + any barn member (contact fields only); INSERT own | SELECT own + barn members | SELECT own + barn members; INSERT/UPDATE own |
 | notifications | SELECT/UPDATE/DELETE own; INSERT any authenticated (cross-user UPDATE/INSERT also reachable via `create_or_update_notification` RPC, gated on active membership in the target barn) | SELECT/UPDATE/DELETE own; INSERT any authenticated (see manager column) | SELECT/UPDATE/DELETE own; INSERT any authenticated (see manager column) |
