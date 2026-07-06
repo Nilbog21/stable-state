@@ -13,7 +13,7 @@ import { getExpenseById } from '@/lib/db/expenses'
 import { notFound } from 'next/navigation'
 import DeleteExpensePage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
 
 const mockManagerMembership = {
   id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1',

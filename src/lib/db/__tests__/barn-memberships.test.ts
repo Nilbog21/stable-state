@@ -559,7 +559,7 @@ describe('getMembershipById', () => {
 })
 
 describe('getBarnMembershipsForUser', () => {
-  const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+  const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
   const mockRow = { ...mockMembership, barns: mockBarn }
   const expectedEntry = { barn: mockBarn, membership: mockMembership }
 
@@ -592,7 +592,7 @@ describe('getBarnMembershipsForUser', () => {
   })
 
   it('should_return_multiple_active_memberships_with_barns', async () => {
-    const barn2 = { id: 'barn-2', name: 'Sunny Stables', slug: 'sunny-stables', created_at: '' }
+    const barn2 = { id: 'barn-2', name: 'Sunny Stables', slug: 'sunny-stables', instructor_cut: 25, created_at: '' }
     const mem2 = createMockMembership({ id: 'mem-2', barn_id: 'barn-2' })
     const row2 = { ...mem2, barns: barn2 }
     vi.mocked(createClient).mockResolvedValue(makeClient([mockRow, row2]))

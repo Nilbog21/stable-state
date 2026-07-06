@@ -16,6 +16,7 @@ vi.mock('@/lib/db/lesson-tiers', () => ({
 
 vi.mock('@/lib/db/barns', () => ({
   updateBarnDefaultBoardFee: vi.fn(),
+  setInstructorCut: vi.fn(),
 }))
 
 const mockRedirect = vi.hoisted(() =>
@@ -42,13 +43,14 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut } from '@/lib/db/barns'
 import {
   createTierAction,
   updateTierAction,
   deactivateTierAction,
   reactivateTierAction,
   updateDefaultBoardFeeAction,
+  updateInstructorCutAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -328,6 +330,70 @@ describe('deactivateTierAction', () => {
     await expect(deactivateTierAction('green-acres', 'tier-1')).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+})
+
+describe('updateInstructorCutAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(setInstructorCut).mockReset()
+    mockRedirect.mockClear()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(setInstructorCut).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await expect(
+      updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: '30' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_setInstructorCut_with_parsed_value', async () => {
+    await expect(
+      updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: '30' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(setInstructorCut).toHaveBeenCalledWith(mockBarn.id, 30)
+  })
+
+  it('should_redirect_to_settings_after_setInstructorCut', async () => {
+    await expect(
+      updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: '30' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+
+  it('should_allow_zero', async () => {
+    await expect(
+      updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: '0' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(setInstructorCut).toHaveBeenCalledWith(mockBarn.id, 0)
+  })
+
+  it('should_return_early_when_blank', async () => {
+    await updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: '' }))
+
+    expect(setInstructorCut).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_negative', async () => {
+    await updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: '-5' }))
+
+    expect(setInstructorCut).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_non_numeric', async () => {
+    await updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: 'abc' }))
+
+    expect(setInstructorCut).not.toHaveBeenCalled()
   })
 })
 

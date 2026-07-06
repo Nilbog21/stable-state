@@ -149,6 +149,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] **Approve** Quinn Pending under Pending Requests → Quinn moves to Active Members
 - [ ] **Remove** Quinn from Active Members
 - [ ] Toggle `can_instruct` on for a rider → they appear in the instructor dropdown on the new-lesson form; toggle it back off
+- [ ] Instructor Cut field shows the current value (default `25`); change it and **Save** → value persists on reload; try `0` (allowed) and blank (rejected — field stays unchanged)
 - [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → Save
 - [ ] Set a different tier as **default** → new-lesson form pre-selects it
 - [ ] **Deactivate** the Group Special tier → it no longer appears when creating a lesson; **reactivate** it

@@ -25,6 +25,7 @@ export interface Barn {
   id: string
   name: string
   slug: string
+  instructor_cut: number
   created_at: string
   default_board_fee: number
 }

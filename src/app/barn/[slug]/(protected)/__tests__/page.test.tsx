@@ -44,7 +44,7 @@ import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { createMockLesson } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
 const mockManagerMembership = {
