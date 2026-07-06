@@ -37,6 +37,7 @@ Lesson tiers (`/barn/dev-barn/settings` → Add Tier → `/barn/dev-barn/setting
 - [ ] Create tier **Advanced** — $120, default jumping on
 - [ ] Create tier **Group Special** — $90, no defaults
 - [ ] All three appear in the Lesson Tiers list on the settings page
+- [ ] Try saving a tier with a blank price — rejected with "Price is required"; $0 price is accepted
 
 Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 
@@ -85,6 +86,7 @@ Future:
 - [ ] Lesson 7: next week, Beginner tier, trainer Alex, rider Dana, horse Apple
 - [ ] Lesson 8: next week, Premium Tier, trainer Blake, rider Emery, horse Eclipse
 - [ ] Daisy (Unavailable) appears **disabled** in the horse picker while creating lessons
+- [ ] Try saving a lesson with a blank fee (Custom tier) — rejected with "fee is required"; in edit mode, blank fee is rejected too
 
 ## Phase 4 — Manager verification
 

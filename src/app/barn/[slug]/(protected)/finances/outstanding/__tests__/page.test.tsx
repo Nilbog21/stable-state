@@ -125,16 +125,6 @@ describe('OutstandingPage', () => {
     expect(getOutstandingLessons).toHaveBeenCalledWith(mockBarn.id, mockUser.id, 'rider')
   })
 
-  it('should_render_dash_when_fee_is_null', async () => {
-    vi.mocked(getOutstandingLessons).mockResolvedValue([{
-      id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-15T10:00:00Z',
-      instructor_name: null, rider_names: [], fee: null,
-    }])
-    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
-  })
-
   it('should_render_a_charge_row_with_its_type_and_rider_name', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
       { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },

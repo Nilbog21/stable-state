@@ -208,13 +208,6 @@ describe('getOutstandingLessonRows', () => {
       expect(result).toHaveLength(0)
     })
 
-    it('should_include_null_fee_lessons', async () => {
-      const lesson = createMockLesson({ fee: null, payment_type: null })
-      const { client } = makeDefaultChain([lesson])
-      const result = await getOutstandingLessonRows(client, 'barn-1')
-      expect(result).toHaveLength(1)
-    })
-
     it('should_include_non_zero_fee_lessons', async () => {
       const lesson = createMockLesson({ fee: 50, payment_type: null })
       const { client } = makeDefaultChain([lesson])

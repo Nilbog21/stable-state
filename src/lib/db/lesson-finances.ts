@@ -71,14 +71,12 @@ export async function getFinancialSummary(
 
   for (const lesson of lessons) {
     if (lesson.payment_type !== null) {
-      if (lesson.fee !== null) {
-        collectedIncome += lesson.fee
-        const tierName = lesson.tier_name || 'Custom'
-        const existing = tierMap.get(tierName) ?? { lessonCount: 0, subtotal: 0 }
-        tierMap.set(tierName, { lessonCount: existing.lessonCount + 1, subtotal: existing.subtotal + lesson.fee })
-      }
+      collectedIncome += lesson.fee
+      const tierName = lesson.tier_name || 'Custom'
+      const existing = tierMap.get(tierName) ?? { lessonCount: 0, subtotal: 0 }
+      tierMap.set(tierName, { lessonCount: existing.lessonCount + 1, subtotal: existing.subtotal + lesson.fee })
     } else if (new Date(lesson.lesson_at) > now) {
-      if (lesson.fee !== null) pendingIncome += lesson.fee
+      pendingIncome += lesson.fee
     }
   }
 
@@ -97,7 +95,7 @@ export async function getFinancialSummary(
   collectedIncome += chargesCollected
 
   const nonCustomTierNames = [...tierMap.keys()].filter((n) => n !== 'Custom')
-  const tierPrices = new Map<string, number | null>()
+  const tierPrices = new Map<string, number>()
   if (nonCustomTierNames.length) {
     const tiers = await getTierPricesByNames(supabase, barnId, nonCustomTierNames)
     for (const t of tiers) tierPrices.set(t.name, t.price)
@@ -168,14 +166,12 @@ export async function getHorseIncomeSummary(
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
-  const paidLessons = lessons.filter((l): l is { id: string; fee: number } => l.fee !== null)
-
   const incomeMap = new Map<string, number>()
 
-  if (paidLessons.length) {
-    const lessonIds = paidLessons.map((l) => l.id)
+  if (lessons.length) {
+    const lessonIds = lessons.map((l) => l.id)
     const lessonHorses = await getLessonHorsesForLessons(supabase, barnId, lessonIds)
-    for (const lesson of paidLessons) {
+    for (const lesson of lessons) {
       const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
       if (!participants.length) continue
       const split = lesson.fee / participants.length
@@ -215,14 +211,12 @@ export async function getRiderIncomeSummary(
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
-  const paidLessons = lessons.filter((l): l is { id: string; fee: number } => l.fee !== null)
-
   const incomeMap = new Map<string, number>()
 
-  if (paidLessons.length) {
-    const lessonIds = paidLessons.map((l) => l.id)
+  if (lessons.length) {
+    const lessonIds = lessons.map((l) => l.id)
     const lessonRiders = await getLessonRidersForLessons(supabase, barnId, lessonIds)
-    for (const lesson of paidLessons) {
+    for (const lesson of lessons) {
       const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
       if (!participants.length) continue
       const split = lesson.fee / participants.length
@@ -263,7 +257,7 @@ export async function getTrainerIncomeSummary(
   ])
 
   const collected = lessons.filter(
-    (l): l is { instructor_id: string; fee: number } => l.instructor_id !== null && l.fee !== null
+    (l): l is { instructor_id: string; fee: number } => l.instructor_id !== null
   )
 
   let result: TrainerIncomeSummary[] = []
@@ -310,15 +304,11 @@ export async function getHorseIncomeDetail(
   const horseNameMap = await resolveHorseNames([horseId], barnId, supabase)
   const horseName = horseNameMap.get(horseId) ?? horseId
 
-  const paidLessons = lessonsData.filter(
-    (l): l is { id: string; fee: number; lesson_at: string } => l.fee !== null
-  )
-
   const rows: HorseIncomeDetailRow[] = []
-  if (paidLessons.length) {
-    const lessonIds = paidLessons.map((l) => l.id)
+  if (lessonsData.length) {
+    const lessonIds = lessonsData.map((l) => l.id)
     const lessonHorses = await getLessonHorsesForLessons(supabase, barnId, lessonIds)
-    for (const lesson of paidLessons) {
+    for (const lesson of lessonsData) {
       const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
       if (!participants.some((lh) => lh.horse_id === horseId)) continue
       const horseCount = participants.length
@@ -361,15 +351,11 @@ export async function getRiderIncomeDetail(
     if (riderProfile) riderName = `${riderProfile.first_name} ${riderProfile.last_name}`
   }
 
-  const paidLessons = lessonsData.filter(
-    (l): l is { id: string; fee: number; lesson_at: string } => l.fee !== null
-  )
-
   const rows: RiderIncomeDetailRow[] = []
-  if (paidLessons.length) {
-    const lessonIds = paidLessons.map((l) => l.id)
+  if (lessonsData.length) {
+    const lessonIds = lessonsData.map((l) => l.id)
     const lessonRiders = await getLessonRidersForLessons(supabase, barnId, lessonIds)
-    for (const lesson of paidLessons) {
+    for (const lesson of lessonsData) {
       const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
       if (!participants.some((lr) => lr.rider_id === riderId)) continue
       const riderCount = participants.length

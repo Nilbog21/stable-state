@@ -141,7 +141,7 @@ export default async function FinancesPage({
   ])
 
   const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges)
-  const outstandingTotal = outstandingItems.reduce((sum, i) => sum + (i.fee ?? 0), 0)
+  const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
 
   const monthQ = isCurrentMonth ? '' : `&month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
   const tabQ = tab !== 'tier' ? `&tab=${tab}` : ''

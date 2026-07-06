@@ -166,13 +166,6 @@ describe('LessonDetailPage', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
-  it('should_render_dash_when_fee_is_null', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, fee: null })
-    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
-    render(jsx)
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
-  })
-
   it('should_render_dash_for_null_horse_name_for_rider_role', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
@@ -537,13 +530,6 @@ describe('LessonDetailPage', () => {
 
   it('should_not_show_unpaid_badge_when_fee_is_zero', async () => {
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null })
-    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
-    render(jsx)
-    expect(screen.queryByText('Unpaid')).toBeNull()
-  })
-
-  it('should_not_show_unpaid_badge_when_fee_is_null', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: null, payment_type: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('Unpaid')).toBeNull()

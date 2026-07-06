@@ -14,6 +14,12 @@ function parseExertionLevel(raw: FormDataEntryValue | null): number {
   return Number.isNaN(n) ? 3 : Math.max(1, Math.min(5, n))
 }
 
+function parseFee(raw: string | null): number | null {
+  if (!raw || raw.trim() === '') return null
+  const n = parseFloat(raw)
+  return isNaN(n) ? null : n
+}
+
 export async function submitLesson(
   barnId: string,
   barnSlug: string,
@@ -52,8 +58,6 @@ export async function submitLesson(
     if (!instructors.some((i) => i.membershipId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
-  const fee = feeRaw ? parseFloat(feeRaw) : null
-
   const exertionLevels = new Map<string, number>(
     horseIds.map(id => [id, parseExertionLevel(formData.get(`exertion_${id}`))])
   )
@@ -78,7 +82,8 @@ export async function submitLesson(
     }
   }
 
-  if (formData.get('is_custom') === 'true' && !feeRaw) return { error: 'fee required for custom tier' }
+  const fee = parseFee(feeRaw)
+  if (fee == null) return { error: 'fee is required' }
 
   try {
     if (newHorseName) {
@@ -148,7 +153,6 @@ export async function updateLessonAction(
     if (!instructors.some((i) => i.membershipId === instructorIdFromForm)) return { error: 'Invalid instructor' }
   }
 
-  const fee = feeRaw ? parseFloat(feeRaw) : null
   const paymentType = paymentTypeRaw as PaymentType | null
 
   const exertionLevels = new Map<string, number>(
@@ -170,6 +174,9 @@ export async function updateLessonAction(
     const validRiderIds = new Set(barnRiders.map((m) => m.membershipId))
     if (riderIds.some((id) => !validRiderIds.has(id))) return { error: 'rider not found in this barn' }
   }
+
+  const fee = parseFee(feeRaw)
+  if (fee == null) return { error: 'fee is required' }
 
   try {
     if (newHorseName) {

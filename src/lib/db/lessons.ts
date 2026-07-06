@@ -69,7 +69,7 @@ export async function createLesson({
 }: {
   barnId: string
   instructorId: string | null
-  fee: number | null
+  fee: number
   lessonAt: string
 }): Promise<Lesson> {
   const supabase = await createClient()

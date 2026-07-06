@@ -29,15 +29,6 @@ const lessonItem = {
   fee: 75,
 }
 
-const lessonItemNullFee = {
-  id: 'lesson-2',
-  itemType: 'lesson' as const,
-  date: '2026-06-11T10:00:00Z',
-  instructorName: null,
-  riderNames: ['Bob'],
-  fee: null,
-}
-
 const boardItem = {
   id: 'charge-1',
   itemType: 'board' as const,
@@ -79,11 +70,6 @@ describe('OutstandingTable', () => {
   it('should_render_fee_as_currency', () => {
     render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
     expect(screen.getByText('$75.00')).toBeDefined()
-  })
-
-  it('should_show_dash_for_null_fee', () => {
-    render(<OutstandingTable items={[lessonItemNullFee]} barnSlug="green-acres" />)
-    expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
   })
 
   it('should_call_updatePaymentTypeAction_on_payment_type_change', async () => {

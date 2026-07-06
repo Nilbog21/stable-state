@@ -18,7 +18,7 @@ export async function getTiersByBarn(barnId: string): Promise<LessonTier[]> {
 export async function createTier(
   barnId: string,
   name: string,
-  price: number | null,
+  price: number,
   isDefault = false,
   defaultExertionLevel: number | null = null,
   defaultJumping: boolean | null = null,
@@ -40,7 +40,7 @@ export async function createTier(
 export async function updateTier(
   tierId: string,
   barnId: string,
-  updates: { name?: string; price?: number | null; default_exertion_level?: number | null; default_jumping?: boolean | null }
+  updates: { name?: string; price?: number; default_exertion_level?: number | null; default_jumping?: boolean | null }
 ): Promise<LessonTier> {
   const supabase = await createClient()
   const { data, error } = await supabase

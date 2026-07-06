@@ -84,9 +84,7 @@ export default async function OutstandingPage({
                 <Td>{item.instructorName ?? '—'}</Td>
                 <Td>{item.riderNames.join(', ') || '—'}</Td>
                 <Td>
-                  {item.fee !== null
-                    ? item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                    : '—'}
+                  {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                 </Td>
               </tr>
             ))}

@@ -158,20 +158,6 @@ describe('SettingsPage', () => {
     expect(screen.getAllByText('Default').length).toBe(2)
   })
 
-  it('should_render_em_dash_when_tier_price_is_null', async () => {
-    vi.mocked(getAllTiersByBarn).mockResolvedValue([
-      createMockLessonTier({ id: 'tier-1', name: 'Standard', price: null }),
-    ])
-
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    expect(screen.getByText('—')).toBeDefined()
-  })
-
   it('should_render_dollar_price_when_tier_price_is_set', async () => {
     vi.mocked(getAllTiersByBarn).mockResolvedValue([
       createMockLessonTier({ id: 'tier-1', name: 'Standard', price: 50 }),

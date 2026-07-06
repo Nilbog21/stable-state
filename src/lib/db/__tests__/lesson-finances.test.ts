@@ -94,28 +94,15 @@ describe('getFinancialSummary', () => {
     expect(result.breakdown.map((b) => b.tierName)).toEqual(['Basic', 'Standard'])
   })
 
-  it('should_exclude_null_fee_lessons_from_collected_income', async () => {
+  it('should_sum_fees_from_multiple_paid_lessons_into_collected_income', async () => {
     vi.mocked(getLessonsForSummary).mockResolvedValue([
       createMockLesson({ fee: 75, payment_type: 'venmo' }),
-      createMockLesson({ id: 'lesson-2', fee: null, payment_type: 'venmo' }),
       createMockLesson({ id: 'lesson-3', fee: 75, payment_type: 'venmo' }),
     ])
 
     const result = await getFinancialSummary('barn-1', startDate, endDate)
 
     expect(result.collectedIncome).toBe(150)
-  })
-
-  it('should_exclude_null_fee_lessons_from_breakdown', async () => {
-    vi.mocked(getLessonsForSummary).mockResolvedValue([
-      createMockLesson({ fee: 75, payment_type: 'venmo' }),
-      createMockLesson({ id: 'lesson-2', fee: null, payment_type: 'venmo' }),
-      createMockLesson({ id: 'lesson-3', fee: 75, payment_type: 'venmo' }),
-    ])
-
-    const result = await getFinancialSummary('barn-1', startDate, endDate)
-
-    expect(result.breakdown).toHaveLength(1)
   })
 
   it('should_call_getLessonsForSummary_with_barn_and_date_range', async () => {
@@ -270,18 +257,6 @@ describe('getFinancialSummary', () => {
       const result = await getFinancialSummary('barn-1', startDate, endDate)
 
       expect(result.pendingIncome).toBe(60)
-    })
-
-    it('should_exclude_pending_lesson_with_null_fee_from_pending_income', async () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-      vi.mocked(getLessonsForSummary).mockResolvedValue([
-        createMockLesson({ fee: null, lesson_at: '2026-06-20T10:00:00Z', payment_type: null }),
-      ])
-
-      const result = await getFinancialSummary('barn-1', startDate, endDate)
-
-      expect(result.pendingIncome).toBe(0)
     })
 
     it('should_not_count_past_unpaid_lesson_as_pending_income', async () => {
@@ -556,14 +531,6 @@ describe('getHorseIncomeSummary', () => {
 
   it('should_return_empty_when_no_lessons_in_range', async () => {
     vi.mocked(getPaidLessonFees).mockResolvedValue([])
-
-    const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
-
-    expect(result).toEqual([])
-  })
-
-  it('should_return_empty_when_all_lessons_have_null_fee', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: null }])
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
@@ -981,14 +948,6 @@ describe('getTrainerIncomeSummary', () => {
     expect(result).toEqual([])
   })
 
-  it('should_return_empty_when_all_lessons_have_null_fee', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: null }])
-
-    const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
-
-    expect(result).toEqual([])
-  })
-
   it('should_not_resolve_member_names_when_no_collected_lessons', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
 
@@ -1229,22 +1188,6 @@ describe('getHorseIncomeDetail', () => {
     expect(result.total).toBe(160)
   })
 
-  it('should_exclude_lessons_with_null_fee', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([
-      { id: 'lesson-1', fee: null, lesson_at: '2026-05-10T10:00:00Z' },
-      { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
-    ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
-      { lesson_id: 'lesson-1', horse_id: 'horse-1' },
-      { lesson_id: 'lesson-2', horse_id: 'horse-1' },
-    ])
-    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
-
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
-
-    expect(result.rows).toHaveLength(1)
-  })
-
   it('should_throw_on_lessons_error', async () => {
     vi.mocked(getPaidLessonFeesAt).mockRejectedValue(new Error('lessons error'))
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
@@ -1477,23 +1420,6 @@ describe('getRiderIncomeDetail', () => {
     const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
     expect(result.total).toBe(160)
-  })
-
-  it('should_exclude_lessons_with_null_fee', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([
-      { id: 'lesson-1', fee: null, lesson_at: '2026-05-10T10:00:00Z' },
-      { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
-    ])
-    vi.mocked(getRiderMembership).mockResolvedValue({ id: 'mem-1', user_id: 'user-1' })
-    vi.mocked(getProfileNameByUserId).mockResolvedValue(null)
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
-      { lesson_id: 'lesson-1', rider_id: 'mem-1' },
-      { lesson_id: 'lesson-2', rider_id: 'mem-1' },
-    ])
-
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
-
-    expect(result.rows).toHaveLength(1)
   })
 
   it('should_throw_on_lessons_error', async () => {

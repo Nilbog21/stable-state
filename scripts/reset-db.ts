@@ -88,7 +88,7 @@ export function isGroupLesson(i: number): boolean {
   return i % 5 === 0
 }
 
-export function getLessonVariation(i: number, tier1: { name: string; price: number | null }, tier2: { name: string; price: number | null }) {
+export function getLessonVariation(i: number, tier1: { name: string; price: number }, tier2: { name: string; price: number }) {
   const useTier1 = i % 2 === 0
   return {
     fee: useTier1 ? tier1.price : tier2.price,

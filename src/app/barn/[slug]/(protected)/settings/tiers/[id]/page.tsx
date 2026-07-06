@@ -42,7 +42,7 @@ export default async function TierEditPage({
       <TierForm
         mode="edit"
         initialTier={tier}
-        onSave={save}
+        action={save}
         onDeactivate={deactivate}
         onActivate={activate}
       />
