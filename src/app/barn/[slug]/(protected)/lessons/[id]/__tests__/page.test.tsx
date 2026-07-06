@@ -133,6 +133,21 @@ describe('LessonDetailPage', () => {
     expect(notFound).toHaveBeenCalled()
   })
 
+  it('should_call_notFound_when_rider_is_not_enrolled_in_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } }],
+    })
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+
+    await expect(
+      LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    ).rejects.toThrow('NEXT_NOT_FOUND')
+
+    expect(notFound).toHaveBeenCalled()
+  })
+
   it('should_render_date_instructor_horse_exertion_rider_and_fee', async () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -188,7 +203,6 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_dash_in_riders_section_when_lesson_has_no_riders', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_riders: [] })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -273,7 +287,6 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_dash_in_riders_section_when_group_lesson_has_no_riders', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -483,8 +496,7 @@ describe('LessonDetailPage', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
-  it('should_render_dash_for_null_rider_name_in_normal_lesson_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+  it('should_render_dash_for_null_rider_name_in_normal_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'normal' as const,
