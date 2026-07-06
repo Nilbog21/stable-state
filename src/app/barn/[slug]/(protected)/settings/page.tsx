@@ -14,6 +14,7 @@ import {
   rejectMembershipAction,
   removeMembershipAction,
 } from '../approvals/actions'
+import { updateDefaultBoardFeeAction } from './actions'
 import InviteLink from './InviteLink'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
@@ -248,6 +249,37 @@ export default async function SettingsPage({
             Add tier
           </Link>
         </div>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Default Board Fee
+        </h2>
+        <form action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="default_board_fee" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
+              Monthly fee ($)
+            </label>
+            <input
+              id="default_board_fee"
+              name="default_board_fee"
+              type="number"
+              step="0.01"
+              min="0"
+              defaultValue={barn.default_board_fee}
+              className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+            />
+          </div>
+          <button
+            type="submit"
+            className="rounded bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          >
+            Save
+          </button>
+        </form>
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          Applies to new boarding agreements only — existing boarders are unchanged.
+        </p>
       </section>
     </main>
   )
