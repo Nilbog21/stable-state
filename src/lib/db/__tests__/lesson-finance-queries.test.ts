@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createMockLesson } from '@/test/fixtures'
 
 vi.mock('../lesson-participants')
+vi.mock('../barn-memberships')
 
 import { getRiderEnrolledLessonIds } from '../lesson-participants'
+import { getUserMembership } from '../barn-memberships'
 import {
   getLessonsForSummary,
   getTierPricesByNames,
@@ -128,6 +130,7 @@ describe('getTierPricesByNames', () => {
 describe('getOutstandingLessonRows', () => {
   beforeEach(() => {
     vi.mocked(getRiderEnrolledLessonIds).mockReset()
+    vi.mocked(getUserMembership).mockReset()
   })
 
   afterEach(() => {
@@ -239,13 +242,22 @@ describe('getOutstandingLessonRows', () => {
   })
 
   describe('trainer path', () => {
-    it('should_filter_by_instructor_id', async () => {
+    it('should_resolve_instructor_filter_to_the_callers_membership_id', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
       const { client, mockEqInstructor } = makeTrainerChain([])
       await getOutstandingLessonRows(client, 'barn-1', 'user-trainer', 'trainer')
-      expect(mockEqInstructor).toHaveBeenCalledWith('instructor_id', 'user-trainer')
+      expect(mockEqInstructor).toHaveBeenCalledWith('instructor_id', 'mem-trainer-1')
+    })
+
+    it('should_return_empty_array_when_caller_has_no_membership', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue(null)
+      const { client } = makeTrainerChain([])
+      const result = await getOutstandingLessonRows(client, 'barn-1', 'user-trainer', 'trainer')
+      expect(result).toEqual([])
     })
 
     it('should_exclude_zero_fee_lessons', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
       const lesson = createMockLesson({ fee: 0, payment_type: null })
       const { client } = makeTrainerChain([lesson])
       const result = await getOutstandingLessonRows(client, 'barn-1', 'user-trainer', 'trainer')
@@ -253,6 +265,7 @@ describe('getOutstandingLessonRows', () => {
     })
 
     it('should_throw_when_supabase_returns_an_error', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
       const { client } = makeTrainerChain(null, new Error('trainer error'))
       await expect(getOutstandingLessonRows(client, 'barn-1', 'user-trainer', 'trainer')).rejects.toThrow('trainer error')
     })
