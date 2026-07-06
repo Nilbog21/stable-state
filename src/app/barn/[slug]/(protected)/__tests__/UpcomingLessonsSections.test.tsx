@@ -88,7 +88,7 @@ describe('UpcomingLessonsSections', () => {
     expect(screen.getByText('No lessons scheduled for the next 7 days.')).toBeDefined()
   })
 
-  it('should_render_today_heading_in_label_style', () => {
+  it('should_render_today_heading_as_uppercase', () => {
     const today = new Date()
     render(
       <UpcomingLessonsSections
@@ -99,6 +99,18 @@ describe('UpcomingLessonsSections', () => {
     )
     const heading = screen.getByRole('heading', { name: 'Today' })
     expect(heading.className).toContain('uppercase')
+  })
+
+  it('should_render_today_heading_at_text_sm_size', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[makeLesson({ lesson_at: today.toISOString() })]}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    const heading = screen.getByRole('heading', { name: 'Today' })
     expect(heading.className).toContain('text-sm')
   })
 
@@ -118,7 +130,7 @@ describe('UpcomingLessonsSections', () => {
     expect(screen.getAllByTestId('upcoming-card').length).toBe(2)
   })
 
-  it('should_pass_role_slug_and_viewer_id_to_lesson_card', () => {
+  it('should_pass_role_to_lesson_card', () => {
     const today = new Date()
     render(
       <UpcomingLessonsSections
@@ -128,9 +140,32 @@ describe('UpcomingLessonsSections', () => {
         viewerMembershipId="mem-1"
       />
     )
-    const card = screen.getByTestId('upcoming-card')
-    expect(card.getAttribute('data-role')).toBe('rider')
-    expect(card.getAttribute('data-slug')).toBe('green-acres')
-    expect(card.getAttribute('data-viewer-membership-id')).toBe('mem-1')
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-role')).toBe('rider')
+  })
+
+  it('should_pass_slug_to_lesson_card', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[makeLesson({ id: 'lesson-1', lesson_at: today.toISOString() })]}
+        role="rider"
+        slug="green-acres"
+        viewerMembershipId="mem-1"
+      />
+    )
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-slug')).toBe('green-acres')
+  })
+
+  it('should_pass_viewer_membership_id_to_lesson_card', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[makeLesson({ id: 'lesson-1', lesson_at: today.toISOString() })]}
+        role="rider"
+        slug="green-acres"
+        viewerMembershipId="mem-1"
+      />
+    )
+    expect(screen.getByTestId('upcoming-card').getAttribute('data-viewer-membership-id')).toBe('mem-1')
   })
 })
