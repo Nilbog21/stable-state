@@ -3,9 +3,9 @@ import { render, screen, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
-vi.mock('../UpcomingLessonCard', () => ({
-  UpcomingLessonCard: ({ role, slug, lesson, viewerMembershipId }: { role: string; slug: string; lesson: { id: string }; viewerMembershipId?: string }) => (
-    <div data-testid="upcoming-card" data-role={role} data-slug={slug} data-lesson-id={lesson.id} data-viewer-membership-id={viewerMembershipId} />
+vi.mock('../UpcomingLessonsSections', () => ({
+  UpcomingLessonsSections: ({ lessons, role, slug, viewerMembershipId }: { lessons: { id: string }[]; role: string; slug: string; viewerMembershipId?: string }) => (
+    <div data-testid="upcoming-sections" data-role={role} data-slug={slug} data-lesson-count={lessons.length} data-viewer-membership-id={viewerMembershipId} />
   ),
 }))
 
@@ -110,88 +110,53 @@ describe('BarnDashboardPage', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Dashboard')
   })
 
-  it('should_show_upcoming_lessons_section_for_manager', async () => {
+  it('should_render_upcoming_lessons_sections_for_manager', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
+    expect(screen.getByTestId('upcoming-sections').getAttribute('data-role')).toBe('manager')
   })
 
-  it('should_render_upcoming_lessons_heading_in_label_style', async () => {
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByRole('heading', { name: /your upcoming lessons/i }).className).toContain('uppercase')
-  })
-
-  it('should_show_empty_state_heading_when_no_upcoming_lessons', async () => {
-    vi.mocked(getUpcomingLessons).mockResolvedValue([])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByText("You're all clear")).toBeDefined()
-  })
-
-  it('should_show_empty_state_subtext_when_no_upcoming_lessons', async () => {
-    vi.mocked(getUpcomingLessons).mockResolvedValue([])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByText('No lessons scheduled for the next 7 days.')).toBeDefined()
-  })
-
-  it('should_render_upcoming_lesson_card_with_role', async () => {
-    const lesson = {
-      ...createMockLesson(),
-      instructor_name: null,
-      horse_names: [],
-      horse_count: 0,
-      rider_names: [],
-      rider_count: 0,
-    }
-    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByTestId('upcoming-card').getAttribute('data-role')).toBe('manager')
-  })
-
-  it('should_render_upcoming_lesson_card_with_slug', async () => {
-    const lesson = {
-      ...createMockLesson(),
-      instructor_name: null,
-      horse_names: [],
-      horse_count: 0,
-      rider_names: [],
-      rider_count: 0,
-    }
-    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByTestId('upcoming-card').getAttribute('data-slug')).toBe('green-acres')
-  })
-
-  it('should_show_upcoming_lessons_section_for_trainer', async () => {
+  it('should_render_upcoming_lessons_sections_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
+    expect(screen.getByTestId('upcoming-sections').getAttribute('data-role')).toBe('trainer')
   })
 
-  it('should_show_upcoming_lessons_section_for_rider', async () => {
+  it('should_render_upcoming_lessons_sections_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByRole('heading', { name: /your upcoming lessons/i })).toBeDefined()
+    expect(screen.getByTestId('upcoming-sections').getAttribute('data-role')).toBe('rider')
+  })
+
+  it('should_pass_lesson_count_to_upcoming_lessons_sections', async () => {
+    const lesson = {
+      ...createMockLesson(),
+      instructor_name: null,
+      horse_names: [],
+      horse_count: 0,
+      rider_names: [],
+      rider_count: 0,
+    }
+    vi.mocked(getUpcomingLessons).mockResolvedValue([lesson])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('upcoming-sections').getAttribute('data-lesson-count')).toBe('1')
+  })
+
+  it('should_pass_slug_to_upcoming_lessons_sections', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('upcoming-sections').getAttribute('data-slug')).toBe('green-acres')
   })
 
   it('should_call_getUpcomingLessons_with_user_id', async () => {
@@ -265,7 +230,7 @@ describe('BarnDashboardPage', () => {
     expect(screen.queryByText(/pending request/i)).toBeNull()
   })
 
-  it('should_pass_viewer_membership_id_to_upcoming_lesson_card', async () => {
+  it('should_pass_viewer_membership_id_to_upcoming_lessons_sections', async () => {
     const lesson = {
       ...createMockLesson(),
       instructor_name: null,
@@ -279,7 +244,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByTestId('upcoming-card').getAttribute('data-viewer-membership-id')).toBe(mockManagerMembership.id)
+    expect(screen.getByTestId('upcoming-sections').getAttribute('data-viewer-membership-id')).toBe(mockManagerMembership.id)
   })
 
   it('should_use_plural_pending_requests_when_count_is_greater_than_one', async () => {
