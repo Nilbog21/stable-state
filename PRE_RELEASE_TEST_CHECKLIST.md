@@ -123,6 +123,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Available section sorted by total exertion ascending; cards show exertion, lesson count, jumping count (7d)
 - [ ] Open Apple's detail page → rename it via the manager form → Save → name updates
 - [ ] Documents section: upload a PDF to a horse, open it via its link (signed URL), then delete it
+- [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override; uncheck it, set Moderate/High, Save → values persist on reload and the toggle is now unchecked; re-check "Use barn defaults" and Save → inputs revert to barn defaults; try Moderate ≥ High while unchecked → rejected with a field error and values unchanged
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
@@ -193,7 +194,7 @@ bash scripts/change-user.sh
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons by direct URL (`/barn/dev-barn/lessons/[id]`) — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
-- [ ] Horse detail page: documents are listed with working links, upload works, but there is **no delete** button
+- [ ] Horse detail page: documents are listed with working links, upload works, but there is **no delete** button and **no Exhaustion Thresholds section**
 - [ ] Members page shows the Riders section only; open your own member detail page and upload a document
 - [ ] `/barn/dev-barn/finances` is blocked (redirect); `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 
