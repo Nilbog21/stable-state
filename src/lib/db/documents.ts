@@ -152,13 +152,17 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
     .lte('reminder_date', today)
   if (riderError) throw riderError
 
-  const horseIds = [...new Set((horseDocs ?? []).map((d) => d.horse_id as string))]
+  const horseDocsList = horseDocs ?? []
+  const trainerDocsList = trainerDocs ?? []
+  const riderDocsList = riderDocs ?? []
+
+  const horseIds = [...new Set(horseDocsList.map((d) => d.horse_id as string))]
   const horseNames = await resolveHorseNames(horseIds, barnId, supabase)
 
   const ownerUserIds = [
     ...new Set([
-      ...(trainerDocs ?? []).map((d) => d.trainer_id as string),
-      ...(riderDocs ?? []).map((d) => d.rider_id as string),
+      ...trainerDocsList.map((d) => d.trainer_id as string),
+      ...riderDocsList.map((d) => d.rider_id as string),
     ]),
   ]
 
@@ -183,7 +187,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
   }
 
   const results: DueDocument[] = [
-    ...(horseDocs ?? []).map((d) => ({
+    ...horseDocsList.map((d) => ({
       id: d.id,
       entity: 'horse' as const,
       recordType: d.record_type,
@@ -192,7 +196,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       ownerName: horseNames.get(d.horse_id) ?? d.horse_id,
       ownerId: d.horse_id,
     })),
-    ...(trainerDocs ?? []).map((d) => ({
+    ...trainerDocsList.map((d) => ({
       id: d.id,
       entity: 'trainer' as const,
       recordType: d.record_type,
@@ -201,7 +205,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       ownerName: nameByUserId.get(d.trainer_id) ?? 'Unknown Member',
       ownerId: membershipByUserId.get(d.trainer_id) ?? d.trainer_id,
     })),
-    ...(riderDocs ?? []).map((d) => ({
+    ...riderDocsList.map((d) => ({
       id: d.id,
       entity: 'rider' as const,
       recordType: d.record_type,

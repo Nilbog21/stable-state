@@ -339,4 +339,13 @@ describe('BarnDashboardPage', () => {
     const link = screen.getByRole('link', { name: /jane trainer/i }) as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/members/mem-9')
   })
+
+  it('should_fall_back_to_raw_record_type_when_unrecognized', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([{ ...mockDueHorseDoc, recordType: 'some_future_type' }])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText(/some_future_type/)).toBeDefined()
+  })
 })

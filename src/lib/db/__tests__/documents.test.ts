@@ -398,15 +398,17 @@ describe('getDueDocuments', () => {
     horseNames?: unknown[] | null
     memberships?: unknown[] | null
     profiles?: unknown[] | null
-    errors?: Partial<Record<'horse_documents' | 'trainer_documents' | 'rider_documents', Error>>
+    errors?: Partial<
+      Record<'horse_documents' | 'trainer_documents' | 'rider_documents' | 'barn_memberships' | 'profiles', Error>
+    >
   }) {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horse_documents') return makeDocsChain(horseDocs, errors.horse_documents ?? null)
       if (table === 'trainer_documents') return makeDocsChain(trainerDocs, errors.trainer_documents ?? null)
       if (table === 'rider_documents') return makeDocsChain(riderDocs, errors.rider_documents ?? null)
       if (table === 'horses') return makeHorseNamesChain(horseNames)
-      if (table === 'barn_memberships') return makeMembershipsChain(memberships)
-      return makeProfilesChain(profiles)
+      if (table === 'barn_memberships') return makeMembershipsChain(memberships, errors.barn_memberships ?? null)
+      return makeProfilesChain(profiles, errors.profiles ?? null)
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
   }
@@ -538,5 +540,41 @@ describe('getDueDocuments', () => {
     setupFrom({ errors: { rider_documents: new Error('rider docs error') } })
 
     await expect(getDueDocuments('barn-1', today)).rejects.toThrow('rider docs error')
+  })
+
+  it('should_treat_null_document_query_data_as_empty', async () => {
+    setupFrom({ horseDocs: null, trainerDocs: null, riderDocs: null })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_fall_back_to_unknown_member_and_raw_user_id_for_rider_document_when_membership_not_found', async () => {
+    setupFrom({ riderDocs: [riderDoc], memberships: [], profiles: [] })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0]).toMatchObject({ ownerName: 'Unknown Member', ownerId: 'user-8' })
+  })
+
+  it('should_treat_null_membership_and_profile_data_as_empty', async () => {
+    setupFrom({ trainerDocs: [trainerDoc], memberships: null, profiles: null })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0]).toMatchObject({ ownerName: 'Unknown Member', ownerId: 'user-9' })
+  })
+
+  it('should_throw_when_barn_memberships_query_errors', async () => {
+    setupFrom({ trainerDocs: [trainerDoc], errors: { barn_memberships: new Error('memberships error') } })
+
+    await expect(getDueDocuments('barn-1', today)).rejects.toThrow('memberships error')
+  })
+
+  it('should_throw_when_profiles_query_errors', async () => {
+    setupFrom({ trainerDocs: [trainerDoc], errors: { profiles: new Error('profiles error') } })
+
+    await expect(getDueDocuments('barn-1', today)).rejects.toThrow('profiles error')
   })
 })
