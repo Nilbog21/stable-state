@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   buildLessonDates,
   getLessonVariation,
+  getLessonHorseAssignment,
   getPaymentType,
   isGroupLesson,
   drawBar,
@@ -10,6 +11,8 @@ import {
   PAYMENT_TYPES,
   buildExpenseSeeds,
   expenseDateFor,
+  computeExhaustionWindowTotals,
+  EXHAUSTION_BOUNDARY_INDEX,
 } from './reset-db'
 
 describe('buildLessonDates', () => {
@@ -77,6 +80,40 @@ describe('getLessonVariation', () => {
 
   it('should_return_exertion_1_at_index_5', () => {
     expect(getLessonVariation(5, t1, t2).exertionLevel).toBe(1)
+  })
+})
+
+describe('getLessonHorseAssignment', () => {
+  const horseIds = ['apple', 'butter', 'clover']
+  const retiredHorseId = 'willow'
+
+  it('should_route_the_boundary_index_to_the_retired_horse_only', () => {
+    expect(getLessonHorseAssignment(EXHAUSTION_BOUNDARY_INDEX, horseIds, retiredHorseId).horseIds).toEqual([retiredHorseId])
+  })
+
+  it('should_return_all_horses_for_a_group_index', () => {
+    expect(getLessonHorseAssignment(30, horseIds, retiredHorseId).horseIds).toEqual(horseIds)
+  })
+
+  it('should_return_a_single_cycled_horse_for_a_normal_index', () => {
+    expect(getLessonHorseAssignment(27, horseIds, retiredHorseId).horseIds).toEqual([horseIds[27 % horseIds.length]])
+  })
+})
+
+describe('computeExhaustionWindowTotals', () => {
+  const horseIds = ['apple', 'butter', 'clover']
+  const retiredHorseId = 'willow'
+
+  it('should_keep_all_three_horses_within_their_target_bands_across_a_full_day', () => {
+    const base = new Date('2026-07-07T00:00:00.000Z')
+    for (let minutes = 0; minutes < 24 * 60; minutes += 15) {
+      const now = new Date(base.getTime() + minutes * 60 * 1000)
+      const totals = computeExhaustionWindowTotals(now, horseIds, retiredHorseId)
+      expect(totals.apple).toBeLessThanOrEqual(5)
+      expect(totals.butter).toBeGreaterThanOrEqual(6)
+      expect(totals.butter).toBeLessThanOrEqual(11)
+      expect(totals.clover).toBeGreaterThan(11)
+    }
   })
 })
 
