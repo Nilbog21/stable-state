@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getDocuments, createDocument, deleteDocument, updateDocumentReminderDate } from '../documents'
+import { getDocuments, createDocument, deleteDocument, updateDocumentReminderDate, getDueDocuments } from '../documents'
 
 type EntityCase = {
   entity: 'horse' | 'rider' | 'trainer'
@@ -325,5 +325,218 @@ describe.each(CASES)('deleteDocument($entity)', ({ entity, entityId, mockDoc }) 
     } as any)
 
     await expect(deleteDocument(entity as any, mockDoc.id, entityId, 'barn-1')).rejects.toThrow('delete error')
+  })
+})
+
+describe('getDueDocuments', () => {
+  const today = '2026-07-07'
+
+  const horseDoc = {
+    id: 'doc-h1',
+    barn_id: 'barn-1',
+    horse_id: 'horse-1',
+    record_type: 'coggins',
+    file_name: 'coggins.pdf',
+    reminder_date: '2026-01-01',
+  }
+  const trainerDoc = {
+    id: 'doc-t1',
+    barn_id: 'barn-1',
+    trainer_id: 'user-9',
+    record_type: 'instructor_contract',
+    file_name: 'contract.pdf',
+    reminder_date: '2026-02-01',
+  }
+  const riderDoc = {
+    id: 'doc-r1',
+    barn_id: 'barn-1',
+    rider_id: 'user-8',
+    record_type: 'liability_waiver',
+    file_name: 'waiver.pdf',
+    reminder_date: '2026-01-15',
+  }
+
+  function makeDocsChain(data: unknown[] | null, error: Error | null = null) {
+    const mockLte = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ lte: mockLte })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeHorseNamesChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeMembershipsChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeProfilesChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
+    return { select: mockSelect }
+  }
+
+  function setupFrom({
+    horseDocs = [],
+    trainerDocs = [],
+    riderDocs = [],
+    horseNames = [],
+    memberships = [],
+    profiles = [],
+    errors = {},
+  }: {
+    horseDocs?: unknown[] | null
+    trainerDocs?: unknown[] | null
+    riderDocs?: unknown[] | null
+    horseNames?: unknown[] | null
+    memberships?: unknown[] | null
+    profiles?: unknown[] | null
+    errors?: Partial<Record<'horse_documents' | 'trainer_documents' | 'rider_documents', Error>>
+  }) {
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horse_documents') return makeDocsChain(horseDocs, errors.horse_documents ?? null)
+      if (table === 'trainer_documents') return makeDocsChain(trainerDocs, errors.trainer_documents ?? null)
+      if (table === 'rider_documents') return makeDocsChain(riderDocs, errors.rider_documents ?? null)
+      if (table === 'horses') return makeHorseNamesChain(horseNames)
+      if (table === 'barn_memberships') return makeMembershipsChain(memberships)
+      return makeProfilesChain(profiles)
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_empty_array_when_no_due_documents', async () => {
+    setupFrom({})
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_include_horse_document_with_resolved_horse_name', async () => {
+    setupFrom({ horseDocs: [horseDoc], horseNames: [{ id: 'horse-1', name: 'Thunderbolt' }] })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result).toEqual([
+      {
+        id: 'doc-h1',
+        entity: 'horse',
+        recordType: 'coggins',
+        fileName: 'coggins.pdf',
+        reminderDate: '2026-01-01',
+        ownerName: 'Thunderbolt',
+        ownerId: 'horse-1',
+      },
+    ])
+  })
+
+  it('should_include_trainer_document_with_resolved_membership_and_profile', async () => {
+    setupFrom({
+      trainerDocs: [trainerDoc],
+      memberships: [{ id: 'mem-9', user_id: 'user-9' }],
+      profiles: [{ user_id: 'user-9', first_name: 'Jane', last_name: 'Trainer' }],
+    })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result).toEqual([
+      {
+        id: 'doc-t1',
+        entity: 'trainer',
+        recordType: 'instructor_contract',
+        fileName: 'contract.pdf',
+        reminderDate: '2026-02-01',
+        ownerName: 'Jane Trainer',
+        ownerId: 'mem-9',
+      },
+    ])
+  })
+
+  it('should_include_rider_document_with_resolved_membership_and_profile', async () => {
+    setupFrom({
+      riderDocs: [riderDoc],
+      memberships: [{ id: 'mem-8', user_id: 'user-8' }],
+      profiles: [{ user_id: 'user-8', first_name: 'Bob', last_name: 'Rider' }],
+    })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result).toEqual([
+      {
+        id: 'doc-r1',
+        entity: 'rider',
+        recordType: 'liability_waiver',
+        fileName: 'waiver.pdf',
+        reminderDate: '2026-01-15',
+        ownerName: 'Bob Rider',
+        ownerId: 'mem-8',
+      },
+    ])
+  })
+
+  it('should_fall_back_to_raw_horse_id_when_horse_name_not_found', async () => {
+    setupFrom({ horseDocs: [horseDoc], horseNames: [] })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0].ownerName).toBe('horse-1')
+  })
+
+  it('should_fall_back_to_unknown_member_and_raw_user_id_when_membership_not_found', async () => {
+    setupFrom({ trainerDocs: [trainerDoc], memberships: [], profiles: [] })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0]).toMatchObject({ ownerName: 'Unknown Member', ownerId: 'user-9' })
+  })
+
+  it('should_sort_combined_results_by_reminder_date_ascending', async () => {
+    setupFrom({
+      horseDocs: [horseDoc],
+      trainerDocs: [trainerDoc],
+      riderDocs: [riderDoc],
+      horseNames: [{ id: 'horse-1', name: 'Thunderbolt' }],
+      memberships: [
+        { id: 'mem-9', user_id: 'user-9' },
+        { id: 'mem-8', user_id: 'user-8' },
+      ],
+      profiles: [
+        { user_id: 'user-9', first_name: 'Jane', last_name: 'Trainer' },
+        { user_id: 'user-8', first_name: 'Bob', last_name: 'Rider' },
+      ],
+    })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result.map((d) => d.id)).toEqual(['doc-h1', 'doc-r1', 'doc-t1'])
+  })
+
+  it('should_throw_when_horse_documents_query_errors', async () => {
+    setupFrom({ errors: { horse_documents: new Error('horse docs error') } })
+
+    await expect(getDueDocuments('barn-1', today)).rejects.toThrow('horse docs error')
+  })
+
+  it('should_throw_when_trainer_documents_query_errors', async () => {
+    setupFrom({ errors: { trainer_documents: new Error('trainer docs error') } })
+
+    await expect(getDueDocuments('barn-1', today)).rejects.toThrow('trainer docs error')
+  })
+
+  it('should_throw_when_rider_documents_query_errors', async () => {
+    setupFrom({ errors: { rider_documents: new Error('rider docs error') } })
+
+    await expect(getDueDocuments('barn-1', today)).rejects.toThrow('rider docs error')
   })
 })
