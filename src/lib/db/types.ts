@@ -323,6 +323,10 @@ export interface ExpenseWithHorses extends HorseExpense {
   horse_ids: string[]
 }
 
+export interface ScheduledExpense extends ExpenseWithHorses {
+  expense_time: string
+}
+
 export interface ExpenseInput {
   expenseDate: string
   expenseTime?: string | null
