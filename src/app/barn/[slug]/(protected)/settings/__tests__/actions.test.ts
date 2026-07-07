@@ -542,6 +542,26 @@ describe('updateExhaustionThresholdsAction', () => {
     expect(result.error).toBe('Thresholds must be numbers ≥ 0')
   })
 
+  it('should_return_error_when_moderate_has_trailing_non_digit_characters', async () => {
+    const result = await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '4abc', high: '10' })
+    )
+
+    expect(result.error).toBe('Thresholds must be numbers ≥ 0')
+  })
+
+  it('should_return_error_when_high_is_a_decimal', async () => {
+    const result = await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '4', high: '10.5' })
+    )
+
+    expect(result.error).toBe('Thresholds must be numbers ≥ 0')
+  })
+
   it('should_not_call_updateExhaustionThresholds_when_validation_fails', async () => {
     await updateExhaustionThresholdsAction(
       'green-acres',

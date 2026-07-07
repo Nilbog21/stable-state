@@ -183,13 +183,21 @@ describe('updateExhaustionThresholds', () => {
     await expect(updateExhaustionThresholds('barn-1', { moderate: 4, high: 10 })).rejects.toThrow('db error')
   })
 
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const { update } = makeChain(mockBarn)
+    const mockClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await updateExhaustionThresholds('barn-1', { moderate: 4, high: 10 }, mockClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('should_use_injected_client_when_provided', async () => {
     const { update } = makeChain(mockBarn)
     const mockClient = { from: vi.fn().mockReturnValue({ update }) } as any
 
     const result = await updateExhaustionThresholds('barn-1', { moderate: 4, high: 10 }, mockClient)
 
-    expect(createClient).not.toHaveBeenCalled()
     expect(result).toEqual(mockBarn)
   })
 })

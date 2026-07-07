@@ -125,9 +125,8 @@ export async function updateInstructorCutAction(barnSlug: string, formData: Form
 }
 
 function parseNonNegativeInt(raw: string | null): number | null {
-  if (raw === null || raw.trim() === '') return null
-  const n = parseInt(raw, 10)
-  return isNaN(n) || n < 0 ? null : n
+  if (raw === null || !/^\d+$/.test(raw.trim())) return null
+  return parseInt(raw, 10)
 }
 
 export async function updateExhaustionThresholdsAction(
