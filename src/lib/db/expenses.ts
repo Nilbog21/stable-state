@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveHorseNames } from './horses'
-import type { ExpenseFinancialSummary, ExpenseInput, ExpenseWithHorses, HorseExpense, HorseExpenseDetailRow } from './types'
+import type { ExpenseFinancialSummary, ExpenseInput, ExpenseWithHorses, HorseExpense, HorseExpenseDetailRow, ScheduledExpense } from './types'
 
 function applicableHorseIdsForExpense(
   expense: { id: string; expense_date: string; applies_to_all_horses: boolean },
@@ -155,6 +155,61 @@ export async function getUpcomingExpenses(barnId: string, from: string, to: stri
     .filter(({ combined }) => combined >= fromTime && combined < toTime)
     .sort((a, b) => a.combined - b.combined)
     .map(({ expense }) => expense)
+}
+
+// Barn Schedule dashboard widget: unlike getUpcomingExpenses, a null expense_time is
+// excluded rather than defaulted to end-of-day — a date-only expense is treated as a
+// completed/spontaneous entry, not something on the schedule. Horse names are resolved
+// for display, mirroring getExpensesByBarn.
+export async function getUpcomingScheduledExpenses(barnId: string, from: string, to: string): Promise<ScheduledExpense[]> {
+  const supabase = await createClient()
+  const fromDate = from.slice(0, 10)
+  const toDate = to.slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('horse_expenses')
+    .select('*')
+    .eq('barn_id', barnId)
+    .is('amount', null)
+    .not('expense_time', 'is', null)
+    .gte('expense_date', fromDate)
+    .lte('expense_date', toDate)
+  if (error) throw error
+
+  const fromTime = new Date(from).getTime()
+  const toTime = new Date(to).getTime()
+
+  const expenses = ((data ?? []) as ScheduledExpense[])
+    .map((expense) => ({
+      expense,
+      combined: new Date(`${expense.expense_date}T${expense.expense_time}Z`).getTime(),
+    }))
+    .filter(({ combined }) => combined >= fromTime && combined < toTime)
+    .sort((a, b) => a.combined - b.combined)
+    .map(({ expense }) => expense)
+
+  if (!expenses.length) return []
+
+  const expenseIds = expenses.map((e) => e.id)
+  const { data: junctionRows, error: jError } = await supabase
+    .from('expense_horses')
+    .select('expense_id, horse_id')
+    .eq('barn_id', barnId)
+    .in('expense_id', expenseIds)
+  if (jError) throw jError
+
+  const rows = junctionRows ?? []
+  const horseIds = [...new Set(rows.map((r) => r.horse_id))]
+  const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
+
+  return expenses.map((expense) => {
+    const ids = rows.filter((r) => r.expense_id === expense.id).map((r) => r.horse_id)
+    return {
+      ...expense,
+      horse_ids: ids,
+      horse_names: ids.map((id) => horseNameMap.get(id) ?? id),
+    }
+  })
 }
 
 export async function getExpenseFinancialSummary(
