@@ -4,8 +4,8 @@ import { render, screen, cleanup } from '@testing-library/react'
 afterEach(cleanup)
 
 vi.mock('../UpcomingLessonsSections', () => ({
-  UpcomingLessonsSections: ({ lessons, role, slug, viewerMembershipId }: { lessons: { id: string }[]; role: string; slug: string; viewerMembershipId?: string }) => (
-    <div data-testid="upcoming-sections" data-role={role} data-slug={slug} data-lesson-count={lessons.length} data-viewer-membership-id={viewerMembershipId} />
+  UpcomingLessonsSections: ({ lessons, expenses, role, slug, viewerMembershipId }: { lessons: { id: string }[]; expenses?: { id: string }[]; role: string; slug: string; viewerMembershipId?: string }) => (
+    <div data-testid="upcoming-sections" data-role={role} data-slug={slug} data-lesson-count={lessons.length} data-expense-count={(expenses ?? []).length} data-viewer-membership-id={viewerMembershipId} />
   ),
 }))
 
@@ -36,6 +36,10 @@ vi.mock('@/lib/db/documents', () => ({
   getDueDocuments: vi.fn(),
 }))
 
+vi.mock('@/lib/db/expenses', () => ({
+  getUpcomingScheduledExpenses: vi.fn(),
+}))
+
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
@@ -52,7 +56,8 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { getDueDocuments } from '@/lib/db/documents'
-import { createMockLesson } from '@/test/fixtures'
+import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
+import { createMockLesson, createMockExpenseWithHorses } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
 const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
@@ -99,6 +104,8 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(getDueDocuments).mockReset()
     vi.mocked(getDueDocuments).mockResolvedValue([])
+    vi.mocked(getUpcomingScheduledExpenses).mockReset()
+    vi.mocked(getUpcomingScheduledExpenses).mockResolvedValue([])
   })
 
   it('should_throw_when_barn_does_not_exist', async () => {
@@ -312,5 +319,36 @@ describe('BarnDashboardPage', () => {
     await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
     expect(getDueDocuments).not.toHaveBeenCalled()
+  })
+
+  it('should_pass_expense_count_to_upcoming_lessons_sections_for_manager', async () => {
+    vi.mocked(getUpcomingScheduledExpenses).mockResolvedValue([createMockExpenseWithHorses({ expense_time: '10:00:00' })] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('upcoming-sections').getAttribute('data-expense-count')).toBe('1')
+  })
+
+  it('should_not_call_getUpcomingScheduledExpenses_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getUpcomingScheduledExpenses).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_getUpcomingScheduledExpenses_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getUpcomingScheduledExpenses).not.toHaveBeenCalled()
+  })
+
+  it('should_call_getUpcomingScheduledExpenses_with_barn_id_for_manager', async () => {
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getUpcomingScheduledExpenses).toHaveBeenCalledWith(mockBarn.id, expect.any(String), expect.any(String))
   })
 })

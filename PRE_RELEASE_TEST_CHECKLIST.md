@@ -27,7 +27,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] Shrink the browser below 768px wide — the nav bar's section links disappear and a ☰ button appears; tapping it opens a left drawer listing the same links, which closes on link tap, backdrop tap, and Escape; the bell icon now sits to the left of the avatar (reversed from desktop's avatar-then-bell order)
 - [ ] **Lessons** is bolded/highlighted in both the desktop nav bar and the drawer while on `/barn/dev-barn/lessons` or a nested page like `/barn/dev-barn/lessons/[id]`; other links stay unhighlighted
 
-**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; pending rider Quinn Pending; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 2 past lessons — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~36 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
+**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; pending rider Quinn Pending; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
 
 ## Phase 2 — Manager seeding
 
@@ -92,7 +92,9 @@ Future:
 
 Dashboard (`/barn/dev-barn`):
 
-- [ ] Upcoming-lessons preview shows lessons in the next 7 days, split into a "Today" section (only when a lesson is today) and a "This Week" section (the remaining 6 days)
+- [ ] Section is titled "Barn Schedule" and shows lessons and upcoming planned expenses (future date+time, no amount yet) together in the next 7 days, split into a "Today" section (only when something is scheduled today) and a "This Week" section (the remaining 6 days) — the seeded Riverside Vet Clinic expense 2 days out appears interleaved by time between that day's lessons
+- [ ] A date-only planned expense (no time set) does **not** appear on the dashboard
+- [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
 - [ ] Pending-requests badge is visible (Quinn Pending) and links to settings
 - [ ] Document Reminders section is hidden when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), it appears here and links to that horse's or member's detail page
 
@@ -214,7 +216,7 @@ bash scripts/change-user.sh
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link, no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
-- [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in
+- [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details

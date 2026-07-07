@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   buildLessonDates,
   getLessonVariation,
+  getLessonHorseAssignment,
   getPaymentType,
   isGroupLesson,
   drawBar,
@@ -10,6 +11,9 @@ import {
   PAYMENT_TYPES,
   buildExpenseSeeds,
   expenseDateFor,
+  computeExhaustionWindowTotals,
+  EXHAUSTION_PAST_BOUNDARY_INDEX,
+  EXHAUSTION_FUTURE_BOUNDARY_INDEX,
 } from './reset-db'
 
 describe('buildLessonDates', () => {
@@ -77,6 +81,48 @@ describe('getLessonVariation', () => {
 
   it('should_return_exertion_1_at_index_5', () => {
     expect(getLessonVariation(5, t1, t2).exertionLevel).toBe(1)
+  })
+})
+
+describe('getLessonHorseAssignment', () => {
+  const horseIds = ['apple', 'butter', 'clover']
+  const retiredHorseId = 'willow'
+
+  it('should_route_the_past_boundary_index_to_the_retired_horse_only', () => {
+    expect(getLessonHorseAssignment(EXHAUSTION_PAST_BOUNDARY_INDEX, horseIds, retiredHorseId).horseIds).toEqual([retiredHorseId])
+  })
+
+  it('should_route_the_future_boundary_index_to_the_retired_horse_only', () => {
+    expect(getLessonHorseAssignment(EXHAUSTION_FUTURE_BOUNDARY_INDEX, horseIds, retiredHorseId).horseIds).toEqual([retiredHorseId])
+  })
+
+  it('should_return_all_horses_for_a_group_index', () => {
+    expect(getLessonHorseAssignment(30, horseIds, retiredHorseId).horseIds).toEqual(horseIds)
+  })
+
+  it('should_return_a_single_cycled_horse_for_a_normal_index', () => {
+    expect(getLessonHorseAssignment(27, horseIds, retiredHorseId).horseIds).toEqual([horseIds[27 % horseIds.length]])
+  })
+})
+
+describe('computeExhaustionWindowTotals', () => {
+  const horseIds = ['apple', 'butter', 'clover']
+  const retiredHorseId = 'willow'
+  const base = new Date('2026-07-07T00:00:00.000Z')
+  const totalsAcrossDay = Array.from({ length: (24 * 60) / 15 }, (_, step) =>
+    computeExhaustionWindowTotals(new Date(base.getTime() + step * 15 * 60 * 1000), horseIds, retiredHorseId)
+  )
+
+  it('should_keep_apple_within_the_low_band_across_a_full_day', () => {
+    expect(totalsAcrossDay.every((t) => t.apple <= 5)).toBe(true)
+  })
+
+  it('should_keep_butter_within_the_moderate_band_across_a_full_day', () => {
+    expect(totalsAcrossDay.every((t) => t.butter >= 6 && t.butter <= 11)).toBe(true)
+  })
+
+  it('should_keep_clover_within_the_high_band_across_a_full_day', () => {
+    expect(totalsAcrossDay.every((t) => t.clover > 11)).toBe(true)
   })
 })
 
