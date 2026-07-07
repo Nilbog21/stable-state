@@ -478,15 +478,40 @@ describe('MemberDetailPage', () => {
   })
 
   describe('Contact Info section', () => {
-    it('should_render_contact_info_for_real_member', async () => {
+    it('should_render_phone_for_real_member', async () => {
       vi.mocked(getProfileById).mockResolvedValue(
         createMockProfile({ first_name: 'Bob', last_name: 'Trainer', phone: '555-1234', emergency_contact_name: 'Jane Doe', emergency_contact_phone: '555-5678' })
       )
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
       expect(screen.getByText('555-1234')).toBeDefined()
+    })
+
+    it('should_render_emergency_contact_name_for_real_member', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(
+        createMockProfile({ first_name: 'Bob', last_name: 'Trainer', phone: '555-1234', emergency_contact_name: 'Jane Doe', emergency_contact_phone: '555-5678' })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
       expect(screen.getByText('Jane Doe')).toBeDefined()
+    })
+
+    it('should_render_emergency_contact_phone_for_real_member', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(
+        createMockProfile({ first_name: 'Bob', last_name: 'Trainer', phone: '555-1234', emergency_contact_name: 'Jane Doe', emergency_contact_phone: '555-5678' })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
       expect(screen.getByText('555-5678')).toBeDefined()
+    })
+
+    it('should_render_heading_when_contact_fields_missing', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(
+        createMockProfile({ first_name: 'Bob', last_name: 'Trainer', phone: null, emergency_contact_name: null, emergency_contact_phone: null })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
     })
 
     it('should_render_em_dash_for_missing_contact_fields', async () => {
@@ -495,7 +520,6 @@ describe('MemberDetailPage', () => {
       )
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
-      expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
       expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(3)
     })
 
