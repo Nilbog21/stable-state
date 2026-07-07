@@ -26,6 +26,10 @@ vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
 }))
 
+vi.mock('@/lib/db/documents', () => ({
+  getDueDocuments: vi.fn(),
+}))
+
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
@@ -41,6 +45,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
+import { getDueDocuments } from '@/lib/db/documents'
 import { createMockLesson } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
@@ -86,6 +91,8 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
     vi.mocked(getPendingMemberships).mockResolvedValue([])
+    vi.mocked(getDueDocuments).mockReset()
+    vi.mocked(getDueDocuments).mockResolvedValue([])
   })
 
   it('should_throw_when_barn_does_not_exist', async () => {
@@ -257,5 +264,79 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     expect(screen.getByText(/2 pending requests/i)).toBeDefined()
+  })
+
+  const mockDueHorseDoc = {
+    id: 'doc-1',
+    entity: 'horse' as const,
+    recordType: 'coggins',
+    fileName: 'coggins.pdf',
+    reminderDate: '2026-01-01',
+    ownerName: 'Thunderbolt',
+    ownerId: 'horse-1',
+  }
+
+  const mockDueMemberDoc = {
+    id: 'doc-2',
+    entity: 'trainer' as const,
+    recordType: 'instructor_contract',
+    fileName: 'contract.pdf',
+    reminderDate: '2026-02-01',
+    ownerName: 'Jane Trainer',
+    ownerId: 'mem-9',
+  }
+
+  it('should_render_document_reminders_section_when_due_documents_exist', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText(/document reminders/i)).toBeDefined()
+  })
+
+  it('should_not_render_document_reminders_section_when_list_is_empty', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/document reminders/i)).toBeNull()
+  })
+
+  it('should_not_call_getDueDocuments_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getDueDocuments).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_getDueDocuments_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getDueDocuments).not.toHaveBeenCalled()
+  })
+
+  it('should_link_horse_entity_document_to_horse_detail_page', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /thunderbolt/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_link_member_entity_document_to_member_detail_page', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([mockDueMemberDoc])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /jane trainer/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/members/mem-9')
   })
 })
