@@ -202,7 +202,7 @@ export async function getHorseIncomeSummary(
   if (!incomeMap.size && noHorseCount === 0) return []
 
   const horseIds = [...incomeMap.keys()]
-  const horseNameMap = horseIds.length ? await resolveHorseNames(horseIds, barnId, supabase) : new Map<string, string>()
+  const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
 
   const rows = Array.from(incomeMap.entries())
     .map(([horseId, totalIncome]) => ({
@@ -261,7 +261,7 @@ export async function getRiderIncomeSummary(
   if (!incomeMap.size && noRiderCount === 0) return []
 
   const riderIds = [...incomeMap.keys()]
-  const memberNameMap = riderIds.length ? await resolveMemberNames(riderIds, barnId, supabase) : new Map<string, string>()
+  const memberNameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
   const rows = Array.from(incomeMap.entries())
     .map(([riderId, totalIncome]) => ({

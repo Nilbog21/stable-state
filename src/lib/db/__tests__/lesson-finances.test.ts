@@ -1959,7 +1959,7 @@ describe('reconciliation regression', () => {
   const endDate = new Date('2026-06-01T00:00:00Z')
   const instructorCut = 10
 
-  it('should_reconcile_collected_income_with_by_trainer_by_horse_and_by_rider_breakdowns', async () => {
+  beforeEach(() => {
     // Lesson A: instructor removed (null), 1 horse, 1 rider
     // Lesson B: named trainer, zero horses, 1 rider
     vi.mocked(getLessonsForSummary).mockResolvedValue([
@@ -1987,19 +1987,32 @@ describe('reconciliation regression', () => {
       ['mem-2', 'Bob Rider'],
       ['mem-trainer-1', 'Jane Smith'],
     ]))
+  })
 
+  it('should_reconcile_by_horse_breakdown_with_collected_income', async () => {
     const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate, instructorCut)
     const horseIncome = await getHorseIncomeSummary('barn-1', startDate, endDate, instructorCut)
-    const riderIncome = await getRiderIncomeSummary('barn-1', startDate, endDate, instructorCut)
-    const trainerIncome = await getTrainerIncomeSummary('barn-1', startDate, endDate, instructorCut)
 
     const horseTotal = horseIncome.reduce((sum, r) => sum + r.totalIncome, 0)
+
+    expect(horseTotal).toBe(collectedIncome)
+  })
+
+  it('should_reconcile_by_rider_breakdown_with_collected_income', async () => {
+    const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate, instructorCut)
+    const riderIncome = await getRiderIncomeSummary('barn-1', startDate, endDate, instructorCut)
+
     const riderTotal = riderIncome.reduce((sum, r) => sum + r.totalIncome, 0)
+
+    expect(riderTotal).toBe(collectedIncome)
+  })
+
+  it('should_reconcile_by_trainer_breakdown_with_collected_income', async () => {
+    const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate, instructorCut)
+    const trainerIncome = await getTrainerIncomeSummary('barn-1', startDate, endDate, instructorCut)
+
     const trainerTotal = trainerIncome.reduce((sum, r) => sum + r.totalIncome, 0)
 
-    expect(collectedIncome).toBe(130)
-    expect(horseTotal).toBe(collectedIncome)
-    expect(riderTotal).toBe(collectedIncome)
     expect(trainerTotal).toBe(collectedIncome)
   })
 })

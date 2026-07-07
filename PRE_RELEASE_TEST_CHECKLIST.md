@@ -147,6 +147,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] Collected vs Pending income figures are consistent with what you marked paid, net of the instructor cut; the **Outstanding** section above stays at the raw (gross) fee
 - [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding"); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's/Dana's row shows a Leases & Boarding table with a working link back to the agreement
 - [ ] **By Trainer** tab also shows the same **Non-lesson income** row
+- [ ] Remove a trainer's membership after they've instructed a paid lesson → **By Trainer** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Collected income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
 
 Manage Barn (`/barn/dev-barn/settings`):
 
