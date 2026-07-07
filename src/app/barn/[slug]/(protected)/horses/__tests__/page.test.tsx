@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockHorseExertionSummary } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockHorseExertionSummary, createMockHorse } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
@@ -8,13 +8,36 @@ vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
-vi.mock('@/lib/db/horses', () => ({ getHorseExertionSummary: vi.fn() }))
+vi.mock('@/lib/db/horses', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/horses')>('@/lib/db/horses')
+  return {
+    ...actual,
+    getHorseExertionSummary: vi.fn(),
+    getHorsesByBarn: vi.fn(),
+    getHorseProjectedExhaustion: vi.fn(),
+  }
+})
 vi.mock('../actions', () => ({
   addHorseAction: vi.fn(),
 }))
 vi.mock('../HorseCard', () => ({
-  HorseCard: ({ horse, variant }: { horse: { name: string; id: string }; variant: string }) => (
-    <a href={`#${horse.id}`} data-variant={variant}>{horse.name}</a>
+  HorseCard: ({
+    horse,
+    variant,
+    exhaustion,
+  }: {
+    horse: { name: string; id: string }
+    variant: string
+    exhaustion?: { existingRows: unknown[]; thresholds: { high: number; moderate: number } }
+  }) => (
+    <a
+      href={`#${horse.id}`}
+      data-variant={variant}
+      data-thresholds={exhaustion ? JSON.stringify(exhaustion.thresholds) : undefined}
+      data-row-count={exhaustion ? exhaustion.existingRows.length : undefined}
+    >
+      {horse.name}
+    </a>
   ),
 }))
 
@@ -23,7 +46,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorsesByBarn, getHorseProjectedExhaustion } from '@/lib/db/horses'
 import HorsesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -41,10 +64,14 @@ describe('HorsesPage', () => {
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
     vi.mocked(getHorseExertionSummary).mockReset()
+    vi.mocked(getHorsesByBarn).mockReset()
+    vi.mocked(getHorseProjectedExhaustion).mockReset()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getHorseExertionSummary).mockResolvedValue([])
+    vi.mocked(getHorsesByBarn).mockResolvedValue([])
+    vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -203,5 +230,64 @@ describe('HorsesPage', () => {
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByText('No horses yet')).toBeNull()
+  })
+
+  it('should_use_barn_default_thresholds_when_horse_has_no_override', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+    vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1' })])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByText('Thunderbolt')
+    expect(JSON.parse(link.getAttribute('data-thresholds')!)).toEqual({ high: 11, moderate: 5 })
+  })
+
+  it('should_use_horse_override_thresholds_when_set', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      createMockHorse({ id: 'horse-1', exhaustion_threshold_high: 20, exhaustion_threshold_moderate: 8 }),
+    ])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByText('Thunderbolt')
+    expect(JSON.parse(link.getAttribute('data-thresholds')!)).toEqual({ high: 20, moderate: 8 })
+  })
+
+  it('should_fetch_projected_exhaustion_anchored_to_today_for_each_active_horse', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse, unavailableHorse])
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      createMockHorse({ id: 'horse-1' }),
+      createMockHorse({ id: 'horse-2' }),
+    ])
+    const before = Date.now()
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const after = Date.now()
+    render(jsx)
+    expect(getHorseProjectedExhaustion).toHaveBeenCalledTimes(2)
+    for (const call of vi.mocked(getHorseProjectedExhaustion).mock.calls) {
+      const [, barnId, targetDate] = call
+      expect(barnId).toBe(mockBarn.id)
+      expect((targetDate as Date).getTime()).toBeGreaterThanOrEqual(before)
+      expect((targetDate as Date).getTime()).toBeLessThanOrEqual(after)
+    }
+  })
+
+  it('should_not_fetch_projected_exhaustion_for_inactive_horses', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([inactiveHorse])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(getHorseProjectedExhaustion).not.toHaveBeenCalled()
+  })
+
+  it('should_pass_projected_exhaustion_rows_to_horse_card', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+    vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1' })])
+    vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([
+      { lessonAt: '2026-07-01T00:00:00Z', exertionLevel: 3 },
+      { lessonAt: '2026-07-02T00:00:00Z', exertionLevel: 4 },
+    ])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByText('Thunderbolt')
+    expect(link.getAttribute('data-row-count')).toBe('2')
   })
 })
