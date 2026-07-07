@@ -5,11 +5,13 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, NON_LESSON_INCOME_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
+import { getExpenseFinancialSummary } from '@/lib/db/expenses'
 import { formatCurrency } from '@/lib/format-currency'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
+import { Th, Td } from '@/components/ui/Table'
 
-const VALID_TABS = ['tier', 'horse', 'rider', 'trainer'] as const
+const VALID_TABS = ['horse', 'tier', 'rider', 'trainer'] as const
 type Tab = typeof VALID_TABS[number]
 
 function pad2(n: number): string {
@@ -127,25 +129,45 @@ export default async function FinancesPage({
   }
 
   const { month: monthParam, tab: tabParam } = await searchParams
-  const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'tier'
+  const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'horse'
 
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, expenseSummary] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate, barn.instructor_cut),
     getHorseIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
     getRiderIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
     getTrainerIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
     getOutstandingLessons(barn.id),
     getOutstandingCharges(barn.id),
+    getExpenseFinancialSummary(barn.id, startDate, endDate),
   ])
 
   const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges)
   const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
 
+  const netIncome = collectedIncome - expenseSummary.totalExpenses
+
+  const expenseByHorse = new Map(expenseSummary.breakdown.map((e) => [e.horseId, e]))
+  const incomeByHorse = new Map(horseIncome.map((h) => [h.horseId, h]))
+  const horseRows = [...new Set([...incomeByHorse.keys(), ...expenseByHorse.keys()])]
+    .map((horseId) => {
+      const income = incomeByHorse.get(horseId)
+      const expenses = expenseByHorse.get(horseId)
+      return {
+        horseId,
+        // horseId always comes from one of the two maps' keys, so this is never undefined
+        horseName: (income ?? expenses)!.horseName,
+        income: income?.totalIncome ?? 0,
+        expenses: expenses?.totalExpenses ?? 0,
+        net: (income?.totalIncome ?? 0) - (expenses?.totalExpenses ?? 0),
+      }
+    })
+    .sort((a, b) => b.income - a.income || a.horseName.localeCompare(b.horseName))
+
   const monthQ = isCurrentMonth ? '' : `&month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
-  const tabQ = tab !== 'tier' ? `&tab=${tab}` : ''
+  const tabQ = tab !== 'horse' ? `&tab=${tab}` : ''
   const prevUrl = prevMonthUrl ? prevMonthUrl + tabQ : null
   const nextUrl = nextMonthUrl ? nextMonthUrl + tabQ : null
 
@@ -196,6 +218,34 @@ export default async function FinancesPage({
         )}
       </div>
 
+      <section className="mb-4">
+        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Collected income
+          <InfoPopover text="Lessons paid this month, net of the per-lesson instructor cut" />
+        </p>
+        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
+          {formatCurrency(collectedIncome)}
+        </p>
+      </section>
+
+      <section className="mb-4">
+        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Total Expenses
+        </p>
+        <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          {formatCurrency(expenseSummary.totalExpenses)}
+        </p>
+      </section>
+
+      <section className="mb-6">
+        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Net
+        </p>
+        <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+          {formatCurrency(netIncome)}
+        </p>
+      </section>
+
       {isCurrentMonth && (
         <section className="mb-6">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -208,25 +258,15 @@ export default async function FinancesPage({
         </section>
       )}
 
-      <section className="mb-4">
-        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          {`Collected income (${monthLabel})`}
-          <InfoPopover text="Lessons paid this month, net of the per-lesson instructor cut" />
-        </p>
-        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          {formatCurrency(collectedIncome)}
-        </p>
-      </section>
-
       <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
 
       <div className="mb-6 overflow-x-auto -mx-1">
         <div className="flex gap-2 whitespace-nowrap px-1 pb-2">
-          <Link href={`?tab=tier${monthQ}`} className={`${pillBase} ${tab === 'tier' ? pillActive : pillInactive}`}>
-            By Tier
-          </Link>
           <Link href={`?tab=horse${monthQ}`} className={`${pillBase} ${tab === 'horse' ? pillActive : pillInactive}`}>
             By Horse
+          </Link>
+          <Link href={`?tab=tier${monthQ}`} className={`${pillBase} ${tab === 'tier' ? pillActive : pillInactive}`}>
+            By Tier
           </Link>
           <Link href={`?tab=rider${monthQ}`} className={`${pillBase} ${tab === 'rider' ? pillActive : pillInactive}`}>
             By Rider
@@ -274,34 +314,38 @@ export default async function FinancesPage({
       )}
 
       {tab === 'horse' && (
-        horseIncome.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Horse</th>
-                <th className="pb-2">Income</th>
-              </tr>
-            </thead>
-            <tbody>
-              {horseIncome.map((row) => (
-                <tr key={row.horseId} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                    <Link
-                      href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                      className="hover:underline"
-                    >
-                      {row.horseName}
-                    </Link>
-                  </td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                    {formatCurrency(row.totalIncome)}
-                  </td>
+        horseRows.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Horse</Th>
+                  <Th>Income</Th>
+                  <Th>Expenses</Th>
+                  <Th>Net</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {horseRows.map((row) => (
+                  <tr key={row.horseId}>
+                    <Td>
+                      <Link
+                        href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
+                        className="hover:underline"
+                      >
+                        {row.horseName}
+                      </Link>
+                    </Td>
+                    <Td>{formatCurrency(row.income)}</Td>
+                    <Td>{formatCurrency(row.expenses)}</Td>
+                    <Td>{formatCurrency(row.net)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No horse income in ${monthLabel}.`}</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No horse activity in ${monthLabel}.`}</p>
         )
       )}
 
