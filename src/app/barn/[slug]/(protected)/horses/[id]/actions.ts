@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails } from '@/lib/db/horses'
-import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
+import { createDocument, deleteDocument } from '@/lib/db/documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import type { HorseDocumentType } from '@/lib/db/types'
 
@@ -56,7 +56,7 @@ export async function uploadHorseDocumentAction(
   await uploadFile(storagePath, file!, file!.type)
 
   try {
-    await createHorseDocument(barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
+    await createDocument('horse', barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
     throw dbError
@@ -72,7 +72,7 @@ export async function deleteHorseDocumentAction(
   storagePath: string
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
-  await deleteHorseDocument(docId, horseId, barn.id)
+  await deleteDocument('horse', docId, horseId, barn.id)
   await removeFile(storagePath).catch(() => {})
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }

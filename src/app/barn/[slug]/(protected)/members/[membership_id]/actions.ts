@@ -3,8 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
-import { createTrainerDocument, deleteTrainerDocument } from '@/lib/db/trainer-documents'
-import { createRiderDocument, deleteRiderDocument } from '@/lib/db/rider-documents'
+import { createDocument, deleteDocument } from '@/lib/db/documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
 
@@ -58,9 +57,9 @@ export async function uploadDocumentAction(
 
   try {
     if (targetMembership.role === 'rider') {
-      await createRiderDocument(barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes)
+      await createDocument('rider', barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes)
     } else {
-      await createTrainerDocument(barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
+      await createDocument('trainer', barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
     }
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
@@ -90,10 +89,12 @@ export async function deleteDocumentAction(
     throw new Error('Forbidden')
   }
 
+  if (!targetMembership.user_id) throw new Error('Target member has no account linked')
+
   if (targetMembership.role === 'rider') {
-    await deleteRiderDocument(docId, barn.id)
+    await deleteDocument('rider', docId, targetMembership.user_id, barn.id)
   } else {
-    await deleteTrainerDocument(docId, barn.id)
+    await deleteDocument('trainer', docId, targetMembership.user_id, barn.id)
   }
 
   await removeFile(storagePath).catch(() => {})

@@ -4,8 +4,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
-import { getTrainerDocuments } from '@/lib/db/trainer-documents'
-import { getRiderDocuments } from '@/lib/db/rider-documents'
+import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementForRider } from '@/lib/db/agreements'
 import { UploadForm } from './UploadForm'
@@ -114,12 +113,12 @@ export default async function MemberDetailPage({
   let docsWithUrls: DocWithUrl[] = []
 
   if (targetRole === 'rider') {
-    const docs = await getRiderDocuments(targetMembership.user_id, barn.id)
+    const docs = await getDocuments('rider', targetMembership.user_id, barn.id)
     docsWithUrls = await Promise.all(
       docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
     )
   } else {
-    const docs = await getTrainerDocuments(targetMembership.user_id, barn.id)
+    const docs = await getDocuments('trainer', targetMembership.user_id, barn.id)
     docsWithUrls = await Promise.all(
       docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
     )
