@@ -123,10 +123,7 @@ export function LessonForm({
   }, [shouldWarn])
 
   useEffect(() => {
-    if (!lessonAt || !getProjectedExhaustion) {
-      setExhaustionByHorseId(null)
-      return
-    }
+    if (!lessonAt || !getProjectedExhaustion) return
     let cancelled = false
     getProjectedExhaustion(lessonAt).then((result) => {
       if (!cancelled) setExhaustionByHorseId(result)
@@ -365,7 +362,7 @@ export function LessonForm({
           return aAvail - bAvail
         }).map((h) => {
           const isUnavailable = h.is_available === false
-          const exhaustion = exhaustionByHorseId?.[h.id]
+          const exhaustion = lessonAt ? exhaustionByHorseId?.[h.id] : undefined
           return (
           <div key={h.id} className="flex flex-col gap-1">
           <div className="flex items-center gap-3">
