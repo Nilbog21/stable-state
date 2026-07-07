@@ -9,9 +9,9 @@ vi.mock('@/lib/db/horses', () => ({
   updateHorseDetails: vi.fn(),
 }))
 
-vi.mock('@/lib/db/horse-documents', () => ({
-  createHorseDocument: vi.fn(),
-  deleteHorseDocument: vi.fn(),
+vi.mock('@/lib/db/documents', () => ({
+  createDocument: vi.fn(),
+  deleteDocument: vi.fn(),
 }))
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
@@ -25,7 +25,7 @@ vi.mock('next/cache', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails } from '@/lib/db/horses'
-import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
+import { createDocument, deleteDocument } from '@/lib/db/documents'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
 import { updateHorseDetailsAction, uploadHorseDocumentAction, deleteHorseDocumentAction } from '../actions'
@@ -197,12 +197,12 @@ describe('uploadHorseDocumentAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(uploadFile).mockReset()
     vi.mocked(removeFile).mockReset()
-    vi.mocked(createHorseDocument).mockReset()
+    vi.mocked(createDocument).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
     vi.mocked(uploadFile).mockResolvedValue(undefined)
     vi.mocked(removeFile).mockResolvedValue(undefined)
-    vi.mocked(createHorseDocument).mockResolvedValue({} as any)
+    vi.mocked(createDocument).mockResolvedValue({} as any)
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
       barn: mockBarnForDocs,
@@ -222,10 +222,10 @@ describe('uploadHorseDocumentAction', () => {
     expect(uploadFile).toHaveBeenCalled()
   })
 
-  it('should_call_createHorseDocument_when_manager_uploads', async () => {
+  it('should_call_createDocument_when_manager_uploads', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
     await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(createHorseDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_upload_document_as_trainer', async () => {
@@ -236,7 +236,7 @@ describe('uploadHorseDocumentAction', () => {
     })
     const fd = makeUploadFormData(makePdfFile(), 'shot_record')
     await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(createHorseDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_reject_file_larger_than_5mb', async () => {
@@ -265,7 +265,7 @@ describe('uploadHorseDocumentAction', () => {
   it('should_accept_other_as_valid_horse_record_type', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'other')
     await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(createHorseDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_reject_when_no_file_provided', async () => {
@@ -285,13 +285,13 @@ describe('uploadHorseDocumentAction', () => {
     fd.set('file', makePdfFile())
     fd.set('record_type', 'coggins')
     await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(createHorseDocument).toHaveBeenCalledWith(
-      expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null
+    expect(createDocument).toHaveBeenCalledWith(
+      'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null
     )
   })
 
   it('should_rollback_storage_on_db_error', async () => {
-    vi.mocked(createHorseDocument).mockRejectedValue(new Error('db error'))
+    vi.mocked(createDocument).mockRejectedValue(new Error('db error'))
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
     await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow('db error')
     expect(removeFile).toHaveBeenCalled()
@@ -307,11 +307,11 @@ describe('uploadHorseDocumentAction', () => {
 describe('deleteHorseDocumentAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
-    vi.mocked(deleteHorseDocument).mockReset()
+    vi.mocked(deleteDocument).mockReset()
     vi.mocked(removeFile).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
-    vi.mocked(deleteHorseDocument).mockResolvedValue(undefined)
+    vi.mocked(deleteDocument).mockResolvedValue(undefined)
     vi.mocked(removeFile).mockResolvedValue(undefined)
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
@@ -327,7 +327,7 @@ describe('deleteHorseDocumentAction', () => {
 
   it('should_delete_document_record', async () => {
     await deleteHorseDocumentAction('green-acres', 'horse-1', 'doc-1', 'barn-1/horses/horse-1/coggins.pdf')
-    expect(deleteHorseDocument).toHaveBeenCalledWith('doc-1', 'horse-1', mockBarnForDocs.id)
+    expect(deleteDocument).toHaveBeenCalledWith('horse', 'doc-1', 'horse-1', mockBarnForDocs.id)
   })
 
   it('should_remove_storage_file', async () => {

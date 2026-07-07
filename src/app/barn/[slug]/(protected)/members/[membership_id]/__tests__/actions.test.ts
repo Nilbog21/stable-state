@@ -7,28 +7,23 @@ vi.mock('@/lib/auth/guard', () => ({
 vi.mock('@/lib/db/barn-memberships', () => ({
   getMembershipById: vi.fn(),
 }))
-vi.mock('@/lib/db/trainer-documents', () => ({
-  createTrainerDocument: vi.fn(),
-  deleteTrainerDocument: vi.fn(),
+vi.mock('@/lib/db/documents', () => ({
+  createDocument: vi.fn(),
+  deleteDocument: vi.fn(),
 }))
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
   const actual = await importOriginal()
   return { ...actual, uploadFile: vi.fn(), removeFile: vi.fn() }
 })
-vi.mock('@/lib/db/rider-documents', () => ({
-  createRiderDocument: vi.fn(),
-  deleteRiderDocument: vi.fn(),
-}))
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
-import { createTrainerDocument, deleteTrainerDocument } from '@/lib/db/trainer-documents'
+import { createDocument, deleteDocument } from '@/lib/db/documents'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
-import { createRiderDocument, deleteRiderDocument } from '@/lib/db/rider-documents'
 import { revalidatePath } from 'next/cache'
 import { uploadDocumentAction, deleteDocumentAction } from '../actions'
 
@@ -59,16 +54,14 @@ describe('uploadDocumentAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getMembershipById).mockReset()
-    vi.mocked(createTrainerDocument).mockReset()
-    vi.mocked(createRiderDocument).mockReset()
+    vi.mocked(createDocument).mockReset()
     vi.mocked(uploadFile).mockReset()
     vi.mocked(removeFile).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
     vi.mocked(uploadFile).mockResolvedValue(undefined)
     vi.mocked(removeFile).mockResolvedValue(undefined)
-    vi.mocked(createTrainerDocument).mockResolvedValue({} as any)
-    vi.mocked(createRiderDocument).mockResolvedValue({} as any)
+    vi.mocked(createDocument).mockResolvedValue({} as any)
   })
 
   it('should_upload_trainer_document_as_manager', async () => {
@@ -78,7 +71,7 @@ describe('uploadDocumentAction', () => {
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
     await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
 
-    expect(createTrainerDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_upload_rider_document_as_manager', async () => {
@@ -88,7 +81,7 @@ describe('uploadDocumentAction', () => {
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
     await uploadDocumentAction('green-acres', 'mem-target-rdr', fd)
 
-    expect(createRiderDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_upload_own_trainer_document_as_trainer', async () => {
@@ -98,7 +91,7 @@ describe('uploadDocumentAction', () => {
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
     await uploadDocumentAction('green-acres', 'mem-trn', fd)
 
-    expect(createTrainerDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_upload_own_rider_document_as_rider', async () => {
@@ -108,7 +101,7 @@ describe('uploadDocumentAction', () => {
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
     await uploadDocumentAction('green-acres', 'mem-rdr', fd)
 
-    expect(createRiderDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_reject_upload_when_trainer_targets_rider', async () => {
@@ -134,7 +127,7 @@ describe('uploadDocumentAction', () => {
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
     await uploadDocumentAction('green-acres', 'mem-mgr-target', fd)
 
-    expect(createTrainerDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_use_managers_storage_path_for_manager_target', async () => {
@@ -242,7 +235,7 @@ describe('uploadDocumentAction', () => {
     const fd = makeUploadFormData(makePdfFile(), 'other')
     await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
 
-    expect(createTrainerDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_accept_other_as_valid_rider_record_type', async () => {
@@ -252,7 +245,7 @@ describe('uploadDocumentAction', () => {
     const fd = makeUploadFormData(makePdfFile(), 'other')
     await uploadDocumentAction('green-acres', 'mem-target-rdr', fd)
 
-    expect(createRiderDocument).toHaveBeenCalled()
+    expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_revalidate_member_detail_path_after_upload', async () => {
@@ -304,7 +297,7 @@ describe('uploadDocumentAction', () => {
   it('should_cleanup_storage_on_db_insert_failure', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-    vi.mocked(createTrainerDocument).mockRejectedValue(new Error('db error'))
+    vi.mocked(createDocument).mockRejectedValue(new Error('db error'))
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
     await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow('db error')
@@ -320,8 +313,8 @@ describe('uploadDocumentAction', () => {
     fd.set('record_type', 'instructor_contract')
     await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
 
-    expect(createTrainerDocument).toHaveBeenCalledWith(
-      expect.any(String), expect.any(String), expect.any(String),
+    expect(createDocument).toHaveBeenCalledWith(
+      'trainer', expect.any(String), expect.any(String), expect.any(String),
       expect.any(String), expect.any(String), expect.any(Number), null
     )
   })
@@ -331,14 +324,12 @@ describe('deleteDocumentAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getMembershipById).mockReset()
-    vi.mocked(deleteTrainerDocument).mockReset()
-    vi.mocked(deleteRiderDocument).mockReset()
+    vi.mocked(deleteDocument).mockReset()
     vi.mocked(removeFile).mockReset()
     vi.mocked(revalidatePath).mockReset()
 
     vi.mocked(removeFile).mockResolvedValue(undefined)
-    vi.mocked(deleteTrainerDocument).mockResolvedValue(undefined)
-    vi.mocked(deleteRiderDocument).mockResolvedValue(undefined)
+    vi.mocked(deleteDocument).mockResolvedValue(undefined)
   })
 
   it('should_delete_trainer_document_as_manager', async () => {
@@ -347,7 +338,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
 
-    expect(deleteTrainerDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-target-trn', 'barn-1')
   })
 
   it('should_delete_own_trainer_document_as_trainer', async () => {
@@ -356,7 +347,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-trn', 'doc-1', 'barn-1/trainers/user-trn/file.pdf')
 
-    expect(deleteTrainerDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-trn', 'barn-1')
   })
 
   it('should_delete_own_rider_document_as_rider', async () => {
@@ -365,7 +356,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-rdr', 'doc-1', 'barn-1/riders/user-rdr/file.pdf')
 
-    expect(deleteRiderDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-1', 'user-rdr', 'barn-1')
   })
 
   it('should_reject_delete_when_trainer_targets_rider_document', async () => {
@@ -383,7 +374,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-mgr-target', 'doc-1', 'barn-1/managers/user-mgr-target/file.pdf')
 
-    expect(deleteTrainerDocument).toHaveBeenCalledWith('doc-1', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-mgr-target', 'barn-1')
   })
 
   it('should_revalidate_member_detail_path_after_delete', async () => {
@@ -401,7 +392,18 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'barn-1/riders/user-target-rdr/waiver.pdf')
 
-    expect(deleteRiderDocument).toHaveBeenCalledWith('doc-2', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-2', 'user-target-rdr', 'barn-1')
+  })
+
+  it('should_throw_when_target_has_no_user_id_on_delete', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
+    )
+
+    await expect(
+      deleteDocumentAction('green-acres', 'mem-nouser', 'doc-1', 'path')
+    ).rejects.toThrow()
   })
 
   it('should_reject_delete_when_target_has_unknown_role', async () => {
