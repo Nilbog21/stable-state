@@ -228,6 +228,25 @@ describe('LessonForm', () => {
     expect(jumpingInput.value).toBe('true')
   })
 
+  it('should_render_recurring_checkbox_unchecked_by_default', () => {
+    render(<LessonForm {...baseProps} />)
+    const recurring = screen.getByRole('checkbox', { name: /recurring/i }) as HTMLInputElement
+    expect(recurring.checked).toBe(false)
+  })
+
+  it('should_submit_is_recurring_as_false_by_default', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    const isRecurringInput = container.querySelector('input[name="is_recurring"]') as HTMLInputElement
+    expect(isRecurringInput.value).toBe('false')
+  })
+
+  it('should_submit_is_recurring_as_true_when_recurring_checkbox_is_checked', () => {
+    const { container } = render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /recurring/i }))
+    const isRecurringInput = container.querySelector('input[name="is_recurring"]') as HTMLInputElement
+    expect(isRecurringInput.value).toBe('true')
+  })
+
   it('should_snap_exertion_to_4_when_jumping_toggled_on_with_single_horse_below_4', () => {
     const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
     render(<LessonForm {...baseProps} horses={[horse]} />)

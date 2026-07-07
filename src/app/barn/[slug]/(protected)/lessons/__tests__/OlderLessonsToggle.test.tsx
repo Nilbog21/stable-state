@@ -20,6 +20,7 @@ const mockLesson: LessonWithDetails = {
   tier_name: 'Custom',
   cancelled_at: null,
   cancellation_notes: null,
+  series_id: null,
   horse_names: ['Comet'],
   horse_ids: ['horse-1'],
   horse_count: 1,

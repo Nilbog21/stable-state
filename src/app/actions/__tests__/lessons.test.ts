@@ -20,6 +20,10 @@ vi.mock('@/lib/db/lesson-participants', () => ({
   cancelRiderParticipation: vi.fn(),
 }))
 
+vi.mock('@/lib/db/lesson-series', () => ({
+  createLessonSeries: vi.fn(),
+}))
+
 vi.mock('@/lib/db/barn-memberships', () => ({
   getInstructorsByBarn: vi.fn(),
   getActiveMembersWithProfiles: vi.fn(),
@@ -42,6 +46,7 @@ vi.mock('next/navigation', () => ({
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
+import { createLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
@@ -66,11 +71,13 @@ describe('submitLesson', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getInstructorsByBarn).mockReset()
     vi.mocked(createLessonWithParticipants).mockReset()
+    vi.mocked(createLessonSeries).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getActiveMembersWithProfiles).mockReset()
     guardAs(mockTrainerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     vi.mocked(createLessonWithParticipants).mockResolvedValue(mockLesson)
+    vi.mocked(createLessonSeries).mockResolvedValue(mockLesson)
     vi.mocked(getHorsesByBarn).mockResolvedValue([
       { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
@@ -140,6 +147,42 @@ describe('submitLesson', () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it('should_call_createLessonSeries_when_is_recurring_true', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'true' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ barnId: 'barn-1', instructorId: mockTrainerMembership.id, horseIds: ['horse-1'], riderIds: ['mem-1'] })
+    )
+    expect(createLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
+  it('should_call_createLessonWithParticipants_when_is_recurring_is_absent', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalled()
+    expect(createLessonSeries).not.toHaveBeenCalled()
+  })
+
+  it('should_call_createLessonWithParticipants_when_is_recurring_false', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'false' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalled()
+    expect(createLessonSeries).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_after_successful_recurring_submission', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'true' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+  })
+
+  it('should_return_error_when_createLessonSeries_throws', async () => {
+    vi.mocked(createLessonSeries).mockRejectedValue(new Error('db error'))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'true' })
+    const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(result).toEqual({ error: 'Failed to submit lesson' })
   })
 
   it('should_use_instructor_id_from_formData_when_user_is_a_manager', async () => {

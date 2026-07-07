@@ -51,6 +51,7 @@ const mockLessonDetail = {
   tier_name: 'Custom',
   cancelled_at: null,
   cancellation_notes: null,
+  series_id: null,
   instructor_name: 'Jane Smith',
   lesson_horses: [{ exertion_level: 3, horse_notes: 'watch left lead', horses: { id: 'horse-1', name: 'Thunderbolt' } }],
   lesson_riders: [{ rider_notes: 'good position', private_notes: 'struggling with confidence', cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
