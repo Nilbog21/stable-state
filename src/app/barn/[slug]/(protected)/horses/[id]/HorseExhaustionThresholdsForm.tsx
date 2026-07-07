@@ -20,7 +20,7 @@ export function HorseExhaustionThresholdsForm({ horse, barn, action }: HorseExha
   const defaultHigh = horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high
 
   return (
-    <form action={formAction} className="space-y-4">
+    <form action={formAction} onReset={(e) => e.preventDefault()} className="space-y-4">
       {state.error && (
         <p role="alert" className="text-sm text-red-600 dark:text-red-400">
           {state.error}

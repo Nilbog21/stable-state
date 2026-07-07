@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import { createMockBarn, createMockHorse } from '@/test/fixtures'
 import { HorseExhaustionThresholdsForm } from '../HorseExhaustionThresholdsForm'
 
@@ -97,5 +97,21 @@ describe('HorseExhaustionThresholdsForm', () => {
   it('should_render_save_button', () => {
     render(<HorseExhaustionThresholdsForm horse={defaultsHorse} barn={mockBarn} action={mockAction} />)
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
+  })
+
+  it('should_keep_use_barn_defaults_unchecked_when_react_auto_resets_form_after_action', () => {
+    // React 19 calls the native form.reset() after a form action succeeds. Without
+    // an onReset guard, that reverts the controlled checkbox to its mount-time value.
+    render(<HorseExhaustionThresholdsForm horse={defaultsHorse} barn={mockBarn} action={mockAction} />)
+    const checkbox = screen.getByRole('checkbox', { name: /use barn defaults/i }) as HTMLInputElement
+
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(false)
+
+    act(() => {
+      checkbox.closest('form')!.reset()
+    })
+
+    expect(checkbox.checked).toBe(false)
   })
 })
