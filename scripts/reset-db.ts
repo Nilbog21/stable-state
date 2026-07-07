@@ -132,7 +132,7 @@ export function buildExpenseSeeds(): ExpenseSeed[] {
     { daysOffset: -10, time: null, amount: 275, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
     { daysOffset: -5, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -3, time: null, amount: 65, recipient: 'Saddle Up Supply', expenseType: 'Tack', appliesToAllHorses: false, horseIndex: 2 },
-    { daysOffset: 10, time: '09:00:00', amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
+    { daysOffset: 2, time: '14:00:00', amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
   ]
 }
 
