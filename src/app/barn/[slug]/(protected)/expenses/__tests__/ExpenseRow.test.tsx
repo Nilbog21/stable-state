@@ -71,6 +71,12 @@ describe('ExpenseRow', () => {
     const link = screen.getByRole('link', { name: /delete/i })
     expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/expenses\/expense-1\/delete$/)
   })
+
+  it('should_render_edit_link_with_correct_href', () => {
+    renderRow({ id: 'expense-1' })
+    const link = screen.getByRole('link', { name: /edit/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/expenses\/expense-1$/)
+  })
 })
 
 describe('formatExpenseAmount', () => {

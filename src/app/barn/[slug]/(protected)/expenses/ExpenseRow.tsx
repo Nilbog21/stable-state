@@ -30,6 +30,7 @@ export function ExpenseRow({ expense, slug }: { expense: ExpenseWithHorses; slug
       <Td tone="secondary">{formatExpenseHorses(expense)}</Td>
       <Td>{formatExpenseAmount(expense.amount)}</Td>
       <TableActions>
+        <Button href={`/barn/${slug}/expenses/${expense.id}`} variant="ghost">Edit</Button>
         <Button href={`/barn/${slug}/expenses/${expense.id}/delete`} variant="danger">Delete</Button>
       </TableActions>
     </tr>

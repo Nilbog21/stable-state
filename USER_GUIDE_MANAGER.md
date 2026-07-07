@@ -78,6 +78,8 @@ A rider's detail page also shows a **Boarding** status line: if they have an act
 
 **Add an expense** — Tap **Add Expense**. Enter who was paid and pick a date; everything else is optional. Leave the amount blank to log a planned visit (like a farrier appointment scheduled for next week) and fill it in later once you know the cost, or enter it right away for something you're paying for on the spot. If you've paid this recipient before, the expense type fills in automatically based on what you've entered for them in the past — you can still change it. Check **Entire Barn** if the expense covers every horse, or check off specific horses instead.
 
+**Edit an expense** — Click **Edit** on any expense row to fill in a cost after a planned visit or fix a mistake. The form opens pre-filled, including the Entire Barn / specific-horses state; change anything and save.
+
 **Delete an expense** — Click **Delete** on any expense row, then confirm. This cannot be undone.
 
 ## Finances

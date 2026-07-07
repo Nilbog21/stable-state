@@ -9,6 +9,7 @@ vi.mock('@/lib/db/expenses', () => ({
   getExpenseById: vi.fn(),
   deleteExpense: vi.fn(),
   createExpense: vi.fn(),
+  updateExpense: vi.fn(),
   getMostCommonTypeForRecipient: vi.fn(),
 }))
 
@@ -17,9 +18,9 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getExpenseById, deleteExpense, createExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
+import { getExpenseById, deleteExpense, createExpense, updateExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
 import { redirect } from 'next/navigation'
-import { deleteExpenseAction, createExpenseAction, getMostCommonExpenseTypeAction } from '../expenses'
+import { deleteExpenseAction, createExpenseAction, updateExpenseAction, getMostCommonExpenseTypeAction } from '../expenses'
 import { createMockHorseExpense } from '@/test/fixtures'
 
 const mockBarn = createMockBarn()
@@ -210,6 +211,71 @@ describe('createExpenseAction', () => {
 
   it('should_redirect_to_expenses_list_after_create', async () => {
     await createExpenseAction('barn-slug', noError, makeFormData(baseFields))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/expenses')
+  })
+})
+
+describe('updateExpenseAction', () => {
+  const noError = { error: null }
+  const baseFields = {
+    recipient: 'Dr. Hoof Farrier',
+    expense_date: '2026-07-10',
+  }
+
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateExpense).mockReset()
+    vi.mocked(redirect).mockReset()
+    guardAs(mockManagerMembership)
+    vi.mocked(updateExpense).mockResolvedValue(createMockHorseExpense())
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData(baseFields))
+    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
+  })
+
+  it('should_return_error_when_recipient_is_blank', async () => {
+    const result = await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, recipient: '' }))
+    expect(result.error).toBe('recipient required')
+  })
+
+  it('should_not_call_updateExpense_when_recipient_is_blank', async () => {
+    await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, recipient: '' }))
+    expect(updateExpense).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_date_is_blank', async () => {
+    const result = await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, expense_date: '' }))
+    expect(result.error).toBe('date required')
+  })
+
+  it('should_return_error_when_amount_is_negative', async () => {
+    const result = await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, amount: '-5' }))
+    expect(result.error).toBe('a valid, non-negative amount is required')
+  })
+
+  it('should_call_updateExpense_with_expenseId_barnId_and_parsed_data', async () => {
+    await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, amount: '125.50' }))
+    expect(updateExpense).toHaveBeenCalledWith('expense-1', 'barn-1', expect.objectContaining({ recipient: 'Dr. Hoof Farrier', amount: 125.5 }))
+  })
+
+  it('should_set_appliesToAllHorses_true_and_omit_horseIds_when_entire_barn_checked', async () => {
+    await updateExpenseAction(
+      'barn-slug',
+      'expense-1',
+      noError,
+      makeFormData({ ...baseFields, applies_to_all_horses: 'true', horse_id: ['horse-1'] })
+    )
+    expect(updateExpense).toHaveBeenCalledWith(
+      'expense-1',
+      'barn-1',
+      expect.objectContaining({ appliesToAllHorses: true, horseIds: undefined })
+    )
+  })
+
+  it('should_redirect_to_expenses_list_after_update', async () => {
+    await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData(baseFields))
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/expenses')
   })
 })

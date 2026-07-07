@@ -2,7 +2,8 @@
 
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getExpenseById, deleteExpense, createExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
+import { getExpenseById, deleteExpense, createExpense, updateExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
+import type { ExpenseInput } from '@/lib/db/types'
 
 export async function deleteExpenseAction(
   barnId: string,
@@ -30,13 +31,7 @@ function parseAmount(raw: string | null): number | null {
   return isNaN(n) || n < 0 ? NaN : n
 }
 
-export async function createExpenseAction(
-  barnSlug: string,
-  _prevState: ExpenseFormState,
-  formData: FormData
-): Promise<ExpenseFormState> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-
+function parseExpenseFormData(formData: FormData): { error: string } | { data: ExpenseInput } {
   const recipient = (formData.get('recipient') as string | null)?.trim()
   if (!recipient) return { error: 'recipient required' }
 
@@ -53,16 +48,47 @@ export async function createExpenseAction(
   const appliesToAllHorses = formData.get('applies_to_all_horses') === 'true'
   const horseIds = appliesToAllHorses ? undefined : (formData.getAll('horse_id') as string[])
 
-  await createExpense(barn.id, {
-    expenseDate,
-    expenseTime,
-    amount,
-    recipient,
-    expenseType,
-    notes,
-    appliesToAllHorses,
-    horseIds,
-  })
+  return {
+    data: {
+      expenseDate,
+      expenseTime,
+      amount,
+      recipient,
+      expenseType,
+      notes,
+      appliesToAllHorses,
+      horseIds,
+    },
+  }
+}
+
+export async function createExpenseAction(
+  barnSlug: string,
+  _prevState: ExpenseFormState,
+  formData: FormData
+): Promise<ExpenseFormState> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const parsed = parseExpenseFormData(formData)
+  if ('error' in parsed) return parsed
+
+  await createExpense(barn.id, parsed.data)
+
+  redirect(`/barn/${barnSlug}/expenses`)
+}
+
+export async function updateExpenseAction(
+  barnSlug: string,
+  expenseId: string,
+  _prevState: ExpenseFormState,
+  formData: FormData
+): Promise<ExpenseFormState> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const parsed = parseExpenseFormData(formData)
+  if ('error' in parsed) return parsed
+
+  await updateExpense(expenseId, barn.id, parsed.data)
 
   redirect(`/barn/${barnSlug}/expenses`)
 }
