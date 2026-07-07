@@ -159,6 +159,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] Set a different tier as **default** → new-lesson form pre-selects it
 - [ ] **Deactivate** the Group Special tier → it no longer appears when creating a lesson; **reactivate** it
 - [ ] Edit **Default Board Fee**, confirm the non-retroactive helper text is visible → Save → a pre-existing boarding agreement's fee is unchanged, but a newly created boarding agreement pre-fills the new fee
+- [ ] **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`); change both and **Save** → values persist on reload; try setting Moderate ≥ High → rejected with a field error and values unchanged
 
 Notifications and profile:
 

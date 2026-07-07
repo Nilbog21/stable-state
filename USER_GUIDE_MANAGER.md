@@ -96,6 +96,8 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 
 **Default Board Fee** — Set the monthly fee suggested when creating a new boarding agreement. Changing this only affects boarding agreements created afterward — existing boarders are unaffected.
 
+**Horse Exhaustion Thresholds** — Set the barn-wide **Moderate threshold** and **High threshold** used to flag a horse as getting overworked, based on its recent exertion total. These are barn-wide defaults; an individual horse can be given its own thresholds that override them. The moderate threshold must be lower than the high threshold.
+
 ## Approvals
 
 Go to **Settings** to review pending membership requests. Approving a request grants the member active access to the barn.
