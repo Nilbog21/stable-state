@@ -47,7 +47,9 @@ export default async function HorseDetailPage({
     : []
 
   const boundUpdateAction = updateHorseDetailsAction.bind(null, slug, horse.id)
-  const boundUploadAction = uploadHorseDocumentAction.bind(null, slug, horse.id)
+  const boundUploadAction = async (formData: FormData) => {
+    await uploadHorseDocumentAction(slug, horse.id, formData)
+  }
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
 
   return (

@@ -124,8 +124,12 @@ export default async function MemberDetailPage({
     )
   }
 
-  const boundUpload = uploadDocumentAction.bind(null, slug, membership_id)
-  const boundDelete = deleteDocumentAction.bind(null, slug, membership_id)
+  const boundUpload = async (formData: FormData) => {
+    await uploadDocumentAction(slug, membership_id, formData)
+  }
+  const boundDelete = async (docId: string, storagePath: string) => {
+    await deleteDocumentAction(slug, membership_id, docId, storagePath)
+  }
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">

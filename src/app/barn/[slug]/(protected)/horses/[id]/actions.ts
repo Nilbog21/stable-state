@@ -41,28 +41,40 @@ export async function uploadHorseDocumentAction(
   barnSlug: string,
   horseId: string,
   formData: FormData
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   const file = formData.get('file') as File | null
-  const ext = validateFile(file)
+  let ext: string
+  try {
+    ext = validateFile(file)
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Invalid file' }
+  }
 
   const recordType = formData.get('record_type') as string
-  if (!HORSE_RECORD_TYPES.has(recordType as HorseDocumentType)) throw new Error('Invalid record type')
+  if (!HORSE_RECORD_TYPES.has(recordType as HorseDocumentType)) {
+    return { error: 'Invalid record type' }
+  }
 
   const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
   const storagePath = `${barn.id}/horses/${horseId}/${Date.now()}.${ext}`
 
-  await uploadFile(storagePath, file!, file!.type)
+  try {
+    await uploadFile(storagePath, file!, file!.type)
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Failed to upload file' }
+  }
 
   try {
     await createDocument('horse', barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
-    throw dbError
+    return { error: dbError instanceof Error ? dbError.message : 'Failed to save document' }
   }
 
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  return { error: null }
 }
 
 export async function deleteHorseDocumentAction(

@@ -21,29 +21,36 @@ export async function uploadDocumentAction(
   barnSlug: string,
   membershipId: string,
   formData: FormData
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
   const targetMembership = await getMembershipById(membershipId)
-  if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
+  if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
 
   if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
-    throw new Error('Forbidden')
+    return { error: 'Forbidden' }
   }
 
   const isOwnPage = targetMembership.user_id === user.id
   if (!canManage(callerMembership.role, isOwnPage)) {
-    throw new Error('Forbidden')
+    return { error: 'Forbidden' }
   }
 
-  if (!targetMembership.user_id) throw new Error('Target member has no account linked')
+  if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
 
   const file = formData.get('file') as File | null
-  const ext = validateFile(file)
+  let ext: string
+  try {
+    ext = validateFile(file)
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Invalid file' }
+  }
 
   const recordType = formData.get('record_type') as string
   const validTypes = targetMembership.role === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
-  if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) throw new Error('Invalid record type')
+  if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) {
+    return { error: 'Invalid record type' }
+  }
 
   const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
 
@@ -53,7 +60,11 @@ export async function uploadDocumentAction(
     : 'riders'
   const storagePath = `${barn.id}/${folder}/${targetMembership.user_id}/${Date.now()}.${ext}`
 
-  await uploadFile(storagePath, file!, file!.type)
+  try {
+    await uploadFile(storagePath, file!, file!.type)
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Failed to upload file' }
+  }
 
   try {
     if (targetMembership.role === 'rider') {
@@ -63,10 +74,11 @@ export async function uploadDocumentAction(
     }
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
-    throw dbError
+    return { error: dbError instanceof Error ? dbError.message : 'Failed to save document' }
   }
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  return { error: null }
 }
 
 export async function deleteDocumentAction(
@@ -74,22 +86,22 @@ export async function deleteDocumentAction(
   membershipId: string,
   docId: string,
   storagePath: string
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
   const targetMembership = await getMembershipById(membershipId)
-  if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
+  if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
 
   if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
-    throw new Error('Forbidden')
+    return { error: 'Forbidden' }
   }
 
   const isOwnPage = targetMembership.user_id === user.id
   if (!canManage(callerMembership.role, isOwnPage)) {
-    throw new Error('Forbidden')
+    return { error: 'Forbidden' }
   }
 
-  if (!targetMembership.user_id) throw new Error('Target member has no account linked')
+  if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
 
   if (targetMembership.role === 'rider') {
     await deleteDocument('rider', docId, targetMembership.user_id, barn.id)
@@ -100,4 +112,5 @@ export async function deleteDocumentAction(
   await removeFile(storagePath).catch(() => {})
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  return { error: null }
 }
