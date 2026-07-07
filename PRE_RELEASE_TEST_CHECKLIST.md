@@ -96,6 +96,7 @@ Dashboard (`/barn/dev-barn`):
 - [ ] A date-only planned expense (no time set) does **not** appear on the dashboard
 - [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
 - [ ] Pending-requests badge is visible (Quinn Pending) and links to settings
+- [ ] Document Reminders section is hidden when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), it appears here and links to that horse's or member's detail page
 
 Lessons (`/barn/dev-barn/lessons`):
 
@@ -128,6 +129,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Documents section: upload a PDF to a horse, open it via its link (signed URL), then delete it
 - [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override; uncheck it, set Moderate/High, Save → values persist on reload and the toggle is now unchecked; re-check "Use barn defaults" and Save → inputs revert to barn defaults; try Moderate ≥ High while unchecked → rejected with a field error and values unchanged
 - [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
+- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this horse
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
@@ -135,6 +137,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] `/barn/dev-barn/riders` redirects to `/barn/dev-barn/members`
 - [ ] Open a trainer's member detail page → upload a document → it lists with a working link → delete it
 - [ ] On that same document, edit the Reminder Date inline (tap the field, set a date, tap away) → it saves
+- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
 - [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
 - [ ] Rider Emery's member detail page shows **Boarding: $X/month** linking to their boarding agreement; a rider with no boarding agreement shows an **Add boarding** link into `/agreements?kind=board`; a managed (unclaimed) rider's detail page shows the same boarding status line
 

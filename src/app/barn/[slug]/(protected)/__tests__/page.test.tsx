@@ -9,6 +9,12 @@ vi.mock('../UpcomingLessonsSections', () => ({
   ),
 }))
 
+vi.mock('../DocumentRemindersSection', () => ({
+  DocumentRemindersSection: ({ slug, dueDocuments }: { slug: string; dueDocuments: { id: string }[] }) => (
+    <div data-testid="document-reminders" data-slug={slug} data-due-count={dueDocuments.length} />
+  ),
+}))
+
 vi.mock('@/lib/db/auth', () => ({
   getAuthenticatedUser: vi.fn(),
 }))
@@ -24,6 +30,10 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 
 vi.mock('@/lib/db/lessons', () => ({
   getUpcomingLessons: vi.fn(),
+}))
+
+vi.mock('@/lib/db/documents', () => ({
+  getDueDocuments: vi.fn(),
 }))
 
 vi.mock('@/lib/db/expenses', () => ({
@@ -45,6 +55,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
+import { getDueDocuments } from '@/lib/db/documents'
 import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
 import { createMockLesson, createMockExpenseWithHorses } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
@@ -91,6 +102,8 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getUpcomingLessons).mockResolvedValue([])
     vi.mocked(getPendingMemberships).mockResolvedValue([])
+    vi.mocked(getDueDocuments).mockReset()
+    vi.mocked(getDueDocuments).mockResolvedValue([])
     vi.mocked(getUpcomingScheduledExpenses).mockReset()
     vi.mocked(getUpcomingScheduledExpenses).mockResolvedValue([])
   })
@@ -264,6 +277,48 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     expect(screen.getByText(/2 pending requests/i)).toBeDefined()
+  })
+
+  const mockDueHorseDoc = {
+    id: 'doc-1',
+    entity: 'horse' as const,
+    recordType: 'coggins',
+    fileName: 'coggins.pdf',
+    reminderDate: '2026-01-01',
+    ownerName: 'Thunderbolt',
+    ownerId: 'horse-1',
+  }
+
+  it('should_pass_due_documents_to_document_reminders_section', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('document-reminders').getAttribute('data-due-count')).toBe('1')
+  })
+
+  it('should_pass_slug_to_document_reminders_section', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByTestId('document-reminders').getAttribute('data-slug')).toBe('green-acres')
+  })
+
+  it('should_not_call_getDueDocuments_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getDueDocuments).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_getDueDocuments_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getDueDocuments).not.toHaveBeenCalled()
   })
 
   it('should_pass_expense_count_to_upcoming_lessons_sections_for_manager', async () => {

@@ -20,7 +20,7 @@ Tap the bell icon in the nav bar to view your notifications. If your profile is 
 
 ## Your documents
 
-Go to **Members** and tap your card to manage your documents. Your documents are shown in a table with columns **Type**, **Notes**, **Link**, **Reminder Date**, and **Action**. Tap a filename in the **Link** column to open it (link is valid for 5 minutes). The **Reminder Date** column is read-only — only your barn manager can change it after upload. Tap **Delete** to remove a document. To add a new one, tap **Choose File** (the filename appears next to the button once chosen), add optional notes, optionally set an **Expiration reminder date**, and tap **Upload**. Accepted types: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other** — PDF, JPG, PNG, or DOCX (max 5 MB).
+Go to **Members** and tap your card to manage your documents. Your documents are shown in a table with columns **Type**, **Notes**, **Link**, **Reminder Date**, and **Action**. Tap a filename in the **Link** column to open it (link is valid for 5 minutes). The **Reminder Date** column is read-only — only your barn manager can change it after upload. A **Reminder Due** badge appears next to the date once it's arrived. Tap **Delete** to remove a document. To add a new one, tap **Choose File** (the filename appears next to the button once chosen), add optional notes, optionally set an **Expiration reminder date**, and tap **Upload**. Accepted types: **Liability Waiver**, **Lease Agreement**, **Boarding Contract**, **Other** — PDF, JPG, PNG, or DOCX (max 5 MB).
 
 ## Profile & Guide
 

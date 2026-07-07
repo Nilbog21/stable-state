@@ -1,5 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
+import { resolveHorseNames } from './horses'
 import type {
+  DueDocument,
   HorseDocument,
   HorseDocumentType,
   RiderDocument,
@@ -124,4 +126,95 @@ export async function updateDocumentReminderDate(
     .eq(idColumn, entityId)
     .eq('barn_id', barnId)
   if (error) throw error
+}
+
+export async function getDueDocuments(barnId: string, today: string): Promise<DueDocument[]> {
+  const supabase = await createClient()
+
+  const { data: horseDocs, error: horseError } = await supabase
+    .from('horse_documents')
+    .select('*')
+    .eq('barn_id', barnId)
+    .lte('reminder_date', today)
+  if (horseError) throw horseError
+
+  const { data: trainerDocs, error: trainerError } = await supabase
+    .from('trainer_documents')
+    .select('*')
+    .eq('barn_id', barnId)
+    .lte('reminder_date', today)
+  if (trainerError) throw trainerError
+
+  const { data: riderDocs, error: riderError } = await supabase
+    .from('rider_documents')
+    .select('*')
+    .eq('barn_id', barnId)
+    .lte('reminder_date', today)
+  if (riderError) throw riderError
+
+  const horseDocsList = horseDocs ?? []
+  const trainerDocsList = trainerDocs ?? []
+  const riderDocsList = riderDocs ?? []
+
+  const horseIds = [...new Set(horseDocsList.map((d) => d.horse_id as string))]
+  const horseNames = await resolveHorseNames(horseIds, barnId, supabase)
+
+  const ownerUserIds = [
+    ...new Set([
+      ...trainerDocsList.map((d) => d.trainer_id as string),
+      ...riderDocsList.map((d) => d.rider_id as string),
+    ]),
+  ]
+
+  const membershipByUserId = new Map<string, string>()
+  const nameByUserId = new Map<string, string>()
+
+  if (ownerUserIds.length) {
+    const { data: memberships, error: membershipsError } = await supabase
+      .from('barn_memberships')
+      .select('id, user_id')
+      .eq('barn_id', barnId)
+      .in('user_id', ownerUserIds)
+    if (membershipsError) throw membershipsError
+    for (const m of memberships ?? []) membershipByUserId.set(m.user_id, m.id)
+
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, first_name, last_name')
+      .in('user_id', ownerUserIds)
+    if (profilesError) throw profilesError
+    for (const p of profiles ?? []) nameByUserId.set(p.user_id, `${p.first_name} ${p.last_name}`)
+  }
+
+  const results: DueDocument[] = [
+    ...horseDocsList.map((d) => ({
+      id: d.id,
+      entity: 'horse' as const,
+      recordType: d.record_type,
+      fileName: d.file_name,
+      reminderDate: d.reminder_date as string,
+      ownerName: horseNames.get(d.horse_id) ?? d.horse_id,
+      ownerId: d.horse_id,
+    })),
+    ...trainerDocsList.map((d) => ({
+      id: d.id,
+      entity: 'trainer' as const,
+      recordType: d.record_type,
+      fileName: d.file_name,
+      reminderDate: d.reminder_date as string,
+      ownerName: nameByUserId.get(d.trainer_id) ?? 'Unknown Member',
+      ownerId: membershipByUserId.get(d.trainer_id) ?? d.trainer_id,
+    })),
+    ...riderDocsList.map((d) => ({
+      id: d.id,
+      entity: 'rider' as const,
+      recordType: d.record_type,
+      fileName: d.file_name,
+      reminderDate: d.reminder_date as string,
+      ownerName: nameByUserId.get(d.rider_id) ?? 'Unknown Member',
+      ownerId: membershipByUserId.get(d.rider_id) ?? d.rider_id,
+    })),
+  ]
+
+  return results.sort((a, b) => a.reminderDate.localeCompare(b.reminderDate))
 }

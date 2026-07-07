@@ -265,6 +265,16 @@ export interface RiderDocument {
   updated_at: string
 }
 
+export interface DueDocument {
+  id: string
+  entity: 'horse' | 'trainer' | 'rider'
+  recordType: string
+  fileName: string
+  reminderDate: string
+  ownerName: string
+  ownerId: string
+}
+
 export interface Notification {
   id: string
   user_id: string

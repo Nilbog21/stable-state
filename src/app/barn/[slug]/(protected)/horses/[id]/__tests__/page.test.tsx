@@ -306,4 +306,18 @@ describe('HorseDetailPage', () => {
     fireEvent.click(screen.getByRole('button', { name: 'trigger-upload' }))
     expect(uploadHorseDocumentAction).toHaveBeenCalledWith('green-acres', 'horse-1', expect.any(FormData))
   })
+
+  it('should_render_reminder_due_badge_when_document_reminder_date_is_past', async () => {
+    vi.mocked(getDocuments).mockResolvedValue([{ ...mockDoc, reminder_date: '2020-01-01' }] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText(/reminder due/i)).toBeDefined()
+  })
+
+  it('should_not_render_reminder_due_badge_when_document_has_no_reminder_date', async () => {
+    vi.mocked(getDocuments).mockResolvedValue([{ ...mockDoc, reminder_date: null }] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText(/reminder due/i)).toBeNull()
+  })
 })

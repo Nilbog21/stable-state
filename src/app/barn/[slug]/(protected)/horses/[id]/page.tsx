@@ -9,6 +9,7 @@ import { HorseManagerForm } from './HorseManagerForm'
 import { HorseDocumentUploadForm } from './HorseDocumentUploadForm'
 import { HorseExhaustionThresholdsForm } from './HorseExhaustionThresholdsForm'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
+import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import {
   updateHorseDetailsAction,
@@ -135,11 +136,14 @@ export default async function HorseDetailPage({
                       </a>
                     </Td>
                     <Td tone="secondary">
-                      {role === 'manager' ? (
-                        <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDateAction} />
-                      ) : (
-                        doc.reminder_date ?? '—'
-                      )}
+                      <div className="flex items-center gap-2">
+                        {role === 'manager' ? (
+                          <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDateAction} />
+                        ) : (
+                          doc.reminder_date ?? '—'
+                        )}
+                        <ReminderDueBadge reminderDate={doc.reminder_date} />
+                      </div>
                     </Td>
                     <TableActions>
                       {role === 'manager' && (
