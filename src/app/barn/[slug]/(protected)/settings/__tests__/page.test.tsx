@@ -406,4 +406,36 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText(/applies to new boarding agreements only/i)).toBeDefined()
   })
+
+  it('should_render_exhaustion_thresholds_heading_in_label_style', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /horse exhaustion thresholds/i }).className).toContain('uppercase')
+  })
+
+  it('should_render_moderate_threshold_input_with_current_value', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const input = screen.getByLabelText(/moderate threshold/i) as HTMLInputElement
+    expect(input.value).toBe(String(mockBarn.exhaustion_threshold_moderate))
+  })
+
+  it('should_render_high_threshold_input_with_current_value', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const input = screen.getByLabelText(/high threshold/i) as HTMLInputElement
+    expect(input.value).toBe(String(mockBarn.exhaustion_threshold_high))
+  })
 })

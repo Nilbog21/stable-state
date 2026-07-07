@@ -17,6 +17,7 @@ vi.mock('@/lib/db/lesson-tiers', () => ({
 vi.mock('@/lib/db/barns', () => ({
   updateBarnDefaultBoardFee: vi.fn(),
   setInstructorCut: vi.fn(),
+  updateExhaustionThresholds: vi.fn(),
 }))
 
 const mockRedirect = vi.hoisted(() =>
@@ -43,7 +44,7 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee, setInstructorCut } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds } from '@/lib/db/barns'
 import {
   createTierAction,
   updateTierAction,
@@ -51,6 +52,7 @@ import {
   reactivateTierAction,
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
+  updateExhaustionThresholdsAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -416,6 +418,138 @@ describe('updateInstructorCutAction', () => {
     await updateInstructorCutAction('green-acres', makeFormData({ instructor_cut: 'abc' }))
 
     expect(setInstructorCut).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateExhaustionThresholdsAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateExhaustionThresholds).mockReset()
+    mockRedirect.mockClear()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateExhaustionThresholds).mockResolvedValue(mockBarn)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await expect(
+      updateExhaustionThresholdsAction(
+        'green-acres',
+        { error: null },
+        makeFormData({ moderate: '4', high: '10' })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateExhaustionThresholds_with_parsed_values', async () => {
+    await expect(
+      updateExhaustionThresholdsAction(
+        'green-acres',
+        { error: null },
+        makeFormData({ moderate: '4', high: '10' })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateExhaustionThresholds).toHaveBeenCalledWith(mockBarn.id, { moderate: 4, high: 10 })
+  })
+
+  it('should_redirect_to_settings_after_update', async () => {
+    await expect(
+      updateExhaustionThresholdsAction(
+        'green-acres',
+        { error: null },
+        makeFormData({ moderate: '4', high: '10' })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+
+  it('should_accept_zero_moderate', async () => {
+    await expect(
+      updateExhaustionThresholdsAction(
+        'green-acres',
+        { error: null },
+        makeFormData({ moderate: '0', high: '10' })
+      )
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateExhaustionThresholds).toHaveBeenCalledWith(mockBarn.id, { moderate: 0, high: 10 })
+  })
+
+  it('should_return_error_when_moderate_equals_high', async () => {
+    const result = await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '10', high: '10' })
+    )
+
+    expect(result.error).toBe('Moderate threshold must be less than high threshold')
+  })
+
+  it('should_not_call_updateExhaustionThresholds_when_moderate_equals_high', async () => {
+    await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '10', high: '10' })
+    )
+
+    expect(updateExhaustionThresholds).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_moderate_is_greater_than_high', async () => {
+    const result = await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '11', high: '10' })
+    )
+
+    expect(result.error).toBe('Moderate threshold must be less than high threshold')
+  })
+
+  it('should_return_error_when_moderate_is_blank', async () => {
+    const result = await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '', high: '10' })
+    )
+
+    expect(result.error).toBe('Thresholds must be numbers ≥ 0')
+  })
+
+  it('should_return_error_when_high_is_non_numeric', async () => {
+    const result = await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '4', high: 'abc' })
+    )
+
+    expect(result.error).toBe('Thresholds must be numbers ≥ 0')
+  })
+
+  it('should_return_error_when_moderate_is_negative', async () => {
+    const result = await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '-1', high: '10' })
+    )
+
+    expect(result.error).toBe('Thresholds must be numbers ≥ 0')
+  })
+
+  it('should_not_call_updateExhaustionThresholds_when_validation_fails', async () => {
+    await updateExhaustionThresholdsAction(
+      'green-acres',
+      { error: null },
+      makeFormData({ moderate: '', high: '10' })
+    )
+
+    expect(updateExhaustionThresholds).not.toHaveBeenCalled()
   })
 })
 
