@@ -13,9 +13,19 @@ vi.mock('../UpcomingLessonCard', () => ({
     date.getDate() === now.getDate(),
 }))
 
+vi.mock('../UpcomingExpenseCard', () => ({
+  UpcomingExpenseCard: ({ expense, slug }: { expense: { id: string }; slug: string }) => (
+    <div data-testid="upcoming-expense-card" data-slug={slug} data-expense-id={expense.id} />
+  ),
+  isExpenseToday: (expenseDate: string, now: Date) => {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    return expenseDate === todayStr
+  },
+}))
+
 import { UpcomingLessonsSections } from '../UpcomingLessonsSections'
-import { createMockLesson } from '@/test/fixtures'
-import type { LessonWithDetails } from '@/lib/db/types'
+import { createMockLesson, createMockExpenseWithHorses } from '@/test/fixtures'
+import type { LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
 
 function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
   return {
@@ -27,6 +37,17 @@ function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetai
     rider_count: 0,
     ...overrides,
   }
+}
+
+function makeExpense(overrides: Partial<ScheduledExpense> = {}): ScheduledExpense {
+  return {
+    ...createMockExpenseWithHorses({ expense_time: '10:00:00' }),
+    ...overrides,
+  } as ScheduledExpense
+}
+
+function localDateString(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
 }
 
 describe('UpcomingLessonsSections', () => {
@@ -79,13 +100,18 @@ describe('UpcomingLessonsSections', () => {
   })
 
   it('should_show_empty_state_heading_when_no_lessons', () => {
-    render(<UpcomingLessonsSections lessons={[]} role="manager" slug="green-acres" />)
+    render(<UpcomingLessonsSections lessons={[]} role="trainer" slug="green-acres" />)
     expect(screen.getByText("You're all clear")).toBeDefined()
   })
 
-  it('should_show_empty_state_subtext_when_no_lessons', () => {
-    render(<UpcomingLessonsSections lessons={[]} role="manager" slug="green-acres" />)
+  it('should_show_empty_state_subtext_when_no_lessons_for_trainer', () => {
+    render(<UpcomingLessonsSections lessons={[]} role="trainer" slug="green-acres" />)
     expect(screen.getByText('No lessons scheduled for the next 7 days.')).toBeDefined()
+  })
+
+  it('should_show_empty_state_subtext_mentioning_expenses_for_manager', () => {
+    render(<UpcomingLessonsSections lessons={[]} role="manager" slug="green-acres" />)
+    expect(screen.getByText('No lessons or expenses scheduled for the next 7 days.')).toBeDefined()
   })
 
   it('should_render_today_heading_as_uppercase', () => {
@@ -167,5 +193,119 @@ describe('UpcomingLessonsSections', () => {
       />
     )
     expect(screen.getByTestId('upcoming-card').getAttribute('data-viewer-membership-id')).toBe('mem-1')
+  })
+
+  it('should_render_barn_schedule_heading_for_manager', () => {
+    render(<UpcomingLessonsSections lessons={[]} role="manager" slug="green-acres" />)
+    expect(screen.getByRole('heading', { name: 'Barn Schedule' })).toBeDefined()
+  })
+
+  it('should_not_render_barn_schedule_heading_for_trainer', () => {
+    render(<UpcomingLessonsSections lessons={[]} role="trainer" slug="green-acres" />)
+    expect(screen.queryByRole('heading', { name: 'Barn Schedule' })).toBeNull()
+  })
+
+  it('should_not_render_barn_schedule_heading_for_rider', () => {
+    render(<UpcomingLessonsSections lessons={[]} role="rider" slug="green-acres" />)
+    expect(screen.queryByRole('heading', { name: 'Barn Schedule' })).toBeNull()
+  })
+
+  it('should_render_expense_card_for_manager_today', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: localDateString(today) })]}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.getByTestId('upcoming-expense-card')).toBeDefined()
+  })
+
+  it('should_not_render_expenses_for_trainer_even_when_passed', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: localDateString(today) })]}
+        role="trainer"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByTestId('upcoming-expense-card')).toBeNull()
+  })
+
+  it('should_not_render_expenses_for_rider_even_when_passed', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: localDateString(today) })]}
+        role="rider"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByTestId('upcoming-expense-card')).toBeNull()
+  })
+
+  it('should_pass_slug_to_expense_card', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: localDateString(today) })]}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.getByTestId('upcoming-expense-card').getAttribute('data-slug')).toBe('green-acres')
+  })
+
+  it('should_bucket_this_week_expense_outside_today_section', () => {
+    const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+    render(
+      <UpcomingLessonsSections
+        lessons={[]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: localDateString(future) })]}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.getByRole('heading', { name: 'This Week' })).toBeDefined()
+    expect(screen.queryByRole('heading', { name: 'Today' })).toBeNull()
+  })
+
+  it('should_interleave_lesson_and_expense_by_datetime_within_a_section', () => {
+    const today = new Date()
+    const todayStr = localDateString(today)
+    render(
+      <UpcomingLessonsSections
+        lessons={[makeLesson({ id: 'lesson-1', lesson_at: new Date(`${todayStr}T15:00:00.000Z`).toISOString() })]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: todayStr, expense_time: '09:00:00' })]}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    const items = screen.getAllByTestId(/upcoming-(card|expense-card)/)
+    expect(items.map((el) => el.getAttribute('data-testid'))).toEqual(['upcoming-expense-card', 'upcoming-card'])
+  })
+
+  it('should_use_empty_state_when_manager_has_no_lessons_or_expenses', () => {
+    render(<UpcomingLessonsSections lessons={[]} expenses={[]} role="manager" slug="green-acres" />)
+    expect(screen.getByText("You're all clear")).toBeDefined()
+  })
+
+  it('should_skip_empty_state_when_manager_has_only_expenses', () => {
+    const today = new Date()
+    render(
+      <UpcomingLessonsSections
+        lessons={[]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: localDateString(today) })]}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByText("You're all clear")).toBeNull()
   })
 })
