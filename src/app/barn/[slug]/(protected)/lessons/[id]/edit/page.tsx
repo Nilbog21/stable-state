@@ -55,6 +55,8 @@ export default async function EditLessonPage({
       is_available: true,
       unavailability_reason: null,
       deactivated_at: null,
+      exhaustion_threshold_high: null,
+      exhaustion_threshold_moderate: null,
       created_at: '',
       updated_at: '',
     }))
