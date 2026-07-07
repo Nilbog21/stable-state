@@ -684,3 +684,21 @@ describe('LessonForm notes fields', () => {
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
 })
+
+describe('LessonForm (edit mode) exhaustion bars', () => {
+  it('should_fetch_projected_exhaustion_using_the_prefilled_lesson_date_on_mount', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00'))
+  })
+
+  it('should_render_exhaustion_bar_for_the_pre_checked_horse', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+    })
+    render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
+    })
+  })
+})
