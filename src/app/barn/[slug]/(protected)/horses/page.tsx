@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary, getHorsesByBarn, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
 import { EmptyState } from '@/components/EmptyState'
@@ -36,14 +36,12 @@ export default async function HorsesPage({
   const allEmpty = available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
 
   const activeHorses = [...available, ...unavailable]
-  const horseRows = await getHorsesByBarn(barn.id)
-  const horseById = new Map(horseRows.map((h) => [h.id, h]))
   const today = new Date()
   const exhaustionByHorseId = new Map(
     await Promise.all(
       activeHorses.map(async (h) => {
         const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, today)
-        const thresholds = resolveExhaustionThresholds(horseById.get(h.id)!, barn)
+        const thresholds = resolveExhaustionThresholds(h, barn)
         return [h.id, { existingRows, thresholds }] as const
       })
     )

@@ -65,12 +65,14 @@ export async function getHorseExertionSummary(
     p_since: since.toISOString(),
   })
   if (error) throw error
-  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
+  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null; exhaustion_threshold_high: number | null; exhaustion_threshold_moderate: number | null; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
     id: row.id,
     name: row.name,
     is_active: row.is_active,
     is_available: row.is_available ?? true,
     unavailability_reason: row.unavailability_reason ?? null,
+    exhaustion_threshold_high: row.exhaustion_threshold_high,
+    exhaustion_threshold_moderate: row.exhaustion_threshold_moderate,
     lessonCount: Number(row.lesson_count),
     totalExertion: Number(row.total_exertion),
     jumpingCount: Number(row.jumping_count),
@@ -180,7 +182,10 @@ export async function getHorseProjectedExhaustion(
   }))
 }
 
-export function resolveExhaustionThresholds(horse: Horse, barn: Barn): { high: number; moderate: number } {
+export function resolveExhaustionThresholds(
+  horse: Pick<Horse, 'exhaustion_threshold_high' | 'exhaustion_threshold_moderate'>,
+  barn: Barn
+): { high: number; moderate: number } {
   const high = horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high
   const moderate = horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate
   // A per-horse override on only one field can invert the pair against the other's barn

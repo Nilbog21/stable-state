@@ -169,6 +169,8 @@ export interface HorseExertionSummary {
   is_active: boolean
   is_available: boolean
   unavailability_reason: string | null
+  exhaustion_threshold_high: number | null
+  exhaustion_threshold_moderate: number | null
   lessonCount: number
   totalExertion: number
   jumpingCount: number

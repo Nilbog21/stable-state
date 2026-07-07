@@ -157,20 +157,18 @@ describe('ExhaustionBar', () => {
     expect(screen.queryByText('3 points from 1 lessons (±3-day window)')).toBeNull()
   })
 
-  it('should_prevent_default_and_stop_propagation_when_toggle_button_clicked', () => {
-    const outerClick = vi.fn()
+  it('should_prevent_default_when_toggle_button_clicked', () => {
     render(
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
-      <a href="/elsewhere" onClick={outerClick}>
+      <a href="/elsewhere">
         <ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />
       </a>
     )
     const notPrevented = fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))
     expect(notPrevented).toBe(false)
-    expect(outerClick).not.toHaveBeenCalled()
   })
 
-  it('should_prevent_default_and_stop_propagation_when_close_button_clicked', () => {
+  it('should_stop_propagation_when_toggle_button_clicked', () => {
     const outerClick = vi.fn()
     render(
       // eslint-disable-next-line jsx-a11y/anchor-is-valid
@@ -179,8 +177,31 @@ describe('ExhaustionBar', () => {
       </a>
     )
     fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))
+    expect(outerClick).not.toHaveBeenCalled()
+  })
+
+  it('should_prevent_default_when_close_button_clicked', () => {
+    render(
+      // eslint-disable-next-line jsx-a11y/anchor-is-valid
+      <a href="/elsewhere">
+        <ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />
+      </a>
+    )
+    fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))
     const notPrevented = fireEvent.click(screen.getByRole('button', { name: /close/i }))
     expect(notPrevented).toBe(false)
+  })
+
+  it('should_stop_propagation_when_close_button_clicked', () => {
+    const outerClick = vi.fn()
+    render(
+      // eslint-disable-next-line jsx-a11y/anchor-is-valid
+      <a href="/elsewhere" onClick={outerClick}>
+        <ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />
+      </a>
+    )
+    fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))
+    fireEvent.click(screen.getByRole('button', { name: /close/i }))
     expect(outerClick).not.toHaveBeenCalled()
   })
 })

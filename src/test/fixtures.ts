@@ -131,6 +131,8 @@ export function createMockHorseExertionSummary(overrides: Partial<HorseExertionS
     is_active: true,
     is_available: true,
     unavailability_reason: null,
+    exhaustion_threshold_high: null,
+    exhaustion_threshold_moderate: null,
     lessonCount: 3,
     totalExertion: 12,
     jumpingCount: 0,
