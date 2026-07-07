@@ -163,10 +163,11 @@ export async function getHorseProjectedExhaustion(
 }
 
 export function resolveExhaustionThresholds(horse: Horse, barn: Barn): { high: number; moderate: number } {
-  return {
-    high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
-    moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
-  }
+  const high = horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high
+  const moderate = horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate
+  // A per-horse override on only one field can invert the pair against the other's barn
+  // default — the DB CHECK only guards moderate < high when both are set on the same row.
+  return { high, moderate: Math.min(moderate, high - 1) }
 }
 
 export type ExhaustionBand = 'low' | 'moderate' | 'high'

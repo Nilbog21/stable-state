@@ -771,6 +771,12 @@ describe('resolveExhaustionThresholds', () => {
 
     expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 20, moderate: 5 })
   })
+
+  it('should_clamp_moderate_below_high_when_a_single_override_would_invert_the_pair', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: null, exhaustion_threshold_moderate: 15 })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 11, moderate: 10 })
+  })
 })
 
 describe('getExhaustionBand', () => {
