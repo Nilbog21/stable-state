@@ -90,6 +90,28 @@ describe('ExhaustionBar', () => {
     expect(screen.getByTestId('exhaustion-bar-solid').style.width).toBe('100%')
   })
 
+  it('should_not_produce_nan_width_when_high_threshold_is_zero', () => {
+    render(
+      <ExhaustionBar
+        existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 1 }]}
+        thresholds={{ high: 0, moderate: 0 }}
+      />
+    )
+    expect(screen.getByTestId('exhaustion-bar-solid').style.width).toBe('100%')
+  })
+
+  it('should_still_render_ghost_segment_when_existing_total_already_exceeds_high_threshold', () => {
+    render(
+      <ExhaustionBar
+        existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 15 }]}
+        ghostValue={5}
+        thresholds={thresholds}
+      />
+    )
+    expect(screen.getByTestId('exhaustion-bar-ghost').style.width).toBe('8%')
+    expect(screen.getByTestId('exhaustion-bar-solid').style.width).toBe('92%')
+  })
+
   it('should_open_expansion_panel_on_bar_tap', () => {
     render(<ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />)
     fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))

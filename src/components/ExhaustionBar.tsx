@@ -1,6 +1,7 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
 import { getExhaustionBand, type ExhaustionBand } from '@/lib/db/horses'
+import { Button } from '@/components/ui/Button'
 
 export interface ExhaustionBarRow {
   lessonAt: string
@@ -45,9 +46,17 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
   const band = getExhaustionBand(combinedTotal, thresholds)
   const overflow = combinedTotal > thresholds.high
 
-  const existingPct = (Math.min(existingTotal, thresholds.high) / thresholds.high) * 100
-  const combinedPct = (Math.min(combinedTotal, thresholds.high) / thresholds.high) * 100
-  const ghostPct = Math.max(combinedPct - existingPct, 0)
+  // thresholds.high=0 is DB-legal (CHECK >= 0); floor to 1 so widths stay finite instead of NaN.
+  const safeHigh = Math.max(thresholds.high, 1)
+  let existingPct = (Math.min(existingTotal, safeHigh) / safeHigh) * 100
+  const combinedPct = (Math.min(combinedTotal, safeHigh) / safeHigh) * 100
+  let ghostPct = Math.max(combinedPct - existingPct, 0)
+
+  const MIN_GHOST_PCT = 8
+  if (hasGhost && ghostPct === 0 && existingPct >= 100) {
+    ghostPct = MIN_GHOST_PCT
+    existingPct = 100 - MIN_GHOST_PCT
+  }
 
   return (
     <div ref={ref} className="relative">
@@ -75,14 +84,9 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
             <span className="font-semibold text-zinc-900 dark:text-zinc-50">
               {existingTotal} points from {existingRows.length} lessons (±3-day window)
             </span>
-            <button
-              type="button"
-              onClick={() => setOpen(false)}
-              aria-label="Close"
-              className="shrink-0 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300"
-            >
+            <Button variant="ghost" onClick={() => setOpen(false)} aria-label="Close" className="shrink-0 px-3 py-1">
               ×
-            </button>
+            </Button>
           </div>
           {existingRows.length === 0 ? (
             <p className="text-zinc-500">No lessons in window</p>
