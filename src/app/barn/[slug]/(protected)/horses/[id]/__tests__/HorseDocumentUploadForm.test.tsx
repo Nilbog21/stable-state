@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { HorseDocumentUploadForm } from '../HorseDocumentUploadForm'
 
-const noop = async () => {}
+const noop = async () => ({ error: null })
 
 describe('HorseDocumentUploadForm', () => {
   it('should_render_upload_button', () => {
@@ -115,5 +115,12 @@ describe('HorseDocumentUploadForm', () => {
     fireEvent.change(fileInput)
     fireEvent.submit(screen.getByRole('button', { name: /upload/i }).closest('form')!)
     expect(screen.queryByText('upload.pdf')).toBeNull()
+  })
+
+  it('should_show_error_message_when_action_returns_error', async () => {
+    const failingAction = async () => ({ error: 'storage upload failed' })
+    render(<HorseDocumentUploadForm action={failingAction} />)
+    fireEvent.submit(screen.getByRole('button', { name: /upload/i }).closest('form')!)
+    expect(await screen.findByText('storage upload failed')).toBeDefined()
   })
 })

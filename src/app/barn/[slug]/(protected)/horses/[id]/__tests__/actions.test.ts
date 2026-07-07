@@ -228,6 +228,12 @@ describe('uploadHorseDocumentAction', () => {
     expect(createDocument).toHaveBeenCalled()
   })
 
+  it('should_return_null_error_on_success', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result).toEqual({ error: null })
+  })
+
   it('should_upload_document_as_trainer', async () => {
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-trn' } as any,
@@ -242,24 +248,28 @@ describe('uploadHorseDocumentAction', () => {
   it('should_reject_file_larger_than_5mb', async () => {
     const bigFile = new File([new Uint8Array(6 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     const fd = makeUploadFormData(bigFile, 'coggins')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/5 MB/)
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toMatch(/5 MB/)
   })
 
   it('should_reject_unsupported_mime_type', async () => {
     const file = new File([new Uint8Array(100)], 'bad.exe', { type: 'application/octet-stream' })
     const fd = makeUploadFormData(file, 'coggins')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/Unsupported/)
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toMatch(/Unsupported/)
   })
 
   it('should_reject_unsupported_extension', async () => {
     const file = new File([new Uint8Array(100)], 'bad.exe', { type: 'application/pdf' })
     const fd = makeUploadFormData(file, 'coggins')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/Unsupported/)
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toMatch(/Unsupported/)
   })
 
   it('should_reject_invalid_record_type', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'not_a_valid_type')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/Invalid/)
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toMatch(/Invalid/)
   })
 
   it('should_accept_other_as_valid_horse_record_type', async () => {
@@ -271,13 +281,22 @@ describe('uploadHorseDocumentAction', () => {
   it('should_reject_when_no_file_provided', async () => {
     const fd = new FormData()
     fd.set('record_type', 'coggins')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/No file/)
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toMatch(/No file/)
   })
 
   it('should_reject_file_with_no_extension', async () => {
     const file = new File([new Uint8Array(100)], 'coggins', { type: 'application/pdf' })
     const fd = makeUploadFormData(file, 'coggins')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow(/Unsupported/)
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toMatch(/Unsupported/)
+  })
+
+  it('should_return_error_when_storage_upload_fails', async () => {
+    vi.mocked(uploadFile).mockRejectedValue(new Error('storage upload failed'))
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toBe('storage upload failed')
   })
 
   it('should_pass_null_notes_when_notes_field_is_absent', async () => {
@@ -293,7 +312,8 @@ describe('uploadHorseDocumentAction', () => {
   it('should_rollback_storage_on_db_error', async () => {
     vi.mocked(createDocument).mockRejectedValue(new Error('db error'))
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', fd)).rejects.toThrow('db error')
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toBe('db error')
     expect(removeFile).toHaveBeenCalled()
   })
 

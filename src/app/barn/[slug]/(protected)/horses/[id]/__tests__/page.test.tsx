@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockHorse } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
@@ -22,7 +22,11 @@ vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
 }))
 vi.mock('../HorseDocumentUploadForm', () => ({
-  HorseDocumentUploadForm: () => <div data-testid="horse-document-upload-form" />,
+  HorseDocumentUploadForm: ({ action }: { action: (formData: FormData) => Promise<void> }) => (
+    <div data-testid="horse-document-upload-form">
+      <button onClick={() => action(new FormData())}>trigger-upload</button>
+    </div>
+  ),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -33,6 +37,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
+import { uploadHorseDocumentAction } from '../actions'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -261,5 +266,13 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('check annually')).toBeDefined()
+  })
+
+  it('should_call_uploadHorseDocumentAction_when_upload_form_submits', async () => {
+    vi.mocked(uploadHorseDocumentAction).mockResolvedValue({ error: null })
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    fireEvent.click(screen.getByRole('button', { name: 'trigger-upload' }))
+    expect(uploadHorseDocumentAction).toHaveBeenCalledWith('green-acres', 'horse-1', expect.any(FormData))
   })
 })
