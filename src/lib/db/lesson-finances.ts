@@ -31,6 +31,9 @@ import type {
 } from './types'
 
 export const NON_LESSON_INCOME_LABEL = 'Non-lesson income'
+export const NO_INSTRUCTOR_LABEL = 'No instructor'
+export const NO_HORSE_LABEL = 'No horse'
+export const NO_RIDER_LABEL = 'No rider'
 
 export function mergeOutstandingItems(lessons: OutstandingLesson[], charges: OutstandingCharge[]): OutstandingItem[] {
   const lessonItems: OutstandingItem[] = lessons.map((l) => ({
@@ -171,14 +174,21 @@ export async function getHorseIncomeSummary(
   ])
 
   const incomeMap = new Map<string, number>()
+  let noHorseCount = 0
+  let noHorseTotal = 0
 
   if (lessons.length) {
     const lessonIds = lessons.map((l) => l.id)
     const lessonHorses = await getLessonHorsesForLessons(supabase, barnId, lessonIds)
     for (const lesson of lessons) {
       const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
-      if (!participants.length) continue
-      const split = (lesson.fee - instructorCut) / participants.length
+      const netFee = lesson.fee - instructorCut
+      if (!participants.length) {
+        noHorseCount += 1
+        noHorseTotal += netFee
+        continue
+      }
+      const split = netFee / participants.length
       for (const { horse_id } of participants) {
         incomeMap.set(horse_id, (incomeMap.get(horse_id) ?? 0) + split)
       }
@@ -189,18 +199,24 @@ export async function getHorseIncomeSummary(
     incomeMap.set(charge.horseId, (incomeMap.get(charge.horseId) ?? 0) + charge.fee)
   }
 
-  if (!incomeMap.size) return []
+  if (!incomeMap.size && noHorseCount === 0) return []
 
   const horseIds = [...incomeMap.keys()]
   const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
 
-  return Array.from(incomeMap.entries())
+  const rows = Array.from(incomeMap.entries())
     .map(([horseId, totalIncome]) => ({
       horseId,
       horseName: horseNameMap.get(horseId) ?? horseId,
       totalIncome,
     }))
     .sort((a, b) => b.totalIncome - a.totalIncome)
+
+  if (noHorseCount > 0) {
+    rows.push({ horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: noHorseTotal })
+  }
+
+  return rows
 }
 
 export async function getRiderIncomeSummary(
@@ -217,14 +233,21 @@ export async function getRiderIncomeSummary(
   ])
 
   const incomeMap = new Map<string, number>()
+  let noRiderCount = 0
+  let noRiderTotal = 0
 
   if (lessons.length) {
     const lessonIds = lessons.map((l) => l.id)
     const lessonRiders = await getLessonRidersForLessons(supabase, barnId, lessonIds)
     for (const lesson of lessons) {
       const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
-      if (!participants.length) continue
-      const split = (lesson.fee - instructorCut) / participants.length
+      const netFee = lesson.fee - instructorCut
+      if (!participants.length) {
+        noRiderCount += 1
+        noRiderTotal += netFee
+        continue
+      }
+      const split = netFee / participants.length
       for (const { rider_id } of participants) {
         incomeMap.set(rider_id, (incomeMap.get(rider_id) ?? 0) + split)
       }
@@ -235,18 +258,24 @@ export async function getRiderIncomeSummary(
     incomeMap.set(charge.riderId, (incomeMap.get(charge.riderId) ?? 0) + charge.fee)
   }
 
-  if (!incomeMap.size) return []
+  if (!incomeMap.size && noRiderCount === 0) return []
 
   const riderIds = [...incomeMap.keys()]
   const memberNameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
-  return Array.from(incomeMap.entries())
+  const rows = Array.from(incomeMap.entries())
     .map(([riderId, totalIncome]) => ({
       riderId,
       riderName: memberNameMap.get(riderId) ?? riderId,
       totalIncome,
     }))
     .sort((a, b) => b.totalIncome - a.totalIncome)
+
+  if (noRiderCount > 0) {
+    rows.push({ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: noRiderTotal })
+  }
+
+  return rows
 }
 
 export async function getTrainerIncomeSummary(
@@ -265,6 +294,7 @@ export async function getTrainerIncomeSummary(
   const collected = lessons.filter(
     (l): l is { instructor_id: string; fee: number } => l.instructor_id !== null
   )
+  const noInstructor = lessons.filter((l) => l.instructor_id === null)
 
   let result: TrainerIncomeSummary[] = []
 
@@ -284,6 +314,11 @@ export async function getTrainerIncomeSummary(
         totalIncome,
       }))
       .sort((a, b) => b.totalIncome - a.totalIncome)
+  }
+
+  if (noInstructor.length) {
+    const noInstructorTotal = noInstructor.reduce((sum, l) => sum + (l.fee - instructorCut), 0)
+    result.push({ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: noInstructorTotal })
   }
 
   const chargesCollected = charges.filter((c) => c.payment_type !== null).reduce((sum, c) => sum + c.fee, 0)

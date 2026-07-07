@@ -31,7 +31,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary } from '@/lib/db/expenses'
 import FinancesPage from '../page'
@@ -929,6 +929,47 @@ describe('FinancesPage', () => {
     render(jsx)
     const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')
     expect(row?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_render_no_instructor_row_with_info_popover_on_trainer_tab', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NO_INSTRUCTOR_LABEL).closest('tr')
+    expect(row?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_render_no_horse_row_as_plain_text_with_info_popover_on_horse_tab', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 80 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NO_HORSE_LABEL).closest('tr')!
+    expect(within(row).queryByRole('link')).toBeNull()
+    expect(row.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_render_no_rider_row_as_plain_text_with_info_popover_on_rider_tab', async () => {
+    vi.mocked(getRiderIncomeSummary).mockResolvedValue([
+      { riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 80 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NO_RIDER_LABEL).closest('tr')!
+    expect(within(row).queryByRole('link')).toBeNull()
+    expect(row.querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
   it('should_show_dash_for_custom_tier_price', async () => {
