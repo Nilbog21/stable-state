@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getMembershipById } from '@/lib/db/barn-memberships'
-import { getProfileByUserId } from '@/lib/db/profiles'
+import { getProfileById } from '@/lib/db/profiles'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementForRider } from '@/lib/db/agreements'
@@ -13,7 +13,7 @@ import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction } from './actions'
-import type { TrainerDocument, RiderDocument, Agreement } from '@/lib/db/types'
+import type { TrainerDocument, RiderDocument, Agreement, Profile } from '@/lib/db/types'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   instructor_contract: 'Instructor Contract',
@@ -25,6 +25,30 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
 
 function formatFee(fee: number): string {
   return fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+}
+
+function ContactInfo({ profile }: { profile: Profile | null }) {
+  return (
+    <section className="mb-10">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Contact Info
+      </h2>
+      <dl className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+        <div>
+          <dt className="inline text-zinc-500 dark:text-zinc-400">Phone: </dt>
+          <dd className="inline">{profile?.phone ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="inline text-zinc-500 dark:text-zinc-400">Emergency Contact Name: </dt>
+          <dd className="inline">{profile?.emergency_contact_name ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="inline text-zinc-500 dark:text-zinc-400">Emergency Contact Phone: </dt>
+          <dd className="inline">{profile?.emergency_contact_phone ?? '—'}</dd>
+        </div>
+      </dl>
+    </section>
+  )
 }
 
 function BoardingStatus({ slug, agreement }: { slug: string; agreement: Agreement | null }) {
@@ -99,19 +123,23 @@ export default async function MemberDetailPage({
     boardingAgreement = await getActiveAgreementForRider(barn.id, targetMembership.id, 'board')
   }
 
+  const targetProfile = await getProfileById(targetMembership.profile_id)
+  const displayName = targetProfile
+    ? `${targetProfile.first_name} ${targetProfile.last_name}`
+    : targetMembership.id
+
   if (!targetMembership.user_id) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
+        <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {displayName}
+        </h1>
         {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
+        <ContactInfo profile={targetProfile} />
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>
       </main>
     )
   }
-
-  const targetProfile = await getProfileByUserId(targetMembership.user_id)
-  const displayName = targetProfile
-    ? `${targetProfile.first_name} ${targetProfile.last_name}`
-    : targetMembership.user_id
 
   type DocWithUrl = { doc: TrainerDocument | RiderDocument; signedUrl: string }
   let docsWithUrls: DocWithUrl[] = []
@@ -140,6 +168,8 @@ export default async function MemberDetailPage({
       </h1>
 
       {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
+
+      <ContactInfo profile={targetProfile} />
 
       <section className="mb-10">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">

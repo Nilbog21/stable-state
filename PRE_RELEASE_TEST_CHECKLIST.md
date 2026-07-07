@@ -136,6 +136,8 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 - [ ] "You" card plus Managers (Morgan, own entry excluded), Trainers, and Riders sections all render
 - [ ] `/barn/dev-barn/riders` redirects to `/barn/dev-barn/members`
+- [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
+- [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section still shows "No account linked — documents unavailable"
 - [ ] Open a trainer's member detail page → upload a document → it lists with a working link → delete it
 - [ ] On that same document, edit the Reminder Date inline (tap the field, set a date, tap away) → it saves
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
