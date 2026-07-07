@@ -10,7 +10,7 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee, setInstructorCut } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds } from '@/lib/db/barns'
 
 function parsePrice(raw: string | null): number | null {
   if (!raw || raw.trim() === '') return null
@@ -121,5 +121,29 @@ export async function updateInstructorCutAction(barnSlug: string, formData: Form
   if (value === null) return
 
   await setInstructorCut(barn.id, value)
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+function parseNonNegativeInt(raw: string | null): number | null {
+  if (raw === null || !/^\d+$/.test(raw.trim())) return null
+  return parseInt(raw, 10)
+}
+
+export async function updateExhaustionThresholdsAction(
+  barnSlug: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const moderate = parseNonNegativeInt(formData.get('moderate') as string | null)
+  const high = parseNonNegativeInt(formData.get('high') as string | null)
+  if (moderate === null || high === null) return { error: 'Thresholds must be numbers ≥ 0' }
+
+  if (moderate >= high) {
+    return { error: 'Moderate threshold must be less than high threshold' }
+  }
+
+  await updateExhaustionThresholds(barn.id, { moderate, high })
   redirect(`/barn/${barnSlug}/settings`)
 }

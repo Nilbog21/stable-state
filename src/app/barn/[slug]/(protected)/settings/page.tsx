@@ -14,9 +14,14 @@ import {
   rejectMembershipAction,
   removeMembershipAction,
 } from '../approvals/actions'
-import { updateDefaultBoardFeeAction, updateInstructorCutAction } from './actions'
+import {
+  updateDefaultBoardFeeAction,
+  updateInstructorCutAction,
+  updateExhaustionThresholdsAction,
+} from './actions'
 import { Button } from '@/components/ui/Button'
 import InviteLink from './InviteLink'
+import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
 function profileName(profiles: Profile[], userId: string | null): string {
@@ -214,6 +219,19 @@ export default async function SettingsPage({
         </form>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Changing this recalculates all historical collected and pending income.
+        </p>
+      </section>
+
+      <section className="mb-12">
+        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Horse Exhaustion Thresholds
+        </h2>
+        <ExhaustionThresholdsForm
+          barn={barn}
+          action={updateExhaustionThresholdsAction.bind(null, slug)}
+        />
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          Default exertion-sum thresholds used when a horse has no per-horse override.
         </p>
       </section>
 

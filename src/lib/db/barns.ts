@@ -37,3 +37,23 @@ export async function setInstructorCut(barnId: string, value: number, client?: S
   const { error } = await supabase.rpc('set_instructor_cut', { p_barn_id: barnId, p_value: value })
   if (error) throw error
 }
+
+export async function updateExhaustionThresholds(
+  barnId: string,
+  updates: { moderate: number; high: number },
+  client?: SupabaseClient
+): Promise<Barn> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('barns')
+    .update({
+      exhaustion_threshold_moderate: updates.moderate,
+      exhaustion_threshold_high: updates.high,
+    })
+    .eq('id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
