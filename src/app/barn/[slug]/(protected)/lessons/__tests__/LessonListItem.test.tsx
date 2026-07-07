@@ -17,6 +17,7 @@ const baseLesson = {
   tier_name: 'Custom',
   cancelled_at: null,
   cancellation_notes: null,
+  series_id: null,
 }
 
 const normalLesson = {

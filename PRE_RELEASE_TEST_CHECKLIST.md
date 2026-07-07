@@ -87,6 +87,7 @@ Future:
 - [ ] Lesson 8: next week, Premium Tier, trainer Blake, rider Emery, horse Eclipse
 - [ ] Daisy (Unavailable) appears **disabled** in the horse picker while creating lessons
 - [ ] Try saving a lesson with a blank fee (Custom tier) — rejected with "fee is required"; in edit mode, blank fee is rejected too
+- [ ] Lesson 9: check **Recurring (weekly)**, Beginner tier, trainer Alex, rider Dana, horse Apple — saves successfully; the checkbox does not appear when editing this (or any) lesson
 
 ## Phase 4 — Manager verification
 

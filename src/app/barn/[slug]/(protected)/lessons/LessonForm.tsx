@@ -88,6 +88,7 @@ export function LessonForm({
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
+  const [isRecurring, setIsRecurring] = useState(false)
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
 
@@ -292,6 +293,20 @@ export function LessonForm({
         />
         Jumping
       </label>
+
+      {mode === 'new' && (
+        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+          <input
+            type="checkbox"
+            aria-label="Recurring (weekly)"
+            checked={isRecurring}
+            onChange={e => setIsRecurring(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600"
+          />
+          Recurring (weekly)
+          <input type="hidden" name="is_recurring" value={isRecurring ? 'true' : 'false'} />
+        </label>
+      )}
 
       {isManager ? (
         <div className="flex flex-col gap-1">

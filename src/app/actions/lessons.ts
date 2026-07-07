@@ -3,6 +3,7 @@
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
+import { createLessonSeries } from '@/lib/db/lesson-series'
 import type { PaymentType } from '@/lib/db/types'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
@@ -36,6 +37,7 @@ export async function submitLesson(
   const jumping = formData.get('jumping') === 'true'
   const paymentTypeRaw = (formData.get('payment_type') as string | null) || null
   const paymentType = paymentTypeRaw as PaymentType | null
+  const isRecurring = formData.get('is_recurring') === 'true'
 
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
@@ -95,7 +97,8 @@ export async function submitLesson(
       exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
-    await createLessonWithParticipants({
+    const createLesson = isRecurring ? createLessonSeries : createLessonWithParticipants
+    await createLesson({
       barnId,
       instructorId,
       fee,

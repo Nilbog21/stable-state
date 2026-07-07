@@ -40,6 +40,7 @@ const mockLesson = {
   tier_name: 'Custom',
   cancelled_at: null,
   cancellation_notes: null,
+  series_id: null,
   instructor_name: 'Jane Smith',
   lesson_horses: [],
   lesson_riders: [

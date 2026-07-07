@@ -54,6 +54,7 @@ const mockLesson = {
   tier_name: 'Custom',
   cancelled_at: null,
   cancellation_notes: null,
+  series_id: null,
   instructor_name: 'John Doe',
   horse_names: ['Thunderbolt'],
   horse_ids: ['horse-1'],

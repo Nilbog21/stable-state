@@ -87,6 +87,22 @@ export interface Lesson {
   tier_name: string
   cancelled_at: string | null
   cancellation_notes: string | null
+  series_id: string | null
+}
+
+export interface LessonSeries {
+  id: string
+  barn_id: string
+  instructor_id: string | null
+  fee: number
+  lesson_type: LessonType
+  jumping: boolean
+  tier_name: string
+  horse_ids: string[]
+  exertion_levels: number[]
+  rider_ids: string[]
+  is_active: boolean
+  created_at: string
 }
 
 export interface LessonWithDetails extends Lesson {

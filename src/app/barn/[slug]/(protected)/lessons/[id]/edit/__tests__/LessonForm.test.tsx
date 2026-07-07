@@ -51,6 +51,11 @@ const baseProps = {
 }
 
 describe('LessonForm (edit mode)', () => {
+  it('should_not_render_recurring_checkbox', () => {
+    render(<LessonForm {...baseProps} />)
+    expect(screen.queryByRole('checkbox', { name: /recurring/i })).toBeNull()
+  })
+
   it('should_initialize_lesson_type_toggle_to_normal', () => {
     const { container } = render(<LessonForm {...baseProps} />)
     const hidden = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
