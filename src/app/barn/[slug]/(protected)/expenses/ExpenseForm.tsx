@@ -4,12 +4,24 @@ import { useActionState, useState } from 'react'
 import { getMostCommonExpenseTypeAction, type ExpenseFormState } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
 
+type ExpenseFormInitial = {
+  recipient: string
+  expenseType: string
+  expenseTime: string | null
+  amount: number | null
+  notes: string | null
+  appliesToAllHorses: boolean
+  horseIds: string[]
+}
+
 type ExpenseFormProps = {
   barnSlug: string
   horses: { id: string; name: string }[]
   recentRecipients: string[]
   recentExpenseTypes: string[]
   defaultDate?: string
+  initial?: ExpenseFormInitial
+  submitLabel?: string
   onSave: (state: ExpenseFormState, fd: FormData) => Promise<ExpenseFormState>
 }
 
@@ -22,14 +34,16 @@ export function ExpenseForm({
   recentRecipients,
   recentExpenseTypes,
   defaultDate,
+  initial,
+  submitLabel = 'Add Expense',
   onSave,
 }: ExpenseFormProps) {
   const [state, formAction] = useActionState(onSave, { error: null })
-  const [recipient, setRecipient] = useState('')
+  const [recipient, setRecipient] = useState(initial?.recipient ?? '')
   const [lastCheckedRecipient, setLastCheckedRecipient] = useState('')
-  const [expenseType, setExpenseType] = useState('')
-  const [appliesToAllHorses, setAppliesToAllHorses] = useState(false)
-  const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set())
+  const [expenseType, setExpenseType] = useState(initial?.expenseType ?? '')
+  const [appliesToAllHorses, setAppliesToAllHorses] = useState(initial?.appliesToAllHorses ?? false)
+  const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set(initial?.horseIds ?? []))
   const [typeFlashing, setTypeFlashing] = useState(false)
 
   async function handleRecipientBlur() {
@@ -110,7 +124,13 @@ export function ExpenseForm({
         <label htmlFor="expense-time" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
           Time <span className="font-normal text-zinc-500">(optional — presence signals a planned visit)</span>
         </label>
-        <input id="expense-time" name="expense_time" type="time" className={inputClassName} />
+        <input
+          id="expense-time"
+          name="expense_time"
+          type="time"
+          defaultValue={initial?.expenseTime ?? undefined}
+          className={inputClassName}
+        />
       </div>
 
       <div>
@@ -123,6 +143,7 @@ export function ExpenseForm({
           type="number"
           step="0.01"
           min="0"
+          defaultValue={initial?.amount ?? undefined}
           className={inputClassName}
         />
       </div>
@@ -174,11 +195,12 @@ export function ExpenseForm({
           id="expense-notes"
           name="notes"
           rows={3}
+          defaultValue={initial?.notes ?? undefined}
           className={inputClassName}
         />
       </div>
 
-      <Button type="submit">Add Expense</Button>
+      <Button type="submit">{submitLabel}</Button>
     </form>
   )
 }
