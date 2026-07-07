@@ -39,8 +39,8 @@ Tap the bell icon in the nav bar to view your notifications.
 
 Go to **Horses** to see horses grouped into two sections:
 
-- **Available** — horses in active rotation, sorted by total exertion (7d) ascending. Each card shows name, total exertion, lesson count, and jumping count for the last 7 days.
-- **Unavailable** — horses temporarily out of rotation; each card shows the horse name and the reason entered by your barn manager.
+- **Available** — horses in active rotation, sorted by total exertion (7d) ascending. Each card shows the name and an exhaustion bar reflecting exertion from lessons within 3 days of today; tap the bar to see the individual lessons behind it.
+- **Unavailable** — horses temporarily out of rotation; each card shows the horse name, the reason entered by your barn manager, and the same exhaustion bar.
 
 Tap any card to open the horse's detail page for full availability details and documents. The **Documents** section shows uploaded files in a table with columns **Type**, **Notes**, **Link**, **Reminder Date**, and **Action**. Tap a filename in the **Link** column to open the document (link is valid for 5 minutes). The **Reminder Date** column is read-only for you — only your barn manager can change it after upload. A **Reminder Due** badge appears next to the date once it's arrived. To upload a new file, tap **Choose File** in the Upload Document form, select a file (the filename appears next to the button once chosen), add optional notes, optionally set an **Expiration reminder date**, and tap **Upload**. Accepted types: PDF, JPG, PNG, DOCX (max 5 MB). Document types: **Insurance Binder**, **Coggins**, **Shot Record**, **Contract**, **Other**.
 

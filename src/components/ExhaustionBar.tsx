@@ -1,6 +1,6 @@
 'use client'
 import { useEffect, useRef, useState } from 'react'
-import { getExhaustionBand, type ExhaustionBand } from '@/lib/db/horses'
+import { getExhaustionBand, type ExhaustionBand } from '@/lib/exhaustion-band'
 import { Button } from '@/components/ui/Button'
 
 export interface ExhaustionBarRow {
@@ -62,7 +62,11 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
     <div ref={ref} className="relative">
       <button
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={(e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          setOpen((o) => !o)
+        }}
         aria-expanded={open}
         aria-label={`Exhaustion: ${existingTotal} points from ${existingRows.length} lessons`}
         className="block w-full py-2"
@@ -84,7 +88,16 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
             <span className="font-semibold text-zinc-900 dark:text-zinc-50">
               {existingTotal} points from {existingRows.length} lessons (±3-day window)
             </span>
-            <Button variant="ghost" onClick={() => setOpen(false)} aria-label="Close" className="shrink-0 px-3 py-1">
+            <Button
+              variant="ghost"
+              onClick={(e) => {
+                e.preventDefault()
+                e.stopPropagation()
+                setOpen(false)
+              }}
+              aria-label="Close"
+              className="shrink-0 px-3 py-1"
+            >
               ×
             </Button>
           </div>
