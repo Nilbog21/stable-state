@@ -3,7 +3,7 @@
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
-import { createLessonSeries } from '@/lib/db/lesson-series'
+import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import type { PaymentType } from '@/lib/db/types'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
@@ -394,4 +394,25 @@ export async function updatePaymentTypeAction(
   }
 
   return { error: null }
+}
+
+export async function stopLessonSeriesAction(barnSlug: string, lessonId: string, seriesId: string): Promise<void> {
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+
+  const series = await getSeriesById(seriesId, barn.id)
+  const redirectPath = `/barn/${barnSlug}/lessons/${lessonId}/edit`
+
+  if (!series) {
+    redirect(redirectPath)
+    return
+  }
+
+  if (membership.role === 'trainer' && series.instructor_id !== membership.id) {
+    redirect(redirectPath)
+    return
+  }
+
+  await stopLessonSeries(seriesId, barn.id)
+
+  redirect(redirectPath)
 }

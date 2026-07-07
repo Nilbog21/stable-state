@@ -5,8 +5,10 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
-import { updateLessonAction } from '@/app/actions/lessons'
+import { getSeriesById } from '@/lib/db/lesson-series'
+import { updateLessonAction, stopLessonSeriesAction } from '@/app/actions/lessons'
 import { LessonForm } from '../../LessonForm'
+import { StopSeriesButton } from '../../StopSeriesButton'
 
 export default async function EditLessonPage({
   params,
@@ -39,6 +41,10 @@ export default async function EditLessonPage({
   if (!lesson) notFound()
   if (membership.role === 'trainer' && lesson.instructor_id !== membership.id) notFound()
   const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
+
+  const series = lesson.series_id ? await getSeriesById(lesson.series_id, barn.id) : null
+  const canStopSeries = membership.role === 'manager' || series?.instructor_id === membership.id
+  const stopSeries = series && canStopSeries ? stopLessonSeriesAction.bind(null, slug, lesson.id, series.id) : null
 
   const instructors = lesson.instructor_id && instructorList.every((i) => i.membershipId !== lesson.instructor_id)
     ? [{ membershipId: lesson.instructor_id, userId: null, name: 'Former Instructor' }, ...instructorList]
@@ -90,6 +96,12 @@ export default async function EditLessonPage({
         action={update}
         initialNotes={initialNotes}
       />
+      {series?.is_active && stopSeries && (
+        <div className="flex w-full max-w-sm flex-col gap-3">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">This is part of a recurring series</p>
+          <StopSeriesButton action={stopSeries} />
+        </div>
+      )}
     </main>
   )
 }
