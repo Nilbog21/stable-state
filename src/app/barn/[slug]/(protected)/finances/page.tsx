@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, NON_LESSON_INCOME_LABEL } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary } from '@/lib/db/expenses'
 import { formatCurrency } from '@/lib/format-currency'
@@ -329,12 +329,19 @@ export default async function FinancesPage({
                 {horseRows.map((row) => (
                   <tr key={row.horseId}>
                     <Td>
-                      <Link
-                        href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                        className="hover:underline"
-                      >
-                        {row.horseName}
-                      </Link>
+                      {row.horseId === NO_HORSE_LABEL ? (
+                        <>
+                          {row.horseName}
+                          <InfoPopover text="Paid lessons with no horse recorded" align="left" />
+                        </>
+                      ) : (
+                        <Link
+                          href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
+                          className="hover:underline"
+                        >
+                          {row.horseName}
+                        </Link>
+                      )}
                     </Td>
                     <Td>{formatCurrency(row.income)}</Td>
                     <Td>{formatCurrency(row.expenses)}</Td>
@@ -362,12 +369,19 @@ export default async function FinancesPage({
               {riderIncome.map((row) => (
                 <tr key={row.riderId} className="border-b border-zinc-100 dark:border-zinc-800">
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                    <Link
-                      href={`/barn/${slug}/finances/riders/${row.riderId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                      className="hover:underline"
-                    >
-                      {row.riderName}
-                    </Link>
+                    {row.riderId === NO_RIDER_LABEL ? (
+                      <>
+                        {row.riderName}
+                        <InfoPopover text="Paid lessons with no rider recorded" align="left" />
+                      </>
+                    ) : (
+                      <Link
+                        href={`/barn/${slug}/finances/riders/${row.riderId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
+                        className="hover:underline"
+                      >
+                        {row.riderName}
+                      </Link>
+                    )}
                   </td>
                   <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
                     {formatCurrency(row.totalIncome)}
@@ -396,6 +410,7 @@ export default async function FinancesPage({
                   <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
                     {row.trainerName}
                     {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
+                    {row.trainerId === NO_INSTRUCTOR_LABEL && <InfoPopover text="Lessons whose instructor was removed from the barn" align="left" />}
                   </td>
                   <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
                     {formatCurrency(row.totalIncome)}
