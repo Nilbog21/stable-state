@@ -262,7 +262,7 @@ describe('UpcomingLessonsSections', () => {
     expect(screen.getByTestId('upcoming-expense-card').getAttribute('data-slug')).toBe('green-acres')
   })
 
-  it('should_bucket_this_week_expense_outside_today_section', () => {
+  it('should_render_this_week_heading_for_future_expense', () => {
     const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
     render(
       <UpcomingLessonsSections
@@ -273,6 +273,18 @@ describe('UpcomingLessonsSections', () => {
       />
     )
     expect(screen.getByRole('heading', { name: 'This Week' })).toBeDefined()
+  })
+
+  it('should_not_render_today_heading_for_future_expense', () => {
+    const future = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000)
+    render(
+      <UpcomingLessonsSections
+        lessons={[]}
+        expenses={[makeExpense({ id: 'expense-1', expense_date: localDateString(future) })]}
+        role="manager"
+        slug="green-acres"
+      />
+    )
     expect(screen.queryByRole('heading', { name: 'Today' })).toBeNull()
   })
 

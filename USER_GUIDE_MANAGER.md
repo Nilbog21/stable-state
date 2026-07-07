@@ -6,7 +6,7 @@ Stable State is a barn management app for scheduling lessons, tracking horses an
 
 ## Dashboard
 
-Go to **Dashboard** to see your upcoming lessons for the next 7 days (lessons where you are the instructor).
+Go to **Dashboard** to see your **Barn Schedule** — upcoming lessons (where you are the instructor) and upcoming scheduled expenses (planned expenses with a date and time but no amount entered yet, like a vet visit) for the next 7 days, interleaved together in order and split into "Today" and "This Week". Tap an expense entry to open its detail page.
 
 ## Horses
 

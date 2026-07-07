@@ -707,6 +707,31 @@ describe('getUpcomingScheduledExpenses', () => {
     expect(result).toEqual([])
   })
 
+  it('should_defensively_exclude_row_with_null_expense_time', async () => {
+    const expense = createMockHorseExpense({ expense_date: '2026-07-03', expense_time: null })
+    const { select } = makeChain([expense])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getUpcomingScheduledExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_break_combined_datetime_ties_by_created_at', async () => {
+    const older = createMockHorseExpense({ id: 'expense-older', expense_date: '2026-07-03', expense_time: '10:00:00', created_at: '2026-07-01T00:00:00.000Z' })
+    const newer = createMockHorseExpense({ id: 'expense-newer', expense_date: '2026-07-03', expense_time: '10:00:00', created_at: '2026-07-02T00:00:00.000Z' })
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horse_expenses') return makeChain([newer, older])
+      if (table === 'expense_horses') return makeJunctionChain([])
+      return makeNamesChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getUpcomingScheduledExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
+
+    expect(result.map((r) => r.id)).toEqual(['expense-older', 'expense-newer'])
+  })
+
   it('should_sort_ascending_by_combined_datetime', async () => {
     const later = createMockHorseExpense({ id: 'expense-2', expense_date: '2026-07-05', expense_time: '10:00:00' })
     const earlier = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-02', expense_time: '09:00:00' })

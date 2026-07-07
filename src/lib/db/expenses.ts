@@ -180,12 +180,13 @@ export async function getUpcomingScheduledExpenses(barnId: string, from: string,
   const toTime = new Date(to).getTime()
 
   const expenses = ((data ?? []) as ScheduledExpense[])
+    .filter((expense) => expense.expense_time !== null)
     .map((expense) => ({
       expense,
       combined: new Date(`${expense.expense_date}T${expense.expense_time}Z`).getTime(),
     }))
     .filter(({ combined }) => combined >= fromTime && combined < toTime)
-    .sort((a, b) => a.combined - b.combined)
+    .sort((a, b) => a.combined - b.combined || a.expense.created_at.localeCompare(b.expense.created_at))
     .map(({ expense }) => expense)
 
   if (!expenses.length) return []

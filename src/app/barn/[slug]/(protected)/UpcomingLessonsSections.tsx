@@ -72,10 +72,10 @@ export function UpcomingLessonsSections({
   }
 
   // Server (SSR) and client hydration can compute `now` in different timezones,
-  // so a lesson right at the day boundary could theoretically land in a
-  // different section between renders. Same accepted tradeoff as the
-  // suppressHydrationWarning text mismatch in UpcomingLessonCard, just
-  // structural instead of textual here; React recovers by re-rendering
+  // so a lesson or expense right at the day boundary could theoretically land
+  // in a different section between renders. Same accepted tradeoff as the
+  // suppressHydrationWarning text mismatch in UpcomingLessonCard/UpcomingExpenseCard,
+  // just structural instead of textual here; React recovers by re-rendering
   // client-side, so this stays synchronous rather than deferring to a
   // post-mount effect (which would flash the section layout on every load).
   const now = new Date()
