@@ -44,15 +44,23 @@ describe('HorseExhaustionThresholdsForm', () => {
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('6')
   })
 
-  it('should_disable_number_inputs_when_toggle_is_checked', () => {
+  it('should_disable_moderate_input_when_toggle_is_checked', () => {
     render(<HorseExhaustionThresholdsForm horse={defaultsHorse} barn={mockBarn} action={mockAction} />)
     expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).disabled).toBe(true)
+  })
+
+  it('should_disable_high_input_when_toggle_is_checked', () => {
+    render(<HorseExhaustionThresholdsForm horse={defaultsHorse} barn={mockBarn} action={mockAction} />)
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).disabled).toBe(true)
   })
 
-  it('should_enable_number_inputs_when_toggle_is_unchecked', () => {
+  it('should_enable_moderate_input_when_toggle_is_unchecked', () => {
     render(<HorseExhaustionThresholdsForm horse={customHorse} barn={mockBarn} action={mockAction} />)
     expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).disabled).toBe(false)
+  })
+
+  it('should_enable_high_input_when_toggle_is_unchecked', () => {
+    render(<HorseExhaustionThresholdsForm horse={customHorse} barn={mockBarn} action={mockAction} />)
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).disabled).toBe(false)
   })
 

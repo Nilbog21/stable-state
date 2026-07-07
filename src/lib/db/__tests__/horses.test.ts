@@ -730,13 +730,21 @@ describe('updateHorseExhaustionThresholds', () => {
     })
   })
 
-  it('should_scope_update_to_horse_id_and_barn_id', async () => {
+  it('should_scope_update_to_horse_id', async () => {
     const chain = makeUpdateChain()
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
 
     await updateHorseExhaustionThresholds('horse-1', 'barn-1', { moderate: 4, high: 10 })
 
     expect(chain.mockEqId).toHaveBeenCalledWith('id', 'horse-1')
+  })
+
+  it('should_scope_update_to_barn_id', async () => {
+    const chain = makeUpdateChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await updateHorseExhaustionThresholds('horse-1', 'barn-1', { moderate: 4, high: 10 })
+
     expect(chain.mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 

@@ -52,7 +52,11 @@ export async function updateHorseExhaustionThresholdsAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   if (formData.get('use_barn_defaults') === 'true') {
-    await updateHorseExhaustionThresholds(horseId, barn.id, null)
+    try {
+      await updateHorseExhaustionThresholds(horseId, barn.id, null)
+    } catch (err) {
+      return { error: getErrorMessage(err) }
+    }
     revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
     return { error: null }
   }
@@ -65,7 +69,11 @@ export async function updateHorseExhaustionThresholdsAction(
     return { error: 'Moderate threshold must be less than high threshold' }
   }
 
-  await updateHorseExhaustionThresholds(horseId, barn.id, { moderate, high })
+  try {
+    await updateHorseExhaustionThresholds(horseId, barn.id, { moderate, high })
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
   return { error: null }
 }

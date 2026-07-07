@@ -204,6 +204,14 @@ describe('updateHorseExhaustionThresholdsAction', () => {
     expect(updateHorseExhaustionThresholds).toHaveBeenCalledWith('horse-1', mockBarn.id, null)
   })
 
+  it('should_return_error_when_reverting_to_barn_defaults_fails', async () => {
+    vi.mocked(updateHorseExhaustionThresholds).mockRejectedValue(new Error('db error'))
+    const fd = new FormData()
+    fd.set('use_barn_defaults', 'true')
+    const result = await updateHorseExhaustionThresholdsAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'db error' })
+  })
+
   it('should_return_no_error_when_use_barn_defaults_is_true', async () => {
     const fd = new FormData()
     fd.set('use_barn_defaults', 'true')
@@ -251,6 +259,22 @@ describe('updateHorseExhaustionThresholdsAction', () => {
     expect(result).toEqual({ error: 'Thresholds must be numbers ≥ 0' })
   })
 
+  it('should_return_error_when_moderate_has_trailing_non_digit_characters', async () => {
+    const fd = new FormData()
+    fd.set('moderate', '4abc')
+    fd.set('high', '10')
+    const result = await updateHorseExhaustionThresholdsAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'Thresholds must be numbers ≥ 0' })
+  })
+
+  it('should_return_error_when_high_is_a_decimal', async () => {
+    const fd = new FormData()
+    fd.set('moderate', '4')
+    fd.set('high', '10.5')
+    const result = await updateHorseExhaustionThresholdsAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'Thresholds must be numbers ≥ 0' })
+  })
+
   it('should_not_call_updateHorseExhaustionThresholds_when_parsing_fails', async () => {
     const fd = new FormData()
     fd.set('moderate', '')
@@ -281,6 +305,15 @@ describe('updateHorseExhaustionThresholdsAction', () => {
     fd.set('high', '10')
     await updateHorseExhaustionThresholdsAction('green-acres', 'horse-1', { error: null }, fd)
     expect(updateHorseExhaustionThresholds).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_setting_custom_thresholds_fails', async () => {
+    vi.mocked(updateHorseExhaustionThresholds).mockRejectedValue(new Error('db error'))
+    const fd = new FormData()
+    fd.set('moderate', '4')
+    fd.set('high', '10')
+    const result = await updateHorseExhaustionThresholdsAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'db error' })
   })
 })
 
