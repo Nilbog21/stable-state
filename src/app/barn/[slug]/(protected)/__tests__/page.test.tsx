@@ -9,6 +9,12 @@ vi.mock('../UpcomingLessonsSections', () => ({
   ),
 }))
 
+vi.mock('../DocumentRemindersSection', () => ({
+  DocumentRemindersSection: ({ slug, dueDocuments }: { slug: string; dueDocuments: { id: string }[] }) => (
+    <div data-testid="document-reminders" data-slug={slug} data-due-count={dueDocuments.length} />
+  ),
+}))
+
 vi.mock('@/lib/db/auth', () => ({
   getAuthenticatedUser: vi.fn(),
 }))
@@ -276,32 +282,20 @@ describe('BarnDashboardPage', () => {
     ownerId: 'horse-1',
   }
 
-  const mockDueMemberDoc = {
-    id: 'doc-2',
-    entity: 'trainer' as const,
-    recordType: 'instructor_contract',
-    fileName: 'contract.pdf',
-    reminderDate: '2026-02-01',
-    ownerName: 'Jane Trainer',
-    ownerId: 'mem-9',
-  }
-
-  it('should_render_document_reminders_section_when_due_documents_exist', async () => {
+  it('should_pass_due_documents_to_document_reminders_section', async () => {
     vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
 
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText(/document reminders/i)).toBeDefined()
+    expect(screen.getByTestId('document-reminders').getAttribute('data-due-count')).toBe('1')
   })
 
-  it('should_not_render_document_reminders_section_when_list_is_empty', async () => {
-    vi.mocked(getDueDocuments).mockResolvedValue([])
-
+  it('should_pass_slug_to_document_reminders_section', async () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.queryByText(/document reminders/i)).toBeNull()
+    expect(screen.getByTestId('document-reminders').getAttribute('data-slug')).toBe('green-acres')
   })
 
   it('should_not_call_getDueDocuments_for_trainer', async () => {
@@ -318,34 +312,5 @@ describe('BarnDashboardPage', () => {
     await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
     expect(getDueDocuments).not.toHaveBeenCalled()
-  })
-
-  it('should_link_horse_entity_document_to_horse_detail_page', async () => {
-    vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    const link = screen.getByRole('link', { name: /thunderbolt/i }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/horses/horse-1')
-  })
-
-  it('should_link_member_entity_document_to_member_detail_page', async () => {
-    vi.mocked(getDueDocuments).mockResolvedValue([mockDueMemberDoc])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    const link = screen.getByRole('link', { name: /jane trainer/i }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/members/mem-9')
-  })
-
-  it('should_fall_back_to_raw_record_type_when_unrecognized', async () => {
-    vi.mocked(getDueDocuments).mockResolvedValue([{ ...mockDueHorseDoc, recordType: 'some_future_type' }])
-
-    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    render(jsx)
-
-    expect(screen.getByText(/some_future_type/)).toBeDefined()
   })
 })
