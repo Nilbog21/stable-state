@@ -292,6 +292,13 @@ describe('uploadHorseDocumentAction', () => {
     expect(result.error).toMatch(/Unsupported/)
   })
 
+  it('should_return_error_when_storage_upload_fails', async () => {
+    vi.mocked(uploadFile).mockRejectedValue(new Error('storage upload failed'))
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(result.error).toBe('storage upload failed')
+  })
+
   it('should_pass_null_notes_when_notes_field_is_absent', async () => {
     const fd = new FormData()
     fd.set('file', makePdfFile())

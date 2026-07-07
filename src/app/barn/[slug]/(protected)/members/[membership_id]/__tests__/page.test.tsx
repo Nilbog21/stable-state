@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockProfile, createMockAgreement } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 import type { TrainerDocument, RiderDocument } from '@/lib/db/types'
@@ -20,6 +20,10 @@ vi.mock('@/lib/db/document-storage', () => ({
 vi.mock('@/lib/db/agreements', () => ({
   getActiveAgreementForRider: vi.fn(),
 }))
+vi.mock('../actions', () => ({
+  uploadDocumentAction: vi.fn(),
+  deleteDocumentAction: vi.fn(),
+}))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
@@ -33,6 +37,7 @@ import { getProfileByUserId } from '@/lib/db/profiles'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementForRider } from '@/lib/db/agreements'
+import { uploadDocumentAction, deleteDocumentAction } from '../actions'
 import MemberDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -436,5 +441,24 @@ describe('MemberDetailPage', () => {
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
     render(jsx)
     expect(screen.getByRole('link', { name: /450/ })).toBeDefined()
+  })
+
+  it('should_call_uploadDocumentAction_when_upload_form_submits', async () => {
+    vi.mocked(uploadDocumentAction).mockResolvedValue({ error: null })
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    const form = screen.getByRole('button', { name: /upload/i }).closest('form')!
+    fireEvent.submit(form)
+    expect(uploadDocumentAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', expect.any(FormData))
+  })
+
+  it('should_call_deleteDocumentAction_when_delete_form_submits', async () => {
+    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(deleteDocumentAction).mockResolvedValue({ error: null })
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    const form = screen.getByRole('button', { name: /delete/i }).closest('form')!
+    fireEvent.submit(form)
+    expect(deleteDocumentAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', 'doc-1', mockTrainerDoc.storage_path)
   })
 })

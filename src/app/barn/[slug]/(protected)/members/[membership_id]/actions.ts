@@ -43,7 +43,7 @@ export async function uploadDocumentAction(
   try {
     ext = validateFile(file)
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Invalid file' }
+    return { error: (err as Error).message }
   }
 
   const recordType = formData.get('record_type') as string
@@ -63,7 +63,7 @@ export async function uploadDocumentAction(
   try {
     await uploadFile(storagePath, file!, file!.type)
   } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Failed to upload file' }
+    return { error: (err as Error).message }
   }
 
   try {
@@ -74,7 +74,7 @@ export async function uploadDocumentAction(
     }
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
-    return { error: dbError instanceof Error ? dbError.message : 'Failed to save document' }
+    return { error: (dbError as Error).message }
   }
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
