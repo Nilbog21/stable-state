@@ -6,7 +6,8 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, updateHorseDetails } from '../horses'
+import { createMockBarn } from '@/test/fixtures'
+import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, updateHorseDetails, getHorseProjectedExhaustion, resolveExhaustionThresholds, getExhaustionBand } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -677,5 +678,127 @@ describe('updateHorseDetails', () => {
     const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
     await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).rejects.toThrow('db error')
+  })
+})
+
+describe('getHorseProjectedExhaustion', () => {
+  const targetDate = new Date('2026-07-10T00:00:00Z')
+
+  function makeRpc(data: unknown[] | null, error: Error | null = null) {
+    return vi.fn().mockResolvedValue({ data, error })
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_lesson_at_and_exertion_level_rows', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: makeRpc([
+        { lesson_at: '2026-07-09T10:00:00Z', exertion_level: 3 },
+        { lesson_at: '2026-07-11T10:00:00Z', exertion_level: 4 },
+      ]),
+    } as any)
+
+    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+
+    expect(result).toEqual([
+      { lessonAt: '2026-07-09T10:00:00Z', exertionLevel: 3 },
+      { lessonAt: '2026-07-11T10:00:00Z', exertionLevel: 4 },
+    ])
+  })
+
+  it('should_return_empty_array_when_rpc_returns_null_data', async () => {
+    vi.mocked(createClient).mockResolvedValue({ rpc: makeRpc(null) } as any)
+
+    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({ rpc: makeRpc(null, new Error('rpc error')) } as any)
+
+    await expect(getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)).rejects.toThrow('rpc error')
+  })
+
+  it('should_call_rpc_with_null_exclude_lesson_id_when_omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+
+    expect(mockRpc).toHaveBeenCalledWith('get_horse_projected_exhaustion', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_target_date: targetDate.toISOString(),
+      p_exclude_lesson_id: null,
+    })
+  })
+
+  it('should_call_rpc_with_exclude_lesson_id_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'lesson-1')
+
+    expect(mockRpc).toHaveBeenCalledWith('get_horse_projected_exhaustion', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_target_date: targetDate.toISOString(),
+      p_exclude_lesson_id: 'lesson-1',
+    })
+  })
+})
+
+describe('resolveExhaustionThresholds', () => {
+  const barn = createMockBarn({ exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5 })
+
+  it('should_use_horse_overrides_when_both_set', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: 20, exhaustion_threshold_moderate: 8 })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 20, moderate: 8 })
+  })
+
+  it('should_fall_back_to_barn_defaults_when_horse_fields_are_null', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: null, exhaustion_threshold_moderate: null })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 11, moderate: 5 })
+  })
+
+  it('should_resolve_high_and_moderate_independently_when_only_one_is_overridden', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: 20, exhaustion_threshold_moderate: null })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 20, moderate: 5 })
+  })
+
+  it('should_clamp_moderate_below_high_when_a_single_override_would_invert_the_pair', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: null, exhaustion_threshold_moderate: 15 })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 11, moderate: 10 })
+  })
+})
+
+describe('getExhaustionBand', () => {
+  const thresholds = { high: 11, moderate: 5 }
+
+  it('should_return_low_when_total_is_below_moderate', () => {
+    expect(getExhaustionBand(0, thresholds)).toBe('low')
+  })
+
+  it('should_return_low_when_total_equals_moderate', () => {
+    expect(getExhaustionBand(5, thresholds)).toBe('low')
+  })
+
+  it('should_return_moderate_when_total_is_just_above_moderate', () => {
+    expect(getExhaustionBand(6, thresholds)).toBe('moderate')
+  })
+
+  it('should_return_moderate_when_total_equals_high', () => {
+    expect(getExhaustionBand(11, thresholds)).toBe('moderate')
+  })
+
+  it('should_return_high_when_total_is_just_above_high', () => {
+    expect(getExhaustionBand(12, thresholds)).toBe('high')
   })
 })

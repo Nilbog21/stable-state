@@ -28,6 +28,8 @@ export interface Barn {
   instructor_cut: number
   created_at: string
   default_board_fee: number
+  exhaustion_threshold_high: number
+  exhaustion_threshold_moderate: number
 }
 
 export interface BarnMembership {
@@ -62,6 +64,8 @@ export interface Horse {
   is_available: boolean
   unavailability_reason: string | null
   deactivated_at: string | null
+  exhaustion_threshold_high: number | null
+  exhaustion_threshold_moderate: number | null
   created_at: string
   updated_at: string
 }

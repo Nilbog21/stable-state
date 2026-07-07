@@ -1,7 +1,7 @@
 import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonTier, Profile } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
-  return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, instructor_cut: 25, ...overrides }
+  return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, ...overrides }
 }
 
 export function createMockAgreement(overrides: Partial<Agreement> = {}): Agreement {
@@ -78,6 +78,8 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
     is_available: true,
     unavailability_reason: null,
     deactivated_at: null,
+    exhaustion_threshold_high: null,
+    exhaustion_threshold_moderate: null,
     created_at: '',
     updated_at: '',
     ...overrides,
