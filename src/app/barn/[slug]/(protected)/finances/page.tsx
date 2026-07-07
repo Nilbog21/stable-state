@@ -315,33 +315,35 @@ export default async function FinancesPage({
 
       {tab === 'horse' && (
         horseRows.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr>
-                <Th>Horse</Th>
-                <Th>Income</Th>
-                <Th>Expenses</Th>
-                <Th>Net</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {horseRows.map((row) => (
-                <tr key={row.horseId}>
-                  <Td>
-                    <Link
-                      href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                      className="hover:underline"
-                    >
-                      {row.horseName}
-                    </Link>
-                  </Td>
-                  <Td>{formatCurrency(row.income)}</Td>
-                  <Td>{formatCurrency(row.expenses)}</Td>
-                  <Td>{formatCurrency(row.net)}</Td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Horse</Th>
+                  <Th>Income</Th>
+                  <Th>Expenses</Th>
+                  <Th>Net</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {horseRows.map((row) => (
+                  <tr key={row.horseId}>
+                    <Td>
+                      <Link
+                        href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
+                        className="hover:underline"
+                      >
+                        {row.horseName}
+                      </Link>
+                    </Td>
+                    <Td>{formatCurrency(row.income)}</Td>
+                    <Td>{formatCurrency(row.expenses)}</Td>
+                    <Td>{formatCurrency(row.net)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No horse activity in ${monthLabel}.`}</p>
         )
