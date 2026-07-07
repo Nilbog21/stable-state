@@ -45,3 +45,13 @@ export async function getSeriesById(seriesId: string, barnId: string, client?: S
   if (error) throw error
   return data
 }
+
+export async function stopLessonSeries(seriesId: string, barnId: string, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
+  const { error } = await supabase
+    .from('lesson_series')
+    .update({ is_active: false })
+    .eq('id', seriesId)
+    .eq('barn_id', barnId)
+  if (error) throw error
+}
