@@ -23,6 +23,13 @@ export default async function EditExpensePage({
     getRecentExpenseTypes(barn.id),
   ])
 
+  const activeHorseIds = new Set(horses.map((h) => h.id))
+  const inactiveAssigned = expense.horse_ids
+    .map((horseId, i) => ({ id: horseId, name: expense.horse_names[i] }))
+    .filter((h) => !activeHorseIds.has(h.id))
+    .map((h) => ({ id: h.id, name: `${h.name} (inactive)` }))
+  const horsesForForm = [...horses, ...inactiveAssigned]
+
   const save = updateExpenseAction.bind(null, slug, expense.id)
 
   return (
@@ -35,7 +42,7 @@ export default async function EditExpensePage({
       </div>
       <ExpenseForm
         barnSlug={slug}
-        horses={horses}
+        horses={horsesForForm}
         recentRecipients={recentRecipients}
         recentExpenseTypes={recentExpenseTypes}
         defaultDate={expense.expense_date}

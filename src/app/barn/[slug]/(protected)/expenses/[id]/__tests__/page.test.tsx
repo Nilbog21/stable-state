@@ -86,6 +86,20 @@ describe('EditExpensePage', () => {
     expect((screen.getByRole('checkbox', { name: 'Butter' }) as HTMLInputElement).checked).toBe(true)
   })
 
+  it('should_render_a_checkbox_for_a_horse_deactivated_since_the_expense_was_created', async () => {
+    vi.mocked(getExpenseById).mockResolvedValue(
+      createMockExpenseWithHorses({
+        id: 'expense-1',
+        recipient: 'Dr. Smith',
+        horse_ids: ['horse-3'],
+        horse_names: ['Clover'],
+      })
+    )
+    const jsx = await callPage()
+    render(jsx)
+    expect((screen.getByRole('checkbox', { name: 'Clover (inactive)' }) as HTMLInputElement).checked).toBe(true)
+  })
+
   it('should_render_save_changes_submit_button', async () => {
     const jsx = await callPage()
     render(jsx)

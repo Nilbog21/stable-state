@@ -40,7 +40,7 @@ export function ExpenseForm({
 }: ExpenseFormProps) {
   const [state, formAction] = useActionState(onSave, { error: null })
   const [recipient, setRecipient] = useState(initial?.recipient ?? '')
-  const [lastCheckedRecipient, setLastCheckedRecipient] = useState('')
+  const [lastCheckedRecipient, setLastCheckedRecipient] = useState(initial?.recipient ?? '')
   const [expenseType, setExpenseType] = useState(initial?.expenseType ?? '')
   const [appliesToAllHorses, setAppliesToAllHorses] = useState(initial?.appliesToAllHorses ?? false)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set(initial?.horseIds ?? []))
