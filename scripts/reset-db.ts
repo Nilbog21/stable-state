@@ -98,6 +98,47 @@ export function getLessonVariation(i: number, tier1: { name: string; price: numb
   }
 }
 
+// Day -3 group lesson: sits exactly on the ±3-day exhaustion window edge, so whether it's
+// included depends on what time of day reset-db runs. Routed to the retired horse so it
+// never contaminates Apple/Butter/Clover's projected exhaustion total.
+export const EXHAUSTION_BOUNDARY_INDEX = 25
+
+export const EXHAUSTION_TOPUP_DAYS_OFFSET = -1
+export const EXHAUSTION_TOPUP_HOUR = 11
+export const EXHAUSTION_TOPUP_EXERTION = 4
+
+export function getLessonHorseAssignment(i: number, horseIds: string[], retiredHorseId: string) {
+  if (i === EXHAUSTION_BOUNDARY_INDEX) {
+    return { horseIds: [retiredHorseId], exertionLevels: [3] }
+  }
+  if (isGroupLesson(i)) {
+    return { horseIds, exertionLevels: horseIds.map((_, hi) => ((Math.floor(i / 5) + hi) % 5) + 1) }
+  }
+  return { horseIds: [horseIds[i % horseIds.length]], exertionLevels: [(i % 5) + 1] }
+}
+
+export function computeExhaustionWindowTotals(now: Date, horseIds: string[], retiredHorseId: string): Record<string, number> {
+  const dates = buildLessonDates(now)
+  const windowStart = new Date(now.getTime() - 3 * 24 * 60 * 60 * 1000)
+  const windowEnd = new Date(now.getTime() + 3 * 24 * 60 * 60 * 1000)
+  const totals: Record<string, number> = Object.fromEntries(horseIds.map((id) => [id, 0]))
+
+  for (let i = 0; i < dates.length; i++) {
+    if (dates[i] < windowStart || dates[i] > windowEnd) continue
+    const assignment = getLessonHorseAssignment(i, horseIds, retiredHorseId)
+    assignment.horseIds.forEach((hid, idx) => {
+      if (hid in totals) totals[hid] += assignment.exertionLevels[idx]
+    })
+  }
+
+  const topupDate = dayOffset(now, EXHAUSTION_TOPUP_DAYS_OFFSET, EXHAUSTION_TOPUP_HOUR)
+  if (topupDate >= windowStart && topupDate <= windowEnd) {
+    totals[horseIds[2]] += EXHAUSTION_TOPUP_EXERTION
+  }
+
+  return totals
+}
+
 export function getPaymentType(i: number, isPast: boolean): string | null {
   if (!isPast) return null
   if (i % 5 === 4) return null
@@ -255,16 +296,17 @@ async function run() {
   process.stdout.write(`Seeding lessons ${drawBar(0, lessonTotal)} 0/${lessonTotal}`)
   for (let i = 0; i < lessonDates.length; i++) {
     const instructorId = trainerRowIds[i % trainerRowIds.length]
-    const { fee, jumping, exertionLevel, tierName } = getLessonVariation(i, tier1, tier2)
+    const { fee, jumping, tierName } = getLessonVariation(i, tier1, tier2)
     const isGroup = isGroupLesson(i)
+    const { horseIds: lessonHorseIds, exertionLevels } = getLessonHorseAssignment(i, horseIds, retiredHorse.id)
 
     await createLessonWithParticipants({
       barnId: DEV_BARN_ID,
       instructorId,
       lessonAt: lessonDates[i].toISOString(),
       fee,
-      horseIds: isGroup ? horseIds : [horseIds[i % horseIds.length]],
-      exertionLevels: isGroup ? horseIds.map((_, hi) => ((Math.floor(i / 5) + hi) % 5) + 1) : [exertionLevel],
+      horseIds: lessonHorseIds,
+      exertionLevels,
       riderIds: isGroup ? riderRowIds : [riderRowIds[i % riderRowIds.length]],
       lessonType: isGroup ? 'group' : 'normal',
       jumping,
@@ -274,6 +316,19 @@ async function run() {
     process.stdout.write(`\rSeeding lessons ${drawBar(i + 1, lessonTotal)} ${i + 1}/${lessonTotal}`)
   }
   process.stdout.write('\n')
+
+  await createLessonWithParticipants({
+    barnId: DEV_BARN_ID,
+    instructorId: trainerRowIds[0],
+    lessonAt: dayOffset(now, EXHAUSTION_TOPUP_DAYS_OFFSET, EXHAUSTION_TOPUP_HOUR).toISOString(),
+    fee: tier1.price,
+    horseIds: [horseIds[2]],
+    exertionLevels: [EXHAUSTION_TOPUP_EXERTION],
+    riderIds: [riderRowIds[0]],
+    lessonType: 'normal',
+    jumping: false,
+    tierName: tier1.name,
+  }, supabase)
 
   for (const daysAgo of [75, 60]) {
     await createLessonWithParticipants({
@@ -396,7 +451,7 @@ async function run() {
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 2 past lessons)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
-  console.log(`  Lessons:  ${lessonDates.length + 2} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
+  console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 1 board ($${defaultBoardFee}), 1 lease ($200) — each with a paid charge last month and an unpaid charge this month`)
   console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet)`)
 }
