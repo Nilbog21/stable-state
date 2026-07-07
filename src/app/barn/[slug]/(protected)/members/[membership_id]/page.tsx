@@ -10,6 +10,7 @@ import { getActiveAgreementForRider } from '@/lib/db/agreements'
 import { UploadForm } from './UploadForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
+import { Th, Td, TableActions } from '@/components/ui/Table'
 import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction } from './actions'
 import type { TrainerDocument, RiderDocument, Agreement } from '@/lib/db/types'
 
@@ -146,20 +147,20 @@ export default async function MemberDetailPage({
         {docsWithUrls.length > 0 ? (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Type</th>
-                <th className="pb-2 pr-6">Notes</th>
-                <th className="pb-2 pr-6">Link</th>
-                <th className="pb-2 pr-6">Reminder Date</th>
-                <th className="pb-2">Action</th>
+              <tr>
+                <Th>Type</Th>
+                <Th>Notes</Th>
+                <Th>Link</Th>
+                <Th>Reminder Date</Th>
+                <Th>Action</Th>
               </tr>
             </thead>
             <tbody>
               {docsWithUrls.map(({ doc, signedUrl }) => (
-                <tr key={doc.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{RECORD_TYPE_LABELS[doc.record_type]}</td>
-                  <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">{doc.notes ?? '—'}</td>
-                  <td className="py-3 pr-6 text-sm">
+                <tr key={doc.id}>
+                  <Td>{RECORD_TYPE_LABELS[doc.record_type]}</Td>
+                  <Td tone="secondary">{doc.notes ?? '—'}</Td>
+                  <Td>
                     <a
                       href={signedUrl}
                       target="_blank"
@@ -168,19 +169,19 @@ export default async function MemberDetailPage({
                     >
                       {doc.file_name}
                     </a>
-                  </td>
-                  <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">
+                  </Td>
+                  <Td tone="secondary">
                     {canEditReminderDate ? (
                       <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDate} />
                     ) : (
                       doc.reminder_date ?? '—'
                     )}
-                  </td>
-                  <td className="py-3 text-sm">
+                  </Td>
+                  <TableActions>
                     {canUpload && (
                       <DeleteDocumentButton docId={doc.id} storagePath={doc.storage_path} action={boundDelete} />
                     )}
-                  </td>
+                  </TableActions>
                 </tr>
               ))}
             </tbody>

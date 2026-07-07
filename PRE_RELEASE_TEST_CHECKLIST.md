@@ -125,12 +125,14 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Open Apple's detail page → rename it via the manager form → Save → name updates
 - [ ] Documents section: upload a PDF to a horse, open it via its link (signed URL), then delete it
 - [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override; uncheck it, set Moderate/High, Save → values persist on reload and the toggle is now unchecked; re-check "Use barn defaults" and Save → inputs revert to barn defaults; try Moderate ≥ High while unchecked → rejected with a field error and values unchanged
+- [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 - [ ] "You" card plus Managers (Morgan, own entry excluded), Trainers, and Riders sections all render
 - [ ] `/barn/dev-barn/riders` redirects to `/barn/dev-barn/members`
 - [ ] Open a trainer's member detail page → upload a document → it lists with a working link → delete it
+- [ ] On that same document, edit the Reminder Date inline (tap the field, set a date, tap away) → it saves
 - [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
 - [ ] Rider Emery's member detail page shows **Boarding: $X/month** linking to their boarding agreement; a rider with no boarding agreement shows an **Add boarding** link into `/agreements?kind=board`; a managed (unclaimed) rider's detail page shows the same boarding status line
 
@@ -195,8 +197,8 @@ bash scripts/change-user.sh
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons by direct URL (`/barn/dev-barn/lessons/[id]`) — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
-- [ ] Horse detail page: documents are listed with working links, upload works, but there is **no delete** button and **no Exhaustion Thresholds section**
-- [ ] Members page shows the Riders section only; open your own member detail page and upload a document
+- [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no delete** button, **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
+- [ ] Members page shows the Riders section only; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] `/barn/dev-barn/finances` is blocked (redirect); `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 
 ## Phase 6 — Rider

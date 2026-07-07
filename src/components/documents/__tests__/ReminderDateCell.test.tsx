@@ -73,7 +73,7 @@ describe('ReminderDateCell', () => {
     expect(mockRefresh).toHaveBeenCalled()
   })
 
-  it('should_show_error_and_revert_value_when_action_fails', async () => {
+  it('should_show_error_when_action_fails', async () => {
     const action = vi.fn().mockResolvedValue({ error: 'update failed' })
     render(<ReminderDateCell docId="doc-1" initialValue="2027-01-01" action={action} />)
     const input = screen.getByDisplayValue('2027-01-01')
@@ -82,6 +82,16 @@ describe('ReminderDateCell', () => {
       fireEvent.blur(input)
     })
     expect(screen.getByText('update failed')).toBeDefined()
+  })
+
+  it('should_revert_value_when_action_fails', async () => {
+    const action = vi.fn().mockResolvedValue({ error: 'update failed' })
+    render(<ReminderDateCell docId="doc-1" initialValue="2027-01-01" action={action} />)
+    const input = screen.getByDisplayValue('2027-01-01')
+    fireEvent.change(input, { target: { value: '2027-02-01' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
     expect(screen.getByDisplayValue('2027-01-01')).toBeDefined()
   })
 

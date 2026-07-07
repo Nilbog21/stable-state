@@ -234,7 +234,7 @@ describe.each(CASES)('updateDocumentReminderDate($entity)', ({ entity, entityId,
     vi.mocked(createClient).mockReset()
   })
 
-  it('should_update_reminder_date', async () => {
+  it('should_resolve_without_error_when_updating_reminder_date', async () => {
     const mockEq = vi.fn().mockResolvedValue({ error: null })
     const update = vi.fn().mockReturnValue({
       eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq }) }),
@@ -246,6 +246,18 @@ describe.each(CASES)('updateDocumentReminderDate($entity)', ({ entity, entityId,
     await expect(
       updateDocumentReminderDate(entity as any, mockDoc.id, entityId, 'barn-1', '2027-01-01')
     ).resolves.toBeUndefined()
+  })
+
+  it('should_update_reminder_date', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq }) }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await updateDocumentReminderDate(entity as any, mockDoc.id, entityId, 'barn-1', '2027-01-01')
     expect(update).toHaveBeenCalledWith({ reminder_date: '2027-01-01' })
   })
 
