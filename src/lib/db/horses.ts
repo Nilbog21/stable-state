@@ -188,10 +188,4 @@ export function resolveExhaustionThresholds(horse: Horse, barn: Barn): { high: n
   return { high, moderate: Math.min(moderate, high - 1) }
 }
 
-export type ExhaustionBand = 'low' | 'moderate' | 'high'
-
-export function getExhaustionBand(total: number, thresholds: { high: number; moderate: number }): ExhaustionBand {
-  if (total <= thresholds.moderate) return 'low'
-  if (total <= thresholds.high) return 'moderate'
-  return 'high'
-}
+export { getExhaustionBand, type ExhaustionBand } from '@/lib/exhaustion-band'

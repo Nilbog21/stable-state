@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorsesByBarn, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
 import { EmptyState } from '@/components/EmptyState'
@@ -35,6 +35,20 @@ export default async function HorsesPage({
   const inactive = horses.filter((h) => !h.is_active)
   const allEmpty = available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
 
+  const activeHorses = [...available, ...unavailable]
+  const horseRows = await getHorsesByBarn(barn.id)
+  const horseById = new Map(horseRows.map((h) => [h.id, h]))
+  const today = new Date()
+  const exhaustionByHorseId = new Map(
+    await Promise.all(
+      activeHorses.map(async (h) => {
+        const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, today)
+        const thresholds = resolveExhaustionThresholds(horseById.get(h.id)!, barn)
+        return [h.id, { existingRows, thresholds }] as const
+      })
+    )
+  )
+
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-4 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">Horses</h1>
@@ -61,7 +75,7 @@ export default async function HorsesPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Available</h2>
           <div className="flex flex-col gap-2">
             {available.map((horse) => (
-              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="available" />
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="available" exhaustion={exhaustionByHorseId.get(horse.id)} />
             ))}
           </div>
         </section>
@@ -72,7 +86,7 @@ export default async function HorsesPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Unavailable</h2>
           <div className="flex flex-col gap-2">
             {unavailable.map((horse) => (
-              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="unavailable" />
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="unavailable" exhaustion={exhaustionByHorseId.get(horse.id)} />
             ))}
           </div>
         </section>

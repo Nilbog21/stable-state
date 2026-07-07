@@ -70,7 +70,9 @@ describe('HorsesPage', () => {
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getHorseExertionSummary).mockResolvedValue([])
-    vi.mocked(getHorsesByBarn).mockResolvedValue([])
+    vi.mocked(getHorsesByBarn).mockResolvedValue(
+      ['horse-1', 'horse-2', 'horse-3', 'horse-a', 'horse-b'].map((id) => createMockHorse({ id }))
+    )
     vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([])
   })
 
