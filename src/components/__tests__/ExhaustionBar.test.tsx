@@ -7,7 +7,7 @@ const thresholds = { high: 10, moderate: 5 }
 describe('ExhaustionBar', () => {
   it('should_render_solid_segment_at_width_proportional_to_existing_total', () => {
     render(<ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />)
-    expect(screen.getByTestId('exhaustion-bar-solid')).toHaveStyle({ width: '30%' })
+    expect(screen.getByTestId('exhaustion-bar-solid').style.width).toBe('30%')
   })
 
   it('should_render_solid_segment_green_when_existing_total_is_low_band', () => {
@@ -60,7 +60,7 @@ describe('ExhaustionBar', () => {
         thresholds={thresholds}
       />
     )
-    expect(screen.getByTestId('exhaustion-bar-ghost')).toHaveStyle({ width: '20%' })
+    expect(screen.getByTestId('exhaustion-bar-ghost').style.width).toBe('20%')
   })
 
   it('should_render_ghost_segment_neutral_colored_when_not_overflowing', () => {
@@ -87,7 +87,7 @@ describe('ExhaustionBar', () => {
 
   it('should_clip_solid_segment_at_100_percent_when_existing_total_exceeds_high_threshold', () => {
     render(<ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 15 }]} thresholds={thresholds} />)
-    expect(screen.getByTestId('exhaustion-bar-solid')).toHaveStyle({ width: '100%' })
+    expect(screen.getByTestId('exhaustion-bar-solid').style.width).toBe('100%')
   })
 
   it('should_open_expansion_panel_on_bar_tap', () => {
@@ -115,6 +115,12 @@ describe('ExhaustionBar', () => {
     fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))
     fireEvent.click(screen.getByRole('button', { name: /close/i }))
     expect(screen.queryByText('3 points from 1 lessons (±3-day window)')).toBeNull()
+  })
+
+  it('should_render_no_lessons_message_when_existing_rows_is_empty', () => {
+    render(<ExhaustionBar existingRows={[]} thresholds={thresholds} />)
+    fireEvent.click(screen.getByRole('button', { name: /exhaustion/i }))
+    expect(screen.getByText('No lessons in window')).toBeDefined()
   })
 
   it('should_dismiss_expansion_on_outside_click', () => {
