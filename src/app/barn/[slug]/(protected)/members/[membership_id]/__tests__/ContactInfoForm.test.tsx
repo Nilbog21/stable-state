@@ -56,6 +56,18 @@ describe('ContactInfoForm - rendering', () => {
     render(<ContactInfoForm profile={profileWithNulls} action={mockAction} />)
     expect((screen.getByLabelText(/^phone$/i) as HTMLInputElement).value).toBe('')
   })
+
+  it('should_update_emergency_contact_name_when_changed', () => {
+    render(<ContactInfoForm profile={mockProfile} action={mockAction} />)
+    fireEvent.change(screen.getByLabelText(/emergency contact name/i), { target: { value: 'Alice' } })
+    expect((screen.getByLabelText(/emergency contact name/i) as HTMLInputElement).value).toBe('Alice')
+  })
+
+  it('should_update_emergency_contact_phone_when_changed', () => {
+    render(<ContactInfoForm profile={mockProfile} action={mockAction} />)
+    fireEvent.change(screen.getByLabelText(/emergency contact phone/i), { target: { value: '555-0000' } })
+    expect((screen.getByLabelText(/emergency contact phone/i) as HTMLInputElement).value).toBe('555-0000')
+  })
 })
 
 describe('ContactInfoForm - submit', () => {

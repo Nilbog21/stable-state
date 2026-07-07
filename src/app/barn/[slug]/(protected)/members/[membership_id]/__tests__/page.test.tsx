@@ -571,6 +571,15 @@ describe('MemberDetailPage', () => {
       expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
     })
 
+    it('should_show_edit_form_when_manager_views_stub_target_with_linked_account', async () => {
+      // defensive: is_managed and null user_id are set together by claim_managed_member, but the
+      // form's gating is keyed off is_managed alone, matching the RLS boundary from #526
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ first_name: 'Bob', last_name: 'Trainer', is_managed: true }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
+    })
+
     it('should_show_read_only_when_trainer_views_stub_rider_target', async () => {
       setupAuth({ id: 'user-trn', email: 'trn@example.com' })
       vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
