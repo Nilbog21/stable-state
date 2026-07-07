@@ -13,6 +13,7 @@ vi.mock('@/lib/db/horses', () => ({
 vi.mock('@/lib/db/documents', () => ({
   createDocument: vi.fn(),
   deleteDocument: vi.fn(),
+  updateDocumentReminderDate: vi.fn(),
 }))
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
@@ -26,10 +27,16 @@ vi.mock('next/cache', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails, updateHorseExhaustionThresholds } from '@/lib/db/horses'
-import { createDocument, deleteDocument } from '@/lib/db/documents'
+import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
-import { updateHorseDetailsAction, uploadHorseDocumentAction, deleteHorseDocumentAction, updateHorseExhaustionThresholdsAction } from '../actions'
+import {
+  updateHorseDetailsAction,
+  uploadHorseDocumentAction,
+  deleteHorseDocumentAction,
+  updateHorseExhaustionThresholdsAction,
+  updateHorseDocumentReminderDateAction,
+} from '../actions'
 
 const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ id: 'mem-mgr', role: 'manager' })
@@ -446,7 +453,24 @@ describe('uploadHorseDocumentAction', () => {
     fd.set('record_type', 'coggins')
     await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
     expect(createDocument).toHaveBeenCalledWith(
-      'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null
+      'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null, null
+    )
+  })
+
+  it('should_pass_reminder_date_when_provided', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    fd.set('reminder_date', '2027-01-01')
+    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(createDocument).toHaveBeenCalledWith(
+      'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null, '2027-01-01'
+    )
+  })
+
+  it('should_pass_null_reminder_date_when_field_is_absent', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    expect(createDocument).toHaveBeenCalledWith(
+      'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null, null
     )
   })
 
@@ -499,5 +523,51 @@ describe('deleteHorseDocumentAction', () => {
   it('should_revalidate_horse_detail_path', async () => {
     await deleteHorseDocumentAction('green-acres', 'horse-1', 'doc-1', 'barn-1/horses/horse-1/coggins.pdf')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+})
+
+describe('updateHorseDocumentReminderDateAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateDocumentReminderDate).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(updateDocumentReminderDate).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', '2027-01-01')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_update_reminder_date', async () => {
+    await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('horse', 'doc-1', 'horse-1', mockBarnForDocs.id, '2027-01-01')
+  })
+
+  it('should_clear_reminder_date_when_null', async () => {
+    await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', null)
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('horse', 'doc-1', 'horse-1', mockBarnForDocs.id, null)
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', '2027-01-01')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_return_null_error_on_success', async () => {
+    const result = await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', '2027-01-01')
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_db_update_fails', async () => {
+    vi.mocked(updateDocumentReminderDate).mockRejectedValue(new Error('update error'))
+    const result = await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', '2027-01-01')
+    expect(result.error).toBe('update error')
   })
 })

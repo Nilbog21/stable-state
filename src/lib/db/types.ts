@@ -232,6 +232,7 @@ export interface HorseDocument {
   file_name: string
   file_size: number
   notes: string | null
+  reminder_date: string | null
   created_at: string
   updated_at: string
 }
@@ -245,6 +246,7 @@ export interface TrainerDocument {
   file_name: string
   file_size: number
   notes: string | null
+  reminder_date: string | null
   created_at: string
   updated_at: string
 }
@@ -258,6 +260,7 @@ export interface RiderDocument {
   file_name: string
   file_size: number
   notes: string | null
+  reminder_date: string | null
   created_at: string
   updated_at: string
 }
