@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Horse, HorseExertionSummary } from './types'
+import type { Barn, Horse, HorseExertionSummary } from './types'
 
 export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
   const supabase = await createClient()
@@ -140,4 +140,39 @@ export async function updateHorseDetails(
     p_unavailability_reason: updates.unavailability_reason,
   })
   if (error) throw error
+}
+
+export async function getHorseProjectedExhaustion(
+  horseId: string,
+  barnId: string,
+  targetDate: Date,
+  excludeLessonId?: string
+): Promise<{ lessonAt: string; exertionLevel: number }[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase.rpc('get_horse_projected_exhaustion', {
+    p_horse_id: horseId,
+    p_barn_id: barnId,
+    p_target_date: targetDate.toISOString(),
+    p_exclude_lesson_id: excludeLessonId ?? null,
+  })
+  if (error) throw error
+  return (data ?? []).map((row: { lesson_at: string; exertion_level: number }) => ({
+    lessonAt: row.lesson_at,
+    exertionLevel: Number(row.exertion_level),
+  }))
+}
+
+export function resolveExhaustionThresholds(horse: Horse, barn: Barn): { high: number; moderate: number } {
+  return {
+    high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
+    moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
+  }
+}
+
+export type ExhaustionBand = 'low' | 'moderate' | 'high'
+
+export function getExhaustionBand(total: number, thresholds: { high: number; moderate: number }): ExhaustionBand {
+  if (total <= thresholds.moderate) return 'low'
+  if (total <= thresholds.high) return 'moderate'
+  return 'high'
 }
