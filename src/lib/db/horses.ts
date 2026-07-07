@@ -142,6 +142,24 @@ export async function updateHorseDetails(
   if (error) throw error
 }
 
+export async function updateHorseExhaustionThresholds(
+  horseId: string,
+  barnId: string,
+  thresholds: { moderate: number; high: number } | null
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('horses')
+    .update({
+      exhaustion_threshold_moderate: thresholds?.moderate ?? null,
+      exhaustion_threshold_high: thresholds?.high ?? null,
+    })
+    .eq('id', horseId)
+    .eq('barn_id', barnId)
+
+  if (error) throw error
+}
+
 export async function getHorseProjectedExhaustion(
   horseId: string,
   barnId: string,

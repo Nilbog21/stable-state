@@ -7,7 +7,8 @@ import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { HorseManagerForm } from './HorseManagerForm'
 import { HorseDocumentUploadForm } from './HorseDocumentUploadForm'
-import { updateHorseDetailsAction, uploadHorseDocumentAction, deleteHorseDocumentAction } from './actions'
+import { HorseExhaustionThresholdsForm } from './HorseExhaustionThresholdsForm'
+import { updateHorseDetailsAction, uploadHorseDocumentAction, deleteHorseDocumentAction, updateHorseExhaustionThresholdsAction } from './actions'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   insurance_binder: 'Insurance Binder',
@@ -49,6 +50,7 @@ export default async function HorseDetailPage({
   const boundUpdateAction = updateHorseDetailsAction.bind(null, slug, horse.id)
   const boundUploadAction = uploadHorseDocumentAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
+  const boundUpdateThresholdsAction = updateHorseExhaustionThresholdsAction.bind(null, slug, horse.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -77,6 +79,18 @@ export default async function HorseDetailPage({
       {role === 'manager' && (
         <section className="mt-6">
           <HorseManagerForm horse={horse} action={boundUpdateAction} />
+        </section>
+      )}
+
+      {role === 'manager' && (
+        <section className="mt-6">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Exhaustion Thresholds
+          </h2>
+          <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+            Override this horse&apos;s exhaustion thresholds — useful for horses on light duty. Leave on barn defaults otherwise.
+          </p>
+          <HorseExhaustionThresholdsForm horse={horse} barn={barn} action={boundUpdateThresholdsAction} />
         </section>
       )}
 

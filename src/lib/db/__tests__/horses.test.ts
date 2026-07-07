@@ -7,7 +7,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { createMockBarn } from '@/test/fixtures'
-import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, updateHorseDetails, getHorseProjectedExhaustion, resolveExhaustionThresholds, getExhaustionBand } from '../horses'
+import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, updateHorseDetails, updateHorseExhaustionThresholds, getHorseProjectedExhaustion, resolveExhaustionThresholds, getExhaustionBand } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -678,6 +678,84 @@ describe('updateHorseDetails', () => {
     const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
     await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).rejects.toThrow('db error')
+  })
+})
+
+describe('updateHorseExhaustionThresholds', () => {
+  function makeUpdateChain(error: Error | null = null) {
+    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error })
+    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    return { update: vi.fn().mockReturnValue({ eq: mockEqId }), mockEqId, mockEqBarnId }
+  }
+
+  it('should_resolve_when_setting_custom_thresholds', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeUpdateChain()),
+    } as any)
+
+    await expect(
+      updateHorseExhaustionThresholds('horse-1', 'barn-1', { moderate: 4, high: 10 })
+    ).resolves.toBeUndefined()
+  })
+
+  it('should_resolve_when_reverting_to_barn_defaults', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeUpdateChain()),
+    } as any)
+
+    await expect(updateHorseExhaustionThresholds('horse-1', 'barn-1', null)).resolves.toBeUndefined()
+  })
+
+  it('should_set_both_columns_when_thresholds_are_provided', async () => {
+    const chain = makeUpdateChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await updateHorseExhaustionThresholds('horse-1', 'barn-1', { moderate: 4, high: 10 })
+
+    expect(chain.update).toHaveBeenCalledWith({
+      exhaustion_threshold_moderate: 4,
+      exhaustion_threshold_high: 10,
+    })
+  })
+
+  it('should_null_both_columns_when_thresholds_is_null', async () => {
+    const chain = makeUpdateChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await updateHorseExhaustionThresholds('horse-1', 'barn-1', null)
+
+    expect(chain.update).toHaveBeenCalledWith({
+      exhaustion_threshold_moderate: null,
+      exhaustion_threshold_high: null,
+    })
+  })
+
+  it('should_scope_update_to_horse_id', async () => {
+    const chain = makeUpdateChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await updateHorseExhaustionThresholds('horse-1', 'barn-1', { moderate: 4, high: 10 })
+
+    expect(chain.mockEqId).toHaveBeenCalledWith('id', 'horse-1')
+  })
+
+  it('should_scope_update_to_barn_id', async () => {
+    const chain = makeUpdateChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await updateHorseExhaustionThresholds('horse-1', 'barn-1', { moderate: 4, high: 10 })
+
+    expect(chain.mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeUpdateChain(new Error('db error'))),
+    } as any)
+
+    await expect(
+      updateHorseExhaustionThresholds('horse-1', 'barn-1', { moderate: 4, high: 10 })
+    ).rejects.toThrow('db error')
   })
 })
 

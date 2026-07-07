@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails } from '@/lib/db/horses'
+import { updateHorseDetails, updateHorseExhaustionThresholds } from '@/lib/db/horses'
 import { createDocument, deleteDocument } from '@/lib/db/documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
@@ -36,6 +36,46 @@ export async function updateHorseDetailsAction(
 
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+function parseNonNegativeInt(raw: string | null): number | null {
+  if (raw === null || !/^\d+$/.test(raw.trim())) return null
+  return parseInt(raw, 10)
+}
+
+export async function updateHorseExhaustionThresholdsAction(
+  barnSlug: string,
+  horseId: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  if (formData.get('use_barn_defaults') === 'true') {
+    try {
+      await updateHorseExhaustionThresholds(horseId, barn.id, null)
+    } catch (err) {
+      return { error: getErrorMessage(err) }
+    }
+    revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+    return { error: null }
+  }
+
+  const moderate = parseNonNegativeInt(formData.get('moderate') as string | null)
+  const high = parseNonNegativeInt(formData.get('high') as string | null)
+  if (moderate === null || high === null) return { error: 'Thresholds must be numbers ≥ 0' }
+
+  if (moderate >= high) {
+    return { error: 'Moderate threshold must be less than high threshold' }
+  }
+
+  try {
+    await updateHorseExhaustionThresholds(horseId, barn.id, { moderate, high })
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  return { error: null }
 }
 
 export async function uploadHorseDocumentAction(
