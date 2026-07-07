@@ -220,4 +220,51 @@ describe('ExpenseForm', () => {
     renderForm()
     expect(screen.queryByRole('alert')).toBeNull()
   })
+
+  it('should_render_default_submit_label_when_submitLabel_omitted', () => {
+    renderForm()
+    expect(screen.getByRole('button', { name: 'Add Expense' })).toBeDefined()
+  })
+
+  it('should_render_custom_submit_label_when_provided', () => {
+    renderForm({ submitLabel: 'Save Changes' })
+    expect(screen.getByRole('button', { name: 'Save Changes' })).toBeDefined()
+  })
+
+  it('should_prefill_recipient_from_initial', () => {
+    renderForm({ initial: { recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [] } })
+    expect((screen.getByLabelText(/recipient/i) as HTMLInputElement).value).toBe('Dr. Hoof Farrier')
+  })
+
+  it('should_prefill_expense_type_from_initial', () => {
+    renderForm({ initial: { recipient: '', expenseType: 'Farrier', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [] } })
+    expect((screen.getByLabelText(/expense type/i) as HTMLInputElement).value).toBe('Farrier')
+  })
+
+  it('should_prefill_time_from_initial', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: '14:30', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] } })
+    expect((screen.getByLabelText(/time/i) as HTMLInputElement).value).toBe('14:30')
+  })
+
+  it('should_prefill_amount_from_initial', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: 42.5, notes: null, appliesToAllHorses: false, horseIds: [] } })
+    expect((screen.getByLabelText(/amount/i) as HTMLInputElement).value).toBe('42.5')
+  })
+
+  it('should_prefill_notes_from_initial', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: 'Regular trim', appliesToAllHorses: false, horseIds: [] } })
+    expect((screen.getByLabelText(/notes/i) as HTMLTextAreaElement).value).toBe('Regular trim')
+  })
+
+  it('should_check_entire_barn_and_disable_horses_from_initial', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: true, horseIds: [] } })
+    expect((screen.getByRole('checkbox', { name: /entire barn/i }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('checkbox', { name: 'Apple' }) as HTMLInputElement).disabled).toBe(true)
+  })
+
+  it('should_check_specific_horses_from_initial_horseIds', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: ['horse-2'] } })
+    expect((screen.getByRole('checkbox', { name: 'Butter' }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('checkbox', { name: 'Apple' }) as HTMLInputElement).checked).toBe(false)
+  })
 })
