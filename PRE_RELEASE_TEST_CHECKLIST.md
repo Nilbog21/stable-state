@@ -92,7 +92,9 @@ Future:
 
 Dashboard (`/barn/dev-barn`):
 
-- [ ] Upcoming-lessons preview shows lessons in the next 7 days, split into a "Today" section (only when a lesson is today) and a "This Week" section (the remaining 6 days)
+- [ ] Section is titled "Barn Schedule" and shows lessons and upcoming planned expenses (future date+time, no amount yet) together in the next 7 days, split into a "Today" section (only when something is scheduled today) and a "This Week" section (the remaining 6 days) — the seeded Riverside Vet Clinic expense 2 days out appears interleaved by time between that day's lessons
+- [ ] A date-only planned expense (no time set) does **not** appear on the dashboard
+- [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
 - [ ] Pending-requests badge is visible (Quinn Pending) and links to settings
 
 Lessons (`/barn/dev-barn/lessons`):
@@ -211,7 +213,7 @@ bash scripts/change-user.sh
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link, no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
-- [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in
+- [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
