@@ -376,6 +376,20 @@ describe('MemberDetailPage', () => {
     expect(screen.getByText('signed 2026')).toBeDefined()
   })
 
+  it('should_render_reminder_due_badge_when_document_reminder_date_is_past', async () => {
+    vi.mocked(getDocuments).mockResolvedValue([{ ...mockTrainerDoc, reminder_date: '2020-01-01' }])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.getByText(/reminder due/i)).toBeDefined()
+  })
+
+  it('should_not_render_reminder_due_badge_when_document_has_no_reminder_date', async () => {
+    vi.mocked(getDocuments).mockResolvedValue([{ ...mockTrainerDoc, reminder_date: null }])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
+    expect(screen.queryByText(/reminder due/i)).toBeNull()
+  })
+
   it('should_show_boarding_fee_and_link_when_active_agreement_exists', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
     vi.mocked(getActiveAgreementForRider).mockResolvedValue(createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board' }))

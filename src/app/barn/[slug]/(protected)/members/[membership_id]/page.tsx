@@ -10,6 +10,7 @@ import { getActiveAgreementForRider } from '@/lib/db/agreements'
 import { UploadForm } from './UploadForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
+import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction } from './actions'
 import type { TrainerDocument, RiderDocument, Agreement } from '@/lib/db/types'
@@ -171,11 +172,14 @@ export default async function MemberDetailPage({
                     </a>
                   </Td>
                   <Td tone="secondary">
-                    {canEditReminderDate ? (
-                      <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDate} />
-                    ) : (
-                      doc.reminder_date ?? '—'
-                    )}
+                    <div className="flex items-center gap-2">
+                      {canEditReminderDate ? (
+                        <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDate} />
+                      ) : (
+                        doc.reminder_date ?? '—'
+                      )}
+                      <ReminderDueBadge reminderDate={doc.reminder_date} />
+                    </div>
                   </Td>
                   <TableActions>
                     {canUpload && (
