@@ -5,6 +5,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { createDocument, deleteDocument } from '@/lib/db/documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
+import { getErrorMessage } from '@/lib/get-error-message'
 import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
 
 const TRAINER_RECORD_TYPES = new Set<TrainerDocumentType>(['instructor_contract', 'other'])
@@ -43,7 +44,7 @@ export async function uploadDocumentAction(
   try {
     ext = validateFile(file)
   } catch (err) {
-    return { error: (err as Error).message }
+    return { error: getErrorMessage(err) }
   }
 
   const recordType = formData.get('record_type') as string
@@ -63,7 +64,7 @@ export async function uploadDocumentAction(
   try {
     await uploadFile(storagePath, file!, file!.type)
   } catch (err) {
-    return { error: (err as Error).message }
+    return { error: getErrorMessage(err) }
   }
 
   try {
@@ -74,7 +75,7 @@ export async function uploadDocumentAction(
     }
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
-    return { error: (dbError as Error).message }
+    return { error: getErrorMessage(dbError) }
   }
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
@@ -103,10 +104,14 @@ export async function deleteDocumentAction(
 
   if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
 
-  if (targetMembership.role === 'rider') {
-    await deleteDocument('rider', docId, targetMembership.user_id, barn.id)
-  } else {
-    await deleteDocument('trainer', docId, targetMembership.user_id, barn.id)
+  try {
+    if (targetMembership.role === 'rider') {
+      await deleteDocument('rider', docId, targetMembership.user_id, barn.id)
+    } else {
+      await deleteDocument('trainer', docId, targetMembership.user_id, barn.id)
+    }
+  } catch (dbError) {
+    return { error: getErrorMessage(dbError) }
   }
 
   await removeFile(storagePath).catch(() => {})

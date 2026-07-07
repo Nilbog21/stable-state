@@ -19,7 +19,7 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024
 
 interface Props {
   memberRole: 'trainer' | 'rider' | 'manager'
-  action: (formData: FormData) => Promise<void>
+  action: (formData: FormData) => Promise<{ error: string | null }>
 }
 
 export function UploadForm({ memberRole, action }: Props) {
@@ -27,10 +27,19 @@ export function UploadForm({ memberRole, action }: Props) {
   const [selectedType, setSelectedType] = useState(types[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
+  const [uploadError, setUploadError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setFileName(null)
+    setUploadError(null)
+    const result = await action(new FormData(e.currentTarget))
+    if (result.error) setUploadError(result.error)
+  }
+
   return (
-    <form action={action} className="space-y-4" onSubmit={() => setFileName(null)}>
+    <form onSubmit={handleSubmit} className="space-y-4">
       <input type="hidden" name="record_type" value={selectedType} />
 
       <div>
@@ -94,6 +103,8 @@ export function UploadForm({ memberRole, action }: Props) {
           className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         />
       </div>
+
+      {uploadError && <p className="text-xs text-red-600 dark:text-red-400">{uploadError}</p>}
 
       <button
         type="submit"

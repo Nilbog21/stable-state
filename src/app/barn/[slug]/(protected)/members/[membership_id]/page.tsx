@@ -8,6 +8,7 @@ import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementForRider } from '@/lib/db/agreements'
 import { UploadForm } from './UploadForm'
+import { DeleteDocumentButton } from './DeleteDocumentButton'
 import { uploadDocumentAction, deleteDocumentAction } from './actions'
 import type { TrainerDocument, RiderDocument, Agreement } from '@/lib/db/types'
 
@@ -124,12 +125,8 @@ export default async function MemberDetailPage({
     )
   }
 
-  const boundUpload = async (formData: FormData) => {
-    await uploadDocumentAction(slug, membership_id, formData)
-  }
-  const boundDelete = async (docId: string, storagePath: string) => {
-    await deleteDocumentAction(slug, membership_id, docId, storagePath)
-  }
+  const boundUpload = uploadDocumentAction.bind(null, slug, membership_id)
+  const boundDelete = deleteDocumentAction.bind(null, slug, membership_id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -170,14 +167,7 @@ export default async function MemberDetailPage({
                   </td>
                   <td className="py-3 text-sm">
                     {canUpload && (
-                      <form action={boundDelete.bind(null, doc.id, doc.storage_path)}>
-                        <button
-                          type="submit"
-                          className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                        >
-                          Delete
-                        </button>
-                      </form>
+                      <DeleteDocumentButton docId={doc.id} storagePath={doc.storage_path} action={boundDelete} />
                     )}
                   </td>
                 </tr>

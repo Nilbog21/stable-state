@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { UploadForm } from '../UploadForm'
 
-const noop = async () => {}
+const noop = async () => ({ error: null })
 
 describe('UploadForm', () => {
   it('should_render_upload_button_for_trainer', () => {
@@ -135,5 +135,12 @@ describe('UploadForm', () => {
   it('should_not_show_liability_waiver_for_manager', () => {
     render(<UploadForm memberRole="manager" action={noop} />)
     expect(screen.queryByText('Liability Waiver')).toBeNull()
+  })
+
+  it('should_show_error_message_when_action_returns_error', async () => {
+    const failingAction = async () => ({ error: 'storage upload failed' })
+    render(<UploadForm memberRole="trainer" action={failingAction} />)
+    fireEvent.submit(screen.getByRole('button', { name: /upload/i }).closest('form')!)
+    expect(await screen.findByText('storage upload failed')).toBeDefined()
   })
 })

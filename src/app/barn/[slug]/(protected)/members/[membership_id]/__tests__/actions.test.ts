@@ -453,4 +453,14 @@ describe('deleteDocumentAction', () => {
     const result = await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
     expect(result).toEqual({ error: null })
   })
+
+  it('should_return_error_when_db_delete_fails', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(deleteDocument).mockRejectedValue(new Error('db error'))
+
+    const result = await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
+    expect(result.error).toBe('db error')
+    expect(removeFile).not.toHaveBeenCalled()
+  })
 })

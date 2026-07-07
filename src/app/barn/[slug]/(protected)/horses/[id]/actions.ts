@@ -5,6 +5,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails } from '@/lib/db/horses'
 import { createDocument, deleteDocument } from '@/lib/db/documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
+import { getErrorMessage } from '@/lib/get-error-message'
 import type { HorseDocumentType } from '@/lib/db/types'
 
 const HORSE_RECORD_TYPES = new Set<HorseDocumentType>(['insurance_binder', 'coggins', 'shot_record', 'contract', 'other'])
@@ -49,7 +50,7 @@ export async function uploadHorseDocumentAction(
   try {
     ext = validateFile(file)
   } catch (err) {
-    return { error: (err as Error).message }
+    return { error: getErrorMessage(err) }
   }
 
   const recordType = formData.get('record_type') as string
@@ -63,14 +64,14 @@ export async function uploadHorseDocumentAction(
   try {
     await uploadFile(storagePath, file!, file!.type)
   } catch (err) {
-    return { error: (err as Error).message }
+    return { error: getErrorMessage(err) }
   }
 
   try {
     await createDocument('horse', barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
-    return { error: (dbError as Error).message }
+    return { error: getErrorMessage(dbError) }
   }
 
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
