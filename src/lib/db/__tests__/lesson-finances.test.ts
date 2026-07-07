@@ -20,6 +20,9 @@ import {
   getRiderIncomeDetail,
   mergeOutstandingItems,
   NON_LESSON_INCOME_LABEL,
+  NO_INSTRUCTOR_LABEL,
+  NO_HORSE_LABEL,
+  NO_RIDER_LABEL,
 } from '../lesson-finances'
 import {
   getLessonsForSummary,
@@ -634,13 +637,13 @@ describe('getHorseIncomeSummary', () => {
     expect(getLessonHorsesForLessons).not.toHaveBeenCalled()
   })
 
-  it('should_return_empty_when_lessons_have_no_horses', async () => {
+  it('should_fold_zero_horse_lesson_into_no_horse_row', async () => {
     vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
     vi.mocked(getLessonHorsesForLessons).mockResolvedValue([])
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([])
+    expect(result).toEqual([{ horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 100 }])
   })
 
   it('should_allocate_full_fee_to_single_horse', async () => {
@@ -715,7 +718,7 @@ describe('getHorseIncomeSummary', () => {
     expect(result[0].totalIncome).toBeGreaterThanOrEqual(result[1].totalIncome)
   })
 
-  it('should_skip_paid_lessons_with_no_horse_entries', async () => {
+  it('should_fold_zero_horse_lesson_fee_into_no_horse_row_alongside_real_horses', async () => {
     vi.mocked(getPaidLessonFees).mockResolvedValue([
       { id: 'lesson-1', fee: 100 },
       { id: 'lesson-2', fee: 80 },
@@ -725,7 +728,10 @@ describe('getHorseIncomeSummary', () => {
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 100 }])
+    expect(result).toEqual([
+      { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 100 },
+      { horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 80 },
+    ])
   })
 
   it('should_use_horse_id_as_fallback_when_horse_name_not_found', async () => {
@@ -859,6 +865,15 @@ describe('getHorseIncomeSummary', () => {
 
       expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: -25 }])
     })
+
+    it('should_subtract_cut_from_no_horse_row_without_splitting', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([])
+
+      const result = await getHorseIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 75 }])
+    })
   })
 })
 
@@ -890,13 +905,13 @@ describe('getRiderIncomeSummary', () => {
     expect(getLessonRidersForLessons).not.toHaveBeenCalled()
   })
 
-  it('should_return_empty_when_lesson_has_no_riders', async () => {
+  it('should_fold_zero_rider_lesson_into_no_rider_row', async () => {
     vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
     vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([])
+    expect(result).toEqual([{ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 100 }])
   })
 
   it('should_return_full_fee_for_single_rider_lesson', async () => {
@@ -969,7 +984,7 @@ describe('getRiderIncomeSummary', () => {
     expect(result[0].totalIncome).toBeGreaterThanOrEqual(result[1].totalIncome)
   })
 
-  it('should_skip_paid_lessons_with_no_rider_entries', async () => {
+  it('should_fold_zero_rider_lesson_fee_into_no_rider_row_alongside_real_riders', async () => {
     vi.mocked(getPaidLessonFees).mockResolvedValue([
       { id: 'lesson-1', fee: 100 },
       { id: 'lesson-2', fee: 80 },
@@ -979,7 +994,10 @@ describe('getRiderIncomeSummary', () => {
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 100 }])
+    expect(result).toEqual([
+      { riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 100 },
+      { riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 80 },
+    ])
   })
 
   it('should_use_membership_id_as_fallback_name_when_membership_not_found', async () => {
@@ -1111,6 +1129,15 @@ describe('getRiderIncomeSummary', () => {
 
       expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: -25 }])
     })
+
+    it('should_subtract_cut_from_no_rider_row_without_splitting', async () => {
+      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+
+      const result = await getRiderIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 75 }])
+    })
   })
 })
 
@@ -1133,12 +1160,12 @@ describe('getTrainerIncomeSummary', () => {
     expect(result).toEqual([])
   })
 
-  it('should_return_empty_when_all_lessons_have_null_instructor', async () => {
+  it('should_fold_null_instructor_lessons_into_no_instructor_row', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: null, fee: 100 }])
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([])
+    expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100 }])
   })
 
   it('should_not_resolve_member_names_when_no_collected_lessons', async () => {
@@ -1220,6 +1247,40 @@ describe('getTrainerIncomeSummary', () => {
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
     await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('resolve error')
+  })
+
+  describe('no instructor folding', () => {
+    it('should_fold_null_instructor_lesson_alongside_a_named_trainer', async () => {
+      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+        { instructor_id: 'mem-trainer-1', fee: 100 },
+        { instructor_id: null, fee: 60 },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result).toEqual([
+        { trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 100 },
+        { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 60 },
+      ])
+    })
+
+    it('should_subtract_cut_from_no_instructor_row', async () => {
+      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: null, fee: 100 }])
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate, 25)
+
+      expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 75 }])
+    })
+
+    it('should_not_append_no_instructor_row_when_all_lessons_have_a_trainer', async () => {
+      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result.some((r) => r.trainerId === NO_INSTRUCTOR_LABEL)).toBe(false)
+    })
   })
 
   describe('agreement charge folding', () => {
@@ -1875,5 +1936,70 @@ describe('mergeOutstandingItems', () => {
 
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
     expect(mergeOutstandingItems([], [])).toEqual([])
+  })
+})
+
+describe('reconciliation regression', () => {
+  beforeEach(() => {
+    vi.mocked(getLessonsForSummary).mockReset()
+    vi.mocked(getTierPricesByNames).mockReset()
+    vi.mocked(getChargesForSummary).mockReset()
+    vi.mocked(getChargesForSummary).mockResolvedValue([])
+    vi.mocked(getPaidLessonFees).mockReset()
+    vi.mocked(getLessonHorsesForLessons).mockReset()
+    vi.mocked(getLessonRidersForLessons).mockReset()
+    vi.mocked(getPaidLessonInstructorFees).mockReset()
+    vi.mocked(resolveHorseNames).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
+    vi.mocked(getPaidCharges).mockReset()
+    vi.mocked(getPaidCharges).mockResolvedValue([])
+  })
+
+  const startDate = new Date('2026-05-01T00:00:00Z')
+  const endDate = new Date('2026-06-01T00:00:00Z')
+  const instructorCut = 10
+
+  it('should_reconcile_collected_income_with_by_trainer_by_horse_and_by_rider_breakdowns', async () => {
+    // Lesson A: instructor removed (null), 1 horse, 1 rider
+    // Lesson B: named trainer, zero horses, 1 rider
+    vi.mocked(getLessonsForSummary).mockResolvedValue([
+      createMockLesson({ id: 'lesson-a', fee: 100, payment_type: 'venmo', instructor_id: null }),
+      createMockLesson({ id: 'lesson-b', fee: 50, payment_type: 'cash', instructor_id: 'mem-trainer-1' }),
+    ])
+    vi.mocked(getPaidLessonFees).mockResolvedValue([
+      { id: 'lesson-a', fee: 100 },
+      { id: 'lesson-b', fee: 50 },
+    ])
+    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+      { lesson_id: 'lesson-a', horse_id: 'horse-1' },
+    ])
+    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+      { lesson_id: 'lesson-a', rider_id: 'mem-1' },
+      { lesson_id: 'lesson-b', rider_id: 'mem-2' },
+    ])
+    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+      { instructor_id: null, fee: 100 },
+      { instructor_id: 'mem-trainer-1', fee: 50 },
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([
+      ['mem-1', 'Alice Rider'],
+      ['mem-2', 'Bob Rider'],
+      ['mem-trainer-1', 'Jane Smith'],
+    ]))
+
+    const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate, instructorCut)
+    const horseIncome = await getHorseIncomeSummary('barn-1', startDate, endDate, instructorCut)
+    const riderIncome = await getRiderIncomeSummary('barn-1', startDate, endDate, instructorCut)
+    const trainerIncome = await getTrainerIncomeSummary('barn-1', startDate, endDate, instructorCut)
+
+    const horseTotal = horseIncome.reduce((sum, r) => sum + r.totalIncome, 0)
+    const riderTotal = riderIncome.reduce((sum, r) => sum + r.totalIncome, 0)
+    const trainerTotal = trainerIncome.reduce((sum, r) => sum + r.totalIncome, 0)
+
+    expect(collectedIncome).toBe(130)
+    expect(horseTotal).toBe(collectedIncome)
+    expect(riderTotal).toBe(collectedIncome)
+    expect(trainerTotal).toBe(collectedIncome)
   })
 })
