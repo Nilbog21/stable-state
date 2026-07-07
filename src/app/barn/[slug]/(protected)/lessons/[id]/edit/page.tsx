@@ -43,7 +43,8 @@ export default async function EditLessonPage({
   const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
   const series = lesson.series_id ? await getSeriesById(lesson.series_id, barn.id) : null
-  const stopSeries = series ? stopLessonSeriesAction.bind(null, slug, lesson.id, series.id) : null
+  const canStopSeries = membership.role === 'manager' || series?.instructor_id === membership.id
+  const stopSeries = series && canStopSeries ? stopLessonSeriesAction.bind(null, slug, lesson.id, series.id) : null
 
   const instructors = lesson.instructor_id && instructorList.every((i) => i.membershipId !== lesson.instructor_id)
     ? [{ membershipId: lesson.instructor_id, userId: null, name: 'Former Instructor' }, ...instructorList]

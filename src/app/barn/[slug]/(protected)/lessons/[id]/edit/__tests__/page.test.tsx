@@ -269,7 +269,7 @@ describe('EditLessonPage', () => {
     expect(getSeriesById).toHaveBeenCalledWith('series-1', 'barn-1')
   })
 
-  it('should_show_series_indicator_and_stop_button_when_series_is_active', async () => {
+  it('should_show_series_indicator_when_series_is_active', async () => {
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, series_id: 'series-1' })
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
@@ -279,6 +279,17 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByText(/this is part of a recurring series/i)).toBeDefined()
+  })
+
+  it('should_show_stop_button_when_series_is_active', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, series_id: 'series-1' })
+    vi.mocked(getSeriesById).mockResolvedValue({
+      id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
+      jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
+      is_active: true, created_at: '',
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
     expect(screen.getByTestId('stop-series-button')).toBeDefined()
   })
 
@@ -286,6 +297,11 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.queryByText(/this is part of a recurring series/i)).toBeNull()
+  })
+
+  it('should_not_show_stop_button_when_lesson_has_no_series_id', async () => {
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
     expect(screen.queryByTestId('stop-series-button')).toBeNull()
   })
 
@@ -299,6 +315,17 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.queryByText(/this is part of a recurring series/i)).toBeNull()
+  })
+
+  it('should_not_show_stop_button_when_series_is_inactive', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, series_id: 'series-1' })
+    vi.mocked(getSeriesById).mockResolvedValue({
+      id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
+      jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
+      is_active: false, created_at: '',
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
     expect(screen.queryByTestId('stop-series-button')).toBeNull()
   })
 
@@ -308,6 +335,39 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.queryByText(/this is part of a recurring series/i)).toBeNull()
+  })
+
+  it('should_not_show_stop_button_when_series_id_set_but_series_not_found', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, series_id: 'series-1' })
+    vi.mocked(getSeriesById).mockResolvedValue(null)
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
     expect(screen.queryByTestId('stop-series-button')).toBeNull()
+  })
+
+  it('should_not_show_stop_button_when_trainer_does_not_own_series', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-1', series_id: 'series-1' })
+    vi.mocked(getSeriesById).mockResolvedValue({
+      id: 'series-1', barn_id: 'barn-1', instructor_id: 'other-trainer', fee: 50, lesson_type: 'normal',
+      jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
+      is_active: true, created_at: '',
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.queryByTestId('stop-series-button')).toBeNull()
+  })
+
+  it('should_show_stop_button_when_trainer_owns_series', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'trainer' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-1', series_id: 'series-1' })
+    vi.mocked(getSeriesById).mockResolvedValue({
+      id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
+      jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
+      is_active: true, created_at: '',
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('stop-series-button')).toBeDefined()
   })
 })
