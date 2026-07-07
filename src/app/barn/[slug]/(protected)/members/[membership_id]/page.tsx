@@ -9,7 +9,8 @@ import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementForRider } from '@/lib/db/agreements'
 import { UploadForm } from './UploadForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
-import { uploadDocumentAction, deleteDocumentAction } from './actions'
+import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
+import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction } from './actions'
 import type { TrainerDocument, RiderDocument, Agreement } from '@/lib/db/types'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
@@ -127,6 +128,8 @@ export default async function MemberDetailPage({
 
   const boundUpload = uploadDocumentAction.bind(null, slug, membership_id)
   const boundDelete = deleteDocumentAction.bind(null, slug, membership_id)
+  const boundReminderDate = updateDocumentReminderDateAction.bind(null, slug, membership_id)
+  const canEditReminderDate = callerRole === 'manager'
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -147,6 +150,7 @@ export default async function MemberDetailPage({
                 <th className="pb-2 pr-6">Type</th>
                 <th className="pb-2 pr-6">Notes</th>
                 <th className="pb-2 pr-6">Link</th>
+                <th className="pb-2 pr-6">Reminder Date</th>
                 <th className="pb-2">Action</th>
               </tr>
             </thead>
@@ -164,6 +168,13 @@ export default async function MemberDetailPage({
                     >
                       {doc.file_name}
                     </a>
+                  </td>
+                  <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">
+                    {canEditReminderDate ? (
+                      <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDate} />
+                    ) : (
+                      doc.reminder_date ?? '—'
+                    )}
                   </td>
                   <td className="py-3 text-sm">
                     {canUpload && (

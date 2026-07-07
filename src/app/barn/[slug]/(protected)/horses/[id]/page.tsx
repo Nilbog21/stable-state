@@ -8,7 +8,14 @@ import { getSignedUrl } from '@/lib/db/document-storage'
 import { HorseManagerForm } from './HorseManagerForm'
 import { HorseDocumentUploadForm } from './HorseDocumentUploadForm'
 import { HorseExhaustionThresholdsForm } from './HorseExhaustionThresholdsForm'
-import { updateHorseDetailsAction, uploadHorseDocumentAction, deleteHorseDocumentAction, updateHorseExhaustionThresholdsAction } from './actions'
+import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
+import {
+  updateHorseDetailsAction,
+  uploadHorseDocumentAction,
+  deleteHorseDocumentAction,
+  updateHorseExhaustionThresholdsAction,
+  updateHorseDocumentReminderDateAction,
+} from './actions'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   insurance_binder: 'Insurance Binder',
@@ -51,6 +58,7 @@ export default async function HorseDetailPage({
   const boundUploadAction = uploadHorseDocumentAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
   const boundUpdateThresholdsAction = updateHorseExhaustionThresholdsAction.bind(null, slug, horse.id)
+  const boundReminderDateAction = updateHorseDocumentReminderDateAction.bind(null, slug, horse.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -106,6 +114,7 @@ export default async function HorseDetailPage({
                   <th className="pb-2 pr-6">Type</th>
                   <th className="pb-2 pr-6">Notes</th>
                   <th className="pb-2 pr-6">Link</th>
+                  <th className="pb-2 pr-6">Reminder Date</th>
                   <th className="pb-2">Action</th>
                 </tr>
               </thead>
@@ -123,6 +132,13 @@ export default async function HorseDetailPage({
                       >
                         {doc.file_name}
                       </a>
+                    </td>
+                    <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">
+                      {role === 'manager' ? (
+                        <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDateAction} />
+                      ) : (
+                        doc.reminder_date ?? '—'
+                      )}
                     </td>
                     <td className="py-3 text-sm">
                       {role === 'manager' && (

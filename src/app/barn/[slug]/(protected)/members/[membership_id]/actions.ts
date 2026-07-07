@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
-import { createDocument, deleteDocument } from '@/lib/db/documents'
+import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
@@ -54,6 +54,7 @@ export async function uploadDocumentAction(
   }
 
   const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
+  const reminderDate = ((formData.get('reminder_date') as string | null) ?? '').trim() || null
 
   const folder =
     targetMembership.role === 'trainer' ? 'trainers'
@@ -69,9 +70,9 @@ export async function uploadDocumentAction(
 
   try {
     if (targetMembership.role === 'rider') {
-      await createDocument('rider', barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes)
+      await createDocument('rider', barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
     } else {
-      await createDocument('trainer', barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
+      await createDocument('trainer', barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
     }
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
@@ -115,6 +116,37 @@ export async function deleteDocumentAction(
   }
 
   await removeFile(storagePath).catch(() => {})
+
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  return { error: null }
+}
+
+export async function updateDocumentReminderDateAction(
+  barnSlug: string,
+  membershipId: string,
+  docId: string,
+  reminderDate: string | null
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const targetMembership = await getMembershipById(membershipId)
+  if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
+
+  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
+    return { error: 'Forbidden' }
+  }
+
+  if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
+
+  try {
+    if (targetMembership.role === 'rider') {
+      await updateDocumentReminderDate('rider', docId, targetMembership.user_id, barn.id, reminderDate)
+    } else {
+      await updateDocumentReminderDate('trainer', docId, targetMembership.user_id, barn.id, reminderDate)
+    }
+  } catch (dbError) {
+    return { error: getErrorMessage(dbError) }
+  }
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
   return { error: null }

@@ -104,6 +104,17 @@ export function UploadForm({ memberRole, action }: Props) {
         />
       </div>
 
+      <div>
+        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+          Expiration reminder date <span className="normal-case font-normal">(optional)</span>
+        </label>
+        <input
+          type="date"
+          name="reminder_date"
+          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </div>
+
       {uploadError && <p className="text-xs text-red-600 dark:text-red-400">{uploadError}</p>}
 
       <button
