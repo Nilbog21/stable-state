@@ -75,8 +75,6 @@ describe('MemberDetailPage', () => {
       uid === 'user-mgr' ? callerProfile : targetProfile
     )
     vi.mocked(getDocuments).mockResolvedValue([])
-    vi.mocked(getDocuments).mockResolvedValue([])
-    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
     vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
     vi.mocked(getActiveAgreementForRider).mockReset()
     vi.mocked(getActiveAgreementForRider).mockResolvedValue(null)
