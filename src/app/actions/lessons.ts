@@ -7,7 +7,7 @@ import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/le
 import type { PaymentType } from '@/lib/db/types'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
-import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
+import { createHorse, getHorsesByBarn, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 
 function parseExertionLevel(raw: FormDataEntryValue | null): number {
@@ -415,4 +415,23 @@ export async function stopLessonSeriesAction(barnSlug: string, lessonId: string,
   await stopLessonSeries(seriesId, barn.id)
 
   redirect(redirectPath)
+}
+
+export async function getProjectedExhaustionForBarn(
+  barnSlug: string,
+  excludeLessonId: string | null,
+  targetDateIso: string
+): Promise<Record<string, { existingRows: { lessonAt: string; exertionLevel: number }[]; thresholds: { high: number; moderate: number } }>> {
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const horses = await getHorsesByBarn(barn.id)
+  const targetDate = new Date(targetDateIso)
+
+  const entries = await Promise.all(
+    horses.map(async (h) => {
+      const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, targetDate, excludeLessonId ?? undefined)
+      return [h.id, { existingRows, thresholds: resolveExhaustionThresholds(h, barn) }] as const
+    })
+  )
+
+  return Object.fromEntries(entries)
 }
