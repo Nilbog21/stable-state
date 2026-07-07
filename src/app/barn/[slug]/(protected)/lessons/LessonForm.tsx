@@ -4,6 +4,9 @@ import { useActionState, useState, useEffect } from 'react'
 import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types'
 import { DateHourPicker } from './new/DateHourPicker'
 import { useNavigationBlocker } from '../NavigationBlocker'
+import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
+
+type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>
 
 const CUSTOM_ID = '__custom__'
 
@@ -26,6 +29,7 @@ export function LessonForm({
   tiers,
   initialLesson,
   initialNotes,
+  getProjectedExhaustion,
 }: {
   mode: 'new' | 'edit'
   horses: Horse[]
@@ -40,6 +44,7 @@ export function LessonForm({
     horses: Array<{ id: string; name: string; horse_notes: string | null }>
     riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
   }
+  getProjectedExhaustion?: (targetDateIso: string) => Promise<ExhaustionByHorseId>
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
 
@@ -91,6 +96,8 @@ export function LessonForm({
   const [isRecurring, setIsRecurring] = useState(false)
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
+  const [lessonAt, setLessonAt] = useState('')
+  const [exhaustionByHorseId, setExhaustionByHorseId] = useState<ExhaustionByHorseId | null>(null)
 
   const { setDirty, setMessage } = useNavigationBlocker()
   const unpaidPastDue =
@@ -114,6 +121,18 @@ export function LessonForm({
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [shouldWarn])
+
+  useEffect(() => {
+    if (!lessonAt || !getProjectedExhaustion) {
+      setExhaustionByHorseId(null)
+      return
+    }
+    let cancelled = false
+    getProjectedExhaustion(lessonAt).then((result) => {
+      if (!cancelled) setExhaustionByHorseId(result)
+    })
+    return () => { cancelled = true }
+  }, [lessonAt, getProjectedExhaustion])
 
   function flash(keys: string[]) {
     if (keys.length === 0) return
@@ -346,8 +365,10 @@ export function LessonForm({
           return aAvail - bAvail
         }).map((h) => {
           const isUnavailable = h.is_available === false
+          const exhaustion = exhaustionByHorseId?.[h.id]
           return (
-          <div key={h.id} className="flex items-center gap-3">
+          <div key={h.id} className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
             <label className={`flex items-center gap-2 text-sm ${isUnavailable ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-50'}`}>
               {isUnavailable && checkedHorseIds.has(h.id) && (
                 <input type="hidden" name="horse_id" value={h.id} />
@@ -411,6 +432,14 @@ export function LessonForm({
                 />
               </>
             )}
+          </div>
+          {exhaustion && (
+            <ExhaustionBar
+              existingRows={exhaustion.existingRows}
+              thresholds={exhaustion.thresholds}
+              ghostValue={checkedHorseIds.has(h.id) ? exertionMap.get(h.id) : undefined}
+            />
+          )}
           </div>
           )
         })}
@@ -498,6 +527,7 @@ export function LessonForm({
       <DateHourPicker
         initialDate={mode === 'edit' && initialLesson ? parseInitialDate(initialLesson.lesson_at) : undefined}
         initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
+        onChange={setLessonAt}
       />
 
       {isCustom ? (

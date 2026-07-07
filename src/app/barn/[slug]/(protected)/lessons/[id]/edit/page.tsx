@@ -6,7 +6,7 @@ import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles }
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getSeriesById } from '@/lib/db/lesson-series'
-import { updateLessonAction, stopLessonSeriesAction } from '@/app/actions/lessons'
+import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '@/app/actions/lessons'
 import { LessonForm } from '../../LessonForm'
 import { StopSeriesButton } from '../../StopSeriesButton'
 
@@ -69,6 +69,7 @@ export default async function EditLessonPage({
   const horsesForForm = [...horses, ...inactiveAssigned]
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
+  const getProjectedExhaustion = getProjectedExhaustionForBarn.bind(null, barn.slug, lesson.id)
 
   const initialNotes = {
     horses: lesson.lesson_horses
@@ -95,6 +96,7 @@ export default async function EditLessonPage({
         tiers={tiers}
         action={update}
         initialNotes={initialNotes}
+        getProjectedExhaustion={getProjectedExhaustion}
       />
       {series?.is_active && stopSeries && (
         <div className="flex w-full max-w-sm flex-col gap-3">

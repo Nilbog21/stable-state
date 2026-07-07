@@ -11,7 +11,7 @@ vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/lesson-series', () => ({ getSeriesById: vi.fn() }))
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
-vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn(), stopLessonSeriesAction: vi.fn() }))
+vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn(), stopLessonSeriesAction: vi.fn(), getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}) }))
 vi.mock('../../../LessonForm', () => ({
   LessonForm: ({ horses, initialNotes }: { horses: Array<{ id: string; name: string }>, initialNotes?: object }) => (
     <div data-testid="edit-lesson-form" data-has-notes={initialNotes ? 'true' : 'false'}>
