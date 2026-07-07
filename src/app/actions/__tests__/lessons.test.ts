@@ -149,12 +149,17 @@ describe('submitLesson', () => {
     expect(redirect).not.toHaveBeenCalled()
   })
 
-  it('should_call_createLessonSeries_when_is_recurring_true', async () => {
+  it('should_call_createLessonSeries_with_correct_params_when_is_recurring_true', async () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'true' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonSeries).toHaveBeenCalledWith(
       expect.objectContaining({ barnId: 'barn-1', instructorId: mockTrainerMembership.id, horseIds: ['horse-1'], riderIds: ['mem-1'] })
     )
+  })
+
+  it('should_not_call_createLessonWithParticipants_when_is_recurring_true', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'true' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).not.toHaveBeenCalled()
   })
 
@@ -162,6 +167,11 @@ describe('submitLesson', () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalled()
+  })
+
+  it('should_not_call_createLessonSeries_when_is_recurring_is_absent', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonSeries).not.toHaveBeenCalled()
   })
 
@@ -169,6 +179,11 @@ describe('submitLesson', () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'false' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonWithParticipants).toHaveBeenCalled()
+  })
+
+  it('should_not_call_createLessonSeries_when_is_recurring_false', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'false' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonSeries).not.toHaveBeenCalled()
   })
 
