@@ -98,17 +98,19 @@ export function getLessonVariation(i: number, tier1: { name: string; price: numb
   }
 }
 
-// Day -3 group lesson: sits exactly on the ±3-day exhaustion window edge, so whether it's
-// included depends on what time of day reset-db runs. Routed to the retired horse so it
-// never contaminates Apple/Butter/Clover's projected exhaustion total.
-export const EXHAUSTION_BOUNDARY_INDEX = 25
+// Day -3 (index 25, group) and day +3 (index 32, normal) lessons both sit exactly on the
+// ±3-day exhaustion window edge, so whether each is included depends on what time of day
+// reset-db runs. Both routed to the retired horse so neither ever contaminates
+// Apple/Butter/Clover's projected exhaustion total.
+export const EXHAUSTION_PAST_BOUNDARY_INDEX = 25
+export const EXHAUSTION_FUTURE_BOUNDARY_INDEX = 32
 
 export const EXHAUSTION_TOPUP_DAYS_OFFSET = -1
 export const EXHAUSTION_TOPUP_HOUR = 11
 export const EXHAUSTION_TOPUP_EXERTION = 4
 
 export function getLessonHorseAssignment(i: number, horseIds: string[], retiredHorseId: string) {
-  if (i === EXHAUSTION_BOUNDARY_INDEX) {
+  if (i === EXHAUSTION_PAST_BOUNDARY_INDEX || i === EXHAUSTION_FUTURE_BOUNDARY_INDEX) {
     return { horseIds: [retiredHorseId], exertionLevels: [3] }
   }
   if (isGroupLesson(i)) {
@@ -449,7 +451,7 @@ async function run() {
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`)
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
-  console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 2 past lessons)`)
+  console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 1 board ($${defaultBoardFee}), 1 lease ($200) — each with a paid charge last month and an unpaid charge this month`)
