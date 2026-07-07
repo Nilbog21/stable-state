@@ -10,6 +10,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 vi.mock('@/lib/db/documents', () => ({
   createDocument: vi.fn(),
   deleteDocument: vi.fn(),
+  updateDocumentReminderDate: vi.fn(),
 }))
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
@@ -22,10 +23,10 @@ vi.mock('next/cache', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
-import { createDocument, deleteDocument } from '@/lib/db/documents'
+import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
-import { uploadDocumentAction, deleteDocumentAction } from '../actions'
+import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction } from '../actions'
 
 const mockBarn = createMockBarn()
 
@@ -330,7 +331,21 @@ describe('uploadDocumentAction', () => {
 
     expect(createDocument).toHaveBeenCalledWith(
       'trainer', expect.any(String), expect.any(String), expect.any(String),
-      expect.any(String), expect.any(String), expect.any(Number), null
+      expect.any(String), expect.any(String), expect.any(Number), null, null
+    )
+  })
+
+  it('should_pass_reminder_date_when_provided', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
+    fd.set('reminder_date', '2027-01-01')
+    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+
+    expect(createDocument).toHaveBeenCalledWith(
+      'trainer', expect.any(String), expect.any(String), expect.any(String),
+      expect.any(String), expect.any(String), expect.any(Number), null, '2027-01-01'
     )
   })
 })
@@ -462,5 +477,101 @@ describe('deleteDocumentAction', () => {
     const result = await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
     expect(result.error).toBe('db error')
     expect(removeFile).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateDocumentReminderDateAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getMembershipById).mockReset()
+    vi.mocked(updateDocumentReminderDate).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(updateDocumentReminderDate).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_update_trainer_reminder_date', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'user-target-trn', 'barn-1', '2027-01-01')
+  })
+
+  it('should_update_rider_reminder_date', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+
+    await updateDocumentReminderDateAction('green-acres', 'mem-target-rdr', 'doc-2', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('rider', 'doc-2', 'user-target-rdr', 'barn-1', '2027-01-01')
+  })
+
+  it('should_update_manager_reminder_date_using_trainer_documents_table', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
+
+    await updateDocumentReminderDateAction('green-acres', 'mem-mgr-target', 'doc-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'user-mgr-target', 'barn-1', '2027-01-01')
+  })
+
+  it('should_revalidate_member_detail_path', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
+  })
+
+  it('should_return_error_when_target_membership_not_found', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    const result = await updateDocumentReminderDateAction('green-acres', 'mem-gone', 'doc-1', '2027-01-01')
+    expect(result.error).toBe('Not found')
+  })
+
+  it('should_return_error_when_target_has_no_user_id', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
+    )
+
+    const result = await updateDocumentReminderDateAction('green-acres', 'mem-nouser', 'doc-1', '2027-01-01')
+    expect(result.error).toBe('Target member has no account linked')
+  })
+
+  it('should_reject_when_target_has_unknown_role', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-unknown', user_id: 'user-unknown', barn_id: 'barn-1', role: 'unknown' as any })
+    )
+
+    const result = await updateDocumentReminderDateAction('green-acres', 'mem-unknown', 'doc-1', '2027-01-01')
+    expect(result.error).toBeTruthy()
+  })
+
+  it('should_return_null_error_on_success', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_db_update_fails', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(updateDocumentReminderDate).mockRejectedValue(new Error('db error'))
+
+    const result = await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
+    expect(result.error).toBe('db error')
   })
 })

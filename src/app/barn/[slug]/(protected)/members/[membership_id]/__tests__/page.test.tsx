@@ -23,6 +23,7 @@ vi.mock('@/lib/db/agreements', () => ({
 vi.mock('../actions', () => ({
   uploadDocumentAction: vi.fn(),
   deleteDocumentAction: vi.fn(),
+  updateDocumentReminderDateAction: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -59,14 +60,14 @@ const otherBarnMembership = createMockMembership({ id: 'mem-other', user_id: 'us
 const mockTrainerDoc: TrainerDocument = {
   id: 'doc-1', barn_id: 'barn-1', trainer_id: 'user-target-trn',
   record_type: 'instructor_contract', storage_path: 'barn-1/trainers/user-target-trn/contract.pdf',
-  file_name: 'contract.pdf', file_size: 1024, notes: null,
+  file_name: 'contract.pdf', file_size: 1024, notes: null, reminder_date: null,
   created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
 }
 
 const mockRiderDoc: RiderDocument = {
   id: 'doc-2', barn_id: 'barn-1', rider_id: 'user-target-rdr',
   record_type: 'liability_waiver', storage_path: 'barn-1/riders/user-target-rdr/waiver.pdf',
-  file_name: 'waiver.pdf', file_size: 512, notes: null,
+  file_name: 'waiver.pdf', file_size: 512, notes: null, reminder_date: null,
   created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z',
 }
 

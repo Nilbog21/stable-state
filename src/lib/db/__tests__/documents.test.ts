@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getDocuments, createDocument, deleteDocument } from '../documents'
+import { getDocuments, createDocument, deleteDocument, updateDocumentReminderDate } from '../documents'
 
 type EntityCase = {
   entity: 'horse' | 'rider' | 'trainer'
@@ -31,6 +31,7 @@ const CASES: EntityCase[] = [
       file_name: 'coggins.pdf',
       file_size: 1024,
       notes: null,
+      reminder_date: null,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
     } as HorseDocument,
@@ -49,6 +50,7 @@ const CASES: EntityCase[] = [
       file_name: 'waiver.pdf',
       file_size: 512,
       notes: null,
+      reminder_date: null,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
     } as RiderDocument,
@@ -67,6 +69,7 @@ const CASES: EntityCase[] = [
       file_name: 'contract.pdf',
       file_size: 1024,
       notes: null,
+      reminder_date: null,
       created_at: '2026-01-01T00:00:00Z',
       updated_at: '2026-01-01T00:00:00Z',
     } as TrainerDocument,
@@ -167,10 +170,46 @@ describe.each(CASES)('createDocument($entity)', ({ entity, entityId, recordType,
 
     const result = await createDocument(
       entity as any, 'barn-1', entityId, recordType as any,
-      mockDoc.storage_path, mockDoc.file_name, mockDoc.file_size, null
+      mockDoc.storage_path, mockDoc.file_name, mockDoc.file_size, null, null
     )
 
     expect(result).toEqual(mockDoc)
+  })
+
+  it('should_pass_reminder_date_through_to_insert', async () => {
+    const insert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { ...mockDoc, reminder_date: '2027-01-01' }, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert }),
+    } as any)
+
+    await createDocument(
+      entity as any, 'barn-1', entityId, recordType as any,
+      mockDoc.storage_path, mockDoc.file_name, mockDoc.file_size, null, '2027-01-01'
+    )
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ reminder_date: '2027-01-01' }))
+  })
+
+  it('should_pass_null_reminder_date_through_to_insert_when_omitted', async () => {
+    const insert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: mockDoc, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert }),
+    } as any)
+
+    await createDocument(
+      entity as any, 'barn-1', entityId, recordType as any,
+      mockDoc.storage_path, mockDoc.file_name, mockDoc.file_size, null, null
+    )
+
+    expect(insert).toHaveBeenCalledWith(expect.objectContaining({ reminder_date: null }))
   })
 
   it('should_throw_on_supabase_error', async () => {
@@ -185,8 +224,72 @@ describe.each(CASES)('createDocument($entity)', ({ entity, entityId, recordType,
     } as any)
 
     await expect(
-      createDocument(entity as any, 'barn-1', entityId, recordType as any, 'path', 'file.pdf', 1024, null)
+      createDocument(entity as any, 'barn-1', entityId, recordType as any, 'path', 'file.pdf', 1024, null, null)
     ).rejects.toThrow('insert error')
+  })
+})
+
+describe.each(CASES)('updateDocumentReminderDate($entity)', ({ entity, entityId, mockDoc }) => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_resolve_without_error_when_updating_reminder_date', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq }) }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await expect(
+      updateDocumentReminderDate(entity as any, mockDoc.id, entityId, 'barn-1', '2027-01-01')
+    ).resolves.toBeUndefined()
+  })
+
+  it('should_update_reminder_date', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq }) }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await updateDocumentReminderDate(entity as any, mockDoc.id, entityId, 'barn-1', '2027-01-01')
+    expect(update).toHaveBeenCalledWith({ reminder_date: '2027-01-01' })
+  })
+
+  it('should_clear_reminder_date_when_null', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq }) }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await updateDocumentReminderDate(entity as any, mockDoc.id, entityId, 'barn-1', null)
+    expect(update).toHaveBeenCalledWith({ reminder_date: null })
+  })
+
+  it('should_throw_on_supabase_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockResolvedValue({ error: new Error('update error') }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(
+      updateDocumentReminderDate(entity as any, mockDoc.id, entityId, 'barn-1', '2027-01-01')
+    ).rejects.toThrow('update error')
   })
 })
 

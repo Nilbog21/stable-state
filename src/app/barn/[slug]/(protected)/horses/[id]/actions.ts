@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails, updateHorseExhaustionThresholds } from '@/lib/db/horses'
-import { createDocument, deleteDocument } from '@/lib/db/documents'
+import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import type { HorseDocumentType } from '@/lib/db/types'
@@ -99,6 +99,7 @@ export async function uploadHorseDocumentAction(
   }
 
   const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
+  const reminderDate = ((formData.get('reminder_date') as string | null) ?? '').trim() || null
   const storagePath = `${barn.id}/horses/${horseId}/${Date.now()}.${ext}`
 
   try {
@@ -108,7 +109,7 @@ export async function uploadHorseDocumentAction(
   }
 
   try {
-    await createDocument('horse', barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
+    await createDocument('horse', barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
     return { error: getErrorMessage(dbError) }
@@ -128,4 +129,22 @@ export async function deleteHorseDocumentAction(
   await deleteDocument('horse', docId, horseId, barn.id)
   await removeFile(storagePath).catch(() => {})
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function updateHorseDocumentReminderDateAction(
+  barnSlug: string,
+  horseId: string,
+  docId: string,
+  reminderDate: string | null
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  try {
+    await updateDocumentReminderDate('horse', docId, horseId, barn.id, reminderDate)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  return { error: null }
 }

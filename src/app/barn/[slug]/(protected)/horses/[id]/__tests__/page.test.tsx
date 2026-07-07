@@ -18,6 +18,7 @@ vi.mock('../actions', () => ({
   uploadHorseDocumentAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
   updateHorseExhaustionThresholdsAction: vi.fn(),
+  updateHorseDocumentReminderDateAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
@@ -34,7 +35,7 @@ vi.mock('../HorseExhaustionThresholdsForm', () => ({
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
-vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
+vi.mock('next/navigation', () => ({ notFound: mockNotFound, useRouter: () => ({ refresh: vi.fn() }) }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'

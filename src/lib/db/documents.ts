@@ -40,7 +40,8 @@ export async function createDocument(
   storagePath: string,
   fileName: string,
   fileSize: number,
-  notes: string | null
+  notes: string | null,
+  reminderDate: string | null
 ): Promise<HorseDocument>
 export async function createDocument(
   entity: 'rider',
@@ -50,7 +51,8 @@ export async function createDocument(
   storagePath: string,
   fileName: string,
   fileSize: number,
-  notes: string | null
+  notes: string | null,
+  reminderDate: string | null
 ): Promise<RiderDocument>
 export async function createDocument(
   entity: 'trainer',
@@ -60,7 +62,8 @@ export async function createDocument(
   storagePath: string,
   fileName: string,
   fileSize: number,
-  notes: string | null
+  notes: string | null,
+  reminderDate: string | null
 ): Promise<TrainerDocument>
 export async function createDocument(
   entity: Entity,
@@ -70,7 +73,8 @@ export async function createDocument(
   storagePath: string,
   fileName: string,
   fileSize: number,
-  notes: string | null
+  notes: string | null,
+  reminderDate: string | null
 ) {
   const { table, idColumn } = CONFIG[entity]
   const supabase = await createClient()
@@ -84,6 +88,7 @@ export async function createDocument(
       file_name: fileName,
       file_size: fileSize,
       notes,
+      reminder_date: reminderDate,
     })
     .select()
     .single()
@@ -97,6 +102,24 @@ export async function deleteDocument(entity: Entity, id: string, entityId: strin
   const { error } = await supabase
     .from(table)
     .delete()
+    .eq('id', id)
+    .eq(idColumn, entityId)
+    .eq('barn_id', barnId)
+  if (error) throw error
+}
+
+export async function updateDocumentReminderDate(
+  entity: Entity,
+  id: string,
+  entityId: string,
+  barnId: string,
+  reminderDate: string | null
+): Promise<void> {
+  const { table, idColumn } = CONFIG[entity]
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from(table)
+    .update({ reminder_date: reminderDate })
     .eq('id', id)
     .eq(idColumn, entityId)
     .eq('barn_id', barnId)
