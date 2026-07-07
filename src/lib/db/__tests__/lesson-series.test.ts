@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createLessonSeries, getSeriesById } from '../lesson-series'
+import { createLessonSeries, getSeriesById, stopLessonSeries } from '../lesson-series'
 
 const mockLesson = createMockLesson({ series_id: 'series-1' })
 const mockSeries = createMockLessonSeries()
@@ -198,5 +198,62 @@ describe('getSeriesById', () => {
 
     expect(mockEq1).toHaveBeenCalledWith('id', 'series-1')
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+})
+
+describe('stopLessonSeries', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeChain(error: Error | null = null) {
+    const mockEq2 = vi.fn().mockResolvedValue({ error })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
+    return { update: mockUpdate, mockUpdate, mockEq1, mockEq2 }
+  }
+
+  it('should_set_is_active_false', async () => {
+    const { update, mockUpdate } = makeChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await stopLessonSeries('series-1', 'barn-1')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ is_active: false })
+  })
+
+  it('should_scope_update_by_series_id_and_barn_id', async () => {
+    const { update, mockEq1, mockEq2 } = makeChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await stopLessonSeries('series-1', 'barn-1')
+
+    expect(mockEq1).toHaveBeenCalledWith('id', 'series-1')
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { update } = makeChain(new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await expect(stopLessonSeries('series-1', 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const { update } = makeChain()
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await stopLessonSeries('series-1', 'barn-1', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    const { update, mockUpdate } = makeChain()
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await stopLessonSeries('series-1', 'barn-1', injectedClient)
+
+    expect(mockUpdate).toHaveBeenCalled()
   })
 })

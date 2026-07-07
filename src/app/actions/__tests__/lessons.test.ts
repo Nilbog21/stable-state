@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockLesson, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockLesson, createMockLessonSeries, createMockMembership } from '@/test/fixtures'
 import { makeFormData } from '@/test/utils/forms'
 
 vi.mock('@/lib/auth/guard', () => ({
@@ -22,6 +22,8 @@ vi.mock('@/lib/db/lesson-participants', () => ({
 
 vi.mock('@/lib/db/lesson-series', () => ({
   createLessonSeries: vi.fn(),
+  getSeriesById: vi.fn(),
+  stopLessonSeries: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -46,12 +48,12 @@ vi.mock('next/navigation', () => ({
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
-import { createLessonSeries } from '@/lib/db/lesson-series'
+import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
-import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction } from '../lessons'
+import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction } from '../lessons'
 
 const mockBarn = createMockBarn()
 const mockLesson = createMockLesson({ fee: 100, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
@@ -1546,5 +1548,60 @@ describe('updatePaymentTypeAction', () => {
     vi.mocked(updateLesson).mockRejectedValue(new Error('db error'))
     const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
     expect(result).toEqual({ error: 'Failed to update payment type' })
+  })
+})
+
+describe('stopLessonSeriesAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getSeriesById).mockReset()
+    vi.mocked(stopLessonSeries).mockReset()
+    vi.mocked(redirect).mockReset()
+    guardAs(mockManagerMembership)
+    vi.mocked(getSeriesById).mockResolvedValue(createMockLessonSeries({ instructor_id: mockTrainerMembership.id }))
+    vi.mocked(stopLessonSeries).mockResolvedValue(undefined)
+  })
+
+  it('should_call_stopLessonSeries_when_manager_stops_any_series', async () => {
+    await stopLessonSeriesAction('barn-slug', 'lesson-1', 'series-1')
+    expect(stopLessonSeries).toHaveBeenCalledWith('series-1', 'barn-1')
+  })
+
+  it('should_redirect_to_lesson_edit_page_when_manager_stops_series', async () => {
+    await stopLessonSeriesAction('barn-slug', 'lesson-1', 'series-1')
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1/edit')
+  })
+
+  it('should_call_stopLessonSeries_when_trainer_stops_own_series', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getSeriesById).mockResolvedValue(createMockLessonSeries({ instructor_id: mockTrainerMembership.id }))
+    await stopLessonSeriesAction('barn-slug', 'lesson-1', 'series-1')
+    expect(stopLessonSeries).toHaveBeenCalledWith('series-1', 'barn-1')
+  })
+
+  it('should_not_call_stopLessonSeries_when_trainer_does_not_own_series', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getSeriesById).mockResolvedValue(createMockLessonSeries({ instructor_id: 'other-trainer' }))
+    await stopLessonSeriesAction('barn-slug', 'lesson-1', 'series-1')
+    expect(stopLessonSeries).not.toHaveBeenCalled()
+  })
+
+  it('should_still_redirect_when_trainer_does_not_own_series', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getSeriesById).mockResolvedValue(createMockLessonSeries({ instructor_id: 'other-trainer' }))
+    await stopLessonSeriesAction('barn-slug', 'lesson-1', 'series-1')
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1/edit')
+  })
+
+  it('should_not_call_stopLessonSeries_when_series_not_found', async () => {
+    vi.mocked(getSeriesById).mockResolvedValue(null)
+    await stopLessonSeriesAction('barn-slug', 'lesson-1', 'series-1')
+    expect(stopLessonSeries).not.toHaveBeenCalled()
+  })
+
+  it('should_still_redirect_when_series_not_found', async () => {
+    vi.mocked(getSeriesById).mockResolvedValue(null)
+    await stopLessonSeriesAction('barn-slug', 'lesson-1', 'series-1')
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1/edit')
   })
 })
