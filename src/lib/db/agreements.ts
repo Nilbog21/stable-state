@@ -263,34 +263,34 @@ export async function getPaidCharges(
   client?: SupabaseClient
 ): Promise<PaidCharge[]> {
   const supabase = client ?? await createClient()
+  // FK-hint embed pinned to the exact composite constraint (verified against the live
+  // schema — resolves in one round trip; unqualified `agreements!inner` would instead
+  // throw PGRST201 if a second agreement_charges->agreements FK is ever added)
   const { data, error } = await supabase
     .from('agreement_charges')
-    .select('id, agreement_id, period, fee')
+    .select('id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id, horse_id)')
     .eq('barn_id', barnId)
     .not('payment_type', 'is', null)
     .gte('period', startDate.toISOString().slice(0, 10))
     .lt('period', endDate.toISOString().slice(0, 10))
 
   if (error) throw error
-  const rows = data ?? []
-  if (!rows.length) return []
-
-  const agreementIds = [...new Set(rows.map((r) => r.agreement_id))]
-  const agreementMap = await getAgreementsMapForCharges(supabase, barnId, agreementIds)
-
-  return rows.flatMap((row) => {
-    const agreement = agreementMap.get(row.agreement_id)
-    if (!agreement) return []
-    return [{
-      chargeId: row.id,
-      agreementId: row.agreement_id,
-      period: row.period,
-      fee: row.fee,
-      kind: agreement.kind,
-      riderId: agreement.rider_id,
-      horseId: agreement.horse_id,
-    }]
-  })
+  type PaidChargeRow = {
+    id: string
+    agreement_id: string
+    period: string
+    fee: number
+    agreements: { kind: AgreementKind; rider_id: string; horse_id: string }
+  }
+  return ((data ?? []) as unknown as PaidChargeRow[]).map((row) => ({
+    chargeId: row.id,
+    agreementId: row.agreement_id,
+    period: row.period,
+    fee: row.fee,
+    kind: row.agreements.kind,
+    riderId: row.agreements.rider_id,
+    horseId: row.agreements.horse_id,
+  }))
 }
 
 export async function getOutstandingCharges(
