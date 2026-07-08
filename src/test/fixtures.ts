@@ -127,7 +127,7 @@ export function createMockLessonDetail(overrides: Partial<LessonDetail> = {}): L
     instructor_name: 'Jane Smith',
     instructor_user_id: 'user-1',
     lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-    lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+    lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
     ...overrides,
   }
 }

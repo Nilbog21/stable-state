@@ -254,8 +254,15 @@ export async function cancelLessonAction(
     return
   }
 
+  let isLate = false
+  if (lesson.lesson_type === 'normal') {
+    const cancelledByInstructor = formData.get('cancel_type') === 'instructor'
+    const within24Hours = new Date(lesson.lesson_at).getTime() - Date.now() <= 24 * 60 * 60 * 1000
+    isLate = cancelledByInstructor ? false : within24Hours
+  }
+
   const notes = (formData.get('notes') as string | null)?.trim() || null
-  await cancelLesson(lessonId, barnId, notes)
+  await cancelLesson(lessonId, barnId, notes, isLate)
 
   const riderUserIds = lesson.lesson_riders
     .map((lr) => lr.barn_membership?.user_id)

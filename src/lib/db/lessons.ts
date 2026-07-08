@@ -58,8 +58,8 @@ export async function getLessonsByBarn(
 export async function getLessonById(lessonId: string, barnId: string, role: Role, userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, cancelled_at, barn_memberships ( id, user_id, profile_id )'
-    : 'rider_notes, private_notes, cancelled_at, barn_memberships ( id, user_id, profile_id )'
+    ? 'rider_notes, cancellation_notes, cancelled_at, barn_memberships ( id, user_id, profile_id )'
+    : 'rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( id, user_id, profile_id )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
@@ -77,6 +77,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   type RawLessonRider = {
     rider_notes: string | null
     private_notes?: string | null
+    cancellation_notes: string | null
     cancelled_at: string | null
     barn_memberships: { id: string; user_id: string | null; profile_id: string } | null
   }
@@ -116,6 +117,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   type NormalizedLr = {
     rider_notes: string | null
     private_notes: string | null
+    cancellation_notes: string | null
     cancelled_at: string | null
     barn_membership: { id: string; user_id: string | null; name: string } | null
   }
@@ -123,6 +125,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   const normalizeLr = (lr: RawLessonRider): NormalizedLr => ({
     rider_notes: lr.rider_notes,
     private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
+    cancellation_notes: lr.cancellation_notes ?? null,
     cancelled_at: lr.cancelled_at ?? null,
     barn_membership: lr.barn_memberships
       ? {
@@ -149,22 +152,26 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
         ...lr,
         private_notes: null,
         rider_notes: lr.barn_membership?.user_id === userId ? lr.rider_notes : null,
+        cancellation_notes: lr.barn_membership?.user_id === userId ? lr.cancellation_notes : null,
       })),
     } as LessonDetail
   }
   return base as LessonDetail
 }
 
-export async function cancelLesson(lessonId: string, barnId: string, notes?: string | null): Promise<void> {
+export async function cancelLesson(lessonId: string, barnId: string, notes?: string | null, isLate = false): Promise<void> {
   const supabase = await createClient()
+  const updates: { cancelled_at: string; cancellation_notes: string | null; fee?: number; payment_type?: null } = {
+    cancelled_at: new Date().toISOString(),
+    cancellation_notes: notes ?? null,
+  }
+  if (!isLate) {
+    updates.fee = 0
+    updates.payment_type = null
+  }
   const { error } = await supabase
     .from('lessons')
-    .update({
-      cancelled_at: new Date().toISOString(),
-      fee: 0,
-      payment_type: null,
-      cancellation_notes: notes ?? null,
-    })
+    .update(updates)
     .eq('id', lessonId)
     .eq('barn_id', barnId)
 

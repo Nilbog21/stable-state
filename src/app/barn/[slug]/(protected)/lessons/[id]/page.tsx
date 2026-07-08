@@ -102,6 +102,11 @@ export default async function LessonDetailPage({
               Jumping
             </span>
           )}
+          {lesson.cancelled_at !== null && (
+            <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
+              Cancelled
+            </span>
+          )}
           {canManageLesson && (
             <a
               href={`/barn/${slug}/lessons/${lesson.id}/edit`}
@@ -120,6 +125,12 @@ export default async function LessonDetailPage({
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Instructor</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">{instructorName}</dd>
           </div>
+          {lesson.cancelled_at !== null && (
+            <div className="flex flex-col gap-1 py-4">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Cancellation Notes</dt>
+              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{lesson.cancellation_notes ?? '—'}</dd>
+            </div>
+          )}
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Horse(s)</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
@@ -167,6 +178,12 @@ export default async function LessonDetailPage({
                               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
                               <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
                             </div>
+                            {lr.cancelled_at !== null && (
+                              <div>
+                                <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
+                                <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.cancellation_notes ?? '—'}</p>
+                              </div>
+                            )}
                           </div>
                         )}
                       </li>
@@ -176,6 +193,12 @@ export default async function LessonDetailPage({
                     <div className="mt-2">
                       <p className="text-xs font-medium text-zinc-500">Your Notes</p>
                       <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
+                      {myRiderEntry.cancelled_at !== null && (
+                        <div className="mt-1">
+                          <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
+                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.cancellation_notes ?? '—'}</p>
+                        </div>
+                      )}
                       {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
                         <RiderParticipationAction
                           slug={slug}
@@ -210,6 +233,12 @@ export default async function LessonDetailPage({
                             <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
                             <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
                           </div>
+                          {lr.cancelled_at !== null && (
+                            <div>
+                              <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
+                              <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.cancellation_notes ?? '—'}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -218,6 +247,12 @@ export default async function LessonDetailPage({
                     <div className="mt-2">
                       <p className="text-xs font-medium text-zinc-500">Your Notes</p>
                       <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
+                      {myRiderEntry.cancelled_at !== null && (
+                        <div className="mt-1">
+                          <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
+                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.cancellation_notes ?? '—'}</p>
+                        </div>
+                      )}
                       {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
                         <RiderParticipationAction
                           slug={slug}
