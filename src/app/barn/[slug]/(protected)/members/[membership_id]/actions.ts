@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
-import { updateContactInfo } from '@/lib/db/profiles'
+import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
@@ -131,6 +131,9 @@ export async function updateContactInfoAction(
 
   const targetMembership = await getMembershipById(membershipId)
   if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
+
+  const targetProfile = await getProfileById(targetMembership.profile_id)
+  if (!targetProfile || !targetProfile.is_managed) return { error: 'Forbidden' }
 
   const phone = (formData.get('phone') as string | null)?.trim() || null
   const emergencyContactName = (formData.get('emergency_contact_name') as string | null)?.trim() || null
