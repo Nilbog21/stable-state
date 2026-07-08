@@ -213,6 +213,18 @@ describe('SettingsPage', () => {
     expect(link.href).toContain('/barn/green-acres/settings/tiers/new')
   })
 
+  it('should_render_add_tier_link_in_header_row_with_heading', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /lesson tiers/i })
+    const link = screen.getByRole('link', { name: /add tier/i })
+    expect(link.parentElement).toBe(heading.parentElement)
+  })
+
   it('should_render_invite_link_section', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
