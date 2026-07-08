@@ -1,2 +1,6 @@
 ALTER TABLE public.trainer_documents RENAME TO staff_documents;
 ALTER TRIGGER trainer_documents_set_updated_at ON public.staff_documents RENAME TO staff_documents_set_updated_at;
+ALTER TABLE public.staff_documents RENAME CONSTRAINT trainer_documents_pkey TO staff_documents_pkey;
+ALTER TABLE public.staff_documents RENAME CONSTRAINT trainer_documents_barn_id_id_key TO staff_documents_barn_id_id_key;
+ALTER TABLE public.staff_documents RENAME CONSTRAINT trainer_documents_barn_id_fkey TO staff_documents_barn_id_fkey;
+ALTER TABLE public.staff_documents RENAME CONSTRAINT trainer_documents_trainer_id_fkey TO staff_documents_trainer_id_fkey;
