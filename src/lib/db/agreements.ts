@@ -265,7 +265,10 @@ export async function getPaidCharges(
   const supabase = client ?? await createClient()
   // FK-hint embed pinned to the exact composite constraint (verified against the live
   // schema — resolves in one round trip; unqualified `agreements!inner` would instead
-  // throw PGRST201 if a second agreement_charges->agreements FK is ever added)
+  // throw PGRST201 if a second agreement_charges->agreements FK is ever added). A prior
+  // attempt at this used an unqualified embed and was reverted (commit a4f8196) out of
+  // caution over #407's schema-cache failure — but #407's tables had no FK at all, unlike
+  // this composite FK, and the pinned constraint name here was re-verified live (#665).
   const { data, error } = await supabase
     .from('agreement_charges')
     .select('id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id, horse_id)')
