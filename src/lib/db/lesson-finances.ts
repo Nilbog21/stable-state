@@ -11,8 +11,6 @@ import {
   getLessonHorsesForLessons,
   getPaidLessonInstructorFees,
   getPaidLessonFeesAt,
-  getRiderMembership,
-  getProfileNameByUserId,
 } from './lesson-finance-queries'
 import { getChargesForSummary, getPaidCharges } from './agreements'
 import type {
@@ -29,6 +27,15 @@ import type {
   Role,
   TrainerIncomeSummary,
 } from './types'
+
+export function splitNetFee(
+  fee: number,
+  instructorCut: number,
+  participantCount: number
+): { netFee: number; splitAmount: number } {
+  const netFee = fee - instructorCut
+  return { netFee, splitAmount: netFee / participantCount }
+}
 
 export const NON_LESSON_INCOME_LABEL = 'Non-lesson income'
 export const NO_INSTRUCTOR_LABEL = 'No instructor'
@@ -182,15 +189,14 @@ export async function getHorseIncomeSummary(
     const lessonHorses = await getLessonHorsesForLessons(supabase, barnId, lessonIds)
     for (const lesson of lessons) {
       const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
-      const netFee = lesson.fee - instructorCut
+      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, participants.length || 1)
       if (!participants.length) {
         noHorseCount += 1
         noHorseTotal += netFee
         continue
       }
-      const split = netFee / participants.length
       for (const { horse_id } of participants) {
-        incomeMap.set(horse_id, (incomeMap.get(horse_id) ?? 0) + split)
+        incomeMap.set(horse_id, (incomeMap.get(horse_id) ?? 0) + splitAmount)
       }
     }
   }
@@ -241,15 +247,14 @@ export async function getRiderIncomeSummary(
     const lessonRiders = await getLessonRidersForLessons(supabase, barnId, lessonIds)
     for (const lesson of lessons) {
       const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
-      const netFee = lesson.fee - instructorCut
+      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, participants.length || 1)
       if (!participants.length) {
         noRiderCount += 1
         noRiderTotal += netFee
         continue
       }
-      const split = netFee / participants.length
       for (const { rider_id } of participants) {
-        incomeMap.set(rider_id, (incomeMap.get(rider_id) ?? 0) + split)
+        incomeMap.set(rider_id, (incomeMap.get(rider_id) ?? 0) + splitAmount)
       }
     }
   }
@@ -354,13 +359,13 @@ export async function getHorseIncomeDetail(
       const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
       if (!participants.some((lh) => lh.horse_id === horseId)) continue
       const horseCount = participants.length
-      const netFee = lesson.fee - instructorCut
+      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, horseCount)
       rows.push({
         lessonId: lesson.id,
         lessonAt: lesson.lesson_at,
         fee: netFee,
         horseCount,
-        splitAmount: netFee / horseCount,
+        splitAmount,
       })
     }
   }
@@ -387,13 +392,8 @@ export async function getRiderIncomeDetail(
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
-  const riderData = await getRiderMembership(supabase, barnId, riderId)
-
-  let riderName = riderId
-  if (riderData?.user_id) {
-    const riderProfile = await getProfileNameByUserId(supabase, riderData.user_id)
-    if (riderProfile) riderName = `${riderProfile.first_name} ${riderProfile.last_name}`
-  }
+  const memberNameMap = await resolveMemberNames([riderId], barnId, supabase)
+  const riderName = memberNameMap.get(riderId) ?? riderId
 
   const rows: RiderIncomeDetailRow[] = []
   if (lessonsData.length) {
@@ -403,13 +403,13 @@ export async function getRiderIncomeDetail(
       const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
       if (!participants.some((lr) => lr.rider_id === riderId)) continue
       const riderCount = participants.length
-      const netFee = lesson.fee - instructorCut
+      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, riderCount)
       rows.push({
         lessonId: lesson.id,
         lessonAt: lesson.lesson_at,
         fee: netFee,
         riderCount,
-        splitAmount: netFee / riderCount,
+        splitAmount,
       })
     }
   }
