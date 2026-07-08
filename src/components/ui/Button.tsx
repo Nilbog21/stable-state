@@ -2,8 +2,13 @@ import Link from 'next/link'
 import type { ComponentProps } from 'react'
 
 type Variant = 'primary' | 'danger' | 'ghost'
+type Size = 'sm' | 'md'
 
-const base = 'inline-block min-h-11 rounded-md px-4 py-2 text-sm font-medium disabled:opacity-50'
+const base = 'inline-block font-medium disabled:opacity-50'
+const sizes: Record<Size, string> = {
+  md: 'min-h-11 rounded-md px-4 py-2 text-sm',
+  sm: 'rounded px-3 py-1 text-xs',
+}
 const variants: Record<Variant, string> = {
   primary:
     'bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200',
@@ -15,14 +20,20 @@ const variants: Record<Variant, string> = {
 export function Button({
   href,
   variant = 'primary',
+  size = 'md',
   loading = false,
   disabled,
   className,
   type = 'button',
   children,
   ...rest
-}: ComponentProps<'button'> & { href?: string; variant?: Variant; loading?: boolean }) {
-  const classes = `${base} ${variants[variant]}${className ? ` ${className}` : ''}`
+}: ComponentProps<'button'> & {
+  href?: string
+  variant?: Variant
+  size?: Size
+  loading?: boolean
+}) {
+  const classes = `${base} ${sizes[size]} ${variants[variant]}${className ? ` ${className}` : ''}`
 
   if (href) {
     return (
