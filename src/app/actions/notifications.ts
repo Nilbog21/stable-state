@@ -6,6 +6,7 @@ import {
   markNotificationRead as dbMarkNotificationRead,
   markAllNotificationsRead as dbMarkAllNotificationsRead,
 } from '@/lib/db/notifications'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import type { NotificationType } from '@/lib/db/types'
 
 export async function createNotificationAction(params: {
@@ -19,6 +20,9 @@ export async function createNotificationAction(params: {
   const user = await getAuthenticatedUser()
 
   if (!user) return { error: 'not authenticated' }
+
+  const membership = await getUserMembership(user.id, params.barnId)
+  if (membership?.status !== 'active') return { error: 'not authorized' }
 
   try {
     await dbCreateNotification(params)
