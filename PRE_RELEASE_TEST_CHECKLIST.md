@@ -114,6 +114,8 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Delete one seeded lesson — it disappears from the list
 - [ ] On a lesson's detail page, click **Cancel** next to a rider's name → confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away; that rider shows a **Cancelled** badge and the rest of the lesson is unaffected
 - [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
+- [ ] From the Lessons list, click **Cancel** on a **normal** lesson (whole-lesson cancel) → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle identical to the per-rider cancel page; confirm with notes → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes** on the detail page
+- [ ] Whole-lesson cancel on a **group** lesson → no toggle shown; confirmation text instead lists the count and names of enrolled riders who will be affected
 
 Expenses (`/barn/dev-barn/expenses`):
 
