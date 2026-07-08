@@ -23,6 +23,7 @@ import {
   NO_INSTRUCTOR_LABEL,
   NO_HORSE_LABEL,
   NO_RIDER_LABEL,
+  splitNetFee,
 } from '../lesson-finances'
 import {
   getLessonsForSummary,
@@ -37,6 +38,28 @@ import {
 import { resolveMemberNames } from '../barn-memberships'
 import { resolveHorseNames } from '../horses'
 import { getChargesForSummary, getPaidCharges } from '../agreements'
+
+describe('splitNetFee', () => {
+  it('should_subtract_instructor_cut_from_fee_to_get_net_fee', () => {
+    const { netFee } = splitNetFee(100, 25, 1)
+    expect(netFee).toBe(75)
+  })
+
+  it('should_divide_net_fee_by_participant_count_to_get_split_amount', () => {
+    const { splitAmount } = splitNetFee(100, 0, 2)
+    expect(splitAmount).toBe(50)
+  })
+
+  it('should_net_the_cut_once_before_dividing_across_participants', () => {
+    const { splitAmount } = splitNetFee(100, 20, 2)
+    expect(splitAmount).toBe(40)
+  })
+
+  it('should_allow_a_negative_net_fee_when_cut_exceeds_fee', () => {
+    const { netFee } = splitNetFee(10, 25, 1)
+    expect(netFee).toBe(-15)
+  })
+})
 
 describe('getFinancialSummary', () => {
   beforeEach(() => {

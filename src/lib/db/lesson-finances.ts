@@ -28,7 +28,7 @@ import type {
   TrainerIncomeSummary,
 } from './types'
 
-function splitNetFee(
+export function splitNetFee(
   fee: number,
   instructorCut: number,
   participantCount: number

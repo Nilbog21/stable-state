@@ -23,6 +23,7 @@ import {
   getChargesForSummary,
   getPaidCharges,
   getOutstandingCharges,
+  getAgreementsMapForCharges,
 } from '../agreements'
 
 const mockAgreement = createMockAgreement()
@@ -569,6 +570,55 @@ describe('getChargesForSummary', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(from).toHaveBeenCalledWith('agreement_charges')
+  })
+})
+
+describe('getAgreementsMapForCharges', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    const from = vi.fn().mockReturnValue({ select: mockSelect })
+    return { client: { from } as any, from, mockEq, mockIn }
+  }
+
+  it('should_query_the_agreements_table', async () => {
+    const { client, from } = makeChain([])
+    await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
+    expect(from).toHaveBeenCalledWith('agreements')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { client, mockEq } = makeChain([])
+    await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_by_the_given_agreement_ids', async () => {
+    const { client, mockIn } = makeChain([])
+    await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1', 'agreement-2'])
+    expect(mockIn).toHaveBeenCalledWith('id', ['agreement-1', 'agreement-2'])
+  })
+
+  it('should_return_a_map_keyed_by_agreement_id', async () => {
+    const { client } = makeChain([{ id: 'agreement-1', kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' }])
+    const result = await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
+    expect(result.get('agreement-1')).toEqual({ id: 'agreement-1', kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' })
+  })
+
+  it('should_return_an_empty_map_when_data_is_null', async () => {
+    const { client } = makeChain(null)
+    const result = await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
+    expect(result.size).toBe(0)
+  })
+
+  it('should_throw_when_the_query_returns_an_error', async () => {
+    const { client } = makeChain(null, new Error('agreements error'))
+    await expect(getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])).rejects.toThrow('agreements error')
   })
 })
 

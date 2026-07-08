@@ -8,13 +8,13 @@ export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | '
   return agreement.cadence === 'one_time' ? 'Complete' : 'Active'
 }
 
-interface ChargeAgreementInfo {
+export interface ChargeAgreementInfo {
   kind: AgreementKind
   rider_id: string
   horse_id: string
 }
 
-async function getAgreementsMapForCharges(
+export async function getAgreementsMapForCharges(
   supabase: SupabaseClient,
   barnId: string,
   agreementIds: string[]
