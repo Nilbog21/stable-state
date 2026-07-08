@@ -100,7 +100,7 @@ export default async function ProtectedBarnLayout({
             <UserMenu initials={initials} email={email} fullName={fullName} barnSlug={slug} />
           </span>
           <span className="order-1 md:order-2">
-            <NotificationBell notifications={notifications} barnId={barn.id} />
+            <NotificationBell notifications={notifications} barnSlug={slug} />
           </span>
         </div>
       </nav>

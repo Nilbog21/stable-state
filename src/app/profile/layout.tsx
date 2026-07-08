@@ -82,7 +82,7 @@ export default async function ProfileLayout({ children }: { children: React.Reac
                   showSwitchBarn={showSwitchBarn}
                   barnSlug={barnSlug}
                 />
-                <NotificationBell notifications={notifications} barnId={barn.id} />
+                <NotificationBell notifications={notifications} barnSlug={barnSlug} />
               </div>
             </nav>
             {children}

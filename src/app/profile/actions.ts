@@ -2,6 +2,8 @@
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId, updateProfile } from '@/lib/db/profiles'
 
+// Not barn-scoped — no barnSlug/role dimension, every authenticated user
+// edits only their own profile, so requireMembership doesn't apply.
 export async function updateProfileAction(
   formData: FormData
 ): Promise<{ error: string | null }> {

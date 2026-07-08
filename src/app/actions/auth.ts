@@ -4,6 +4,10 @@ import { headers, cookies } from 'next/headers'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 
+// This file's actions are the auth entry/exit points themselves — no barn
+// membership exists yet (sign-in) or matters anymore (sign-out) when they
+// run, so requireMembership doesn't apply here.
+
 async function getOrigin(): Promise<string> {
   const h = await headers()
   const proto = h.get('x-forwarded-proto')?.split(',')[0].trim() ?? 'http'
