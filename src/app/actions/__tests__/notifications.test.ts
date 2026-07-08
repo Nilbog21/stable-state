@@ -14,9 +14,14 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
 
+vi.mock('@/lib/auth/guard', () => ({
+  requireMembership: vi.fn(),
+}))
+
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { createNotification, markNotificationRead, markAllNotificationsRead } from '@/lib/db/notifications'
 import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import {
   createNotificationAction,
   markNotificationReadAction,
@@ -205,42 +210,51 @@ describe('markNotificationReadAction', () => {
 })
 
 describe('markAllNotificationsReadAction', () => {
+  function mockMembership(userId = 'user-42', barnId = 'barn-1') {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: userId } as any,
+      barn: { id: barnId } as any,
+      membership: {} as any,
+    })
+  }
+
   beforeEach(() => {
-    vi.mocked(getAuthenticatedUser).mockReset()
+    vi.mocked(requireMembership).mockReset()
     vi.mocked(markAllNotificationsRead).mockReset()
   })
 
-  it('should_return_error_when_not_authenticated', async () => {
-    mockAuthNoUser()
-
-    const result = await markAllNotificationsReadAction('barn-1')
-
-    expect(result).toEqual({ error: 'not authenticated' })
-  })
-
-  it('should_call_markAllNotificationsRead_with_user_and_barn', async () => {
-    mockAuthUser('user-42')
+  it('should_call_requireMembership_with_barn_slug_and_all_roles', async () => {
+    mockMembership()
     vi.mocked(markAllNotificationsRead).mockResolvedValue(undefined)
 
-    await markAllNotificationsReadAction('barn-1')
+    await markAllNotificationsReadAction('barn-slug')
+
+    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_call_markAllNotificationsRead_with_user_and_barn_id', async () => {
+    mockMembership('user-42', 'barn-1')
+    vi.mocked(markAllNotificationsRead).mockResolvedValue(undefined)
+
+    await markAllNotificationsReadAction('barn-slug')
 
     expect(markAllNotificationsRead).toHaveBeenCalledWith('user-42', 'barn-1')
   })
 
   it('should_return_null_error_on_success', async () => {
-    mockAuthUser()
+    mockMembership()
     vi.mocked(markAllNotificationsRead).mockResolvedValue(undefined)
 
-    const result = await markAllNotificationsReadAction('barn-1')
+    const result = await markAllNotificationsReadAction('barn-slug')
 
     expect(result).toEqual({ error: null })
   })
 
   it('should_return_error_on_db_failure', async () => {
-    mockAuthUser()
+    mockMembership()
     vi.mocked(markAllNotificationsRead).mockRejectedValue(new Error('db error'))
 
-    const result = await markAllNotificationsReadAction('barn-1')
+    const result = await markAllNotificationsReadAction('barn-slug')
 
     expect(result).toEqual({ error: 'Failed to mark all notifications read' })
   })
