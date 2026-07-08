@@ -12,8 +12,9 @@ diffing the resulting schemas with `migra` until empty (public schema
 objects, `storage.objects` policies, and the `storage.buckets` seed row all
 matched).
 
-After this baseline merged, `scripts/repair-migration-history.sh` was run
-against both the dev and prod Supabase projects to mark these 93 versions
-"reverted" and the 3 baseline versions "applied" in each project's
-migration-tracking table, so the CLI doesn't try to re-run history that's
-already live.
+After this baseline merges, `scripts/repair-migration-history.sh` must be
+run against prod to mark these 93 versions "reverted" and the 3 baseline
+versions "applied" in prod's migration-tracking table, so the CLI doesn't
+try to re-run history that's already live. The shared dev DB is reconciled
+separately, by wholesale schema replacement (see #659,
+`scripts/replace-all-migrations.sh`).

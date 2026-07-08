@@ -254,6 +254,9 @@ GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.barns TO authenticated;
 GRANT SELECT ON TABLE public.barns TO anon;
 GRANT ALL ON TABLE public.barns TO service_role;
 
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.horse_documents TO authenticated;
+GRANT ALL ON TABLE public.horse_documents TO service_role;
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.horses TO authenticated;
 GRANT ALL ON TABLE public.horses TO service_role;
 
@@ -263,14 +266,27 @@ GRANT ALL ON TABLE public.lesson_horses TO service_role;
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.lesson_riders TO authenticated;
 GRANT ALL ON TABLE public.lesson_riders TO service_role;
 
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.lesson_tiers TO authenticated;
 GRANT ALL ON TABLE public.lesson_tiers TO service_role;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.notifications TO authenticated;
+GRANT ALL ON TABLE public.notifications TO service_role;
 
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.profiles TO authenticated;
 GRANT ALL ON TABLE public.profiles TO service_role;
 
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.rider_documents TO authenticated;
+GRANT ALL ON TABLE public.rider_documents TO service_role;
+
 GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.roles TO authenticated;
 GRANT SELECT ON TABLE public.roles TO anon;
 GRANT ALL ON TABLE public.roles TO service_role;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.seeded_accounts TO authenticated;
+GRANT ALL ON TABLE public.seeded_accounts TO service_role;
+
+GRANT SELECT,INSERT,DELETE,UPDATE ON TABLE public.trainer_documents TO authenticated;
+GRANT ALL ON TABLE public.trainer_documents TO service_role;
 
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT SELECT,INSERT,DELETE,UPDATE ON TABLES TO authenticated;
 ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public GRANT ALL ON TABLES TO service_role;
