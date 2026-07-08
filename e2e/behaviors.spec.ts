@@ -7,9 +7,9 @@ test('rider_redirected_from_new_lesson_page @rider', async ({ page }) => {
   await expect(page).toHaveURL(new RegExp(`/barn/${barnSlug}/lessons$`))
 })
 
-test('manager_by_trainer_pill_sets_filter_param @manager', async ({ page }) => {
+test('manager_by_instructor_pill_sets_filter_param @manager', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}/lessons`)
-  await page.getByRole('link', { name: 'By Trainer' }).click()
+  await page.getByRole('link', { name: 'By Instructor' }).click()
   await expect(page).toHaveURL(/filter=trainer/)
 })
 
@@ -33,10 +33,16 @@ test('rider_lesson_detail_has_no_private_notes_section @rider', async ({ page })
   await expect(page.getByText('Private', { exact: true })).toHaveCount(0)
 })
 
-for (const tab of ['Horse', 'Rider', 'Trainer']) {
-  test(`manager_finance_${tab.toLowerCase()}_tab_updates_tab_param @manager`, async ({ page }) => {
+const financeTabs = [
+  { label: 'Horse', param: 'horse' },
+  { label: 'Rider', param: 'rider' },
+  { label: 'Instructor', param: 'trainer' },
+]
+
+for (const { label, param } of financeTabs) {
+  test(`manager_finance_${param}_tab_updates_tab_param @manager`, async ({ page }) => {
     await page.goto(`/barn/${barnSlug}/finances`)
-    await page.getByRole('link', { name: `By ${tab}` }).click()
-    await expect(page).toHaveURL(new RegExp(`tab=${tab.toLowerCase()}`))
+    await page.getByRole('link', { name: `By ${label}` }).click()
+    await expect(page).toHaveURL(new RegExp(`tab=${param}`))
   })
 }

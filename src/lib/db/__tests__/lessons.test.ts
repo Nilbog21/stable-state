@@ -265,15 +265,33 @@ describe('getLessonsByBarn', () => {
       return { select: mockSelect, mockBarnEq }
     }
 
-    it('should_return_all_barn_lessons_for_trainer_role_with_no_instructor_filter', async () => {
-      const { select, mockEq, mockOrder } = makeLessonsChain([])
+    it('should_filter_by_barn_id_for_trainer_role_with_no_instructor_filter', async () => {
+      const { select, mockEq } = makeLessonsChain([])
       const fromFn = vi.fn().mockReturnValue({ select })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
       await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
 
       expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    })
+
+    it('should_order_by_lesson_at_descending_for_trainer_role_with_no_instructor_filter', async () => {
+      const { select, mockOrder } = makeLessonsChain([])
+      const fromFn = vi.fn().mockReturnValue({ select })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
+
       expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: false })
+    })
+
+    it('should_not_query_barn_memberships_for_trainer_role_with_no_instructor_filter', async () => {
+      const { select } = makeLessonsChain([])
+      const fromFn = vi.fn().mockReturnValue({ select })
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
+
       expect(fromFn).not.toHaveBeenCalledWith('barn_memberships')
     })
 
