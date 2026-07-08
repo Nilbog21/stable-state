@@ -236,9 +236,12 @@ export default async function SettingsPage({
       </section>
 
       <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Lesson Tiers
-        </h2>
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Lesson Tiers
+          </h2>
+          <Button href={`/barn/${slug}/settings/tiers/new`}>Add Tier</Button>
+        </div>
 
         {tiers.length > 0 ? (
           <table className="w-full">
@@ -289,15 +292,6 @@ export default async function SettingsPage({
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">No tiers yet.</p>
         )}
-
-        <div className="mt-4">
-          <Link
-            href={`/barn/${slug}/settings/tiers/new`}
-            className="rounded bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Add tier
-          </Link>
-        </div>
       </section>
 
       <section className="mb-12">
