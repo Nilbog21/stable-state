@@ -279,35 +279,37 @@ export default async function FinancesPage({
 
       {tab === 'tier' && (
         breakdown.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr>
-                <Th>Tier</Th>
-                <Th>Price</Th>
-                <Th>Lessons</Th>
-                <Th>Instructor Cut</Th>
-                <Th>Subtotal</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {breakdown.map((tier) => (
-                <tr key={tier.tierName}>
-                  <Td>
-                    {tier.tierName}
-                    {tier.tierName === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
-                  </Td>
-                  <Td>
-                    {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
-                  </Td>
-                  <Td>{tier.lessonCount}</Td>
-                  <Td>
-                    {tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}
-                  </Td>
-                  <Td>{formatCurrency(tier.subtotal)}</Td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Tier</Th>
+                  <Th>Price</Th>
+                  <Th>Lessons</Th>
+                  <Th>Instructor Cut</Th>
+                  <Th>Subtotal</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {breakdown.map((tier) => (
+                  <tr key={tier.tierName}>
+                    <Td>
+                      {tier.tierName}
+                      {tier.tierName === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
+                    </Td>
+                    <Td>
+                      {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
+                    </Td>
+                    <Td>{tier.lessonCount}</Td>
+                    <Td>
+                      {tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}
+                    </Td>
+                    <Td>{formatCurrency(tier.subtotal)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
         )
