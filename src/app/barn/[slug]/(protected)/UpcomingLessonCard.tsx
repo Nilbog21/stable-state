@@ -1,6 +1,6 @@
 'use client'
-import Link from 'next/link'
 import type { LessonWithDetails } from '@/lib/db/types'
+import { Card } from '@/components/ui/Card'
 
 export function isSameLocalDay(date: Date, now: Date): boolean {
   return (
@@ -38,10 +38,7 @@ export function UpcomingLessonCard({
   const isOwnParticipationCancelled = myRiderIndex >= 0 && lesson.rider_cancelled_ats[myRiderIndex] !== null
 
   return (
-    <Link
-      href={`/barn/${slug}/lessons/${lesson.id}`}
-      className="block rounded-lg border border-zinc-200 bg-white p-4 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
-    >
+    <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="p-4">
       {/* suppressHydrationWarning: server (UTC) and client (local TZ) produce different strings */}
       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50" suppressHydrationWarning>{display}</p>
       {lesson.cancelled_at !== null && (
@@ -63,6 +60,6 @@ export function UpcomingLessonCard({
           {lesson.rider_names.join(', ')}
         </p>
       )}
-    </Link>
+    </Card>
   )
 }
