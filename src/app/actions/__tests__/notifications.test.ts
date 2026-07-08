@@ -67,6 +67,19 @@ describe('createNotificationAction', () => {
     })
 
     expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_not_call_createNotification_when_caller_is_not_an_active_member', async () => {
+    mockAuthUser()
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+
+    await createNotificationAction({
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+    })
+
     expect(createNotification).not.toHaveBeenCalled()
   })
 
@@ -82,6 +95,19 @@ describe('createNotificationAction', () => {
     })
 
     expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_not_call_createNotification_when_caller_membership_is_pending', async () => {
+    mockAuthUser()
+    vi.mocked(getUserMembership).mockResolvedValue({ status: 'pending' } as any)
+
+    await createNotificationAction({
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+    })
+
     expect(createNotification).not.toHaveBeenCalled()
   })
 
