@@ -172,12 +172,22 @@ async function run() {
   }
 
   for (const recipient of seriesStoppedRecipients.values()) {
-    const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
-    await upsertRunNotification(supabase, recipient, 'recurring_series_stopped', formatSeriesStoppedNotification, link)
+    try {
+      const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
+      await upsertRunNotification(supabase, recipient, 'recurring_series_stopped', formatSeriesStoppedNotification, link)
+    } catch (err) {
+      errorCount++
+      console.error(`Failed to notify ${recipient.userId} of stopped series:`, (err as Error).message)
+    }
   }
   for (const recipient of horseWarningRecipients.values()) {
-    const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
-    await upsertRunNotification(supabase, recipient, 'recurring_lesson_horse_unavailable', formatHorseUnavailableNotification, link)
+    try {
+      const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
+      await upsertRunNotification(supabase, recipient, 'recurring_lesson_horse_unavailable', formatHorseUnavailableNotification, link)
+    } catch (err) {
+      errorCount++
+      console.error(`Failed to notify ${recipient.userId} of unavailable horse:`, (err as Error).message)
+    }
   }
 
   console.log(formatGenerationSummary(generatedCount, stoppedCount, warnedCount, errorCount))
