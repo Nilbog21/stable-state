@@ -134,7 +134,7 @@ describe('getFinancialSummary', () => {
 
     await getFinancialSummary('barn-1', startDate, endDate)
 
-    expect(getLessonsForSummary).toHaveBeenCalledWith(expect.anything(), 'barn-1', startDate, endDate)
+    expect(getLessonsForSummary).toHaveBeenCalledWith('barn-1', startDate, endDate, expect.anything())
   })
 
   it('should_calculate_correct_subtotal_per_tier', async () => {
@@ -196,7 +196,7 @@ describe('getFinancialSummary', () => {
 
     await getFinancialSummary('barn-1', startDate, endDate)
 
-    expect(getTierPricesByNames).toHaveBeenCalledWith(expect.anything(), 'barn-1', ['Premium'])
+    expect(getTierPricesByNames).toHaveBeenCalledWith('barn-1', ['Premium'], expect.anything())
   })
 
   it('should_include_price_from_lesson_tiers_for_named_tier', async () => {
@@ -490,7 +490,7 @@ describe('getOutstandingLessons', () => {
     await getOutstandingLessons('barn-1', undefined, undefined, injectedClient)
 
     expect(createClient).not.toHaveBeenCalled()
-    expect(getOutstandingLessonRows).toHaveBeenCalledWith(injectedClient, 'barn-1', undefined, undefined)
+    expect(getOutstandingLessonRows).toHaveBeenCalledWith('barn-1', undefined, undefined, injectedClient)
   })
 
   it('should_return_empty_array_when_no_outstanding_rows', async () => {
@@ -514,7 +514,7 @@ describe('getOutstandingLessons', () => {
 
     await getOutstandingLessons('barn-1', 'user-trainer', 'trainer')
 
-    expect(getOutstandingLessonRows).toHaveBeenCalledWith(expect.anything(), 'barn-1', 'user-trainer', 'trainer')
+    expect(getOutstandingLessonRows).toHaveBeenCalledWith('barn-1', 'user-trainer', 'trainer', expect.anything())
   })
 
   it('should_return_lesson_id_in_result', async () => {
