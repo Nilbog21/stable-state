@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createLessonSeries, getSeriesById, stopLessonSeries } from '../lesson-series'
+import { createLessonSeries, getSeriesById, stopLessonSeries, generateNextLessonForSeries } from '../lesson-series'
 
 const mockLesson = createMockLesson({ series_id: 'series-1' })
 const mockSeries = createMockLessonSeries()
@@ -255,5 +255,61 @@ describe('stopLessonSeries', () => {
     await stopLessonSeries('series-1', 'barn-1', injectedClient)
 
     expect(mockUpdate).toHaveBeenCalled()
+  })
+})
+
+describe('generateNextLessonForSeries', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_correct_parameters', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z')
+
+    expect(mockRpc).toHaveBeenCalledWith('generate_lesson_for_series', {
+      p_series_id: 'series-1',
+      p_barn_id: 'barn-1',
+      p_lesson_at: '2026-05-23T10:00:00Z',
+    })
+  })
+
+  it('should_return_the_created_lesson', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }),
+    } as any)
+
+    const result = await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z')
+
+    expect(result).toEqual(mockLesson)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: new Error('rpc error') }),
+    } as any)
+
+    await expect(
+      generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z')
+    ).rejects.toThrow('rpc error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const injectedClient = { rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }) } as any
+
+    await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    const injectedClient = { rpc: mockRpc } as any
+
+    await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z', injectedClient)
+
+    expect(mockRpc).toHaveBeenCalled()
   })
 })
