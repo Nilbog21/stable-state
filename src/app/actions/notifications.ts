@@ -6,8 +6,8 @@ import {
   markNotificationRead as dbMarkNotificationRead,
   markAllNotificationsRead as dbMarkAllNotificationsRead,
 } from '@/lib/db/notifications'
+import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { requireMembership } from '@/lib/auth/guard'
 import type { NotificationType } from '@/lib/db/types'
 
 // requireMembership takes a barnSlug and redirects a page's caller on auth
@@ -58,10 +58,21 @@ export async function markNotificationReadAction(
   return { error: null }
 }
 
+// Invoked from NotificationBell's dropdown while the user stays on the
+// current page — requireMembership's redirect-on-failure would yank them to
+// the login page mid-interaction, so this keeps the manual check + graceful
+// { error } return, same contract as its sibling actions above.
 export async function markAllNotificationsReadAction(
   barnSlug: string
 ): Promise<{ error: string | null }> {
-  const { user, barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+  const user = await getAuthenticatedUser()
+  if (!user) return { error: 'not authenticated' }
+
+  const barn = await getBarnBySlug(barnSlug)
+  if (!barn) return { error: 'not authorized' }
+
+  const membership = await getUserMembership(user.id, barn.id)
+  if (membership?.status !== 'active') return { error: 'not authorized' }
 
   try {
     await dbMarkAllNotificationsRead(user.id, barn.id)

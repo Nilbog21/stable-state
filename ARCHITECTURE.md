@@ -172,7 +172,7 @@ No API routes. All mutations go through Next.js Server Actions.
 
 ## Auth guard
 
-`src/lib/auth/guard.ts` exports `requireMembership(barnSlug: string, allowedRoles: Role[]): Promise<{ user, barn, membership }>`. All server actions that enforce role-based access call this function. It redirects to `/barn/[slug]/login` on any auth or role failure, eliminating the 6-line auth block that was previously duplicated across every action. `register/actions.ts` does not use it — its guard is a different pattern (membership existence check, not role authorization).
+`src/lib/auth/guard.ts` exports `requireMembership(barnSlug: string, allowedRoles: Role[]): Promise<{ user, barn, membership }>`. All server actions that enforce role-based access call this function. It redirects to `/barn/[slug]/login` on any auth or role failure, eliminating the 6-line auth block that was previously duplicated across every action. A handful of actions legitimately don't fit this pattern and use a manual `getAuthenticatedUser()` check that returns `{ error }` instead, documented inline with a comment at each site: `register/actions.ts` (pre-membership existence check, not role authorization), `auth.ts` (sign-in/sign-out — no membership exists yet or matters), `profile/actions.ts` (not barn-scoped — every user edits only their own profile), and `notifications.ts`'s `createNotificationAction`/`markNotificationReadAction`/`markAllNotificationsReadAction` (each invoked from client interactions or as a general-purpose primitive that must fail gracefully rather than redirect the caller out from under them).
 
 ## Supabase RPC
 

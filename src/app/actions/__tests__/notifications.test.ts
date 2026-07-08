@@ -14,14 +14,14 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
 }))
 
-vi.mock('@/lib/auth/guard', () => ({
-  requireMembership: vi.fn(),
+vi.mock('@/lib/db/barns', () => ({
+  getBarnBySlug: vi.fn(),
 }))
 
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { createNotification, markNotificationRead, markAllNotificationsRead } from '@/lib/db/notifications'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { requireMembership } from '@/lib/auth/guard'
+import { getBarnBySlug } from '@/lib/db/barns'
 import {
   createNotificationAction,
   markNotificationReadAction,
@@ -211,25 +211,43 @@ describe('markNotificationReadAction', () => {
 
 describe('markAllNotificationsReadAction', () => {
   function mockMembership(userId = 'user-42', barnId = 'barn-1') {
-    vi.mocked(requireMembership).mockResolvedValue({
-      user: { id: userId } as any,
-      barn: { id: barnId } as any,
-      membership: {} as any,
-    })
+    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
+    vi.mocked(getBarnBySlug).mockResolvedValue({ id: barnId } as any)
+    vi.mocked(getUserMembership).mockResolvedValue({ status: 'active' } as any)
   }
 
   beforeEach(() => {
-    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getAuthenticatedUser).mockReset()
+    vi.mocked(getBarnBySlug).mockReset()
+    vi.mocked(getUserMembership).mockReset()
     vi.mocked(markAllNotificationsRead).mockReset()
   })
 
-  it('should_call_requireMembership_with_barn_slug_and_all_roles', async () => {
-    mockMembership()
-    vi.mocked(markAllNotificationsRead).mockResolvedValue(undefined)
+  it('should_return_error_when_not_authenticated', async () => {
+    mockAuthNoUser()
 
-    await markAllNotificationsReadAction('barn-slug')
+    const result = await markAllNotificationsReadAction('barn-slug')
 
-    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager', 'trainer', 'rider'])
+    expect(result).toEqual({ error: 'not authenticated' })
+  })
+
+  it('should_return_error_when_barn_not_found', async () => {
+    mockAuthUser('user-42')
+    vi.mocked(getBarnBySlug).mockResolvedValue(null)
+
+    const result = await markAllNotificationsReadAction('barn-slug')
+
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_return_error_when_caller_is_not_an_active_member', async () => {
+    mockAuthUser('user-42')
+    vi.mocked(getBarnBySlug).mockResolvedValue({ id: 'barn-1' } as any)
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+
+    const result = await markAllNotificationsReadAction('barn-slug')
+
+    expect(result).toEqual({ error: 'not authorized' })
   })
 
   it('should_call_markAllNotificationsRead_with_user_and_barn_id', async () => {
