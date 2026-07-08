@@ -159,7 +159,6 @@ describe('ExhaustionBar', () => {
 
   it('should_prevent_default_when_toggle_button_clicked', () => {
     render(
-      // eslint-disable-next-line jsx-a11y/anchor-is-valid
       <a href="/elsewhere">
         <ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />
       </a>
@@ -171,7 +170,6 @@ describe('ExhaustionBar', () => {
   it('should_stop_propagation_when_toggle_button_clicked', () => {
     const outerClick = vi.fn()
     render(
-      // eslint-disable-next-line jsx-a11y/anchor-is-valid
       <a href="/elsewhere" onClick={outerClick}>
         <ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />
       </a>
@@ -182,7 +180,6 @@ describe('ExhaustionBar', () => {
 
   it('should_prevent_default_when_close_button_clicked', () => {
     render(
-      // eslint-disable-next-line jsx-a11y/anchor-is-valid
       <a href="/elsewhere">
         <ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />
       </a>
@@ -195,7 +192,6 @@ describe('ExhaustionBar', () => {
   it('should_stop_propagation_when_close_button_clicked', () => {
     const outerClick = vi.fn()
     render(
-      // eslint-disable-next-line jsx-a11y/anchor-is-valid
       <a href="/elsewhere" onClick={outerClick}>
         <ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 3 }]} thresholds={thresholds} />
       </a>
