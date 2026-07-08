@@ -79,6 +79,19 @@ export async function getHorseExertionSummary(
   }))
 }
 
+export async function getHorsesByIds(horseIds: string[], barnId: string): Promise<Horse[]> {
+  if (!horseIds.length) return []
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('horses')
+    .select()
+    .eq('barn_id', barnId)
+    .in('id', horseIds)
+
+  if (error) throw error
+  return data
+}
+
 export async function getHorseById(horseId: string, barnId: string): Promise<Horse | null> {
   const supabase = await createClient()
   const { data, error } = await supabase

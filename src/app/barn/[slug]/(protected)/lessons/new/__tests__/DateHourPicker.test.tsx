@@ -101,4 +101,26 @@ describe('DateHourPicker', () => {
     const select = screen.getByLabelText('Hour') as HTMLSelectElement
     expect(select.options[23].text).toBe('11:00 PM')
   })
+
+  it('should_call_onChange_with_combined_value_on_mount', () => {
+    const onChange = vi.fn()
+    render(<DateHourPicker onChange={onChange} />)
+    expect(onChange).toHaveBeenCalledWith('2026-06-01T14:00')
+  })
+
+  it('should_call_onChange_with_updated_value_when_date_changes', () => {
+    const onChange = vi.fn()
+    const { container } = render(<DateHourPicker onChange={onChange} />)
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
+    expect(onChange).toHaveBeenCalledWith('2026-06-15T14:00')
+  })
+
+  it('should_call_onChange_with_empty_string_when_date_is_cleared', () => {
+    const onChange = vi.fn()
+    const { container } = render(<DateHourPicker onChange={onChange} />)
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    fireEvent.change(dateInput, { target: { value: '' } })
+    expect(onChange).toHaveBeenCalledWith('')
+  })
 })

@@ -29,6 +29,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/actions/lessons', () => ({
   submitLesson: vi.fn(),
+  getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/lib/db/lesson-tiers', () => ({

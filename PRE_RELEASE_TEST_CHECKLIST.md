@@ -89,6 +89,7 @@ Future:
 - [ ] Try saving a lesson with a blank fee (Custom tier) — rejected with "fee is required"; in edit mode, blank fee is rejected too
 - [ ] Lesson 9: check **Recurring (weekly)**, Beginner tier, trainer Alex, rider Dana, horse Apple — saves successfully; the checkbox does not appear when editing this (or any) lesson
 - [ ] Open Lesson 9's edit page as manager — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear; confirm the dialog, click Stop — button and indicator disappear on reload, the lesson itself is unchanged
+- [ ] On the new-lesson form, pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar below its name (no bars before a date is picked); adjust a checked horse's exertion level and watch its ghost segment move live, while unchecked horses' bars stay solid (no ghost); change the date and confirm the bars refresh; open Lesson 3's edit page and confirm Clover's bar still renders (excluding Lesson 3 itself from its own window)
 
 ## Phase 4 — Manager verification
 
@@ -203,7 +204,7 @@ bash scripts/change-user.sh
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
 - [ ] Lessons list shows only lessons where you (Alex) are the instructor; filter pills show riders only (`All | <rider> | ...`)
-- [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
+- [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons by direct URL (`/barn/dev-barn/lessons/[id]`) — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
