@@ -30,41 +30,24 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import LessonDetailPage from '../page'
+import { createMockBarn, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
 
-const mockBarn = {
-  id: 'barn-1',
-  name: 'Green Acres',
-  slug: 'green-acres',
+const mockBarn = createMockBarn({
   created_at: '2026-01-01T00:00:00Z',
-}
+})
 
-const mockLessonDetail = {
-  id: 'lesson-1',
-  barn_id: 'barn-1',
+const mockLessonDetail = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
   lesson_at: '2026-05-17T10:00:00Z',
   submitted_at: '2026-05-17T10:05:00Z',
-  lesson_type: 'normal' as const,
-  jumping: false,
-  payment_type: null,
-  tier_name: 'Custom',
-  cancelled_at: null,
-  cancellation_notes: null,
-  series_id: null,
-  instructor_name: 'Jane Smith',
   lesson_horses: [{ exertion_level: 3, horse_notes: 'watch left lead', horses: { id: 'horse-1', name: 'Thunderbolt' } }],
   lesson_riders: [{ rider_notes: 'good position', private_notes: 'struggling with confidence', cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
-}
+})
 
-const mockMembership = {
-  id: 'mem-1',
-  user_id: 'user-1',
-  barn_id: 'barn-1',
-  role: 'trainer' as const,
-  status: 'active' as const,
+const mockMembership = createMockMembership({
   created_at: '2026-01-01T00:00:00Z',
-}
+})
 
 function mockSupabaseUser(userId = 'user-1') {
   vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
@@ -189,7 +172,7 @@ describe('LessonDetailPage', () => {
   it('should_render_dash_for_horse_name_when_horses_relation_is_null', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_horses: [{ exertion_level: 3, horses: null }],
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: null }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -206,7 +189,7 @@ describe('LessonDetailPage', () => {
   it('should_render_dash_for_rider_name_when_riders_relation_is_null', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_riders: [{ cancelled_at: null, barn_membership: null }],
+      lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -231,8 +214,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice' } },
-        { cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob' } },
+        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -262,7 +245,10 @@ describe('LessonDetailPage', () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
-      lesson_riders: [{ cancelled_at: null, barn_membership: null }, { cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob' } }],
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null },
+        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -273,7 +259,10 @@ describe('LessonDetailPage', () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
-      lesson_riders: [{ cancelled_at: null, barn_membership: null }, { cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob' } }],
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null },
+        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)

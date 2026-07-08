@@ -1,6 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { LessonListItem } from '../LessonListItem'
+import { createMockLessonWithDetails } from '@/test/fixtures'
 
 afterEach(cleanup)
 
@@ -20,23 +21,23 @@ const baseLesson = {
   series_id: null,
 }
 
-const normalLesson = {
+const normalLesson = createMockLessonWithDetails({
   ...baseLesson,
   lesson_type: 'normal' as const,
   horse_names: ['Thunderbolt'],
   horse_count: 1,
   rider_names: ['Alice'],
   rider_count: 1,
-}
+})
 
-const groupLesson = {
+const groupLesson = createMockLessonWithDetails({
   ...baseLesson,
   lesson_type: 'group' as const,
   horse_names: ['Thunderbolt', 'Shadow'],
   horse_count: 2,
   rider_names: ['Alice', 'Bob', 'Carol'],
   rider_count: 3,
-}
+})
 
 describe('LessonListItem', () => {
   it('should_show_horse_name_for_normal_lesson', () => {

@@ -18,7 +18,7 @@ vi.mock('@/lib/db/profiles', () => ({
 }))
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
-  const actual = await importOriginal()
+  const actual = await importOriginal<typeof import('@/lib/db/document-storage')>()
   return { ...actual, uploadFile: vi.fn(), removeFile: vi.fn() }
 })
 vi.mock('next/cache', () => ({

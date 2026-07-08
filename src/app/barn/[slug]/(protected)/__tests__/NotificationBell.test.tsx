@@ -75,6 +75,10 @@ describe('NotificationBell', () => {
       setDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: vi.fn(),
+      message: '',
+      setMessage: vi.fn(),
+      onLeave: null,
+      setOnLeave: vi.fn(),
     })
   })
 
@@ -220,6 +224,10 @@ describe('NotificationBell', () => {
       setDirty: vi.fn(),
       pendingNav: null,
       setPendingNav: mockSetPendingNav,
+      message: '',
+      setMessage: vi.fn(),
+      onLeave: null,
+      setOnLeave: vi.fn(),
     })
     render(<NotificationBell notifications={[linkedNotif]} barnId="barn-1" />)
     fireEvent.click(screen.getByRole('button', { name: /notifications/i }))

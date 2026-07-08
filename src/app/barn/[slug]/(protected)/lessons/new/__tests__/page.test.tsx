@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createMockBarn, createMockMembership, createMockLessonTier } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockLessonTier, createMockHorse } from '@/test/fixtures'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -48,13 +48,13 @@ const mockBarn = createMockBarn()
 const mockTier = createMockLessonTier({ is_default: true })
 
 const mockHorses = [
-  { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
-  { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
+  createMockHorse({ id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+  createMockHorse({ id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' }),
 ]
 
 const mockRiders = [
-  { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
-  { membershipId: 'mem-2', userId: 'user-2', name: 'Bob' },
+  { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
+  { membershipId: 'mem-2', userId: 'user-2', name: 'Bob', isManaged: false, inviteToken: null },
 ]
 
 const mockTrainerMembership = createMockMembership({ id: 'mem-1', created_at: '2026-01-01T00:00:00Z' })

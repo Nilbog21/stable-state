@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
-import { createMockLessonTier } from '@/test/fixtures'
+import { createMockLessonTier, createMockHorse } from '@/test/fixtures'
 import { LessonForm } from '../../LessonForm'
 
 afterEach(cleanup)
@@ -20,7 +20,7 @@ const baseProps = {
 
 describe('LessonForm', () => {
   it('should_hide_exertion_input_when_horse_checkbox_is_unchecked', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     const checkbox = screen.getByRole('checkbox', { name: /Thunder/i }) as HTMLInputElement
     fireEvent.click(checkbox)
@@ -76,7 +76,7 @@ describe('LessonForm', () => {
   // relies on useTransition reporting isPending before the never-resolving promise settles — may be flaky under load
   it('should_display_submitting_text_while_form_action_is_pending', async () => {
     const pendingAction = vi.fn().mockImplementation(() => new Promise(() => {}))
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
     const { container } = render(<LessonForm {...baseProps} action={pendingAction} horses={[horse]} riders={[rider]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -141,7 +141,7 @@ describe('LessonForm', () => {
   })
 
   it('should_show_error_when_group_mode_submitted_with_fewer_than_two_riders', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const riders = [
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
@@ -156,7 +156,7 @@ describe('LessonForm', () => {
 
   it('should_not_call_action_when_group_mode_submitted_with_fewer_than_two_riders', () => {
     const action = vi.fn().mockResolvedValue({ error: null })
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const riders = [
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
@@ -248,7 +248,7 @@ describe('LessonForm', () => {
   })
 
   it('should_snap_exertion_to_4_when_jumping_toggled_on_with_single_horse_below_4', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
@@ -258,8 +258,8 @@ describe('LessonForm', () => {
 
   it('should_snap_first_of_two_horses_exertion_to_4_when_jumping_toggled_on', () => {
     const horses = [
-      { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' },
-      { id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+      createMockHorse({ id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ]
     render(<LessonForm {...baseProps} horses={horses} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -271,8 +271,8 @@ describe('LessonForm', () => {
 
   it('should_snap_second_of_two_horses_exertion_to_4_when_jumping_toggled_on', () => {
     const horses = [
-      { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' },
-      { id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+      createMockHorse({ id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ]
     render(<LessonForm {...baseProps} horses={horses} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -283,7 +283,7 @@ describe('LessonForm', () => {
   })
 
   it('should_not_change_exertion_when_jumping_toggled_on_and_exertion_is_4', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
@@ -293,7 +293,7 @@ describe('LessonForm', () => {
   })
 
   it('should_not_change_exertion_when_jumping_toggled_on_and_exertion_is_5', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
@@ -303,7 +303,7 @@ describe('LessonForm', () => {
   })
 
   it('should_not_change_exertion_when_jumping_toggled_off', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
@@ -313,7 +313,7 @@ describe('LessonForm', () => {
   })
 
   it('should_default_exertion_to_4_when_horse_added_while_jumping_is_on', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -346,14 +346,14 @@ describe('LessonForm', () => {
   })
 
   it('should_show_exertion_label_when_existing_horse_is_checked', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
   })
 
   it('should_not_show_exertion_label_when_existing_horse_is_unchecked', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     expect(screen.queryByText('Exertion (1–5)')).toBeNull()
   })
@@ -436,7 +436,7 @@ describe('LessonForm', () => {
   })
 
   it('should_show_error_when_normal_mode_submitted_with_no_rider_selected', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
@@ -454,7 +454,7 @@ describe('LessonForm', () => {
   })
 
   it('should_show_conflict_error_when_new_horse_name_and_existing_horse_both_submitted_in_normal_mode', () => {
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
     const { container } = render(<LessonForm {...baseProps} isManager={true} horses={[horse]} riders={[rider]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -466,7 +466,7 @@ describe('LessonForm', () => {
 
   it('should_not_call_action_when_new_horse_name_and_existing_horse_both_submitted_in_normal_mode', () => {
     const action = vi.fn().mockResolvedValue({ error: null })
-    const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
     const { container } = render(<LessonForm {...baseProps} action={action} isManager={true} horses={[horse]} riders={[rider]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -494,8 +494,8 @@ describe('LessonForm', () => {
 })
 
 describe('LessonForm tier cascade', () => {
-  const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
-  const horse2 = { id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+  const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
+  const horse2 = createMockHorse({ id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
   afterEach(() => vi.useRealTimers())
 
   it('should_render_tier_selector_before_jumping_checkbox', () => {
@@ -687,8 +687,8 @@ describe('LessonForm tier cascade', () => {
 })
 
 describe('LessonForm exhaustion bars', () => {
-  const horse = { id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
-  const horse2 = { id: 'h2', name: 'Shadow', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }
+  const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
+  const horse2 = createMockHorse({ id: 'h2', name: 'Shadow', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
   const thresholds = { high: 11, moderate: 5 }
 
   it('should_not_render_exhaustion_bar_before_getProjectedExhaustion_resolves', () => {

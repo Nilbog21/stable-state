@@ -29,15 +29,15 @@ const trainerMembership = createMockMembership({ id: 'mem-trn', role: 'trainer' 
 const riderMembership = createMockMembership({ id: 'mem-rdr', role: 'rider' })
 
 const mockTrainers = [
-  { membershipId: 'mem-t1', userId: 'u-t1', name: 'Alice Trainer' },
-  { membershipId: 'mem-t2', userId: 'u-t2', name: 'Bob Trainer' },
+  { membershipId: 'mem-t1', userId: 'u-t1', name: 'Alice Trainer', isManaged: false, inviteToken: null },
+  { membershipId: 'mem-t2', userId: 'u-t2', name: 'Bob Trainer', isManaged: false, inviteToken: null },
 ]
 const mockRiders = [
-  { membershipId: 'mem-r1', userId: 'u-r1', name: 'Carol Rider' },
-  { membershipId: 'mem-r2', userId: 'u-r2', name: 'Dave Rider' },
+  { membershipId: 'mem-r1', userId: 'u-r1', name: 'Carol Rider', isManaged: false, inviteToken: null },
+  { membershipId: 'mem-r2', userId: 'u-r2', name: 'Dave Rider', isManaged: false, inviteToken: null },
 ]
 const mockManagers = [
-  { membershipId: 'mem-m1', userId: 'u-m1', name: 'Eve Manager' },
+  { membershipId: 'mem-m1', userId: 'u-m1', name: 'Eve Manager', isManaged: false, inviteToken: null },
 ]
 
 describe('MembersPage', () => {
@@ -352,7 +352,7 @@ describe('MembersPage', () => {
   })
 
   it('should_exclude_caller_from_managers_section', async () => {
-    const callerAsManager = { membershipId: 'mem-mgr', userId: 'user-1', name: 'Jane Doe' }
+    const callerAsManager = { membershipId: 'mem-mgr', userId: 'user-1', name: 'Jane Doe', isManaged: false, inviteToken: null }
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
       role === 'manager' ? [callerAsManager, ...mockManagers] : []
     )

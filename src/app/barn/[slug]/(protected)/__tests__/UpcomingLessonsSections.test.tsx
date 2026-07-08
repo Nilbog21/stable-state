@@ -24,12 +24,12 @@ vi.mock('../UpcomingExpenseCard', () => ({
 }))
 
 import { UpcomingLessonsSections } from '../UpcomingLessonsSections'
-import { createMockLesson, createMockExpenseWithHorses } from '@/test/fixtures'
+import { createMockLessonWithDetails, createMockExpenseWithHorses } from '@/test/fixtures'
 import type { LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
 
 function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
   return {
-    ...createMockLesson(),
+    ...createMockLessonWithDetails(),
     instructor_name: null,
     horse_names: [],
     horse_count: 0,

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockLesson, createMockLessonSeries, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockHorse, createMockLesson, createMockLessonDetail, createMockLessonSeries, createMockMembership } from '@/test/fixtures'
 import { makeFormData } from '@/test/utils/forms'
 
 vi.mock('@/lib/auth/guard', () => ({
@@ -84,11 +84,11 @@ describe('submitLesson', () => {
     vi.mocked(createLessonWithParticipants).mockResolvedValue(mockLesson)
     vi.mocked(createLessonSeries).mockResolvedValue(mockLesson)
     vi.mocked(getHorsesByBarn).mockResolvedValue([
-      { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
-      { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
+      createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+      createMockHorse({ id: 'horse-2', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' }),
     ])
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
     ])
   })
 
@@ -284,7 +284,7 @@ describe('submitLesson', () => {
   })
 
   it('should_create_new_horse_and_add_to_lesson_when_new_horse_name_is_provided', async () => {
-    const newHorse = { id: 'horse-new', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const newHorse = createMockHorse({ id: 'horse-new', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' })
     vi.mocked(createHorse).mockResolvedValue(newHorse)
     guardAs(mockManagerMembership)
     const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
@@ -293,7 +293,7 @@ describe('submitLesson', () => {
   })
 
   it('should_include_new_horse_id_in_lesson_participants', async () => {
-    const newHorse = { id: 'horse-new', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const newHorse = createMockHorse({ id: 'horse-new', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' })
     vi.mocked(createHorse).mockResolvedValue(newHorse)
     guardAs(mockManagerMembership)
     const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
@@ -320,7 +320,7 @@ describe('submitLesson', () => {
   })
 
   it('should_pass_exertion_level_for_newly_created_horse', async () => {
-    const newHorse = { id: 'horse-new', barn_id: 'barn-1', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' }
+    const newHorse = createMockHorse({ id: 'horse-new', name: 'Blaze', created_at: '2026-01-01', updated_at: '2026-01-01' })
     vi.mocked(createHorse).mockResolvedValue(newHorse)
     guardAs(mockManagerMembership)
     const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
@@ -362,7 +362,7 @@ describe('submitLesson', () => {
 
   it('should_return_error_when_horse_does_not_belong_to_barn', async () => {
     vi.mocked(getHorsesByBarn).mockResolvedValue([
-      { id: 'other-horse', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'other-horse', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -371,7 +371,7 @@ describe('submitLesson', () => {
 
   it('should_not_call_createLessonWithParticipants_when_horse_not_in_barn', async () => {
     vi.mocked(getHorsesByBarn).mockResolvedValue([
-      { id: 'other-horse', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'other-horse', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -380,7 +380,7 @@ describe('submitLesson', () => {
 
   it('should_return_error_when_rider_does_not_belong_to_barn', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other' },
+      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -389,7 +389,7 @@ describe('submitLesson', () => {
 
   it('should_not_call_createLessonWithParticipants_when_rider_not_in_barn', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other' },
+      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -398,8 +398,8 @@ describe('submitLesson', () => {
 
   it('should_pass_multiple_rider_ids_for_group_lesson', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
-      { membershipId: 'mem-2', userId: 'user-2', name: 'Bob' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
+      { membershipId: 'mem-2', userId: 'user-2', name: 'Bob', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: ['mem-1', 'mem-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'group', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -410,7 +410,7 @@ describe('submitLesson', () => {
 
   it('should_return_error_when_any_rider_does_not_belong_to_barn', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: ['mem-1', 'mem-unknown'], lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -419,7 +419,7 @@ describe('submitLesson', () => {
 
   it('should_not_call_createLessonWithParticipants_when_unknown_rider_in_group', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: ['mem-1', 'mem-unknown'], lesson_at: '2026-05-17T10:00', lesson_type: 'group' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -453,7 +453,7 @@ describe('submitLesson', () => {
   it('should_return_error_when_rider_does_not_belong_to_barn_on_new_horse_path', async () => {
     guardAs(mockManagerMembership)
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other' },
+      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     const result = await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -463,7 +463,7 @@ describe('submitLesson', () => {
   it('should_not_call_createLessonWithParticipants_when_rider_not_in_barn_on_new_horse_path', async () => {
     guardAs(mockManagerMembership)
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other' },
+      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -480,8 +480,8 @@ describe('submitLesson', () => {
 
   it('should_pass_lesson_type_to_createLessonWithParticipants', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
-      { membershipId: 'mem-2', userId: 'user-2', name: 'Bob' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
+      { membershipId: 'mem-2', userId: 'user-2', name: 'Bob', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: ['mem-1', 'mem-2'], lesson_at: '2026-05-17T10:00', lesson_type: 'group', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -1136,10 +1136,10 @@ describe('updateLessonAction', () => {
     vi.mocked(updateLessonHorseNotes).mockResolvedValue({} as any)
     vi.mocked(updateLessonRiderNotes).mockResolvedValue({} as any)
     vi.mocked(getHorsesByBarn).mockResolvedValue([
-      { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
     ])
   })
 
@@ -1211,7 +1211,7 @@ describe('updateLessonAction', () => {
 
   it('should_return_error_when_horse_not_in_barn', async () => {
     vi.mocked(getHorsesByBarn).mockResolvedValue([
-      { id: 'other-horse', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'other-horse', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
@@ -1220,7 +1220,7 @@ describe('updateLessonAction', () => {
 
   it('should_not_call_updateLessonWithParticipants_when_horse_not_in_barn', async () => {
     vi.mocked(getHorsesByBarn).mockResolvedValue([
-      { id: 'other-horse', barn_id: 'barn-1', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'other-horse', name: 'Other', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
@@ -1229,7 +1229,7 @@ describe('updateLessonAction', () => {
 
   it('should_return_error_when_rider_not_in_barn', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other' },
+      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
@@ -1238,7 +1238,7 @@ describe('updateLessonAction', () => {
 
   it('should_not_call_updateLessonWithParticipants_when_rider_not_in_barn', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'other-mem', userId: 'user-99', name: 'Other' },
+      { membershipId: 'other-mem', userId: 'user-99', name: 'Other', isManaged: false, inviteToken: null },
     ])
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
@@ -1376,14 +1376,14 @@ describe('updateLessonAction', () => {
   })
 
   it('should_create_new_horse_when_new_horse_name_is_submitted', async () => {
-    vi.mocked(createHorse).mockResolvedValue({ id: 'new-horse-1', barn_id: 'barn-1', name: 'Midnight', created_at: '', updated_at: '' })
+    vi.mocked(createHorse).mockResolvedValue(createMockHorse({ id: 'new-horse-1', name: 'Midnight', created_at: '', updated_at: '' }))
     const fd = makeFormData({ fee: '50', new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(createHorse).toHaveBeenCalledWith('barn-1', 'Midnight')
   })
 
   it('should_call_updateLessonWithParticipants_with_new_horse_id', async () => {
-    vi.mocked(createHorse).mockResolvedValue({ id: 'new-horse-1', barn_id: 'barn-1', name: 'Midnight', created_at: '', updated_at: '' })
+    vi.mocked(createHorse).mockResolvedValue(createMockHorse({ id: 'new-horse-1', name: 'Midnight', created_at: '', updated_at: '' }))
     const fd = makeFormData({ fee: '50', new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLessonWithParticipants).toHaveBeenCalledWith(
@@ -1513,21 +1513,21 @@ describe('updatePaymentTypeAction', () => {
 
   it('should_return_error_when_trainer_is_not_instructor', async () => {
     guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: 'other-trainer' }))
+    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: 'other-trainer' }))
     const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
     expect(result).toEqual({ error: 'not authorized' })
   })
 
   it('should_return_no_error_when_trainer_is_instructor', async () => {
     guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: mockTrainerMembership.id }))
+    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: mockTrainerMembership.id }))
     const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
     expect(result).toEqual({ error: null })
   })
 
   it('should_call_updateLesson_with_payment_type_when_trainer_is_instructor', async () => {
     guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLesson({ instructor_id: mockTrainerMembership.id }))
+    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: mockTrainerMembership.id }))
     await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
     expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'venmo' })
   })
@@ -1621,8 +1621,8 @@ describe('getProjectedExhaustionForBarn', () => {
     vi.mocked(resolveExhaustionThresholds).mockReset()
     guardAs(mockTrainerMembership)
     vi.mocked(getHorsesByIds).mockResolvedValue([
-      { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
-      { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
+      createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+      createMockHorse({ id: 'horse-2', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' }),
     ])
     vi.mocked(getHorseProjectedExhaustion).mockResolvedValue(mockRows)
     vi.mocked(resolveExhaustionThresholds).mockReturnValue(mockThresholds)
@@ -1658,7 +1658,7 @@ describe('getProjectedExhaustionForBarn', () => {
 
   it('should_include_an_inactive_assigned_horse_id_in_the_returned_map', async () => {
     vi.mocked(getHorsesByIds).mockResolvedValue([
-      { id: 'horse-3', barn_id: 'barn-1', name: 'Retired', is_active: false, created_at: '2026-01-01', updated_at: '2026-01-01' },
+      createMockHorse({ id: 'horse-3', name: 'Retired', is_active: false, created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
     const result = await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', ['horse-3'])
     expect(result['horse-3']).toEqual({ existingRows: mockRows, thresholds: mockThresholds })

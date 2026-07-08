@@ -31,6 +31,10 @@ beforeEach(() => {
     setDirty: vi.fn(),
     pendingNav: null,
     setPendingNav: vi.fn(),
+    message: '',
+    setMessage: vi.fn(),
+    onLeave: null,
+    setOnLeave: vi.fn(),
   })
 })
 

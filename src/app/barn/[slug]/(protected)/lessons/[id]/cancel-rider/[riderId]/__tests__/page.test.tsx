@@ -16,18 +16,19 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import CancelRiderParticipationPage from '../page'
+import { createMockBarn, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
+const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' })
 
-const mockManagerMembership = {
+const mockManagerMembership = createMockMembership({
   id: 'mem-manager-1', user_id: 'user-1', barn_id: 'barn-1',
   role: 'manager' as const, status: 'active' as const, created_at: '',
-}
+})
 
 const futureIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 const pastIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
 
-const mockLesson = {
+const mockLesson = createMockLessonDetail({
   id: 'lesson-1',
   barn_id: 'barn-1',
   instructor_id: 'user-1',
@@ -51,7 +52,7 @@ const mockLesson = {
       barn_membership: { id: 'rider-mem-1', user_id: 'rider-user-1', name: 'Alice Rider' },
     },
   ],
-}
+})
 
 function setupDefaults() {
   vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1' } as any)
