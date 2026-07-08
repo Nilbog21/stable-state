@@ -10,9 +10,9 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 ## Lessons
 
-**View lessons** — Go to **Lessons** to see your recent lessons. Tap **Show older lessons** to see the full history. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
+**View lessons** — Go to **Lessons** to see every lesson in the barn, not just your own. Tap **Show older lessons** to see the full history. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
 
-**Filter by rider** — A scrollable pill bar above the lesson list shows **All** plus one pill per rider who appears in your lessons. Tap a rider's name to filter to their lessons; tap **All** to clear. The selection is stored in the URL so it survives a page refresh.
+**Filter lessons** — A pill bar above the lesson list lets you narrow by dimension. Tap **By Instructor**, **By Rider**, or **By Horse** to reveal a second scrollable row of specific names or horses; tap any pill to filter the lesson list to that instructor, rider, or horse. Tap **All** to clear the filter. The active filter is preserved in the URL, so the page can be bookmarked or refreshed without losing your selection.
 
 **Book a lesson** — Go to **Lessons → New Lesson**, fill in the date, select a horse and rider, choose a fee tier, optionally select a payment type if payment was collected at booking, and click **Submit**. Selecting a tier cascades its defaults into the form: if the tier has a jumping preference, the jumping checkbox updates automatically; if it has a default exertion level, all currently selected horses' exertion fields update. Horses marked as unavailable appear grayed out and cannot be selected; their unavailability reason is shown next to the name. Once a date is picked, each horse shows an exhaustion bar reflecting how worked that horse already is around that date — a lighter "ghost" segment previews the effect of the exertion level you've selected for a checked horse, updating live as you change it. A fee is required for every lesson, including named tiers — enter `0` if the lesson is free. Checking **Recurring (weekly)** creates this lesson as the start of a weekly series; a nightly job keeps generating the next occurrence automatically, about a month ahead at all times.
 

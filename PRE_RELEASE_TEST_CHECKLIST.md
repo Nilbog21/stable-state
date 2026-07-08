@@ -104,7 +104,7 @@ Dashboard (`/barn/dev-barn`):
 Lessons (`/barn/dev-barn/lessons`):
 
 - [ ] Recent lessons (last 7 days) shown immediately; older lessons appear only after the older-lessons toggle
-- [ ] Filter pills show `All | By Trainer | By Rider | By Horse`; picking **By Trainer → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
+- [ ] Filter pills show `All | By Instructor | By Rider | By Horse`; picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
 - [ ] **By Rider → Dana** filters correctly
 - [ ] **By Horse → Apple** filters correctly
 - [ ] Times display in 12-hour AM/PM format everywhere (no military time)
@@ -157,12 +157,12 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] **By Horse** tab: **Horse | Income | Expenses | Net** columns; add an expense for a horse with a lesson this month → its Expenses/Net update; a horse with $0 expenses shows `$0.00` (not blank); a horse with expenses but no lessons this month still appears, with `$0.00` Income and a negative Net; click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` shows one combined table (lessons, leases/boarding charges, and expenses) ordered by date ascending, with a **Type** column and expense Amount/Split in parentheses (e.g. `($25.00)`); the bottom **Net** figure matches this horse's Net on the By Horse tab; month param preserved
 - [ ] **By Tier** tab (no longer default, still reachable via the pill): your new tiers and seeded tiers listed with price, lesson count, an **Instructor Cut** column (`(cut × lessons)`, or `—` when zero), and a net Subtotal; Collected income matches the sum of net Subtotals plus any Non-lesson income
 - [ ] **By Rider** tab: collected income per rider, net of the instructor cut, with drill-down `/barn/dev-barn/finances/riders/[id]`
-- [ ] **By Trainer** tab: collected income per trainer full name, net of the instructor cut
+- [ ] **By Instructor** tab: collected income per trainer full name, net of the instructor cut
 - [ ] Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it) and renders in parentheses, e.g. `($25.00)`, not with a leading minus sign; it's still included in Collected income (not dropped or clamped to zero)
 - [ ] Collected vs Pending income figures are consistent with what you marked paid, net of the instructor cut; the **Outstanding** section above stays at the raw (gross) fee
 - [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding"); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
-- [ ] **By Trainer** tab also shows the same **Non-lesson income** row
-- [ ] Remove a trainer's membership after they've instructed a paid lesson → **By Trainer** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Collected income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
+- [ ] **By Instructor** tab also shows the same **Non-lesson income** row
+- [ ] Remove a trainer's membership after they've instructed a paid lesson → **By Instructor** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Collected income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
 
 Manage Barn (`/barn/dev-barn/settings`):
 
@@ -203,10 +203,10 @@ bash scripts/change-user.sh
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
-- [ ] Lessons list shows only lessons where you (Alex) are the instructor; filter pills show riders only (`All | <rider> | ...`)
+- [ ] Lessons list shows every lesson in the barn, not just yours (Alex's) — including Blake's; filter pills show the same two-level `All | By Instructor | By Rider | By Horse` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
-- [ ] Open one of Blake's lessons by direct URL (`/barn/dev-barn/lessons/[id]`) — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
+- [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
 - [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no delete** button, **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
