@@ -1011,6 +1011,12 @@ describe('resolveMemberNames', () => {
     const result = await resolveMemberNames(['mem-1'], 'barn-1')
     expect(result).toEqual(new Map([['mem-1', 'mem-1']]))
   })
+
+  it('should_return_empty_map_when_barn_memberships_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue(makeClient(null, null, null, null))
+    const result = await resolveMemberNames(['mem-1'], 'barn-1')
+    expect(result).toEqual(new Map())
+  })
 })
 
 describe('createManagedMember', () => {

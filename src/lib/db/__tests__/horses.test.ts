@@ -687,6 +687,16 @@ describe('resolveHorseNames', () => {
     await expect(resolveHorseNames(['horse-1'], 'barn-1')).rejects.toThrow('db error')
   })
 
+  it('should_return_empty_map_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeSelectChain(null)),
+    } as any)
+
+    const result = await resolveHorseNames(['horse-1'], 'barn-1')
+
+    expect(result).toEqual(new Map())
+  })
+
   it('should_not_call_create_client_when_client_is_injected', async () => {
     const injectedClient = {
       from: vi.fn().mockReturnValue(makeSelectChain([{ id: 'horse-1', name: 'Thunderbolt' }])),
