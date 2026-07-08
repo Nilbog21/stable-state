@@ -1,65 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
-import { getRiderEnrolledLessonIds } from './lesson-participants'
-import { resolveMemberNames, getUserMembership } from './barn-memberships'
-import { resolveHorseNames } from './horses'
+import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
+import { getUserMembership } from './barn-memberships'
 import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
-
-async function hydrateParticipants(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  lessons: Lesson[],
-  barnId: string
-): Promise<LessonWithDetails[]> {
-  if (!lessons.length) return []
-  const lessonIds = lessons.map((l) => l.id)
-  const instructorIds = [...new Set(lessons.map((l) => l.instructor_id).filter(Boolean))] as string[]
-
-  const [
-    { data: lessonHorses, error: lessonHorsesError },
-    { data: lessonRiders, error: lessonRidersError },
-  ] = await Promise.all([
-    supabase.from('lesson_horses').select('lesson_id, horse_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
-    supabase.from('lesson_riders').select('lesson_id, rider_id, cancelled_at').eq('barn_id', barnId).in('lesson_id', lessonIds),
-  ])
-
-  if (lessonHorsesError) throw lessonHorsesError
-  if (lessonRidersError) throw lessonRidersError
-
-  const horseIds = [...new Set((lessonHorses ?? []).map((lh) => lh.horse_id))]
-  const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
-
-  const [horseNameMap, membershipMap] = await Promise.all([
-    resolveHorseNames(horseIds, barnId, supabase),
-    resolveMemberNames([...riderIds, ...instructorIds], barnId, supabase),
-  ])
-
-  return lessons.map((lesson) => {
-    const instructorName = lesson.instructor_id ? membershipMap.get(lesson.instructor_id) ?? null : null
-    const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
-    const horseParticipants = horseJunctionRows
-      .map((lh) => ({ id: lh.horse_id, name: horseNameMap.get(lh.horse_id) }))
-      .filter((p): p is { id: string; name: string } => Boolean(p.name))
-    const horseNames = horseParticipants.map((p) => p.name)
-    const horseIds = horseParticipants.map((p) => p.id)
-    const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
-    const riderParticipants = riderJunctionRows
-      .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id), cancelledAt: lr.cancelled_at ?? null }))
-      .filter((p): p is { id: string; name: string; cancelledAt: string | null } => Boolean(p.name))
-    const riderNames = riderParticipants.map((p) => p.name)
-    const riderIds = riderParticipants.map((p) => p.id)
-    const riderCancelledAts = riderParticipants.map((p) => p.cancelledAt)
-    return {
-      ...lesson,
-      instructor_name: instructorName,
-      horse_names: horseNames,
-      horse_ids: horseIds,
-      horse_count: horseJunctionRows.length,
-      rider_names: riderNames,
-      rider_ids: riderIds,
-      rider_count: riderJunctionRows.length,
-      rider_cancelled_ats: riderCancelledAts,
-    }
-  })
-}
 
 export async function createLesson({
   barnId,
