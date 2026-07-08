@@ -19,7 +19,7 @@ assert_fail() {
 # Creates a temp dir with stub scripts and a stubbed npm.
 # Stubs log calls to npm.log, coverage.log, and coverage-test.log respectively.
 # Exit codes for each stub are controlled by arguments: lint_exit npm_exit coverage_exit coverage_test_exit.
-# lint_exit applies when npm is called with "run lint"; npm_exit applies to all other npm calls.
+# lint_exit applies when npm is called with "run lint" (or "run lint" plus extra args); npm_exit applies to all other npm calls.
 make_repo() {
   local lint_exit="${1:-0}"
   local npm_exit="${2:-0}"
@@ -33,9 +33,9 @@ make_repo() {
   cat > "$dir/bin/npm" <<NPMEOF
 #!/usr/bin/env bash
 printf '%s\n' "\$*" >> "$dir/npm.log"
-if [ "\$*" = "run lint" ]; then
-  exit $lint_exit
-fi
+case "\$*" in
+  "run lint"*) exit $lint_exit ;;
+esac
 exit $npm_exit
 NPMEOF
   chmod +x "$dir/bin/npm"
@@ -63,11 +63,15 @@ REPO="$(make_repo 0 0 0 0)"
 exit_code=$?
 skip_val="$(grep 'SKIP_COVERAGE_RUN=' "$REPO/coverage.log" 2>/dev/null | head -1 | cut -d= -f2)"
 first_npm_call="$(head -1 "$REPO/npm.log" 2>/dev/null)"
-if [ "$exit_code" -eq 0 ] && [ "$first_npm_call" = "run lint" ] && [ -f "$REPO/coverage.log" ] && [ -f "$REPO/coverage-test.log" ] && [ "$skip_val" = "1" ]; then
+case "$first_npm_call" in
+  "run lint"*) first_npm_call_is_lint=1 ;;
+  *) first_npm_call_is_lint=0 ;;
+esac
+if [ "$exit_code" -eq 0 ] && [ "$first_npm_call_is_lint" -eq 1 ] && [ -f "$REPO/coverage.log" ] && [ -f "$REPO/coverage-test.log" ] && [ "$skip_val" = "1" ]; then
   assert_pass "all steps pass: exits 0, lint runs first, all steps run, SKIP_COVERAGE_RUN=1 passed"
 elif [ "$exit_code" -ne 0 ]; then
   assert_fail "all steps pass: exits 0, lint runs first, all steps run, SKIP_COVERAGE_RUN=1 passed" "ci.sh exited non-zero ($exit_code)"
-elif [ "$first_npm_call" != "run lint" ]; then
+elif [ "$first_npm_call_is_lint" -ne 1 ]; then
   assert_fail "all steps pass: exits 0, lint runs first, all steps run, SKIP_COVERAGE_RUN=1 passed" "first npm call was not 'run lint' (got '$first_npm_call')"
 elif [ "$skip_val" != "1" ]; then
   assert_fail "all steps pass: exits 0, lint runs first, all steps run, SKIP_COVERAGE_RUN=1 passed" "SKIP_COVERAGE_RUN not set to 1 (got '$skip_val')"
