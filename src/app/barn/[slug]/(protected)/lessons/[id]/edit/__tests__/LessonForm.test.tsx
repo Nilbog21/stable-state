@@ -689,7 +689,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   it('should_fetch_projected_exhaustion_using_the_prefilled_lesson_date_on_mount', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00'))
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00', ['horse-1']))
   })
 
   it('should_render_exhaustion_bar_for_the_pre_checked_horse', async () => {
@@ -699,6 +699,25 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
+    })
+  })
+
+  it('should_call_getProjectedExhaustion_with_the_id_of_an_inactive_assigned_horse_too', async () => {
+    const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00', ['horse-1', 'horse-2']))
+  })
+
+  it('should_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {
+    const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+      'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+    })
+    render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(2)
     })
   })
 })

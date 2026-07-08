@@ -707,7 +707,18 @@ describe('LessonForm exhaustion bars', () => {
     })
   })
 
-  it('should_pass_ghost_value_from_selected_exertion_level_to_checked_horse_only', async () => {
+  it('should_render_solid_bars_for_both_horses_before_any_are_checked', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      h1: { existingRows: [], thresholds },
+      h2: { existingRows: [], thresholds },
+    })
+    render(<LessonForm {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(2)
+    })
+  })
+
+  it('should_render_ghost_bar_only_for_the_checked_horse', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       h1: { existingRows: [], thresholds },
       h2: { existingRows: [], thresholds },
@@ -727,7 +738,42 @@ describe('LessonForm exhaustion bars', () => {
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(2))
+  })
+
+  it('should_call_getProjectedExhaustion_with_the_new_date_after_a_date_change', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    const { container } = render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(1))
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(2))
     expect(getProjectedExhaustion.mock.calls[1][0]).toContain('2026-06-15')
+  })
+
+  it('should_call_getProjectedExhaustion_with_the_ids_of_every_horse_passed_in_props', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    render(<LessonForm {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
+    expect(getProjectedExhaustion.mock.calls[0][1]).toEqual(['h1', 'h2'])
+  })
+
+  it('should_not_show_stale_exhaustion_data_after_a_date_change_before_the_refetch_resolves', async () => {
+    let resolveSecondFetch: (value: Record<string, unknown>) => void = () => {}
+    const getProjectedExhaustion = vi.fn()
+      .mockResolvedValueOnce({ h1: { existingRows: [], thresholds } })
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveSecondFetch = resolve }))
+    const { container } = render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
+    })
+
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(2))
+
+    expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
+
+    await act(async () => { resolveSecondFetch({ h1: { existingRows: [], thresholds } }) })
   })
 
   it('should_not_render_exhaustion_bar_when_getProjectedExhaustion_is_omitted', () => {

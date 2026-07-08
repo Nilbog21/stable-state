@@ -44,7 +44,7 @@ export function LessonForm({
     horses: Array<{ id: string; name: string; horse_notes: string | null }>
     riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
   }
-  getProjectedExhaustion?: (targetDateIso: string) => Promise<ExhaustionByHorseId>
+  getProjectedExhaustion?: (targetDateIso: string, horseIds: string[]) => Promise<ExhaustionByHorseId>
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
 
@@ -97,7 +97,7 @@ export function LessonForm({
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
   const [lessonAt, setLessonAt] = useState('')
-  const [exhaustionByHorseId, setExhaustionByHorseId] = useState<ExhaustionByHorseId | null>(null)
+  const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
 
   const { setDirty, setMessage } = useNavigationBlocker()
   const unpaidPastDue =
@@ -125,11 +125,11 @@ export function LessonForm({
   useEffect(() => {
     if (!lessonAt || !getProjectedExhaustion) return
     let cancelled = false
-    getProjectedExhaustion(lessonAt).then((result) => {
-      if (!cancelled) setExhaustionByHorseId(result)
+    getProjectedExhaustion(lessonAt, horses.map(h => h.id)).then((result) => {
+      if (!cancelled) setExhaustionData({ lessonAt, data: result })
     })
     return () => { cancelled = true }
-  }, [lessonAt, getProjectedExhaustion])
+  }, [lessonAt, getProjectedExhaustion, horses])
 
   function flash(keys: string[]) {
     if (keys.length === 0) return
@@ -362,7 +362,8 @@ export function LessonForm({
           return aAvail - bAvail
         }).map((h) => {
           const isUnavailable = h.is_available === false
-          const exhaustion = lessonAt ? exhaustionByHorseId?.[h.id] : undefined
+          const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
+          const exhaustion = exhaustionByHorseId?.[h.id]
           return (
           <div key={h.id} className="flex flex-col gap-1">
           <div className="flex items-center gap-3">

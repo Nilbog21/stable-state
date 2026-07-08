@@ -39,6 +39,7 @@ vi.mock('@/lib/db/notifications', () => ({
 vi.mock('@/lib/db/horses', () => ({
   createHorse: vi.fn(),
   getHorsesByBarn: vi.fn(),
+  getHorsesByIds: vi.fn(),
   getHorseProjectedExhaustion: vi.fn(),
   resolveExhaustionThresholds: vi.fn(),
 }))
@@ -53,7 +54,7 @@ import { createLessonWithParticipants, updateLessonWithParticipants, updateLesso
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
-import { createHorse, getHorsesByBarn, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
 
@@ -1611,14 +1612,15 @@ describe('stopLessonSeriesAction', () => {
 describe('getProjectedExhaustionForBarn', () => {
   const mockThresholds = { high: 11, moderate: 5 }
   const mockRows = [{ lessonAt: '2026-05-17T10:00:00Z', exertionLevel: 3 }]
+  const mockHorseIds = ['horse-1', 'horse-2']
 
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
-    vi.mocked(getHorsesByBarn).mockReset()
+    vi.mocked(getHorsesByIds).mockReset()
     vi.mocked(getHorseProjectedExhaustion).mockReset()
     vi.mocked(resolveExhaustionThresholds).mockReset()
     guardAs(mockTrainerMembership)
-    vi.mocked(getHorsesByBarn).mockResolvedValue([
+    vi.mocked(getHorsesByIds).mockResolvedValue([
       { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
     ])
@@ -1627,7 +1629,7 @@ describe('getProjectedExhaustionForBarn', () => {
   })
 
   it('should_return_a_map_keyed_by_horse_id', async () => {
-    const result = await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00')
+    const result = await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', mockHorseIds)
     expect(result).toEqual({
       'horse-1': { existingRows: mockRows, thresholds: mockThresholds },
       'horse-2': { existingRows: mockRows, thresholds: mockThresholds },
@@ -1635,17 +1637,30 @@ describe('getProjectedExhaustionForBarn', () => {
   })
 
   it('should_pass_exclude_lesson_id_to_getHorseProjectedExhaustion_when_provided', async () => {
-    await getProjectedExhaustionForBarn('barn-slug', 'lesson-1', '2026-05-17T10:00')
+    await getProjectedExhaustionForBarn('barn-slug', 'lesson-1', '2026-05-17T10:00', mockHorseIds)
     expect(vi.mocked(getHorseProjectedExhaustion).mock.calls[0][3]).toBe('lesson-1')
   })
 
   it('should_pass_undefined_exclude_lesson_id_when_null', async () => {
-    await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00')
+    await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', mockHorseIds)
     expect(vi.mocked(getHorseProjectedExhaustion).mock.calls[0][3]).toBeUndefined()
   })
 
   it('should_require_manager_or_trainer_membership', async () => {
-    await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00')
+    await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', mockHorseIds)
     expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager', 'trainer'])
+  })
+
+  it('should_pass_the_given_horse_ids_to_getHorsesByIds', async () => {
+    await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', mockHorseIds)
+    expect(getHorsesByIds).toHaveBeenCalledWith(mockHorseIds, mockBarn.id)
+  })
+
+  it('should_include_an_inactive_assigned_horse_id_in_the_returned_map', async () => {
+    vi.mocked(getHorsesByIds).mockResolvedValue([
+      { id: 'horse-3', barn_id: 'barn-1', name: 'Retired', is_active: false, created_at: '2026-01-01', updated_at: '2026-01-01' },
+    ])
+    const result = await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', ['horse-3'])
+    expect(result['horse-3']).toEqual({ existingRows: mockRows, thresholds: mockThresholds })
   })
 })
