@@ -46,6 +46,17 @@ export async function getSeriesById(seriesId: string, barnId: string, client?: S
   return data
 }
 
+export async function generateNextLessonForSeries(seriesId: string, barnId: string, lessonAt: string, client?: SupabaseClient): Promise<Lesson> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase.rpc('generate_lesson_for_series', {
+    p_series_id: seriesId,
+    p_barn_id: barnId,
+    p_lesson_at: lessonAt,
+  })
+  if (error) throw error
+  return data as Lesson
+}
+
 export async function stopLessonSeries(seriesId: string, barnId: string, client?: SupabaseClient): Promise<void> {
   const supabase = client ?? await createClient()
   const { error } = await supabase
