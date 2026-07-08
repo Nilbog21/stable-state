@@ -72,6 +72,28 @@ describe('Button', () => {
     })
   })
 
+  describe('size', () => {
+    it('should_default_to_md_size', () => {
+      render(<Button>Save</Button>)
+      expect(screen.getByRole('button').className).toContain('px-4')
+    })
+
+    it('should_apply_sm_size_padding', () => {
+      render(<Button size="sm">Save</Button>)
+      expect(screen.getByRole('button').className).toContain('px-3')
+    })
+
+    it('should_apply_sm_size_text', () => {
+      render(<Button size="sm">Save</Button>)
+      expect(screen.getByRole('button').className).toContain('text-xs')
+    })
+
+    it('should_not_meet_minimum_touch_target_height_for_sm_size', () => {
+      render(<Button size="sm">Save</Button>)
+      expect(screen.getByRole('button').className).not.toContain('min-h-11')
+    })
+  })
+
   describe('href', () => {
     it('should_render_as_link_when_href_provided', () => {
       render(<Button href="/somewhere">Cancel</Button>)
