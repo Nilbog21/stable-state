@@ -38,6 +38,9 @@ export function NotificationBell({ notifications, barnId }: Props) {
 
   return (
     <div ref={ref} className="relative">
+      {/* Raw Tailwind, not <Button>: icon-only circular nav control — none of
+          Button's variants target an unpadded round icon button, and this is
+          the only call site, so it's not worth adding one for. */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
@@ -68,6 +71,9 @@ export function NotificationBell({ notifications, barnId }: Props) {
         <div className="absolute right-0 top-10 z-10 w-80 rounded-lg border border-zinc-200 bg-white shadow-md dark:border-zinc-700 dark:bg-zinc-900">
           <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2 dark:border-zinc-800">
             <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Notifications</span>
+            {/* Raw Tailwind, not <Button>: bare text-link control, no
+                background/border/padding — none of Button's variants fit a
+                plain inline text action, and this is the only call site. */}
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}

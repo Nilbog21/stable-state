@@ -3,6 +3,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { Profile } from '@/lib/db/types'
 import { updateProfileAction } from './actions'
+import { Button } from '@/components/ui/Button'
 
 interface Props {
   profile: Profile
@@ -128,12 +129,7 @@ export function ProfileForm({ profile, heading, redirectAfterSave }: Props) {
         </div>
         {error && <p className="text-sm text-red-600 dark:text-red-400">{error}</p>}
         {saved && <p className="text-sm text-green-700 dark:text-green-400">Profile saved.</p>}
-        <button
-          type="submit"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-semibold text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          Save
-        </button>
+        <Button type="submit">Save</Button>
       </form>
     </div>
   )

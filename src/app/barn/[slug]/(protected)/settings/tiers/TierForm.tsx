@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import type { LessonTier } from '@/lib/db/types'
 import { DeactivateButton } from '../DeactivateButton'
+import { Button } from '@/components/ui/Button'
 
 type TierFormProps = {
   mode: 'new' | 'edit'
@@ -31,12 +32,9 @@ export function TierForm({
           {isActive && onDeactivate && <DeactivateButton action={onDeactivate} />}
           {!isActive && onActivate && (
             <form action={onActivate}>
-              <button
-                type="submit"
-                className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-              >
+              <Button type="submit" variant="ghost" size="sm">
                 Activate
-              </button>
+              </Button>
             </form>
           )}
         </div>
@@ -156,13 +154,9 @@ export function TierForm({
           </div>
         )}
 
-        <button
-          type="submit"
-          disabled={!isActive}
-          className="rounded bg-zinc-900 px-4 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <Button type="submit" disabled={!isActive}>
           Save
-        </button>
+        </Button>
       </form>
     </div>
   )

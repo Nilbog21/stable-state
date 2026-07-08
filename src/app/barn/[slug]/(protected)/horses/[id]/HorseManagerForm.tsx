@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import type { Horse } from '@/lib/db/types'
+import { Button } from '@/components/ui/Button'
 
 type Status = 'active' | 'unavailable' | 'inactive'
 
@@ -44,6 +45,10 @@ export function HorseManagerForm({
 
       <div className="flex min-w-0 flex-col gap-2">
         <span className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</span>
+        {/* Raw Tailwind, not <Button>: joined-corner segmented status control
+            (aria-pressed group, first:rounded-l-md/last:rounded-r-md) rather than
+            standalone variant buttons — forcing it into Button's model would
+            break the joined-pill layout. Same reasoning as LessonForm's toggle. */}
         <div className="inline-flex rounded-md border border-zinc-300 dark:border-zinc-600" role="group">
           {PILL_LABELS.map(({ value, label }) => (
             <button
@@ -88,12 +93,9 @@ export function HorseManagerForm({
         </div>
       )}
 
-      <button
-        type="submit"
-        className="self-start rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
+      <Button type="submit" className="self-start">
         Save
-      </button>
+      </Button>
     </form>
   )
 }

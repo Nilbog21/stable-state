@@ -45,7 +45,7 @@ Always display times in 12-hour AM/PM format (e.g. "12:00 AM", "1:00 PM"). Never
 New UI must use the primitives in `src/components/ui/` — do not hand-roll raw Tailwind for cards, buttons, or table cells.
 
 - `<Card href? className?>` (`Card.tsx`) — browseable item collections (horses, upcoming lessons, members). With `href` it renders as a full-card link with `bg-white`/hover states baked in; without `href` it renders a plain bordered `div` with no background or padding of its own — pass `className` for either variant's padding/spacing needs.
-- `<Button variant? loading? href?>` (`Button.tsx`) — all interactive actions. Variants: `primary` (default), `danger` for destructive actions, `ghost` for secondary actions. `loading` disables the button and shows a spinner. With `href` it renders as a styled `Link` instead of a `<button>`.
+- `<Button variant? size? loading? href?>` (`Button.tsx`) — all interactive actions. Variants: `primary` (default), `danger` for destructive actions, `ghost` for secondary actions. `size`: `md` (default) for standalone form/page actions, `sm` for compact table/row actions (Approve/Reject/Remove/Delete/Activate/Deactivate). `loading` disables the button and shows a spinner. With `href` it renders as a styled `Link` instead of a `<button>`. Joined-corner segmented toggles and icon-only/bare-text controls are poor structural fits — leave those as raw Tailwind with a comment explaining why (see `LessonForm.tsx`'s Normal/Group switch or `NotificationBell.tsx`).
 - `<Th>` / `<Td tone?>` / `<TableActions>` (`Table.tsx`) — all data tables. Use `tone="secondary"` on `<Td>` for secondary text cells. `<TableActions>` is a right-aligned `<Td>` for row action buttons.
 
 Placement rules:

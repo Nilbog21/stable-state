@@ -11,6 +11,7 @@ import { HorseExhaustionThresholdsForm } from './HorseExhaustionThresholdsForm'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
+import { Button } from '@/components/ui/Button'
 import {
   updateHorseDetailsAction,
   uploadHorseDocumentAction,
@@ -148,12 +149,9 @@ export default async function HorseDetailPage({
                     <TableActions>
                       {role === 'manager' && (
                         <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
-                          <button
-                            type="submit"
-                            className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                          >
+                          <Button type="submit" variant="danger" size="sm">
                             Delete
-                          </button>
+                          </Button>
                         </form>
                       )}
                     </TableActions>
