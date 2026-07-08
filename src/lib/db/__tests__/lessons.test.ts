@@ -240,14 +240,6 @@ describe('getLessonsByBarn', () => {
   })
 
   describe('role_filtering', () => {
-    function makeTrainerLessonsChain(data: unknown[], error: Error | null = null) {
-      const mockOrder = vi.fn().mockResolvedValue({ data, error })
-      const mockInstructorEq = vi.fn().mockReturnValue({ order: mockOrder })
-      const mockBarnEq = vi.fn().mockReturnValue({ eq: mockInstructorEq })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
-      return { select: mockSelect, mockBarnEq, mockInstructorEq, mockOrder }
-    }
-
     function makeMembershipLookupChain(data: { id: string } | null, error: Error | null = null) {
       const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
       const mockStatusEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
@@ -255,15 +247,6 @@ describe('getLessonsByBarn', () => {
       const mockUserEq = vi.fn().mockReturnValue({ eq: mockRoleEq })
       const mockBarnEq = vi.fn().mockReturnValue({ eq: mockUserEq })
       const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
-      return { select: mockSelect }
-    }
-
-    // getUserMembership shape: select('*').eq('user_id', ...).eq('barn_id', ...).maybeSingle()
-    function makeCallerMembershipChain(data: { id: string } | null, error: Error | null = null) {
-      const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-      const mockBarnEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
-      const mockUserEq = vi.fn().mockReturnValue({ eq: mockBarnEq })
-      const mockSelect = vi.fn().mockReturnValue({ eq: mockUserEq })
       return { select: mockSelect }
     }
 
@@ -282,41 +265,16 @@ describe('getLessonsByBarn', () => {
       return { select: mockSelect, mockBarnEq }
     }
 
-    it('should_filter_by_barn_id_for_trainer_role', async () => {
-      const { select: lessonsSelect, mockBarnEq } = makeTrainerLessonsChain([])
-      const { select: membershipSelect } = makeCallerMembershipChain({ id: 'trainer-membership-1' })
-      const fromFn = vi.fn().mockImplementation((table: string) =>
-        table === 'barn_memberships' ? { select: membershipSelect } : { select: lessonsSelect }
-      )
+    it('should_return_all_barn_lessons_for_trainer_role_with_no_instructor_filter', async () => {
+      const { select, mockEq, mockOrder } = makeLessonsChain([])
+      const fromFn = vi.fn().mockReturnValue({ select })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
       await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
 
-      expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-    })
-
-    it('should_filter_by_instructor_id_for_trainer_role_using_callers_own_membership_id', async () => {
-      const { select: lessonsSelect, mockInstructorEq } = makeTrainerLessonsChain([])
-      const { select: membershipSelect } = makeCallerMembershipChain({ id: 'trainer-membership-1' })
-      const fromFn = vi.fn().mockImplementation((table: string) =>
-        table === 'barn_memberships' ? { select: membershipSelect } : { select: lessonsSelect }
-      )
-      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
-
-      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
-
-      expect(mockInstructorEq).toHaveBeenCalledWith('instructor_id', 'trainer-membership-1')
-    })
-
-    it('should_return_empty_when_trainer_has_no_membership', async () => {
-      const { select: membershipSelect } = makeCallerMembershipChain(null)
-      vi.mocked(createClient).mockResolvedValue({
-        from: vi.fn().mockReturnValue({ select: membershipSelect }),
-      } as any)
-
-      const result = await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
-
-      expect(result).toEqual([])
+      expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+      expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: false })
+      expect(fromFn).not.toHaveBeenCalledWith('barn_memberships')
     })
 
     it('should_return_one_lesson_for_rider_role', async () => {

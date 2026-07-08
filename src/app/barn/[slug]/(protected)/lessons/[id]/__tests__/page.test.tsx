@@ -37,7 +37,7 @@ const mockBarn = createMockBarn({
 })
 
 const mockLessonDetail = createMockLessonDetail({
-  instructor_id: 'user-1',
+  instructor_id: 'mem-1',
   fee: 75,
   lesson_at: '2026-05-17T10:00:00Z',
   submitted_at: '2026-05-17T10:05:00Z',
@@ -324,6 +324,13 @@ describe('LessonDetailPage', () => {
 
   it('should_not_show_edit_link_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
+  })
+
+  it('should_not_show_edit_link_for_trainer_viewing_a_lesson_they_do_not_instruct', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, instructor_id: 'other-trainer-membership' })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
