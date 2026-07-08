@@ -34,22 +34,24 @@ Each script is split into three files with distinct responsibilities:
 
 Add a **`.test.sh`** only when the shell script has non-trivial branching logic (e.g. `change-user.sh`). Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage.sh`) need no `.ts` counterpart.
 
+`.test.ts` files are automated via vitest (`ci.sh` → `npm run test:coverage`). `.sh` wrapper scripts are not automated — `.test.sh` files, where they exist, are run manually by hand and don't need to be wired into `ci.sh`.
+
 `reset-db` is the canonical example of the full pattern.
 
 ### Audit — release-2
 
 | Script | `.sh` | `.ts` | `.test.ts` | `.test.sh` | Notes |
 |---|---|---|---|---|---|
-| `reset-db` | ✓ | ✓ | ✓ | ✓ | Canonical model |
-| `change-user` | ✓ | ✓ | ✓ | ✓ | `.ts` uses `readline` for numbered-list selection; bash can't do this cleanly |
+| `reset-db` | ✓ | ✓ | ✓ | — | Canonical model |
+| `change-user` | ✓ | ✓ | ✓ | — | `.ts` uses `readline` for numbered-list selection; bash can't do this cleanly |
 | `seed-account` | ✓ | ✓ | ✓ | — | Creates a managed-manager stub (direct service-role inserts) and prints the invite path; `.test.ts` covers `buildInvitePath`; no non-trivial shell branching |
-| `seed-test-barn` | ✓ | ✓ | ✓ | ✓ | Positional arg: barn slug; teardown-first for idempotency; email/password auth users |
-| `teardown-test-barn` | ✓ | ✓ | ✓ | ✓ | Exports `teardown(slug, supabase)` reused by `seed-test-barn.ts`; exports `TEST_ROLES` for test coverage |
+| `seed-test-barn` | ✓ | ✓ | ✓ | — | Positional arg: barn slug; teardown-first for idempotency; email/password auth users |
+| `teardown-test-barn` | ✓ | ✓ | ✓ | — | Exports `teardown(slug, supabase)` reused by `seed-test-barn.ts`; exports `TEST_ROLES` for test coverage |
 | `script-utils` | — | ✓ | ✓ | — | Shared utilities (`mustSucceed`, `createServiceClient`, `teardownBarnData`, `teardownAllData`, `findAuthUserIdsByEmails`); import from here to reduce duplication across seed/teardown scripts |
 | `generate-outstanding-notifications` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only (no interactive `.env.local` flow); `.sh` validates env vars already set by the workflow's `env:` block instead of parsing `.env.local`; no non-trivial shell branching |
 | `generate-agreement-charges` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as `generate-outstanding-notifications`; `.test.ts` covers only the pure `formatChargeGenerationSummary` formatter — the cross-barn `agreements` query and `generateChargeForMonth` calls are verified manually, not unit tested |
 | `generate-recurring-lessons` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as the other two; `.test.ts` covers the pure helpers (`isDueForGeneration`, `computeNextLessonAt`, `hasMissingRider`, `hasUnavailableHorse`, and the notification/summary formatters) — the cross-barn `lesson_series` query, per-series `generateNextLessonForSeries`/`stopLessonSeries` calls, and notification aggregation are verified manually, not unit tested |
-| `ci` | ✓ | — | — | ✓ | Shell-only |
+| `ci` | ✓ | — | — | — | Shell-only |
 | `check-coverage` | ✓ | — | — | ✓ | Shell-only |
 
 ## Testing
