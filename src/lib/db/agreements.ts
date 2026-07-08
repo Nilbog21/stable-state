@@ -8,6 +8,26 @@ export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | '
   return agreement.cadence === 'one_time' ? 'Complete' : 'Active'
 }
 
+interface ChargeAgreementInfo {
+  kind: AgreementKind
+  rider_id: string
+  horse_id: string
+}
+
+async function getAgreementsMapForCharges(
+  supabase: SupabaseClient,
+  barnId: string,
+  agreementIds: string[]
+): Promise<Map<string, ChargeAgreementInfo>> {
+  const { data, error } = await supabase
+    .from('agreements')
+    .select('id, kind, rider_id, horse_id')
+    .eq('barn_id', barnId)
+    .in('id', agreementIds)
+  if (error) throw error
+  return new Map((data ?? []).map((a) => [a.id, a]))
+}
+
 export async function createAgreement(
   params: {
     barnId: string
@@ -256,14 +276,8 @@ export async function getPaidCharges(
   if (!rows.length) return []
 
   const agreementIds = [...new Set(rows.map((r) => r.agreement_id))]
-  const { data: agreements, error: agreementsError } = await supabase
-    .from('agreements')
-    .select('id, kind, rider_id, horse_id')
-    .eq('barn_id', barnId)
-    .in('id', agreementIds)
-  if (agreementsError) throw agreementsError
+  const agreementMap = await getAgreementsMapForCharges(supabase, barnId, agreementIds)
 
-  const agreementMap = new Map((agreements ?? []).map((a) => [a.id, a]))
   return rows.flatMap((row) => {
     const agreement = agreementMap.get(row.agreement_id)
     if (!agreement) return []
@@ -334,15 +348,8 @@ export async function getOutstandingCharges(
   if (!rows.length) return []
 
   const agreementIds = [...new Set(rows.map((r) => r.agreement_id))]
-  const { data: agreements, error: agreementsError } = await supabase
-    .from('agreements')
-    .select('id, kind, rider_id')
-    .eq('barn_id', barnId)
-    .in('id', agreementIds)
-  if (agreementsError) throw agreementsError
-
-  const agreementMap = new Map((agreements ?? []).map((a) => [a.id, a]))
-  const riderIds = [...new Set((agreements ?? []).map((a) => a.rider_id))]
+  const agreementMap = await getAgreementsMapForCharges(supabase, barnId, agreementIds)
+  const riderIds = [...new Set([...agreementMap.values()].map((a) => a.rider_id))]
   const nameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
   return rows.flatMap((row) => {
