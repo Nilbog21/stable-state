@@ -15,8 +15,6 @@ import {
   getLessonHorsesForLessons,
   getPaidLessonInstructorFees,
   getPaidLessonFeesAt,
-  getRiderMembership,
-  getProfileNameByUserId,
 } from '../lesson-finance-queries'
 
 describe('getLessonsForSummary', () => {
@@ -624,75 +622,3 @@ describe('getPaidLessonFeesAt', () => {
   })
 })
 
-describe('getRiderMembership', () => {
-  function makeChain(data: unknown | null, error: Error | null = null) {
-    const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEqId = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
-    const mockEqBarn = vi.fn().mockReturnValue({ eq: mockEqId })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarn })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    return { client: { from } as any, from, mockEqBarn, mockEqId }
-  }
-
-  it('should_filter_by_barn_id', async () => {
-    const { client, mockEqBarn } = makeChain(null)
-    await getRiderMembership(client, 'barn-1', 'mem-1')
-    expect(mockEqBarn).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_filter_by_membership_id', async () => {
-    const { client, mockEqId } = makeChain(null)
-    await getRiderMembership(client, 'barn-1', 'mem-1')
-    expect(mockEqId).toHaveBeenCalledWith('id', 'mem-1')
-  })
-
-  it('should_return_the_row_when_found', async () => {
-    const { client } = makeChain({ id: 'mem-1', user_id: 'user-1' })
-    const result = await getRiderMembership(client, 'barn-1', 'mem-1')
-    expect(result).toEqual({ id: 'mem-1', user_id: 'user-1' })
-  })
-
-  it('should_return_null_when_not_found', async () => {
-    const { client } = makeChain(null)
-    const result = await getRiderMembership(client, 'barn-1', 'mem-1')
-    expect(result).toBeNull()
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    const { client } = makeChain(null, new Error('membership error'))
-    await expect(getRiderMembership(client, 'barn-1', 'mem-1')).rejects.toThrow('membership error')
-  })
-})
-
-describe('getProfileNameByUserId', () => {
-  function makeChain(data: unknown | null, error: Error | null = null) {
-    const mockMaybeSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    return { client: { from } as any, from, mockEq }
-  }
-
-  it('should_filter_by_user_id', async () => {
-    const { client, mockEq } = makeChain(null)
-    await getProfileNameByUserId(client, 'user-1')
-    expect(mockEq).toHaveBeenCalledWith('user_id', 'user-1')
-  })
-
-  it('should_return_the_row_when_found', async () => {
-    const { client } = makeChain({ first_name: 'Alice', last_name: 'Rider' })
-    const result = await getProfileNameByUserId(client, 'user-1')
-    expect(result).toEqual({ first_name: 'Alice', last_name: 'Rider' })
-  })
-
-  it('should_return_null_when_not_found', async () => {
-    const { client } = makeChain(null)
-    const result = await getProfileNameByUserId(client, 'user-1')
-    expect(result).toBeNull()
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    const { client } = makeChain(null, new Error('profile error'))
-    await expect(getProfileNameByUserId(client, 'user-1')).rejects.toThrow('profile error')
-  })
-})
