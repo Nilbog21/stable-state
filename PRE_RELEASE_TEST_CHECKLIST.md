@@ -139,7 +139,6 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 - [ ] "You" card plus Managers (Morgan, own entry excluded), Trainers, and Riders sections all render
-- [ ] `/barn/dev-barn/riders` redirects to `/barn/dev-barn/members`
 - [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
 - [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section still shows "No account linked — documents unavailable"
 - [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload; a trainer opening the same page sees Contact Info read-only, with no Save button
@@ -286,7 +285,6 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/barn/[slug]/agreements/[id]/edit` | Phase 2 |
 | `/barn/[slug]/members` | Phases 2, 4, 5, 6 |
 | `/barn/[slug]/members/[membership_id]` | Phases 4, 5 |
-| `/barn/[slug]/riders` (redirect) | Phase 4 |
 | `/barn/[slug]/finances` | Phases 4, 5, 6 |
 | `/barn/[slug]/finances/outstanding` | Phases 4, 5, 6 |
 | `/barn/[slug]/finances/horses/[id]` | Phase 4 |

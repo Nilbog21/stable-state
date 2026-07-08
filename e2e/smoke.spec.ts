@@ -8,7 +8,7 @@ const STATIC_ROUTES: Record<string, string[]> = {
     `/barn/${barnSlug}/lessons`,
     `/barn/${barnSlug}/lessons/new`,
     `/barn/${barnSlug}/horses`,
-    `/barn/${barnSlug}/riders`,
+    `/barn/${barnSlug}/members`,
     `/barn/${barnSlug}/finances`,
     `/barn/${barnSlug}/settings`,
     `/profile`,
@@ -18,7 +18,7 @@ const STATIC_ROUTES: Record<string, string[]> = {
     `/barn/${barnSlug}/lessons`,
     `/barn/${barnSlug}/lessons/new`,
     `/barn/${barnSlug}/horses`,
-    `/barn/${barnSlug}/riders`,
+    `/barn/${barnSlug}/members`,
     `/profile`,
   ],
   rider: [
