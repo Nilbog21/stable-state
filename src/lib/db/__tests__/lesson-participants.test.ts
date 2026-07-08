@@ -1041,7 +1041,7 @@ describe('hydrateParticipants', () => {
     expect(result.rider_cancelled_ats).toEqual([null])
   })
 
-  it('should_only_attach_junction_rows_matching_each_lessons_own_id', async () => {
+  it('should_not_attach_another_lessons_horse_to_the_first_lesson', async () => {
     const lessonA = createMockLesson({ id: 'lesson-a', instructor_id: null })
     const lessonB = createMockLesson({ id: 'lesson-b', instructor_id: null })
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
@@ -1051,9 +1051,23 @@ describe('hydrateParticipants', () => {
       { lesson_id: 'lesson-b', horse_id: 'horse-2' },
     ], [])
 
-    const [resultA, resultB] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1')
+    const [resultA] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1')
 
     expect(resultA.horse_names).toEqual(['Thunderbolt'])
+  })
+
+  it('should_not_attach_the_first_lessons_horse_to_another_lesson', async () => {
+    const lessonA = createMockLesson({ id: 'lesson-a', instructor_id: null })
+    const lessonB = createMockLesson({ id: 'lesson-b', instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([
+      { lesson_id: 'lesson-a', horse_id: 'horse-1' },
+      { lesson_id: 'lesson-b', horse_id: 'horse-2' },
+    ], [])
+
+    const [, resultB] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1')
+
     expect(resultB.horse_names).toEqual(['Shadow'])
   })
 
