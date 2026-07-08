@@ -10,7 +10,10 @@ const mockNotFound = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, useRouter: vi.fn(() => ({ refresh: vi.fn() })) }))
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
-vi.mock('@/lib/db/agreements', () => ({ getAgreementById: vi.fn(), getChargesForAgreement: vi.fn() }))
+vi.mock('@/lib/db/agreements', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/agreements')>('@/lib/db/agreements')
+  return { ...actual, getAgreementById: vi.fn(), getChargesForAgreement: vi.fn() }
+})
 vi.mock('@/lib/db/barn-memberships', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ resolveHorseNames: vi.fn() }))
 
@@ -128,5 +131,23 @@ describe('AgreementDetailPage', () => {
     const jsx = await callPage()
     render(jsx)
     expect(screen.getByText('Ended')).toBeDefined()
+  })
+
+  it('should_render_active_status_for_monthly_active_agreement', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(
+      createMockAgreement({ is_active: true, cadence: 'monthly' })
+    )
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Active')).toBeDefined()
+  })
+
+  it('should_render_complete_status_for_one_time_active_agreement', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(
+      createMockAgreement({ is_active: true, cadence: 'one_time' })
+    )
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Complete')).toBeDefined()
   })
 })

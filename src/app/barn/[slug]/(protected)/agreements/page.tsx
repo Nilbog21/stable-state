@@ -1,9 +1,9 @@
 import { requireMembership } from '@/lib/auth/guard'
-import { getAgreementsByBarn } from '@/lib/db/agreements'
+import { getAgreementsByBarn, getAgreementStatusLabel } from '@/lib/db/agreements'
 import { resolveMemberNames } from '@/lib/db/barn-memberships'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { Button } from '@/components/ui/Button'
-import { Th, Td, TableActions } from '@/components/ui/Table'
+import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
 import type { AgreementKind } from '@/lib/db/types'
 
@@ -52,35 +52,21 @@ export default async function AgreementsPage({
           subtext={`${title} you create will appear here.`}
         />
       ) : (
-        <table className="mt-6 w-full">
-          <thead>
-            <tr>
-              <Th>Rider</Th>
-              <Th>Horse</Th>
-              <Th>Fee</Th>
-              <Th>Status</Th>
-              <Th />
-            </tr>
-          </thead>
-          <tbody>
-            {agreements.map((a) => (
-              <tr key={a.id}>
-                <Td>{riderNames.get(a.rider_id) ?? '—'}</Td>
-                <Td>{horseNames.get(a.horse_id) ?? '—'}</Td>
-                <Td>{formatFee(a.fee)}</Td>
-                <Td tone="secondary">{a.is_active ? 'Active' : 'Ended'}</Td>
-                <TableActions>
-                  <Button href={`/barn/${slug}/agreements/${a.id}`} variant="ghost">
-                    View
-                  </Button>
-                  <Button href={`/barn/${slug}/agreements/${a.id}/edit`} variant="ghost">
-                    Edit
-                  </Button>
-                </TableActions>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+        <div className="mt-6 flex flex-col gap-2">
+          {agreements.map((a) => (
+            <Card key={a.id} href={`/barn/${slug}/agreements/${a.id}`} className="p-4">
+              <p className="font-medium text-zinc-900 dark:text-zinc-50">
+                {riderNames.get(a.rider_id) ?? '—'}
+              </p>
+              <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
+                {horseNames.get(a.horse_id) ?? '—'}
+              </p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                {formatFee(a.fee)} · {getAgreementStatusLabel(a)}
+              </p>
+            </Card>
+          ))}
+        </div>
       )}
     </main>
   )

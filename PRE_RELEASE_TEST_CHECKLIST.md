@@ -49,10 +49,10 @@ Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 
 - [ ] **Leases** in the nav opens the lease-kind list and stays highlighted; **Add Lease** → the nav still shows **Leases** highlighted (not Boarding) on the `/agreements/new` form → select rider Dana, horse Apple, fee $150, cadence Monthly, start date today → Save
 - [ ] **Boarding** in the nav opens the board-kind list and stays highlighted; **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
-- [ ] Both agreements appear in their respective kind-scoped lists with rider, horse, fee, and **Active** status
-- [ ] Open the lease's **Edit** page → rider, horse, start date, and cadence are read-only; change the fee → Save → new fee reflected in the list
-- [ ] Open the lease's **View** page → shows rider, horse, fee, cadence, and status, plus a charges table with the first auto-generated charge
-- [ ] On that charge row, select a **Payment Type** → page refreshes and the selection persists; edit the **Fee** field and blur → new amount persists after refresh
+- [ ] Both agreements appear as full-card links in their respective kind-scoped lists, each showing rider, horse, fee, and **Active** status — no separate View/Edit buttons on the card, the whole card is the link
+- [ ] Add a one-time lease (rider Dana, horse Apple, cadence One time) → its card shows **Complete** instead of Active, both in the Leases list and on its detail page
+- [ ] Click the monthly lease's card → detail page shows rider, horse, fee, cadence, and status, plus a charges table with the first auto-generated charge; **Edit** button top-right → rider, horse, start date, and cadence are read-only; change the fee → Save → new fee reflected in the list
+- [ ] On the lease detail page's charge row, select a **Payment Type** → page refreshes and the selection persists; edit the **Fee** field and blur → new amount persists after refresh
 - [ ] **End Agreement** on the boarding agreement (confirm the browser prompt) → it now shows **Ended** in the Boarding list
 
 Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Riders section):

@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockAgreement, createMockUser } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
-vi.mock('@/lib/db/agreements', () => ({ getAgreementsByBarn: vi.fn() }))
+vi.mock('@/lib/db/agreements', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/agreements')>('@/lib/db/agreements')
+  return { ...actual, getAgreementsByBarn: vi.fn() }
+})
 vi.mock('@/lib/db/barn-memberships', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ resolveHorseNames: vi.fn() }))
 
@@ -83,7 +86,7 @@ describe('AgreementsPage', () => {
     expect(screen.getByText(/no leases yet/i)).toBeDefined()
   })
 
-  it('should_render_rider_name_in_table_row', async () => {
+  it('should_render_rider_name_in_card', async () => {
     vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement()])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['rider-1', 'Dana Rider']]))
     const jsx = await callPage('lease')
@@ -91,7 +94,7 @@ describe('AgreementsPage', () => {
     expect(screen.getByText('Dana Rider')).toBeDefined()
   })
 
-  it('should_render_horse_name_in_table_row', async () => {
+  it('should_render_horse_name_in_card', async () => {
     vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement()])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Apple']]))
     const jsx = await callPage('lease')
@@ -99,41 +102,52 @@ describe('AgreementsPage', () => {
     expect(screen.getByText('Apple')).toBeDefined()
   })
 
-  it('should_render_fee_in_table_row', async () => {
+  it('should_render_fee_in_card', async () => {
     vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ fee: 200 })])
     const jsx = await callPage('lease')
     render(jsx)
-    expect(screen.getByText('$200.00')).toBeDefined()
+    expect(screen.getByText(/\$200\.00/)).toBeDefined()
   })
 
-  it('should_render_active_status_for_active_agreement', async () => {
-    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ is_active: true })])
+  it('should_render_active_status_for_monthly_active_agreement', async () => {
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([
+      createMockAgreement({ is_active: true, cadence: 'monthly' }),
+    ])
     const jsx = await callPage('lease')
     render(jsx)
-    expect(screen.getByText('Active')).toBeDefined()
+    expect(screen.getByText(/Active/)).toBeDefined()
+  })
+
+  it('should_render_complete_status_for_one_time_active_agreement', async () => {
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([
+      createMockAgreement({ is_active: true, cadence: 'one_time' }),
+    ])
+    const jsx = await callPage('lease')
+    render(jsx)
+    expect(screen.getByText(/Complete/)).toBeDefined()
   })
 
   it('should_render_ended_status_for_inactive_agreement', async () => {
     vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ is_active: false })])
     const jsx = await callPage('lease')
     render(jsx)
-    expect(screen.getByText('Ended')).toBeDefined()
+    expect(screen.getByText(/Ended/)).toBeDefined()
   })
 
-  it('should_render_edit_link_to_agreement_edit_page', async () => {
+  it('should_render_card_as_link_to_agreement_detail_page', async () => {
     vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ id: 'agreement-9' })])
     const jsx = await callPage('lease')
     render(jsx)
-    const link = screen.getByRole('link', { name: /edit/i })
-    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/agreements/agreement-9/edit')
+    const links = screen.getAllByRole('link')
+    const cardLink = links.find((l) => (l as HTMLAnchorElement).href.includes('agreement-9'))
+    expect(cardLink).toBeDefined()
+    expect((cardLink as HTMLAnchorElement).href).not.toContain('/edit')
   })
 
-  it('should_render_view_link_to_agreement_detail_page', async () => {
+  it('should_not_render_a_separate_edit_link_in_the_list', async () => {
     vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ id: 'agreement-9' })])
     const jsx = await callPage('lease')
     render(jsx)
-    const link = screen.getByRole('link', { name: /view/i })
-    expect((link as HTMLAnchorElement).href).toContain('/barn/green-acres/agreements/agreement-9')
-    expect((link as HTMLAnchorElement).href).not.toContain('/edit')
+    expect(screen.queryByRole('link', { name: /^edit$/i })).toBeNull()
   })
 })
