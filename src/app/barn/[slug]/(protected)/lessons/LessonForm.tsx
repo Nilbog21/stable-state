@@ -113,7 +113,7 @@ export function LessonForm({
     if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
     else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
     return () => setDirty(false)
-  }, [shouldWarn, unpaidWarn, notesDirty])
+  }, [shouldWarn, unpaidWarn, notesDirty, setDirty, setMessage])
 
   useEffect(() => {
     if (!shouldWarn) return

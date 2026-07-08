@@ -269,7 +269,7 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_show_client_error_when_normal_submitted_with_no_horses_selected', () => {
     const lesson = { ...normalLesson, lesson_horses: [] }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    render(<LessonForm {...baseProps} initialLesson={lesson} />)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
     fireEvent.submit(form)
     expect(screen.getByRole('alert').textContent).toContain('normal lesson requires exactly 1 horse')

@@ -32,8 +32,7 @@ export function DateHourPicker({
 
   useEffect(() => {
     onChange?.(date ? combinedValue : '')
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [date, hour])
+  }, [date, hour, combinedValue, onChange])
 
   return (
     <div className="flex gap-2">
