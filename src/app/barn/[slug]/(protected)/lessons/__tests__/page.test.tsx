@@ -325,7 +325,10 @@ describe('LessonsPage', () => {
   })
 
   it('should_show_rider_name_pill_for_trainer', async () => {
-    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'rider' }),
+    })
     render(jsx)
     expect(screen.getByRole('link', { name: /^alice$/i })).toBeDefined()
   })

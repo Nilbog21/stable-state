@@ -272,7 +272,7 @@ export default async function FinancesPage({
             By Rider
           </Link>
           <Link href={`?tab=trainer${monthQ}`} className={`${pillBase} ${tab === 'trainer' ? pillActive : pillInactive}`}>
-            By Trainer
+            By Instructor
           </Link>
         </div>
       </div>

@@ -790,10 +790,10 @@ describe('FinancesPage', () => {
     expect(screen.getByRole('link', { name: 'By Rider' })).toBeDefined()
   })
 
-  it('should_render_tab_bar_with_by_trainer_tab', async () => {
+  it('should_render_tab_bar_with_by_instructor_tab', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('link', { name: 'By Trainer' })).toBeDefined()
+    expect(screen.getByRole('link', { name: 'By Instructor' })).toBeDefined()
   })
 
   it('should_default_to_horse_tab_when_no_tab_param', async () => {
