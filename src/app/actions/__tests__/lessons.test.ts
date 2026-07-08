@@ -608,6 +608,7 @@ function makeLessonDetail(
     lesson_riders: riderUserIds.map((userId) => ({
       rider_notes: null,
       private_notes: null,
+      cancellation_notes: null,
       cancelled_at: null,
       barn_membership: { id: 'mem', user_id: userId, name: 'Rider' },
     })),
@@ -655,14 +656,14 @@ describe('cancelLessonAction', () => {
 
   it('should_call_cancelLesson_when_manager_cancels_eligible_lesson', async () => {
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, true)
   })
 
   it('should_call_cancelLesson_when_trainer_cancels_own_eligible_lesson', async () => {
     guardAs(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: mockTrainerMembership.id, lesson_at: futureIso }))
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, true)
   })
 
   it('should_redirect_without_calling_cancelLesson_when_already_cancelled', async () => {
@@ -699,12 +700,57 @@ describe('cancelLessonAction', () => {
 
   it('should_trim_and_pass_notes_when_provided', async () => {
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ notes: '  Trainer sick  ' }))
-    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', 'Trainer sick')
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', 'Trainer sick', true)
   })
 
   it('should_pass_null_notes_when_textarea_whitespace_only', async () => {
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ notes: '   ' }))
-    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, true)
+  })
+
+  it('should_pass_is_late_false_when_cancel_type_is_instructor_for_normal_lesson', async () => {
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'instructor' }))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, false)
+  })
+
+  it('should_pass_is_late_true_when_cancel_type_is_rider_and_within_24_hours', async () => {
+    const soonIso = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: soonIso, payment_type: null, cancelled_at: null }, [], 'instructor-1')
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, true)
+  })
+
+  it('should_pass_is_late_false_when_cancel_type_is_rider_and_more_than_24_hours_out', async () => {
+    const farIso = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: farIso, payment_type: null, cancelled_at: null }, [], 'instructor-1')
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, false)
+  })
+
+  it('should_default_to_rider_type_when_cancel_type_field_is_missing_for_normal_lesson', async () => {
+    const soonIso = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: soonIso, payment_type: null, cancelled_at: null }, [], 'instructor-1')
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, true)
+  })
+
+  it('should_always_pass_is_late_false_for_group_lesson_regardless_of_cancel_type', async () => {
+    const soonIso = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: soonIso, payment_type: null, cancelled_at: null },
+        [],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, false)
   })
 
   it('should_notify_barn_managers_when_trainer_cancels', async () => {
@@ -789,6 +835,7 @@ function makeLessonDetailWithRiders(
     lesson_riders: riders.map((r) => ({
       rider_notes: null,
       private_notes: null,
+      cancellation_notes: null,
       cancelled_at: r.cancelled_at ?? null,
       barn_membership: { id: r.id, user_id: r.user_id, name: 'Rider' },
     })),

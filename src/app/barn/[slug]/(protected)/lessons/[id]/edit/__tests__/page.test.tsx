@@ -41,7 +41,7 @@ const mockLesson = createMockLessonDetail({
   fee: 75,
   lesson_at: '2026-05-17T10:00:00Z',
   submitted_at: '2026-05-17T10:05:00Z',
-  lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'mem-1', name: 'Alice', user_id: null } }],
+  lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'mem-1', name: 'Alice', user_id: null } }],
 })
 
 const mockManagerMembership = createMockMembership({

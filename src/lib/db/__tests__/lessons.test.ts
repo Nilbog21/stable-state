@@ -142,6 +142,33 @@ describe('cancelLesson', () => {
     expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancellation_notes: null }))
   })
 
+  it('should_zero_fee_when_not_late', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1', null, false)
+    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ fee: 0 }))
+  })
+
+  it('should_not_zero_fee_when_is_late', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1', null, true)
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ fee: 0 }))
+  })
+
+  it('should_not_null_payment_type_when_is_late', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1', null, true)
+    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ payment_type: null }))
+  })
+
+  it('should_still_set_cancelled_at_and_notes_when_is_late', async () => {
+    const { mockUpdate } = makeCancelChain()
+    await cancelLesson('lesson-1', 'barn-1', 'called in sick', true)
+    expect(mockUpdate).toHaveBeenCalledWith({
+      cancelled_at: expect.any(String),
+      cancellation_notes: 'called in sick',
+    })
+  })
+
   it('should_filter_by_lesson_id', async () => {
     const { mockEq1 } = makeCancelChain()
     await cancelLesson('lesson-1', 'barn-1')
@@ -815,6 +842,82 @@ it('should_include_jumping_true_in_result', async () => {
     const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
 
     expect(result?.lesson_riders[1].rider_notes).toBeNull()
+  })
+
+  it('should_map_cancellation_notes_onto_normalized_lesson_rider', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, cancellation_notes: 'Rider called in sick', barn_memberships: { id: 'mem-1', user_id: null } }],
+    }
+    const { select } = makeLessonByIdChain(lessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.lesson_riders[0].cancellation_notes).toBe('Rider called in sick')
+  })
+
+  it('should_default_cancellation_notes_to_null_when_absent_on_normalized_lesson_rider', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: null } }],
+    }
+    const { select } = makeLessonByIdChain(lessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.lesson_riders[0].cancellation_notes).toBeNull()
+  })
+
+  it('should_preserve_cancellation_notes_for_self_when_role_is_rider', async () => {
+    const riderLessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_notes: null, cancellation_notes: 'called in sick', barn_memberships: { id: 'mem-1', user_id: 'user-1' } }],
+    }
+    const { select } = makeLessonByIdChain(riderLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return { select }
+        return makeProfileInChain([{ user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' }])
+      }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
+
+    expect(result?.lesson_riders[0].cancellation_notes).toBe('called in sick')
+  })
+
+  it('should_null_cancellation_notes_for_non_self_riders_when_role_is_rider', async () => {
+    const riderLessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [
+        { rider_notes: null, cancellation_notes: 'called in sick', barn_memberships: { id: 'mem-1', user_id: 'user-1' } },
+        { rider_notes: null, cancellation_notes: 'family emergency', barn_memberships: { id: 'mem-2', user_id: 'user-2' } },
+      ],
+    }
+    const { select } = makeLessonByIdChain(riderLessonData)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockImplementation((table: string) => {
+        if (table === 'lessons') return { select }
+        return makeProfileInChain([
+          { user_id: 'user-1', first_name: 'Alice', last_name: 'Rider' },
+          { user_id: 'user-2', first_name: 'Bob', last_name: 'Rider' },
+        ])
+      }),
+    } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
+
+    expect(result?.lesson_riders[1].cancellation_notes).toBeNull()
   })
 
   it('should_use_membership_id_as_name_when_barn_membership_profiles_is_null', async () => {
