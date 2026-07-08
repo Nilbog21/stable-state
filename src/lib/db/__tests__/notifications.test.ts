@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications } from '../notifications'
+import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications, upsertNotification } from '../notifications'
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -266,6 +266,52 @@ describe('markAllNotificationsRead', () => {
     } as any)
 
     await expect(markAllNotificationsRead('user-1', 'barn-1')).rejects.toThrow('bulk update failed')
+  })
+})
+
+describe('upsertNotification', () => {
+  it('should_upsert_with_correct_payload_and_conflict_target', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+
+    await upsertNotification(client, {
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+      body: 'You have an outstanding payment',
+      link: '/barn/test/finances',
+    })
+
+    expect(client.from).toHaveBeenCalledWith('notifications')
+    expect(mockUpsert).toHaveBeenCalledWith(
+      {
+        user_id: 'user-1',
+        barn_id: 'barn-1',
+        type: 'outstanding_payment',
+        title: 'Overdue',
+        body: 'You have an outstanding payment',
+        link: '/barn/test/finances',
+        read_at: null,
+      },
+      { onConflict: 'user_id,barn_id,type' }
+    )
+  })
+
+  it('should_throw_when_upsert_returns_error', async () => {
+    const dbError = new Error('upsert failed')
+    const client = { from: vi.fn().mockReturnValue({ upsert: vi.fn().mockResolvedValue({ error: dbError }) }) } as any
+
+    await expect(
+      upsertNotification(client, {
+        userId: 'user-1',
+        barnId: 'barn-1',
+        type: 'outstanding_payment',
+        title: 'Overdue',
+        body: 'You have an outstanding payment',
+        link: '/barn/test/finances',
+      })
+    ).rejects.toThrow('upsert failed')
   })
 })
 
