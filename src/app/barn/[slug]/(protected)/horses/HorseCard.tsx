@@ -16,6 +16,9 @@ export function HorseCard({
 }) {
   return (
     <Card>
+      {/* Inner Link keeps its own padding/hover classes — ExhaustionBar's expand button
+          can't nest inside <Card href>'s anchor (invalid HTML), and this is the only call site,
+          so extracting a shared "clickable row" primitive isn't worth it yet */}
       <Link
         href={`/barn/${barnSlug}/horses/${horse.id}`}
         className="block p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900"
