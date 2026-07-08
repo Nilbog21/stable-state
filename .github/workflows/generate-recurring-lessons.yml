@@ -1,0 +1,34 @@
+# SUPABASE_PROD_SERVICE_ROLE_KEY secret must be created (Supabase dashboard → Settings → API → service_role key)
+# following the naming scheme from #483; SUPABASE_DEV_SERVICE_ROLE_KEY already exists (used by ci.yml).
+
+name: Generate Recurring Lessons
+
+on:
+  schedule:
+    - cron: '0 4 * * *'
+  workflow_dispatch:
+
+jobs:
+  generate-recurring-lessons:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+
+      - name: Run against prod
+        if: github.event_name == 'schedule'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://${{ secrets.SUPABASE_PROD_PROJECT_REF }}.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_PROD_SERVICE_ROLE_KEY }}
+        run: bash scripts/generate-recurring-lessons.sh
+
+      - name: Run against dev
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: https://${{ secrets.SUPABASE_DEV_PROJECT_REF }}.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEV_SERVICE_ROLE_KEY }}
+        run: bash scripts/generate-recurring-lessons.sh
