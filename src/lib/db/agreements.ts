@@ -3,6 +3,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './barn-memberships'
 import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, OutstandingCharge, PaymentType, Role } from './types'
 
+export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | 'is_active'>): string {
+  if (!agreement.is_active) return 'Ended'
+  return agreement.cadence === 'one_time' ? 'Complete' : 'Active'
+}
+
 export async function createAgreement(
   params: {
     barnId: string

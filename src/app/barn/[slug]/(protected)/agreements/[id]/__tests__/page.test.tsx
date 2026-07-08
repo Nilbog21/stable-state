@@ -10,7 +10,10 @@ const mockNotFound = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, useRouter: vi.fn(() => ({ refresh: vi.fn() })) }))
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
-vi.mock('@/lib/db/agreements', () => ({ getAgreementById: vi.fn(), getChargesForAgreement: vi.fn() }))
+vi.mock('@/lib/db/agreements', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/agreements')>('@/lib/db/agreements')
+  return { ...actual, getAgreementById: vi.fn(), getChargesForAgreement: vi.fn() }
+})
 vi.mock('@/lib/db/barn-memberships', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ resolveHorseNames: vi.fn() }))
 

@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getAgreementById, getChargesForAgreement } from '@/lib/db/agreements'
+import { getAgreementById, getChargesForAgreement, getAgreementStatusLabel } from '@/lib/db/agreements'
 import { resolveMemberNames } from '@/lib/db/barn-memberships'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { Button } from '@/components/ui/Button'
@@ -60,7 +60,7 @@ export default async function AgreementDetailPage({
         </div>
         <div>
           <dt className="text-zinc-500">Status</dt>
-          <dd className="text-zinc-900 dark:text-zinc-50">{agreement.is_active ? 'Active' : 'Ended'}</dd>
+          <dd className="text-zinc-900 dark:text-zinc-50">{getAgreementStatusLabel(agreement)}</dd>
         </div>
       </dl>
 

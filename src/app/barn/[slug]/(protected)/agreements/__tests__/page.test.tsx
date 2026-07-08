@@ -3,7 +3,10 @@ import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockAgreement, createMockUser } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
-vi.mock('@/lib/db/agreements', () => ({ getAgreementsByBarn: vi.fn() }))
+vi.mock('@/lib/db/agreements', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/agreements')>('@/lib/db/agreements')
+  return { ...actual, getAgreementsByBarn: vi.fn() }
+})
 vi.mock('@/lib/db/barn-memberships', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ resolveHorseNames: vi.fn() }))
 
