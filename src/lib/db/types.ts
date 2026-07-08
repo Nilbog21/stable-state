@@ -6,6 +6,8 @@ export type NotificationType =
   | 'rider_participation_cancelled'
   | 'incomplete_profile'
   | 'member_incomplete_profile'
+  | 'recurring_series_stopped'
+  | 'recurring_lesson_horse_unavailable'
 export type MembershipStatus = 'active' | 'pending'
 
 export interface Profile {
