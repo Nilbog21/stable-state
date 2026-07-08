@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
 import type { LessonDetail, Horse } from '@/lib/db/types'
-import { createMockLessonTier } from '@/test/fixtures'
+import { createMockHorse, createMockLessonDetail, createMockLessonTier } from '@/test/fixtures'
 import { LessonForm } from '../../../LessonForm'
 import { NavigationBlockerProvider, useNavigationBlocker } from '../../../../NavigationBlocker'
 
@@ -9,32 +9,24 @@ afterEach(cleanup)
 
 const mockTier = createMockLessonTier({ is_default: true })
 
-const mockHorse: Horse = { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '', updated_at: '' }
+const mockHorse: Horse = createMockHorse()
 const mockRider = { id: 'rider-1', name: 'Alice' }
 const mockRider2 = { id: 'rider-2', name: 'Bob' }
 
-const normalLesson: LessonDetail = {
-  id: 'lesson-1',
-  barn_id: 'barn-1',
+const normalLesson: LessonDetail = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
   lesson_at: '2026-05-17T10:00:00Z',
   submitted_at: '2026-05-17T10:05:00Z',
-  lesson_type: 'normal',
-  jumping: false,
-  payment_type: null,
-  tier_name: 'Custom',
-  instructor_name: 'Jane Smith',
-  lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-  lesson_riders: [{ barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } }],
-}
+  lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } }],
+})
 
 const groupLesson: LessonDetail = {
   ...normalLesson,
   lesson_type: 'group',
   lesson_riders: [
-    { barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } },
-    { barn_membership: { id: 'rider-2', name: 'Bob', user_id: null } },
+    { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } },
+    { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: null } },
   ],
 }
 
@@ -75,7 +67,7 @@ describe('LessonForm (edit mode)', () => {
   })
 
   it('should_prepopulate_exertion_level_for_current_horse', () => {
-    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 4, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
+    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 4, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
     render(<LessonForm {...baseProps} initialLesson={lesson} />)
     const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
     expect(exertionInput.value).toBe('4')
@@ -241,7 +233,7 @@ describe('LessonForm (edit mode)', () => {
   })
 
   it('should_handle_null_horses_relation_in_lesson_horses', () => {
-    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horses: null }] }
+    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: null }] }
     const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
     expect(container.querySelector('form')).not.toBeNull()
   })
@@ -250,11 +242,11 @@ describe('LessonForm (edit mode)', () => {
     const groupLessonTwoHorses: LessonDetail = {
       ...groupLesson,
       lesson_horses: [
-        { exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } },
-        { exertion_level: 3, horses: { id: 'horse-2', name: 'Storm' } },
+        { exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } },
+        { exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Storm' } },
       ],
     }
-    const horse2: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Storm', created_at: '', updated_at: '' }
+    const horse2: Horse = createMockHorse({ id: 'horse-2', name: 'Storm' })
     const { container } = render(<LessonForm {...baseProps} initialLesson={groupLessonTwoHorses} horses={[mockHorse, horse2]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     const checkbox1 = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
@@ -329,7 +321,7 @@ describe('LessonForm (edit mode)', () => {
   })
 
   it('should_snap_exertion_to_4_when_jumping_toggled_on_in_edit_mode', () => {
-    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 2, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
+    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 2, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
     render(<LessonForm {...baseProps} initialLesson={lesson} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement

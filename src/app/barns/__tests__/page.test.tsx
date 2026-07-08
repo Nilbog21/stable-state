@@ -26,31 +26,32 @@ vi.mock('next/navigation', () => ({
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import BarnsPage from '../page'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
 
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
 const mockActiveMembership = {
-  barn: { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' },
-  membership: {
+  barn: createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }),
+  membership: createMockMembership({
     id: 'mem-1',
     user_id: 'user-1',
     barn_id: 'barn-1',
     role: 'manager' as const,
     status: 'active' as const,
     created_at: '',
-  },
+  }),
 }
 
 const mockPendingMembership = {
-  barn: { id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', instructor_cut: 25, created_at: '' },
-  membership: {
+  barn: createMockBarn({ id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', instructor_cut: 25, created_at: '' }),
+  membership: createMockMembership({
     id: 'mem-2',
     user_id: 'user-1',
     barn_id: 'barn-2',
     role: 'rider' as const,
     status: 'pending' as const,
     created_at: '',
-  },
+  }),
 }
 
 function setupAuth(user: typeof mockUser | null = mockUser) {

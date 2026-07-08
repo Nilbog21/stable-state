@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
-import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
 
 afterEach(cleanup)
 
@@ -77,7 +77,7 @@ const mockBarn = createMockBarn({ slug: 'green-acres', name: 'Green Acres' })
 const mockManagerMembership = createMockMembership({ status: 'active', role: 'manager' as const })
 const mockTrainerMembership = createMockMembership({ status: 'active', role: 'trainer' as const })
 const mockRiderMembership = createMockMembership({ status: 'active', role: 'rider' as const })
-const mockProfile = { id: 'p-1', user_id: 'user-1', email: 'user@example.com', first_name: 'Jane', last_name: 'Doe', phone: null, emergency_contact_name: null, emergency_contact_phone: null, created_at: '' }
+const mockProfile = createMockProfile({ id: 'p-1', user_id: 'user-1', email: 'user@example.com', first_name: 'Jane', last_name: 'Doe', phone: null, emergency_contact_name: null, emergency_contact_phone: null, created_at: '' })
 
 function makeHeaders(url: string) {
   return { get: (key: string) => key === 'x-url' ? url : null }

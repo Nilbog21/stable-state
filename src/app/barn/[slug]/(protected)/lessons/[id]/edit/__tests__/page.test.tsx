@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
+import { createMockBarn, createMockHorse, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
 
 afterEach(cleanup)
 
@@ -33,29 +34,19 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import EditLessonPage from '../page'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
+const mockBarn = createMockBarn()
 
-const mockLesson = {
-  id: 'lesson-1',
-  barn_id: 'barn-1',
+const mockLesson = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
   lesson_at: '2026-05-17T10:00:00Z',
   submitted_at: '2026-05-17T10:05:00Z',
-  lesson_type: 'normal' as const,
-  jumping: false,
-  payment_type: null,
-  tier_name: 'Custom',
-  instructor_name: 'Jane Smith',
-  series_id: null,
-  lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-  lesson_riders: [{ barn_membership: { id: 'mem-1', name: 'Alice', user_id: null } }],
-}
+  lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'mem-1', name: 'Alice', user_id: null } }],
+})
 
-const mockManagerMembership = {
-  id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1',
-  role: 'manager' as const, status: 'active' as const, created_at: '',
-}
+const mockManagerMembership = createMockMembership({
+  role: 'manager',
+})
 
 function setupDefaults() {
   vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1' } as any)
@@ -199,8 +190,8 @@ describe('EditLessonPage', () => {
 
   it('should_include_trainer_names_in_instructor_list', async () => {
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'user-1', name: 'Jane Manager' },
-      { userId: 'trainer-1', name: 'Bob Trainer' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Jane Manager' },
+      { membershipId: 'mem-2', userId: 'trainer-1', name: 'Bob Trainer' },
     ])
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -209,7 +200,7 @@ describe('EditLessonPage', () => {
 
   it('should_fall_back_to_unknown_instructor_when_profile_not_found', async () => {
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'trainer-1', name: 'Unknown Instructor' },
+      { membershipId: 'trainer-mem-1', userId: 'trainer-1', name: 'Unknown Instructor' },
     ])
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -224,7 +215,7 @@ describe('EditLessonPage', () => {
   })
 
   it('should_not_include_active_horse_in_inactive_assigned', async () => {
-    const activeHorse = { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', is_active: true, created_at: '', updated_at: '' }
+    const activeHorse = createMockHorse()
     vi.mocked(getHorsesByBarn).mockResolvedValue([activeHorse])
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -240,7 +231,7 @@ describe('EditLessonPage', () => {
 
   it('should_map_rider_members_to_id_name_objects', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
-      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice Rider' },
+      { membershipId: 'mem-1', userId: 'user-1', name: 'Alice Rider', isManaged: false, inviteToken: null },
     ])
     const jsx = await EditLessonPage({ params })
     render(jsx)

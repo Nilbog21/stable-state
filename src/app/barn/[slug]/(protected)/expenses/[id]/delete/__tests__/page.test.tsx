@@ -12,13 +12,14 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getExpenseById } from '@/lib/db/expenses'
 import { notFound } from 'next/navigation'
 import DeleteExpensePage from '../page'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }
+const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' })
 
-const mockManagerMembership = {
+const mockManagerMembership = createMockMembership({
   id: 'mem-1', user_id: 'user-1', barn_id: 'barn-1',
   role: 'manager' as const, status: 'active' as const, created_at: '',
-}
+})
 
 const mockExpense = {
   id: 'expense-1',
