@@ -27,7 +27,7 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   mustSucceed(await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId }), 'teardown lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', barnId), 'delete lesson_tiers')
   mustSucceed(await supabase.from('notifications').delete().eq('barn_id', barnId), 'delete notifications')
-  for (const table of ['horse_documents', 'trainer_documents', 'rider_documents']) {
+  for (const table of ['horse_documents', 'staff_documents', 'rider_documents']) {
     await removeDocumentStorage(table, await supabase.from(table).select('storage_path').eq('barn_id', barnId), supabase)
     mustSucceed(await supabase.from(table).delete().eq('barn_id', barnId), `delete ${table}`)
   }
@@ -39,7 +39,7 @@ export async function teardownAllData(supabase: SupabaseClient): Promise<void> {
   mustSucceed(await supabase.rpc('teardown_all_lesson_data'), 'teardown all lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().not('id', 'is', null), 'delete lesson_tiers')
   mustSucceed(await supabase.from('notifications').delete().not('id', 'is', null), 'delete notifications')
-  for (const table of ['horse_documents', 'trainer_documents', 'rider_documents']) {
+  for (const table of ['horse_documents', 'staff_documents', 'rider_documents']) {
     await removeDocumentStorage(table, await supabase.from(table).select('storage_path').not('id', 'is', null), supabase)
     mustSucceed(await supabase.from(table).delete().not('id', 'is', null), `delete ${table}`)
   }
