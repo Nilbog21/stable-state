@@ -400,7 +400,7 @@ async function run() {
     mustSucceed(
       await supabase
         .from('lesson_riders')
-        .update({ cancelled_at: now.toISOString(), rider_notes: 'Seeded example participation cancellation' })
+        .update({ cancelled_at: now.toISOString(), cancellation_notes: 'Seeded example participation cancellation' })
         .eq('lesson_id', cancelledRiderLesson.id)
         .eq('rider_id', riderRowIds[0]),
       'cancel seeded rider participation'

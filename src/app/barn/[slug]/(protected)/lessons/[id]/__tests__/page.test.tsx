@@ -42,7 +42,7 @@ const mockLessonDetail = createMockLessonDetail({
   lesson_at: '2026-05-17T10:00:00Z',
   submitted_at: '2026-05-17T10:05:00Z',
   lesson_horses: [{ exertion_level: 3, horse_notes: 'watch left lead', horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-  lesson_riders: [{ rider_notes: 'good position', private_notes: 'struggling with confidence', cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+  lesson_riders: [{ rider_notes: 'good position', private_notes: 'struggling with confidence', cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
 })
 
 const mockMembership = createMockMembership({
@@ -121,7 +121,7 @@ describe('LessonDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } }],
+      lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } }],
     })
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
 
@@ -189,7 +189,7 @@ describe('LessonDetailPage', () => {
   it('should_render_dash_for_rider_name_when_riders_relation_is_null', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null }],
+      lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: null }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -214,8 +214,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -230,8 +230,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -246,8 +246,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null },
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: null },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -260,8 +260,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null },
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: null },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -410,7 +410,7 @@ describe('LessonDetailPage', () => {
   it('should_show_dash_when_rider_notes_is_null_for_trainer', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_riders: [{ rider_notes: null, private_notes: 'struggling with confidence', cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+      lesson_riders: [{ rider_notes: null, private_notes: 'struggling with confidence', cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -420,7 +420,7 @@ describe('LessonDetailPage', () => {
   it('should_show_dash_when_private_notes_is_null_for_trainer', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_riders: [{ rider_notes: 'good position', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+      lesson_riders: [{ rider_notes: 'good position', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -447,8 +447,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: 'good position', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
-        { rider_notes: 'needs work', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+        { rider_notes: 'good position', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: 'needs work', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -462,8 +462,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: 'good position', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
-        { rider_notes: 'needs work', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+        { rider_notes: 'good position', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: 'needs work', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -477,8 +477,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null },
-        { rider_notes: 'good position', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: null },
+        { rider_notes: 'good position', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -490,7 +490,7 @@ describe('LessonDetailPage', () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'normal' as const,
-      lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: null }],
+      lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: null }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -511,7 +511,7 @@ describe('LessonDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
+      lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -584,8 +584,8 @@ describe('LessonDetailPage', () => {
       ...mockLessonDetail,
       lesson_type: 'group' as const,
       lesson_riders: [
-        { rider_notes: 'good position', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
-        { rider_notes: 'needs work', private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+        { rider_notes: 'good position', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: 'needs work', private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
       ],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -651,5 +651,105 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: /^cancel$/i })).toBeNull()
+  })
+
+  it('should_show_whole_lesson_cancelled_badge_when_lesson_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, cancelled_at: '2026-01-01T00:00:00Z' })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Cancelled')).toBeDefined()
+  })
+
+  it('should_not_show_whole_lesson_cancelled_badge_when_lesson_not_cancelled', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Cancelled')).toBeNull()
+  })
+
+  it('should_show_cancellation_notes_when_lesson_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      cancelled_at: '2026-01-01T00:00:00Z',
+      cancellation_notes: 'Trainer unavailable',
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Trainer unavailable')).toBeDefined()
+  })
+
+  it('should_not_show_cancellation_notes_section_when_lesson_not_cancelled', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Cancellation Notes')).toBeNull()
+  })
+
+  it('should_show_per_rider_cancellation_notes_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z', cancellation_notes: 'Rider called in sick' }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Rider called in sick')).toBeDefined()
+  })
+
+  it('should_show_own_cancellation_notes_for_rider_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z', cancellation_notes: 'called in sick' }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('called in sick')).toBeDefined()
+  })
+
+  it('should_show_per_rider_cancellation_notes_for_manager_in_group_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z', cancellation_notes: 'Rider called in sick' }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Rider called in sick')).toBeDefined()
+  })
+
+  it('should_show_own_cancellation_notes_for_rider_role_in_group_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z', cancellation_notes: 'called in sick' }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('called in sick')).toBeDefined()
+  })
+
+  it('should_show_dash_when_per_rider_cancellation_notes_is_null_in_group_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z', cancellation_notes: null }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
+
+  it('should_show_dash_when_own_cancellation_notes_is_null_in_group_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_type: 'group' as const,
+      lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z', cancellation_notes: null }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 })

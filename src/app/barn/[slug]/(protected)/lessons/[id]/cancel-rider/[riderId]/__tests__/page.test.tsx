@@ -48,6 +48,7 @@ const mockLesson = createMockLessonDetail({
     {
       rider_notes: null,
       private_notes: null,
+      cancellation_notes: null,
       cancelled_at: null,
       barn_membership: { id: 'rider-mem-1', user_id: 'rider-user-1', name: 'Alice Rider' },
     },

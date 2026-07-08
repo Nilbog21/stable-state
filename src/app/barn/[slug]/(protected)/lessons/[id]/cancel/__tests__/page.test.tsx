@@ -140,4 +140,92 @@ describe('CancelLessonPage', () => {
     render(jsx)
     expect(screen.getByLabelText(/cancellation notes/i)).toBeDefined()
   })
+
+  it('should_render_cancelled_by_rider_radio_for_normal_lesson', async () => {
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByLabelText(/cancelled by rider/i)).toBeDefined()
+  })
+
+  it('should_render_cancelled_by_instructor_radio_for_normal_lesson', async () => {
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByLabelText(/cancelled by instructor/i)).toBeDefined()
+  })
+
+  it('should_default_cancel_type_radio_to_rider_for_normal_lesson', async () => {
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('should_not_render_cancel_type_radio_for_group_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.queryByLabelText(/cancelled by rider/i)).toBeNull()
+  })
+
+  it('should_show_affected_rider_count_for_group_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByText(/2 enrolled riders/i)).toBeDefined()
+  })
+
+  it('should_show_affected_rider_names_for_group_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByText(/Alice, Bob/)).toBeDefined()
+  })
+
+  it('should_exclude_already_cancelled_riders_from_group_lesson_affected_count', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: '2026-01-01T00:00:00Z', barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByText(/1 enrolled rider/i)).toBeDefined()
+  })
+
+  it('should_count_active_rider_with_null_barn_membership_in_group_lesson_affected_count', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: null },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByText(/2 enrolled riders/i)).toBeDefined()
+  })
 })
