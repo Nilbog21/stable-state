@@ -281,29 +281,29 @@ export default async function FinancesPage({
         breakdown.length > 0 ? (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Tier</th>
-                <th className="pb-2 pr-6">Price</th>
-                <th className="pb-2 pr-6">Lessons</th>
-                <th className="pb-2 pr-6">Instructor Cut</th>
-                <th className="pb-2">Subtotal</th>
+              <tr>
+                <Th>Tier</Th>
+                <Th>Price</Th>
+                <Th>Lessons</Th>
+                <Th>Instructor Cut</Th>
+                <Th>Subtotal</Th>
               </tr>
             </thead>
             <tbody>
               {breakdown.map((tier) => (
-                <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                <tr key={tier.tierName}>
+                  <Td>
                     {tier.tierName}
                     {tier.tierName === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
-                  </td>
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                  </Td>
+                  <Td>
                     {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
-                  </td>
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                  </Td>
+                  <Td>{tier.lessonCount}</Td>
+                  <Td>
                     {tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}
-                  </td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{formatCurrency(tier.subtotal)}</td>
+                  </Td>
+                  <Td>{formatCurrency(tier.subtotal)}</Td>
                 </tr>
               ))}
             </tbody>
@@ -360,15 +360,15 @@ export default async function FinancesPage({
         riderIncome.length > 0 ? (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Rider</th>
-                <th className="pb-2">Income</th>
+              <tr>
+                <Th>Rider</Th>
+                <Th>Income</Th>
               </tr>
             </thead>
             <tbody>
               {riderIncome.map((row) => (
-                <tr key={row.riderId} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                <tr key={row.riderId}>
+                  <Td>
                     {row.riderId === NO_RIDER_LABEL ? (
                       <>
                         {row.riderName}
@@ -382,10 +382,10 @@ export default async function FinancesPage({
                         {row.riderName}
                       </Link>
                     )}
-                  </td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
+                  </Td>
+                  <Td>
                     {formatCurrency(row.totalIncome)}
-                  </td>
+                  </Td>
                 </tr>
               ))}
             </tbody>
@@ -399,22 +399,22 @@ export default async function FinancesPage({
         trainerIncome.length > 0 ? (
           <table className="w-full">
             <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Trainer</th>
-                <th className="pb-2">Income</th>
+              <tr>
+                <Th>Trainer</Th>
+                <Th>Income</Th>
               </tr>
             </thead>
             <tbody>
               {trainerIncome.map((row) => (
-                <tr key={row.trainerId} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
+                <tr key={row.trainerId}>
+                  <Td>
                     {row.trainerName}
                     {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
                     {row.trainerId === NO_INSTRUCTOR_LABEL && <InfoPopover text="Lessons whose instructor was removed from the barn" align="left" />}
-                  </td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
+                  </Td>
+                  <Td>
                     {formatCurrency(row.totalIncome)}
-                  </td>
+                  </Td>
                 </tr>
               ))}
             </tbody>
