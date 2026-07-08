@@ -2,6 +2,7 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
 
 interface Props {
   docId: string
@@ -26,12 +27,9 @@ export function DeleteDocumentButton({ docId, storagePath, action }: Props) {
 
   return (
     <form onSubmit={handleSubmit}>
-      <button
-        type="submit"
-        className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
-      >
+      <Button type="submit" variant="danger" size="sm">
         Delete
-      </button>
+      </Button>
       {error && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{error}</p>}
     </form>
   )

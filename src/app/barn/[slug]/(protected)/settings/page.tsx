@@ -129,20 +129,14 @@ export default async function SettingsPage({
                   actionSlot={
                     <div className="flex gap-2">
                       <form action={approveMembershipAction.bind(null, slug, m.id)}>
-                        <button
-                          type="submit"
-                          className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-                        >
+                        <Button type="submit" size="sm">
                           Approve
-                        </button>
+                        </Button>
                       </form>
                       <form action={rejectMembershipAction.bind(null, slug, m.id)}>
-                        <button
-                          type="submit"
-                          className="rounded border border-zinc-300 px-3 py-1 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                        >
+                        <Button type="submit" variant="ghost" size="sm">
                           Reject
-                        </button>
+                        </Button>
                       </form>
                     </div>
                   }
@@ -177,12 +171,9 @@ export default async function SettingsPage({
                   name={profileName(profiles, m.user_id)}
                   actionSlot={
                     <form action={removeMembershipAction.bind(null, slug, m.id)}>
-                      <button
-                        type="submit"
-                        className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                      >
+                      <Button type="submit" variant="danger" size="sm">
                         Remove
-                      </button>
+                      </Button>
                     </form>
                   }
                 />

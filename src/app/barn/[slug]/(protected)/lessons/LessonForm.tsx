@@ -5,6 +5,7 @@ import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types
 import { DateHourPicker } from './new/DateHourPicker'
 import { useNavigationBlocker } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
+import { Button } from '@/components/ui/Button'
 
 type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>
 
@@ -282,6 +283,9 @@ export function LessonForm({
         {isCustom && <input type="hidden" name="is_custom" value="true" />}
       </div>
 
+      {/* Raw Tailwind, not <Button>: this is a joined-corner segmented toggle
+          (flex-1 halves, aria state via background color) rather than a standalone
+          variant button — forcing it into Button's model would break the layout. */}
       <div className="flex gap-2">
         <button
           type="button"
@@ -611,15 +615,11 @@ export function LessonForm({
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
+      <Button type="submit" loading={pending}>
         {pending
           ? (mode === 'edit' ? 'Saving…' : 'Submitting…')
           : (mode === 'edit' ? 'Save' : 'Submit')}
-      </button>
+      </Button>
     </form>
   )
 }
