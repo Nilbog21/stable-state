@@ -8,6 +8,9 @@ import { redirect } from 'next/navigation'
 
 export type RegisterState = { error: string } | null
 
+// This is the pre-membership existence check that decides whether to
+// create the membership requireMembership would otherwise require, so it
+// can't use requireMembership itself.
 export async function registerForBarn(
   barnSlug: string,
   _prevState: RegisterState,

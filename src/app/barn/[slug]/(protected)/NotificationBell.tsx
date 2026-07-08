@@ -8,10 +8,10 @@ import type { Notification } from '@/lib/db/types'
 
 interface Props {
   notifications: Notification[]
-  barnId: string
+  barnSlug: string
 }
 
-export function NotificationBell({ notifications, barnId }: Props) {
+export function NotificationBell({ notifications, barnSlug }: Props) {
   const [open, setOpen] = useState(false)
   const ref = useRef<HTMLDivElement>(null)
   const router = useRouter()
@@ -31,7 +31,7 @@ export function NotificationBell({ notifications, barnId }: Props) {
   }, [])
 
   async function handleMarkAllRead() {
-    const result = await markAllNotificationsReadAction(barnId)
+    const result = await markAllNotificationsReadAction(barnSlug)
     if (result.error) return
     router.refresh()
   }
