@@ -8,7 +8,9 @@ Stable State is a barn management app for scheduling lessons and tracking horses
 
 Go to **Lessons** to see your lesson history. Tap any lesson to open it and see your notes for that session. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.
 
-**Cancel your spot** — If you can't make a lesson, tap **Cancel** next to it (on the Lessons list, Dashboard, or the lesson detail page) for any upcoming or unpaid lesson you're enrolled in. Add an optional note and confirm. Your spot shows a **Cancelled** badge afterward — the rest of the lesson (and any other riders in a group lesson) is unaffected. If you cancel with more than 24 hours' notice, the fee is waived; cancelling within 24 hours of the lesson keeps the fee. Cancelling notifies your instructor and the barn manager(s).
+**Cancel your spot** — If you can't make a lesson, tap **Cancel** next to it (on the Lessons list, Dashboard, or the lesson detail page) for any upcoming or unpaid lesson you're enrolled in. Add an optional note and confirm. Your spot shows a **Cancelled** badge afterward — the rest of the lesson (and any other riders in a group lesson) is unaffected. If you cancel with more than 24 hours' notice, the fee is waived; cancelling within 24 hours of the lesson keeps the fee. Cancelling notifies your instructor and the barn manager(s). Your cancellation note appears on the lesson detail page next to your **Cancelled** badge, visible only to you and your instructor/barn manager.
+
+**Cancelled lessons** — If your trainer or barn manager cancels an entire lesson, it shows a **Cancelled** badge on the lesson detail page along with their cancellation notes, if any.
 
 ## Outstanding payments
 

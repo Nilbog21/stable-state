@@ -34,8 +34,8 @@ export default async function CancelLessonPage({
 
   const cancel = cancelLessonAction.bind(null, barn.id, slug, lesson.id)
 
-  const activeRiderNames = lesson.lesson_riders
-    .filter((lr) => lr.cancelled_at === null)
+  const activeRiders = lesson.lesson_riders.filter((lr) => lr.cancelled_at === null)
+  const activeRiderNames = activeRiders
     .map((lr) => lr.barn_membership?.name)
     .filter((name): name is string => Boolean(name))
 
@@ -47,8 +47,8 @@ export default async function CancelLessonPage({
         </h1>
         {lesson.lesson_type === 'group' ? (
           <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-            This will mark the lesson as cancelled and zero out its fee for {activeRiderNames.length} enrolled
-            rider{activeRiderNames.length === 1 ? '' : 's'}: {activeRiderNames.join(', ')}. This cannot be undone.
+            This will mark the lesson as cancelled and zero out its fee for {activeRiders.length} enrolled
+            rider{activeRiders.length === 1 ? '' : 's'}: {activeRiderNames.join(', ')}. This cannot be undone.
           </p>
         ) : (
           <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">

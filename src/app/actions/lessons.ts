@@ -21,6 +21,12 @@ function parseFee(raw: string | null): number | null {
   return isNaN(n) ? null : n
 }
 
+function computeCancellationIsLate(lessonAt: string, formData: FormData, allowInstructorOverride: boolean): boolean {
+  const cancelledByInstructor = allowInstructorOverride && formData.get('cancel_type') === 'instructor'
+  const within24Hours = new Date(lessonAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000
+  return cancelledByInstructor ? false : within24Hours
+}
+
 export async function submitLesson(
   barnId: string,
   barnSlug: string,
@@ -254,12 +260,7 @@ export async function cancelLessonAction(
     return
   }
 
-  let isLate = false
-  if (lesson.lesson_type === 'normal') {
-    const cancelledByInstructor = formData.get('cancel_type') === 'instructor'
-    const within24Hours = new Date(lesson.lesson_at).getTime() - Date.now() <= 24 * 60 * 60 * 1000
-    isLate = cancelledByInstructor ? false : within24Hours
-  }
+  const isLate = lesson.lesson_type === 'normal' ? computeCancellationIsLate(lesson.lesson_at, formData, true) : false
 
   const notes = (formData.get('notes') as string | null)?.trim() || null
   await cancelLesson(lessonId, barnId, notes, isLate)
@@ -338,9 +339,7 @@ export async function cancelRiderParticipationAction(
     return
   }
 
-  const cancelledByInstructor = membership.role !== 'rider' && formData.get('cancel_type') === 'instructor'
-  const within24Hours = new Date(lesson.lesson_at).getTime() - Date.now() <= 24 * 60 * 60 * 1000
-  const isLate = cancelledByInstructor ? false : within24Hours
+  const isLate = computeCancellationIsLate(lesson.lesson_at, formData, membership.role !== 'rider')
 
   const notes = (formData.get('notes') as string | null)?.trim() || null
   await cancelRiderParticipation(lessonId, barnId, riderId, notes, isLate)
