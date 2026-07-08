@@ -134,7 +134,7 @@ describe('createPendingMembership', () => {
       }),
     } as any)
 
-    const result = await createPendingMembership('user-1', 'barn-1', 'trainer')
+    const result = await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')
 
     expect(result).toEqual(pending)
   })
@@ -151,7 +151,7 @@ describe('createPendingMembership', () => {
       }),
     } as any)
 
-    await expect(createPendingMembership('user-1', 'barn-1', 'trainer')).rejects.toThrow('insert failed')
+    await expect(createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')).rejects.toThrow('insert failed')
   })
 
   it('should_not_call_createClient_when_client_is_injected', async () => {

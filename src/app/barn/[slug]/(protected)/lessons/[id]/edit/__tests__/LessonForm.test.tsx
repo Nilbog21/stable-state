@@ -585,7 +585,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
       </NavigationBlockerProvider>
     )
     await waitFor(() => {
-      const calls = addEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+      const calls = addEventSpy.mock.calls.filter(([event]: [string]) => event === 'beforeunload')
       expect(calls.length).toBeGreaterThan(0)
     })
   })
@@ -597,12 +597,12 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
       </NavigationBlockerProvider>
     )
     await waitFor(() => {
-      const calls = addEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+      const calls = addEventSpy.mock.calls.filter(([event]: [string]) => event === 'beforeunload')
       expect(calls.length).toBeGreaterThan(0)
     })
     const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
     await act(async () => { fireEvent.change(select, { target: { value: 'venmo' } }) })
-    const removeCalls = removeEventSpy.mock.calls.filter(([event]) => event === 'beforeunload')
+    const removeCalls = removeEventSpy.mock.calls.filter(([event]: [string]) => event === 'beforeunload')
     expect(removeCalls.length).toBeGreaterThan(0)
   })
 
@@ -614,7 +614,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     )
     let handler: ((e: BeforeUnloadEvent) => void) | undefined
     await waitFor(() => {
-      const call = addEventSpy.mock.calls.find(([event]) => event === 'beforeunload')
+      const call = addEventSpy.mock.calls.find(([event]: [string]) => event === 'beforeunload')
       expect(call).toBeDefined()
       handler = call![1] as (e: BeforeUnloadEvent) => void
     })

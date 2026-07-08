@@ -1,4 +1,4 @@
-import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonSeries, LessonTier, Profile } from '@/lib/db/types'
+import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, Profile } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
   return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, ...overrides }
@@ -102,6 +102,32 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
     cancelled_at: null,
     cancellation_notes: null,
     series_id: null,
+    ...overrides,
+  }
+}
+
+export function createMockLessonWithDetails(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
+  return {
+    ...createMockLesson(),
+    instructor_name: 'Jane Smith',
+    horse_names: ['Thunderbolt'],
+    horse_ids: ['horse-1'],
+    horse_count: 1,
+    rider_names: ['Alice'],
+    rider_ids: ['rider-1'],
+    rider_count: 1,
+    rider_cancelled_ats: [null],
+    ...overrides,
+  }
+}
+
+export function createMockLessonDetail(overrides: Partial<LessonDetail> = {}): LessonDetail {
+  return {
+    ...createMockLesson(),
+    instructor_name: 'Jane Smith',
+    instructor_user_id: 'user-1',
+    lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
+    lesson_riders: [{ rider_notes: null, private_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
     ...overrides,
   }
 }

@@ -871,6 +871,10 @@ describe('getLessonById', () => {
     return { select: mockSelect, mockEq1, mockEq2, mockMaybeSingle }
   }
 
+  function makeProfileInChain(data: unknown[] | null, error: Error | null = null) {
+    return { select: vi.fn().mockReturnValue({ in: vi.fn().mockResolvedValue({ data, error }) }) }
+  }
+
   function makeFrom(
     lessonData: unknown,
     riderProfileData: unknown[] | null = null,
