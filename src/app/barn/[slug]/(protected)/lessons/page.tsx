@@ -84,11 +84,11 @@ export default async function LessonsPage({
 
   let lessons = allLessons
   if (filter && filterId) {
-    if (filter === 'trainer' && isManager) {
+    if (filter === 'trainer' && (isManager || isTrainer)) {
       lessons = allLessons.filter((l) => l.instructor_id === filterId)
     } else if (filter === 'rider' && (isManager || isTrainer)) {
       lessons = allLessons.filter((l) => l.rider_ids.includes(filterId))
-    } else if (filter === 'horse' && isManager) {
+    } else if (filter === 'horse' && (isManager || isTrainer)) {
       lessons = allLessons.filter((l) => l.horse_ids.includes(filterId))
     }
   }
@@ -100,8 +100,8 @@ export default async function LessonsPage({
   const olderLessons = lessons.filter((l) => new Date(l.lesson_at) < cutoff)
 
   const riderOptions = isManager || isTrainer ? buildRiderOptions(allLessons) : []
-  const trainerOptions = isManager ? buildTrainerOptions(allLessons) : []
-  const horseOptions = isManager ? buildHorseOptions(allLessons) : []
+  const trainerOptions = isManager || isTrainer ? buildTrainerOptions(allLessons) : []
+  const horseOptions = isManager || isTrainer ? buildHorseOptions(allLessons) : []
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -119,29 +119,12 @@ export default async function LessonsPage({
         )}
       </div>
 
-      {isTrainer && riderOptions.length > 0 && (
-        <div className="w-full max-w-2xl overflow-x-auto">
-          <div className="flex min-w-max gap-2 pb-2">
-            <Link href="?" className={pillClass(!filter)}>All</Link>
-            {riderOptions.map((r) => (
-              <Link
-                key={r.id}
-                href={`?filter=rider&id=${r.id}`}
-                className={pillClass(filter === 'rider' && filterId === r.id)}
-              >
-                {r.name}
-              </Link>
-            ))}
-          </div>
-        </div>
-      )}
-
-      {isManager && (
+      {(isManager || isTrainer) && (
         <div className="w-full max-w-2xl flex flex-col gap-2">
           <div className="overflow-x-auto">
             <div className="flex min-w-max gap-2 pb-2">
               <Link href="?" className={pillClass(!filter)}>All</Link>
-              <Link href="?filter=trainer" className={pillClass(filter === 'trainer')}>By Trainer</Link>
+              <Link href="?filter=trainer" className={pillClass(filter === 'trainer')}>By Instructor</Link>
               <Link href="?filter=rider" className={pillClass(filter === 'rider')}>By Rider</Link>
               <Link href="?filter=horse" className={pillClass(filter === 'horse')}>By Horse</Link>
             </div>

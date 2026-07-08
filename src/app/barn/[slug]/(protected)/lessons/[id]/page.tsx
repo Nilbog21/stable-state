@@ -102,7 +102,7 @@ export default async function LessonDetailPage({
               Jumping
             </span>
           )}
-          {(role === 'manager' || role === 'trainer') && (
+          {canManageLesson && (
             <a
               href={`/barn/${slug}/lessons/${lesson.id}/edit`}
               className="rounded-lg border border-zinc-200 px-3 py-1 text-sm font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-900"

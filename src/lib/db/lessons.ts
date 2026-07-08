@@ -46,13 +46,11 @@ export async function getLessonsByBarn(
     return hydrateParticipants(supabase, lessons ?? [], barnId)
   }
 
-  let query = supabase.from('lessons').select('*').eq('barn_id', barnId)
-  if (role === 'trainer') {
-    const callerMembership = await getUserMembership(userId, barnId)
-    if (!callerMembership) return []
-    query = query.eq('instructor_id', callerMembership.id)
-  }
-  const { data: lessons, error: lessonsError } = await query.order('lesson_at', { ascending: false })
+  const { data: lessons, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .order('lesson_at', { ascending: false })
   if (lessonsError) throw lessonsError
   return hydrateParticipants(supabase, lessons, barnId)
 }
