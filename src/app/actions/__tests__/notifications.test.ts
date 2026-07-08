@@ -10,8 +10,13 @@ vi.mock('@/lib/db/notifications', () => ({
   markAllNotificationsRead: vi.fn(),
 }))
 
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
+}))
+
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { createNotification, markNotificationRead, markAllNotificationsRead } from '@/lib/db/notifications'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import {
   createNotificationAction,
   markNotificationReadAction,
@@ -26,10 +31,15 @@ function mockAuthNoUser() {
   vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
 }
 
+function mockActiveMembership() {
+  vi.mocked(getUserMembership).mockResolvedValue({ status: 'active' } as any)
+}
+
 describe('createNotificationAction', () => {
   beforeEach(() => {
     vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(createNotification).mockReset()
+    vi.mocked(getUserMembership).mockReset()
   })
 
   it('should_return_error_when_not_authenticated', async () => {
@@ -45,8 +55,65 @@ describe('createNotificationAction', () => {
     expect(result).toEqual({ error: 'not authenticated' })
   })
 
+  it('should_return_error_when_caller_is_not_an_active_member', async () => {
+    mockAuthUser()
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+
+    const result = await createNotificationAction({
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+    })
+
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_not_call_createNotification_when_caller_is_not_an_active_member', async () => {
+    mockAuthUser()
+    vi.mocked(getUserMembership).mockResolvedValue(null)
+
+    await createNotificationAction({
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+    })
+
+    expect(createNotification).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_caller_membership_is_pending', async () => {
+    mockAuthUser()
+    vi.mocked(getUserMembership).mockResolvedValue({ status: 'pending' } as any)
+
+    const result = await createNotificationAction({
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+    })
+
+    expect(result).toEqual({ error: 'not authorized' })
+  })
+
+  it('should_not_call_createNotification_when_caller_membership_is_pending', async () => {
+    mockAuthUser()
+    vi.mocked(getUserMembership).mockResolvedValue({ status: 'pending' } as any)
+
+    await createNotificationAction({
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+    })
+
+    expect(createNotification).not.toHaveBeenCalled()
+  })
+
   it('should_call_createNotification_with_params', async () => {
     mockAuthUser()
+    mockActiveMembership()
     vi.mocked(createNotification).mockResolvedValue(undefined)
 
     await createNotificationAction({
@@ -66,6 +133,7 @@ describe('createNotificationAction', () => {
 
   it('should_return_null_error_on_success', async () => {
     mockAuthUser()
+    mockActiveMembership()
     vi.mocked(createNotification).mockResolvedValue(undefined)
 
     const result = await createNotificationAction({
@@ -80,6 +148,7 @@ describe('createNotificationAction', () => {
 
   it('should_return_error_on_db_failure', async () => {
     mockAuthUser()
+    mockActiveMembership()
     vi.mocked(createNotification).mockRejectedValue(new Error('db error'))
 
     const result = await createNotificationAction({
