@@ -24,6 +24,7 @@ vi.mock('../actions', () => ({
   uploadDocumentAction: vi.fn(),
   deleteDocumentAction: vi.fn(),
   updateDocumentReminderDateAction: vi.fn(),
+  updateContactInfoAction: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -547,6 +548,48 @@ describe('MemberDetailPage', () => {
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
       render(jsx)
       expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
+    })
+  })
+
+  describe('Contact Info edit form', () => {
+    it('should_show_edit_form_when_manager_views_stub_target', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(
+        createMockMembership({ id: 'mem-stub', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
+      )
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ first_name: 'Stub', last_name: 'Member', is_managed: true }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-stub') })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
+    })
+
+    it('should_show_read_only_when_manager_views_real_target', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(
+        createMockProfile({ first_name: 'Bob', last_name: 'Trainer', is_managed: false })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
+    })
+
+    it('should_show_edit_form_when_manager_views_stub_target_with_linked_account', async () => {
+      // defensive: is_managed and null user_id are set together by claim_managed_member, but the
+      // form's gating is keyed off is_managed alone, matching the RLS boundary from #526
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ first_name: 'Bob', last_name: 'Trainer', is_managed: true }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
+    })
+
+    it('should_show_read_only_when_trainer_views_stub_rider_target', async () => {
+      setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+      vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+      vi.mocked(getMembershipById).mockResolvedValue(
+        createMockMembership({ id: 'mem-stub-rdr', user_id: null as any, barn_id: 'barn-1', role: 'rider' })
+      )
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ first_name: 'Stub', last_name: 'Rider', is_managed: true }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-stub-rdr') })
+      render(jsx)
+      expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
     })
   })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({
   requireMembership: vi.fn(),
@@ -11,6 +11,10 @@ vi.mock('@/lib/db/documents', () => ({
   createDocument: vi.fn(),
   deleteDocument: vi.fn(),
   updateDocumentReminderDate: vi.fn(),
+}))
+vi.mock('@/lib/db/profiles', () => ({
+  updateContactInfo: vi.fn(),
+  getProfileById: vi.fn(),
 }))
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
@@ -24,9 +28,10 @@ vi.mock('next/cache', () => ({
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
+import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
-import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction } from '../actions'
+import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction } from '../actions'
 
 const mockBarn = createMockBarn()
 
@@ -573,5 +578,128 @@ describe('updateDocumentReminderDateAction', () => {
 
     const result = await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
     expect(result.error).toBe('db error')
+  })
+})
+
+describe('updateContactInfoAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getMembershipById).mockReset()
+    vi.mocked(getProfileById).mockReset()
+    vi.mocked(updateContactInfo).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: true }))
+    vi.mocked(updateContactInfo).mockResolvedValue(undefined)
+  })
+
+  function makeContactFormData(phone = '555-1111', ecName = 'Alice', ecPhone = '555-2222'): FormData {
+    const fd = new FormData()
+    fd.set('phone', phone)
+    fd.set('emergency_contact_name', ecName)
+    fd.set('emergency_contact_phone', ecPhone)
+    return fd
+  }
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_update_contact_info_with_trimmed_fields', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData(' 555-1111 ', ' Alice ', ' 555-2222 '))
+    expect(updateContactInfo).toHaveBeenCalledWith('profile-1', {
+      phone: '555-1111',
+      emergency_contact_name: 'Alice',
+      emergency_contact_phone: '555-2222',
+    })
+  })
+
+  it('should_normalize_empty_strings_to_null', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('', '', ''))
+    expect(updateContactInfo).toHaveBeenCalledWith('profile-1', {
+      phone: null,
+      emergency_contact_name: null,
+      emergency_contact_phone: null,
+    })
+  })
+
+  it('should_return_null_error_on_success', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_revalidate_member_detail_path_after_update', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
+  })
+
+  it('should_return_error_when_target_membership_not_found', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-gone', makeContactFormData())
+    expect(result.error).toBe('Not found')
+  })
+
+  it('should_return_error_when_target_in_different_barn', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-other-barn', profile_id: 'profile-other', barn_id: 'barn-other', role: 'trainer' })
+    )
+
+    const result = await updateContactInfoAction('green-acres', 'mem-other-barn', makeContactFormData())
+    expect(result.error).toBe('Not found')
+  })
+
+  it('should_return_error_when_updateContactInfo_throws', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(updateContactInfo).mockRejectedValue(new Error('new row violates row-level security policy'))
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
+    expect(result.error).toBe('new row violates row-level security policy')
+  })
+
+  it('should_return_forbidden_when_target_profile_is_not_managed', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: false }))
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
+    expect(result.error).toBe('Forbidden')
+  })
+
+  it('should_not_call_updateContactInfo_when_target_profile_is_not_managed', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: false }))
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
+    expect(updateContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('should_return_forbidden_when_target_profile_not_found', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(getProfileById).mockResolvedValue(null)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
+    expect(result.error).toBe('Forbidden')
   })
 })

@@ -8,11 +8,12 @@ import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementForRider } from '@/lib/db/agreements'
 import { UploadForm } from './UploadForm'
+import { ContactInfoForm } from './ContactInfoForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
-import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction } from './actions'
+import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction } from './actions'
 import type { TrainerDocument, RiderDocument, Agreement, Profile } from '@/lib/db/types'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
@@ -128,6 +129,9 @@ export default async function MemberDetailPage({
     ? `${targetProfile.first_name} ${targetProfile.last_name}`
     : targetMembership.id
 
+  const canEditContactInfo = callerRole === 'manager' && targetProfile?.is_managed === true
+  const boundUpdateContactInfo = updateContactInfoAction.bind(null, slug, membership_id)
+
   if (!targetMembership.user_id) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
@@ -135,7 +139,11 @@ export default async function MemberDetailPage({
           {displayName}
         </h1>
         {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
-        <ContactInfo profile={targetProfile} />
+        {canEditContactInfo && targetProfile ? (
+          <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
+        ) : (
+          <ContactInfo profile={targetProfile} />
+        )}
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>
       </main>
     )
@@ -169,7 +177,11 @@ export default async function MemberDetailPage({
 
       {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
 
-      <ContactInfo profile={targetProfile} />
+      {canEditContactInfo && targetProfile ? (
+        <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
+      ) : (
+        <ContactInfo profile={targetProfile} />
+      )}
 
       <section className="mb-10">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
