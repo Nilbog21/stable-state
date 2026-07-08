@@ -48,6 +48,7 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 | `script-utils` | — | ✓ | ✓ | — | Shared utilities (`mustSucceed`, `createServiceClient`, `teardownBarnData`, `teardownAllData`, `findAuthUserIdsByEmails`); import from here to reduce duplication across seed/teardown scripts |
 | `generate-outstanding-notifications` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only (no interactive `.env.local` flow); `.sh` validates env vars already set by the workflow's `env:` block instead of parsing `.env.local`; no non-trivial shell branching |
 | `generate-agreement-charges` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as `generate-outstanding-notifications`; `.test.ts` covers only the pure `formatChargeGenerationSummary` formatter — the cross-barn `agreements` query and `generateChargeForMonth` calls are verified manually, not unit tested |
+| `generate-recurring-lessons` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as the other two; `.test.ts` covers the pure helpers (`isDueForGeneration`, `computeNextLessonAt`, `hasMissingRider`, `hasUnavailableHorse`, and the notification/summary formatters) — the cross-barn `lesson_series` query, per-series `generateNextLessonForSeries`/`stopLessonSeries` calls, and notification aggregation are verified manually, not unit tested |
 | `ci` | ✓ | — | — | ✓ | Shell-only |
 | `check-coverage` | ✓ | — | — | ✓ | Shell-only |
 
