@@ -18,6 +18,11 @@ describe('Card', () => {
       render(<Card>Card content</Card>)
       expect(screen.getByText('Card content').className).not.toContain('hover:')
     })
+
+    it('should_apply_custom_className_in_default_variant', () => {
+      render(<Card className="custom-test-class">Card content</Card>)
+      expect(screen.getByText('Card content').className).toContain('custom-test-class')
+    })
   })
 
   describe('link variant', () => {
@@ -34,6 +39,11 @@ describe('Card', () => {
     it('should_apply_hover_classes_in_link_variant', () => {
       render(<Card href="/barn/sunny-acres/horses/h1">Card content</Card>)
       expect(screen.getByRole('link').className).toContain('hover:')
+    })
+
+    it('should_apply_custom_className_in_link_variant', () => {
+      render(<Card href="/barn/sunny-acres/horses/h1" className="custom-test-class">Card content</Card>)
+      expect(screen.getByRole('link').className).toContain('custom-test-class')
     })
   })
 })
