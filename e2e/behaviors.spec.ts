@@ -2,28 +2,18 @@ import { test, expect } from '@playwright/test'
 
 const barnSlug = process.env.TEST_BARN_SLUG!
 
-// Runs a test only in the project matching its role (plus mobile for manager,
-// mirroring smoke.spec.ts).
-function skipUnless(role: string) {
-  return (projectName: string) =>
-    projectName !== role && !(projectName === 'mobile' && role === 'manager')
-}
-
-test('rider_redirected_from_new_lesson_page', async ({ page }, testInfo) => {
-  test.skip(skipUnless('rider')(testInfo.project.name))
+test('rider_redirected_from_new_lesson_page @rider', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}/lessons/new`)
   await expect(page).toHaveURL(new RegExp(`/barn/${barnSlug}/lessons$`))
 })
 
-test('manager_by_trainer_pill_sets_filter_param', async ({ page }, testInfo) => {
-  test.skip(skipUnless('manager')(testInfo.project.name))
+test('manager_by_trainer_pill_sets_filter_param @manager', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}/lessons`)
   await page.getByRole('link', { name: 'By Trainer' }).click()
   await expect(page).toHaveURL(/filter=trainer/)
 })
 
-test('older_lessons_hidden_until_toggle_clicked', async ({ page }, testInfo) => {
-  test.skip(skipUnless('manager')(testInfo.project.name))
+test('older_lessons_hidden_until_toggle_clicked @manager', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}/lessons`)
   const lessonLinks = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`)
   const visibleBefore = await lessonLinks.count()
@@ -34,8 +24,7 @@ test('older_lessons_hidden_until_toggle_clicked', async ({ page }, testInfo) => 
   await expect.poll(() => lessonLinks.count()).toBeGreaterThan(visibleBefore)
 })
 
-test('rider_lesson_detail_has_no_private_notes_section', async ({ page }, testInfo) => {
-  test.skip(skipUnless('rider')(testInfo.project.name))
+test('rider_lesson_detail_has_no_private_notes_section @rider', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}/lessons`)
   const firstLesson = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`).first()
   const href = await firstLesson.getAttribute('href')
@@ -45,8 +34,7 @@ test('rider_lesson_detail_has_no_private_notes_section', async ({ page }, testIn
 })
 
 for (const tab of ['Horse', 'Rider', 'Trainer']) {
-  test(`manager_finance_${tab.toLowerCase()}_tab_updates_tab_param`, async ({ page }, testInfo) => {
-    test.skip(skipUnless('manager')(testInfo.project.name))
+  test(`manager_finance_${tab.toLowerCase()}_tab_updates_tab_param @manager`, async ({ page }) => {
     await page.goto(`/barn/${barnSlug}/finances`)
     await page.getByRole('link', { name: `By ${tab}` }).click()
     await expect(page).toHaveURL(new RegExp(`tab=${tab.toLowerCase()}`))
