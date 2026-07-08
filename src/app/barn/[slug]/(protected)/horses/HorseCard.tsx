@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import type { HorseExertionSummary } from '@/lib/db/types'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
+import { Card } from '@/components/ui/Card'
 
 export function HorseCard({
   horse,
@@ -14,7 +15,10 @@ export function HorseCard({
   exhaustion?: { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 dark:border-zinc-700">
+    <Card>
+      {/* Inner Link keeps its own padding/hover classes — ExhaustionBar's expand button
+          can't nest inside <Card href>'s anchor (invalid HTML), and this is the only call site,
+          so extracting a shared "clickable row" primitive isn't worth it yet */}
       <Link
         href={`/barn/${barnSlug}/horses/${horse.id}`}
         className="block p-4 hover:bg-zinc-50 dark:hover:bg-zinc-900"
@@ -31,6 +35,6 @@ export function HorseCard({
           <ExhaustionBar existingRows={exhaustion.existingRows} thresholds={exhaustion.thresholds} />
         </div>
       )}
-    </div>
+    </Card>
   )
 }
