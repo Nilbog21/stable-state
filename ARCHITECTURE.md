@@ -37,6 +37,8 @@ Three roles: `manager`, `trainer`, `rider`.
 
 All tables are in the `public` schema with RLS enabled.
 
+Migration history through v2.0.2 was squashed (#657) into a 3-file baseline (`supabase/migrations/20260629004610_baseline_schema.sql`, `..._baseline_functions.sql`, `..._baseline_rls.sql`); the original files are kept for reference at `supabase/migrations_archive/`.
+
 | Table | Key columns | Notes |
 |---|---|---|
 | `roles` | `name TEXT PK CHECK IN ('manager','trainer','rider')` | Lookup table |
