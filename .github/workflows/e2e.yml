@@ -8,7 +8,9 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    if: contains(github.event.pull_request.labels.*.name, 'smoke-test')
+    if: >-
+      contains(github.event.pull_request.labels.*.name, 'smoke-test') &&
+      (github.event.action != 'labeled' || github.event.label.name == 'smoke-test')
     concurrency:
       group: e2e-shared-barn
       cancel-in-progress: false
@@ -29,7 +31,7 @@ jobs:
           CONCLUSION=""
           for i in $(seq 1 30); do
             RESULT=$(gh api "repos/${{ github.repository }}/commits/$SHA/check-runs" \
-              --jq '.check_runs[] | select(.name=="ci") | .status + " " + (.conclusion // "null")' 2>/dev/null || echo "")
+              --jq '[.check_runs[] | select(.name=="ci")] | sort_by(.started_at) | last | (.status + " " + (.conclusion // "null"))' 2>/dev/null || echo "")
             STATUS=$(echo "$RESULT" | cut -d' ' -f1)
             CONCLUSION=$(echo "$RESULT" | cut -d' ' -f2)
             if [ "$STATUS" = "completed" ]; then
