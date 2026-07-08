@@ -31,7 +31,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 
 ## Phase 2 — Manager seeding
 
-Lesson tiers (`/barn/dev-barn/settings` → Add Tier button, top-right of the Lesson Tiers header → `/barn/dev-barn/settings/tiers/new`):
+Lesson tiers (`/barn/dev-barn/settings` → Add Tier → `/barn/dev-barn/settings/tiers/new`):
 
 - [ ] Create tier **Beginner** — $60, default exertion level 2, jumping off
 - [ ] Create tier **Advanced** — $120, default jumping on
