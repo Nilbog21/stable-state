@@ -203,7 +203,7 @@ bash scripts/change-user.sh
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
 - [ ] Lessons list shows only lessons where you (Alex) are the instructor; filter pills show riders only (`All | <rider> | ...`)
-- [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you
+- [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons by direct URL (`/barn/dev-barn/lessons/[id]`) — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
