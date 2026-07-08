@@ -129,4 +129,22 @@ describe('AgreementDetailPage', () => {
     render(jsx)
     expect(screen.getByText('Ended')).toBeDefined()
   })
+
+  it('should_render_active_status_for_monthly_active_agreement', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(
+      createMockAgreement({ is_active: true, cadence: 'monthly' })
+    )
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Active')).toBeDefined()
+  })
+
+  it('should_render_complete_status_for_one_time_active_agreement', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(
+      createMockAgreement({ is_active: true, cadence: 'one_time' })
+    )
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Complete')).toBeDefined()
+  })
 })
