@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 function todayString() {
   const d = new Date()
@@ -19,14 +19,21 @@ function hourLabel(h: number) {
 export function DateHourPicker({
   initialDate,
   initialHour,
+  onChange,
 }: {
   initialDate?: string
   initialHour?: number
+  onChange?: (lessonAt: string) => void
 } = {}) {
   const [date, setDate] = useState(initialDate ?? todayString)
   const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
 
   const combinedValue = `${date}T${String(hour).padStart(2, '0')}:00`
+
+  useEffect(() => {
+    onChange?.(date ? combinedValue : '')
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [date, hour])
 
   return (
     <div className="flex gap-2">
