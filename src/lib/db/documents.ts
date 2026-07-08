@@ -15,7 +15,7 @@ type Entity = 'horse' | 'rider' | 'trainer'
 const CONFIG: Record<Entity, { table: string; idColumn: string }> = {
   horse: { table: 'horse_documents', idColumn: 'horse_id' },
   rider: { table: 'rider_documents', idColumn: 'rider_id' },
-  trainer: { table: 'trainer_documents', idColumn: 'trainer_id' },
+  trainer: { table: 'staff_documents', idColumn: 'trainer_id' },
 }
 
 export async function getDocuments(entity: 'horse', entityId: string, barnId: string): Promise<HorseDocument[]>
@@ -139,7 +139,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
   if (horseError) throw horseError
 
   const { data: trainerDocs, error: trainerError } = await supabase
-    .from('trainer_documents')
+    .from('staff_documents')
     .select('*')
     .eq('barn_id', barnId)
     .lte('reminder_date', today)

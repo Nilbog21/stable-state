@@ -1,0 +1,2 @@
+ALTER TABLE public.trainer_documents RENAME TO staff_documents;
+ALTER TRIGGER trainer_documents_set_updated_at ON public.staff_documents RENAME TO staff_documents_set_updated_at;

@@ -410,7 +410,7 @@ describe('deleteDocumentAction', () => {
     expect(result.error).toBeTruthy()
   })
 
-  it('should_delete_manager_document_using_trainer_documents_table', async () => {
+  it('should_delete_manager_document_using_staff_documents_table', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
@@ -519,7 +519,7 @@ describe('updateDocumentReminderDateAction', () => {
     expect(updateDocumentReminderDate).toHaveBeenCalledWith('rider', 'doc-2', 'user-target-rdr', 'barn-1', '2027-01-01')
   })
 
-  it('should_update_manager_reminder_date_using_trainer_documents_table', async () => {
+  it('should_update_manager_reminder_date_using_staff_documents_table', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 

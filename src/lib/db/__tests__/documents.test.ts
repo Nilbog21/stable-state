@@ -399,12 +399,12 @@ describe('getDueDocuments', () => {
     memberships?: unknown[] | null
     profiles?: unknown[] | null
     errors?: Partial<
-      Record<'horse_documents' | 'trainer_documents' | 'rider_documents' | 'barn_memberships' | 'profiles', Error>
+      Record<'horse_documents' | 'staff_documents' | 'rider_documents' | 'barn_memberships' | 'profiles', Error>
     >
   }) {
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horse_documents') return makeDocsChain(horseDocs, errors.horse_documents ?? null)
-      if (table === 'trainer_documents') return makeDocsChain(trainerDocs, errors.trainer_documents ?? null)
+      if (table === 'staff_documents') return makeDocsChain(trainerDocs, errors.staff_documents ?? null)
       if (table === 'rider_documents') return makeDocsChain(riderDocs, errors.rider_documents ?? null)
       if (table === 'horses') return makeHorseNamesChain(horseNames)
       if (table === 'barn_memberships') return makeMembershipsChain(memberships, errors.barn_memberships ?? null)
@@ -530,8 +530,8 @@ describe('getDueDocuments', () => {
     await expect(getDueDocuments('barn-1', today)).rejects.toThrow('horse docs error')
   })
 
-  it('should_throw_when_trainer_documents_query_errors', async () => {
-    setupFrom({ errors: { trainer_documents: new Error('trainer docs error') } })
+  it('should_throw_when_staff_documents_query_errors', async () => {
+    setupFrom({ errors: { staff_documents: new Error('trainer docs error') } })
 
     await expect(getDueDocuments('barn-1', today)).rejects.toThrow('trainer docs error')
   })
