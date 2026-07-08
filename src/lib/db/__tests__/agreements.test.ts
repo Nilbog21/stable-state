@@ -630,33 +630,15 @@ describe('getPaidCharges', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeChargesChain(data: unknown[] | null, error: Error | null = null) {
+  function makeChain(data: unknown[] | null, error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
     const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
     const mockEq = vi.fn().mockReturnValue({ not: mockNot })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockNot, mockGte, mockLt }
-  }
-
-  function makeAgreementsChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockIn }
-  }
-
-  function makeChain(
-    chargesData: unknown[] | null,
-    chargesError: Error | null = null,
-    agreementsData: unknown[] | null = [],
-    agreementsError: Error | null = null
-  ) {
-    const charges = makeChargesChain(chargesData, chargesError)
-    const agreements = makeAgreementsChain(agreementsData, agreementsError)
-    const from = vi.fn((table: string) => (table === 'agreement_charges' ? { select: charges.select } : { select: agreements.select }))
+    const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, charges, agreements }
+    return { from, mockSelect, mockEq, mockNot, mockGte, mockLt }
   }
 
   it('should_query_the_agreement_charges_table', async () => {
@@ -665,52 +647,43 @@ describe('getPaidCharges', () => {
     expect(from).toHaveBeenCalledWith('agreement_charges')
   })
 
-  it('should_filter_by_barn_id', async () => {
-    const { charges } = makeChain([])
+  it('should_select_with_the_agreements_fk_hint_embed', async () => {
+    const { mockSelect } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(charges.mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockSelect).toHaveBeenCalledWith(
+      'id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id, horse_id)'
+    )
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockEq } = makeChain([])
+    await getPaidCharges('barn-1', startDate, endDate)
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_filter_out_unpaid_charges', async () => {
-    const { charges } = makeChain([])
+    const { mockNot } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(charges.mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
+    expect(mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
   })
 
   it('should_filter_by_period_start', async () => {
-    const { charges } = makeChain([])
+    const { mockGte } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(charges.mockGte).toHaveBeenCalledWith('period', '2026-07-01')
+    expect(mockGte).toHaveBeenCalledWith('period', '2026-07-01')
   })
 
   it('should_filter_by_period_end', async () => {
-    const { charges } = makeChain([])
+    const { mockLt } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(charges.mockLt).toHaveBeenCalledWith('period', '2026-08-01')
+    expect(mockLt).toHaveBeenCalledWith('period', '2026-08-01')
   })
 
-  it('should_skip_the_agreements_query_when_there_are_no_charge_rows', async () => {
-    const { from } = makeChain([])
-    await getPaidCharges('barn-1', startDate, endDate)
-    expect(from).not.toHaveBeenCalledWith('agreements')
-  })
-
-  it('should_query_agreements_for_the_distinct_agreement_ids_on_the_charges', async () => {
-    const { agreements } = makeChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01', fee: 200 }],
-      null,
-      [{ id: 'agreement-1', kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' }]
-    )
-    await getPaidCharges('barn-1', startDate, endDate)
-    expect(agreements.mockIn).toHaveBeenCalledWith('id', ['agreement-1'])
-  })
-
-  it('should_join_each_charge_row_with_its_agreement_fields', async () => {
-    makeChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01', fee: 200 }],
-      null,
-      [{ id: 'agreement-1', kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' }]
-    )
+  it('should_join_each_charge_row_with_its_nested_agreement_fields', async () => {
+    makeChain([{
+      id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01', fee: 200,
+      agreements: { kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' },
+    }])
 
     const result = await getPaidCharges('barn-1', startDate, endDate)
 
@@ -720,49 +693,15 @@ describe('getPaidCharges', () => {
     }])
   })
 
-  it('should_skip_a_charge_row_whose_agreement_was_not_found', async () => {
-    makeChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-missing', period: '2026-07-01', fee: 200 }],
-      null,
-      []
-    )
-
-    const result = await getPaidCharges('barn-1', startDate, endDate)
-
-    expect(result).toEqual([])
-  })
-
-  it('should_treat_a_null_agreements_response_as_no_matches', async () => {
-    makeChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01', fee: 200 }],
-      null,
-      null
-    )
-
-    const result = await getPaidCharges('barn-1', startDate, endDate)
-
-    expect(result).toEqual([])
-  })
-
   it('should_return_empty_array_when_data_is_null', async () => {
     makeChain(null)
     const result = await getPaidCharges('barn-1', startDate, endDate)
     expect(result).toEqual([])
   })
 
-  it('should_throw_when_charges_query_returns_an_error', async () => {
+  it('should_throw_when_query_returns_an_error', async () => {
     makeChain(null, new Error('db error'))
     await expect(getPaidCharges('barn-1', startDate, endDate)).rejects.toThrow('db error')
-  })
-
-  it('should_throw_when_agreements_query_returns_an_error', async () => {
-    makeChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01', fee: 200 }],
-      null,
-      null,
-      new Error('agreements error')
-    )
-    await expect(getPaidCharges('barn-1', startDate, endDate)).rejects.toThrow('agreements error')
   })
 })
 
