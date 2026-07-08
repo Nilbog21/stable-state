@@ -1,8 +1,8 @@
 import { fileURLToPath } from 'url'
 import { generateNextLessonForSeries, stopLessonSeries } from '@/lib/db/lesson-series'
+import { upsertNotification } from '@/lib/db/notifications'
 import { createServiceClient, mustSucceed } from './script-utils'
-import type { SupabaseClient } from '@supabase/supabase-js'
-import type { LessonSeries, NotificationType } from '@/lib/db/types'
+import type { LessonSeries } from '@/lib/db/types'
 
 const HORIZON_DAYS = 28
 const CADENCE_DAYS = 7
@@ -61,21 +61,6 @@ function addRecipient(map: Map<string, RecipientCount>, userId: string | null, b
   const existing = map.get(key)
   if (existing) existing.count++
   else map.set(key, { userId, barnId, count: 1 })
-}
-
-async function upsertRunNotification(
-  supabase: SupabaseClient,
-  recipient: RecipientCount,
-  type: NotificationType,
-  format: (count: number) => { title: string; body: string },
-  link: string
-): Promise<void> {
-  const { title, body } = format(recipient.count)
-  const { error } = await supabase.from('notifications').upsert(
-    { user_id: recipient.userId, barn_id: recipient.barnId, type, title, body, link, read_at: null },
-    { onConflict: 'user_id,barn_id,type' }
-  )
-  if (error) throw error
 }
 
 async function run() {
@@ -174,7 +159,15 @@ async function run() {
   for (const recipient of seriesStoppedRecipients.values()) {
     try {
       const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
-      await upsertRunNotification(supabase, recipient, 'recurring_series_stopped', formatSeriesStoppedNotification, link)
+      const { title, body } = formatSeriesStoppedNotification(recipient.count)
+      await upsertNotification(supabase, {
+        userId: recipient.userId,
+        barnId: recipient.barnId,
+        type: 'recurring_series_stopped',
+        title,
+        body,
+        link,
+      })
     } catch (err) {
       errorCount++
       console.error(`Failed to notify ${recipient.userId} of stopped series:`, (err as Error).message)
@@ -183,7 +176,15 @@ async function run() {
   for (const recipient of horseWarningRecipients.values()) {
     try {
       const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
-      await upsertRunNotification(supabase, recipient, 'recurring_lesson_horse_unavailable', formatHorseUnavailableNotification, link)
+      const { title, body } = formatHorseUnavailableNotification(recipient.count)
+      await upsertNotification(supabase, {
+        userId: recipient.userId,
+        barnId: recipient.barnId,
+        type: 'recurring_lesson_horse_unavailable',
+        title,
+        body,
+        link,
+      })
     } catch (err) {
       errorCount++
       console.error(`Failed to notify ${recipient.userId} of unavailable horse:`, (err as Error).message)

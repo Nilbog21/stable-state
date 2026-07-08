@@ -23,6 +23,33 @@ export async function createNotification(params: {
   if (error) throw error
 }
 
+export async function upsertNotification(
+  client: SupabaseClient,
+  params: {
+    userId: string
+    barnId: string
+    type: NotificationType
+    title: string
+    body: string
+    link: string
+  }
+): Promise<void> {
+  const { error } = await client.from('notifications').upsert(
+    {
+      user_id: params.userId,
+      barn_id: params.barnId,
+      type: params.type,
+      title: params.title,
+      body: params.body,
+      link: params.link,
+      read_at: null,
+    },
+    { onConflict: 'user_id,barn_id,type' }
+  )
+
+  if (error) throw error
+}
+
 export async function markNotificationRead(id: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase

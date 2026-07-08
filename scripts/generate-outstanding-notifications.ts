@@ -1,9 +1,8 @@
 import { fileURLToPath } from 'url'
 import { getOutstandingLessons } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
-import { deleteNotificationByType } from '@/lib/db/notifications'
+import { deleteNotificationByType, upsertNotification } from '@/lib/db/notifications'
 import { createServiceClient, mustSucceed } from './script-utils'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 export function formatOutstandingNotification(count: number, total: number): { title: string; body: string } {
   return {
@@ -21,25 +20,6 @@ interface ManagerRow {
 function resolveSlug(row: ManagerRow): string | null {
   const barn = Array.isArray(row.barns) ? row.barns[0] : row.barns
   return barn?.slug ?? null
-}
-
-// createNotification goes through the create_or_update_notification RPC, which requires
-// auth.uid() to match an active barn member -- a service-role client has no auth.uid()
-// and would always get rejected. Upsert directly against the table instead, matching
-// scripts/CLAUDE.md's guidance for RPCs with auth checks that block service-role callers.
-async function upsertOutstandingNotification(
-  supabase: SupabaseClient,
-  userId: string,
-  barnId: string,
-  title: string,
-  body: string,
-  link: string
-): Promise<void> {
-  const { error } = await supabase.from('notifications').upsert(
-    { user_id: userId, barn_id: barnId, type: 'outstanding_payment', title, body, link, read_at: null },
-    { onConflict: 'user_id,barn_id,type' }
-  )
-  if (error) throw error
 }
 
 async function run() {
@@ -87,14 +67,14 @@ async function run() {
       }
 
       const { title, body } = formatOutstandingNotification(outstanding.count, outstanding.total)
-      await upsertOutstandingNotification(
-        supabase,
-        manager.user_id,
-        manager.barn_id,
+      await upsertNotification(supabase, {
+        userId: manager.user_id,
+        barnId: manager.barn_id,
+        type: 'outstanding_payment',
         title,
         body,
-        `/barn/${slug}/finances/outstanding`
-      )
+        link: `/barn/${slug}/finances/outstanding`,
+      })
     } catch (err) {
       hadErrors = true
       console.error(`Failed to process manager ${manager.user_id} in barn ${manager.barn_id}:`, (err as Error).message)
