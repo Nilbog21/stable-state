@@ -12,6 +12,7 @@ import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/EmptyState'
 import {
   updateHorseDetailsAction,
   uploadHorseDocumentAction,
@@ -111,56 +112,58 @@ export default async function HorseDetailPage({
             Documents
           </h2>
           {docsWithUrls.length > 0 ? (
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Type</Th>
-                  <Th>Notes</Th>
-                  <Th>Link</Th>
-                  <Th>Reminder Date</Th>
-                  <Th>Action</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {docsWithUrls.map(({ doc, signedUrl }) => (
-                  <tr key={doc.id}>
-                    <Td>{RECORD_TYPE_LABELS[doc.record_type]}</Td>
-                    <Td tone="secondary">{doc.notes ?? '—'}</Td>
-                    <Td>
-                      <a
-                        href={signedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-                      >
-                        {doc.file_name}
-                      </a>
-                    </Td>
-                    <Td tone="secondary">
-                      <div className="flex items-center gap-2">
-                        {role === 'manager' ? (
-                          <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDateAction} />
-                        ) : (
-                          doc.reminder_date ?? '—'
-                        )}
-                        <ReminderDueBadge reminderDate={doc.reminder_date} />
-                      </div>
-                    </Td>
-                    <TableActions>
-                      {role === 'manager' && (
-                        <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
-                          <Button type="submit" variant="danger" size="sm">
-                            Delete
-                          </Button>
-                        </form>
-                      )}
-                    </TableActions>
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <Th>Type</Th>
+                    <Th>Notes</Th>
+                    <Th>Link</Th>
+                    <Th>Reminder Date</Th>
+                    <Th>Action</Th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
+                </thead>
+                <tbody>
+                  {docsWithUrls.map(({ doc, signedUrl }) => (
+                    <tr key={doc.id}>
+                      <Td>{RECORD_TYPE_LABELS[doc.record_type]}</Td>
+                      <Td tone="secondary">{doc.notes ?? '—'}</Td>
+                      <Td>
+                        <a
+                          href={signedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+                        >
+                          {doc.file_name}
+                        </a>
+                      </Td>
+                      <Td tone="secondary">
+                        <div className="flex items-center gap-2">
+                          {role === 'manager' ? (
+                            <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDateAction} />
+                          ) : (
+                            doc.reminder_date ?? '—'
+                          )}
+                          <ReminderDueBadge reminderDate={doc.reminder_date} />
+                        </div>
+                      </Td>
+                      <TableActions>
+                        {role === 'manager' && (
+                          <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
+                            <Button type="submit" variant="danger" size="sm">
+                              Delete
+                            </Button>
+                          </form>
+                        )}
+                      </TableActions>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
           ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No documents yet.</p>
+            <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
           )}
 
           <section className="mt-6">
