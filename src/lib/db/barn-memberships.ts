@@ -121,15 +121,19 @@ type MembershipRow = { id: string; user_id: string | null; profile_id: string; i
 type ProfileRow = { id: string; first_name: string; last_name: string; is_managed: boolean }
 type MembershipProfileRow = MembershipRow & { profile: ProfileRow | null }
 
+function baseMembershipQuery(supabase: SupabaseClient) {
+  return supabase.from('barn_memberships').select('id, user_id, profile_id, invite_token')
+}
+
 // Shared join for getInstructorsByBarn/getActiveMembersWithProfiles/resolveMemberNames —
 // only the barn_memberships filter differs between callers.
 async function joinMembershipsWithProfiles(
   supabase: SupabaseClient,
-  applyFilter: (query: any) => PromiseLike<{ data: MembershipRow[] | null; error: unknown }>
+  applyFilter: (
+    query: ReturnType<typeof baseMembershipQuery>
+  ) => PromiseLike<{ data: MembershipRow[] | null; error: unknown }>
 ): Promise<MembershipProfileRow[]> {
-  const { data: memberships, error: memError } = await applyFilter(
-    supabase.from('barn_memberships').select('id, user_id, profile_id, invite_token')
-  )
+  const { data: memberships, error: memError } = await applyFilter(baseMembershipQuery(supabase))
   if (memError) throw memError
   if (!memberships?.length) return []
 
