@@ -246,7 +246,7 @@ describe('HorseDetailPage', () => {
   it('should_render_no_documents_message_when_list_is_empty_for_manager', async () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.getByText('No documents yet.')).toBeDefined()
+    expect(screen.getByText('No documents yet')).toBeDefined()
   })
 
   it('should_render_delete_button_for_manager_when_document_exists', async () => {
@@ -268,7 +268,7 @@ describe('HorseDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.queryByText('No documents yet.')).toBeNull()
+    expect(screen.queryByText('No documents yet')).toBeNull()
   })
 
   it('should_render_documents_table_for_manager_when_documents_exist', async () => {

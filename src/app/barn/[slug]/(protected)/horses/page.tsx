@@ -6,6 +6,7 @@ import { getHorseExertionSummary, getHorseProjectedExhaustion, resolveExhaustion
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
 import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/Button'
 
 export default async function HorsesPage({
   params,
@@ -59,12 +60,7 @@ export default async function HorsesPage({
             required
             className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
           />
-          <button
-            type="submit"
-            className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Add
-          </button>
+          <Button type="submit">Add</Button>
         </form>
       )}
 
