@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveHorseNames } from './horses'
+import { resolveMemberNamesByUserId } from './barn-memberships'
 import type {
   DueDocument,
   HorseDocument,
@@ -166,25 +167,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
     ]),
   ]
 
-  const membershipByUserId = new Map<string, string>()
-  const nameByUserId = new Map<string, string>()
-
-  if (ownerUserIds.length) {
-    const { data: memberships, error: membershipsError } = await supabase
-      .from('barn_memberships')
-      .select('id, user_id')
-      .eq('barn_id', barnId)
-      .in('user_id', ownerUserIds)
-    if (membershipsError) throw membershipsError
-    for (const m of memberships ?? []) membershipByUserId.set(m.user_id, m.id)
-
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('user_id, first_name, last_name')
-      .in('user_id', ownerUserIds)
-    if (profilesError) throw profilesError
-    for (const p of profiles ?? []) nameByUserId.set(p.user_id, `${p.first_name} ${p.last_name}`)
-  }
+  const ownersByUserId = await resolveMemberNamesByUserId(ownerUserIds, barnId, supabase)
 
   const results: DueDocument[] = [
     ...horseDocsList.map((d) => ({
@@ -202,8 +185,8 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: nameByUserId.get(d.trainer_id) ?? 'Unknown Member',
-      ownerId: membershipByUserId.get(d.trainer_id) ?? d.trainer_id,
+      ownerName: ownersByUserId.get(d.trainer_id)?.name ?? 'Unknown Member',
+      ownerId: ownersByUserId.get(d.trainer_id)?.membershipId ?? d.trainer_id,
     })),
     ...riderDocsList.map((d) => ({
       id: d.id,
@@ -211,8 +194,8 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: nameByUserId.get(d.rider_id) ?? 'Unknown Member',
-      ownerId: membershipByUserId.get(d.rider_id) ?? d.rider_id,
+      ownerName: ownersByUserId.get(d.rider_id)?.name ?? 'Unknown Member',
+      ownerId: ownersByUserId.get(d.rider_id)?.membershipId ?? d.rider_id,
     })),
   ]
 
