@@ -18,6 +18,10 @@ BEGIN
   IF p_lesson_type = 'group' AND p_rider_count < 2 THEN
     RAISE EXCEPTION 'Group lesson must have at least 2 riders (got %)', p_rider_count;
   END IF;
+
+  -- Group lessons additionally require >= 1 horse; that's enforced only by the
+  -- deferred enforce_lesson_participant_counts trigger, not here (matches prior
+  -- inline-checks behavior, left unchanged per issue #705's acceptance criteria).
 END;
 $$;
 
