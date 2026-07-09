@@ -241,7 +241,7 @@ export default async function FinancesPage({
           <Card className="p-4">
             <section>
               <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Pending income (from scheduled lessons)
+                Pending income
                 <InfoPopover text="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut" />
               </p>
               <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">

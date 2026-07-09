@@ -568,7 +568,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 60, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Pending income (from scheduled lessons)')).toBeDefined()
+    expect(screen.getByText('Pending income')).toBeDefined()
   })
 
   it('should_hide_pending_income_section_for_past_month', async () => {
@@ -580,7 +580,7 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ month: '2026-05' }),
     })
     render(jsx)
-    expect(screen.queryByText('Pending income (from scheduled lessons)')).toBeNull()
+    expect(screen.queryByText('Pending income')).toBeNull()
   })
 
   it('should_display_pending_income_amount', async () => {
