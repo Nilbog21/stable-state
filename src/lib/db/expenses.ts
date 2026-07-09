@@ -19,11 +19,11 @@ function applicableHorseIdsForExpense(
   return junctionRows.filter((r) => r.expense_id === expense.id).map((r) => r.horse_id)
 }
 
-async function attachHorseNames(
+async function attachHorseNames<T extends { id: string }>(
   supabase: SupabaseClient,
   barnId: string,
-  expenses: { id: string }[]
-): Promise<ExpenseWithHorses[]> {
+  expenses: T[]
+): Promise<(T & { horse_ids: string[]; horse_names: string[] })[]> {
   const expenseIds = expenses.map((e) => e.id)
   const { data: junctionRows, error } = await supabase
     .from('expense_horses')
@@ -42,7 +42,7 @@ async function attachHorseNames(
       ...expense,
       horse_ids: ids,
       horse_names: ids.map((id) => horseNameMap.get(id) ?? id),
-    } as ExpenseWithHorses
+    }
   })
 }
 
@@ -186,7 +186,7 @@ export async function getUpcomingScheduledExpenses(barnId: string, from: string,
 
   if (!expenses.length) return []
 
-  return (await attachHorseNames(supabase, barnId, expenses)) as ScheduledExpense[]
+  return await attachHorseNames(supabase, barnId, expenses)
 }
 
 export async function getExpenseFinancialSummary(
