@@ -4,10 +4,12 @@ import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
-import type { PaymentType } from '@/lib/db/types'
+import type { NotificationType, PaymentType } from '@/lib/db/types'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
-import { createNotification } from '@/lib/db/notifications'
+import { createNotification, resolveCancellationRecipients, upsertNotificationsForRecipients } from '@/lib/db/notifications'
 import { createHorse, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { parseLessonFormData } from './lesson-form-parsing'
 
@@ -15,6 +17,18 @@ function computeCancellationIsLate(lessonAt: string, formData: FormData, allowIn
   const cancelledByInstructor = allowInstructorOverride && formData.get('cancel_type') === 'instructor'
   const within24Hours = new Date(lessonAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000
   return cancelledByInstructor ? false : within24Hours
+}
+
+// upsertNotificationsForRecipients defaults to a raw table upsert that requires a
+// service-role client (see its own comment); these Server Actions run with the acting
+// user's session client instead, so this routes through the create_or_update_notification
+// RPC (SECURITY DEFINER, authorizes on the caller's own membership) to stay RLS-safe when
+// notifying a different user.
+function sendNotificationViaRpc(
+  client: SupabaseClient,
+  params: { userId: string; barnId: string; type: NotificationType; title: string; body: string; link: string }
+): Promise<void> {
+  return createNotification(params, client)
 }
 
 export async function submitLesson(
@@ -161,24 +175,23 @@ export async function cancelLessonAction(
     .map((lr) => lr.barn_membership?.user_id)
     .filter((id): id is string => id != null)
 
-  let recipientIds: string[]
-  if (membership.role === 'trainer') {
-    const managerUserIds = await getActiveManagerUserIds(barnId)
-    recipientIds = [...managerUserIds, ...riderUserIds]
-  } else {
-    recipientIds = lesson.instructor_user_id ? [lesson.instructor_user_id, ...riderUserIds] : riderUserIds
-  }
+  const recipientIds = await resolveCancellationRecipients({
+    scope: 'lesson',
+    actorRole: membership.role,
+    riderUserIds,
+    instructorUserId: lesson.instructor_user_id,
+    getManagerUserIds: () => getActiveManagerUserIds(barnId),
+  })
 
-  await Promise.allSettled(
-    recipientIds.map((userId) =>
-      createNotification({
-        userId,
-        barnId,
-        type: 'lesson_cancelled',
-        title: 'Lesson cancelled',
-        link: `/barn/${barnSlug}/lessons/${lessonId}`,
-      })
-    )
+  const supabase = await createClient()
+  const recipients = new Map(recipientIds.map((userId) => [userId, { userId, barnId, payload: undefined }]))
+  await upsertNotificationsForRecipients(
+    supabase,
+    recipients,
+    () => ({ title: 'Lesson cancelled', body: '' }),
+    'lesson_cancelled',
+    () => `/barn/${barnSlug}/lessons/${lessonId}`,
+    sendNotificationViaRpc
   )
 
   redirect(`/barn/${barnSlug}/lessons`)
@@ -233,31 +246,23 @@ export async function cancelRiderParticipationAction(
   const notes = (formData.get('notes') as string | null)?.trim() || null
   await cancelRiderParticipation(lessonId, barnId, riderId, notes, isLate)
 
-  let recipientIds: string[]
-  if (membership.role === 'rider') {
-    const managerUserIds = await getActiveManagerUserIds(barnId)
-    recipientIds = lesson.instructor_user_id ? [lesson.instructor_user_id, ...managerUserIds] : managerUserIds
-  } else {
-    const affectedUserId = targetRider.barn_membership.user_id
-    const riderRecipients = affectedUserId ? [affectedUserId] : []
-    if (membership.role === 'trainer') {
-      const managerUserIds = await getActiveManagerUserIds(barnId)
-      recipientIds = [...riderRecipients, ...managerUserIds]
-    } else {
-      recipientIds = riderRecipients
-    }
-  }
+  const recipientIds = await resolveCancellationRecipients({
+    scope: 'rider_participation',
+    actorRole: membership.role,
+    affectedRiderUserId: targetRider.barn_membership.user_id,
+    instructorUserId: lesson.instructor_user_id,
+    getManagerUserIds: () => getActiveManagerUserIds(barnId),
+  })
 
-  await Promise.allSettled(
-    recipientIds.map((userId) =>
-      createNotification({
-        userId,
-        barnId,
-        type: 'rider_participation_cancelled',
-        title: 'Lesson participation cancelled',
-        link: `/barn/${barnSlug}/lessons/${lessonId}`,
-      })
-    )
+  const supabase = await createClient()
+  const recipients = new Map(recipientIds.map((userId) => [userId, { userId, barnId, payload: undefined }]))
+  await upsertNotificationsForRecipients(
+    supabase,
+    recipients,
+    () => ({ title: 'Lesson participation cancelled', body: '' }),
+    'rider_participation_cancelled',
+    () => `/barn/${barnSlug}/lessons/${lessonId}`,
+    sendNotificationViaRpc
   )
 
   redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
