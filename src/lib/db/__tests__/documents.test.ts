@@ -446,8 +446,8 @@ describe('getDueDocuments', () => {
   it('should_include_trainer_document_with_resolved_membership_and_profile', async () => {
     setupFrom({
       trainerDocs: [trainerDoc],
-      memberships: [{ id: 'mem-9', user_id: 'user-9' }],
-      profiles: [{ user_id: 'user-9', first_name: 'Jane', last_name: 'Trainer' }],
+      memberships: [{ id: 'mem-9', user_id: 'user-9', profile_id: 'profile-9' }],
+      profiles: [{ id: 'profile-9', first_name: 'Jane', last_name: 'Trainer' }],
     })
 
     const result = await getDueDocuments('barn-1', today)
@@ -468,8 +468,8 @@ describe('getDueDocuments', () => {
   it('should_include_rider_document_with_resolved_membership_and_profile', async () => {
     setupFrom({
       riderDocs: [riderDoc],
-      memberships: [{ id: 'mem-8', user_id: 'user-8' }],
-      profiles: [{ user_id: 'user-8', first_name: 'Bob', last_name: 'Rider' }],
+      memberships: [{ id: 'mem-8', user_id: 'user-8', profile_id: 'profile-8' }],
+      profiles: [{ id: 'profile-8', first_name: 'Bob', last_name: 'Rider' }],
     })
 
     const result = await getDueDocuments('barn-1', today)
@@ -503,6 +503,40 @@ describe('getDueDocuments', () => {
     expect(result[0]).toMatchObject({ ownerName: 'Unknown Member', ownerId: 'user-9' })
   })
 
+  it('should_fall_back_to_direct_profile_lookup_for_trainer_document_when_membership_removed', async () => {
+    setupFrom({
+      trainerDocs: [trainerDoc],
+      memberships: [],
+      profiles: [{ user_id: 'user-9', first_name: 'Jane', last_name: 'Trainer' }],
+    })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0]).toMatchObject({ ownerName: 'Jane Trainer', ownerId: 'user-9' })
+  })
+
+  it('should_fall_back_to_direct_profile_lookup_for_rider_document_when_membership_removed', async () => {
+    setupFrom({
+      riderDocs: [riderDoc],
+      memberships: [],
+      profiles: [{ user_id: 'user-8', first_name: 'Bob', last_name: 'Rider' }],
+    })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0]).toMatchObject({ ownerName: 'Bob Rider', ownerId: 'user-8' })
+  })
+
+  it('should_throw_when_fallback_profile_lookup_errors', async () => {
+    setupFrom({
+      trainerDocs: [trainerDoc],
+      memberships: [],
+      errors: { profiles: new Error('fallback profiles error') },
+    })
+
+    await expect(getDueDocuments('barn-1', today)).rejects.toThrow('fallback profiles error')
+  })
+
   it('should_sort_combined_results_by_reminder_date_ascending', async () => {
     setupFrom({
       horseDocs: [horseDoc],
@@ -510,12 +544,12 @@ describe('getDueDocuments', () => {
       riderDocs: [riderDoc],
       horseNames: [{ id: 'horse-1', name: 'Thunderbolt' }],
       memberships: [
-        { id: 'mem-9', user_id: 'user-9' },
-        { id: 'mem-8', user_id: 'user-8' },
+        { id: 'mem-9', user_id: 'user-9', profile_id: 'profile-9' },
+        { id: 'mem-8', user_id: 'user-8', profile_id: 'profile-8' },
       ],
       profiles: [
-        { user_id: 'user-9', first_name: 'Jane', last_name: 'Trainer' },
-        { user_id: 'user-8', first_name: 'Bob', last_name: 'Rider' },
+        { id: 'profile-9', first_name: 'Jane', last_name: 'Trainer' },
+        { id: 'profile-8', first_name: 'Bob', last_name: 'Rider' },
       ],
     })
 
@@ -573,7 +607,11 @@ describe('getDueDocuments', () => {
   })
 
   it('should_throw_when_profiles_query_errors', async () => {
-    setupFrom({ trainerDocs: [trainerDoc], errors: { profiles: new Error('profiles error') } })
+    setupFrom({
+      trainerDocs: [trainerDoc],
+      memberships: [{ id: 'mem-9', user_id: 'user-9', profile_id: 'profile-9' }],
+      errors: { profiles: new Error('profiles error') },
+    })
 
     await expect(getDueDocuments('barn-1', today)).rejects.toThrow('profiles error')
   })

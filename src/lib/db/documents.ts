@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveHorseNames } from './horses'
+import { resolveMemberNamesByUserId } from './barn-memberships'
 import type {
   DueDocument,
   HorseDocument,
@@ -166,24 +167,21 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
     ]),
   ]
 
-  const membershipByUserId = new Map<string, string>()
-  const nameByUserId = new Map<string, string>()
+  const ownersByUserId = await resolveMemberNamesByUserId(ownerUserIds, barnId, supabase)
 
-  if (ownerUserIds.length) {
-    const { data: memberships, error: membershipsError } = await supabase
-      .from('barn_memberships')
-      .select('id, user_id')
-      .eq('barn_id', barnId)
-      .in('user_id', ownerUserIds)
-    if (membershipsError) throw membershipsError
-    for (const m of memberships ?? []) membershipByUserId.set(m.user_id, m.id)
-
+  // A document's owner may no longer have a barn_memberships row (e.g. removed from the
+  // barn) while their profile — and this still-outstanding document — persists; fall back
+  // to a direct profiles lookup by user_id so their name still resolves (membershipId is
+  // not available in that case, so ownerId below falls back to the raw user id).
+  const unresolvedUserIds = ownerUserIds.filter((id) => !ownersByUserId.has(id))
+  const fallbackNameByUserId = new Map<string, string>()
+  if (unresolvedUserIds.length) {
     const { data: profiles, error: profilesError } = await supabase
       .from('profiles')
       .select('user_id, first_name, last_name')
-      .in('user_id', ownerUserIds)
+      .in('user_id', unresolvedUserIds)
     if (profilesError) throw profilesError
-    for (const p of profiles ?? []) nameByUserId.set(p.user_id, `${p.first_name} ${p.last_name}`)
+    for (const p of profiles ?? []) fallbackNameByUserId.set(p.user_id, `${p.first_name} ${p.last_name}`)
   }
 
   const results: DueDocument[] = [
@@ -202,8 +200,8 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: nameByUserId.get(d.trainer_id) ?? 'Unknown Member',
-      ownerId: membershipByUserId.get(d.trainer_id) ?? d.trainer_id,
+      ownerName: ownersByUserId.get(d.trainer_id)?.name ?? fallbackNameByUserId.get(d.trainer_id) ?? 'Unknown Member',
+      ownerId: ownersByUserId.get(d.trainer_id)?.membershipId ?? d.trainer_id,
     })),
     ...riderDocsList.map((d) => ({
       id: d.id,
@@ -211,8 +209,8 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: nameByUserId.get(d.rider_id) ?? 'Unknown Member',
-      ownerId: membershipByUserId.get(d.rider_id) ?? d.rider_id,
+      ownerName: ownersByUserId.get(d.rider_id)?.name ?? fallbackNameByUserId.get(d.rider_id) ?? 'Unknown Member',
+      ownerId: ownersByUserId.get(d.rider_id)?.membershipId ?? d.rider_id,
     })),
   ]
 

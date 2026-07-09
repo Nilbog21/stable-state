@@ -125,9 +125,10 @@ function baseMembershipQuery(supabase: SupabaseClient) {
   return supabase.from('barn_memberships').select('id, user_id, profile_id, invite_token')
 }
 
-// Shared join for getInstructorsByBarn/getActiveMembersWithProfiles/resolveMemberNames —
-// callers each supply their own barn_memberships filter and map the joined rows to their
-// own return shape/fallback (array vs Map, 'Unknown Instructor' vs 'Unknown Member' vs raw id).
+// Shared join for getInstructorsByBarn/getActiveMembersWithProfiles/resolveMemberNames/
+// resolveMemberNamesByUserId — callers each supply their own barn_memberships filter and
+// map the joined rows to their own return shape/fallback (array vs Map, 'Unknown Instructor'
+// vs 'Unknown Member' vs raw id).
 async function joinMembershipsWithProfiles(
   supabase: SupabaseClient,
   applyFilter: (
@@ -214,6 +215,29 @@ export async function resolveMemberNames(
   )
 
   return new Map(rows.map((m) => [m.id, m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.id]))
+}
+
+export async function resolveMemberNamesByUserId(
+  userIds: string[],
+  barnId: string,
+  client?: SupabaseClient
+): Promise<Map<string, { membershipId: string; name: string }>> {
+  if (!userIds.length) return new Map()
+
+  const supabase = client ?? await createClient()
+
+  const rows = await joinMembershipsWithProfiles(supabase, (query) =>
+    query.eq('barn_id', barnId).in('user_id', userIds)
+  )
+
+  return new Map(
+    rows
+      .filter((m): m is MembershipProfileRow & { user_id: string } => m.user_id !== null)
+      .map((m) => [
+        m.user_id,
+        { membershipId: m.id, name: m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.user_id },
+      ])
+  )
 }
 
 export const getBarnMembershipsForUser = cache(async (
