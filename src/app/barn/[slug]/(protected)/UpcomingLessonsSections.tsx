@@ -1,7 +1,8 @@
 'use client'
-import { UpcomingLessonCard, isSameLocalDay } from './UpcomingLessonCard'
-import { UpcomingExpenseCard, isExpenseToday } from './UpcomingExpenseCard'
+import { UpcomingLessonCard } from './UpcomingLessonCard'
+import { UpcomingExpenseCard } from './UpcomingExpenseCard'
 import { EmptyState } from '@/components/EmptyState'
+import { isSameLocalDay, localToday } from '@/lib/local-day'
 import type { LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
 
 const sectionHeadingClass =
@@ -14,7 +15,7 @@ type ScheduleItem =
 function isItemToday(item: ScheduleItem, now: Date): boolean {
   return item.kind === 'lesson'
     ? isSameLocalDay(new Date(item.lesson.lesson_at), now)
-    : isExpenseToday(item.expense.expense_date, now)
+    : item.expense.expense_date === localToday(now)
 }
 
 function ScheduleItemCard({ item, role, slug, viewerMembershipId }: {
