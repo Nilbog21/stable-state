@@ -16,8 +16,10 @@ import { getChargesForSummary, getPaidCharges } from './agreements'
 import type {
   FinancialSummary,
   HorseChargeDetailRow,
+  HorseExpenseSummary,
   HorseIncomeDetailRow,
   HorseIncomeSummary,
+  HorseNetIncomeRow,
   OutstandingCharge,
   OutstandingItem,
   OutstandingLesson,
@@ -27,6 +29,7 @@ import type {
   Role,
   TrainerIncomeSummary,
 } from './types'
+import type { ChargeSummaryRow } from './agreements'
 
 export function splitNetFee(
   fee: number,
@@ -41,6 +44,110 @@ export const NON_LESSON_INCOME_LABEL = 'Non-lesson income'
 export const NO_INSTRUCTOR_LABEL = 'No instructor'
 export const NO_HORSE_LABEL = 'No horse'
 export const NO_RIDER_LABEL = 'No rider'
+
+/**
+ * Shared fold+cut+fallback pipeline: nets the instructor cut once per row, splits
+ * the remainder across `key(row)`'s participant keys, and accumulates rows with no
+ * keys under `fallbackLabel` instead of splitting. Single source of cut-subtraction
+ * (via splitNetFee) and of "no participant" fallback accumulation for all summary
+ * adapters below.
+ */
+export function computeGroupedIncome<T extends { fee: number }>(
+  rows: T[],
+  key: (row: T) => string[],
+  cut: number,
+  fallbackLabel: string
+): Map<string, { total: number; count: number }> {
+  const grouped = new Map<string, { total: number; count: number }>()
+  const add = (k: string, amount: number) => {
+    const existing = grouped.get(k) ?? { total: 0, count: 0 }
+    grouped.set(k, { total: existing.total + amount, count: existing.count + 1 })
+  }
+
+  for (const row of rows) {
+    const keys = key(row)
+    const { netFee, splitAmount } = splitNetFee(row.fee, cut, keys.length || 1)
+    if (!keys.length) {
+      add(fallbackLabel, netFee)
+      continue
+    }
+    for (const k of keys) add(k, splitAmount)
+  }
+
+  return grouped
+}
+
+/**
+ * Resolves names and sorts a grouped map descending by total, always appending the
+ * fallback row (if present) last regardless of its value — the fallback is never
+ * part of the value-sort, matching the pre-refactor behavior where it was pushed
+ * after `.sort()`.
+ */
+function toSortedIncomeRows(
+  grouped: Map<string, { total: number; count: number }>,
+  fallbackLabel: string,
+  nameMap: Map<string, string>
+): { id: string; name: string; totalIncome: number }[] {
+  const fallback = grouped.get(fallbackLabel)
+  const sorted = [...grouped.entries()]
+    .filter(([id]) => id !== fallbackLabel)
+    .map(([id, { total }]) => ({ id, name: nameMap.get(id) ?? id, totalIncome: total }))
+    .sort((a, b) => b.totalIncome - a.totalIncome)
+
+  if (fallback) sorted.push({ id: fallbackLabel, name: fallbackLabel, totalIncome: fallback.total })
+
+  return sorted
+}
+
+/** Single source of the NON_LESSON_INCOME_LABEL synthetic row's count/total math. */
+function foldChargesCollected(charges: Pick<ChargeSummaryRow, 'fee' | 'payment_type'>[]): { count: number; total: number } {
+  const paid = charges.filter((c) => c.payment_type !== null)
+  return { count: paid.length, total: paid.reduce((sum, c) => sum + c.fee, 0) }
+}
+
+/** Shared body for getHorseIncomeDetail/getRiderIncomeDetail — per-lesson rows for a single target participant. */
+function computeDetailRows<P>(
+  lessons: { id: string; fee: number; lesson_at: string }[],
+  participantsByLessonId: (lessonId: string) => P[],
+  getParticipantKey: (p: P) => string,
+  targetId: string,
+  cut: number
+): { lessonId: string; lessonAt: string; fee: number; count: number; splitAmount: number }[] {
+  const rows: { lessonId: string; lessonAt: string; fee: number; count: number; splitAmount: number }[] = []
+
+  for (const lesson of lessons) {
+    const participants = participantsByLessonId(lesson.id)
+    if (!participants.some((p) => getParticipantKey(p) === targetId)) continue
+    const count = participants.length
+    const { netFee, splitAmount } = splitNetFee(lesson.fee, cut, count)
+    rows.push({ lessonId: lesson.id, lessonAt: lesson.lesson_at, fee: netFee, count, splitAmount })
+  }
+
+  return rows
+}
+
+export function computeHorseNetIncome(
+  horseIncome: HorseIncomeSummary[],
+  expenseBreakdown: HorseExpenseSummary[]
+): HorseNetIncomeRow[] {
+  const expenseByHorse = new Map(expenseBreakdown.map((e) => [e.horseId, e]))
+  const incomeByHorse = new Map(horseIncome.map((h) => [h.horseId, h]))
+
+  return [...new Set([...incomeByHorse.keys(), ...expenseByHorse.keys()])]
+    .map((horseId) => {
+      const income = incomeByHorse.get(horseId)
+      const expenses = expenseByHorse.get(horseId)
+      return {
+        horseId,
+        // horseId always comes from one of the two maps' keys, so this is never undefined
+        horseName: (income ?? expenses)!.horseName,
+        income: income?.totalIncome ?? 0,
+        expenses: expenses?.totalExpenses ?? 0,
+        net: (income?.totalIncome ?? 0) - (expenses?.totalExpenses ?? 0),
+      }
+    })
+    .sort((a, b) => b.income - a.income || a.horseName.localeCompare(b.horseName))
+}
 
 export function mergeOutstandingItems(lessons: OutstandingLesson[], charges: OutstandingCharge[]): OutstandingItem[] {
   const lessonItems: OutstandingItem[] = lessons.map((l) => ({
@@ -76,55 +183,44 @@ export async function getFinancialSummary(
     getChargesForSummary(barnId, startDate, endDate, supabase),
   ])
 
-  const tierMap = new Map<string, { lessonCount: number; subtotal: number }>()
-  let collectedIncome = 0
-  let pendingIncome = 0
+  const paidLessons = lessons.filter((l) => l.payment_type !== null)
+  const tierGroups = computeGroupedIncome(paidLessons, (l) => [l.tier_name || 'Custom'], instructorCut, 'Custom')
 
-  for (const lesson of lessons) {
-    const netFee = lesson.fee - instructorCut
-    if (lesson.payment_type !== null) {
-      collectedIncome += netFee
-      const tierName = lesson.tier_name || 'Custom'
-      const existing = tierMap.get(tierName) ?? { lessonCount: 0, subtotal: 0 }
-      tierMap.set(tierName, { lessonCount: existing.lessonCount + 1, subtotal: existing.subtotal + netFee })
-    } else if (new Date(lesson.lesson_at) > now) {
-      pendingIncome += netFee
-    }
-  }
+  let collectedIncome = 0
+  for (const { total } of tierGroups.values()) collectedIncome += total
+
+  let pendingIncome = lessons
+    .filter((l) => l.payment_type === null && new Date(l.lesson_at) > now)
+    .reduce((sum, l) => sum + (l.fee - instructorCut), 0)
 
   const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10)
 
-  let chargesCollected = 0
-  let chargesCount = 0
-  for (const charge of charges) {
-    if (charge.payment_type !== null) {
-      chargesCollected += charge.fee
-      chargesCount += 1
-    } else if (charge.period >= firstOfCurrentMonth) {
-      pendingIncome += charge.fee
-    }
-  }
-  collectedIncome += chargesCollected
+  pendingIncome += charges
+    .filter((c) => c.payment_type === null && c.period >= firstOfCurrentMonth)
+    .reduce((sum, c) => sum + c.fee, 0)
 
-  const nonCustomTierNames = [...tierMap.keys()].filter((n) => n !== 'Custom')
+  const chargesFold = foldChargesCollected(charges)
+  collectedIncome += chargesFold.total
+
+  const nonCustomTierNames = [...tierGroups.keys()].filter((n) => n !== 'Custom')
   const tierPrices = new Map<string, number>()
   if (nonCustomTierNames.length) {
     const tiers = await getTierPricesByNames(barnId, nonCustomTierNames, supabase)
     for (const t of tiers) tierPrices.set(t.name, t.price)
   }
 
-  const breakdown = Array.from(tierMap.entries())
-    .map(([tierName, { lessonCount, subtotal }]) => ({
+  const breakdown = Array.from(tierGroups.entries())
+    .map(([tierName, { count, total }]) => ({
       tierName,
       price: tierName === 'Custom' ? null : (tierPrices.get(tierName) ?? null),
-      lessonCount,
-      subtotal,
-      instructorCut: instructorCut * lessonCount,
+      lessonCount: count,
+      subtotal: total,
+      instructorCut: instructorCut * count,
     }))
     .sort((a, b) => a.tierName.localeCompare(b.tierName))
 
-  if (chargesCount > 0) {
-    breakdown.push({ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: chargesCount, subtotal: chargesCollected, instructorCut: 0 })
+  if (chargesFold.count > 0) {
+    breakdown.push({ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: chargesFold.count, subtotal: chargesFold.total, instructorCut: 0 })
   }
 
   return { collectedIncome, pendingIncome, breakdown }
@@ -180,49 +276,33 @@ export async function getHorseIncomeSummary(
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
-  const incomeMap = new Map<string, number>()
-  let noHorseCount = 0
-  let noHorseTotal = 0
-
+  let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
     const lessonIds = lessons.map((l) => l.id)
     const lessonHorses = await getLessonHorsesForLessons(barnId, lessonIds, supabase)
-    for (const lesson of lessons) {
-      const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
-      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, participants.length || 1)
-      if (!participants.length) {
-        noHorseCount += 1
-        noHorseTotal += netFee
-        continue
-      }
-      for (const { horse_id } of participants) {
-        incomeMap.set(horse_id, (incomeMap.get(horse_id) ?? 0) + splitAmount)
-      }
-    }
+    grouped = computeGroupedIncome(
+      lessons,
+      (l) => lessonHorses.filter((lh) => lh.lesson_id === l.id).map((lh) => lh.horse_id),
+      instructorCut,
+      NO_HORSE_LABEL
+    )
   }
 
   for (const charge of charges) {
-    incomeMap.set(charge.horseId, (incomeMap.get(charge.horseId) ?? 0) + charge.fee)
+    const existing = grouped.get(charge.horseId) ?? { total: 0, count: 0 }
+    grouped.set(charge.horseId, { total: existing.total + charge.fee, count: existing.count + 1 })
   }
 
-  if (!incomeMap.size && noHorseCount === 0) return []
+  if (!grouped.size) return []
 
-  const horseIds = [...incomeMap.keys()]
+  const horseIds = [...grouped.keys()].filter((id) => id !== NO_HORSE_LABEL)
   const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
 
-  const rows = Array.from(incomeMap.entries())
-    .map(([horseId, totalIncome]) => ({
-      horseId,
-      horseName: horseNameMap.get(horseId) ?? horseId,
-      totalIncome,
-    }))
-    .sort((a, b) => b.totalIncome - a.totalIncome)
-
-  if (noHorseCount > 0) {
-    rows.push({ horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: noHorseTotal })
-  }
-
-  return rows
+  return toSortedIncomeRows(grouped, NO_HORSE_LABEL, horseNameMap).map((r) => ({
+    horseId: r.id,
+    horseName: r.name,
+    totalIncome: r.totalIncome,
+  }))
 }
 
 export async function getRiderIncomeSummary(
@@ -238,49 +318,33 @@ export async function getRiderIncomeSummary(
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
-  const incomeMap = new Map<string, number>()
-  let noRiderCount = 0
-  let noRiderTotal = 0
-
+  let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
     const lessonIds = lessons.map((l) => l.id)
     const lessonRiders = await getLessonRidersForLessons(barnId, lessonIds, supabase)
-    for (const lesson of lessons) {
-      const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
-      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, participants.length || 1)
-      if (!participants.length) {
-        noRiderCount += 1
-        noRiderTotal += netFee
-        continue
-      }
-      for (const { rider_id } of participants) {
-        incomeMap.set(rider_id, (incomeMap.get(rider_id) ?? 0) + splitAmount)
-      }
-    }
+    grouped = computeGroupedIncome(
+      lessons,
+      (l) => lessonRiders.filter((lr) => lr.lesson_id === l.id).map((lr) => lr.rider_id),
+      instructorCut,
+      NO_RIDER_LABEL
+    )
   }
 
   for (const charge of charges) {
-    incomeMap.set(charge.riderId, (incomeMap.get(charge.riderId) ?? 0) + charge.fee)
+    const existing = grouped.get(charge.riderId) ?? { total: 0, count: 0 }
+    grouped.set(charge.riderId, { total: existing.total + charge.fee, count: existing.count + 1 })
   }
 
-  if (!incomeMap.size && noRiderCount === 0) return []
+  if (!grouped.size) return []
 
-  const riderIds = [...incomeMap.keys()]
+  const riderIds = [...grouped.keys()].filter((id) => id !== NO_RIDER_LABEL)
   const memberNameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
-  const rows = Array.from(incomeMap.entries())
-    .map(([riderId, totalIncome]) => ({
-      riderId,
-      riderName: memberNameMap.get(riderId) ?? riderId,
-      totalIncome,
-    }))
-    .sort((a, b) => b.totalIncome - a.totalIncome)
-
-  if (noRiderCount > 0) {
-    rows.push({ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: noRiderTotal })
-  }
-
-  return rows
+  return toSortedIncomeRows(grouped, NO_RIDER_LABEL, memberNameMap).map((r) => ({
+    riderId: r.id,
+    riderName: r.name,
+    totalIncome: r.totalIncome,
+  }))
 }
 
 export async function getTrainerIncomeSummary(
@@ -296,39 +360,29 @@ export async function getTrainerIncomeSummary(
     getChargesForSummary(barnId, startDate, endDate, supabase),
   ])
 
-  const collected = lessons.filter(
-    (l): l is { instructor_id: string; fee: number } => l.instructor_id !== null
+  const grouped = computeGroupedIncome(
+    lessons,
+    (l) => (l.instructor_id ? [l.instructor_id] : []),
+    instructorCut,
+    NO_INSTRUCTOR_LABEL
   )
-  const noInstructor = lessons.filter((l) => l.instructor_id === null)
 
-  let result: TrainerIncomeSummary[] = []
-
-  if (collected.length) {
-    const instructorIds = [...new Set(collected.map((l) => l.instructor_id))]
-    const memberNameMap = await resolveMemberNames(instructorIds, barnId, supabase)
-
-    const incomeMap = new Map<string, number>()
-    for (const lesson of collected) {
-      incomeMap.set(lesson.instructor_id, (incomeMap.get(lesson.instructor_id) ?? 0) + (lesson.fee - instructorCut))
-    }
-
-    result = Array.from(incomeMap.entries())
-      .map(([trainerId, totalIncome]) => ({
-        trainerId,
-        trainerName: memberNameMap.get(trainerId) ?? trainerId,
-        totalIncome,
-      }))
-      .sort((a, b) => b.totalIncome - a.totalIncome)
+  const hasCollected = [...grouped.keys()].some((id) => id !== NO_INSTRUCTOR_LABEL)
+  let memberNameMap = new Map<string, string>()
+  if (hasCollected) {
+    const instructorIds = [...grouped.keys()].filter((id) => id !== NO_INSTRUCTOR_LABEL)
+    memberNameMap = await resolveMemberNames(instructorIds, barnId, supabase)
   }
 
-  if (noInstructor.length) {
-    const noInstructorTotal = noInstructor.reduce((sum, l) => sum + (l.fee - instructorCut), 0)
-    result.push({ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: noInstructorTotal })
-  }
+  const result: TrainerIncomeSummary[] = toSortedIncomeRows(grouped, NO_INSTRUCTOR_LABEL, memberNameMap).map((r) => ({
+    trainerId: r.id,
+    trainerName: r.name,
+    totalIncome: r.totalIncome,
+  }))
 
-  const chargesCollected = charges.filter((c) => c.payment_type !== null).reduce((sum, c) => sum + c.fee, 0)
-  if (chargesCollected > 0) {
-    result.push({ trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: chargesCollected })
+  const chargesFold = foldChargesCollected(charges)
+  if (chargesFold.total > 0) {
+    result.push({ trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: chargesFold.total })
   }
 
   return result
@@ -351,23 +405,17 @@ export async function getHorseIncomeDetail(
   const horseNameMap = await resolveHorseNames([horseId], barnId, supabase)
   const horseName = horseNameMap.get(horseId) ?? horseId
 
-  const rows: HorseIncomeDetailRow[] = []
+  let rows: HorseIncomeDetailRow[] = []
   if (lessonsData.length) {
     const lessonIds = lessonsData.map((l) => l.id)
     const lessonHorses = await getLessonHorsesForLessons(barnId, lessonIds, supabase)
-    for (const lesson of lessonsData) {
-      const participants = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
-      if (!participants.some((lh) => lh.horse_id === horseId)) continue
-      const horseCount = participants.length
-      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, horseCount)
-      rows.push({
-        lessonId: lesson.id,
-        lessonAt: lesson.lesson_at,
-        fee: netFee,
-        horseCount,
-        splitAmount,
-      })
-    }
+    rows = computeDetailRows(
+      lessonsData,
+      (lessonId) => lessonHorses.filter((lh) => lh.lesson_id === lessonId),
+      (lh) => lh.horse_id,
+      horseId,
+      instructorCut
+    ).map((d) => ({ lessonId: d.lessonId, lessonAt: d.lessonAt, fee: d.fee, horseCount: d.count, splitAmount: d.splitAmount }))
   }
 
   const chargeRows: HorseChargeDetailRow[] = charges
@@ -395,23 +443,17 @@ export async function getRiderIncomeDetail(
   const memberNameMap = await resolveMemberNames([riderId], barnId, supabase)
   const riderName = memberNameMap.get(riderId) ?? riderId
 
-  const rows: RiderIncomeDetailRow[] = []
+  let rows: RiderIncomeDetailRow[] = []
   if (lessonsData.length) {
     const lessonIds = lessonsData.map((l) => l.id)
     const lessonRiders = await getLessonRidersForLessons(barnId, lessonIds, supabase)
-    for (const lesson of lessonsData) {
-      const participants = lessonRiders.filter((lr) => lr.lesson_id === lesson.id)
-      if (!participants.some((lr) => lr.rider_id === riderId)) continue
-      const riderCount = participants.length
-      const { netFee, splitAmount } = splitNetFee(lesson.fee, instructorCut, riderCount)
-      rows.push({
-        lessonId: lesson.id,
-        lessonAt: lesson.lesson_at,
-        fee: netFee,
-        riderCount,
-        splitAmount,
-      })
-    }
+    rows = computeDetailRows(
+      lessonsData,
+      (lessonId) => lessonRiders.filter((lr) => lr.lesson_id === lessonId),
+      (lr) => lr.rider_id,
+      riderId,
+      instructorCut
+    ).map((d) => ({ lessonId: d.lessonId, lessonAt: d.lessonAt, fee: d.fee, riderCount: d.count, splitAmount: d.splitAmount }))
   }
 
   const chargeRows: RiderChargeDetailRow[] = charges
