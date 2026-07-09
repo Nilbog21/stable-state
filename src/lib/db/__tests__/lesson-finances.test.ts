@@ -71,14 +71,12 @@ describe('computeGroupedIncome', () => {
 
   it('should_split_net_fee_evenly_across_multiple_keys', () => {
     const result = computeGroupedIncome([{ fee: 100 }], () => ['a', 'b'], 0, 'FALLBACK')
-    expect(result.get('a')?.total).toBe(50)
-    expect(result.get('b')?.total).toBe(50)
+    expect([result.get('a')?.total, result.get('b')?.total]).toEqual([50, 50])
   })
 
   it('should_subtract_cut_once_per_row_before_splitting', () => {
     const result = computeGroupedIncome([{ fee: 100 }], () => ['a', 'b'], 20, 'FALLBACK')
-    expect(result.get('a')?.total).toBe(40)
-    expect(result.get('b')?.total).toBe(40)
+    expect([result.get('a')?.total, result.get('b')?.total]).toEqual([40, 40])
   })
 
   it('should_accumulate_net_fee_under_fallback_label_when_no_keys', () => {
@@ -1248,12 +1246,12 @@ describe('getTrainerIncomeSummary', () => {
     expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100 }])
   })
 
-  it('should_not_resolve_member_names_when_no_collected_lessons', async () => {
+  it('should_resolve_member_names_with_empty_array_when_no_collected_lessons', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
 
     await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(resolveMemberNames).not.toHaveBeenCalled()
+    expect(resolveMemberNames).toHaveBeenCalledWith([], 'barn-1', expect.anything())
   })
 
   it('should_return_full_fee_for_single_trainer', async () => {

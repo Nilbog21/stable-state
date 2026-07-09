@@ -191,7 +191,7 @@ export async function getFinancialSummary(
 
   let pendingIncome = lessons
     .filter((l) => l.payment_type === null && new Date(l.lesson_at) > now)
-    .reduce((sum, l) => sum + (l.fee - instructorCut), 0)
+    .reduce((sum, l) => sum + splitNetFee(l.fee, instructorCut, 1).netFee, 0)
 
   const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10)
 
@@ -367,12 +367,8 @@ export async function getTrainerIncomeSummary(
     NO_INSTRUCTOR_LABEL
   )
 
-  const hasCollected = [...grouped.keys()].some((id) => id !== NO_INSTRUCTOR_LABEL)
-  let memberNameMap = new Map<string, string>()
-  if (hasCollected) {
-    const instructorIds = [...grouped.keys()].filter((id) => id !== NO_INSTRUCTOR_LABEL)
-    memberNameMap = await resolveMemberNames(instructorIds, barnId, supabase)
-  }
+  const instructorIds = [...grouped.keys()].filter((id) => id !== NO_INSTRUCTOR_LABEL)
+  const memberNameMap = await resolveMemberNames(instructorIds, barnId, supabase)
 
   const result: TrainerIncomeSummary[] = toSortedIncomeRows(grouped, NO_INSTRUCTOR_LABEL, memberNameMap).map((r) => ({
     trainerId: r.id,
