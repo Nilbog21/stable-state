@@ -7,7 +7,7 @@ import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/li
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
-import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
+import type { TrainerDocumentType, RiderDocumentType, BarnMembership, Barn } from '@/lib/db/types'
 
 const TRAINER_RECORD_TYPES = new Set<TrainerDocumentType>(['instructor_contract', 'other'])
 const RIDER_RECORD_TYPES = new Set<RiderDocumentType>(['liability_waiver', 'lease_agreement', 'boarding_contract', 'other'])
@@ -19,13 +19,15 @@ function canManage(callerRole: string, isOwnPage: boolean): boolean {
   return false
 }
 
-export async function uploadDocumentAction(
-  barnSlug: string,
+async function resolveManageableTarget(
+  barn: Barn,
+  callerMembership: BarnMembership,
   membershipId: string,
-  formData: FormData
-): Promise<{ error: string | null }> {
-  const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
-
+  callerUserId: string
+): Promise<
+  | { error: string }
+  | { targetMembership: BarnMembership & { user_id: string }; entity: 'rider' | 'trainer' }
+> {
   const targetMembership = await getMembershipById(membershipId)
   if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
 
@@ -33,12 +35,29 @@ export async function uploadDocumentAction(
     return { error: 'Forbidden' }
   }
 
-  const isOwnPage = targetMembership.user_id === user.id
+  const isOwnPage = targetMembership.user_id === callerUserId
   if (!canManage(callerMembership.role, isOwnPage)) {
     return { error: 'Forbidden' }
   }
 
   if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
+
+  return {
+    targetMembership: targetMembership as BarnMembership & { user_id: string },
+    entity: targetMembership.role === 'rider' ? 'rider' : 'trainer',
+  }
+}
+
+export async function uploadDocumentAction(
+  barnSlug: string,
+  membershipId: string,
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+
+  const resolved = await resolveManageableTarget(barn, callerMembership, membershipId, user.id)
+  if ('error' in resolved) return { error: resolved.error }
+  const { targetMembership, entity } = resolved
 
   const file = formData.get('file') as File | null
   let ext: string
@@ -49,7 +68,7 @@ export async function uploadDocumentAction(
   }
 
   const recordType = formData.get('record_type') as string
-  const validTypes = targetMembership.role === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
+  const validTypes = entity === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
   if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) {
     return { error: 'Invalid record type' }
   }
@@ -70,7 +89,7 @@ export async function uploadDocumentAction(
   }
 
   try {
-    if (targetMembership.role === 'rider') {
+    if (entity === 'rider') {
       await createDocument('rider', barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
     } else {
       await createDocument('trainer', barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
@@ -92,22 +111,12 @@ export async function deleteDocumentAction(
 ): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const targetMembership = await getMembershipById(membershipId)
-  if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
-
-  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
-    return { error: 'Forbidden' }
-  }
-
-  const isOwnPage = targetMembership.user_id === user.id
-  if (!canManage(callerMembership.role, isOwnPage)) {
-    return { error: 'Forbidden' }
-  }
-
-  if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
+  const resolved = await resolveManageableTarget(barn, callerMembership, membershipId, user.id)
+  if ('error' in resolved) return { error: resolved.error }
+  const { targetMembership, entity } = resolved
 
   try {
-    if (targetMembership.role === 'rider') {
+    if (entity === 'rider') {
       await deleteDocument('rider', docId, targetMembership.user_id, barn.id)
     } else {
       await deleteDocument('trainer', docId, targetMembership.user_id, barn.id)
