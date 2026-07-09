@@ -126,7 +126,8 @@ function baseMembershipQuery(supabase: SupabaseClient) {
 }
 
 // Shared join for getInstructorsByBarn/getActiveMembersWithProfiles/resolveMemberNames —
-// only the barn_memberships filter differs between callers.
+// callers each supply their own barn_memberships filter and map the joined rows to their
+// own return shape/fallback (array vs Map, 'Unknown Instructor' vs 'Unknown Member' vs raw id).
 async function joinMembershipsWithProfiles(
   supabase: SupabaseClient,
   applyFilter: (
