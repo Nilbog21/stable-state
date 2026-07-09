@@ -2,6 +2,7 @@ import { fileURLToPath } from 'url'
 import * as readline from 'readline'
 import { createClient } from '@supabase/supabase-js'
 import { getBarnBySlug } from '@/lib/db/barns'
+import { assertDevProject } from './script-utils'
 
 export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
   const err = result.error as { message?: string } | null
@@ -47,6 +48,7 @@ async function run() {
   if (!DEV_EMAIL) throw new Error('DEV_EMAIL is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
   if (!BARN_SLUG) throw new Error('CHANGE_USER_BARN_SLUG is required')
+  assertDevProject(SUPABASE_URL)
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
