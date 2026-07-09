@@ -23,7 +23,6 @@ import {
   getChargesForSummary,
   getPaidCharges,
   getOutstandingCharges,
-  getAgreementsMapForCharges,
 } from '../agreements'
 
 const mockAgreement = createMockAgreement()
@@ -573,55 +572,6 @@ describe('getChargesForSummary', () => {
   })
 })
 
-describe('getAgreementsMapForCharges', () => {
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    return { client: { from } as any, from, mockEq, mockIn }
-  }
-
-  it('should_query_the_agreements_table', async () => {
-    const { client, from } = makeChain([])
-    await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
-    expect(from).toHaveBeenCalledWith('agreements')
-  })
-
-  it('should_filter_by_barn_id', async () => {
-    const { client, mockEq } = makeChain([])
-    await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
-    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_filter_by_the_given_agreement_ids', async () => {
-    const { client, mockIn } = makeChain([])
-    await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1', 'agreement-2'])
-    expect(mockIn).toHaveBeenCalledWith('id', ['agreement-1', 'agreement-2'])
-  })
-
-  it('should_return_a_map_keyed_by_agreement_id', async () => {
-    const { client } = makeChain([{ id: 'agreement-1', kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' }])
-    const result = await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
-    expect(result.get('agreement-1')).toEqual({ id: 'agreement-1', kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' })
-  })
-
-  it('should_return_an_empty_map_when_data_is_null', async () => {
-    const { client } = makeChain(null)
-    const result = await getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])
-    expect(result.size).toBe(0)
-  })
-
-  it('should_throw_when_the_query_returns_an_error', async () => {
-    const { client } = makeChain(null, new Error('agreements error'))
-    await expect(getAgreementsMapForCharges(client, 'barn-1', ['agreement-1'])).rejects.toThrow('agreements error')
-  })
-})
-
 describe('getPaidCharges', () => {
   const startDate = new Date('2026-07-01T00:00:00Z')
   const endDate = new Date('2026-08-01T00:00:00Z')
@@ -726,23 +676,11 @@ describe('getOutstandingCharges', () => {
     return { select: mockSelect, mockEq, mockIs, mockLt, mockIn, mockOrder }
   }
 
-  function makeAgreementsJoinChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockIn }
-  }
-
-  function makeManagerChain(
-    chargesData: unknown[] | null,
-    chargesError: Error | null = null,
-    agreementsData: unknown[] | null = []
-  ) {
+  function makeManagerChain(chargesData: unknown[] | null, chargesError: Error | null = null) {
     const charges = makeChargesChain(chargesData, chargesError)
-    const agreements = makeAgreementsJoinChain(agreementsData)
-    const from = vi.fn((table: string) => (table === 'agreement_charges' ? { select: charges.select } : { select: agreements.select }))
+    const from = vi.fn().mockReturnValue({ select: charges.select })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, charges, agreements }
+    return { from, charges }
   }
 
   function makeMembershipChain(data: unknown, error: Error | null = null) {
@@ -769,7 +707,6 @@ describe('getOutstandingCharges', () => {
     riderAgreementsError = null,
     chargesData = [],
     chargesError = null,
-    joinAgreementsData = [],
   }: {
     membershipData: unknown
     membershipError?: Error | null
@@ -777,28 +714,32 @@ describe('getOutstandingCharges', () => {
     riderAgreementsError?: Error | null
     chargesData?: unknown[] | null
     chargesError?: Error | null
-    joinAgreementsData?: unknown[] | null
   }) {
     const membership = makeMembershipChain(membershipData, membershipError)
     const riderAgreements = makeRiderAgreementsChain(riderAgreementsData, riderAgreementsError)
-    const joinAgreements = makeAgreementsJoinChain(joinAgreementsData)
     const charges = makeChargesChain(chargesData, chargesError)
 
-    let agreementsCallCount = 0
     const from = vi.fn((table: string) => {
       if (table === 'barn_memberships') return { select: membership.select }
       if (table === 'agreement_charges') return { select: charges.select }
-      agreementsCallCount += 1
-      return { select: agreementsCallCount === 1 ? riderAgreements.select : joinAgreements.select }
+      return { select: riderAgreements.select }
     })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, membership, riderAgreements, charges, joinAgreements }
+    return { from, membership, riderAgreements, charges }
   }
 
   it('should_return_empty_array_without_querying_when_role_is_trainer', async () => {
     const result = await getOutstandingCharges('barn-1', 'user-trainer', 'trainer')
     expect(result).toEqual([])
     expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('should_select_with_the_agreements_fk_hint_embed', async () => {
+    const { charges } = makeManagerChain([])
+    await getOutstandingCharges('barn-1')
+    expect(charges.select).toHaveBeenCalledWith(
+      'id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)'
+    )
   })
 
   it('should_filter_by_barn_id_for_manager_role', async () => {
@@ -833,47 +774,23 @@ describe('getOutstandingCharges', () => {
     expect(charges.mockOrder).toHaveBeenCalledWith('period', { ascending: true })
   })
 
-  it('should_skip_the_agreements_query_when_there_are_no_charge_rows', async () => {
-    const { from } = makeManagerChain([])
-    await getOutstandingCharges('barn-1')
-    expect(from).not.toHaveBeenCalledWith('agreements')
-  })
-
   it('should_map_and_resolve_rider_names_for_manager_role', async () => {
-    makeManagerChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200 }],
-      null,
-      [{ id: 'agreement-1', kind: 'lease', rider_id: 'rider-1' }]
-    )
+    makeManagerChain([{
+      id: 'charge-1', period: '2026-06-01', fee: 200,
+      agreements: { kind: 'lease', rider_id: 'rider-1' },
+    }])
     const result = await getOutstandingCharges('barn-1')
     expect(result).toEqual([{ id: 'charge-1', period: '2026-06-01', kind: 'lease', riderName: 'Alice Rider', fee: 200 }])
   })
 
-  it('should_treat_a_null_agreements_join_response_as_no_matches', async () => {
-    makeManagerChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200 }],
-      null,
-      null
-    )
-    const result = await getOutstandingCharges('barn-1')
-    expect(result).toEqual([])
-  })
-
   it('should_fall_back_to_rider_id_when_name_not_resolved', async () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    makeManagerChain(
-      [{ id: 'charge-1', agreement_id: 'agreement-9', period: '2026-06-01', fee: 200 }],
-      null,
-      [{ id: 'agreement-9', kind: 'board', rider_id: 'rider-9' }]
-    )
+    makeManagerChain([{
+      id: 'charge-1', period: '2026-06-01', fee: 200,
+      agreements: { kind: 'board', rider_id: 'rider-9' },
+    }])
     const result = await getOutstandingCharges('barn-1')
     expect(result[0].riderName).toBe('rider-9')
-  })
-
-  it('should_skip_a_charge_row_whose_agreement_was_not_found', async () => {
-    makeManagerChain([{ id: 'charge-1', agreement_id: 'agreement-missing', period: '2026-06-01', fee: 200 }], null, [])
-    const result = await getOutstandingCharges('barn-1')
-    expect(result).toEqual([])
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {
@@ -885,12 +802,6 @@ describe('getOutstandingCharges', () => {
   it('should_throw_when_charges_query_returns_an_error', async () => {
     makeManagerChain(null, new Error('db error'))
     await expect(getOutstandingCharges('barn-1')).rejects.toThrow('db error')
-  })
-
-  it('should_throw_when_agreements_join_query_returns_an_error', async () => {
-    const { agreements } = makeManagerChain([{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200 }])
-    agreements.mockIn.mockResolvedValue({ data: null, error: new Error('agreements error') })
-    await expect(getOutstandingCharges('barn-1')).rejects.toThrow('agreements error')
   })
 
   it('should_return_empty_array_when_rider_has_no_active_membership', async () => {
@@ -946,8 +857,10 @@ describe('getOutstandingCharges', () => {
     makeRiderChain({
       membershipData: { id: 'membership-1' },
       riderAgreementsData: [{ id: 'agreement-1' }],
-      chargesData: [{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200 }],
-      joinAgreementsData: [{ id: 'agreement-1', kind: 'board', rider_id: 'membership-1' }],
+      chargesData: [{
+        id: 'charge-1', period: '2026-06-01', fee: 200,
+        agreements: { kind: 'board', rider_id: 'membership-1' },
+      }],
     })
     const result = await getOutstandingCharges('barn-1', 'user-rider', 'rider')
     expect(result).toEqual([{ id: 'charge-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 200 }])
