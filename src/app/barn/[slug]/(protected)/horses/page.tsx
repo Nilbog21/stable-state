@@ -60,9 +60,7 @@ export default async function HorsesPage({
             required
             className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
           />
-          <Button type="submit" size="sm">
-            Add
-          </Button>
+          <Button type="submit">Add</Button>
         </form>
       )}
 
