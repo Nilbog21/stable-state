@@ -5,7 +5,7 @@ import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import type { PaymentType } from '@/lib/db/types'
-import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
@@ -271,10 +271,7 @@ export async function cancelLessonAction(
 
   let recipientIds: string[]
   if (membership.role === 'trainer') {
-    const barnMembers = await getActiveMemberships(barnId)
-    const managerUserIds = barnMembers
-      .filter((m) => m.role === 'manager' && m.user_id !== null)
-      .map((m) => m.user_id as string)
+    const managerUserIds = await getActiveManagerUserIds(barnId)
     recipientIds = [...managerUserIds, ...riderUserIds]
   } else {
     recipientIds = lesson.instructor_user_id ? [lesson.instructor_user_id, ...riderUserIds] : riderUserIds
@@ -346,19 +343,13 @@ export async function cancelRiderParticipationAction(
 
   let recipientIds: string[]
   if (membership.role === 'rider') {
-    const barnMembers = await getActiveMemberships(barnId)
-    const managerUserIds = barnMembers
-      .filter((m) => m.role === 'manager' && m.user_id !== null)
-      .map((m) => m.user_id as string)
+    const managerUserIds = await getActiveManagerUserIds(barnId)
     recipientIds = lesson.instructor_user_id ? [lesson.instructor_user_id, ...managerUserIds] : managerUserIds
   } else {
     const affectedUserId = targetRider.barn_membership.user_id
     const riderRecipients = affectedUserId ? [affectedUserId] : []
     if (membership.role === 'trainer') {
-      const barnMembers = await getActiveMemberships(barnId)
-      const managerUserIds = barnMembers
-        .filter((m) => m.role === 'manager' && m.user_id !== null)
-        .map((m) => m.user_id as string)
+      const managerUserIds = await getActiveManagerUserIds(barnId)
       recipientIds = [...riderRecipients, ...managerUserIds]
     } else {
       recipientIds = riderRecipients

@@ -29,7 +29,7 @@ vi.mock('@/lib/db/lesson-series', () => ({
 vi.mock('@/lib/db/barn-memberships', () => ({
   getInstructorsByBarn: vi.fn(),
   getActiveMembersWithProfiles: vi.fn(),
-  getActiveMemberships: vi.fn(),
+  getActiveManagerUserIds: vi.fn(),
 }))
 
 vi.mock('@/lib/db/notifications', () => ({
@@ -52,7 +52,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
-import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
@@ -623,7 +623,7 @@ describe('cancelLessonAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getLessonById).mockReset()
     vi.mocked(cancelLesson).mockReset()
-    vi.mocked(getActiveMemberships).mockReset()
+    vi.mocked(getActiveManagerUserIds).mockReset()
     vi.mocked(createNotification).mockReset()
     vi.mocked(redirect).mockReset()
     guardAs(mockManagerMembership)
@@ -631,7 +631,7 @@ describe('cancelLessonAction', () => {
       makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null }, [], 'instructor-1')
     )
     vi.mocked(cancelLesson).mockResolvedValue(undefined)
-    vi.mocked(getActiveMemberships).mockResolvedValue([])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue([])
     vi.mocked(createNotification).mockResolvedValue(undefined)
   })
 
@@ -756,9 +756,7 @@ describe('cancelLessonAction', () => {
   it('should_notify_barn_managers_when_trainer_cancels', async () => {
     guardAs(mockTrainerMembership)
     vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: mockTrainerMembership.id, lesson_at: futureIso }))
-    vi.mocked(getActiveMemberships).mockResolvedValue([
-      createMockMembership({ role: 'manager', user_id: 'manager-1' }),
-    ])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(
       expect.objectContaining({ userId: 'manager-1', type: 'lesson_cancelled' })
@@ -803,9 +801,9 @@ describe('cancelLessonAction', () => {
     expect(createNotification).not.toHaveBeenCalled()
   })
 
-  it('should_not_call_getActiveMemberships_when_manager_cancels', async () => {
+  it('should_not_call_getActiveManagerUserIds_when_manager_cancels', async () => {
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(getActiveMemberships).not.toHaveBeenCalled()
+    expect(getActiveManagerUserIds).not.toHaveBeenCalled()
   })
 
   it('should_link_notification_to_the_lesson_detail_page', async () => {
@@ -849,7 +847,7 @@ describe('cancelRiderParticipationAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getLessonById).mockReset()
     vi.mocked(cancelRiderParticipation).mockReset()
-    vi.mocked(getActiveMemberships).mockReset()
+    vi.mocked(getActiveManagerUserIds).mockReset()
     vi.mocked(createNotification).mockReset()
     vi.mocked(redirect).mockReset()
     guardAs(mockManagerMembership)
@@ -860,7 +858,7 @@ describe('cancelRiderParticipationAction', () => {
       )
     )
     vi.mocked(cancelRiderParticipation).mockResolvedValue(undefined)
-    vi.mocked(getActiveMemberships).mockResolvedValue([])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue([])
     vi.mocked(createNotification).mockResolvedValue(undefined)
   })
 
@@ -1046,7 +1044,7 @@ describe('cancelRiderParticipationAction', () => {
         'instructor-1'
       )
     )
-    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'instructor-1', type: 'rider_participation_cancelled' }))
   })
@@ -1060,7 +1058,7 @@ describe('cancelRiderParticipationAction', () => {
         'instructor-1'
       )
     )
-    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
   })
@@ -1073,7 +1071,7 @@ describe('cancelRiderParticipationAction', () => {
         [{ id: 'rider-mem-1', user_id: 'user-1' }]
       )
     )
-    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
   })
@@ -1086,7 +1084,7 @@ describe('cancelRiderParticipationAction', () => {
         [{ id: 'rider-mem-1', user_id: 'user-1' }]
       )
     )
-    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledTimes(1)
   })
@@ -1099,7 +1097,7 @@ describe('cancelRiderParticipationAction', () => {
         [{ id: 'rider-mem-1', user_id: 'rider-user-1' }]
       )
     )
-    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1', type: 'rider_participation_cancelled' }))
   })
@@ -1112,7 +1110,7 @@ describe('cancelRiderParticipationAction', () => {
         [{ id: 'rider-mem-1', user_id: 'rider-user-1' }]
       )
     )
-    vi.mocked(getActiveMemberships).mockResolvedValue([createMockMembership({ role: 'manager', user_id: 'manager-1' })])
+    vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
   })
@@ -1127,9 +1125,9 @@ describe('cancelRiderParticipationAction', () => {
     expect(createNotification).toHaveBeenCalledTimes(1)
   })
 
-  it('should_not_call_getActiveMemberships_when_manager_cancels', async () => {
+  it('should_not_call_getActiveManagerUserIds_when_manager_cancels', async () => {
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(getActiveMemberships).not.toHaveBeenCalled()
+    expect(getActiveManagerUserIds).not.toHaveBeenCalled()
   })
 
   it('should_skip_rider_notification_when_affected_rider_user_id_is_null', async () => {
