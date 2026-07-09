@@ -195,14 +195,25 @@ export async function getHorseProjectedExhaustion(
   }))
 }
 
+/**
+ * Resolves a horse's effective exhaustion thresholds, falling back per-field to the
+ * barn's defaults.
+ *
+ * The DB `CHECK (moderate < high)` only fires when both fields are set on the same
+ * row, so it can't see across a horse/barn mix. Overriding only one field at the
+ * horse level (e.g. lowering `high` below the barn's `moderate`, or raising
+ * `moderate` above the barn's `high`) can produce an inverted pair that never
+ * violated either row's own constraint. When both fields are overridden, or
+ * neither is, the same-row CHECK already guarantees ordering and this is a no-op.
+ * `Math.min(moderate, high - 1)` clamps the resolved pair back into order rather
+ * than rejecting or throwing.
+ */
 export function resolveExhaustionThresholds(
   horse: Pick<Horse, 'exhaustion_threshold_high' | 'exhaustion_threshold_moderate'>,
   barn: Barn
 ): { high: number; moderate: number } {
   const high = horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high
   const moderate = horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate
-  // A per-horse override on only one field can invert the pair against the other's barn
-  // default — the DB CHECK only guards moderate < high when both are set on the same row.
   return { high, moderate: Math.min(moderate, high - 1) }
 }
 
