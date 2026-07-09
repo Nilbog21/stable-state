@@ -27,12 +27,26 @@ function computeCancellationIsLate(lessonAt: string, formData: FormData, allowIn
   return cancelledByInstructor ? false : within24Hours
 }
 
-export async function submitLesson(
+type ParsedLessonFormData = {
+  horseIds: string[]
+  newHorseName: string | null
+  newHorseExertionLevel: number
+  exertionLevels: Map<string, number>
+  riderIds: string[]
+  lessonAt: string
+  fee: number
+  lessonType: 'normal' | 'group'
+  jumping: boolean
+  paymentType: PaymentType | null
+  tierName: string
+  instructorId: string
+}
+
+export async function parseLessonFormData(
+  formData: FormData,
   barnId: string,
-  barnSlug: string,
-  prevState: { error: string | null },
-  formData: FormData
-): Promise<{ error: string | null }> {
+  membership: { id: string; role: string }
+): Promise<{ error: string } | { data: ParsedLessonFormData }> {
   const horseIds = formData.getAll('horse_id') as string[]
   const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
   const riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
@@ -43,7 +57,6 @@ export async function submitLesson(
   const jumping = formData.get('jumping') === 'true'
   const paymentTypeRaw = (formData.get('payment_type') as string | null) || null
   const paymentType = paymentTypeRaw as PaymentType | null
-  const isRecurring = formData.get('is_recurring') === 'true'
 
   if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
   const lessonType = lessonTypeRaw as 'normal' | 'group'
@@ -54,8 +67,6 @@ export async function submitLesson(
   if (!lessonAt) return { error: 'date and time required' }
   if (!newHorseName && horseIds.length === 0) return { error: 'horse required' }
   if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
-
-  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   const isManager = membership.role === 'manager'
   const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
@@ -93,13 +104,47 @@ export async function submitLesson(
   const fee = parseFee(feeRaw)
   if (fee == null) return { error: 'fee is required' }
 
+  return {
+    data: {
+      horseIds,
+      newHorseName,
+      newHorseExertionLevel,
+      exertionLevels,
+      riderIds,
+      lessonAt,
+      fee,
+      lessonType,
+      jumping,
+      paymentType,
+      tierName,
+      instructorId,
+    },
+  }
+}
+
+export async function submitLesson(
+  barnId: string,
+  barnSlug: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const isRecurring = formData.get('is_recurring') === 'true'
+
+  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+
+  const parsed = await parseLessonFormData(formData, barnId, membership)
+  if ('error' in parsed) return parsed
+
+  let { horseIds } = parsed.data
+  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
+
   try {
     if (newHorseName) {
       if (membership?.role !== 'manager') {
         return { error: 'not authorized to add horses' }
       }
       const horse = await createHorse(barnId, newHorseName)
-      horseIds.push(horse.id)
+      horseIds = [...horseIds, horse.id]
       exertionLevels.set(horse.id, newHorseExertionLevel)
     }
 
@@ -131,65 +176,17 @@ export async function updateLessonAction(
   prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  let horseIds = formData.getAll('horse_id') as string[]
-  const riderIds = (formData.getAll('rider_id') as string[]).filter(id => id !== '')
-  const newHorseName = (formData.get('new_horse_name') as string | null)?.trim() || null
-  const lessonAt = formData.get('lesson_at') as string | null
-  const feeRaw = formData.get('fee') as string | null
-  const lessonTypeRaw = (formData.get('lesson_type') as string | null) ?? 'normal'
-  const jumping = formData.get('jumping') === 'true'
-  const paymentTypeRaw = (formData.get('payment_type') as string | null) || null
-  const tierName = (formData.get('tier_name') as string | null) ?? 'Custom'
-
-  if (lessonTypeRaw !== 'normal' && lessonTypeRaw !== 'group') return { error: 'invalid lesson type' }
-  const lessonType = lessonTypeRaw as 'normal' | 'group'
-
-  if (horseIds.length === 0 && !newHorseName) return { error: 'horse required' }
-  if (newHorseName && horseIds.length > 0) return { error: 'select a horse or add a new one, not both' }
-  if (lessonType === 'normal' && riderIds.length === 0) return { error: 'rider required' }
-  if (lessonType === 'normal' && riderIds.length > 1) return { error: 'normal lesson requires exactly 1 rider' }
-  if (lessonType === 'group' && riderIds.length < 2) return { error: 'group lesson requires at least 2 riders' }
-  if (!lessonAt) return { error: 'date and time required' }
-
   const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const isManager = membership.role === 'manager'
-  const instructorIdFromForm = isManager ? (formData.get('instructor_id') as string | null) : null
-  const instructorId = instructorIdFromForm || membership.id
+  const parsed = await parseLessonFormData(formData, barnId, membership)
+  if ('error' in parsed) return parsed
 
-  if (isManager && instructorIdFromForm && instructorIdFromForm !== membership.id) {
-    const instructors = await getInstructorsByBarn(barnId)
-    if (!instructors.some((i) => i.membershipId === instructorIdFromForm)) return { error: 'Invalid instructor' }
-  }
-
-  const paymentType = paymentTypeRaw as PaymentType | null
-
-  const exertionLevels = new Map<string, number>(
-    horseIds.map(id => [id, parseExertionLevel(formData.get(`exertion_${id}`))])
-  )
-  const newHorseExertionLevel = parseExertionLevel(formData.get('new_horse_exertion_level'))
-
-  const [barnHorses, barnRiders] = await Promise.all([
-    getHorsesByBarn(barnId),
-    getActiveMembersWithProfiles(barnId, 'rider'),
-  ])
-
-  if (horseIds.length > 0) {
-    const validHorseIds = new Set(barnHorses.map((h) => h.id))
-    if (horseIds.some((id) => !validHorseIds.has(id))) return { error: 'horse not found in this barn' }
-  }
-
-  if (riderIds.length > 0) {
-    const validRiderIds = new Set(barnRiders.map((m) => m.membershipId))
-    if (riderIds.some((id) => !validRiderIds.has(id))) return { error: 'rider not found in this barn' }
-  }
-
-  const fee = parseFee(feeRaw)
-  if (fee == null) return { error: 'fee is required' }
+  let { horseIds } = parsed.data
+  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
 
   try {
     if (newHorseName) {
-      if (!isManager) return { error: 'not authorized to add horses' }
+      if (membership.role !== 'manager') return { error: 'not authorized to add horses' }
       const horse = await createHorse(barnId, newHorseName)
       horseIds = [...horseIds, horse.id]
       exertionLevels.set(horse.id, newHorseExertionLevel)
