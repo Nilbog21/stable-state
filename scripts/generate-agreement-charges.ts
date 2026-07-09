@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateChargeForMonth } from '@/lib/db/agreements'
-import { createServiceClient, mustSucceed } from './script-utils'
+import { mustSucceed, runCronJob } from './script-utils'
 
 export function formatChargeGenerationSummary(agreementCount: number, errorCount: number): string {
   const base = `Generated charges for ${agreementCount} active monthly agreement(s).`
@@ -12,15 +13,7 @@ interface MonthlyAgreementRow {
   barn_id: string
 }
 
-async function run() {
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
-  if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
-
-  const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-
+async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErrors: boolean }> {
   const agreements = mustSucceed<MonthlyAgreementRow[]>(
     await supabase
       .from('agreements')
@@ -42,13 +35,9 @@ async function run() {
     }
   }
 
-  console.log(formatChargeGenerationSummary(agreements.length, errorCount))
-  if (errorCount > 0) process.exit(1)
+  return { summary: formatChargeGenerationSummary(agreements.length, errorCount), hadErrors: errorCount > 0 }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  run().catch((err: Error) => {
-    console.error('generate-agreement-charges failed:', err.message)
-    process.exit(1)
-  })
+  runCronJob('generate-agreement-charges', run)
 }

@@ -24,11 +24,11 @@ jobs:
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://${{ secrets.SUPABASE_PROD_PROJECT_REF }}.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_PROD_SERVICE_ROLE_KEY }}
-        run: bash scripts/generate-recurring-lessons.sh
+        run: bash scripts/run-cron.sh generate-recurring-lessons
 
       - name: Run against dev
         if: github.event_name == 'workflow_dispatch'
         env:
           NEXT_PUBLIC_SUPABASE_URL: https://${{ secrets.SUPABASE_DEV_PROJECT_REF }}.supabase.co
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_DEV_SERVICE_ROLE_KEY }}
-        run: bash scripts/generate-recurring-lessons.sh
+        run: bash scripts/run-cron.sh generate-recurring-lessons

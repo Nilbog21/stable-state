@@ -8,7 +8,7 @@ Scripts are written in TypeScript and run via `npx tsx`:
 npx tsx scripts/my-script.ts
 ```
 
-Each script's shell wrapper (`.sh`) validates required env vars from `.env.local`, then invokes tsx.
+Each script's shell wrapper (`.sh`) validates required env vars from `.env.local`, then invokes tsx. The 3 nightly cron scripts (below) are the exception — they have no `.env.local`/interactive flow, so they share one wrapper, `run-cron.sh <script-name>`, and push env validation into the TS layer instead (see `runCronJob`).
 
 ## DB layer usage
 
@@ -32,6 +32,8 @@ Each script is split into three files with distinct responsibilities:
 - **`.ts`** — pure business logic; reads `process.env` for credentials and values the shell wrapper has already validated; no CLI arg parsing or prompting; no `readline` (exception: interactive numbered-list selection when bash cannot do it cleanly — see `change-user.ts`); pure functions accept business-logic inputs as function arguments
 - **`.test.ts`** — vitest tests for pure functions exported from `.ts`
 
+The 3 nightly cron scripts don't follow the `.sh`-validates/`.ts`-trusts split above — they're GHA-only with no interactive `.env.local` flow, and their setup ceremony (env validation, service-role client construction, exit-code convention) was byte-for-byte identical, so it's collapsed into `run-cron.sh <script-name>` (shell) and `runCronJob(name, fn)` from `script-utils.ts` (TS), leaving each script's own `run(supabase)` to hold only its per-item loop body and return `{ summary, hadErrors }`.
+
 Add a **`.test.sh`** only when the shell script has non-trivial branching logic (e.g. `change-user.sh`). Shell-only scripts with no extractable pure logic (e.g. `ci.sh`, `check-coverage.sh`) need no `.ts` counterpart.
 
 `.test.ts` files are automated via vitest (`ci.sh` → `npm run test:coverage`). `.sh` wrapper scripts are not automated — `.test.sh` files, where they exist, are run manually by hand and don't need to be wired into `ci.sh`.
@@ -47,10 +49,11 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 | `seed-account` | ✓ | ✓ | ✓ | — | Creates a managed-manager stub (direct service-role inserts) and prints the invite path; `.test.ts` covers `buildInvitePath`; no non-trivial shell branching |
 | `seed-test-barn` | ✓ | ✓ | ✓ | — | Positional arg: barn slug; teardown-first for idempotency; email/password auth users |
 | `teardown-test-barn` | ✓ | ✓ | ✓ | — | Exports `teardown(slug, supabase)` reused by `seed-test-barn.ts`; exports `TEST_ROLES` for test coverage |
-| `script-utils` | — | ✓ | ✓ | — | Shared utilities (`mustSucceed`, `createServiceClient`, `teardownBarnData`, `teardownAllData`, `findAuthUserIdsByEmails`); import from here to reduce duplication across seed/teardown scripts |
-| `generate-outstanding-notifications` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only (no interactive `.env.local` flow); `.sh` validates env vars already set by the workflow's `env:` block instead of parsing `.env.local`; no non-trivial shell branching |
-| `generate-agreement-charges` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as `generate-outstanding-notifications`; `.test.ts` covers only the pure `formatChargeGenerationSummary` formatter — the cross-barn `agreements` query and `generateChargeForMonth` calls are verified manually, not unit tested |
-| `generate-recurring-lessons` | ✓ | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as the other two; `.test.ts` covers the pure helpers (`isDueForGeneration`, `computeNextLessonAt`, `hasMissingRider`, `hasUnavailableHorse`, and the notification/summary formatters) — the cross-barn `lesson_series` query, per-series `generateNextLessonForSeries`/`stopLessonSeries` calls, and notification aggregation are verified manually, not unit tested |
+| `script-utils` | — | ✓ | ✓ | — | Shared utilities (`mustSucceed`, `createServiceClient`, `runCronJob`, `teardownBarnData`, `teardownAllData`, `findAuthUserIdsByEmails`); import from here to reduce duplication across seed/teardown/cron scripts |
+| `run-cron` | ✓ | — | — | — | `run-cron.sh <script-name>` — shared wrapper for the 3 nightly cron scripts below, invoking `npx tsx scripts/<script-name>.ts`; no env validation (owned by `runCronJob`, see above) |
+| `generate-outstanding-notifications` | — | ✓ | ✓ | — | Nightly cron, GHA-only, invoked via `run-cron.sh generate-outstanding-notifications`; `run(supabase)` returns `{ summary, hadErrors }`, wrapped by `runCronJob` at the bottom guard |
+| `generate-agreement-charges` | — | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as `generate-outstanding-notifications`; `.test.ts` covers only the pure `formatChargeGenerationSummary` formatter — the cross-barn `agreements` query and `generateChargeForMonth` calls are verified manually, not unit tested |
+| `generate-recurring-lessons` | — | ✓ | ✓ | — | Nightly cron, GHA-only, same shape as the other two; `.test.ts` covers the pure helpers (`isDueForGeneration`, `computeNextLessonAt`, `hasMissingRider`, `hasUnavailableHorse`, and the notification/summary formatters) — the cross-barn `lesson_series` query, per-series `generateNextLessonForSeries`/`stopLessonSeries` calls, and notification aggregation are verified manually, not unit tested |
 | `ci` | ✓ | — | — | — | Shell-only |
 | `check-coverage` | ✓ | — | — | ✓ | Shell-only |
 
