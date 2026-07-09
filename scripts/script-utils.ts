@@ -32,6 +32,18 @@ export async function runCronJob(
   }
 }
 
+export function assertDevProject(supabaseUrl: string): void {
+  const devSupabaseUrl = process.env.DEV_SUPABASE_URL
+  if (!devSupabaseUrl) {
+    throw new Error('DEV_SUPABASE_URL is not set — refusing to run against an unverified Supabase project')
+  }
+  if (supabaseUrl !== devSupabaseUrl) {
+    throw new Error(
+      `NEXT_PUBLIC_SUPABASE_URL (${supabaseUrl}) does not match DEV_SUPABASE_URL (${devSupabaseUrl}) — refusing to run against a non-dev Supabase project`
+    )
+  }
+}
+
 async function removeDocumentStorage(
   table: string,
   query: { data: { storage_path: string }[] | null; error: unknown },

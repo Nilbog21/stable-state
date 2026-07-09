@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { mustSucceed, runCronJob } from './script-utils'
+import { mustSucceed, runCronJob, assertDevProject } from './script-utils'
 
 describe('mustSucceed', () => {
   it('should_throw_with_label_and_message_when_result_has_error', () => {
@@ -49,5 +49,32 @@ describe('runCronJob', () => {
       throw new Error('boom')
     })
     expect(process.exit).toHaveBeenCalledWith(1)
+  })
+})
+
+describe('assertDevProject', () => {
+  const ORIGINAL_DEV_SUPABASE_URL = process.env.DEV_SUPABASE_URL
+
+  afterEach(() => {
+    if (ORIGINAL_DEV_SUPABASE_URL === undefined) {
+      delete process.env.DEV_SUPABASE_URL
+    } else {
+      process.env.DEV_SUPABASE_URL = ORIGINAL_DEV_SUPABASE_URL
+    }
+  })
+
+  it('should_throw_when_dev_supabase_url_is_unset', () => {
+    delete process.env.DEV_SUPABASE_URL
+    expect(() => assertDevProject('https://dev-project.supabase.co')).toThrow('DEV_SUPABASE_URL')
+  })
+
+  it('should_throw_when_supabase_url_does_not_match_dev_supabase_url', () => {
+    process.env.DEV_SUPABASE_URL = 'https://dev-project.supabase.co'
+    expect(() => assertDevProject('https://prod-project.supabase.co')).toThrow('does not match')
+  })
+
+  it('should_not_throw_when_supabase_url_matches_dev_supabase_url', () => {
+    process.env.DEV_SUPABASE_URL = 'https://dev-project.supabase.co'
+    expect(() => assertDevProject('https://dev-project.supabase.co')).not.toThrow()
   })
 })

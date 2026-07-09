@@ -6,7 +6,7 @@
 
 import { fileURLToPath } from 'url'
 import { type SupabaseClient } from '@supabase/supabase-js'
-import { mustSucceed, createServiceClient, teardownBarnData, findAuthUserIdsByEmails } from './script-utils'
+import { mustSucceed, createServiceClient, teardownBarnData, findAuthUserIdsByEmails, assertDevProject } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -36,6 +36,7 @@ async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
+  assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 

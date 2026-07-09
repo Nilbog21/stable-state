@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { mustSucceed, createServiceClient } from './script-utils'
+import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
 export function buildInvitePath(slug: string, token: string): string {
   return `/barn/${slug}/login?token=${token}`
@@ -19,6 +19,7 @@ async function run() {
   if (!firstName) throw new Error('SEED_FIRST_NAME is required')
   if (!lastName) throw new Error('SEED_LAST_NAME is required')
   if (!barnSlug) throw new Error('SEED_BARN_SLUG is required')
+  if (process.env.SEED_ACCOUNT_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 

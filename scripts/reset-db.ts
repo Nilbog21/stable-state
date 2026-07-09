@@ -7,7 +7,7 @@ import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from '@/lib/db/agreements'
 import { createExpense } from '@/lib/db/expenses'
-import { mustSucceed, createServiceClient, teardownAllData } from './script-utils'
+import { mustSucceed, createServiceClient, teardownAllData, assertDevProject } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -182,6 +182,7 @@ export function buildExpenseSeeds(): ExpenseSeed[] {
 async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
+  assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
