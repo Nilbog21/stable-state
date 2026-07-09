@@ -209,7 +209,7 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    const link = screen.getByRole('link', { name: /add tier/i }) as HTMLAnchorElement
+    const [link] = screen.getAllByRole('link', { name: /add tier/i }) as HTMLAnchorElement[]
     expect(link.href).toContain('/barn/green-acres/settings/tiers/new')
   })
 
@@ -221,7 +221,7 @@ describe('SettingsPage', () => {
     render(jsx)
 
     const heading = screen.getByRole('heading', { name: /lesson tiers/i })
-    const link = screen.getByRole('link', { name: /add tier/i })
+    const [link] = screen.getAllByRole('link', { name: /add tier/i })
     expect(link.parentElement).toBe(heading.parentElement)
   })
 

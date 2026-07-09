@@ -281,7 +281,11 @@ export default async function SettingsPage({
             </tbody>
           </table>
         ) : (
-          <EmptyState heading="No tiers yet" subtext="Lesson tiers you add will appear here." />
+          <EmptyState
+            heading="No tiers yet"
+            subtext="Lesson tiers you add will appear here."
+            cta={{ label: 'Add Tier', href: `/barn/${slug}/settings/tiers/new` }}
+          />
         )}
       </section>
 
