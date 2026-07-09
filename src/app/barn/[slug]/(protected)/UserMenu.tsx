@@ -35,7 +35,7 @@ export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }
         onClick={() => setOpen((o) => !o)}
         aria-label="User menu"
         aria-expanded={open}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-xs font-semibold text-white dark:bg-zinc-200 dark:text-zinc-900"
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-zinc-800 text-xs font-semibold text-white dark:bg-zinc-200 dark:text-zinc-900"
       >
         {initials}
       </button>

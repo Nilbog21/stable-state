@@ -7,17 +7,10 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { OlderLessonsToggle } from './OlderLessonsToggle'
 import { LessonListItem } from './LessonListItem'
 import { EmptyState } from '@/components/EmptyState'
+import { Pill } from '@/components/ui/Pill'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 const OLDER_LESSON_CUTOFF_DAYS = 7
-
-const pillBase = 'rounded-full px-4 py-1.5 text-sm font-medium transition-colors'
-const pillActive = 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
-const pillInactive = 'border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
-
-function pillClass(active: boolean) {
-  return `${pillBase} ${active ? pillActive : pillInactive}`
-}
 
 function buildRiderOptions(lessons: LessonWithDetails[]): { id: string; name: string }[] {
   const map = new Map<string, string>()
@@ -123,24 +116,20 @@ export default async function LessonsPage({
         <div className="w-full max-w-2xl flex flex-col gap-2">
           <div className="overflow-x-auto">
             <div className="flex min-w-max gap-2 pb-2">
-              <Link href="?" className={pillClass(!filter)}>All</Link>
-              <Link href="?filter=trainer" className={pillClass(filter === 'trainer')}>By Instructor</Link>
-              <Link href="?filter=rider" className={pillClass(filter === 'rider')}>By Rider</Link>
-              <Link href="?filter=horse" className={pillClass(filter === 'horse')}>By Horse</Link>
+              <Pill href="?" active={!filter}>All</Pill>
+              <Pill href="?filter=trainer" active={filter === 'trainer'}>By Instructor</Pill>
+              <Pill href="?filter=rider" active={filter === 'rider'}>By Rider</Pill>
+              <Pill href="?filter=horse" active={filter === 'horse'}>By Horse</Pill>
             </div>
           </div>
           {filter === 'trainer' && (
             <div className="overflow-x-auto">
               <div className="flex min-w-max gap-2 pb-2">
-                <Link href="?filter=trainer" className={pillClass(!filterId)}>All</Link>
+                <Pill href="?filter=trainer" active={!filterId}>All</Pill>
                 {trainerOptions.map((t) => (
-                  <Link
-                    key={t.id}
-                    href={`?filter=trainer&id=${t.id}`}
-                    className={pillClass(filterId === t.id)}
-                  >
+                  <Pill key={t.id} href={`?filter=trainer&id=${t.id}`} active={filterId === t.id}>
                     {t.name}
-                  </Link>
+                  </Pill>
                 ))}
               </div>
             </div>
@@ -148,15 +137,11 @@ export default async function LessonsPage({
           {filter === 'rider' && (
             <div className="overflow-x-auto">
               <div className="flex min-w-max gap-2 pb-2">
-                <Link href="?filter=rider" className={pillClass(!filterId)}>All</Link>
+                <Pill href="?filter=rider" active={!filterId}>All</Pill>
                 {riderOptions.map((r) => (
-                  <Link
-                    key={r.id}
-                    href={`?filter=rider&id=${r.id}`}
-                    className={pillClass(filterId === r.id)}
-                  >
+                  <Pill key={r.id} href={`?filter=rider&id=${r.id}`} active={filterId === r.id}>
                     {r.name}
-                  </Link>
+                  </Pill>
                 ))}
               </div>
             </div>
@@ -164,15 +149,11 @@ export default async function LessonsPage({
           {filter === 'horse' && (
             <div className="overflow-x-auto">
               <div className="flex min-w-max gap-2 pb-2">
-                <Link href="?filter=horse" className={pillClass(!filterId)}>All</Link>
+                <Pill href="?filter=horse" active={!filterId}>All</Pill>
                 {horseOptions.map((h) => (
-                  <Link
-                    key={h.id}
-                    href={`?filter=horse&id=${h.id}`}
-                    className={pillClass(filterId === h.id)}
-                  >
+                  <Pill key={h.id} href={`?filter=horse&id=${h.id}`} active={filterId === h.id}>
                     {h.name}
-                  </Link>
+                  </Pill>
                 ))}
               </div>
             </div>

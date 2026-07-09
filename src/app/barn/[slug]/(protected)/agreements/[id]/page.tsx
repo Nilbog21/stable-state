@@ -43,23 +43,23 @@ export default async function AgreementDetailPage({
 
       <dl className="mt-6 grid grid-cols-2 gap-4 text-sm">
         <div>
-          <dt className="text-zinc-500">Rider</dt>
+          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Rider</dt>
           <dd className="text-zinc-900 dark:text-zinc-50">{riderNames.get(agreement.rider_id) ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Horse</dt>
+          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Horse</dt>
           <dd className="text-zinc-900 dark:text-zinc-50">{horseNames.get(agreement.horse_id) ?? '—'}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Fee</dt>
+          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Fee</dt>
           <dd className="text-zinc-900 dark:text-zinc-50">{formatFee(agreement.fee)}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Cadence</dt>
+          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Cadence</dt>
           <dd className="text-zinc-900 dark:text-zinc-50">{cadenceLabel}</dd>
         </div>
         <div>
-          <dt className="text-zinc-500">Status</dt>
+          <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</dt>
           <dd className="text-zinc-900 dark:text-zinc-50">{getAgreementStatusLabel(agreement)}</dd>
         </div>
       </dl>
