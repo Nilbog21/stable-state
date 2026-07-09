@@ -19,6 +19,7 @@ import {
   updateExhaustionThresholdsAction,
 } from './actions'
 import { Button } from '@/components/ui/Button'
+import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
@@ -48,15 +49,13 @@ function MemberRow({
   actionSlot: React.ReactNode
 }) {
   return (
-    <tr className="border-b border-zinc-100 dark:border-zinc-800">
-      <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{name}</td>
-      <td className="py-3 pr-6 text-sm capitalize text-zinc-500 dark:text-zinc-400">
+    <tr>
+      <Td>{name}</Td>
+      <Td tone="secondary" className="capitalize">
         {membership.role}
-      </td>
-      <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">
-        {formatDate(membership.created_at)}
-      </td>
-      <td className="py-3 text-sm">{actionSlot}</td>
+      </Td>
+      <Td tone="secondary">{formatDate(membership.created_at)}</Td>
+      <TableActions>{actionSlot}</TableActions>
     </tr>
   )
 }
@@ -114,39 +113,41 @@ export default async function SettingsPage({
             subtext="Membership requests to join this barn will appear here."
           />
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Name</th>
-                <th className="pb-2 pr-6">Role</th>
-                <th className="pb-2 pr-6">Requested</th>
-                <th className="pb-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {pending.map((m) => (
-                <MemberRow
-                  key={m.id}
-                  membership={m}
-                  name={profileName(profiles, m.user_id)}
-                  actionSlot={
-                    <div className="flex gap-2">
-                      <form action={approveMembershipAction.bind(null, slug, m.id)}>
-                        <Button type="submit" size="sm">
-                          Approve
-                        </Button>
-                      </form>
-                      <form action={rejectMembershipAction.bind(null, slug, m.id)}>
-                        <Button type="submit" variant="ghost" size="sm">
-                          Reject
-                        </Button>
-                      </form>
-                    </div>
-                  }
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Name</Th>
+                  <Th>Role</Th>
+                  <Th>Requested</Th>
+                  <Th>Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {pending.map((m) => (
+                  <MemberRow
+                    key={m.id}
+                    membership={m}
+                    name={profileName(profiles, m.user_id)}
+                    actionSlot={
+                      <div className="flex justify-end gap-2">
+                        <form action={approveMembershipAction.bind(null, slug, m.id)}>
+                          <Button type="submit" size="sm">
+                            Approve
+                          </Button>
+                        </form>
+                        <form action={rejectMembershipAction.bind(null, slug, m.id)}>
+                          <Button type="submit" variant="ghost" size="sm">
+                            Reject
+                          </Button>
+                        </form>
+                      </div>
+                    }
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -157,32 +158,34 @@ export default async function SettingsPage({
         {removable.length === 0 ? (
           <EmptyState heading="No active members" subtext="Approved barn members will appear here." />
         ) : (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Name</th>
-                <th className="pb-2 pr-6">Role</th>
-                <th className="pb-2 pr-6">Since</th>
-                <th className="pb-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {removable.map((m) => (
-                <MemberRow
-                  key={m.id}
-                  membership={m}
-                  name={profileName(profiles, m.user_id)}
-                  actionSlot={
-                    <form action={removeMembershipAction.bind(null, slug, m.id)}>
-                      <Button type="submit" variant="danger" size="sm">
-                        Remove
-                      </Button>
-                    </form>
-                  }
-                />
-              ))}
-            </tbody>
-          </table>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Name</Th>
+                  <Th>Role</Th>
+                  <Th>Since</Th>
+                  <Th>Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {removable.map((m) => (
+                  <MemberRow
+                    key={m.id}
+                    membership={m}
+                    name={profileName(profiles, m.user_id)}
+                    actionSlot={
+                      <form action={removeMembershipAction.bind(null, slug, m.id)}>
+                        <Button type="submit" variant="danger" size="sm">
+                          Remove
+                        </Button>
+                      </form>
+                    }
+                  />
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
       </section>
 
@@ -238,48 +241,46 @@ export default async function SettingsPage({
         </div>
 
         {tiers.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Name</th>
-                <th className="pb-2 pr-6">Price</th>
-                <th className="pb-2 pr-6">Default</th>
-                <th className="pb-2 pr-6">Status</th>
-                <th className="pb-2">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {tiers.map((tier) => (
-                <tr key={tier.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                    {tier.name}
-                  </td>
-                  <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">
-                    ${tier.price}
-                  </td>
-                  <td className="py-3 pr-6 text-sm">
-                    {tier.is_default && (
-                      <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
-                        Default
-                      </span>
-                    )}
-                  </td>
-                  <td className="py-3 pr-6 text-sm">
-                    {tier.is_active ? (
-                      <span className="text-zinc-700 dark:text-zinc-300">Active</span>
-                    ) : (
-                      <span className="text-zinc-400 dark:text-zinc-500">Inactive</span>
-                    )}
-                  </td>
-                  <td className="py-3 text-sm">
-                    <Button href={`/barn/${slug}/settings/tiers/${tier.id}`} variant="ghost" size="sm">
-                      Edit
-                    </Button>
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Name</Th>
+                  <Th>Price</Th>
+                  <Th>Default</Th>
+                  <Th>Status</Th>
+                  <Th>Actions</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {tiers.map((tier) => (
+                  <tr key={tier.id}>
+                    <Td>{tier.name}</Td>
+                    <Td tone="secondary">${tier.price}</Td>
+                    <Td>
+                      {tier.is_default && (
+                        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
+                          Default
+                        </span>
+                      )}
+                    </Td>
+                    <Td>
+                      {tier.is_active ? (
+                        <span className="text-zinc-700 dark:text-zinc-300">Active</span>
+                      ) : (
+                        <span className="text-zinc-400 dark:text-zinc-500">Inactive</span>
+                      )}
+                    </Td>
+                    <TableActions>
+                      <Button href={`/barn/${slug}/settings/tiers/${tier.id}`} variant="ghost" size="sm">
+                        Edit
+                      </Button>
+                    </TableActions>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
           <EmptyState
             heading="No tiers yet"

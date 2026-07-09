@@ -90,19 +90,21 @@ export function ChargesTable({ charges, barnSlug }: { charges: AgreementCharge[]
   }
 
   return (
-    <table className="mt-6 w-full">
-      <thead>
-        <tr>
-          <Th>Period</Th>
-          <Th>Fee</Th>
-          <Th>Payment Type</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {charges.map((charge) => (
-          <ChargeRow key={charge.id} charge={charge} barnSlug={barnSlug} />
-        ))}
-      </tbody>
-    </table>
+    <div className="mt-6 overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr>
+            <Th>Period</Th>
+            <Th>Fee</Th>
+            <Th>Payment Type</Th>
+          </tr>
+        </thead>
+        <tbody>
+          {charges.map((charge) => (
+            <ChargeRow key={charge.id} charge={charge} barnSlug={barnSlug} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
