@@ -3,7 +3,7 @@ import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary } from '@/lib/db/expenses'
 import { formatCurrency } from '@/lib/format-currency'
@@ -149,22 +149,7 @@ export default async function FinancesPage({
 
   const netIncome = collectedIncome - expenseSummary.totalExpenses
 
-  const expenseByHorse = new Map(expenseSummary.breakdown.map((e) => [e.horseId, e]))
-  const incomeByHorse = new Map(horseIncome.map((h) => [h.horseId, h]))
-  const horseRows = [...new Set([...incomeByHorse.keys(), ...expenseByHorse.keys()])]
-    .map((horseId) => {
-      const income = incomeByHorse.get(horseId)
-      const expenses = expenseByHorse.get(horseId)
-      return {
-        horseId,
-        // horseId always comes from one of the two maps' keys, so this is never undefined
-        horseName: (income ?? expenses)!.horseName,
-        income: income?.totalIncome ?? 0,
-        expenses: expenses?.totalExpenses ?? 0,
-        net: (income?.totalIncome ?? 0) - (expenses?.totalExpenses ?? 0),
-      }
-    })
-    .sort((a, b) => b.income - a.income || a.horseName.localeCompare(b.horseName))
+  const horseRows = computeHorseNetIncome(horseIncome, expenseSummary.breakdown)
 
   const monthQ = isCurrentMonth ? '' : `&month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
   const tabQ = tab !== 'horse' ? `&tab=${tab}` : ''

@@ -240,6 +240,14 @@ export interface RiderIncomeDetailRow {
   splitAmount: number
 }
 
+export interface HorseNetIncomeRow {
+  horseId: string
+  horseName: string
+  income: number
+  expenses: number
+  net: number
+}
+
 export type HorseDocumentType = 'insurance_binder' | 'coggins' | 'shot_record' | 'contract' | 'other'
 export type TrainerDocumentType = 'instructor_contract' | 'other'
 export type RiderDocumentType = 'liability_waiver' | 'lease_agreement' | 'boarding_contract' | 'other'

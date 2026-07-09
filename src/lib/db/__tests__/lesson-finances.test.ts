@@ -19,6 +19,8 @@ import {
   getHorseIncomeDetail,
   getRiderIncomeDetail,
   mergeOutstandingItems,
+  computeGroupedIncome,
+  computeHorseNetIncome,
   NON_LESSON_INCOME_LABEL,
   NO_INSTRUCTOR_LABEL,
   NO_HORSE_LABEL,
@@ -58,6 +60,43 @@ describe('splitNetFee', () => {
   it('should_allow_a_negative_net_fee_when_cut_exceeds_fee', () => {
     const { netFee } = splitNetFee(10, 25, 1)
     expect(netFee).toBe(-15)
+  })
+})
+
+describe('computeGroupedIncome', () => {
+  it('should_assign_full_net_fee_to_single_key', () => {
+    const result = computeGroupedIncome([{ fee: 100 }], () => ['a'], 0, 'FALLBACK')
+    expect(result.get('a')).toEqual({ total: 100, count: 1 })
+  })
+
+  it('should_split_net_fee_evenly_across_multiple_keys', () => {
+    const result = computeGroupedIncome([{ fee: 100 }], () => ['a', 'b'], 0, 'FALLBACK')
+    expect([result.get('a')?.total, result.get('b')?.total]).toEqual([50, 50])
+  })
+
+  it('should_subtract_cut_once_per_row_before_splitting', () => {
+    const result = computeGroupedIncome([{ fee: 100 }], () => ['a', 'b'], 20, 'FALLBACK')
+    expect([result.get('a')?.total, result.get('b')?.total]).toEqual([40, 40])
+  })
+
+  it('should_accumulate_net_fee_under_fallback_label_when_no_keys', () => {
+    const result = computeGroupedIncome([{ fee: 100 }], () => [], 10, 'FALLBACK')
+    expect(result.get('FALLBACK')).toEqual({ total: 90, count: 1 })
+  })
+
+  it('should_aggregate_multiple_rows_into_the_same_key', () => {
+    const result = computeGroupedIncome(
+      [{ fee: 100 }, { fee: 50 }],
+      () => ['a'],
+      0,
+      'FALLBACK'
+    )
+    expect(result.get('a')).toEqual({ total: 150, count: 2 })
+  })
+
+  it('should_return_empty_map_for_empty_rows', () => {
+    const result = computeGroupedIncome([], () => ['a'], 0, 'FALLBACK')
+    expect(result.size).toBe(0)
   })
 })
 
@@ -755,6 +794,24 @@ describe('getHorseIncomeSummary', () => {
     ])
   })
 
+  it('should_sort_no_horse_row_last_even_when_its_total_exceeds_a_real_horse', async () => {
+    vi.mocked(getPaidLessonFees).mockResolvedValue([
+      { id: 'lesson-1', fee: 200 },
+      { id: 'lesson-2', fee: 10 },
+    ])
+    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+      { lesson_id: 'lesson-2', horse_id: 'horse-1' },
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+    const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([
+      { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 10 },
+      { horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 200 },
+    ])
+  })
+
   it('should_use_horse_id_as_fallback_when_horse_name_not_found', async () => {
     vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
     vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-orphan' }])
@@ -1189,12 +1246,12 @@ describe('getTrainerIncomeSummary', () => {
     expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100 }])
   })
 
-  it('should_not_resolve_member_names_when_no_collected_lessons', async () => {
+  it('should_resolve_member_names_with_empty_array_when_no_collected_lessons', async () => {
     vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
 
     await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(resolveMemberNames).not.toHaveBeenCalled()
+    expect(resolveMemberNames).toHaveBeenCalledWith([], 'barn-1', expect.anything())
   })
 
   it('should_return_full_fee_for_single_trainer', async () => {
@@ -1986,5 +2043,57 @@ describe('reconciliation regression', () => {
     const trainerTotal = trainerIncome.reduce((sum, r) => sum + r.totalIncome, 0)
 
     expect(trainerTotal).toBe(collectedIncome)
+  })
+})
+
+describe('computeHorseNetIncome', () => {
+  it('should_return_zero_expenses_for_income_only_horse', () => {
+    const result = computeHorseNetIncome(
+      [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 100 }],
+      []
+    )
+    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', income: 100, expenses: 0, net: 100 }])
+  })
+
+  it('should_return_negative_net_for_expense_only_horse', () => {
+    const result = computeHorseNetIncome(
+      [],
+      [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 40 }]
+    )
+    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', income: 0, expenses: 40, net: -40 }])
+  })
+
+  it('should_combine_income_and_expenses_for_same_horse', () => {
+    const result = computeHorseNetIncome(
+      [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 100 }],
+      [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 40 }]
+    )
+    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', income: 100, expenses: 40, net: 60 }])
+  })
+
+  it('should_sort_by_income_descending', () => {
+    const result = computeHorseNetIncome(
+      [
+        { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 50 },
+        { horseId: 'horse-2', horseName: 'Shadow', totalIncome: 100 },
+      ],
+      []
+    )
+    expect(result.map((r) => r.horseId)).toEqual(['horse-2', 'horse-1'])
+  })
+
+  it('should_break_income_ties_alphabetically_by_horse_name', () => {
+    const result = computeHorseNetIncome(
+      [
+        { horseId: 'horse-1', horseName: 'Zebra', totalIncome: 50 },
+        { horseId: 'horse-2', horseName: 'Apple', totalIncome: 50 },
+      ],
+      []
+    )
+    expect(result.map((r) => r.horseName)).toEqual(['Apple', 'Zebra'])
+  })
+
+  it('should_return_empty_array_for_empty_inputs', () => {
+    expect(computeHorseNetIncome([], [])).toEqual([])
   })
 })
