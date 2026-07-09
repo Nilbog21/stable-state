@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -20,6 +19,7 @@ import {
   updateExhaustionThresholdsAction,
 } from './actions'
 import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/EmptyState'
 import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import type { BarnMembership, Profile } from '@/lib/db/types'
@@ -109,7 +109,10 @@ export default async function SettingsPage({
           Pending Requests
         </h2>
         {pending.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No pending requests.</p>
+          <EmptyState
+            heading="No pending requests"
+            subtext="Membership requests to join this barn will appear here."
+          />
         ) : (
           <table className="w-full">
             <thead>
@@ -152,7 +155,7 @@ export default async function SettingsPage({
           Active Members
         </h2>
         {removable.length === 0 ? (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No active members.</p>
+          <EmptyState heading="No active members" subtext="Approved barn members will appear here." />
         ) : (
           <table className="w-full">
             <thead>
@@ -269,19 +272,20 @@ export default async function SettingsPage({
                     )}
                   </td>
                   <td className="py-3 text-sm">
-                    <Link
-                      href={`/barn/${slug}/settings/tiers/${tier.id}`}
-                      className="text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
-                    >
+                    <Button href={`/barn/${slug}/settings/tiers/${tier.id}`} variant="ghost" size="sm">
                       Edit
-                    </Link>
+                    </Button>
                   </td>
                 </tr>
               ))}
             </tbody>
           </table>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No tiers yet.</p>
+          <EmptyState
+            heading="No tiers yet"
+            subtext="Lesson tiers you add will appear here."
+            cta={{ label: 'Add Tier', href: `/barn/${slug}/settings/tiers/new` }}
+          />
         )}
       </section>
 

@@ -1,7 +1,7 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import { Card } from '@/components/ui/Card'
 
 function capitalizeRole(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1)
@@ -25,10 +25,7 @@ export default async function BarnsPage() {
           const href = isPending ? `/barn/${barn.slug}/pending` : `/barn/${barn.slug}`
           return (
             <li key={membership.id}>
-              <Link
-                href={href}
-                className="block rounded-lg border border-zinc-200 px-6 py-4 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
+              <Card href={href} className="px-6 py-4">
                 <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                   {barn.name}
                 </span>
@@ -41,7 +38,7 @@ export default async function BarnsPage() {
                     {capitalizeRole(membership.role)}
                   </span>
                 )}
-              </Link>
+              </Card>
             </li>
           )
         })}

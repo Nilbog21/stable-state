@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect, useRef } from 'react'
+import { Button } from '@/components/ui/Button'
 
 export default function InviteLink({ slug }: { slug: string }) {
   const [url] = useState(() =>
@@ -39,13 +40,9 @@ export default function InviteLink({ slug }: { slug: string }) {
           suppressHydrationWarning
           className="flex-1 rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
         />
-        <button
-          type="button"
-          onClick={handleCopy}
-          className="rounded bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <Button type="button" onClick={handleCopy}>
           {copied ? 'Copied!' : 'Copy'}
-        </button>
+        </Button>
       </div>
     </section>
   )

@@ -24,8 +24,8 @@ export default async function ExpensesPage({
   const olderExpenses = expenses.filter((e) => new Date(`${e.expense_date}T00:00:00Z`) < cutoff)
 
   return (
-    <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
-      <div className="flex w-full max-w-2xl items-center justify-between">
+    <main className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mb-8 flex items-center justify-between">
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           Expenses
         </h1>
@@ -41,7 +41,7 @@ export default async function ExpensesPage({
       ) : (
         <>
           {recentExpenses.length > 0 && (
-            <div className="w-full max-w-2xl overflow-x-auto">
+            <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
                   <tr>
