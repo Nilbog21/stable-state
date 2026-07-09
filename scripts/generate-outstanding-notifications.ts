@@ -1,9 +1,10 @@
 import { fileURLToPath } from 'url'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { getOutstandingLessons } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { deleteNotificationByType, upsertNotificationsForRecipients } from '@/lib/db/notifications'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
-import { createServiceClient, mustSucceed } from './script-utils'
+import { mustSucceed, runCronJob } from './script-utils'
 
 export function formatOutstandingNotification(count: number, total: number): { title: string; body: string } {
   return {
@@ -12,15 +13,7 @@ export function formatOutstandingNotification(count: number, total: number): { t
   }
 }
 
-async function run() {
-  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
-  const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-  if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
-  if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
-
-  const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
-
+async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErrors: boolean }> {
   const barns = mustSucceed<{ id: string; slug: string }[]>(await supabase.from('barns').select('id, slug'), 'select barns')
 
   let hadErrors = false
@@ -70,13 +63,9 @@ async function run() {
     }
   }
 
-  console.log(`Processed ${totalManagers} manager(s) across ${barnsProcessed} barn(s).`)
-  if (hadErrors) process.exit(1)
+  return { summary: `Processed ${totalManagers} manager(s) across ${barnsProcessed} barn(s).`, hadErrors }
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
-  run().catch((err: Error) => {
-    console.error('generate-outstanding-notifications failed:', err.message)
-    process.exit(1)
-  })
+  runCronJob('generate-outstanding-notifications', run)
 }
