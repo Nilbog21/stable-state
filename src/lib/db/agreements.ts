@@ -8,26 +8,6 @@ export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | '
   return agreement.cadence === 'one_time' ? 'Complete' : 'Active'
 }
 
-export interface ChargeAgreementInfo {
-  kind: AgreementKind
-  rider_id: string
-  horse_id: string
-}
-
-export async function getAgreementsMapForCharges(
-  supabase: SupabaseClient,
-  barnId: string,
-  agreementIds: string[]
-): Promise<Map<string, ChargeAgreementInfo>> {
-  const { data, error } = await supabase
-    .from('agreements')
-    .select('id, kind, rider_id, horse_id')
-    .eq('barn_id', barnId)
-    .in('id', agreementIds)
-  if (error) throw error
-  return new Map((data ?? []).map((a) => [a.id, a]))
-}
-
 export async function createAgreement(
   params: {
     barnId: string
@@ -335,7 +315,7 @@ export async function getOutstandingCharges(
 
   let query = supabase
     .from('agreement_charges')
-    .select('id, agreement_id, period, fee')
+    .select('id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')
     .eq('barn_id', barnId)
     .is('payment_type', null)
     .lt('period', firstOfCurrentMonth)
@@ -347,23 +327,24 @@ export async function getOutstandingCharges(
   const { data, error } = await query.order('period', { ascending: true })
   if (error) throw error
 
-  const rows = data ?? []
+  type OutstandingChargeRow = {
+    id: string
+    agreement_id: string
+    period: string
+    fee: number
+    agreements: { kind: AgreementKind; rider_id: string }
+  }
+  const rows = (data ?? []) as unknown as OutstandingChargeRow[]
   if (!rows.length) return []
 
-  const agreementIds = [...new Set(rows.map((r) => r.agreement_id))]
-  const agreementMap = await getAgreementsMapForCharges(supabase, barnId, agreementIds)
-  const riderIds = [...new Set([...agreementMap.values()].map((a) => a.rider_id))]
+  const riderIds = [...new Set(rows.map((r) => r.agreements.rider_id))]
   const nameMap = await resolveMemberNames(riderIds, barnId, supabase)
 
-  return rows.flatMap((row) => {
-    const agreement = agreementMap.get(row.agreement_id)
-    if (!agreement) return []
-    return [{
-      id: row.id,
-      period: row.period,
-      kind: agreement.kind,
-      riderName: nameMap.get(agreement.rider_id) ?? agreement.rider_id,
-      fee: row.fee,
-    }]
-  })
+  return rows.map((row) => ({
+    id: row.id,
+    period: row.period,
+    kind: row.agreements.kind,
+    riderName: nameMap.get(row.agreements.rider_id) ?? row.agreements.rider_id,
+    fee: row.fee,
+  }))
 }
