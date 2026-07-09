@@ -19,26 +19,18 @@ function applicableHorseIdsForExpense(
   return junctionRows.filter((r) => r.expense_id === expense.id).map((r) => r.horse_id)
 }
 
-export async function getExpensesByBarn(barnId: string): Promise<ExpenseWithHorses[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('horse_expenses')
-    .select('*')
-    .eq('barn_id', barnId)
-    .order('expense_date', { ascending: false })
-    .order('created_at', { ascending: false })
-  if (error) throw error
-
-  const expenses = data ?? []
-  if (!expenses.length) return []
-
+async function attachHorseNames<T extends { id: string }>(
+  supabase: SupabaseClient,
+  barnId: string,
+  expenses: T[]
+): Promise<(T & { horse_ids: string[]; horse_names: string[] })[]> {
   const expenseIds = expenses.map((e) => e.id)
-  const { data: junctionRows, error: jError } = await supabase
+  const { data: junctionRows, error } = await supabase
     .from('expense_horses')
     .select('expense_id, horse_id')
     .eq('barn_id', barnId)
     .in('expense_id', expenseIds)
-  if (jError) throw jError
+  if (error) throw error
 
   const rows = junctionRows ?? []
   const horseIds = [...new Set(rows.map((r) => r.horse_id))]
@@ -54,6 +46,22 @@ export async function getExpensesByBarn(barnId: string): Promise<ExpenseWithHors
   })
 }
 
+export async function getExpensesByBarn(barnId: string): Promise<ExpenseWithHorses[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('horse_expenses')
+    .select('*')
+    .eq('barn_id', barnId)
+    .order('expense_date', { ascending: false })
+    .order('created_at', { ascending: false })
+  if (error) throw error
+
+  const expenses = data ?? []
+  if (!expenses.length) return []
+
+  return attachHorseNames(supabase, barnId, expenses)
+}
+
 export async function getExpenseById(expenseId: string, barnId: string): Promise<ExpenseWithHorses | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -65,21 +73,8 @@ export async function getExpenseById(expenseId: string, barnId: string): Promise
   if (error) throw error
   if (!data) return null
 
-  const { data: junctionRows, error: jError } = await supabase
-    .from('expense_horses')
-    .select('expense_id, horse_id')
-    .eq('barn_id', barnId)
-    .eq('expense_id', expenseId)
-  if (jError) throw jError
-
-  const horseIds = (junctionRows ?? []).map((r) => r.horse_id)
-  const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
-
-  return {
-    ...data,
-    horse_ids: horseIds,
-    horse_names: horseIds.map((id) => horseNameMap.get(id) ?? id),
-  }
+  const [result] = await attachHorseNames(supabase, barnId, [data])
+  return result
 }
 
 export async function createExpense(barnId: string, data: ExpenseInput, client?: SupabaseClient): Promise<HorseExpense> {
@@ -191,26 +186,7 @@ export async function getUpcomingScheduledExpenses(barnId: string, from: string,
 
   if (!expenses.length) return []
 
-  const expenseIds = expenses.map((e) => e.id)
-  const { data: junctionRows, error: jError } = await supabase
-    .from('expense_horses')
-    .select('expense_id, horse_id')
-    .eq('barn_id', barnId)
-    .in('expense_id', expenseIds)
-  if (jError) throw jError
-
-  const rows = junctionRows ?? []
-  const horseIds = [...new Set(rows.map((r) => r.horse_id))]
-  const horseNameMap = await resolveHorseNames(horseIds, barnId, supabase)
-
-  return expenses.map((expense) => {
-    const ids = rows.filter((r) => r.expense_id === expense.id).map((r) => r.horse_id)
-    return {
-      ...expense,
-      horse_ids: ids,
-      horse_names: ids.map((id) => horseNameMap.get(id) ?? id),
-    }
-  })
+  return await attachHorseNames(supabase, barnId, expenses)
 }
 
 export async function getExpenseFinancialSummary(
