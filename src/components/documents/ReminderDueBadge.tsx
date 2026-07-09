@@ -6,6 +6,7 @@ interface Props {
   today?: string
 }
 
+// See the tradeoff comment on localToday in @/lib/local-day.
 export function ReminderDueBadge({ reminderDate, today = localToday() }: Props) {
   if (reminderDate === null || reminderDate > today) return null
 

@@ -1,14 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-
-function todayString() {
-  const d = new Date()
-  const year = d.getFullYear()
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
+import { localToday } from '@/lib/local-day'
 
 function hourLabel(h: number) {
   const period = h < 12 ? 'AM' : 'PM'
@@ -25,7 +18,7 @@ export function DateHourPicker({
   initialHour?: number
   onChange?: (lessonAt: string) => void
 } = {}) {
-  const [date, setDate] = useState(initialDate ?? todayString)
+  const [date, setDate] = useState(initialDate ?? localToday)
   const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
 
   const combinedValue = `${date}T${String(hour).padStart(2, '0')}:00`
