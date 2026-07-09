@@ -64,7 +64,7 @@ Open that path in the app and sign in with Google to claim the account — `clai
 
 **Prerequisites:**
 - The barn slug must already exist (create via the Supabase dashboard if needed)
-- `NEXT_PUBLIC_SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env.local`
+- `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, and `DEV_SUPABASE_URL` in `.env.local`
 
 ```bash
 bash scripts/seed-account.sh
@@ -92,8 +92,10 @@ The `<project-ref>` is the string in the Supabase dashboard URL: `https://supaba
 Create the barn manager's account stub before their first sign-in. The barn slug must exist first (create it via the Supabase SQL editor or dashboard if needed).
 
 ```bash
-bash scripts/seed-account.sh
+bash scripts/seed-account.sh --allow-prod
 ```
+
+`--allow-prod` skips the `DEV_SUPABASE_URL` dev-project check — only pass it for this one-time production bootstrap step, never for routine dev seeding.
 
 The script prints an invite path (`/barn/<slug>/login?token=<token>`). Send the full URL (production domain + invite path) to the barn manager — they open it and sign in with Google to claim the account. A plain sign-in without the invite link will **not** activate the account.
 

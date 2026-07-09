@@ -19,7 +19,7 @@ async function run() {
   if (!firstName) throw new Error('SEED_FIRST_NAME is required')
   if (!lastName) throw new Error('SEED_LAST_NAME is required')
   if (!barnSlug) throw new Error('SEED_BARN_SLUG is required')
-  assertDevProject(SUPABASE_URL)
+  if (process.env.SEED_ACCOUNT_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 

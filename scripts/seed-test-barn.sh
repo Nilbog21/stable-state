@@ -3,6 +3,10 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-}"
+SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
+DEV_SUPABASE_URL="${DEV_SUPABASE_URL:-}"
+
 SKIP_ENV_LOCAL=false
 if [ "${1:-}" = "--skip-env-local-check" ]; then
   SKIP_ENV_LOCAL=true
