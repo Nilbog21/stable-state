@@ -14,6 +14,10 @@
 - Tests should FAIL initially (no implementation exists)
 - Only after tests are written, implement minimal code to pass
 
+### Schema/RLS/RPC verification
+- Migrations have no DAL-layer TDD tests of their own — they're verified by the `Verify Migrations` CI workflow (`.github/workflows/verify-migrations.yml`), which replays every migration from scratch against an ephemeral local Supabase/Postgres instance on any PR touching `supabase/migrations/**`
+- Don't install Docker locally or push to `stable-state-dev` to verify a migration applies cleanly — let the CI gate catch it
+
 ## Architecture Docs
 
 Update `ARCHITECTURE.md` whenever a migration or role change is committed.
