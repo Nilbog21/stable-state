@@ -4,7 +4,7 @@ import { useRouter } from 'next/navigation'
 import { updatePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../agreements/actions'
 import type { OutstandingItem } from '@/lib/db/types'
-import { Th, Td } from '@/components/ui/Table'
+import { Th, Td, TableActions } from '@/components/ui/Table'
 
 const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
 
@@ -44,44 +44,46 @@ export function OutstandingTable({
   }
 
   return (
-    <table className="w-full">
-      <thead>
-        <tr>
-          <Th>Date</Th>
-          <Th>Type</Th>
-          <Th>Rider(s)</Th>
-          <Th>Instructor</Th>
-          <Th>Fee</Th>
-          <Th>Payment Type</Th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((item) => (
-          <tr key={item.id}>
-            <Td>{formatDate(item.date)}</Td>
-            <Td>{TYPE_LABELS[item.itemType]}</Td>
-            <Td>{item.riderNames.join(', ') || '—'}</Td>
-            <Td>{item.instructorName ?? '—'}</Td>
-            <Td>
-              {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-            </Td>
-            <Td>
-              <select
-                defaultValue=""
-                onChange={(e) => handleChange(item, e.target.value)}
-                className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
-              >
-                <option value="">Unpaid</option>
-                {PAYMENT_TYPES.map((pt) => (
-                  <option key={pt} value={pt}>
-                    {pt.charAt(0).toUpperCase() + pt.slice(1)}
-                  </option>
-                ))}
-              </select>
-            </Td>
+    <div className="overflow-x-auto">
+      <table className="w-full">
+        <thead>
+          <tr>
+            <Th>Date</Th>
+            <Th>Type</Th>
+            <Th>Rider(s)</Th>
+            <Th>Instructor</Th>
+            <Th>Fee</Th>
+            <Th>Payment Type</Th>
           </tr>
-        ))}
-      </tbody>
-    </table>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <tr key={item.id}>
+              <Td>{formatDate(item.date)}</Td>
+              <Td>{TYPE_LABELS[item.itemType]}</Td>
+              <Td>{item.riderNames.join(', ') || '—'}</Td>
+              <Td>{item.instructorName ?? '—'}</Td>
+              <Td>
+                {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+              </Td>
+              <TableActions>
+                <select
+                  defaultValue=""
+                  onChange={(e) => handleChange(item, e.target.value)}
+                  className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
+                >
+                  <option value="">Unpaid</option>
+                  {PAYMENT_TYPES.map((pt) => (
+                    <option key={pt} value={pt}>
+                      {pt.charAt(0).toUpperCase() + pt.slice(1)}
+                    </option>
+                  ))}
+                </select>
+              </TableActions>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   )
 }
