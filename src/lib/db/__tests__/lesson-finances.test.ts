@@ -31,11 +31,8 @@ import {
   getLessonsForSummary,
   getTierPricesByNames,
   getOutstandingLessonRows,
-  getLessonRidersForLessons,
-  getPaidLessonFees,
-  getLessonHorsesForLessons,
-  getPaidLessonInstructorFees,
-  getPaidLessonFeesAt,
+  getLessonJunctionRows,
+  getPaidLessonRows,
 } from '../lesson-finance-queries'
 import { resolveMemberNames } from '../barn-memberships'
 import { resolveHorseNames } from '../horses'
@@ -517,7 +514,7 @@ describe('getFinancialSummary', () => {
 describe('getOutstandingLessons', () => {
   beforeEach(() => {
     vi.mocked(getOutstandingLessonRows).mockReset()
-    vi.mocked(getLessonRidersForLessons).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(createClient).mockClear()
   })
@@ -545,7 +542,7 @@ describe('getOutstandingLessons', () => {
 
     await getOutstandingLessons('barn-1')
 
-    expect(getLessonRidersForLessons).not.toHaveBeenCalled()
+    expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
 
   it('should_forward_userId_and_role_to_getOutstandingLessonRows', async () => {
@@ -559,7 +556,7 @@ describe('getOutstandingLessons', () => {
   it('should_return_lesson_id_in_result', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -570,7 +567,7 @@ describe('getOutstandingLessons', () => {
   it('should_return_the_lesson_fee_in_result', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -581,7 +578,7 @@ describe('getOutstandingLessons', () => {
   it('should_include_rider_names_resolved_from_membership_map', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
     const result = await getOutstandingLessons('barn-1')
@@ -592,7 +589,7 @@ describe('getOutstandingLessons', () => {
   it('should_omit_rider_name_when_not_found_in_membership_map', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-orphan' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-orphan' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -603,7 +600,7 @@ describe('getOutstandingLessons', () => {
   it('should_include_instructor_name_resolved_from_membership_map', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-instructor', 'Jane Doe']]))
 
     const result = await getOutstandingLessons('barn-1')
@@ -614,7 +611,7 @@ describe('getOutstandingLessons', () => {
   it('should_return_null_instructor_name_when_not_found_in_membership_map', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getOutstandingLessons('barn-1')
@@ -626,7 +623,7 @@ describe('getOutstandingLessons', () => {
     const lesson1 = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
     const lesson2 = createMockLesson({ id: 'lesson-2', fee: 50, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson1, lesson2])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     await getOutstandingLessons('barn-1')
@@ -637,7 +634,7 @@ describe('getOutstandingLessons', () => {
   it('should_resolve_member_names_scoped_to_barn', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     await getOutstandingLessons('barn-1')
@@ -651,10 +648,10 @@ describe('getOutstandingLessons', () => {
     await expect(getOutstandingLessons('barn-1')).rejects.toThrow('outstanding error')
   })
 
-  it('should_throw_when_getLessonRidersForLessons_rejects', async () => {
+  it('should_throw_when_getLessonJunctionRows_rejects', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: null })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockRejectedValue(new Error('lr error'))
+    vi.mocked(getLessonJunctionRows).mockRejectedValue(new Error('lr error'))
 
     await expect(getOutstandingLessons('barn-1')).rejects.toThrow('lr error')
   })
@@ -662,7 +659,7 @@ describe('getOutstandingLessons', () => {
   it('should_throw_when_resolveMemberNames_rejects', async () => {
     const lesson = createMockLesson({ id: 'lesson-1', fee: 75, instructor_id: 'mem-instructor' })
     vi.mocked(getOutstandingLessonRows).mockResolvedValue([lesson])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
     await expect(getOutstandingLessons('barn-1')).rejects.toThrow('resolve error')
@@ -671,8 +668,8 @@ describe('getOutstandingLessons', () => {
 
 describe('getHorseIncomeSummary', () => {
   beforeEach(() => {
-    vi.mocked(getPaidLessonFees).mockReset()
-    vi.mocked(getLessonHorsesForLessons).mockReset()
+    vi.mocked(getPaidLessonRows).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
     vi.mocked(resolveHorseNames).mockReset()
     vi.mocked(getPaidCharges).mockReset()
     vi.mocked(getPaidCharges).mockResolvedValue([])
@@ -682,7 +679,7 @@ describe('getHorseIncomeSummary', () => {
   const endDate = new Date('2026-06-01T00:00:00Z')
 
   it('should_return_empty_when_no_lessons_in_range', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
@@ -690,16 +687,16 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_not_fetch_lesson_horses_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
 
     await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-    expect(getLessonHorsesForLessons).not.toHaveBeenCalled()
+    expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
 
   it('should_fold_zero_horse_lesson_into_no_horse_row', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
@@ -707,8 +704,8 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_allocate_full_fee_to_single_horse', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
@@ -717,8 +714,8 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_allocate_half_fee_to_each_of_two_horses', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', horse_id: 'horse-1' },
       { lesson_id: 'lesson-1', horse_id: 'horse-2' },
     ])
@@ -730,8 +727,8 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_allocate_equal_share_to_each_horse_when_splitting_across_three', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 90 }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 90 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', horse_id: 'horse-1' },
       { lesson_id: 'lesson-1', horse_id: 'horse-2' },
       { lesson_id: 'lesson-1', horse_id: 'horse-3' },
@@ -746,11 +743,11 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_aggregate_across_multiple_lessons_for_same_horse', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100 },
       { id: 'lesson-2', fee: 50 },
     ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', horse_id: 'horse-1' },
       { lesson_id: 'lesson-2', horse_id: 'horse-1' },
     ])
@@ -762,11 +759,11 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_sort_descending_by_total_income', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 90 },
       { id: 'lesson-2', fee: 60 },
     ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', horse_id: 'horse-1' },
       { lesson_id: 'lesson-2', horse_id: 'horse-1' },
       { lesson_id: 'lesson-2', horse_id: 'horse-2' },
@@ -779,11 +776,11 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_fold_zero_horse_lesson_fee_into_no_horse_row_alongside_real_horses', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100 },
       { id: 'lesson-2', fee: 80 },
     ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
@@ -795,11 +792,11 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_sort_no_horse_row_last_even_when_its_total_exceeds_a_real_horse', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 200 },
       { id: 'lesson-2', fee: 10 },
     ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-2', horse_id: 'horse-1' },
     ])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
@@ -813,8 +810,8 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_use_horse_id_as_fallback_when_horse_name_not_found', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-orphan' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-orphan' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
     const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
@@ -823,8 +820,8 @@ describe('getHorseIncomeSummary', () => {
   })
 
   it('should_scope_resolveHorseNames_to_barn', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
     await getHorseIncomeSummary('barn-1', startDate, endDate)
@@ -832,22 +829,22 @@ describe('getHorseIncomeSummary', () => {
     expect(resolveHorseNames).toHaveBeenCalledWith(['horse-1'], 'barn-1', expect.anything())
   })
 
-  it('should_throw_when_getPaidLessonFees_rejects', async () => {
-    vi.mocked(getPaidLessonFees).mockRejectedValue(new Error('lessons error'))
+  it('should_throw_when_getPaidLessonRows_rejects', async () => {
+    vi.mocked(getPaidLessonRows).mockRejectedValue(new Error('lessons error'))
 
     await expect(getHorseIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lessons error')
   })
 
-  it('should_throw_when_getLessonHorsesForLessons_rejects', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonHorsesForLessons).mockRejectedValue(new Error('lh error'))
+  it('should_throw_when_getLessonJunctionRows_rejects', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockRejectedValue(new Error('lh error'))
 
     await expect(getHorseIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lh error')
   })
 
   describe('agreement charge folding', () => {
     it('should_include_horse_income_from_a_charge_when_there_are_no_lessons', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
@@ -859,7 +856,7 @@ describe('getHorseIncomeSummary', () => {
     })
 
     it('should_add_full_charge_fee_without_splitting', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
         { chargeId: 'charge-2', agreementId: 'agreement-2', period: '2026-05-01', fee: 200, kind: 'lease', riderId: 'mem-2', horseId: 'horse-1' },
@@ -872,8 +869,8 @@ describe('getHorseIncomeSummary', () => {
     })
 
     it('should_combine_lesson_split_income_and_charge_income_for_same_horse', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
@@ -885,7 +882,7 @@ describe('getHorseIncomeSummary', () => {
     })
 
     it('should_throw_when_getPaidCharges_rejects', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
       await expect(getHorseIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
@@ -894,8 +891,8 @@ describe('getHorseIncomeSummary', () => {
 
   describe('instructor cut netting', () => {
     it('should_subtract_cut_before_splitting_across_two_horses', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', horse_id: 'horse-1' },
         { lesson_id: 'lesson-1', horse_id: 'horse-2' },
       ])
@@ -907,8 +904,8 @@ describe('getHorseIncomeSummary', () => {
     })
 
     it('should_apply_cut_once_per_lesson_regardless_of_horse_count', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', horse_id: 'horse-1' },
         { lesson_id: 'lesson-1', horse_id: 'horse-2' },
         { lesson_id: 'lesson-1', horse_id: 'horse-3' },
@@ -923,7 +920,7 @@ describe('getHorseIncomeSummary', () => {
     })
 
     it('should_not_apply_cut_to_charge_income', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
@@ -935,8 +932,8 @@ describe('getHorseIncomeSummary', () => {
     })
 
     it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 0 }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 0 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
       const result = await getHorseIncomeSummary('barn-1', startDate, endDate, 25)
@@ -945,8 +942,8 @@ describe('getHorseIncomeSummary', () => {
     })
 
     it('should_subtract_cut_from_no_horse_row_without_splitting', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([])
 
       const result = await getHorseIncomeSummary('barn-1', startDate, endDate, 25)
 
@@ -957,8 +954,8 @@ describe('getHorseIncomeSummary', () => {
 
 describe('getRiderIncomeSummary', () => {
   beforeEach(() => {
-    vi.mocked(getPaidLessonFees).mockReset()
-    vi.mocked(getLessonRidersForLessons).mockReset()
+    vi.mocked(getPaidLessonRows).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getPaidCharges).mockReset()
     vi.mocked(getPaidCharges).mockResolvedValue([])
@@ -968,7 +965,7 @@ describe('getRiderIncomeSummary', () => {
   const endDate = new Date('2026-06-01T00:00:00Z')
 
   it('should_return_empty_when_no_lessons_in_range', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
@@ -976,16 +973,16 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_not_fetch_lesson_riders_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
 
     await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    expect(getLessonRidersForLessons).not.toHaveBeenCalled()
+    expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
 
   it('should_fold_zero_rider_lesson_into_no_rider_row', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([])
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
@@ -993,8 +990,8 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_return_full_fee_for_single_rider_lesson', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
@@ -1003,8 +1000,8 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_allocate_half_fee_to_each_of_two_riders', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', rider_id: 'mem-1' },
       { lesson_id: 'lesson-1', rider_id: 'mem-2' },
     ])
@@ -1016,8 +1013,8 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_allocate_equal_share_to_each_rider_when_splitting_across_three', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 90 }])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 90 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', rider_id: 'mem-1' },
       { lesson_id: 'lesson-1', rider_id: 'mem-2' },
       { lesson_id: 'lesson-1', rider_id: 'mem-3' },
@@ -1030,11 +1027,11 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_aggregate_income_across_multiple_lessons_for_same_rider', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100 },
       { id: 'lesson-2', fee: 50 },
     ])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', rider_id: 'mem-1' },
       { lesson_id: 'lesson-2', rider_id: 'mem-1' },
     ])
@@ -1046,11 +1043,11 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_sort_riders_descending_by_income', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 90 },
       { id: 'lesson-2', fee: 60 },
     ])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', rider_id: 'mem-1' },
       { lesson_id: 'lesson-2', rider_id: 'mem-1' },
       { lesson_id: 'lesson-2', rider_id: 'mem-2' },
@@ -1063,11 +1060,11 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_fold_zero_rider_lesson_fee_into_no_rider_row_alongside_real_riders', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100 },
       { id: 'lesson-2', fee: 80 },
     ])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
@@ -1079,8 +1076,8 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_use_membership_id_as_fallback_name_when_membership_not_found', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-orphan' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-orphan' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
@@ -1089,8 +1086,8 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_scope_resolveMemberNames_to_barn', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     await getRiderIncomeSummary('barn-1', startDate, endDate)
@@ -1099,21 +1096,21 @@ describe('getRiderIncomeSummary', () => {
   })
 
   it('should_throw_on_lessons_query_error', async () => {
-    vi.mocked(getPaidLessonFees).mockRejectedValue(new Error('lessons error'))
+    vi.mocked(getPaidLessonRows).mockRejectedValue(new Error('lessons error'))
 
     await expect(getRiderIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lessons error')
   })
 
   it('should_throw_on_lesson_riders_query_error', async () => {
-    vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-    vi.mocked(getLessonRidersForLessons).mockRejectedValue(new Error('lr error'))
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+    vi.mocked(getLessonJunctionRows).mockRejectedValue(new Error('lr error'))
 
     await expect(getRiderIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lr error')
   })
 
   describe('agreement charge folding', () => {
     it('should_include_rider_income_from_a_charge_when_there_are_no_lessons', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
@@ -1125,7 +1122,7 @@ describe('getRiderIncomeSummary', () => {
     })
 
     it('should_add_full_charge_fee_without_splitting', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
         { chargeId: 'charge-2', agreementId: 'agreement-2', period: '2026-05-01', fee: 200, kind: 'lease', riderId: 'mem-1', horseId: 'horse-2' },
@@ -1138,8 +1135,8 @@ describe('getRiderIncomeSummary', () => {
     })
 
     it('should_combine_lesson_split_income_and_charge_income_for_same_rider', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
@@ -1151,7 +1148,7 @@ describe('getRiderIncomeSummary', () => {
     })
 
     it('should_throw_when_getPaidCharges_rejects', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
       await expect(getRiderIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
@@ -1160,8 +1157,8 @@ describe('getRiderIncomeSummary', () => {
 
   describe('instructor cut netting', () => {
     it('should_subtract_cut_before_splitting_across_two_riders', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', rider_id: 'mem-1' },
         { lesson_id: 'lesson-1', rider_id: 'mem-2' },
       ])
@@ -1173,8 +1170,8 @@ describe('getRiderIncomeSummary', () => {
     })
 
     it('should_apply_cut_once_per_lesson_regardless_of_rider_count', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', rider_id: 'mem-1' },
         { lesson_id: 'lesson-1', rider_id: 'mem-2' },
         { lesson_id: 'lesson-1', rider_id: 'mem-3' },
@@ -1187,7 +1184,7 @@ describe('getRiderIncomeSummary', () => {
     })
 
     it('should_not_apply_cut_to_charge_income', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
@@ -1199,8 +1196,8 @@ describe('getRiderIncomeSummary', () => {
     })
 
     it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 0 }])
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 0 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
       const result = await getRiderIncomeSummary('barn-1', startDate, endDate, 25)
@@ -1209,8 +1206,8 @@ describe('getRiderIncomeSummary', () => {
     })
 
     it('should_subtract_cut_from_no_rider_row_without_splitting', async () => {
-      vi.mocked(getPaidLessonFees).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100 }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([])
 
       const result = await getRiderIncomeSummary('barn-1', startDate, endDate, 25)
 
@@ -1221,7 +1218,7 @@ describe('getRiderIncomeSummary', () => {
 
 describe('getTrainerIncomeSummary', () => {
   beforeEach(() => {
-    vi.mocked(getPaidLessonInstructorFees).mockReset()
+    vi.mocked(getPaidLessonRows).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getChargesForSummary).mockReset()
     vi.mocked(getChargesForSummary).mockResolvedValue([])
@@ -1231,7 +1228,7 @@ describe('getTrainerIncomeSummary', () => {
   const endDate = new Date('2026-06-01T00:00:00Z')
 
   it('should_return_empty_when_no_collected_lessons', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
@@ -1239,7 +1236,7 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_fold_null_instructor_lessons_into_no_instructor_row', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: null, fee: 100 }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: null, fee: 100 }])
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
@@ -1247,7 +1244,7 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_resolve_member_names_with_empty_array_when_no_collected_lessons', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
 
     await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
@@ -1255,7 +1252,7 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_return_full_fee_for_single_trainer', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
@@ -1264,7 +1261,7 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_aggregate_income_across_multiple_lessons_for_same_trainer', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { instructor_id: 'mem-trainer-1', fee: 100 },
       { instructor_id: 'mem-trainer-1', fee: 75 },
     ])
@@ -1276,7 +1273,7 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_return_two_entries_for_two_trainers', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { instructor_id: 'mem-trainer-1', fee: 100 },
       { instructor_id: 'mem-trainer-2', fee: 50 },
     ])
@@ -1291,7 +1288,7 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_sort_descending_by_total_income', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { instructor_id: 'mem-trainer-1', fee: 50 },
       { instructor_id: 'mem-trainer-2', fee: 100 },
     ])
@@ -1306,7 +1303,7 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_use_trainer_id_as_fallback_when_not_found_in_membership_map', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-orphan', fee: 80 }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: 'mem-orphan', fee: 80 }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
@@ -1315,13 +1312,13 @@ describe('getTrainerIncomeSummary', () => {
   })
 
   it('should_throw_on_lessons_query_error', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockRejectedValue(new Error('lessons error'))
+    vi.mocked(getPaidLessonRows).mockRejectedValue(new Error('lessons error'))
 
     await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('lessons error')
   })
 
   it('should_throw_on_resolveMemberNames_error', async () => {
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 80 }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 80 }])
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
     await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('resolve error')
@@ -1329,7 +1326,7 @@ describe('getTrainerIncomeSummary', () => {
 
   describe('no instructor folding', () => {
     it('should_fold_null_instructor_lesson_alongside_a_named_trainer', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+      vi.mocked(getPaidLessonRows).mockResolvedValue([
         { instructor_id: 'mem-trainer-1', fee: 100 },
         { instructor_id: null, fee: 60 },
       ])
@@ -1344,7 +1341,7 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_subtract_cut_from_no_instructor_row', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: null, fee: 100 }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: null, fee: 100 }])
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate, 25)
 
@@ -1352,7 +1349,7 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_not_append_no_instructor_row_when_all_lessons_have_a_trainer', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
@@ -1363,7 +1360,7 @@ describe('getTrainerIncomeSummary', () => {
 
   describe('agreement charge folding', () => {
     it('should_append_non_lesson_income_row_when_charges_are_collected', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
@@ -1374,7 +1371,7 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_not_append_non_lesson_income_row_when_no_charges_are_collected', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 100 }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
       vi.mocked(getChargesForSummary).mockResolvedValue([])
 
@@ -1384,7 +1381,7 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_only_count_collected_charges_in_non_lesson_income_row', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([
         { period: '2026-05-01', fee: 300, payment_type: 'venmo' },
         { period: '2026-05-01', fee: 150, payment_type: null },
@@ -1398,7 +1395,7 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_throw_when_charges_query_fails', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockRejectedValue(new Error('charges error'))
 
       await expect(getTrainerIncomeSummary('barn-1', startDate, endDate)).rejects.toThrow('charges error')
@@ -1407,7 +1404,7 @@ describe('getTrainerIncomeSummary', () => {
 
   describe('instructor cut netting', () => {
     it('should_subtract_cut_per_lesson_for_trainer_income', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+      vi.mocked(getPaidLessonRows).mockResolvedValue([
         { instructor_id: 'mem-trainer-1', fee: 100 },
         { instructor_id: 'mem-trainer-1', fee: 75 },
       ])
@@ -1419,7 +1416,7 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_not_apply_cut_to_non_lesson_income_row', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate, 25)
@@ -1430,7 +1427,7 @@ describe('getTrainerIncomeSummary', () => {
     })
 
     it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
-      vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 0 }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ instructor_id: 'mem-trainer-1', fee: 0 }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate, 25)
@@ -1442,8 +1439,8 @@ describe('getTrainerIncomeSummary', () => {
 
 describe('getHorseIncomeDetail', () => {
   beforeEach(() => {
-    vi.mocked(getPaidLessonFeesAt).mockReset()
-    vi.mocked(getLessonHorsesForLessons).mockReset()
+    vi.mocked(getPaidLessonRows).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
     vi.mocked(resolveHorseNames).mockReset()
     vi.mocked(getPaidCharges).mockReset()
     vi.mocked(getPaidCharges).mockResolvedValue([])
@@ -1453,7 +1450,7 @@ describe('getHorseIncomeDetail', () => {
   const endDate = new Date('2026-06-01T00:00:00Z')
 
   it('should_return_empty_rows_and_horse_name_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
     const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
@@ -1462,16 +1459,16 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_not_fetch_lesson_horses_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
     await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
 
-    expect(getLessonHorsesForLessons).not.toHaveBeenCalled()
+    expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
 
   it('should_return_horse_id_as_fallback_name_when_horse_not_found', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
     const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
@@ -1480,8 +1477,8 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_return_row_with_full_fee_when_single_horse_in_lesson', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
     const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
@@ -1490,8 +1487,8 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_return_horse_count_of_one_when_single_horse_in_lesson', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
     const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
@@ -1500,8 +1497,8 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_split_fee_evenly_when_two_horses_in_lesson', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', horse_id: 'horse-1' },
       { lesson_id: 'lesson-1', horse_id: 'horse-2' },
     ])
@@ -1513,11 +1510,11 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_only_include_lessons_where_horse_participated', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
       { id: 'lesson-2', fee: 80, lesson_at: '2026-05-15T10:00:00Z' },
     ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', horse_id: 'horse-1' },
       { lesson_id: 'lesson-2', horse_id: 'horse-2' },
     ])
@@ -1529,8 +1526,8 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_return_correct_lesson_id_in_row', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
     const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
@@ -1539,11 +1536,11 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_accumulate_total_across_multiple_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
       { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
     ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', horse_id: 'horse-1' },
       { lesson_id: 'lesson-2', horse_id: 'horse-1' },
     ])
@@ -1555,30 +1552,30 @@ describe('getHorseIncomeDetail', () => {
   })
 
   it('should_throw_on_lessons_error', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockRejectedValue(new Error('lessons error'))
+    vi.mocked(getPaidLessonRows).mockRejectedValue(new Error('lessons error'))
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
     await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('lessons error')
   })
 
   it('should_throw_on_horse_name_resolution_error', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockRejectedValue(new Error('horse error'))
 
     await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('horse error')
   })
 
   it('should_throw_on_lesson_horses_error', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
-    vi.mocked(getLessonHorsesForLessons).mockRejectedValue(new Error('lh error'))
+    vi.mocked(getLessonJunctionRows).mockRejectedValue(new Error('lh error'))
 
     await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('lh error')
   })
 
   describe('agreement charge folding', () => {
     it('should_include_a_charge_row_for_the_horse', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
@@ -1592,7 +1589,7 @@ describe('getHorseIncomeDetail', () => {
     })
 
     it('should_exclude_charges_for_other_horses', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-2' },
@@ -1604,8 +1601,8 @@ describe('getHorseIncomeDetail', () => {
     })
 
     it('should_add_charge_fee_to_total', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
@@ -1617,7 +1614,7 @@ describe('getHorseIncomeDetail', () => {
     })
 
     it('should_throw_when_getPaidCharges_rejects', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
@@ -1627,8 +1624,8 @@ describe('getHorseIncomeDetail', () => {
 
   describe('instructor cut netting', () => {
     it('should_net_cut_from_row_fee_when_single_horse_in_lesson', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 25)
@@ -1637,8 +1634,8 @@ describe('getHorseIncomeDetail', () => {
     })
 
     it('should_net_cut_once_before_splitting_across_two_horses', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', horse_id: 'horse-1' },
         { lesson_id: 'lesson-1', horse_id: 'horse-2' },
       ])
@@ -1650,7 +1647,7 @@ describe('getHorseIncomeDetail', () => {
     })
 
     it('should_not_apply_cut_to_charge_rows_or_total', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
@@ -1662,8 +1659,8 @@ describe('getHorseIncomeDetail', () => {
     })
 
     it('should_allow_negative_row_fee_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 0, lesson_at: '2026-05-10T10:00:00Z' }])
-      vi.mocked(getLessonHorsesForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 0, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
       const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 25)
@@ -1675,9 +1672,9 @@ describe('getHorseIncomeDetail', () => {
 
 describe('getRiderIncomeDetail', () => {
   beforeEach(() => {
-    vi.mocked(getPaidLessonFeesAt).mockReset()
+    vi.mocked(getPaidLessonRows).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
-    vi.mocked(getLessonRidersForLessons).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
     vi.mocked(getPaidCharges).mockReset()
     vi.mocked(getPaidCharges).mockResolvedValue([])
   })
@@ -1686,7 +1683,7 @@ describe('getRiderIncomeDetail', () => {
   const endDate = new Date('2026-06-01T00:00:00Z')
 
   it('should_return_rider_name_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
     const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
@@ -1695,7 +1692,7 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_return_empty_rows_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
@@ -1704,7 +1701,7 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_return_zero_total_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
@@ -1713,16 +1710,16 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_not_fetch_lesson_riders_when_no_paid_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
-    expect(getLessonRidersForLessons).not.toHaveBeenCalled()
+    expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
 
   it('should_fall_back_to_rider_id_when_name_not_resolved', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
@@ -1731,7 +1728,7 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_scope_resolveMemberNames_to_barn_and_rider_id', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
@@ -1740,9 +1737,9 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_return_row_with_full_fee_when_single_rider_in_lesson', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
     const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
@@ -1750,9 +1747,9 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_split_fee_evenly_when_two_riders_in_lesson', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', rider_id: 'mem-1' },
       { lesson_id: 'lesson-1', rider_id: 'mem-2' },
     ])
@@ -1763,12 +1760,12 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_only_include_lessons_where_rider_participated', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
       { id: 'lesson-2', fee: 80, lesson_at: '2026-05-15T10:00:00Z' },
     ])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', rider_id: 'mem-1' },
       { lesson_id: 'lesson-2', rider_id: 'mem-2' },
     ])
@@ -1779,9 +1776,9 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_return_correct_lesson_id_in_row', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
     const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
 
@@ -1789,12 +1786,12 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_accumulate_total_across_multiple_lessons', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' },
       { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z' },
     ])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-1', rider_id: 'mem-1' },
       { lesson_id: 'lesson-2', rider_id: 'mem-1' },
     ])
@@ -1805,29 +1802,29 @@ describe('getRiderIncomeDetail', () => {
   })
 
   it('should_throw_on_lessons_error', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockRejectedValue(new Error('lessons error'))
+    vi.mocked(getPaidLessonRows).mockRejectedValue(new Error('lessons error'))
 
     await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('lessons error')
   })
 
   it('should_throw_when_resolveMemberNames_rejects', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
     await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('resolve error')
   })
 
   it('should_throw_on_lesson_riders_error', async () => {
-    vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+    vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getLessonRidersForLessons).mockRejectedValue(new Error('lr error'))
+    vi.mocked(getLessonJunctionRows).mockRejectedValue(new Error('lr error'))
 
     await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('lr error')
   })
 
   describe('agreement charge folding', () => {
     it('should_include_a_charge_row_for_the_rider', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
@@ -1841,7 +1838,7 @@ describe('getRiderIncomeDetail', () => {
     })
 
     it('should_exclude_charges_for_other_riders', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-2', horseId: 'horse-1' },
@@ -1853,9 +1850,9 @@ describe('getRiderIncomeDetail', () => {
     })
 
     it('should_add_charge_fee_to_total', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
@@ -1866,7 +1863,7 @@ describe('getRiderIncomeDetail', () => {
     })
 
     it('should_throw_when_getPaidCharges_rejects', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
@@ -1876,9 +1873,9 @@ describe('getRiderIncomeDetail', () => {
 
   describe('instructor cut netting', () => {
     it('should_net_cut_from_row_fee_when_single_rider_in_lesson', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 25)
 
@@ -1886,9 +1883,9 @@ describe('getRiderIncomeDetail', () => {
     })
 
     it('should_net_cut_once_before_splitting_across_two_riders', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', rider_id: 'mem-1' },
         { lesson_id: 'lesson-1', rider_id: 'mem-2' },
       ])
@@ -1899,7 +1896,7 @@ describe('getRiderIncomeDetail', () => {
     })
 
     it('should_not_apply_cut_to_charge_rows_or_total', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockResolvedValue([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
@@ -1911,9 +1908,9 @@ describe('getRiderIncomeDetail', () => {
     })
 
     it('should_allow_negative_row_fee_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
-      vi.mocked(getPaidLessonFeesAt).mockResolvedValue([{ id: 'lesson-1', fee: 0, lesson_at: '2026-05-10T10:00:00Z' }])
+      vi.mocked(getPaidLessonRows).mockResolvedValue([{ id: 'lesson-1', fee: 0, lesson_at: '2026-05-10T10:00:00Z' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-      vi.mocked(getLessonRidersForLessons).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
+      vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
       const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 25)
 
@@ -1974,10 +1971,10 @@ describe('reconciliation regression', () => {
     vi.mocked(getTierPricesByNames).mockReset()
     vi.mocked(getChargesForSummary).mockReset()
     vi.mocked(getChargesForSummary).mockResolvedValue([])
-    vi.mocked(getPaidLessonFees).mockReset()
-    vi.mocked(getLessonHorsesForLessons).mockReset()
-    vi.mocked(getLessonRidersForLessons).mockReset()
-    vi.mocked(getPaidLessonInstructorFees).mockReset()
+    vi.mocked(getPaidLessonRows).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
+    vi.mocked(getPaidLessonRows).mockReset()
     vi.mocked(resolveHorseNames).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getPaidCharges).mockReset()
@@ -1995,18 +1992,18 @@ describe('reconciliation regression', () => {
       createMockLesson({ id: 'lesson-a', fee: 100, payment_type: 'venmo', instructor_id: null }),
       createMockLesson({ id: 'lesson-b', fee: 50, payment_type: 'cash', instructor_id: 'mem-trainer-1' }),
     ])
-    vi.mocked(getPaidLessonFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { id: 'lesson-a', fee: 100 },
       { id: 'lesson-b', fee: 50 },
     ])
-    vi.mocked(getLessonHorsesForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-a', horse_id: 'horse-1' },
     ])
-    vi.mocked(getLessonRidersForLessons).mockResolvedValue([
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([
       { lesson_id: 'lesson-a', rider_id: 'mem-1' },
       { lesson_id: 'lesson-b', rider_id: 'mem-2' },
     ])
-    vi.mocked(getPaidLessonInstructorFees).mockResolvedValue([
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
       { instructor_id: null, fee: 100 },
       { instructor_id: 'mem-trainer-1', fee: 50 },
     ])
