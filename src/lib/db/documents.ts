@@ -169,6 +169,21 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
 
   const ownersByUserId = await resolveMemberNamesByUserId(ownerUserIds, barnId, supabase)
 
+  // A document's owner may no longer have a barn_memberships row (e.g. removed from the
+  // barn) while their profile — and this still-outstanding document — persists; fall back
+  // to a direct profiles lookup by user_id so their name still resolves (membershipId is
+  // not available in that case, so ownerId below falls back to the raw user id).
+  const unresolvedUserIds = ownerUserIds.filter((id) => !ownersByUserId.has(id))
+  const fallbackNameByUserId = new Map<string, string>()
+  if (unresolvedUserIds.length) {
+    const { data: profiles, error: profilesError } = await supabase
+      .from('profiles')
+      .select('user_id, first_name, last_name')
+      .in('user_id', unresolvedUserIds)
+    if (profilesError) throw profilesError
+    for (const p of profiles ?? []) fallbackNameByUserId.set(p.user_id, `${p.first_name} ${p.last_name}`)
+  }
+
   const results: DueDocument[] = [
     ...horseDocsList.map((d) => ({
       id: d.id,
@@ -185,7 +200,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: ownersByUserId.get(d.trainer_id)?.name ?? 'Unknown Member',
+      ownerName: ownersByUserId.get(d.trainer_id)?.name ?? fallbackNameByUserId.get(d.trainer_id) ?? 'Unknown Member',
       ownerId: ownersByUserId.get(d.trainer_id)?.membershipId ?? d.trainer_id,
     })),
     ...riderDocsList.map((d) => ({
@@ -194,7 +209,7 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: ownersByUserId.get(d.rider_id)?.name ?? 'Unknown Member',
+      ownerName: ownersByUserId.get(d.rider_id)?.name ?? fallbackNameByUserId.get(d.rider_id) ?? 'Unknown Member',
       ownerId: ownersByUserId.get(d.rider_id)?.membershipId ?? d.rider_id,
     })),
   ]

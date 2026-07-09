@@ -503,6 +503,40 @@ describe('getDueDocuments', () => {
     expect(result[0]).toMatchObject({ ownerName: 'Unknown Member', ownerId: 'user-9' })
   })
 
+  it('should_fall_back_to_direct_profile_lookup_for_trainer_document_when_membership_removed', async () => {
+    setupFrom({
+      trainerDocs: [trainerDoc],
+      memberships: [],
+      profiles: [{ user_id: 'user-9', first_name: 'Jane', last_name: 'Trainer' }],
+    })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0]).toMatchObject({ ownerName: 'Jane Trainer', ownerId: 'user-9' })
+  })
+
+  it('should_fall_back_to_direct_profile_lookup_for_rider_document_when_membership_removed', async () => {
+    setupFrom({
+      riderDocs: [riderDoc],
+      memberships: [],
+      profiles: [{ user_id: 'user-8', first_name: 'Bob', last_name: 'Rider' }],
+    })
+
+    const result = await getDueDocuments('barn-1', today)
+
+    expect(result[0]).toMatchObject({ ownerName: 'Bob Rider', ownerId: 'user-8' })
+  })
+
+  it('should_throw_when_fallback_profile_lookup_errors', async () => {
+    setupFrom({
+      trainerDocs: [trainerDoc],
+      memberships: [],
+      errors: { profiles: new Error('fallback profiles error') },
+    })
+
+    await expect(getDueDocuments('barn-1', today)).rejects.toThrow('fallback profiles error')
+  })
+
   it('should_sort_combined_results_by_reminder_date_ascending', async () => {
     setupFrom({
       horseDocs: [horseDoc],
