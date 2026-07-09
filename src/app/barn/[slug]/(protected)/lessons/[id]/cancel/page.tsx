@@ -5,6 +5,7 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { cancelLessonAction } from '@/app/actions/lessons'
 import { Button } from '@/components/ui/Button'
+import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
 
 export default async function CancelLessonPage({
   params,
@@ -25,11 +26,9 @@ export default async function CancelLessonPage({
   const role = membership.role as 'manager' | 'trainer'
   const lesson = await getLessonById(id, barn.id, role, user.id)
   if (!lesson) notFound()
-  if (role === 'trainer' && lesson.instructor_id !== membership.id) notFound()
+  if (role === 'trainer' && !canManageLesson(role, membership.id, lesson)) notFound()
 
-  const isEligible =
-    lesson.cancelled_at === null &&
-    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+  const isEligible = lesson.cancelled_at === null && isLessonCancellationEligible(lesson)
   if (!isEligible) notFound()
 
   const cancel = cancelLessonAction.bind(null, barn.id, slug, lesson.id)

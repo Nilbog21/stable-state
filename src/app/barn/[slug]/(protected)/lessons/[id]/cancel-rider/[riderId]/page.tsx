@@ -5,6 +5,7 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { cancelRiderParticipationAction } from '@/app/actions/lessons'
 import { Button } from '@/components/ui/Button'
+import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
 
 export default async function CancelRiderParticipationPage({
   params,
@@ -25,15 +26,13 @@ export default async function CancelRiderParticipationPage({
   const lesson = await getLessonById(id, barn.id, role, user.id)
   if (!lesson) notFound()
   if (lesson.cancelled_at !== null) notFound()
-  if (role === 'trainer' && lesson.instructor_id !== membership.id) notFound()
+  if (role === 'trainer' && !canManageLesson(role, membership.id, lesson)) notFound()
 
   const targetRider = lesson.lesson_riders.find((lr) => lr.barn_membership?.id === riderId) ?? null
   if (!targetRider?.barn_membership) notFound()
   if (role === 'rider' && targetRider.barn_membership.user_id !== user.id) notFound()
 
-  const isEligible =
-    targetRider.cancelled_at === null &&
-    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+  const isEligible = targetRider.cancelled_at === null && isLessonCancellationEligible(lesson)
   if (!isEligible) notFound()
 
   const cancel = cancelRiderParticipationAction.bind(null, barn.id, slug, lesson.id, riderId)
