@@ -21,6 +21,7 @@ import {
 import { Button } from '@/components/ui/Button'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
+import { Badge } from '@/components/ui/Badge'
 import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import type { BarnMembership, Profile } from '@/lib/db/types'
@@ -257,13 +258,7 @@ export default async function SettingsPage({
                   <tr key={tier.id}>
                     <Td>{tier.name}</Td>
                     <Td tone="secondary">${tier.price}</Td>
-                    <Td>
-                      {tier.is_default && (
-                        <span className="rounded bg-zinc-900 px-1.5 py-0.5 text-xs font-medium text-white dark:bg-zinc-50 dark:text-zinc-900">
-                          Default
-                        </span>
-                      )}
-                    </Td>
+                    <Td>{tier.is_default && <Badge tone="solid">Default</Badge>}</Td>
                     <Td>
                       {tier.is_active ? (
                         <span className="text-zinc-700 dark:text-zinc-300">Active</span>
