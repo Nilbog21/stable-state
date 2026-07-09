@@ -14,11 +14,8 @@ import {
   getLessonsForSummary,
   getTierPricesByNames,
   getOutstandingLessonRows,
-  getLessonRidersForLessons,
-  getPaidLessonFees,
-  getLessonHorsesForLessons,
-  getPaidLessonInstructorFees,
-  getPaidLessonFeesAt,
+  getLessonJunctionRows,
+  getPaidLessonRows,
 } from '../lesson-finance-queries'
 
 describe('getLessonsForSummary', () => {
@@ -417,7 +414,7 @@ describe('getOutstandingLessonRows', () => {
   })
 })
 
-describe('getLessonRidersForLessons', () => {
+describe('getLessonJunctionRows', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
   })
@@ -428,48 +425,68 @@ describe('getLessonRidersForLessons', () => {
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockEq, mockIn }
+    return { from, mockSelect, mockEq, mockIn }
   }
 
   it('should_not_query_when_lesson_ids_is_empty', async () => {
     const { from } = makeChain([])
-    await getLessonRidersForLessons('barn-1', [])
+    await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', [])
     expect(from).not.toHaveBeenCalled()
   })
 
   it('should_return_empty_array_when_lesson_ids_is_empty', async () => {
     makeChain([])
-    const result = await getLessonRidersForLessons('barn-1', [])
+    const result = await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', [])
     expect(result).toEqual([])
+  })
+
+  it('should_query_the_given_rider_table', async () => {
+    const { from } = makeChain([])
+    await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', ['lesson-1'])
+    expect(from).toHaveBeenCalledWith('lesson_riders')
+  })
+
+  it('should_query_the_given_horse_table', async () => {
+    const { from } = makeChain([])
+    await getLessonJunctionRows('lesson_horses', 'horse_id', 'barn-1', ['lesson-1'])
+    expect(from).toHaveBeenCalledWith('lesson_horses')
+  })
+
+  it('should_select_lesson_id_and_the_given_participant_column', async () => {
+    const { mockSelect } = makeChain([])
+    await getLessonJunctionRows('lesson_horses', 'horse_id', 'barn-1', ['lesson-1'])
+    expect(mockSelect).toHaveBeenCalledWith('lesson_id, horse_id')
   })
 
   it('should_filter_by_barn_id', async () => {
     const { mockEq } = makeChain([])
-    await getLessonRidersForLessons('barn-1', ['lesson-1'])
+    await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', ['lesson-1'])
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_filter_by_lesson_ids', async () => {
     const { mockIn } = makeChain([])
-    await getLessonRidersForLessons('barn-1', ['lesson-1', 'lesson-2'])
+    await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', ['lesson-1', 'lesson-2'])
     expect(mockIn).toHaveBeenCalledWith('lesson_id', ['lesson-1', 'lesson-2'])
   })
 
   it('should_return_the_raw_rows', async () => {
     makeChain([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
-    const result = await getLessonRidersForLessons('barn-1', ['lesson-1'])
+    const result = await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', ['lesson-1'])
     expect(result).toEqual([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {
     makeChain(null)
-    const result = await getLessonRidersForLessons('barn-1', ['lesson-1'])
+    const result = await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', ['lesson-1'])
     expect(result).toEqual([])
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
-    makeChain(null, new Error('lr error'))
-    await expect(getLessonRidersForLessons('barn-1', ['lesson-1'])).rejects.toThrow('lr error')
+    makeChain(null, new Error('junction error'))
+    await expect(
+      getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', ['lesson-1'])
+    ).rejects.toThrow('junction error')
   })
 
   it('should_use_injected_client_when_provided', async () => {
@@ -479,223 +496,14 @@ describe('getLessonRidersForLessons', () => {
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     const mockClient = { from } as any
 
-    await getLessonRidersForLessons('barn-1', ['lesson-1'], mockClient)
+    await getLessonJunctionRows('lesson_riders', 'rider_id', 'barn-1', ['lesson-1'], mockClient)
 
     expect(createClient).not.toHaveBeenCalled()
     expect(from).toHaveBeenCalledWith('lesson_riders')
   })
 })
 
-describe('getPaidLessonFees', () => {
-  const startDate = new Date('2026-05-01T00:00:00Z')
-  const endDate = new Date('2026-06-01T00:00:00Z')
-
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockLt = vi.fn().mockResolvedValue({ data, error })
-    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockEq, mockNot, mockGte, mockLt }
-  }
-
-  it('should_filter_by_barn_id', async () => {
-    const { mockEq } = makeChain([])
-    await getPaidLessonFees('barn-1', startDate, endDate)
-    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_filter_by_non_null_payment_type', async () => {
-    const { mockNot } = makeChain([])
-    await getPaidLessonFees('barn-1', startDate, endDate)
-    expect(mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
-  })
-
-  it('should_filter_by_start_date', async () => {
-    const { mockGte } = makeChain([])
-    await getPaidLessonFees('barn-1', startDate, endDate)
-    expect(mockGte).toHaveBeenCalledWith('lesson_at', startDate.toISOString())
-  })
-
-  it('should_filter_by_end_date', async () => {
-    const { mockLt } = makeChain([])
-    await getPaidLessonFees('barn-1', startDate, endDate)
-    expect(mockLt).toHaveBeenCalledWith('lesson_at', endDate.toISOString())
-  })
-
-  it('should_return_the_raw_rows', async () => {
-    makeChain([{ id: 'lesson-1', fee: 100 }])
-    const result = await getPaidLessonFees('barn-1', startDate, endDate)
-    expect(result).toEqual([{ id: 'lesson-1', fee: 100 }])
-  })
-
-  it('should_return_empty_array_when_data_is_null', async () => {
-    makeChain(null)
-    const result = await getPaidLessonFees('barn-1', startDate, endDate)
-    expect(result).toEqual([])
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    makeChain(null, new Error('lessons error'))
-    await expect(getPaidLessonFees('barn-1', startDate, endDate)).rejects.toThrow('lessons error')
-  })
-
-  it('should_use_injected_client_when_provided', async () => {
-    const mockLt = vi.fn().mockResolvedValue({ data: [], error: null })
-    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockClient = { from } as any
-
-    await getPaidLessonFees('barn-1', startDate, endDate, mockClient)
-
-    expect(createClient).not.toHaveBeenCalled()
-    expect(from).toHaveBeenCalledWith('lessons')
-  })
-})
-
-describe('getLessonHorsesForLessons', () => {
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockEq, mockIn }
-  }
-
-  it('should_filter_by_barn_id', async () => {
-    const { mockEq } = makeChain([])
-    await getLessonHorsesForLessons('barn-1', ['lesson-1'])
-    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_filter_by_lesson_ids', async () => {
-    const { mockIn } = makeChain([])
-    await getLessonHorsesForLessons('barn-1', ['lesson-1', 'lesson-2'])
-    expect(mockIn).toHaveBeenCalledWith('lesson_id', ['lesson-1', 'lesson-2'])
-  })
-
-  it('should_return_the_raw_rows', async () => {
-    makeChain([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
-    const result = await getLessonHorsesForLessons('barn-1', ['lesson-1'])
-    expect(result).toEqual([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
-  })
-
-  it('should_return_empty_array_when_data_is_null', async () => {
-    makeChain(null)
-    const result = await getLessonHorsesForLessons('barn-1', ['lesson-1'])
-    expect(result).toEqual([])
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    makeChain(null, new Error('lh error'))
-    await expect(getLessonHorsesForLessons('barn-1', ['lesson-1'])).rejects.toThrow('lh error')
-  })
-
-  it('should_use_injected_client_when_provided', async () => {
-    const mockIn = vi.fn().mockResolvedValue({ data: [], error: null })
-    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockClient = { from } as any
-
-    await getLessonHorsesForLessons('barn-1', ['lesson-1'], mockClient)
-
-    expect(createClient).not.toHaveBeenCalled()
-    expect(from).toHaveBeenCalledWith('lesson_horses')
-  })
-})
-
-describe('getPaidLessonInstructorFees', () => {
-  const startDate = new Date('2026-05-01T00:00:00Z')
-  const endDate = new Date('2026-06-01T00:00:00Z')
-
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockLt = vi.fn().mockResolvedValue({ data, error })
-    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockEq, mockNot, mockGte, mockLt }
-  }
-
-  it('should_filter_by_barn_id', async () => {
-    const { mockEq } = makeChain([])
-    await getPaidLessonInstructorFees('barn-1', startDate, endDate)
-    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_filter_by_non_null_payment_type', async () => {
-    const { mockNot } = makeChain([])
-    await getPaidLessonInstructorFees('barn-1', startDate, endDate)
-    expect(mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
-  })
-
-  it('should_filter_by_start_date', async () => {
-    const { mockGte } = makeChain([])
-    await getPaidLessonInstructorFees('barn-1', startDate, endDate)
-    expect(mockGte).toHaveBeenCalledWith('lesson_at', startDate.toISOString())
-  })
-
-  it('should_filter_by_end_date', async () => {
-    const { mockLt } = makeChain([])
-    await getPaidLessonInstructorFees('barn-1', startDate, endDate)
-    expect(mockLt).toHaveBeenCalledWith('lesson_at', endDate.toISOString())
-  })
-
-  it('should_return_the_raw_rows', async () => {
-    makeChain([{ instructor_id: 'user-1', fee: 100 }])
-    const result = await getPaidLessonInstructorFees('barn-1', startDate, endDate)
-    expect(result).toEqual([{ instructor_id: 'user-1', fee: 100 }])
-  })
-
-  it('should_return_empty_array_when_data_is_null', async () => {
-    makeChain(null)
-    const result = await getPaidLessonInstructorFees('barn-1', startDate, endDate)
-    expect(result).toEqual([])
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    makeChain(null, new Error('instructor fees error'))
-    await expect(getPaidLessonInstructorFees('barn-1', startDate, endDate)).rejects.toThrow('instructor fees error')
-  })
-
-  it('should_use_injected_client_when_provided', async () => {
-    const mockLt = vi.fn().mockResolvedValue({ data: [], error: null })
-    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    const from = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockClient = { from } as any
-
-    await getPaidLessonInstructorFees('barn-1', startDate, endDate, mockClient)
-
-    expect(createClient).not.toHaveBeenCalled()
-    expect(from).toHaveBeenCalledWith('lessons')
-  })
-})
-
-describe('getPaidLessonFeesAt', () => {
+describe('getPaidLessonRows', () => {
   const startDate = new Date('2026-05-01T00:00:00Z')
   const endDate = new Date('2026-06-01T00:00:00Z')
 
@@ -712,55 +520,79 @@ describe('getPaidLessonFeesAt', () => {
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockEq, mockNot, mockGte, mockLt, mockOrder }
+    return { from, mockSelect, mockEq, mockNot, mockGte, mockLt, mockOrder }
   }
 
   it('should_filter_by_barn_id', async () => {
     const { mockEq } = makeChain([])
-    await getPaidLessonFeesAt('barn-1', startDate, endDate)
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_filter_by_non_null_payment_type', async () => {
     const { mockNot } = makeChain([])
-    await getPaidLessonFeesAt('barn-1', startDate, endDate)
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
     expect(mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
   })
 
   it('should_filter_by_start_date', async () => {
     const { mockGte } = makeChain([])
-    await getPaidLessonFeesAt('barn-1', startDate, endDate)
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
     expect(mockGte).toHaveBeenCalledWith('lesson_at', startDate.toISOString())
   })
 
   it('should_filter_by_end_date', async () => {
     const { mockLt } = makeChain([])
-    await getPaidLessonFeesAt('barn-1', startDate, endDate)
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
     expect(mockLt).toHaveBeenCalledWith('lesson_at', endDate.toISOString())
   })
 
   it('should_sort_ascending_by_lesson_at', async () => {
     const { mockOrder } = makeChain([])
-    await getPaidLessonFeesAt('barn-1', startDate, endDate)
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
     expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
+  })
+
+  it('should_always_select_fee', async () => {
+    const { mockSelect } = makeChain([])
+    await getPaidLessonRows('barn-1', startDate, endDate, [])
+    expect(mockSelect).toHaveBeenCalledWith('fee')
+  })
+
+  it('should_select_fee_plus_the_given_id_column', async () => {
+    const { mockSelect } = makeChain([])
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
+    expect(mockSelect).toHaveBeenCalledWith('fee, id')
+  })
+
+  it('should_select_fee_plus_the_given_instructor_column', async () => {
+    const { mockSelect } = makeChain([])
+    await getPaidLessonRows('barn-1', startDate, endDate, ['instructor_id'])
+    expect(mockSelect).toHaveBeenCalledWith('fee, instructor_id')
+  })
+
+  it('should_select_fee_plus_the_given_id_and_lesson_at_columns', async () => {
+    const { mockSelect } = makeChain([])
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id', 'lesson_at'])
+    expect(mockSelect).toHaveBeenCalledWith('fee, id, lesson_at')
   })
 
   it('should_return_the_raw_rows', async () => {
     const row = { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z' }
     makeChain([row])
-    const result = await getPaidLessonFeesAt('barn-1', startDate, endDate)
+    const result = await getPaidLessonRows('barn-1', startDate, endDate, ['id', 'lesson_at'])
     expect(result).toEqual([row])
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {
     makeChain(null)
-    const result = await getPaidLessonFeesAt('barn-1', startDate, endDate)
+    const result = await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
     expect(result).toEqual([])
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
-    makeChain(null, new Error('fees at error'))
-    await expect(getPaidLessonFeesAt('barn-1', startDate, endDate)).rejects.toThrow('fees at error')
+    makeChain(null, new Error('lessons error'))
+    await expect(getPaidLessonRows('barn-1', startDate, endDate, ['id'])).rejects.toThrow('lessons error')
   })
 
   it('should_use_injected_client_when_provided', async () => {
@@ -773,7 +605,7 @@ describe('getPaidLessonFeesAt', () => {
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     const mockClient = { from } as any
 
-    await getPaidLessonFeesAt('barn-1', startDate, endDate, mockClient)
+    await getPaidLessonRows('barn-1', startDate, endDate, ['id'], mockClient)
 
     expect(createClient).not.toHaveBeenCalled()
     expect(from).toHaveBeenCalledWith('lessons')
