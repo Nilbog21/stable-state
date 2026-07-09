@@ -4,6 +4,12 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
+## v2.0.3 — July 2026
+
+**Streamlined behind-the-scenes database setup files.** No user-facing changes.
+
+---
+
 ## v2.0.2 — June 2026
 
 **Fixed an issue that prevented automated tests from running correctly.** No user-facing changes.
