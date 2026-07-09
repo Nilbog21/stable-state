@@ -1,6 +1,7 @@
 'use client'
 import Link from 'next/link'
 import type { DueDocument } from '@/lib/db/types'
+import { localToday } from '@/lib/local-day'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   insurance_binder: 'Insurance Binder',
@@ -12,13 +13,6 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
   lease_agreement: 'Lease Agreement',
   boarding_contract: 'Boarding Contract',
   other: 'Other',
-}
-
-function localToday(): string {
-  const now = new Date()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${now.getFullYear()}-${month}-${day}`
 }
 
 function formatDate(dateOnly: string): string {
@@ -35,10 +29,7 @@ function dueDocumentHref(slug: string, doc: DueDocument): string {
 }
 
 export function DocumentRemindersSection({ slug, dueDocuments }: { slug: string; dueDocuments: DueDocument[] }) {
-  // The server fetches with a UTC-day cutoff; filtering again here against
-  // the viewer's local day means a document that isn't due yet in their
-  // timezone doesn't flash in a day early — same tradeoff as isSameLocalDay
-  // in UpcomingLessonCard.
+  // See the tradeoff comment on localToday in @/lib/local-day.
   const today = localToday()
   const due = dueDocuments.filter((doc) => doc.reminderDate <= today)
 

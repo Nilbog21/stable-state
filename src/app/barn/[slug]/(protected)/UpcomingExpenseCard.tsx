@@ -2,17 +2,13 @@
 import Link from 'next/link'
 import { formatExpenseHorses } from './expenses/ExpenseRow'
 import type { ScheduledExpense } from '@/lib/db/types'
-
-export function isExpenseToday(expenseDate: string, now: Date): boolean {
-  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  return expenseDate === todayStr
-}
+import { localToday } from '@/lib/local-day'
 
 export function formatExpenseDateTime(expense: { expense_date: string; expense_time: string }, now: Date): string {
   const time = new Intl.DateTimeFormat('en-US', { timeStyle: 'short', timeZone: 'UTC' }).format(
     new Date(`1970-01-01T${expense.expense_time}Z`)
   )
-  if (isExpenseToday(expense.expense_date, now)) return `Today · ${time}`
+  if (expense.expense_date === localToday(now)) return `Today · ${time}`
 
   const date = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
     new Date(`${expense.expense_date}T00:00:00Z`)

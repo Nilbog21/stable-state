@@ -1,14 +1,7 @@
 'use client'
 import type { LessonWithDetails } from '@/lib/db/types'
 import { Card } from '@/components/ui/Card'
-
-export function isSameLocalDay(date: Date, now: Date): boolean {
-  return (
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate()
-  )
-}
+import { isSameLocalDay } from '@/lib/local-day'
 
 export function formatLessonDate(iso: string, now: Date): string {
   const d = new Date(iso)

@@ -7,20 +7,12 @@ vi.mock('../UpcomingLessonCard', () => ({
   UpcomingLessonCard: ({ role, slug, lesson, viewerMembershipId }: { role: string; slug: string; lesson: { id: string }; viewerMembershipId?: string }) => (
     <div data-testid="upcoming-card" data-role={role} data-slug={slug} data-lesson-id={lesson.id} data-viewer-membership-id={viewerMembershipId} />
   ),
-  isSameLocalDay: (date: Date, now: Date) =>
-    date.getFullYear() === now.getFullYear() &&
-    date.getMonth() === now.getMonth() &&
-    date.getDate() === now.getDate(),
 }))
 
 vi.mock('../UpcomingExpenseCard', () => ({
   UpcomingExpenseCard: ({ expense, slug }: { expense: { id: string }; slug: string }) => (
     <div data-testid="upcoming-expense-card" data-slug={slug} data-expense-id={expense.id} />
   ),
-  isExpenseToday: (expenseDate: string, now: Date) => {
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-    return expenseDate === todayStr
-  },
 }))
 
 import { UpcomingLessonsSections } from '../UpcomingLessonsSections'

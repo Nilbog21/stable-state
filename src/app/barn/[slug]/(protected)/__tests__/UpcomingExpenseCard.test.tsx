@@ -7,7 +7,7 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { UpcomingExpenseCard, formatExpenseDateTime, isExpenseToday } from '../UpcomingExpenseCard'
+import { UpcomingExpenseCard, formatExpenseDateTime } from '../UpcomingExpenseCard'
 import { createMockExpenseWithHorses } from '@/test/fixtures'
 import type { ScheduledExpense } from '@/lib/db/types'
 
@@ -17,18 +17,6 @@ function makeExpense(overrides: Partial<ScheduledExpense> = {}): ScheduledExpens
     ...overrides,
   } as ScheduledExpense
 }
-
-describe('isExpenseToday', () => {
-  it('should_return_true_when_expense_date_matches_local_today', () => {
-    const now = new Date('2026-07-09T12:00:00Z')
-    expect(isExpenseToday('2026-07-09', now)).toBe(true)
-  })
-
-  it('should_return_false_when_expense_date_does_not_match_local_today', () => {
-    const now = new Date('2026-07-09T12:00:00Z')
-    expect(isExpenseToday('2026-07-10', now)).toBe(false)
-  })
-})
 
 describe('formatExpenseDateTime', () => {
   it('should_prefix_with_today_when_expense_is_today', () => {
