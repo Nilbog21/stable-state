@@ -12,11 +12,11 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { parseLessonFormData } from './lesson-form-parsing'
+import { canManageLesson, isLateCancellation, isLessonCancellationEligible } from '@/lib/lesson-authorization'
 
 function computeCancellationIsLate(lessonAt: string, formData: FormData, allowInstructorOverride: boolean): boolean {
   const cancelledByInstructor = allowInstructorOverride && formData.get('cancel_type') === 'instructor'
-  const within24Hours = new Date(lessonAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000
-  return cancelledByInstructor ? false : within24Hours
+  return isLateCancellation(lessonAt, cancelledByInstructor)
 }
 
 // upsertNotificationsForRecipients defaults to a raw table upsert that requires a
@@ -153,14 +153,12 @@ export async function cancelLessonAction(
     return
   }
 
-  if (membership.role === 'trainer' && lesson.instructor_id !== membership.id) {
+  if (membership.role === 'trainer' && !canManageLesson(membership.role, membership.id, lesson)) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
   }
 
-  const isEligible =
-    lesson.cancelled_at === null &&
-    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+  const isEligible = lesson.cancelled_at === null && isLessonCancellationEligible(lesson)
   if (!isEligible) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -217,7 +215,7 @@ export async function cancelRiderParticipationAction(
     return
   }
 
-  if (membership.role === 'trainer' && lesson.instructor_id !== membership.id) {
+  if (membership.role === 'trainer' && !canManageLesson(membership.role, membership.id, lesson)) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return
   }
@@ -233,9 +231,7 @@ export async function cancelRiderParticipationAction(
     return
   }
 
-  const isEligible =
-    targetRider.cancelled_at === null &&
-    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+  const isEligible = targetRider.cancelled_at === null && isLessonCancellationEligible(lesson)
   if (!isEligible) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return

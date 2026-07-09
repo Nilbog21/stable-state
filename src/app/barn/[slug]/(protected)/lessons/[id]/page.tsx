@@ -4,6 +4,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { Button } from '@/components/ui/Button'
+import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
 
 function RiderParticipationAction({
   slug,
@@ -82,9 +83,9 @@ export default async function LessonDetailPage({
     notFound()
   }
 
-  const lessonEligibleWindow = new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null
-  const canManageLesson = role === 'manager' || (role === 'trainer' && lesson.instructor_id === membership.id)
-  const showManagerRiderActions = lesson.cancelled_at === null && canManageLesson
+  const lessonEligibleWindow = isLessonCancellationEligible(lesson)
+  const canManage = canManageLesson(role, membership.id, lesson)
+  const showManagerRiderActions = lesson.cancelled_at === null && canManage
   const showOwnRiderAction = lesson.cancelled_at === null && role === 'rider'
 
   return (
@@ -109,7 +110,7 @@ export default async function LessonDetailPage({
               </span>
             )}
           </div>
-          {canManageLesson && (
+          {canManage && (
             <Button href={`/barn/${slug}/lessons/${lesson.id}/edit`} variant="ghost">
               Edit
             </Button>
