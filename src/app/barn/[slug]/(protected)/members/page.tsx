@@ -1,10 +1,11 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { EmptyState } from '@/components/EmptyState'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
 import { ManagedMemberRow } from './ManagedMemberRow'
 import { createManagedMemberAction } from './actions'
 
@@ -51,12 +52,12 @@ export default async function MembersPage({
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           You
         </h2>
-        <Link
+        <Card
           href={`/barn/${slug}/members/${membership.id}`}
-          className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+          className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
         >
           {youName}
-        </Link>
+        </Card>
       </section>
 
       {membership.role === 'manager' && (
@@ -68,12 +69,12 @@ export default async function MembersPage({
             <ul className="space-y-2">
               {managers.map((m) => (
                 <li key={m.membershipId}>
-                  <Link
+                  <Card
                     href={`/barn/${slug}/members/${m.membershipId}`}
-                    className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                    className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
                   >
                     {m.name}
-                  </Link>
+                  </Card>
                 </li>
               ))}
             </ul>
@@ -96,20 +97,15 @@ export default async function MembersPage({
               name="first_name"
               required
               placeholder="First name"
-              className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
             <input
               name="last_name"
               required
               placeholder="Last name"
-              className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+              className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
-            <button
-              type="submit"
-              className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-            >
-              Add Trainer
-            </button>
+            <Button type="submit">Add Trainer</Button>
           </form>
           {trainers.length > 0 ? (
             <ul className="space-y-2">
@@ -125,12 +121,12 @@ export default async function MembersPage({
                   </li>
                 ) : (
                   <li key={t.membershipId}>
-                    <Link
+                    <Card
                       href={`/barn/${slug}/members/${t.membershipId}`}
-                      className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                      className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
                     >
                       {t.name}
-                    </Link>
+                    </Card>
                   </li>
                 )
               )}
@@ -155,20 +151,15 @@ export default async function MembersPage({
                 name="first_name"
                 required
                 placeholder="First name"
-                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
               <input
                 name="last_name"
                 required
                 placeholder="Last name"
-                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+                className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
               />
-              <button
-                type="submit"
-                className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                Add Rider
-              </button>
+              <Button type="submit">Add Rider</Button>
             </form>
           )}
           {riders.length > 0 ? (
@@ -185,12 +176,12 @@ export default async function MembersPage({
                   </li>
                 ) : (
                   <li key={r.membershipId}>
-                    <Link
+                    <Card
                       href={`/barn/${slug}/members/${r.membershipId}`}
-                      className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+                      className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
                     >
                       {r.name}
-                    </Link>
+                    </Card>
                   </li>
                 )
               )}
