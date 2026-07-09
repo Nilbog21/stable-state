@@ -72,7 +72,7 @@ export default async function HorseDetailPage({
       {role !== 'manager' && (
         <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
               {horse.is_available ? 'Available' : 'Unavailable'}
             </dd>
@@ -80,7 +80,7 @@ export default async function HorseDetailPage({
 
           {!horse.is_available && horse.unavailability_reason && (
             <div className="flex flex-col gap-1 py-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Reason</dt>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Reason</dt>
               <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.unavailability_reason}</dd>
             </div>
           )}

@@ -10,6 +10,7 @@ import { formatCurrency } from '@/lib/format-currency'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
 import { Th, Td } from '@/components/ui/Table'
+import { Pill } from '@/components/ui/Pill'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer'] as const
 type Tab = typeof VALID_TABS[number]
@@ -99,10 +100,6 @@ export function resolveFinancesMonth(
 
   return { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl }
 }
-
-const pillBase = 'rounded-full px-4 py-1.5 text-sm font-medium transition-colors'
-const pillActive = 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
-const pillInactive = 'border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
 
 export default async function FinancesPage({
   params,
@@ -247,18 +244,18 @@ export default async function FinancesPage({
 
       <div className="mb-6 overflow-x-auto -mx-1">
         <div className="flex gap-2 whitespace-nowrap px-1 pb-2">
-          <Link href={`?tab=horse${monthQ}`} className={`${pillBase} ${tab === 'horse' ? pillActive : pillInactive}`}>
+          <Pill href={`?tab=horse${monthQ}`} active={tab === 'horse'}>
             By Horse
-          </Link>
-          <Link href={`?tab=tier${monthQ}`} className={`${pillBase} ${tab === 'tier' ? pillActive : pillInactive}`}>
+          </Pill>
+          <Pill href={`?tab=tier${monthQ}`} active={tab === 'tier'}>
             By Tier
-          </Link>
-          <Link href={`?tab=rider${monthQ}`} className={`${pillBase} ${tab === 'rider' ? pillActive : pillInactive}`}>
+          </Pill>
+          <Pill href={`?tab=rider${monthQ}`} active={tab === 'rider'}>
             By Rider
-          </Link>
-          <Link href={`?tab=trainer${monthQ}`} className={`${pillBase} ${tab === 'trainer' ? pillActive : pillInactive}`}>
+          </Pill>
+          <Pill href={`?tab=trainer${monthQ}`} active={tab === 'trainer'}>
             By Instructor
-          </Link>
+          </Pill>
         </div>
       </div>
 

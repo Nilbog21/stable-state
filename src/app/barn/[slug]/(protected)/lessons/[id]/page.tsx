@@ -118,21 +118,21 @@ export default async function LessonDetailPage({
         </div>
         <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Date &amp; Time</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Date &amp; Time</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">{formattedDate}</dd>
           </div>
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Instructor</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Instructor</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">{instructorName}</dd>
           </div>
           {lesson.cancelled_at !== null && (
             <div className="flex flex-col gap-1 py-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Cancellation Notes</dt>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Cancellation Notes</dt>
               <dd className="text-sm text-zinc-900 dark:text-zinc-50">{lesson.cancellation_notes ?? '—'}</dd>
             </div>
           )}
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Horse(s)</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Horse(s)</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
               {lesson.lesson_horses.length === 0 ? '—' : (
                 <ul className="flex flex-col gap-2">
@@ -153,7 +153,7 @@ export default async function LessonDetailPage({
             </dd>
           </div>
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Rider(s)</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Rider(s)</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
               {lesson.lesson_riders.length === 0 ? '—' : lesson.lesson_type === 'group' ? (
                 <>
@@ -269,7 +269,7 @@ export default async function LessonDetailPage({
             </dd>
           </div>
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Fee</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Fee</dt>
             <dd className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
               ${lesson.fee}
               {lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (

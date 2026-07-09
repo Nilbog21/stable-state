@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateChargeFeeAction, updateChargePaymentTypeAction } from '../actions'
 import { Th, Td } from '@/components/ui/Table'
+import { EmptyState } from '@/components/EmptyState'
 import type { AgreementCharge } from '@/lib/db/types'
 
 const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
@@ -84,7 +85,9 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
 }
 
 export function ChargesTable({ charges, barnSlug }: { charges: AgreementCharge[]; barnSlug: string }) {
-  if (charges.length === 0) return <p className="mt-6 text-sm text-zinc-500">No charges yet.</p>
+  if (charges.length === 0) {
+    return <EmptyState heading="No charges yet." subtext="Charges will appear here once generated." />
+  }
 
   return (
     <table className="mt-6 w-full">

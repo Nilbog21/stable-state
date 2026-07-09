@@ -45,7 +45,7 @@ export function DocumentRemindersSection({ slug, dueDocuments }: { slug: string;
           <li key={doc.id}>
             <Link
               href={dueDocumentHref(slug, doc)}
-              className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-300 dark:hover:bg-amber-900"
+              className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800 hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
             >
               <span className="font-medium">
                 {doc.ownerName} — {RECORD_TYPE_LABELS[doc.recordType] ?? doc.recordType}

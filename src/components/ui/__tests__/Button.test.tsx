@@ -88,9 +88,9 @@ describe('Button', () => {
       expect(screen.getByRole('button').className).toContain('text-xs')
     })
 
-    it('should_not_meet_minimum_touch_target_height_for_sm_size', () => {
+    it('should_meet_minimum_touch_target_height_for_sm_size', () => {
       render(<Button size="sm">Save</Button>)
-      expect(screen.getByRole('button').className).not.toContain('min-h-11')
+      expect(screen.getByRole('button').className).toContain('min-h-11')
     })
   })
 

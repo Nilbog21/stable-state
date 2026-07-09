@@ -7,7 +7,7 @@ type Size = 'sm' | 'md'
 const base = 'inline-block font-medium disabled:opacity-50'
 const sizes: Record<Size, string> = {
   md: 'min-h-11 rounded-md px-4 py-2 text-sm',
-  sm: 'rounded px-3 py-1 text-xs',
+  sm: 'min-h-11 rounded px-3 py-1 text-xs',
 }
 const variants: Record<Variant, string> = {
   primary:
