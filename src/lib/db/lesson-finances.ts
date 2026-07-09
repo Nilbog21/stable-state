@@ -269,7 +269,7 @@ export async function getHorseIncomeSummary(
   const supabase = await createClient()
 
   const [lessons, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee'], supabase) as Promise<{ id: string; fee: number }[]>,
+    getPaidLessonRows(barnId, startDate, endDate, ['id'], supabase) as Promise<{ id: string; fee: number }[]>,
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
@@ -311,7 +311,7 @@ export async function getRiderIncomeSummary(
   const supabase = await createClient()
 
   const [lessons, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee'], supabase) as Promise<{ id: string; fee: number }[]>,
+    getPaidLessonRows(barnId, startDate, endDate, ['id'], supabase) as Promise<{ id: string; fee: number }[]>,
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
@@ -353,7 +353,7 @@ export async function getTrainerIncomeSummary(
   const supabase = await createClient()
 
   const [lessons, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['instructor_id', 'fee'], supabase) as Promise<
+    getPaidLessonRows(barnId, startDate, endDate, ['instructor_id'], supabase) as Promise<
       { instructor_id: string | null; fee: number }[]
     >,
     getChargesForSummary(barnId, startDate, endDate, supabase),
@@ -393,7 +393,7 @@ export async function getHorseIncomeDetail(
   const supabase = await createClient()
 
   const [lessonsData, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee', 'lesson_at'], supabase) as Promise<
+    getPaidLessonRows(barnId, startDate, endDate, ['id', 'lesson_at'], supabase) as Promise<
       { id: string; fee: number; lesson_at: string }[]
     >,
     getPaidCharges(barnId, startDate, endDate, supabase),
@@ -433,7 +433,7 @@ export async function getRiderIncomeDetail(
   const supabase = await createClient()
 
   const [lessonsData, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee', 'lesson_at'], supabase) as Promise<
+    getPaidLessonRows(barnId, startDate, endDate, ['id', 'lesson_at'], supabase) as Promise<
       { id: string; fee: number; lesson_at: string }[]
     >,
     getPaidCharges(barnId, startDate, endDate, supabase),

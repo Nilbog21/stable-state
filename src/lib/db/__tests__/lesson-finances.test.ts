@@ -1973,8 +1973,6 @@ describe('reconciliation regression', () => {
     vi.mocked(getChargesForSummary).mockResolvedValue([])
     vi.mocked(getPaidLessonRows).mockReset()
     vi.mocked(getLessonJunctionRows).mockReset()
-    vi.mocked(getLessonJunctionRows).mockReset()
-    vi.mocked(getPaidLessonRows).mockReset()
     vi.mocked(resolveHorseNames).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getPaidCharges).mockReset()
@@ -1992,21 +1990,29 @@ describe('reconciliation regression', () => {
       createMockLesson({ id: 'lesson-a', fee: 100, payment_type: 'venmo', instructor_id: null }),
       createMockLesson({ id: 'lesson-b', fee: 50, payment_type: 'cash', instructor_id: 'mem-trainer-1' }),
     ])
-    vi.mocked(getPaidLessonRows).mockResolvedValue([
-      { id: 'lesson-a', fee: 100 },
-      { id: 'lesson-b', fee: 50 },
-    ])
-    vi.mocked(getLessonJunctionRows).mockResolvedValue([
-      { lesson_id: 'lesson-a', horse_id: 'horse-1' },
-    ])
-    vi.mocked(getLessonJunctionRows).mockResolvedValue([
-      { lesson_id: 'lesson-a', rider_id: 'mem-1' },
-      { lesson_id: 'lesson-b', rider_id: 'mem-2' },
-    ])
-    vi.mocked(getPaidLessonRows).mockResolvedValue([
-      { instructor_id: null, fee: 100 },
-      { instructor_id: 'mem-trainer-1', fee: 50 },
-    ])
+    // getPaidLessonRows/getLessonJunctionRows are shared across the by-horse, by-rider,
+    // and by-trainer calls below, each requesting a different column/table shape — dispatch
+    // on the actual call args rather than a single mockResolvedValue, which would just have
+    // the last call's shape silently win for every caller.
+    vi.mocked(getPaidLessonRows).mockImplementation(async (_barnId, _start, _end, columns) =>
+      columns.includes('instructor_id')
+        ? [
+            { instructor_id: null, fee: 100 },
+            { instructor_id: 'mem-trainer-1', fee: 50 },
+          ]
+        : [
+            { id: 'lesson-a', fee: 100 },
+            { id: 'lesson-b', fee: 50 },
+          ]
+    )
+    vi.mocked(getLessonJunctionRows).mockImplementation(async (table) =>
+      table === 'lesson_horses'
+        ? [{ lesson_id: 'lesson-a', horse_id: 'horse-1' }]
+        : [
+            { lesson_id: 'lesson-a', rider_id: 'mem-1' },
+            { lesson_id: 'lesson-b', rider_id: 'mem-2' },
+          ]
+    )
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([
       ['mem-1', 'Alice Rider'],

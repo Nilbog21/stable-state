@@ -123,9 +123,9 @@ export async function getLessonJunctionRows<C extends 'rider_id' | 'horse_id'>(
   return (data ?? []) as ({ lesson_id: string } & Record<C, string>)[]
 }
 
-export type PaidLessonColumn = 'id' | 'fee' | 'lesson_at' | 'instructor_id'
+export type PaidLessonColumn = 'id' | 'lesson_at' | 'instructor_id'
 
-/** Row shape covering every column combination the three former fetchers selected; only `fee` is always selected. */
+/** Row shape covering every column combination the three former fetchers selected; `fee` is always selected. */
 export interface PaidLessonRow {
   id?: string
   fee: number
@@ -135,8 +135,10 @@ export interface PaidLessonRow {
 
 /**
  * Paid lessons (non-null payment_type) in a barn-scoped date range, projected
- * to just the given columns — merges the three former near-identical fetchers
- * (id+fee, instructor_id+fee, id+fee+lesson_at) into one parameterized query.
+ * to `fee` plus the given extra columns — merges the three former near-identical
+ * fetchers (id+fee, instructor_id+fee, id+fee+lesson_at) into one parameterized
+ * query. `fee` is always selected (not caller-specified), matching `PaidLessonRow.fee`
+ * being non-optional.
  */
 export async function getPaidLessonRows(
   barnId: string,
@@ -148,7 +150,7 @@ export async function getPaidLessonRows(
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('lessons')
-    .select(columns.join(', '))
+    .select(['fee', ...columns].join(', '))
     .eq('barn_id', barnId)
     .not('payment_type', 'is', null)
     .gte('lesson_at', startDate.toISOString())
