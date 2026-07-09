@@ -97,104 +97,58 @@ export async function getOutstandingLessonRows(
   return ((data ?? []) as OutstandingLessonRow[]).filter((l) => l.fee !== 0)
 }
 
-export interface LessonRiderRow {
-  lesson_id: string
-  rider_id: string
-}
-
-export async function getLessonRidersForLessons(
+/**
+ * One row per lesson-participant junction row (lesson_riders or lesson_horses),
+ * merging the two former near-identical fetchers. `participantColumn` names the
+ * key under which the participant id appears (`rider_id`/`horse_id`) so callers
+ * and their consumers keep the same property names as before the merge.
+ */
+export async function getLessonJunctionRows<C extends 'rider_id' | 'horse_id'>(
+  table: 'lesson_riders' | 'lesson_horses',
+  participantColumn: C,
   barnId: string,
   lessonIds: string[],
   client?: SupabaseClient
-): Promise<LessonRiderRow[]> {
+): Promise<({ lesson_id: string } & Record<C, string>)[]> {
   if (!lessonIds.length) return []
 
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
-    .from('lesson_riders')
-    .select('lesson_id, rider_id')
+    .from(table)
+    .select(`lesson_id, ${participantColumn}`)
     .eq('barn_id', barnId)
     .in('lesson_id', lessonIds)
 
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as ({ lesson_id: string } & Record<C, string>)[]
 }
 
-export type PaidLessonFeeRow = Pick<Lesson, 'id' | 'fee'>
+export type PaidLessonColumn = 'id' | 'fee' | 'lesson_at' | 'instructor_id'
 
-export async function getPaidLessonFees(
+/** Row shape covering every column combination the three former fetchers selected; only `fee` is always selected. */
+export interface PaidLessonRow {
+  id?: string
+  fee: number
+  lesson_at?: string
+  instructor_id?: string | null
+}
+
+/**
+ * Paid lessons (non-null payment_type) in a barn-scoped date range, projected
+ * to just the given columns — merges the three former near-identical fetchers
+ * (id+fee, instructor_id+fee, id+fee+lesson_at) into one parameterized query.
+ */
+export async function getPaidLessonRows(
   barnId: string,
   startDate: Date,
   endDate: Date,
+  columns: PaidLessonColumn[],
   client?: SupabaseClient
-): Promise<PaidLessonFeeRow[]> {
+): Promise<PaidLessonRow[]> {
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('lessons')
-    .select('id, fee')
-    .eq('barn_id', barnId)
-    .not('payment_type', 'is', null)
-    .gte('lesson_at', startDate.toISOString())
-    .lt('lesson_at', endDate.toISOString())
-
-  if (error) throw error
-  return data ?? []
-}
-
-export interface LessonHorseRow {
-  lesson_id: string
-  horse_id: string
-}
-
-export async function getLessonHorsesForLessons(
-  barnId: string,
-  lessonIds: string[],
-  client?: SupabaseClient
-): Promise<LessonHorseRow[]> {
-  const supabase = client ?? await createClient()
-  const { data, error } = await supabase
-    .from('lesson_horses')
-    .select('lesson_id, horse_id')
-    .eq('barn_id', barnId)
-    .in('lesson_id', lessonIds)
-
-  if (error) throw error
-  return data ?? []
-}
-
-export type PaidLessonInstructorFeeRow = Pick<Lesson, 'instructor_id' | 'fee'>
-
-export async function getPaidLessonInstructorFees(
-  barnId: string,
-  startDate: Date,
-  endDate: Date,
-  client?: SupabaseClient
-): Promise<PaidLessonInstructorFeeRow[]> {
-  const supabase = client ?? await createClient()
-  const { data, error } = await supabase
-    .from('lessons')
-    .select('instructor_id, fee')
-    .eq('barn_id', barnId)
-    .not('payment_type', 'is', null)
-    .gte('lesson_at', startDate.toISOString())
-    .lt('lesson_at', endDate.toISOString())
-
-  if (error) throw error
-  return data ?? []
-}
-
-export type PaidLessonFeeAtRow = Pick<Lesson, 'id' | 'fee' | 'lesson_at'>
-
-export async function getPaidLessonFeesAt(
-  barnId: string,
-  startDate: Date,
-  endDate: Date,
-  client?: SupabaseClient
-): Promise<PaidLessonFeeAtRow[]> {
-  const supabase = client ?? await createClient()
-  const { data, error } = await supabase
-    .from('lessons')
-    .select('id, fee, lesson_at')
+    .select(columns.join(', '))
     .eq('barn_id', barnId)
     .not('payment_type', 'is', null)
     .gte('lesson_at', startDate.toISOString())
@@ -202,5 +156,5 @@ export async function getPaidLessonFeesAt(
     .order('lesson_at', { ascending: true })
 
   if (error) throw error
-  return data ?? []
+  return (data ?? []) as unknown as PaidLessonRow[]
 }

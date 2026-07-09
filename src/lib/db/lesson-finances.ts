@@ -6,11 +6,8 @@ import {
   getLessonsForSummary,
   getTierPricesByNames,
   getOutstandingLessonRows,
-  getLessonRidersForLessons,
-  getPaidLessonFees,
-  getLessonHorsesForLessons,
-  getPaidLessonInstructorFees,
-  getPaidLessonFeesAt,
+  getLessonJunctionRows,
+  getPaidLessonRows,
 } from './lesson-finance-queries'
 import { getChargesForSummary, getPaidCharges } from './agreements'
 import type {
@@ -241,7 +238,7 @@ export async function getOutstandingLessons(
   const outstandingIds = outstandingRaw.map((l) => l.id)
   const instructorIds = [...new Set(outstandingRaw.map((l) => l.instructor_id).filter((id): id is string => id !== null))]
 
-  const lessonRiders = await getLessonRidersForLessons(barnId, outstandingIds, supabase)
+  const lessonRiders = await getLessonJunctionRows('lesson_riders', 'rider_id', barnId, outstandingIds, supabase)
 
   const riderIds = [...new Set(lessonRiders.map((lr) => lr.rider_id))]
 
@@ -272,14 +269,14 @@ export async function getHorseIncomeSummary(
   const supabase = await createClient()
 
   const [lessons, charges] = await Promise.all([
-    getPaidLessonFees(barnId, startDate, endDate, supabase),
+    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee'], supabase) as Promise<{ id: string; fee: number }[]>,
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
   let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
     const lessonIds = lessons.map((l) => l.id)
-    const lessonHorses = await getLessonHorsesForLessons(barnId, lessonIds, supabase)
+    const lessonHorses = await getLessonJunctionRows('lesson_horses', 'horse_id', barnId, lessonIds, supabase)
     grouped = computeGroupedIncome(
       lessons,
       (l) => lessonHorses.filter((lh) => lh.lesson_id === l.id).map((lh) => lh.horse_id),
@@ -314,14 +311,14 @@ export async function getRiderIncomeSummary(
   const supabase = await createClient()
 
   const [lessons, charges] = await Promise.all([
-    getPaidLessonFees(barnId, startDate, endDate, supabase),
+    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee'], supabase) as Promise<{ id: string; fee: number }[]>,
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
   let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
     const lessonIds = lessons.map((l) => l.id)
-    const lessonRiders = await getLessonRidersForLessons(barnId, lessonIds, supabase)
+    const lessonRiders = await getLessonJunctionRows('lesson_riders', 'rider_id', barnId, lessonIds, supabase)
     grouped = computeGroupedIncome(
       lessons,
       (l) => lessonRiders.filter((lr) => lr.lesson_id === l.id).map((lr) => lr.rider_id),
@@ -356,7 +353,9 @@ export async function getTrainerIncomeSummary(
   const supabase = await createClient()
 
   const [lessons, charges] = await Promise.all([
-    getPaidLessonInstructorFees(barnId, startDate, endDate, supabase),
+    getPaidLessonRows(barnId, startDate, endDate, ['instructor_id', 'fee'], supabase) as Promise<
+      { instructor_id: string | null; fee: number }[]
+    >,
     getChargesForSummary(barnId, startDate, endDate, supabase),
   ])
 
@@ -394,7 +393,9 @@ export async function getHorseIncomeDetail(
   const supabase = await createClient()
 
   const [lessonsData, charges] = await Promise.all([
-    getPaidLessonFeesAt(barnId, startDate, endDate, supabase),
+    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee', 'lesson_at'], supabase) as Promise<
+      { id: string; fee: number; lesson_at: string }[]
+    >,
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
@@ -404,7 +405,7 @@ export async function getHorseIncomeDetail(
   let rows: HorseIncomeDetailRow[] = []
   if (lessonsData.length) {
     const lessonIds = lessonsData.map((l) => l.id)
-    const lessonHorses = await getLessonHorsesForLessons(barnId, lessonIds, supabase)
+    const lessonHorses = await getLessonJunctionRows('lesson_horses', 'horse_id', barnId, lessonIds, supabase)
     rows = computeDetailRows(
       lessonsData,
       (lessonId) => lessonHorses.filter((lh) => lh.lesson_id === lessonId),
@@ -432,7 +433,9 @@ export async function getRiderIncomeDetail(
   const supabase = await createClient()
 
   const [lessonsData, charges] = await Promise.all([
-    getPaidLessonFeesAt(barnId, startDate, endDate, supabase),
+    getPaidLessonRows(barnId, startDate, endDate, ['id', 'fee', 'lesson_at'], supabase) as Promise<
+      { id: string; fee: number; lesson_at: string }[]
+    >,
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
 
@@ -442,7 +445,7 @@ export async function getRiderIncomeDetail(
   let rows: RiderIncomeDetailRow[] = []
   if (lessonsData.length) {
     const lessonIds = lessonsData.map((l) => l.id)
-    const lessonRiders = await getLessonRidersForLessons(barnId, lessonIds, supabase)
+    const lessonRiders = await getLessonJunctionRows('lesson_riders', 'rider_id', barnId, lessonIds, supabase)
     rows = computeDetailRows(
       lessonsData,
       (lessonId) => lessonRiders.filter((lr) => lr.lesson_id === lessonId),
