@@ -56,7 +56,8 @@ import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveManagerUse
 import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
-import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn, parseLessonFormData } from '../lessons'
+import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
+import { parseLessonFormData } from '../lesson-form-parsing'
 
 const mockBarn = createMockBarn()
 const mockLesson = createMockLesson({ fee: 100, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
@@ -198,11 +199,22 @@ describe('parseLessonFormData', () => {
     })
   })
 
-  it('should_include_new_horse_name_and_exertion_level_in_parsed_data', async () => {
+  it('should_include_new_horse_name_in_parsed_data', async () => {
     const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
     const result = await parseLessonFormData(fd, 'barn-1', mockManagerMembership)
     expect('data' in result && result.data.newHorseName).toBe('Blaze')
+  })
+
+  it('should_include_new_horse_exertion_level_in_parsed_data', async () => {
+    const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', new_horse_exertion_level: '4', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockManagerMembership)
     expect('data' in result && result.data.newHorseExertionLevel).toBe(4)
+  })
+
+  it('should_return_rider_required_when_both_horse_and_rider_are_missing', async () => {
+    const fd = makeFormData({ fee: '50', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
+    expect(result).toEqual({ error: 'rider required' })
   })
 })
 

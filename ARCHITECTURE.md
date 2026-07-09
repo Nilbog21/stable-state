@@ -169,7 +169,7 @@ A `UserMenu` Client Component and a `NotificationBell` Client Component sit on t
 
 No API routes. All mutations go through Next.js Server Actions.
 
-- **Global actions:** `src/app/actions/` — auth (`auth.ts`), lesson submission, payment-type update, cancellation, stopping a recurring series, and projected-exhaustion lookup (`lessons.ts`), notification create and mark-read (`notifications.ts`), expense create, delete, and recipient-type lookup (`expenses.ts`)
+- **Global actions:** `src/app/actions/` — auth (`auth.ts`), lesson submission, payment-type update, cancellation, stopping a recurring series, and projected-exhaustion lookup (`lessons.ts`), notification create and mark-read (`notifications.ts`), expense create, delete, and recipient-type lookup (`expenses.ts`); `lesson-form-parsing.ts` — deliberately has no `'use server'` directive, so `parseLessonFormData` (shared parse/validate step for `submitLesson` and `updateLessonAction`, mirroring `parseExpenseFormData`) is never independently reachable as a Server Action and can't skip the `requireMembership` check its callers perform
 - **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`profile/`, `barn/[slug]/horses/`, `barn/[slug]/horses/[id]/`, `barn/[slug]/register/`, `barn/[slug]/settings/`, `barn/[slug]/(protected)/approvals/`, `barn/[slug]/(protected)/members/[membership_id]/`, `barn/[slug]/(protected)/agreements/`)
 
 ## Auth guard
