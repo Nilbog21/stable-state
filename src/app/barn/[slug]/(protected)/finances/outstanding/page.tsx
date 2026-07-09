@@ -4,6 +4,7 @@ import { getOutstandingLessons, mergeOutstandingItems } from '@/lib/db/lesson-fi
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import type { OutstandingItem, Role } from '@/lib/db/types'
 import { Th, Td } from '@/components/ui/Table'
+import { EmptyState } from '@/components/EmptyState'
 
 const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lesson: 'Lesson',
@@ -52,7 +53,10 @@ export default async function OutstandingPage({
       </h1>
 
       {items.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No outstanding items.</p>
+        <EmptyState
+          heading="No outstanding items."
+          subtext="Outstanding lessons, leases, and boarding charges will appear here."
+        />
       ) : (
         <div className="overflow-x-auto">
         <table className="w-full">
