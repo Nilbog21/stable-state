@@ -58,7 +58,7 @@ export function UpcomingLessonsSections({
     return (
       <>
         {role === 'manager' && (
-          <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-50">Barn Schedule</h2>
+          <h2 className={sectionHeadingClass}>Barn Schedule</h2>
         )}
         <EmptyState
           heading="You're all clear"
@@ -96,7 +96,7 @@ export function UpcomingLessonsSections({
   return (
     <>
       {role === 'manager' && (
-        <h2 className="mb-4 text-base font-semibold text-zinc-900 dark:text-zinc-50">Barn Schedule</h2>
+        <h2 className={sectionHeadingClass}>Barn Schedule</h2>
       )}
       {today.length > 0 && (
         <section className="mb-8">

@@ -25,7 +25,7 @@ export function OlderExpensesToggle({ expenses, slug }: Props) {
         {show ? 'Hide older expenses' : 'Show older expenses'}
       </button>
       {show && (
-        <div className="w-full max-w-2xl overflow-x-auto">
+        <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
               <tr>

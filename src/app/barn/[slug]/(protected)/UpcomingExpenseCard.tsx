@@ -1,5 +1,5 @@
 'use client'
-import Link from 'next/link'
+import { Card } from '@/components/ui/Card'
 import { formatExpenseHorses } from './expenses/ExpenseRow'
 import type { ScheduledExpense } from '@/lib/db/types'
 import { localToday } from '@/lib/local-day'
@@ -20,15 +20,12 @@ export function UpcomingExpenseCard({ expense, slug }: { expense: ScheduledExpen
   const display = formatExpenseDateTime(expense, new Date())
 
   return (
-    <Link
-      href={`/barn/${slug}/expenses/${expense.id}`}
-      className="block rounded-lg border border-zinc-200 bg-white p-4 hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:hover:border-zinc-600 dark:hover:bg-zinc-800"
-    >
+    <Card href={`/barn/${slug}/expenses/${expense.id}`} className="p-4">
       {/* suppressHydrationWarning: server (UTC) and client (local TZ) produce different "Today" comparisons */}
       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50" suppressHydrationWarning>{display}</p>
       <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">{expense.recipient}</p>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{expense.expense_type}</p>
       <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">{formatExpenseHorses(expense)}</p>
-    </Link>
+    </Card>
   )
 }
