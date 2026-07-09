@@ -28,41 +28,46 @@ async function run() {
   let barnsProcessed = 0
 
   for (const barn of barns) {
-    const managerUserIds = await getActiveManagerUserIds(barn.id, supabase)
-    if (managerUserIds.length === 0) continue
-    barnsProcessed++
-    totalManagers += managerUserIds.length
+    try {
+      const managerUserIds = await getActiveManagerUserIds(barn.id, supabase)
+      if (managerUserIds.length === 0) continue
+      barnsProcessed++
+      totalManagers += managerUserIds.length
 
-    const [lessons, charges] = await Promise.all([
-      getOutstandingLessons(barn.id, undefined, 'manager', supabase),
-      getOutstandingCharges(barn.id, undefined, 'manager', supabase),
-    ])
-    const count = lessons.length + charges.length
-    const total = lessons.reduce((sum, l) => sum + (l.fee ?? 0), 0) + charges.reduce((sum, c) => sum + c.fee, 0)
+      const [lessons, charges] = await Promise.all([
+        getOutstandingLessons(barn.id, undefined, 'manager', supabase),
+        getOutstandingCharges(barn.id, undefined, 'manager', supabase),
+      ])
+      const count = lessons.length + charges.length
+      const total = lessons.reduce((sum, l) => sum + (l.fee ?? 0), 0) + charges.reduce((sum, c) => sum + c.fee, 0)
 
-    if (count === 0) {
-      for (const userId of managerUserIds) {
-        try {
-          await deleteNotificationByType(userId, barn.id, 'outstanding_payment', supabase)
-        } catch (err) {
-          hadErrors = true
-          console.error(`Failed to clear outstanding notification for ${userId} in barn ${barn.id}:`, (err as Error).message)
+      if (count === 0) {
+        for (const userId of managerUserIds) {
+          try {
+            await deleteNotificationByType(userId, barn.id, 'outstanding_payment', supabase)
+          } catch (err) {
+            hadErrors = true
+            console.error(`Failed to clear outstanding notification for ${userId} in barn ${barn.id}:`, (err as Error).message)
+          }
         }
+        continue
       }
-      continue
-    }
 
-    const recipients = new Map(
-      managerUserIds.map((userId) => [`${userId}:${barn.id}`, { userId, barnId: barn.id, payload: { count, total } }])
-    )
-    const errorCount = await upsertNotificationsForRecipients(
-      supabase,
-      recipients,
-      ({ count, total }) => formatOutstandingNotification(count, total),
-      'outstanding_payment',
-      () => `/barn/${barn.slug}/finances/outstanding`
-    )
-    if (errorCount > 0) hadErrors = true
+      const recipients = new Map(
+        managerUserIds.map((userId) => [`${userId}:${barn.id}`, { userId, barnId: barn.id, payload: { count, total } }])
+      )
+      const errorCount = await upsertNotificationsForRecipients(
+        supabase,
+        recipients,
+        ({ count, total }) => formatOutstandingNotification(count, total),
+        'outstanding_payment',
+        () => `/barn/${barn.slug}/finances/outstanding`
+      )
+      if (errorCount > 0) hadErrors = true
+    } catch (err) {
+      hadErrors = true
+      console.error(`Failed to process barn ${barn.id}:`, (err as Error).message)
+    }
   }
 
   console.log(`Processed ${totalManagers} manager(s) across ${barnsProcessed} barn(s).`)
