@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Notification, NotificationType } from './types'
+import type { Notification, NotificationType, Role } from './types'
 
 export async function createNotification(params: {
   userId: string
@@ -56,19 +56,28 @@ export async function upsertNotification(
 
 // Consolidates the "aggregate recipients into a Map, then upsert each with an
 // isolated try/catch" pattern shared by the nightly notification-generating scripts,
-// so one recipient's upsert failure doesn't block the rest of the batch.
+// so one recipient's upsert failure doesn't block the rest of the batch. `send`
+// defaults to the raw-table `upsertNotification`, which requires a service-role
+// client (see its own comment) -- callers with a session-authenticated client (e.g.
+// Server Actions notifying a user other than the caller) must pass a `send` backed by
+// the `create_or_update_notification` RPC (`createNotification`) instead, since the
+// raw upsert's ON CONFLICT DO UPDATE branch is rejected by RLS for another user's row.
 export async function upsertNotificationsForRecipients<T>(
   client: SupabaseClient,
   recipients: Map<string, { userId: string; barnId: string; payload: T }>,
   formatter: (payload: T) => { title: string; body: string },
   type: NotificationType,
-  linkForBarn: (barnId: string) => string
+  linkForBarn: (barnId: string) => string,
+  send: (
+    client: SupabaseClient,
+    params: { userId: string; barnId: string; type: NotificationType; title: string; body: string; link: string }
+  ) => Promise<void> = upsertNotification
 ): Promise<number> {
   let errorCount = 0
   for (const recipient of recipients.values()) {
     try {
       const { title, body } = formatter(recipient.payload)
-      await upsertNotification(client, {
+      await send(client, {
         userId: recipient.userId,
         barnId: recipient.barnId,
         type,
@@ -82,6 +91,47 @@ export async function upsertNotificationsForRecipients<T>(
     }
   }
   return errorCount
+}
+
+export type CancellationRecipientsParams =
+  | {
+      scope: 'lesson'
+      actorRole: Role
+      riderUserIds: string[]
+      instructorUserId: string | null
+      getManagerUserIds: () => Promise<string[]>
+    }
+  | {
+      scope: 'rider_participation'
+      actorRole: Role
+      affectedRiderUserId: string | null
+      instructorUserId: string | null
+      getManagerUserIds: () => Promise<string[]>
+    }
+
+// Encodes "who gets notified for a cancellation," shared by cancelLessonAction and
+// cancelRiderParticipationAction:
+// - whole-lesson cancel: trainer cancels -> managers + riders; manager cancels -> instructor + riders
+// - single-rider cancel: rider self-cancels -> instructor + managers; trainer cancels on the
+//   rider's behalf -> affected rider + managers; manager cancels on the rider's behalf ->
+//   affected rider only (the instructor is intentionally not notified in that branch)
+export async function resolveCancellationRecipients(params: CancellationRecipientsParams): Promise<string[]> {
+  if (params.scope === 'lesson') {
+    if (params.actorRole === 'trainer') {
+      return [...(await params.getManagerUserIds()), ...params.riderUserIds]
+    }
+    return params.instructorUserId ? [params.instructorUserId, ...params.riderUserIds] : params.riderUserIds
+  }
+
+  if (params.actorRole === 'rider') {
+    const managerUserIds = await params.getManagerUserIds()
+    return params.instructorUserId ? [params.instructorUserId, ...managerUserIds] : managerUserIds
+  }
+  const riderRecipients = params.affectedRiderUserId ? [params.affectedRiderUserId] : []
+  if (params.actorRole === 'trainer') {
+    return [...riderRecipients, ...(await params.getManagerUserIds())]
+  }
+  return riderRecipients
 }
 
 export async function markNotificationRead(id: string): Promise<void> {
