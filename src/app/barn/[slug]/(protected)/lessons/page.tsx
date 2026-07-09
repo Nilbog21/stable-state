@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
@@ -8,6 +7,7 @@ import { OlderLessonsToggle } from './OlderLessonsToggle'
 import { LessonListItem } from './LessonListItem'
 import { EmptyState } from '@/components/EmptyState'
 import { Pill } from '@/components/ui/Pill'
+import { Button } from '@/components/ui/Button'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 const OLDER_LESSON_CUTOFF_DAYS = 7
@@ -103,12 +103,7 @@ export default async function LessonsPage({
           Lessons
         </h1>
         {canCreateLesson && (
-          <Link
-            href={`/barn/${slug}/lessons/new`}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            New Lesson
-          </Link>
+          <Button href={`/barn/${slug}/lessons/new`}>New Lesson</Button>
         )}
       </div>
 
