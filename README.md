@@ -34,6 +34,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `DEV_EMAIL` | Reset script only | Your Google email — used by change-user.sh; must match the Google account you claim the seed invite with |
 | `DEV_NAME` | Reset script only | Your full name (first last) — split on first space for first/last name defaults in seed-account.sh |
 | `DEV_BARN` | Reset script only (optional) | Default barn slug for seed-account.sh (defaults to `dev-barn`) |
+| `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them |
 
 ### Dev database reset
 

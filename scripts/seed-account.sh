@@ -14,11 +14,12 @@ parse_var() {
 
 NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
 SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
+DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
 DEV_NAME="$(parse_var DEV_NAME || true)"
 DEV_BARN="$(parse_var DEV_BARN || true)"
 DEV_BARN="${DEV_BARN:-dev-barn}"
 
-for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DEV_SUPABASE_URL; do
   if [ -z "${!var_name}" ]; then
     echo "Error: $var_name is not set in .env.local" >&2
     exit 1
@@ -47,6 +48,7 @@ if [ -z "$slug" ]; then echo "Error: barn slug is required" >&2; exit 1; fi
 
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+  DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
   SEED_FIRST_NAME="$first" \
   SEED_LAST_NAME="$last" \
   SEED_BARN_SLUG="$slug" \

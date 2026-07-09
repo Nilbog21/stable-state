@@ -86,6 +86,7 @@ jobs:
           echo "::add-mask::$ANON_KEY"
           {
             echo "NEXT_PUBLIC_SUPABASE_URL=https://$SUPABASE_PROJECT_REF.supabase.co"
+            echo "DEV_SUPABASE_URL=https://$SUPABASE_PROJECT_REF.supabase.co"
             echo "NEXT_PUBLIC_SUPABASE_ANON_KEY=$ANON_KEY"
             echo "VERCEL_AUTOMATION_BYPASS_SECRET=$VERCEL_AUTOMATION_BYPASS_SECRET"
             echo "SUPABASE_SERVICE_ROLE_KEY=$SUPABASE_SERVICE_ROLE_KEY"
