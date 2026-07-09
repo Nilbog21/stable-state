@@ -117,39 +117,46 @@ export async function getMembershipById(id: string): Promise<BarnMembership | nu
 }
 
 
+type MembershipRow = { id: string; user_id: string | null; profile_id: string; invite_token: string | null }
+type ProfileRow = { id: string; first_name: string; last_name: string; is_managed: boolean }
+type MembershipProfileRow = MembershipRow & { profile: ProfileRow | null }
+
+// Shared join for getInstructorsByBarn/getActiveMembersWithProfiles/resolveMemberNames —
+// only the barn_memberships filter differs between callers.
+async function joinMembershipsWithProfiles(
+  supabase: SupabaseClient,
+  applyFilter: (query: any) => PromiseLike<{ data: MembershipRow[] | null; error: unknown }>
+): Promise<MembershipProfileRow[]> {
+  const { data: memberships, error: memError } = await applyFilter(
+    supabase.from('barn_memberships').select('id, user_id, profile_id, invite_token')
+  )
+  if (memError) throw memError
+  if (!memberships?.length) return []
+
+  const profileIds = [...new Set(memberships.map((m) => m.profile_id).filter(Boolean))]
+  const { data: profiles, error: profError } = profileIds.length
+    ? await supabase.from('profiles').select('id, first_name, last_name, is_managed').in('id', profileIds)
+    : { data: [] as ProfileRow[], error: null }
+  if (profError) throw profError
+
+  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]))
+  return memberships.map((m) => ({ ...m, profile: profileMap.get(m.profile_id) ?? null }))
+}
+
 export async function getInstructorsByBarn(
   barnId: string
 ): Promise<{ membershipId: string; userId: string | null; name: string }[]> {
   const supabase = await createClient()
 
-  const { data: memberships, error: memError } = await supabase
-    .from('barn_memberships')
-    .select('id, user_id, profile_id')
-    .eq('barn_id', barnId)
-    .eq('status', 'active')
-    .eq('can_instruct', true)
-    .order('created_at', { ascending: true })
+  const rows = await joinMembershipsWithProfiles(supabase, (query) =>
+    query.eq('barn_id', barnId).eq('status', 'active').eq('can_instruct', true).order('created_at', { ascending: true })
+  )
 
-  if (memError) throw memError
-  if (!memberships?.length) return []
-
-  const profileIds = memberships.map((m) => m.profile_id)
-
-  const { data: profiles, error: profError } = await supabase
-    .from('profiles')
-    .select('id, first_name, last_name')
-    .in('id', profileIds)
-
-  if (profError) throw profError
-
-  return memberships.map((m) => {
-    const p = (profiles ?? []).find((pr) => pr.id === m.profile_id)
-    return {
-      membershipId: m.id,
-      userId: m.user_id,
-      name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Instructor',
-    }
-  })
+  return rows.map((m) => ({
+    membershipId: m.id,
+    userId: m.user_id,
+    name: m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : 'Unknown Instructor',
+  }))
 }
 
 export async function getActiveMembersWithProfiles(
@@ -159,36 +166,17 @@ export async function getActiveMembersWithProfiles(
 ): Promise<{ membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[]> {
   const supabase = client ?? await createClient()
 
-  const { data: memberships, error: memError } = await supabase
-    .from('barn_memberships')
-    .select('id, user_id, profile_id, invite_token')
-    .eq('barn_id', barnId)
-    .eq('role', role)
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
+  const rows = await joinMembershipsWithProfiles(supabase, (query) =>
+    query.eq('barn_id', barnId).eq('role', role).eq('status', 'active').order('created_at', { ascending: true })
+  )
 
-  if (memError) throw memError
-  if (!memberships?.length) return []
-
-  const profileIds = memberships.map((m) => m.profile_id)
-
-  const { data: profiles, error: profError } = await supabase
-    .from('profiles')
-    .select('id, first_name, last_name, is_managed')
-    .in('id', profileIds)
-
-  if (profError) throw profError
-
-  return memberships.map((m) => {
-    const p = (profiles ?? []).find((pr) => pr.id === m.profile_id)
-    return {
-      membershipId: m.id,
-      userId: m.user_id,
-      name: p ? `${p.first_name} ${p.last_name}` : 'Unknown Member',
-      isManaged: p?.is_managed ?? false,
-      inviteToken: m.invite_token,
-    }
-  })
+  return rows.map((m) => ({
+    membershipId: m.id,
+    userId: m.user_id,
+    name: m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : 'Unknown Member',
+    isManaged: m.profile?.is_managed ?? false,
+    inviteToken: m.invite_token,
+  }))
 }
 
 export async function getActiveManagerUserIds(
@@ -216,33 +204,11 @@ export async function resolveMemberNames(
 
   const supabase = client ?? await createClient()
 
-  type MemberRow = { id: string; profile_id: string }
-  const { data: members, error: membersError } = await supabase
-    .from('barn_memberships')
-    .select('id, profile_id')
-    .eq('barn_id', barnId)
-    .in('id', membershipIds) as { data: MemberRow[] | null; error: Error | null }
-
-  if (membersError) throw membersError
-
-  const profileIds = [...new Set((members ?? []).map((m) => m.profile_id).filter(Boolean))]
-
-  const { data: profiles, error: profilesError } = profileIds.length
-    ? await supabase.from('profiles').select('id, first_name, last_name').in('id', profileIds)
-    : { data: [] as { id: string; first_name: string; last_name: string }[], error: null }
-
-  if (profilesError) throw profilesError
-
-  const profileMap = new Map((profiles ?? []).map((p) => [p.id, p]))
-
-  return new Map(
-    (members ?? []).map((m) => [
-      m.id,
-      profileMap.has(m.profile_id)
-        ? `${profileMap.get(m.profile_id)!.first_name} ${profileMap.get(m.profile_id)!.last_name}`
-        : m.id,
-    ])
+  const rows = await joinMembershipsWithProfiles(supabase, (query) =>
+    query.eq('barn_id', barnId).in('id', membershipIds)
   )
+
+  return new Map(rows.map((m) => [m.id, m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.id]))
 }
 
 export const getBarnMembershipsForUser = cache(async (
