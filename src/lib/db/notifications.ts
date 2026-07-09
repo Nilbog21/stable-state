@@ -54,6 +54,36 @@ export async function upsertNotification(
   if (error) throw error
 }
 
+// Consolidates the "aggregate recipients into a Map, then upsert each with an
+// isolated try/catch" pattern shared by the nightly notification-generating scripts,
+// so one recipient's upsert failure doesn't block the rest of the batch.
+export async function upsertNotificationsForRecipients<T>(
+  client: SupabaseClient,
+  recipients: Map<string, { userId: string; barnId: string; payload: T }>,
+  formatter: (payload: T) => { title: string; body: string },
+  type: NotificationType,
+  linkForBarn: (barnId: string) => string
+): Promise<number> {
+  let errorCount = 0
+  for (const recipient of recipients.values()) {
+    try {
+      const { title, body } = formatter(recipient.payload)
+      await upsertNotification(client, {
+        userId: recipient.userId,
+        barnId: recipient.barnId,
+        type,
+        title,
+        body,
+        link: linkForBarn(recipient.barnId),
+      })
+    } catch (err) {
+      errorCount++
+      console.error(`Failed to notify ${recipient.userId} (type=${type}):`, (err as Error).message)
+    }
+  }
+  return errorCount
+}
+
 export async function markNotificationRead(id: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase

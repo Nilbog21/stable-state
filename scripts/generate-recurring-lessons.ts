@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url'
 import { generateNextLessonForSeries, stopLessonSeries } from '@/lib/db/lesson-series'
-import { upsertNotification } from '@/lib/db/notifications'
+import { upsertNotificationsForRecipients } from '@/lib/db/notifications'
+import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { createServiceClient, mustSucceed } from './script-utils'
 import type { LessonSeries } from '@/lib/db/types'
 
@@ -49,18 +50,18 @@ export function formatGenerationSummary(generated: number, stopped: number, warn
   return errors === 0 ? base : `${base.slice(0, -1)}; ${errors} failed.`
 }
 
-interface RecipientCount {
+interface Recipient {
   userId: string
   barnId: string
-  count: number
+  payload: number
 }
 
-function addRecipient(map: Map<string, RecipientCount>, userId: string | null, barnId: string): void {
+function addRecipient(map: Map<string, Recipient>, userId: string | null, barnId: string): void {
   if (!userId) return
   const key = `${userId}:${barnId}`
   const existing = map.get(key)
-  if (existing) existing.count++
-  else map.set(key, { userId, barnId, count: 1 })
+  if (existing) existing.payload++
+  else map.set(key, { userId, barnId, payload: 1 })
 }
 
 async function run() {
@@ -85,11 +86,7 @@ async function run() {
   async function getBarnManagerUserIds(barnId: string): Promise<string[]> {
     const cached = managersByBarn.get(barnId)
     if (cached) return cached
-    const rows = mustSucceed<{ user_id: string | null }[]>(
-      await supabase.from('barn_memberships').select('user_id').eq('barn_id', barnId).eq('role', 'manager').eq('status', 'active'),
-      `select managers for barn ${barnId}`
-    )
-    const managers = rows.map((r) => r.user_id).filter((id): id is string => id !== null)
+    const managers = await getActiveManagerUserIds(barnId, supabase)
     managersByBarn.set(barnId, managers)
     return managers
   }
@@ -110,8 +107,8 @@ async function run() {
   let stoppedCount = 0
   let warnedCount = 0
   let errorCount = 0
-  const seriesStoppedRecipients = new Map<string, RecipientCount>()
-  const horseWarningRecipients = new Map<string, RecipientCount>()
+  const seriesStoppedRecipients = new Map<string, Recipient>()
+  const horseWarningRecipients = new Map<string, Recipient>()
 
   for (const s of series) {
     try {
@@ -156,40 +153,22 @@ async function run() {
     }
   }
 
-  for (const recipient of seriesStoppedRecipients.values()) {
-    try {
-      const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
-      const { title, body } = formatSeriesStoppedNotification(recipient.count)
-      await upsertNotification(supabase, {
-        userId: recipient.userId,
-        barnId: recipient.barnId,
-        type: 'recurring_series_stopped',
-        title,
-        body,
-        link,
-      })
-    } catch (err) {
-      errorCount++
-      console.error(`Failed to notify ${recipient.userId} of stopped series:`, (err as Error).message)
-    }
-  }
-  for (const recipient of horseWarningRecipients.values()) {
-    try {
-      const link = `/barn/${slugByBarnId.get(recipient.barnId) ?? ''}/lessons`
-      const { title, body } = formatHorseUnavailableNotification(recipient.count)
-      await upsertNotification(supabase, {
-        userId: recipient.userId,
-        barnId: recipient.barnId,
-        type: 'recurring_lesson_horse_unavailable',
-        title,
-        body,
-        link,
-      })
-    } catch (err) {
-      errorCount++
-      console.error(`Failed to notify ${recipient.userId} of unavailable horse:`, (err as Error).message)
-    }
-  }
+  const linkForBarn = (barnId: string) => `/barn/${slugByBarnId.get(barnId) ?? ''}/lessons`
+
+  errorCount += await upsertNotificationsForRecipients(
+    supabase,
+    seriesStoppedRecipients,
+    formatSeriesStoppedNotification,
+    'recurring_series_stopped',
+    linkForBarn
+  )
+  errorCount += await upsertNotificationsForRecipients(
+    supabase,
+    horseWarningRecipients,
+    formatHorseUnavailableNotification,
+    'recurring_lesson_horse_unavailable',
+    linkForBarn
+  )
 
   console.log(formatGenerationSummary(generatedCount, stoppedCount, warnedCount, errorCount))
   if (errorCount > 0) process.exit(1)

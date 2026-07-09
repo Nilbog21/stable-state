@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications, upsertNotification } from '../notifications'
+import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients } from '../notifications'
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -312,6 +312,113 @@ describe('upsertNotification', () => {
         link: '/barn/test/finances',
       })
     ).rejects.toThrow('upsert failed')
+  })
+})
+
+describe('upsertNotificationsForRecipients', () => {
+  it('should_upsert_once_per_recipient_in_map', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: 2 }],
+      ['user-2:barn-1', { userId: 'user-2', barnId: 'barn-1', payload: 1 }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client,
+      recipients,
+      (count: number) => ({ title: `${count} stopped`, body: `${count} series stopped` }),
+      'recurring_series_stopped',
+      () => '/barn/test/lessons'
+    )
+
+    expect(mockUpsert).toHaveBeenCalledTimes(2)
+  })
+
+  it('should_pass_formatter_output_as_title_and_body', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: { count: 3, total: 450 } }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client,
+      recipients,
+      ({ count, total }: { count: number; total: number }) => ({ title: `${count} outstanding`, body: `$${total} total` }),
+      'outstanding_payment',
+      () => '/barn/test/finances/outstanding'
+    )
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '3 outstanding', body: '$450 total' }),
+      expect.any(Object)
+    )
+  })
+
+  it('should_generate_link_via_linkForBarn_callback', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-42', { userId: 'user-1', barnId: 'barn-42', payload: 1 }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client,
+      recipients,
+      () => ({ title: 't', body: 'b' }),
+      'recurring_series_stopped',
+      (barnId: string) => `/barn/${barnId}/lessons`
+    )
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ link: '/barn/barn-42/lessons' }),
+      expect.any(Object)
+    )
+  })
+
+  it('should_continue_processing_remaining_recipients_when_one_fails', async () => {
+    const mockUpsert = vi.fn()
+      .mockResolvedValueOnce({ error: new Error('boom') })
+      .mockResolvedValueOnce({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: 1 }],
+      ['user-2:barn-1', { userId: 'user-2', barnId: 'barn-1', payload: 1 }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'recurring_series_stopped', () => '/link'
+    )
+
+    expect(mockUpsert).toHaveBeenCalledTimes(2)
+  })
+
+  it('should_return_count_of_failed_upserts', async () => {
+    const mockUpsert = vi.fn()
+      .mockResolvedValueOnce({ error: new Error('boom') })
+      .mockResolvedValueOnce({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: 1 }],
+      ['user-2:barn-1', { userId: 'user-2', barnId: 'barn-1', payload: 1 }],
+    ])
+
+    const errorCount = await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'recurring_series_stopped', () => '/link'
+    )
+
+    expect(errorCount).toBe(1)
+  })
+
+  it('should_return_zero_when_map_is_empty', async () => {
+    const client = { from: vi.fn() } as any
+
+    const errorCount = await upsertNotificationsForRecipients(
+      client, new Map(), () => ({ title: 't', body: 'b' }), 'recurring_series_stopped', () => '/link'
+    )
+
+    expect(errorCount).toBe(0)
   })
 })
 

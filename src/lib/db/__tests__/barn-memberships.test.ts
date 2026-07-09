@@ -18,6 +18,7 @@ import {
   getBarnMembershipsForUser,
   getInstructorsByBarn,
   getActiveMembersWithProfiles,
+  getActiveManagerUserIds,
   resolveMemberNames,
   createManagedMember,
   claimManagedMember,
@@ -939,6 +940,102 @@ describe('getActiveMembersWithProfiles', () => {
       makeClient([{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', invite_token: null }], null, null, dbError)
     )
     await expect(getActiveMembersWithProfiles('barn-1', 'rider')).rejects.toThrow('profiles query failed')
+  })
+})
+
+describe('getActiveManagerUserIds', () => {
+  function makeChain(result: { data: unknown; error: unknown }) {
+    const mockEq3 = vi.fn().mockResolvedValue(result)
+    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect })
+    return { mockFrom, mockSelect, mockEq1, mockEq2, mockEq3 }
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_from_barn_memberships_table', async () => {
+    const { mockFrom } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getActiveManagerUserIds('barn-1')
+
+    expect(mockFrom).toHaveBeenCalledWith('barn_memberships')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockFrom, mockEq1 } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getActiveManagerUserIds('barn-42')
+
+    expect(mockEq1).toHaveBeenCalledWith('barn_id', 'barn-42')
+  })
+
+  it('should_filter_by_role_manager', async () => {
+    const { mockFrom, mockEq2 } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getActiveManagerUserIds('barn-1')
+
+    expect(mockEq2).toHaveBeenCalledWith('role', 'manager')
+  })
+
+  it('should_filter_by_status_active', async () => {
+    const { mockFrom, mockEq3 } = makeChain({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await getActiveManagerUserIds('barn-1')
+
+    expect(mockEq3).toHaveBeenCalledWith('status', 'active')
+  })
+
+  it('should_return_user_ids_from_matching_rows', async () => {
+    const { mockFrom } = makeChain({ data: [{ user_id: 'user-1' }, { user_id: 'user-2' }], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getActiveManagerUserIds('barn-1')
+
+    expect(result).toEqual(['user-1', 'user-2'])
+  })
+
+  it('should_exclude_rows_with_null_user_id', async () => {
+    const { mockFrom } = makeChain({ data: [{ user_id: 'user-1' }, { user_id: null }], error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getActiveManagerUserIds('barn-1')
+
+    expect(result).toEqual(['user-1'])
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    const { mockFrom } = makeChain({ data: null, error: null })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getActiveManagerUserIds('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('select failed')
+    const { mockFrom } = makeChain({ data: null, error: dbError })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    await expect(getActiveManagerUserIds('barn-1')).rejects.toThrow('select failed')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const { mockFrom } = makeChain({ data: [], error: null })
+    const injectedClient = { from: mockFrom } as any
+
+    await getActiveManagerUserIds('barn-1', injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(mockFrom).toHaveBeenCalledWith('barn_memberships')
   })
 })
 

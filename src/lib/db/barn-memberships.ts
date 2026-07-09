@@ -191,6 +191,22 @@ export async function getActiveMembersWithProfiles(
   })
 }
 
+export async function getActiveManagerUserIds(
+  barnId: string,
+  client?: SupabaseClient
+): Promise<string[]> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .select('user_id')
+    .eq('barn_id', barnId)
+    .eq('role', 'manager')
+    .eq('status', 'active')
+
+  if (error) throw error
+  return (data ?? []).map((m) => m.user_id).filter((id): id is string => id !== null)
+}
+
 export async function resolveMemberNames(
   membershipIds: string[],
   barnId: string,
