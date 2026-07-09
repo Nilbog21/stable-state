@@ -172,9 +172,9 @@ describe('getExpenseById', () => {
   }
 
   function makeJunctionChain(data: unknown[] | null, error: Error | null = null) {
-    const mockEq2 = vi.fn().mockResolvedValue({ data, error })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     return { select: mockSelect }
   }
 
