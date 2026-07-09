@@ -313,9 +313,11 @@ export async function getOutstandingCharges(
     if (!riderAgreementIds.length) return []
   }
 
+  // FK-hint embed pinned to the exact composite constraint — see getPaidCharges above for
+  // why (not an unqualified `agreements!inner`); same table pair, same verified FK (#665).
   let query = supabase
     .from('agreement_charges')
-    .select('id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')
+    .select('id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')
     .eq('barn_id', barnId)
     .is('payment_type', null)
     .lt('period', firstOfCurrentMonth)
@@ -329,7 +331,6 @@ export async function getOutstandingCharges(
 
   type OutstandingChargeRow = {
     id: string
-    agreement_id: string
     period: string
     fee: number
     agreements: { kind: AgreementKind; rider_id: string }

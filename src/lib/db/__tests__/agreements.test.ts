@@ -738,7 +738,7 @@ describe('getOutstandingCharges', () => {
     const { charges } = makeManagerChain([])
     await getOutstandingCharges('barn-1')
     expect(charges.select).toHaveBeenCalledWith(
-      'id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)'
+      'id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)'
     )
   })
 
@@ -776,7 +776,7 @@ describe('getOutstandingCharges', () => {
 
   it('should_map_and_resolve_rider_names_for_manager_role', async () => {
     makeManagerChain([{
-      id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200,
+      id: 'charge-1', period: '2026-06-01', fee: 200,
       agreements: { kind: 'lease', rider_id: 'rider-1' },
     }])
     const result = await getOutstandingCharges('barn-1')
@@ -786,7 +786,7 @@ describe('getOutstandingCharges', () => {
   it('should_fall_back_to_rider_id_when_name_not_resolved', async () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     makeManagerChain([{
-      id: 'charge-1', agreement_id: 'agreement-9', period: '2026-06-01', fee: 200,
+      id: 'charge-1', period: '2026-06-01', fee: 200,
       agreements: { kind: 'board', rider_id: 'rider-9' },
     }])
     const result = await getOutstandingCharges('barn-1')
@@ -858,7 +858,7 @@ describe('getOutstandingCharges', () => {
       membershipData: { id: 'membership-1' },
       riderAgreementsData: [{ id: 'agreement-1' }],
       chargesData: [{
-        id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200,
+        id: 'charge-1', period: '2026-06-01', fee: 200,
         agreements: { kind: 'board', rider_id: 'membership-1' },
       }],
     })
