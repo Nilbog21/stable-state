@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 
 function capitalizeRole(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1)
@@ -30,9 +31,9 @@ export default async function BarnsPage() {
                   {barn.name}
                 </span>
                 {isPending ? (
-                  <span className="ml-3 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  <Badge tone="yellow" className="ml-3">
                     Pending Approval
-                  </span>
+                  </Badge>
                 ) : (
                   <span className="ml-3 text-sm text-zinc-500 dark:text-zinc-400">
                     {capitalizeRole(membership.role)}
