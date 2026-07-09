@@ -62,6 +62,9 @@ export async function upsertNotification(
 // Server Actions notifying a user other than the caller) must pass a `send` backed by
 // the `create_or_update_notification` RPC (`createNotification`) instead, since the
 // raw upsert's ON CONFLICT DO UPDATE branch is rejected by RLS for another user's row.
+// Sends happen sequentially, not concurrently -- fine for the cron scripts' batch
+// runs, and for the cancellation actions' typically single-digit recipient counts,
+// but it does add per-recipient latency before those actions' redirect() fires.
 export async function upsertNotificationsForRecipients<T>(
   client: SupabaseClient,
   recipients: Map<string, { userId: string; barnId: string; payload: T }>,

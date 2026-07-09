@@ -581,7 +581,7 @@ describe('upsertNotificationsForRecipients', () => {
     expect(errorCount).toBe(0)
   })
 
-  it('should_use_custom_send_function_when_provided', async () => {
+  it('should_call_custom_send_function_with_recipient_params_when_provided', async () => {
     const mockUpsert = vi.fn().mockResolvedValue({ error: null })
     const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
     const customSend = vi.fn().mockResolvedValue(undefined)
@@ -601,6 +601,20 @@ describe('upsertNotificationsForRecipients', () => {
       body: 'b',
       link: '/link',
     })
+  })
+
+  it('should_not_call_default_upsert_when_custom_send_function_is_provided', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const customSend = vi.fn().mockResolvedValue(undefined)
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: undefined }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'lesson_cancelled', () => '/link', customSend
+    )
+
     expect(mockUpsert).not.toHaveBeenCalled()
   })
 })
