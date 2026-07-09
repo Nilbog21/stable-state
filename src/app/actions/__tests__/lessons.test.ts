@@ -32,8 +32,13 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getActiveManagerUserIds: vi.fn(),
 }))
 
-vi.mock('@/lib/db/notifications', () => ({
+vi.mock('@/lib/db/notifications', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('@/lib/db/notifications')>()),
   createNotification: vi.fn(),
+}))
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
 }))
 
 vi.mock('@/lib/db/horses', () => ({
@@ -55,6 +60,7 @@ import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/le
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
 import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
 import { parseLessonFormData } from '../lesson-form-parsing'
@@ -772,6 +778,7 @@ describe('cancelLessonAction', () => {
     vi.mocked(cancelLesson).mockReset()
     vi.mocked(getActiveManagerUserIds).mockReset()
     vi.mocked(createNotification).mockReset()
+    vi.mocked(createClient).mockReset()
     vi.mocked(redirect).mockReset()
     guardAs(mockManagerMembership)
     vi.mocked(getLessonById).mockResolvedValue(
@@ -780,6 +787,7 @@ describe('cancelLessonAction', () => {
     vi.mocked(cancelLesson).mockResolvedValue(undefined)
     vi.mocked(getActiveManagerUserIds).mockResolvedValue([])
     vi.mocked(createNotification).mockResolvedValue(undefined)
+    vi.mocked(createClient).mockResolvedValue({} as any)
   })
 
   it('should_redirect_to_lessons_list_when_lesson_not_found', async () => {
@@ -906,7 +914,8 @@ describe('cancelLessonAction', () => {
     vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'manager-1', type: 'lesson_cancelled' })
+      expect.objectContaining({ userId: 'manager-1', type: 'lesson_cancelled' }),
+      expect.anything()
     )
   })
 
@@ -914,7 +923,8 @@ describe('cancelLessonAction', () => {
     vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, [], 'instructor-1'))
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ userId: 'instructor-1', type: 'lesson_cancelled' })
+      expect.objectContaining({ userId: 'instructor-1', type: 'lesson_cancelled' }),
+      expect.anything()
     )
   })
 
@@ -929,7 +939,7 @@ describe('cancelLessonAction', () => {
       makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'], 'instructor-1')
     )
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-1' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-1' }), expect.anything())
   })
 
   it('should_notify_second_enrolled_rider_with_linked_account', async () => {
@@ -937,7 +947,7 @@ describe('cancelLessonAction', () => {
       makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, ['rider-1', 'rider-2'], 'instructor-1')
     )
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-2' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-2' }), expect.anything())
   })
 
   it('should_not_notify_riders_with_null_user_id', async () => {
@@ -948,16 +958,12 @@ describe('cancelLessonAction', () => {
     expect(createNotification).not.toHaveBeenCalled()
   })
 
-  it('should_not_call_getActiveManagerUserIds_when_manager_cancels', async () => {
-    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(getActiveManagerUserIds).not.toHaveBeenCalled()
-  })
-
   it('should_link_notification_to_the_lesson_detail_page', async () => {
     vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso }, [], 'instructor-1'))
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ link: '/barn/barn-slug/lessons/lesson-1' })
+      expect.objectContaining({ link: '/barn/barn-slug/lessons/lesson-1' }),
+      expect.anything()
     )
   })
 
@@ -996,6 +1002,7 @@ describe('cancelRiderParticipationAction', () => {
     vi.mocked(cancelRiderParticipation).mockReset()
     vi.mocked(getActiveManagerUserIds).mockReset()
     vi.mocked(createNotification).mockReset()
+    vi.mocked(createClient).mockReset()
     vi.mocked(redirect).mockReset()
     guardAs(mockManagerMembership)
     vi.mocked(getLessonById).mockResolvedValue(
@@ -1007,6 +1014,7 @@ describe('cancelRiderParticipationAction', () => {
     vi.mocked(cancelRiderParticipation).mockResolvedValue(undefined)
     vi.mocked(getActiveManagerUserIds).mockResolvedValue([])
     vi.mocked(createNotification).mockResolvedValue(undefined)
+    vi.mocked(createClient).mockResolvedValue({} as any)
   })
 
   it('should_redirect_to_detail_page_when_lesson_not_found', async () => {
@@ -1193,7 +1201,7 @@ describe('cancelRiderParticipationAction', () => {
     )
     vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'instructor-1', type: 'rider_participation_cancelled' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'instructor-1', type: 'rider_participation_cancelled' }), expect.anything())
   })
 
   it('should_notify_managers_when_rider_self_cancels', async () => {
@@ -1207,7 +1215,7 @@ describe('cancelRiderParticipationAction', () => {
     )
     vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }), expect.anything())
   })
 
   it('should_notify_managers_when_rider_self_cancels_and_instructor_id_is_null', async () => {
@@ -1220,7 +1228,7 @@ describe('cancelRiderParticipationAction', () => {
     )
     vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }), expect.anything())
   })
 
   it('should_not_notify_a_second_recipient_when_instructor_id_is_null', async () => {
@@ -1246,7 +1254,7 @@ describe('cancelRiderParticipationAction', () => {
     )
     vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1', type: 'rider_participation_cancelled' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1', type: 'rider_participation_cancelled' }), expect.anything())
   })
 
   it('should_notify_managers_when_trainer_cancels_on_behalf', async () => {
@@ -1259,22 +1267,17 @@ describe('cancelRiderParticipationAction', () => {
     )
     vi.mocked(getActiveManagerUserIds).mockResolvedValue(['manager-1'])
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'manager-1', type: 'rider_participation_cancelled' }), expect.anything())
   })
 
   it('should_notify_affected_rider_when_manager_cancels_on_behalf', async () => {
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1' }))
+    expect(createNotification).toHaveBeenCalledWith(expect.objectContaining({ userId: 'rider-user-1' }), expect.anything())
   })
 
   it('should_not_notify_a_second_recipient_when_manager_cancels_on_behalf', async () => {
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledTimes(1)
-  })
-
-  it('should_not_call_getActiveManagerUserIds_when_manager_cancels', async () => {
-    await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
-    expect(getActiveManagerUserIds).not.toHaveBeenCalled()
   })
 
   it('should_skip_rider_notification_when_affected_rider_user_id_is_null', async () => {
@@ -1301,7 +1304,8 @@ describe('cancelRiderParticipationAction', () => {
   it('should_link_notification_to_the_lesson_detail_page', async () => {
     await cancelRiderParticipationAction('barn-1', 'barn-slug', 'lesson-1', 'rider-mem-1', makeFormData({}))
     expect(createNotification).toHaveBeenCalledWith(
-      expect.objectContaining({ link: '/barn/barn-slug/lessons/lesson-1' })
+      expect.objectContaining({ link: '/barn/barn-slug/lessons/lesson-1' }),
+      expect.anything()
     )
   })
 

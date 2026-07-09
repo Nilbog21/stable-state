@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients } from '../notifications'
+import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients } from '../notifications'
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -75,6 +75,166 @@ describe('createNotification', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', expect.any(Object))
+  })
+})
+
+describe('resolveCancellationRecipients', () => {
+  describe('scope: lesson', () => {
+    it('should_include_managers_and_riders_when_trainer_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'trainer',
+        riderUserIds: ['rider-1', 'rider-2'],
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['manager-1', 'rider-1', 'rider-2'])
+    })
+
+    it('should_call_getManagerUserIds_when_trainer_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue([])
+
+      await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'trainer',
+        riderUserIds: [],
+        instructorUserId: null,
+        getManagerUserIds,
+      })
+
+      expect(getManagerUserIds).toHaveBeenCalledTimes(1)
+    })
+
+    it('should_include_instructor_and_riders_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'manager',
+        riderUserIds: ['rider-1'],
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['instructor-1', 'rider-1'])
+    })
+
+    it('should_not_call_getManagerUserIds_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'manager',
+        riderUserIds: [],
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(getManagerUserIds).not.toHaveBeenCalled()
+    })
+
+    it('should_omit_instructor_when_manager_cancels_and_instructor_is_null', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue([])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'manager',
+        riderUserIds: ['rider-1'],
+        instructorUserId: null,
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['rider-1'])
+    })
+  })
+
+  describe('scope: rider_participation', () => {
+    it('should_include_instructor_and_managers_when_rider_self_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'rider',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['instructor-1', 'manager-1'])
+    })
+
+    it('should_omit_instructor_when_rider_self_cancels_and_instructor_is_null', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'rider',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: null,
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['manager-1'])
+    })
+
+    it('should_include_affected_rider_and_managers_when_trainer_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'trainer',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['rider-1', 'manager-1'])
+    })
+
+    it('should_include_only_affected_rider_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'manager',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['rider-1'])
+    })
+
+    it('should_not_call_getManagerUserIds_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'manager',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(getManagerUserIds).not.toHaveBeenCalled()
+    })
+
+    it('should_return_empty_array_when_manager_cancels_and_affected_rider_is_null', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue([])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'manager',
+        affectedRiderUserId: null,
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual([])
+    })
   })
 })
 
@@ -419,6 +579,43 @@ describe('upsertNotificationsForRecipients', () => {
     )
 
     expect(errorCount).toBe(0)
+  })
+
+  it('should_call_custom_send_function_with_recipient_params_when_provided', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const customSend = vi.fn().mockResolvedValue(undefined)
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: undefined }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'lesson_cancelled', () => '/link', customSend
+    )
+
+    expect(customSend).toHaveBeenCalledWith(client, {
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'lesson_cancelled',
+      title: 't',
+      body: 'b',
+      link: '/link',
+    })
+  })
+
+  it('should_not_call_default_upsert_when_custom_send_function_is_provided', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const customSend = vi.fn().mockResolvedValue(undefined)
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: undefined }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'lesson_cancelled', () => '/link', customSend
+    )
+
+    expect(mockUpsert).not.toHaveBeenCalled()
   })
 })
 
