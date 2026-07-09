@@ -216,6 +216,29 @@ export async function resolveMemberNames(
   return new Map(rows.map((m) => [m.id, m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.id]))
 }
 
+export async function resolveMemberNamesByUserId(
+  userIds: string[],
+  barnId: string,
+  client?: SupabaseClient
+): Promise<Map<string, { membershipId: string; name: string }>> {
+  if (!userIds.length) return new Map()
+
+  const supabase = client ?? await createClient()
+
+  const rows = await joinMembershipsWithProfiles(supabase, (query) =>
+    query.eq('barn_id', barnId).in('user_id', userIds)
+  )
+
+  return new Map(
+    rows
+      .filter((m): m is MembershipProfileRow & { user_id: string } => m.user_id !== null)
+      .map((m) => [
+        m.user_id,
+        { membershipId: m.id, name: m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.user_id },
+      ])
+  )
+}
+
 export const getBarnMembershipsForUser = cache(async (
   userId: string
 ): Promise<{ barn: Barn; membership: BarnMembership }[]> => {
