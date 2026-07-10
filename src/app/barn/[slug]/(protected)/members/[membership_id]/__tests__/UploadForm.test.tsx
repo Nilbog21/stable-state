@@ -37,6 +37,17 @@ describe('UploadForm', () => {
     expect(screen.getByRole('button', { name: /uploading/i }).hasAttribute('disabled')).toBe(true)
   })
 
+  it('should_show_progress_bar_when_pending', () => {
+    vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, true] as any)
+    render(<UploadForm memberRole="trainer" action={noop} />)
+    expect(screen.getByRole('progressbar')).toBeDefined()
+  })
+
+  it('should_not_show_progress_bar_when_not_pending', () => {
+    render(<UploadForm memberRole="trainer" action={noop} />)
+    expect(screen.queryByRole('progressbar')).toBeNull()
+  })
+
   it('should_show_instructor_contract_option_for_trainer', () => {
     render(<UploadForm memberRole="trainer" action={noop} />)
     expect(screen.getByText('Instructor Contract')).toBeDefined()

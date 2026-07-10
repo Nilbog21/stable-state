@@ -99,6 +99,12 @@ export function HorseDocumentUploadForm({ action }: Props) {
       >
         {pending ? 'Uploading…' : 'Upload'}
       </button>
+
+      {pending && (
+        <div role="progressbar" className="h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+          <div className="h-full w-1/3 rounded-full bg-zinc-900 [animation:indeterminate-progress_1.2s_ease-in-out_infinite] dark:bg-zinc-50" />
+        </div>
+      )}
     </form>
   )
 }

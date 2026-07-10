@@ -32,6 +32,17 @@ describe('HorseDocumentUploadForm', () => {
     expect(screen.getByRole('button', { name: /uploading/i }).hasAttribute('disabled')).toBe(true)
   })
 
+  it('should_show_progress_bar_when_pending', () => {
+    vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, true] as any)
+    render(<HorseDocumentUploadForm action={noop} />)
+    expect(screen.getByRole('progressbar')).toBeDefined()
+  })
+
+  it('should_not_show_progress_bar_when_not_pending', () => {
+    render(<HorseDocumentUploadForm action={noop} />)
+    expect(screen.queryByRole('progressbar')).toBeNull()
+  })
+
   it('should_show_insurance_binder_option', () => {
     render(<HorseDocumentUploadForm action={noop} />)
     expect(screen.getByText('Insurance Binder')).toBeDefined()
