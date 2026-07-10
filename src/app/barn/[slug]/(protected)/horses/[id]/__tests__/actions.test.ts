@@ -244,10 +244,10 @@ describe('uploadHorseDocumentAction', () => {
     expect(createHorseDocument).toHaveBeenCalled()
   })
 
-  it('should_reject_file_larger_than_10mb', async () => {
-    const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
+  it('should_reject_file_larger_than_4_5mb', async () => {
+    const bigFile = new File([new Uint8Array(5 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     const fd = makeUploadFormData(bigFile, 'coggins')
-    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/10 MB/) })
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/4\.5 MB/) })
   })
 
   it('should_reject_unsupported_mime_type', async () => {

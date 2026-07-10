@@ -11,14 +11,14 @@ const HORSE_TYPES: { value: HorseDocumentType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-const MAX_FILE_SIZE = 10 * 1024 * 1024
+const MAX_FILE_SIZE = 4.5 * 1024 * 1024
 
 interface Props {
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }
 
 export function HorseDocumentUploadForm({ action }: Props) {
-  const [state, formAction] = useActionState(action, { error: null })
+  const [state, formAction, pending] = useActionState(action, { error: null })
   const [selectedType, setSelectedType] = useState<HorseDocumentType>(HORSE_TYPES[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
@@ -46,7 +46,7 @@ export function HorseDocumentUploadForm({ action }: Props) {
 
       <div>
         <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
-          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 10 MB)</span>
+          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 4.5 MB)</span>
         </label>
         <input
           ref={inputRef}
@@ -57,7 +57,7 @@ export function HorseDocumentUploadForm({ action }: Props) {
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file && file.size > MAX_FILE_SIZE) {
-              setFileError('File exceeds 10 MB limit')
+              setFileError('File exceeds 4.5 MB limit')
               setFileName(null)
               e.target.value = ''
             } else {
@@ -93,9 +93,10 @@ export function HorseDocumentUploadForm({ action }: Props) {
 
       <button
         type="submit"
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
       >
-        Upload
+        {pending ? 'Uploading…' : 'Upload'}
       </button>
     </form>
   )

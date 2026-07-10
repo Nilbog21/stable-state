@@ -31,6 +31,12 @@ describe('UploadForm', () => {
     expect(screen.getByRole('button', { name: /upload/i })).toBeDefined()
   })
 
+  it('should_disable_upload_button_when_pending', () => {
+    vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, true] as any)
+    render(<UploadForm memberRole="trainer" action={noop} />)
+    expect(screen.getByRole('button', { name: /uploading/i }).hasAttribute('disabled')).toBe(true)
+  })
+
   it('should_show_instructor_contract_option_for_trainer', () => {
     render(<UploadForm memberRole="trainer" action={noop} />)
     expect(screen.getByText('Instructor Contract')).toBeDefined()
@@ -59,20 +65,20 @@ describe('UploadForm', () => {
     expect(hidden.value).toBe('lease_agreement')
   })
 
-  it('should_show_file_size_error_when_file_exceeds_10mb', () => {
+  it('should_show_file_size_error_when_file_exceeds_4_5mb', () => {
     render(<UploadForm memberRole="trainer" action={noop} />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-    const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
+    const bigFile = new File([new Uint8Array(5 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [bigFile], configurable: true })
     fireEvent.change(fileInput)
-    expect(screen.getByText(/exceeds 10 mb/i)).toBeDefined()
+    expect(screen.getByText(/exceeds 4\.5 mb/i)).toBeDefined()
   })
 
   it('should_clear_file_size_error_when_valid_file_selected', () => {
     render(<UploadForm memberRole="trainer" action={noop} />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
 
-    const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
+    const bigFile = new File([new Uint8Array(5 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [bigFile], configurable: true })
     fireEvent.change(fileInput)
 
@@ -80,7 +86,7 @@ describe('UploadForm', () => {
     Object.defineProperty(fileInput, 'files', { value: [smallFile], configurable: true })
     fireEvent.change(fileInput)
 
-    expect(screen.queryByText(/exceeds 10 mb/i)).toBeNull()
+    expect(screen.queryByText(/exceeds 4\.5 mb/i)).toBeNull()
   })
 
   it('should_render_choose_file_button', () => {

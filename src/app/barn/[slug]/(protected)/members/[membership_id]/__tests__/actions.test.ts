@@ -177,13 +177,13 @@ describe('uploadDocumentAction', () => {
     await expect(uploadDocumentAction('green-acres', 'mem-unknown', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
-  it('should_reject_file_over_10mb', async () => {
+  it('should_reject_file_over_4_5mb', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
-    const bigFile = makePdfFile(11 * 1024 * 1024)
+    const bigFile = makePdfFile(5 * 1024 * 1024)
     const fd = makeUploadFormData(bigFile, 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/10 MB/) })
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/4\.5 MB/) })
   })
 
   it('should_reject_unsupported_file_type', async () => {
