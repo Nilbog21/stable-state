@@ -29,7 +29,7 @@ describe('constants', () => {
   })
 
   it('should_export_max_file_size_as_4_5mb', () => {
-    expect(MAX_FILE_SIZE).toBe(4.5 * 1024 * 1024)
+    expect(MAX_FILE_SIZE).toBe(4500000)
   })
 })
 

@@ -11,7 +11,8 @@ const HORSE_TYPES: { value: HorseDocumentType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-const MAX_FILE_SIZE = 4.5 * 1024 * 1024
+// Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
+const MAX_FILE_SIZE = 4500000
 
 interface Props {
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>

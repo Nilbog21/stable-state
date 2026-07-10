@@ -7,7 +7,8 @@ export const ALLOWED_MIME_TYPES = new Set([
   'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
 ])
 export const ALLOWED_EXTENSIONS = new Set(['pdf', 'jpg', 'jpeg', 'png', 'docx'])
-export const MAX_FILE_SIZE = 4.5 * 1024 * 1024
+// Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
+export const MAX_FILE_SIZE = 4500000
 
 export function validateFile(file: File | null): string {
   if (!file || file.size === 0) throw new Error('No file provided')
