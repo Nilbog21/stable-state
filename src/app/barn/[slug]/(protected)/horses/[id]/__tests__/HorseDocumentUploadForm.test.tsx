@@ -1,10 +1,26 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
+import { useActionState } from 'react'
 import { HorseDocumentUploadForm } from '../HorseDocumentUploadForm'
 
-const noop = async () => {}
+vi.mock('react', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react')>()
+  return { ...actual, useActionState: vi.fn() }
+})
+
+const noop = async () => ({ error: null })
 
 describe('HorseDocumentUploadForm', () => {
+  beforeEach(() => {
+    vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, false] as any)
+  })
+
+  it('should_render_server_error_inline', () => {
+    vi.mocked(useActionState).mockReturnValue([{ error: 'boom' }, noop, false] as any)
+    render(<HorseDocumentUploadForm action={noop} />)
+    expect(screen.getByRole('alert').textContent).toBe('boom')
+  })
+
   it('should_render_upload_button', () => {
     render(<HorseDocumentUploadForm action={noop} />)
     expect(screen.getByRole('button', { name: /upload/i })).toBeDefined()
@@ -38,20 +54,20 @@ describe('HorseDocumentUploadForm', () => {
     expect(hidden.value).toBe('shot_record')
   })
 
-  it('should_show_file_size_error_when_file_exceeds_5mb', () => {
+  it('should_show_file_size_error_when_file_exceeds_10mb', () => {
     render(<HorseDocumentUploadForm action={noop} />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
-    const bigFile = new File([new Uint8Array(6 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
+    const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [bigFile], configurable: true })
     fireEvent.change(fileInput)
-    expect(screen.getByText(/exceeds 5 mb/i)).toBeDefined()
+    expect(screen.getByText(/exceeds 10 mb/i)).toBeDefined()
   })
 
   it('should_clear_file_size_error_when_valid_file_selected', () => {
     render(<HorseDocumentUploadForm action={noop} />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
 
-    const bigFile = new File([new Uint8Array(6 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
+    const bigFile = new File([new Uint8Array(11 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [bigFile], configurable: true })
     fireEvent.change(fileInput)
 
@@ -59,7 +75,7 @@ describe('HorseDocumentUploadForm', () => {
     Object.defineProperty(fileInput, 'files', { value: [smallFile], configurable: true })
     fireEvent.change(fileInput)
 
-    expect(screen.queryByText(/exceeds 5 mb/i)).toBeNull()
+    expect(screen.queryByText(/exceeds 10 mb/i)).toBeNull()
   })
 
   it('should_render_choose_file_button', () => {
