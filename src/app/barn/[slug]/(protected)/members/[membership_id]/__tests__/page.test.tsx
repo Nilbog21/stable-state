@@ -465,7 +465,7 @@ describe('MemberDetailPage', () => {
     render(jsx)
     const form = screen.getByRole('button', { name: /upload/i }).closest('form')!
     fireEvent.submit(form)
-    expect(uploadDocumentAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', expect.any(FormData))
+    expect(uploadDocumentAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', { error: null }, expect.any(FormData))
   })
 
   it('should_call_deleteDocumentAction_when_delete_form_submits', async () => {

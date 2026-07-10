@@ -51,6 +51,7 @@ async function resolveManageableTarget(
 export async function uploadDocumentAction(
   barnSlug: string,
   membershipId: string,
+  prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])

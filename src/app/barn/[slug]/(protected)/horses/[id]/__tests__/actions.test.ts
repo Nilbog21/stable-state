@@ -360,26 +360,25 @@ describe('uploadHorseDocumentAction', () => {
 
   it('should_call_requireMembership_with_manager_and_trainer_roles', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
   })
 
   it('should_call_uploadFile_when_manager_uploads', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(uploadFile).toHaveBeenCalled()
   })
 
   it('should_call_createDocument_when_manager_uploads', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_return_null_error_on_success', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result).toEqual({ error: null })
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: null })
   })
 
   it('should_upload_document_as_trainer', async () => {
@@ -389,61 +388,55 @@ describe('uploadHorseDocumentAction', () => {
       membership: trainerMembership,
     })
     const fd = makeUploadFormData(makePdfFile(), 'shot_record')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(createDocument).toHaveBeenCalled()
   })
 
-  it('should_reject_file_larger_than_5mb', async () => {
-    const bigFile = new File([new Uint8Array(6 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
+  it('should_reject_file_larger_than_4_5mb', async () => {
+    const bigFile = new File([new Uint8Array(5 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     const fd = makeUploadFormData(bigFile, 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result.error).toMatch(/5 MB/)
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/4\.5 MB/) })
   })
 
   it('should_reject_unsupported_mime_type', async () => {
     const file = new File([new Uint8Array(100)], 'bad.exe', { type: 'application/octet-stream' })
     const fd = makeUploadFormData(file, 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result.error).toMatch(/Unsupported/)
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Unsupported/) })
   })
 
   it('should_reject_unsupported_extension', async () => {
     const file = new File([new Uint8Array(100)], 'bad.exe', { type: 'application/pdf' })
     const fd = makeUploadFormData(file, 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result.error).toMatch(/Unsupported/)
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Unsupported/) })
   })
 
   it('should_reject_invalid_record_type', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'not_a_valid_type')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result.error).toMatch(/Invalid/)
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Invalid/) })
   })
 
   it('should_accept_other_as_valid_horse_record_type', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'other')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(createDocument).toHaveBeenCalled()
   })
 
   it('should_reject_when_no_file_provided', async () => {
     const fd = new FormData()
     fd.set('record_type', 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result.error).toMatch(/No file/)
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/No file/) })
   })
 
   it('should_reject_file_with_no_extension', async () => {
     const file = new File([new Uint8Array(100)], 'coggins', { type: 'application/pdf' })
     const fd = makeUploadFormData(file, 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result.error).toMatch(/Unsupported/)
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Unsupported/) })
   })
 
   it('should_return_error_when_storage_upload_fails', async () => {
     vi.mocked(uploadFile).mockRejectedValue(new Error('storage upload failed'))
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(result.error).toBe('storage upload failed')
   })
 
@@ -451,7 +444,7 @@ describe('uploadHorseDocumentAction', () => {
     const fd = new FormData()
     fd.set('file', makePdfFile())
     fd.set('record_type', 'coggins')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(createDocument).toHaveBeenCalledWith(
       'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null, null
     )
@@ -460,7 +453,7 @@ describe('uploadHorseDocumentAction', () => {
   it('should_pass_reminder_date_when_provided', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
     fd.set('reminder_date', '2027-01-01')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(createDocument).toHaveBeenCalledWith(
       'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null, '2027-01-01'
     )
@@ -468,7 +461,7 @@ describe('uploadHorseDocumentAction', () => {
 
   it('should_pass_null_reminder_date_when_field_is_absent', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(createDocument).toHaveBeenCalledWith(
       'horse', expect.any(String), 'horse-1', 'coggins', expect.any(String), expect.any(String), expect.any(Number), null, null
     )
@@ -477,14 +470,19 @@ describe('uploadHorseDocumentAction', () => {
   it('should_rollback_storage_on_db_error', async () => {
     vi.mocked(createDocument).mockRejectedValue(new Error('db error'))
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    const result = await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
-    expect(result.error).toBe('db error')
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: 'db error' })
     expect(removeFile).toHaveBeenCalled()
+  })
+
+  it('should_return_generic_error_when_non_error_is_thrown', async () => {
+    vi.mocked(createDocument).mockRejectedValue('not an Error instance')
+    const fd = makeUploadFormData(makePdfFile(), 'coggins')
+    await expect(uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)).resolves.toEqual({ error: 'not an Error instance' })
   })
 
   it('should_revalidate_horse_detail_path', async () => {
     const fd = makeUploadFormData(makePdfFile(), 'coggins')
-    await uploadHorseDocumentAction('green-acres', 'horse-1', fd)
+    await uploadHorseDocumentAction('green-acres', 'horse-1', { error: null }, fd)
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
 })

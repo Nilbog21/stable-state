@@ -81,6 +81,7 @@ export async function updateHorseExhaustionThresholdsAction(
 export async function uploadHorseDocumentAction(
   barnSlug: string,
   horseId: string,
+  prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])

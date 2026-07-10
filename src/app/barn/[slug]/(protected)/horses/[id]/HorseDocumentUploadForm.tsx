@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useActionState, useRef, useState } from 'react'
 import type { HorseDocumentType } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
 
@@ -12,29 +12,23 @@ const HORSE_TYPES: { value: HorseDocumentType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024
+// Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
+const MAX_FILE_SIZE = 4500000
 
 interface Props {
-  action: (formData: FormData) => Promise<{ error: string | null }>
+  action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }
 
 export function HorseDocumentUploadForm({ action }: Props) {
+  const [state, formAction, pending] = useActionState(action, { error: null })
   const [selectedType, setSelectedType] = useState<HorseDocumentType>(HORSE_TYPES[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
-  const [uploadError, setUploadError] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
-    e.preventDefault()
-    setFileName(null)
-    setUploadError(null)
-    const result = await action(new FormData(e.currentTarget))
-    if (result.error) setUploadError(result.error)
-  }
-
   return (
-    <form onSubmit={handleSubmit} className="space-y-4">
+    <form action={formAction} className="space-y-4" onSubmit={() => setFileName(null)}>
+      {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <input type="hidden" name="record_type" value={selectedType} />
 
       <div>
@@ -54,7 +48,7 @@ export function HorseDocumentUploadForm({ action }: Props) {
 
       <div>
         <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
-          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 5 MB)</span>
+          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 4.5 MB)</span>
         </label>
         <input
           ref={inputRef}
@@ -65,7 +59,7 @@ export function HorseDocumentUploadForm({ action }: Props) {
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file && file.size > MAX_FILE_SIZE) {
-              setFileError('File exceeds 5 MB limit')
+              setFileError('File exceeds 4.5 MB limit')
               setFileName(null)
               e.target.value = ''
             } else {
@@ -106,9 +100,19 @@ export function HorseDocumentUploadForm({ action }: Props) {
         />
       </div>
 
-      {uploadError && <p className="text-xs text-red-600 dark:text-red-400">{uploadError}</p>}
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {pending ? 'Uploading…' : 'Upload'}
+      </button>
 
-      <Button type="submit">Upload</Button>
+      {pending && (
+        <div role="progressbar" className="h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+          <div className="h-full w-1/3 rounded-full bg-zinc-900 [animation:indeterminate-progress_1.2s_ease-in-out_infinite] dark:bg-zinc-50" />
+        </div>
+      )}
     </form>
   )
 }

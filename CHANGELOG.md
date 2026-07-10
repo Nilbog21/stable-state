@@ -4,6 +4,12 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
+## v2.0.4 — July 2026
+
+**Fixed document uploads failing for files over 1 MB.** You can now upload horse, trainer, and rider documents up to 4.5 MB (previously some uploads over 1 MB would fail with a confusing error, due to a mismatch between our app's limit and Vercel's own cap). Upload errors now show a clear message on the page instead of a blank crash.
+
+---
+
 ## v2.0.3 — July 2026
 
 **Streamlined behind-the-scenes database setup files.** No user-facing changes.
