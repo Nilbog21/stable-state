@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef, useState } from 'react'
+import { useActionState, useRef, useState } from 'react'
 import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
 
 const TRAINER_TYPES: { value: TrainerDocumentType; label: string }[] = [
@@ -15,14 +15,15 @@ const RIDER_TYPES: { value: RiderDocumentType; label: string }[] = [
   { value: 'other', label: 'Other' },
 ]
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024
+const MAX_FILE_SIZE = 10 * 1024 * 1024
 
 interface Props {
   memberRole: 'trainer' | 'rider' | 'manager'
-  action: (formData: FormData) => Promise<void>
+  action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }
 
 export function UploadForm({ memberRole, action }: Props) {
+  const [state, formAction] = useActionState(action, { error: null })
   const types = memberRole === 'rider' ? RIDER_TYPES : TRAINER_TYPES
   const [selectedType, setSelectedType] = useState(types[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
@@ -30,7 +31,8 @@ export function UploadForm({ memberRole, action }: Props) {
   const inputRef = useRef<HTMLInputElement>(null)
 
   return (
-    <form action={action} className="space-y-4" onSubmit={() => setFileName(null)}>
+    <form action={formAction} className="space-y-4" onSubmit={() => setFileName(null)}>
+      {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       <input type="hidden" name="record_type" value={selectedType} />
 
       <div>
@@ -50,7 +52,7 @@ export function UploadForm({ memberRole, action }: Props) {
 
       <div>
         <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
-          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 5 MB)</span>
+          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 10 MB)</span>
         </label>
         <input
           ref={inputRef}
@@ -61,7 +63,7 @@ export function UploadForm({ memberRole, action }: Props) {
           onChange={(e) => {
             const file = e.target.files?.[0]
             if (file && file.size > MAX_FILE_SIZE) {
-              setFileError('File exceeds 5 MB limit')
+              setFileError('File exceeds 10 MB limit')
               setFileName(null)
               e.target.value = ''
             } else {

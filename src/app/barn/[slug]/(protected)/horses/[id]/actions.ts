@@ -40,29 +40,35 @@ export async function updateHorseDetailsAction(
 export async function uploadHorseDocumentAction(
   barnSlug: string,
   horseId: string,
+  prevState: { error: string | null },
   formData: FormData
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const file = formData.get('file') as File | null
-  const ext = validateFile(file)
-
-  const recordType = formData.get('record_type') as string
-  if (!HORSE_RECORD_TYPES.has(recordType as HorseDocumentType)) throw new Error('Invalid record type')
-
-  const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
-  const storagePath = `${barn.id}/horses/${horseId}/${Date.now()}.${ext}`
-
-  await uploadFile(storagePath, file!, file!.type)
-
   try {
-    await createHorseDocument(barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
-  } catch (dbError) {
-    await removeFile(storagePath).catch(() => {})
-    throw dbError
-  }
+    const file = formData.get('file') as File | null
+    const ext = validateFile(file)
 
-  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+    const recordType = formData.get('record_type') as string
+    if (!HORSE_RECORD_TYPES.has(recordType as HorseDocumentType)) throw new Error('Invalid record type')
+
+    const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
+    const storagePath = `${barn.id}/horses/${horseId}/${Date.now()}.${ext}`
+
+    await uploadFile(storagePath, file!, file!.type)
+
+    try {
+      await createHorseDocument(barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
+    } catch (dbError) {
+      await removeFile(storagePath).catch(() => {})
+      throw dbError
+    }
+
+    revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+    return { error: null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Upload failed' }
+  }
 }
 
 export async function deleteHorseDocumentAction(

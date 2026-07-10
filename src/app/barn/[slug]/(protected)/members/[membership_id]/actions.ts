@@ -21,53 +21,59 @@ function canManage(callerRole: string, isOwnPage: boolean): boolean {
 export async function uploadDocumentAction(
   barnSlug: string,
   membershipId: string,
+  prevState: { error: string | null },
   formData: FormData
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const targetMembership = await getMembershipById(membershipId)
-  if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
-
-  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
-    throw new Error('Forbidden')
-  }
-
-  const isOwnPage = targetMembership.user_id === user.id
-  if (!canManage(callerMembership.role, isOwnPage)) {
-    throw new Error('Forbidden')
-  }
-
-  if (!targetMembership.user_id) throw new Error('Target member has no account linked')
-
-  const file = formData.get('file') as File | null
-  const ext = validateFile(file)
-
-  const recordType = formData.get('record_type') as string
-  const validTypes = targetMembership.role === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
-  if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) throw new Error('Invalid record type')
-
-  const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
-
-  const folder =
-    targetMembership.role === 'trainer' ? 'trainers'
-    : targetMembership.role === 'manager' ? 'managers'
-    : 'riders'
-  const storagePath = `${barn.id}/${folder}/${targetMembership.user_id}/${Date.now()}.${ext}`
-
-  await uploadFile(storagePath, file!, file!.type)
-
   try {
-    if (targetMembership.role === 'rider') {
-      await createRiderDocument(barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes)
-    } else {
-      await createTrainerDocument(barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
-    }
-  } catch (dbError) {
-    await removeFile(storagePath).catch(() => {})
-    throw dbError
-  }
+    const targetMembership = await getMembershipById(membershipId)
+    if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
 
-  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+    if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
+      throw new Error('Forbidden')
+    }
+
+    const isOwnPage = targetMembership.user_id === user.id
+    if (!canManage(callerMembership.role, isOwnPage)) {
+      throw new Error('Forbidden')
+    }
+
+    if (!targetMembership.user_id) throw new Error('Target member has no account linked')
+
+    const file = formData.get('file') as File | null
+    const ext = validateFile(file)
+
+    const recordType = formData.get('record_type') as string
+    const validTypes = targetMembership.role === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
+    if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) throw new Error('Invalid record type')
+
+    const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
+
+    const folder =
+      targetMembership.role === 'trainer' ? 'trainers'
+      : targetMembership.role === 'manager' ? 'managers'
+      : 'riders'
+    const storagePath = `${barn.id}/${folder}/${targetMembership.user_id}/${Date.now()}.${ext}`
+
+    await uploadFile(storagePath, file!, file!.type)
+
+    try {
+      if (targetMembership.role === 'rider') {
+        await createRiderDocument(barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes)
+      } else {
+        await createTrainerDocument(barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
+      }
+    } catch (dbError) {
+      await removeFile(storagePath).catch(() => {})
+      throw dbError
+    }
+
+    revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+    return { error: null }
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : 'Upload failed' }
+  }
 }
 
 export async function deleteDocumentAction(
