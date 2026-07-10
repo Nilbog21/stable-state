@@ -28,8 +28,8 @@ describe('constants', () => {
     expect(ALLOWED_EXTENSIONS.has('pdf')).toBe(true)
   })
 
-  it('should_export_max_file_size_as_5mb', () => {
-    expect(MAX_FILE_SIZE).toBe(5 * 1024 * 1024)
+  it('should_export_max_file_size_as_4_5mb', () => {
+    expect(MAX_FILE_SIZE).toBe(4500000)
   })
 })
 
@@ -49,8 +49,8 @@ describe('validateFile', () => {
   })
 
   it('should_throw_when_file_exceeds_max_size', () => {
-    const file = new File([new Uint8Array(6 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
-    expect(() => validateFile(file)).toThrow('File exceeds 5 MB limit')
+    const file = new File([new Uint8Array(5 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
+    expect(() => validateFile(file)).toThrow('File exceeds 4.5 MB limit')
   })
 
   it('should_throw_when_mime_type_is_unsupported', () => {

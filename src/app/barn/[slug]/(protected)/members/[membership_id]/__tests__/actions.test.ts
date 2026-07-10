@@ -76,7 +76,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
 
     expect(createTrainerDocument).toHaveBeenCalled()
   })
@@ -86,7 +86,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await uploadDocumentAction('green-acres', 'mem-target-rdr', fd)
+    await uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)
 
     expect(createRiderDocument).toHaveBeenCalled()
   })
@@ -96,7 +96,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(trainerMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-trn', fd)
+    await uploadDocumentAction('green-acres', 'mem-trn', { error: null }, fd)
 
     expect(createTrainerDocument).toHaveBeenCalled()
   })
@@ -106,7 +106,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await uploadDocumentAction('green-acres', 'mem-rdr', fd)
+    await uploadDocumentAction('green-acres', 'mem-rdr', { error: null }, fd)
 
     expect(createRiderDocument).toHaveBeenCalled()
   })
@@ -116,7 +116,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-rdr', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_reject_upload_when_rider_targets_other_member', async () => {
@@ -124,7 +124,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_upload_manager_document_as_manager', async () => {
@@ -132,7 +132,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-mgr-target', fd)
+    await uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)
 
     expect(createTrainerDocument).toHaveBeenCalled()
   })
@@ -142,7 +142,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-mgr-target', fd)
+    await uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)
 
     expect(uploadFile).toHaveBeenCalledWith(
       expect.stringContaining('/managers/'),
@@ -156,7 +156,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-mgr-target', fd)).resolves.toBeUndefined()
+    await expect(uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)).resolves.toEqual({ error: null })
   })
 
   it('should_reject_liability_waiver_for_manager_target', async () => {
@@ -164,7 +164,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await expect(uploadDocumentAction('green-acres', 'mem-mgr-target', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_reject_upload_when_target_has_unknown_role', async () => {
@@ -174,16 +174,16 @@ describe('uploadDocumentAction', () => {
     )
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-unknown', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-unknown', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
-  it('should_reject_file_over_5mb', async () => {
+  it('should_reject_file_over_4_5mb', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
-    const bigFile = makePdfFile(6 * 1024 * 1024)
+    const bigFile = makePdfFile(5 * 1024 * 1024)
     const fd = makeUploadFormData(bigFile, 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/4\.5 MB/) })
   })
 
   it('should_reject_unsupported_file_type', async () => {
@@ -194,7 +194,7 @@ describe('uploadDocumentAction', () => {
     const fd = new FormData()
     fd.set('file', exeFile)
     fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_reject_file_with_no_extension', async () => {
@@ -205,7 +205,7 @@ describe('uploadDocumentAction', () => {
     const fd = new FormData()
     fd.set('file', noExtFile)
     fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_reject_file_with_trailing_dot', async () => {
@@ -216,7 +216,7 @@ describe('uploadDocumentAction', () => {
     const fd = new FormData()
     fd.set('file', trailingDotFile)
     fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_reject_invalid_record_type_for_trainer', async () => {
@@ -224,7 +224,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_reject_invalid_record_type_for_rider', async () => {
@@ -232,7 +232,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-rdr', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
   it('should_accept_other_as_valid_trainer_record_type', async () => {
@@ -240,7 +240,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'other')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
 
     expect(createTrainerDocument).toHaveBeenCalled()
   })
@@ -250,7 +250,7 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'other')
-    await uploadDocumentAction('green-acres', 'mem-target-rdr', fd)
+    await uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)
 
     expect(createRiderDocument).toHaveBeenCalled()
   })
@@ -260,45 +260,45 @@ describe('uploadDocumentAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
 
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
 
-  it('should_throw_when_target_membership_not_found', async () => {
+  it('should_return_error_when_target_membership_not_found', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(null)
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-gone', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-gone', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
-  it('should_throw_when_target_has_no_user_id', async () => {
+  it('should_return_error_when_target_has_no_user_id', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(
       createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
     )
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-nouser', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-nouser', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
-  it('should_throw_when_no_file_provided', async () => {
+  it('should_return_error_when_no_file_provided', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     const fd = new FormData()
     fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow()
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
   })
 
-  it('should_throw_when_storage_upload_fails', async () => {
+  it('should_return_error_when_storage_upload_fails', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
     vi.mocked(uploadFile).mockRejectedValue(new Error('storage upload failed'))
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow('storage upload failed')
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: 'storage upload failed' })
   })
 
   it('should_cleanup_storage_on_db_insert_failure', async () => {
@@ -307,8 +307,17 @@ describe('uploadDocumentAction', () => {
     vi.mocked(createTrainerDocument).mockRejectedValue(new Error('db error'))
 
     const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', fd)).rejects.toThrow('db error')
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: 'db error' })
     expect(removeFile).toHaveBeenCalled()
+  })
+
+  it('should_return_generic_error_when_non_error_is_thrown', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(createTrainerDocument).mockRejectedValue('not an Error instance')
+
+    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
+    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: 'Upload failed' })
   })
 
   it('should_use_null_for_empty_notes', async () => {
@@ -318,7 +327,7 @@ describe('uploadDocumentAction', () => {
     const fd = new FormData()
     fd.set('file', makePdfFile())
     fd.set('record_type', 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', fd)
+    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
 
     expect(createTrainerDocument).toHaveBeenCalledWith(
       expect.any(String), expect.any(String), expect.any(String),
