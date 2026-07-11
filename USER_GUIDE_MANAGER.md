@@ -94,7 +94,7 @@ In the **By Rider** tab, tap any rider name to open a drill-down page listing ea
 
 Go to **Settings** to set the barn's instructor cut — a flat per-lesson amount representing the instructor's take. Changing it affects all historical collected and pending income figures, not just future lessons.
 
-Go to **Settings** to manage fee tiers. The tier list shows each tier's name, price, default status, and active/inactive state. Tap **Edit** next to any tier to open its detail page, where you can rename it, change the price, set jumping and exertion defaults, set it as the default for new lessons, or deactivate it. Tap **Add Tier** in the section header (top right) to create a new tier. A price is required — enter `0` for a free tier.
+Go to **Settings** to manage fee tiers. The tier list shows each tier's name, price, default status, and active/inactive state. Tap **Edit** next to any tier to open its detail page, where you can rename it, change the price, set jumping and exertion defaults, set it as the default for new lessons, or deactivate it. Changing the price shows an amber warning noting the new price won't affect past lessons — only lessons booked after the change use it. Tap **Add Tier** in the section header (top right) to create a new tier. A price is required — enter `0` for a free tier.
 
 **Default Board Fee** — Set the monthly fee suggested when creating a new boarding agreement. Changing this only affects boarding agreements created afterward — existing boarders are unaffected.
 
