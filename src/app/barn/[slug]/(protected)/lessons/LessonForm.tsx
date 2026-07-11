@@ -81,6 +81,12 @@ export function LessonForm({
   const initialNormalRiderId =
     mode === 'edit' ? (initialLesson?.lesson_riders[0]?.barn_membership?.id ?? '') : ''
 
+  const initialSelectedTier = tiers.find(t => t.id === computedInitialSelectedId) ?? null
+  const initialFee =
+    mode === 'edit' && initialLesson
+      ? String(initialLesson.fee)
+      : (initialSelectedTier ? String(initialSelectedTier.price) : '')
+
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [lessonType, setLessonType] = useState<LessonType>(initialLessonType)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(initialHorseIds)
@@ -94,6 +100,7 @@ export function LessonForm({
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
+  const [fee, setFee] = useState<string>(initialFee)
   const [isRecurring, setIsRecurring] = useState(false)
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
@@ -142,18 +149,20 @@ export function LessonForm({
     if (id === CUSTOM_ID) {
       setSelectedId(id)
       setJumping(false)
+      setFee('')
       setExertionMap(prev => {
         const next = new Map(prev)
         for (const key of next.keys()) next.set(key, 3)
         return next
       })
       setNewHorseExertionLevel(3)
-      flash([...(jumping ? ['jumping'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
+      flash([...(jumping ? ['jumping'] : []), ...(fee !== '' ? ['fee'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
     } else {
       const tier = tiers.find(t => t.id === id) ?? null
       if (!tier) return
       setSelectedId(id)
-      const affectedKeys: string[] = []
+      setFee(String(tier.price))
+      const affectedKeys: string[] = ['fee']
       if (tier.default_jumping !== null) {
         setJumping(tier.default_jumping)
         affectedKeys.push('jumping')
@@ -532,25 +541,22 @@ export function LessonForm({
         onChange={setLessonAt}
       />
 
-      {isCustom ? (
-        <div className="flex flex-col gap-1">
-          <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Fee
-          </label>
-          <input
-            id="fee"
-            name="fee"
-            type="number"
-            min="0"
-            step="0.01"
-            required
-            defaultValue={initialLesson?.fee ?? ''}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-      ) : (
-        <input type="hidden" name="fee" value={selectedTier!.price} />
-      )}
+      <div className="flex flex-col gap-1">
+        <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Fee
+        </label>
+        <input
+          id="fee"
+          name="fee"
+          type="number"
+          min="0"
+          step="0.01"
+          required
+          value={fee}
+          onChange={e => setFee(e.target.value)}
+          className={`rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has('fee') ? 'ring-2 ring-blue-400' : ''}`}
+        />
+      </div>
 
       <div className="flex flex-col gap-1">
         <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
