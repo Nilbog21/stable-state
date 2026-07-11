@@ -149,13 +149,14 @@ export function LessonForm({
     if (id === CUSTOM_ID) {
       setSelectedId(id)
       setJumping(false)
+      setFee('')
       setExertionMap(prev => {
         const next = new Map(prev)
         for (const key of next.keys()) next.set(key, 3)
         return next
       })
       setNewHorseExertionLevel(3)
-      flash([...(jumping ? ['jumping'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
+      flash([...(jumping ? ['jumping'] : []), ...(fee !== '' ? ['fee'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
     } else {
       const tier = tiers.find(t => t.id === id) ?? null
       if (!tier) return

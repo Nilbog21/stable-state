@@ -699,6 +699,57 @@ describe('LessonForm tier cascade', () => {
     expect(jumpingCheckbox.className).not.toContain('ring-2')
   })
 
+  it('should_reset_fee_to_blank_when_custom_selected', () => {
+    const baseTier = createMockLessonTier({ id: 't-base', is_default: true, price: 60 })
+    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.value).toBe('')
+  })
+
+  it('should_flash_fee_when_tier_cascades_price', () => {
+    vi.useFakeTimers()
+    const baseTier = createMockLessonTier({ id: 't-base', is_default: true, price: 60 })
+    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    act(() => {
+      fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
+    })
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i })
+    expect(feeInput.className).toContain('ring-2')
+  })
+
+  it('should_clear_fee_flash_after_600ms', () => {
+    vi.useFakeTimers()
+    const baseTier = createMockLessonTier({ id: 't-base', is_default: true, price: 60 })
+    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    act(() => {
+      fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
+    })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i })
+    expect(feeInput.className).not.toContain('ring-2')
+  })
+
+  it('should_not_flash_fee_when_custom_selected_and_fee_already_blank', () => {
+    vi.useFakeTimers()
+    const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    act(() => {
+      fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
+    })
+    act(() => {
+      vi.advanceTimersByTime(600)
+    })
+    act(() => {
+      fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
+    })
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i })
+    expect(feeInput.className).not.toContain('ring-2')
+  })
+
   it('should_floor_exertion_at_4_when_tier_default_below_4_and_jumping_on_and_horse_checked', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const lowTier = createMockLessonTier({ id: 't-low', name: 'Low Tier', default_exertion_level: 2 })
