@@ -26,7 +26,8 @@ export function TierForm({
   const [state, formAction] = useActionState(action, { error: null })
   const isActive = initialTier?.is_active ?? true
   const nameChanged = mode === 'edit' && isActive && name !== (initialTier?.name ?? '')
-  const priceChanged = mode === 'edit' && isActive && price !== initialPrice
+  const priceChanged =
+    mode === 'edit' && isActive && Number(price) !== Number(initialPrice)
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -82,8 +83,8 @@ export function TierForm({
           <input
             id="tier-price"
             name="price"
-            type="number"
-            step="0.01"
+            type="text"
+            inputMode="decimal"
             required
             value={price}
             onChange={(e) => setPrice(e.target.value)}

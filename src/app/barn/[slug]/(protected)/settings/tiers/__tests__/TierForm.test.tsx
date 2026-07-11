@@ -360,4 +360,24 @@ describe('TierForm — price change warning', () => {
 
     expect(screen.queryByText(/will not affect past lessons/i)).toBeNull()
   })
+
+  it('should_not_show_price_warning_when_reformatted_to_same_numeric_value', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/price/i), { target: { value: '50.00' } })
+
+    expect(screen.queryByText(/will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_allow_typing_a_trailing_decimal_point_without_clearing_the_field', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/price/i), { target: { value: '65.' } })
+
+    expect((screen.getByLabelText(/price/i) as HTMLInputElement).value).toBe('65.')
+  })
 })

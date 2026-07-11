@@ -172,7 +172,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] **Remove** Quinn from Active Members
 - [ ] Toggle `can_instruct` on for a rider → they appear in the instructor dropdown on the new-lesson form; toggle it back off
 - [ ] Instructor Cut field shows the current value (default `25`); change it and **Save** → value persists on reload; try `0` (allowed) and blank (rejected — field stays unchanged)
-- [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → Save
+- [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected; revert to the original price → warning disappears → Save
 - [ ] Set a different tier as **default** → new-lesson form pre-selects it
 - [ ] **Deactivate** the Group Special tier → it no longer appears when creating a lesson; **reactivate** it
 - [ ] Edit **Default Board Fee**, confirm the non-retroactive helper text is visible → Save → a pre-existing boarding agreement's fee is unchanged, but a newly created boarding agreement pre-fills the new fee
