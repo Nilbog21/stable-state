@@ -392,10 +392,10 @@ describe('LessonForm', () => {
     expect(select.value).toBe(tier.id)
   })
 
-  it('should_hide_fee_input_when_non_custom_tier_is_selected', () => {
+  it('should_show_fee_input_when_named_tier_is_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
     render(<LessonForm {...baseProps} tiers={[tier]} />)
-    expect(screen.queryByRole('spinbutton', { name: /fee/i })).toBeNull()
+    expect(screen.queryByRole('spinbutton', { name: /fee/i })).not.toBeNull()
   })
 
   it('should_show_fee_input_when_custom_tier_is_selected', () => {
@@ -413,11 +413,36 @@ describe('LessonForm', () => {
     expect(feeInput.required).toBe(true)
   })
 
-  it('should_submit_tier_price_as_hidden_fee_when_named_tier_selected', () => {
+  it('should_require_fee_input_when_named_tier_selected', () => {
+    const tier = createMockLessonTier({ name: 'Standard', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.required).toBe(true)
+  })
+
+  it('should_prefill_fee_input_with_tier_price_when_named_tier_selected', () => {
+    const tier = createMockLessonTier({ name: 'Standard', price: 60, is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.value).toBe('60')
+  })
+
+  it('should_update_fee_value_when_switching_to_a_different_named_tier', () => {
+    const tierA = createMockLessonTier({ id: 't-a', name: 'Standard', price: 60, is_default: true })
+    const tierB = createMockLessonTier({ id: 't-b', name: 'Premium', price: 90 })
+    render(<LessonForm {...baseProps} tiers={[tierA, tierB]} />)
+    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-b' } })
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.value).toBe('90')
+  })
+
+  it('should_not_change_tier_name_when_fee_is_manually_edited', () => {
     const tier = createMockLessonTier({ name: 'Standard', price: 60, is_default: true })
     const { container } = render(<LessonForm {...baseProps} tiers={[tier]} />)
-    const hiddenFee = container.querySelector('input[name="fee"][type="hidden"]') as HTMLInputElement
-    expect(hiddenFee.value).toBe('60')
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '45' } })
+    const tierNameInput = container.querySelector('input[name="tier_name"]') as HTMLInputElement
+    expect(tierNameInput.value).toBe('Standard')
   })
 
   it('should_show_error_when_normal_mode_submitted_with_no_horse_selected', () => {

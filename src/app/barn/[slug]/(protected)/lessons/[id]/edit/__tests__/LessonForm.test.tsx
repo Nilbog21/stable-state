@@ -341,11 +341,30 @@ describe('LessonForm (edit mode)', () => {
     expect(select.value).toBe('tier-abc')
   })
 
-  it('should_hide_fee_input_when_named_tier_selected_in_edit_mode', () => {
-    const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', is_default: true })
+  it('should_show_fee_input_when_named_tier_selected_in_edit_mode', () => {
+    const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', price: 50, is_default: true })
     const lesson = { ...normalLesson, tier_name: 'Standard', fee: 50 }
     render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
-    expect(screen.queryByRole('spinbutton', { name: /fee/i })).toBeNull()
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.value).toBe('50')
+  })
+
+  it('should_prefill_fee_with_lessons_saved_fee_not_tier_price_on_initial_load', () => {
+    const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', price: 50, is_default: true })
+    const lesson = { ...normalLesson, tier_name: 'Standard', fee: 65 }
+    render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    expect(feeInput.value).toBe('65')
+  })
+
+  it('should_not_change_tier_name_when_fee_is_manually_edited_in_edit_mode', () => {
+    const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', price: 50, is_default: true })
+    const lesson = { ...normalLesson, tier_name: 'Standard', fee: 50 }
+    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '40' } })
+    const tierNameInput = container.querySelector('input[name="tier_name"]') as HTMLInputElement
+    expect(tierNameInput.value).toBe('Standard')
   })
 
   it('should_show_fee_input_when_custom_tier_selected_in_edit_mode', () => {
