@@ -307,3 +307,57 @@ describe('TierForm — price validation', () => {
     expect(await screen.findByText('Price is required')).toBeDefined()
   })
 })
+
+describe('TierForm — price change warning', () => {
+  const activeTier = createMockLessonTier({ id: 'tier-1', price: 50, is_active: true })
+
+  it('should_not_show_price_warning_in_new_mode', () => {
+    render(<TierForm mode="new" action={mockAction} />)
+
+    expect(screen.queryByText(/will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_price_warning_when_price_unchanged', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    expect(screen.queryByText(/will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_show_price_warning_when_price_changes', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/price/i), { target: { value: '75' } })
+
+    expect(screen.getByText(/will not affect past lessons/i)).toBeDefined()
+  })
+
+  it('should_hide_price_warning_when_price_reverted', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/price/i), { target: { value: '75' } })
+    fireEvent.change(screen.getByLabelText(/price/i), { target: { value: '50' } })
+
+    expect(screen.queryByText(/will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_price_warning_when_no_initial_tier', () => {
+    render(<TierForm mode="edit" action={mockAction} />)
+
+    expect(screen.queryByText(/will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_price_warning_for_inactive_tier', () => {
+    const inactiveTier = createMockLessonTier({ id: 'tier-2', price: 50, is_active: false })
+    render(<TierForm mode="edit" initialTier={inactiveTier} action={mockAction} onActivate={mockActivate} />)
+
+    fireEvent.change(screen.getByLabelText(/price/i), { target: { value: '75' } })
+
+    expect(screen.queryByText(/will not affect past lessons/i)).toBeNull()
+  })
+})
