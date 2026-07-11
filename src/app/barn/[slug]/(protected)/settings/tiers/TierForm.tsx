@@ -21,9 +21,12 @@ export function TierForm({
   onActivate,
 }: TierFormProps) {
   const [name, setName] = useState(initialTier?.name ?? '')
+  const initialPrice = initialTier?.price != null ? String(initialTier.price) : ''
+  const [price, setPrice] = useState(initialPrice)
   const [state, formAction] = useActionState(action, { error: null })
   const isActive = initialTier?.is_active ?? true
   const nameChanged = mode === 'edit' && isActive && name !== (initialTier?.name ?? '')
+  const priceChanged = mode === 'edit' && isActive && price !== initialPrice
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -82,10 +85,16 @@ export function TierForm({
             type="number"
             step="0.01"
             required
-            defaultValue={initialTier?.price ?? ''}
+            value={price}
+            onChange={(e) => setPrice(e.target.value)}
             disabled={!isActive}
             className="mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
           />
+          {priceChanged && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              Changing the price will not affect past lessons
+            </p>
+          )}
         </div>
 
         <div>
