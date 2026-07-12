@@ -1,7 +1,7 @@
 import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, Profile } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
-  return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, ...overrides }
+  return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, default_instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, ...overrides }
 }
 
 export function createMockAgreement(overrides: Partial<Agreement> = {}): Agreement {
@@ -102,6 +102,7 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
     cancelled_at: null,
     cancellation_notes: null,
     series_id: null,
+    instructor_cut: 25,
     ...overrides,
   }
 }
@@ -146,6 +147,7 @@ export function createMockLessonSeries(overrides: Partial<LessonSeries> = {}): L
     rider_ids: ['rider-1'],
     is_active: true,
     created_at: '2026-05-19T09:00:00Z',
+    instructor_cut: 25,
     ...overrides,
   }
 }
@@ -203,6 +205,7 @@ export function createMockLessonTier(overrides: Partial<LessonTier> = {}): Lesso
     created_at: '',
     default_exertion_level: null,
     default_jumping: null,
+    instructor_cut: 25,
     ...overrides,
   }
 }
