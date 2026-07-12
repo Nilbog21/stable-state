@@ -30,6 +30,18 @@ function parseExertion(raw: string | null): number | null {
   return isNaN(n) || n < 1 || n > 5 ? null : n
 }
 
+function validateTierFields(
+  name: string | undefined,
+  price: number | null,
+  instructorCut: number | null
+): string | null {
+  const errors: string[] = []
+  if (!name) errors.push('Name is required')
+  if (price == null) errors.push('Price is required')
+  if (instructorCut == null) errors.push('Instructor cut is required')
+  return errors.length > 0 ? errors.join(', ') : null
+}
+
 export async function createTierAction(
   barnSlug: string,
   prevState: { error: string | null },
@@ -38,18 +50,16 @@ export async function createTierAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const name = (formData.get('name') as string | null)?.trim()
-  if (!name) return { error: null }
-
   const price = parsePrice(formData.get('price') as string | null)
-  if (price == null) return { error: 'Price is required' }
-
   const instructorCut = parseNonNegativeNumber(formData.get('instructor_cut') as string | null)
-  if (instructorCut == null) return { error: 'Instructor cut is required' }
+
+  const fieldErrors = validateTierFields(name, price, instructorCut)
+  if (fieldErrors) return { error: fieldErrors }
 
   const defaultJumping = parseBoolean(formData.get('default_jumping') as string | null)
   const defaultExertionLevel = parseExertion(formData.get('default_exertion_level') as string | null)
 
-  await createTier(barn.id, name, price, false, defaultExertionLevel, defaultJumping, instructorCut)
+  await createTier(barn.id, name!, price!, false, defaultExertionLevel, defaultJumping, instructorCut!)
   redirect(`/barn/${barnSlug}/settings`)
 }
 
@@ -62,18 +72,16 @@ export async function updateTierAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const name = (formData.get('name') as string | null)?.trim()
-  if (!name) return { error: null }
-
   const price = parsePrice(formData.get('price') as string | null)
-  if (price == null) return { error: 'Price is required' }
-
   const instructor_cut = parseNonNegativeNumber(formData.get('instructor_cut') as string | null)
-  if (instructor_cut == null) return { error: 'Instructor cut is required' }
+
+  const fieldErrors = validateTierFields(name, price, instructor_cut)
+  if (fieldErrors) return { error: fieldErrors }
 
   const default_jumping = parseBoolean(formData.get('default_jumping') as string | null)
   const default_exertion_level = parseExertion(formData.get('default_exertion_level') as string | null)
 
-  const tier = await updateTier(tierId, barn.id, { name, price, default_jumping, default_exertion_level, instructor_cut })
+  const tier = await updateTier(tierId, barn.id, { name: name!, price: price!, default_jumping, default_exertion_level, instructor_cut: instructor_cut! })
 
   if (formData.get('set_as_default') === 'on' && tier.is_active) {
     await setDefaultTier(tierId, barn.id)

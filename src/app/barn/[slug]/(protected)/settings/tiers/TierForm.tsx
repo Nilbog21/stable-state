@@ -91,7 +91,6 @@ export function TierForm({
             name="price"
             type="text"
             inputMode="decimal"
-            required
             value={price}
             onChange={(e) => setPrice(e.target.value)}
             disabled={!isActive}
@@ -116,7 +115,6 @@ export function TierForm({
             name="instructor_cut"
             type="text"
             inputMode="decimal"
-            required
             value={instructorCut}
             onChange={(e) => setInstructorCut(e.target.value)}
             disabled={!isActive}

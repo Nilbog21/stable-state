@@ -121,8 +121,26 @@ describe('createTierAction', () => {
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 0, false, null, null, 10)
   })
 
-  it('should_return_early_when_name_is_blank', async () => {
+  it('should_return_error_when_name_is_blank', async () => {
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: '', price: '75' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Name is required')
+  })
+
+  it('should_not_call_createTier_when_name_is_blank', async () => {
     await createTierAction('green-acres', { error: null }, makeFormData({ name: '', price: '75' , instructor_cut: '10' }))
+
+    expect(createTier).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_name_is_whitespace_only', async () => {
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: '   ', price: '75' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Name is required')
+  })
+
+  it('should_not_call_createTier_when_name_is_whitespace_only', async () => {
+    await createTierAction('green-acres', { error: null }, makeFormData({ name: '   ', price: '75' , instructor_cut: '10' }))
 
     expect(createTier).not.toHaveBeenCalled()
   })
@@ -131,6 +149,12 @@ describe('createTierAction', () => {
     const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: 'abc' , instructor_cut: '10' }))
 
     expect(result.error).toBe('Price is required')
+  })
+
+  it('should_return_combined_error_when_name_and_price_are_both_blank', async () => {
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: '', price: '' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Name is required, Price is required')
   })
 
   it('should_pass_default_jumping_true_when_field_is_true', async () => {
@@ -265,10 +289,34 @@ describe('updateTierAction', () => {
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 0, default_jumping: null, default_exertion_level: null, instructor_cut: 10 })
   })
 
-  it('should_return_early_when_name_is_blank', async () => {
+  it('should_return_error_when_name_is_blank', async () => {
+    const result = await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: '', price: '90' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Name is required')
+  })
+
+  it('should_not_call_updateTier_when_name_is_blank', async () => {
     await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: '', price: '90' , instructor_cut: '10' }))
 
     expect(updateTier).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_name_is_whitespace_only', async () => {
+    const result = await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: '   ', price: '90' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Name is required')
+  })
+
+  it('should_not_call_updateTier_when_name_is_whitespace_only', async () => {
+    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: '   ', price: '90' , instructor_cut: '10' }))
+
+    expect(updateTier).not.toHaveBeenCalled()
+  })
+
+  it('should_return_combined_error_when_name_and_price_are_both_blank', async () => {
+    const result = await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: '', price: '' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Name is required, Price is required')
   })
 
   it('should_pass_default_jumping_true_when_field_is_true', async () => {
