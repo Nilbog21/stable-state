@@ -13,6 +13,17 @@ function parseFee(raw: string | null): number | null {
   return isNaN(n) ? null : n
 }
 
+/**
+ * instructor_cut is an invisible, non-editable hidden field snapshotted by
+ * LessonForm — not something a user can leave blank or mistype — so unlike
+ * fee it defaults to 0 rather than blocking submission.
+ */
+function parseInstructorCut(raw: string | null): number {
+  if (!raw || raw.trim() === '') return 0
+  const n = parseFloat(raw)
+  return isNaN(n) ? 0 : n
+}
+
 export type ParsedLessonFormData = {
   horseIds: string[]
   newHorseName: string | null
@@ -26,6 +37,7 @@ export type ParsedLessonFormData = {
   paymentType: PaymentType | null
   tierName: string
   instructorId: string
+  instructorCut: number
 }
 
 export async function parseLessonFormData(
@@ -90,6 +102,8 @@ export async function parseLessonFormData(
   const fee = parseFee(feeRaw)
   if (fee == null) return { error: 'fee is required' }
 
+  const instructorCut = parseInstructorCut(formData.get('instructor_cut') as string | null)
+
   return {
     data: {
       horseIds,
@@ -104,6 +118,7 @@ export async function parseLessonFormData(
       paymentType,
       tierName,
       instructorId,
+      instructorCut,
     },
   }
 }
