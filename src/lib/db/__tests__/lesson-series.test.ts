@@ -43,6 +43,7 @@ describe('createLessonSeries', () => {
       p_jumping: false,
       p_tier_name: 'Custom',
       p_payment_type: null,
+      p_instructor_cut: 0,
     })
   })
 
@@ -66,6 +67,27 @@ describe('createLessonSeries', () => {
 
     expect(mockRpc).toHaveBeenCalledWith('create_lesson_series_with_participants',
       expect.objectContaining({ p_jumping: true, p_tier_name: 'Premium', p_payment_type: 'venmo' })
+    )
+  })
+
+  it('should_pass_instructor_cut_to_rpc_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonSeries({
+      barnId: 'barn-1',
+      instructorId: 'mem-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+      instructorCut: 30,
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_series_with_participants',
+      expect.objectContaining({ p_instructor_cut: 30 })
     )
   })
 

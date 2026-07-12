@@ -398,6 +398,37 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Unknown')).toBeDefined()
   })
 
+  it('should_render_default_instructor_cut_heading', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /default instructor cut/i })).toBeDefined()
+  })
+
+  it('should_render_instructor_cut_input_with_barn_default_value', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const input = screen.getByLabelText(/default per-lesson instructor cut/i) as HTMLInputElement
+    expect(input.value).toBe(String(mockBarn.default_instructor_cut))
+  })
+
+  it('should_render_instructor_cut_does_not_affect_past_lessons_helper_text', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText(/doesn't affect past lessons/i)).toBeDefined()
+  })
+
   it('should_render_default_board_fee_input_with_current_value', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),

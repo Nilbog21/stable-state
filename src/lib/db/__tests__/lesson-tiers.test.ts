@@ -17,6 +17,7 @@ const mockTier = {
   created_at: '2026-06-13T00:00:00Z',
   default_exertion_level: null,
   default_jumping: null,
+  instructor_cut: 25,
 }
 
 describe('getTiersByBarn', () => {
@@ -186,7 +187,7 @@ describe('createTier', () => {
       }),
     } as any
 
-    await createTier('barn-1', 'Standard', 50, false, null, null, injectedClient)
+    await createTier('barn-1', 'Standard', 50, false, null, null, 0, injectedClient)
 
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
@@ -202,7 +203,7 @@ describe('createTier', () => {
     })
     const injectedClient = { from: mockFrom } as any
 
-    await createTier('barn-1', 'Standard', 50, false, null, null, injectedClient)
+    await createTier('barn-1', 'Standard', 50, false, null, null, 0, injectedClient)
 
     expect(mockFrom).toHaveBeenCalled()
   })
@@ -494,6 +495,40 @@ describe('createTier with defaults', () => {
       expect.objectContaining({ default_exertion_level: null, default_jumping: null })
     )
   })
+
+  it('should_include_instructor_cut_in_insert_payload', async () => {
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: { ...mockTier, instructor_cut: 30 }, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: mockInsert }),
+    } as any)
+
+    await createTier('barn-1', 'Standard', 50, false, null, null, 30)
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ instructor_cut: 30 })
+    )
+  })
+
+  it('should_default_instructor_cut_to_zero_when_not_specified', async () => {
+    const mockInsert = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        single: vi.fn().mockResolvedValue({ data: mockTier, error: null }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: mockInsert }),
+    } as any)
+
+    await createTier('barn-1', 'Standard', 50)
+
+    expect(mockInsert).toHaveBeenCalledWith(
+      expect.objectContaining({ instructor_cut: 0 })
+    )
+  })
 })
 
 describe('reactivateTier', () => {
@@ -599,6 +634,27 @@ describe('updateTier with defaults', () => {
 
     expect(mockUpdate).toHaveBeenCalledWith(
       expect.objectContaining({ default_jumping: false })
+    )
+  })
+
+  it('should_include_instructor_cut_in_update_payload', async () => {
+    const mockUpdate = vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          select: vi.fn().mockReturnValue({
+            single: vi.fn().mockResolvedValue({ data: { ...mockTier, instructor_cut: 30 }, error: null }),
+          }),
+        }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+
+    await updateTier('tier-1', 'barn-1', { instructor_cut: 30 })
+
+    expect(mockUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ instructor_cut: 30 })
     )
   })
 })

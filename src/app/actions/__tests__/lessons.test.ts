@@ -185,7 +185,7 @@ describe('parseLessonFormData', () => {
   })
 
   it('should_return_parsed_data_on_valid_input', async () => {
-    const fd = makeFormData({ fee: '75.5', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', jumping: 'true', payment_type: 'venmo' })
+    const fd = makeFormData({ fee: '75.5', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', jumping: 'true', payment_type: 'venmo', instructor_cut: '25' })
     const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
     expect(result).toEqual({
       data: {
@@ -201,8 +201,21 @@ describe('parseLessonFormData', () => {
         paymentType: 'venmo',
         tierName: 'Standard',
         instructorId: mockTrainerMembership.id,
+        instructorCut: 25,
       },
     })
+  })
+
+  it('should_default_instructor_cut_to_zero_when_absent', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
+    expect('data' in result && result.data.instructorCut).toBe(0)
+  })
+
+  it('should_default_instructor_cut_to_zero_when_non_numeric', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', instructor_cut: 'abc' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
+    expect('data' in result && result.data.instructorCut).toBe(0)
   })
 
   it('should_include_new_horse_name_in_parsed_data', async () => {
@@ -281,6 +294,14 @@ describe('submitLesson', () => {
     )
   })
 
+  it('should_forward_instructor_cut_from_form_to_createLessonWithParticipants', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', instructor_cut: '30' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorCut: 30 })
+    )
+  })
+
   it('should_redirect_after_successful_submission', async () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -312,6 +333,14 @@ describe('submitLesson', () => {
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonSeries).toHaveBeenCalledWith(
       expect.objectContaining({ barnId: 'barn-1', instructorId: mockTrainerMembership.id, horseIds: ['horse-1'], riderIds: ['mem-1'] })
+    )
+  })
+
+  it('should_forward_instructor_cut_from_form_to_createLessonSeries', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'true', instructor_cut: '30' })
+    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
+    expect(createLessonSeries).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorCut: 30 })
     )
   })
 
@@ -1535,6 +1564,14 @@ describe('updateLessonAction', () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
+  })
+
+  it('should_forward_instructor_cut_from_form_to_updateLessonWithParticipants', async () => {
+    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', fee: '75', tier_name: 'Custom', instructor_cut: '30' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).toHaveBeenCalledWith(
+      expect.objectContaining({ instructorCut: 30 })
+    )
   })
 
   it('should_return_error_when_updateLessonWithParticipants_throws', async () => {

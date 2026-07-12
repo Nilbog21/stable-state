@@ -31,7 +31,7 @@ import { createMockBarn, createMockMembership } from '@/test/fixtures'
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
 const mockActiveMembership = {
-  barn: createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' }),
+  barn: createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' }),
   membership: createMockMembership({
     id: 'mem-1',
     user_id: 'user-1',
@@ -43,7 +43,7 @@ const mockActiveMembership = {
 }
 
 const mockPendingMembership = {
-  barn: createMockBarn({ id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', instructor_cut: 25, created_at: '' }),
+  barn: createMockBarn({ id: 'barn-2', name: 'Sunset Stables', slug: 'sunset-stables', default_instructor_cut: 25, created_at: '' }),
   membership: createMockMembership({
     id: 'mem-2',
     user_id: 'user-1',

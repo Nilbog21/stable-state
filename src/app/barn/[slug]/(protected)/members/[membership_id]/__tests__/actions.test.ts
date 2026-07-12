@@ -6,6 +6,7 @@ vi.mock('@/lib/auth/guard', () => ({
 }))
 vi.mock('@/lib/db/barn-memberships', () => ({
   getMembershipById: vi.fn(),
+  setCanInstruct: vi.fn(),
 }))
 vi.mock('@/lib/db/documents', () => ({
   createDocument: vi.fn(),
@@ -25,13 +26,32 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
+const mockRedirect = vi.hoisted(() =>
+  vi.fn((url: string) => {
+    throw Object.assign(new Error('NEXT_REDIRECT'), {
+      digest: `NEXT_REDIRECT;replace;${url}`,
+    })
+  })
+)
+const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
+vi.mock('next/navigation', () => ({
+  redirect: mockRedirect,
+  notFound: mockNotFound,
+}))
+
 import { requireMembership } from '@/lib/auth/guard'
-import { getMembershipById } from '@/lib/db/barn-memberships'
+import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
 import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { uploadFile, removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
-import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction } from '../actions'
+import {
+  uploadDocumentAction,
+  deleteDocumentAction,
+  updateDocumentReminderDateAction,
+  updateContactInfoAction,
+  setCanInstructAction,
+} from '../actions'
 
 const mockBarn = createMockBarn()
 
@@ -695,5 +715,77 @@ describe('updateContactInfoAction', () => {
 
     const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
     expect(result.error).toBe('Forbidden')
+  })
+})
+
+describe('setCanInstructAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getMembershipById).mockReset()
+    vi.mocked(setCanInstruct).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
+    mockNotFound.mockClear()
+
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(setCanInstruct).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(setCanInstructAction('green-acres', 'mem-target-trn', true)).rejects.toThrow('NEXT_REDIRECT')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_404_when_target_not_found', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    await expect(setCanInstructAction('green-acres', 'mem-gone', true)).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_404_when_target_in_different_barn', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-other-barn', barn_id: 'barn-other', role: 'trainer' })
+    )
+
+    await expect(setCanInstructAction('green-acres', 'mem-other-barn', true)).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_404_when_target_role_is_rider', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+
+    await expect(setCanInstructAction('green-acres', 'mem-target-rdr', true)).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_call_setCanInstruct_for_trainer_target', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(setCanInstructAction('green-acres', 'mem-target-trn', true)).rejects.toThrow('NEXT_REDIRECT')
+    expect(setCanInstruct).toHaveBeenCalledWith('mem-target-trn', 'barn-1', true)
+  })
+
+  it('should_call_setCanInstruct_for_manager_target', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
+
+    await expect(setCanInstructAction('green-acres', 'mem-mgr-target', false)).rejects.toThrow('NEXT_REDIRECT')
+    expect(setCanInstruct).toHaveBeenCalledWith('mem-mgr-target', 'barn-1', false)
+  })
+
+  it('should_revalidate_member_detail_path', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(setCanInstructAction('green-acres', 'mem-target-trn', true)).rejects.toThrow('NEXT_REDIRECT')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
+  })
+
+  it('should_redirect_to_member_detail_page_after_update', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(setCanInstructAction('green-acres', 'mem-target-trn', true)).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
 })

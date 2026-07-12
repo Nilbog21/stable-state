@@ -25,6 +25,7 @@ vi.mock('../actions', () => ({
   deleteDocumentAction: vi.fn(),
   updateDocumentReminderDateAction: vi.fn(),
   updateContactInfoAction: vi.fn(),
+  setCanInstructAction: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -590,6 +591,71 @@ describe('MemberDetailPage', () => {
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-stub-rdr') })
       render(jsx)
       expect(screen.queryByRole('button', { name: /save/i })).toBeNull()
+    })
+  })
+
+  describe('Instructor Access section', () => {
+    it('should_show_revoke_button_for_manager_viewing_trainer_with_can_instruct_true', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(
+        createMockMembership({ id: 'mem-target-trn', user_id: 'user-target-trn', barn_id: 'barn-1', role: 'trainer', can_instruct: true })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /revoke instructor access/i })).toBeDefined()
+    })
+
+    it('should_show_grant_button_for_manager_viewing_trainer_with_can_instruct_false', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(
+        createMockMembership({ id: 'mem-target-trn', user_id: 'user-target-trn', barn_id: 'barn-1', role: 'trainer', can_instruct: false })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /grant instructor access/i })).toBeDefined()
+    })
+
+    it('should_show_instructor_access_section_for_manager_viewing_manager_target', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(
+        createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager', can_instruct: false })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /instructor access/i })).toBeDefined()
+    })
+
+    it('should_show_instructor_access_section_for_stub_trainer_with_no_user_id', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(
+        createMockMembership({ id: 'mem-stub-trn', user_id: null as any, barn_id: 'barn-1', role: 'trainer', can_instruct: false })
+      )
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ first_name: 'Stub', last_name: 'Trainer' }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-stub-trn') })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /grant instructor access/i })).toBeDefined()
+    })
+
+    it('should_not_show_instructor_access_section_for_manager_viewing_rider_target', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+      render(jsx)
+      expect(screen.queryByRole('heading', { name: /instructor access/i })).toBeNull()
+    })
+
+    it('should_not_show_instructor_access_section_for_trainer_viewing_own_page', async () => {
+      setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+      vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+      vi.mocked(getMembershipById).mockResolvedValue(trainerMembership)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-trn') })
+      render(jsx)
+      expect(screen.queryByRole('heading', { name: /instructor access/i })).toBeNull()
+    })
+
+    it('should_not_show_instructor_access_section_for_rider_viewing_own_page', async () => {
+      setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
+      vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+      vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
+      render(jsx)
+      expect(screen.queryByRole('heading', { name: /instructor access/i })).toBeNull()
     })
   })
 })

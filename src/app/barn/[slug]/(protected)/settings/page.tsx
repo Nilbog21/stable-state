@@ -192,7 +192,7 @@ export default async function SettingsPage({
 
       <section className="mb-12">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Instructor Cut
+          Default Instructor Cut
         </h2>
         <form action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
@@ -200,7 +200,7 @@ export default async function SettingsPage({
               htmlFor="instructor_cut"
               className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300"
             >
-              Per-lesson instructor cut ($)
+              Default per-lesson instructor cut ($)
             </label>
             <input
               type="number"
@@ -209,14 +209,14 @@ export default async function SettingsPage({
               min="0"
               step="0.01"
               required
-              defaultValue={barn.instructor_cut}
+              defaultValue={barn.default_instructor_cut}
               className="w-32 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             />
           </div>
           <Button type="submit">Save</Button>
         </form>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Changing this recalculates all historical collected and pending income.
+          Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
         </p>
       </section>
 

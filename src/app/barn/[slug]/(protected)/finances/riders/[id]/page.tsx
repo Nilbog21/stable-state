@@ -35,7 +35,7 @@ export default async function RiderIncomePage({
   const { month: monthParam } = await searchParams
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const { riderName, rows, chargeRows, total } = await getRiderIncomeDetail(barn.id, riderId, startDate, endDate, barn.instructor_cut)
+  const { riderName, rows, chargeRows, total } = await getRiderIncomeDetail(barn.id, riderId, startDate, endDate)
 
   const monthQ = `month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
   const backHref = `/barn/${slug}/finances?tab=rider&${monthQ}`

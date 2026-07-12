@@ -151,6 +151,9 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
 - [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
 - [ ] Rider Emery's member detail page shows **Boarding: $X/month** linking to their boarding agreement; a rider with no boarding agreement shows an **Add boarding** link into `/agreements?kind=board`; a managed (unclaimed) rider's detail page shows the same boarding status line
+- [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it → trainer reappears in the instructor select
+- [ ] Open your own manager member detail page → **Instructor Access** section shows **Grant Instructor Access** → tap it → you now appear in the instructor select on the new-lesson form; tap **Revoke Instructor Access** to undo
+- [ ] Open rider Gale Test's member detail page — no **Instructor Access** section is shown
 
 Finances (`/barn/dev-barn/finances`):
 
@@ -160,7 +163,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] Summary rows appear in order **Collected income → Total Expenses → Net → Pending income**, none with a month/year suffix (the month picker above already shows it); Net equals Collected income minus Total Expenses
 - [ ] **By Horse** is the default tab on page load (no `?tab=` needed)
 - [ ] **By Horse** tab: **Horse | Income | Expenses | Net** columns; add an expense for a horse with a lesson this month → its Expenses/Net update; a horse with $0 expenses shows `$0.00` (not blank); a horse with expenses but no lessons this month still appears, with `$0.00` Income and a negative Net; click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` shows one combined table (lessons, leases/boarding charges, and expenses) ordered by date ascending, with a **Type** column and expense Amount/Split in parentheses (e.g. `($25.00)`); the bottom **Net** figure matches this horse's Net on the By Horse tab; month param preserved
-- [ ] **By Tier** tab (no longer default, still reachable via the pill): your new tiers and seeded tiers listed with price, lesson count, an **Instructor Cut** column (`(cut × lessons)`, or `—` when zero), and a net Subtotal; Collected income matches the sum of net Subtotals plus any Non-lesson income
+- [ ] **By Tier** tab (no longer default, still reachable via the pill): your new tiers and seeded tiers listed with price, lesson count, an **Instructor Cut** column (sum of that tier's lessons' own snapshotted cuts, or `—` when zero), and a net Subtotal; Collected income matches the sum of net Subtotals plus any Non-lesson income; edit a tier's instructor cut, book a new lesson under it, and confirm the tier's Instructor Cut column reflects a mix of the old and new per-lesson rates rather than the new rate × total count
 - [ ] **By Rider** tab: collected income per rider, net of the instructor cut, with drill-down `/barn/dev-barn/finances/riders/[id]`
 - [ ] **By Instructor** tab: collected income per trainer full name, net of the instructor cut
 - [ ] Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it) and renders in parentheses, e.g. `($25.00)`, not with a leading minus sign; it's still included in Collected income (not dropped or clamped to zero)
@@ -175,8 +178,9 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] **Approve** Quinn Pending under Pending Requests → Quinn moves to Active Members
 - [ ] **Remove** Quinn from Active Members
 - [ ] Toggle `can_instruct` on for a rider → they appear in the instructor dropdown on the new-lesson form; toggle it back off
-- [ ] Instructor Cut field shows the current value (default `25`); change it and **Save** → value persists on reload; try `0` (allowed) and blank (rejected — field stays unchanged)
+- [ ] **Default Instructor Cut** field shows the current value (default `25`); change it and **Save** → value persists on reload; try `0` (allowed) and blank (rejected — field stays unchanged); confirm the helper text says the change doesn't affect past lessons, not that it recalculates historical income
 - [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected; revert to the original price → warning disappears → Save
+- [ ] On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons"); revert → warning disappears; **Add Tier** a new tier and confirm its Instructor Cut field pre-fills from the barn's Default Instructor Cut
 - [ ] Set a different tier as **default** → new-lesson form pre-selects it
 - [ ] **Deactivate** the Group Special tier → it no longer appears when creating a lesson; **reactivate** it
 - [ ] Edit **Default Board Fee**, confirm the non-retroactive helper text is visible → Save → a pre-existing boarding agreement's fee is unchanged, but a newly created boarding agreement pre-fills the new fee
@@ -226,7 +230,7 @@ Switch role (pick **Dana** from the list — same `Barn slug` prompt as Phase 5)
 bash scripts/change-user.sh
 ```
 
-- [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link, no Leases, no Boarding, no Expenses**
+- [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**

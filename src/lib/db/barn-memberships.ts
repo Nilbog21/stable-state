@@ -330,3 +330,18 @@ export async function revokeInviteToken(
   return data.invite_token
 }
 
+export async function setCanInstruct(
+  membershipId: string,
+  barnId: string,
+  value: boolean,
+  client?: SupabaseClient
+): Promise<void> {
+  const supabase = client ?? await createClient()
+  const { error } = await supabase.rpc('set_can_instruct', {
+    p_membership_id: membershipId,
+    p_barn_id: barnId,
+    p_value: value,
+  })
+  if (error) throw error
+}
+

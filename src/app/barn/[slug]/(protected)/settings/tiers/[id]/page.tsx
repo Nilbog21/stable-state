@@ -45,6 +45,7 @@ export default async function TierEditPage({
         action={save}
         onDeactivate={deactivate}
         onActivate={activate}
+        defaultInstructorCut={barn.default_instructor_cut}
       />
     </main>
   )

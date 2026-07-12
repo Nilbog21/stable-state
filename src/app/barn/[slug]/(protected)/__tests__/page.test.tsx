@@ -60,7 +60,7 @@ import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
 import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarn, createMockMembership } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
-const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' })
+const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' })
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
 const mockManagerMembership = createMockMembership({

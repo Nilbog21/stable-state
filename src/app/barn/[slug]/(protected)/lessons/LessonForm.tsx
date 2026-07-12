@@ -28,6 +28,7 @@ export function LessonForm({
   instructors,
   currentMembershipId,
   tiers,
+  defaultInstructorCut,
   initialLesson,
   initialNotes,
   getProjectedExhaustion,
@@ -40,6 +41,7 @@ export function LessonForm({
   instructors: { membershipId: string; userId: string | null; name: string }[]
   currentMembershipId: string
   tiers: LessonTier[]
+  defaultInstructorCut: number
   initialLesson?: LessonDetail
   initialNotes?: {
     horses: Array<{ id: string; name: string; horse_notes: string | null }>
@@ -86,6 +88,10 @@ export function LessonForm({
     mode === 'edit' && initialLesson
       ? String(initialLesson.fee)
       : (initialSelectedTier ? String(initialSelectedTier.price) : '')
+  const initialInstructorCut =
+    mode === 'edit' && initialLesson
+      ? String(initialLesson.instructor_cut)
+      : String(initialSelectedTier ? initialSelectedTier.instructor_cut : defaultInstructorCut)
 
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [lessonType, setLessonType] = useState<LessonType>(initialLessonType)
@@ -101,6 +107,7 @@ export function LessonForm({
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
   const [fee, setFee] = useState<string>(initialFee)
+  const [instructorCut, setInstructorCut] = useState<string>(initialInstructorCut)
   const [isRecurring, setIsRecurring] = useState(false)
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
@@ -150,6 +157,7 @@ export function LessonForm({
       setSelectedId(id)
       setJumping(false)
       setFee('')
+      setInstructorCut(String(defaultInstructorCut))
       setExertionMap(prev => {
         const next = new Map(prev)
         for (const key of next.keys()) next.set(key, 3)
@@ -162,6 +170,7 @@ export function LessonForm({
       if (!tier) return
       setSelectedId(id)
       setFee(String(tier.price))
+      setInstructorCut(String(tier.instructor_cut))
       const affectedKeys: string[] = ['fee']
       if (tier.default_jumping !== null) {
         setJumping(tier.default_jumping)
@@ -289,6 +298,7 @@ export function LessonForm({
           <option value={CUSTOM_ID}>Custom</option>
         </select>
         <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
+        <input type="hidden" name="instructor_cut" value={instructorCut} />
         {isCustom && <input type="hidden" name="is_custom" value="true" />}
       </div>
 

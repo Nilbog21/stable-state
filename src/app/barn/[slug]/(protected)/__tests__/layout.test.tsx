@@ -54,7 +54,7 @@ import { getNotifications } from '@/lib/db/notifications'
 import ProtectedBarnLayout, { generateMetadata } from '../layout'
 import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
 
-const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' })
+const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' })
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
 const mockManagerMembership = createMockMembership({
@@ -352,11 +352,12 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members$/)
   })
 
-  it('should_not_render_members_link_for_rider', async () => {
+  it('should_render_members_link_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.queryByRole('link', { name: /members/i })).toBeNull()
+    const link = screen.getByRole('link', { name: /members/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members$/)
   })
 
   it('should_render_horses_overview_link_for_trainer', async () => {
@@ -506,7 +507,7 @@ describe('ProtectedBarnLayout - UserMenu', () => {
 
   it('should_show_barn_switcher_caret_when_user_has_multiple_active_memberships', async () => {
     const secondMembership = {
-      barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', instructor_cut: 25, created_at: '' }),
+      barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', default_instructor_cut: 25, created_at: '' }),
       membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'active' as const },
     }
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, secondMembership])
@@ -524,7 +525,7 @@ describe('ProtectedBarnLayout - UserMenu', () => {
 
   it('should_not_show_barn_switcher_caret_when_second_membership_is_pending', async () => {
     const pendingMembership = {
-      barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', instructor_cut: 25, created_at: '' }),
+      barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', default_instructor_cut: 25, created_at: '' }),
       membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'pending' as const },
     }
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, pendingMembership])

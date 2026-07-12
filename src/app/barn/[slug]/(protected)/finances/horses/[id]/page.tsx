@@ -49,7 +49,7 @@ export default async function HorseIncomePage({
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
   const [{ horseName, rows, chargeRows, total }, expenseDetail] = await Promise.all([
-    getHorseIncomeDetail(barn.id, horseId, startDate, endDate, barn.instructor_cut),
+    getHorseIncomeDetail(barn.id, horseId, startDate, endDate),
     getHorseExpenseDetail(barn.id, horseId, startDate, endDate),
   ])
 

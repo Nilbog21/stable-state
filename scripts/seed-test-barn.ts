@@ -102,8 +102,8 @@ async function run() {
   if (!trainerMembership) throw new Error('active trainer membership not found')
   const trainerMembershipId = trainerMembership.membershipId
 
-  const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, supabase)
-  const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, supabase)
+  const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, 25, supabase)
+  const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, 25, supabase)
 
   const horse1 = await createHorse(barnId, 'Apollo', supabase)
   const horse2 = await createHorse(barnId, 'Bella', supabase)

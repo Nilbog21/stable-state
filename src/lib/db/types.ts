@@ -27,7 +27,7 @@ export interface Barn {
   id: string
   name: string
   slug: string
-  instructor_cut: number
+  default_instructor_cut: number
   created_at: string
   default_board_fee: number
   exhaustion_threshold_high: number
@@ -56,6 +56,7 @@ export interface LessonTier {
   created_at: string
   default_exertion_level: number | null
   default_jumping: boolean | null
+  instructor_cut: number
 }
 
 export interface Horse {
@@ -90,6 +91,7 @@ export interface Lesson {
   cancelled_at: string | null
   cancellation_notes: string | null
   series_id: string | null
+  instructor_cut: number
 }
 
 export interface LessonSeries {
@@ -105,6 +107,7 @@ export interface LessonSeries {
   rider_ids: string[]
   is_active: boolean
   created_at: string
+  instructor_cut: number
 }
 
 export interface LessonWithDetails extends Lesson {
