@@ -134,10 +134,10 @@ export default async function FinancesPage({
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
   const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, expenseSummary] = await Promise.all([
-    getFinancialSummary(barn.id, startDate, endDate, barn.instructor_cut),
-    getHorseIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
-    getRiderIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
-    getTrainerIncomeSummary(barn.id, startDate, endDate, barn.instructor_cut),
+    getFinancialSummary(barn.id, startDate, endDate),
+    getHorseIncomeSummary(barn.id, startDate, endDate),
+    getRiderIncomeSummary(barn.id, startDate, endDate),
+    getTrainerIncomeSummary(barn.id, startDate, endDate),
     getOutstandingLessons(barn.id),
     getOutstandingCharges(barn.id),
     getExpenseFinancialSummary(barn.id, startDate, endDate),

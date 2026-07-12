@@ -79,7 +79,7 @@ describe('createTierAction', () => {
 
   it('should_call_requireMembership_with_manager_role', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
@@ -87,82 +87,122 @@ describe('createTierAction', () => {
 
   it('should_call_createTier_when_manager', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null, 10)
   })
 
   it('should_redirect_to_settings_after_createTier', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 
   it('should_return_error_when_price_is_blank', async () => {
-    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '' }))
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '' , instructor_cut: '10' }))
 
     expect(result.error).toBe('Price is required')
   })
 
   it('should_not_call_createTier_when_price_is_blank', async () => {
-    await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '' }))
+    await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '' , instructor_cut: '10' }))
 
     expect(createTier).not.toHaveBeenCalled()
   })
 
   it('should_accept_zero_price', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '0' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '0' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 0, false, null, null)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 0, false, null, null, 10)
   })
 
   it('should_return_early_when_name_is_blank', async () => {
-    await createTierAction('green-acres', { error: null }, makeFormData({ name: '', price: '75' }))
+    await createTierAction('green-acres', { error: null }, makeFormData({ name: '', price: '75' , instructor_cut: '10' }))
 
     expect(createTier).not.toHaveBeenCalled()
   })
 
   it('should_return_error_when_price_is_non_numeric_string', async () => {
-    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: 'abc' }))
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: 'abc' , instructor_cut: '10' }))
 
     expect(result.error).toBe('Price is required')
   })
 
   it('should_pass_default_jumping_true_when_field_is_true', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_jumping: 'true' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_jumping: 'true' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, true)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, true, 10)
   })
 
   it('should_pass_default_jumping_false_when_field_is_false', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_jumping: 'false' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_jumping: 'false' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, false)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, false, 10)
   })
 
   it('should_pass_default_exertion_level_when_field_is_valid', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_exertion_level: '3' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_exertion_level: '3' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, 3, null)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, 3, null, 10)
   })
 
   it('should_pass_null_default_exertion_when_field_is_out_of_range', async () => {
     await expect(
-      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_exertion_level: '9' }))
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', default_exertion_level: '9' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null)
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null, 10)
+  })
+
+  it('should_return_error_when_instructor_cut_is_blank', async () => {
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', instructor_cut: '' }))
+
+    expect(result.error).toBe('Instructor cut is required')
+  })
+
+  it('should_not_call_createTier_when_instructor_cut_is_blank', async () => {
+    await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', instructor_cut: '' }))
+
+    expect(createTier).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_instructor_cut_is_negative', async () => {
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', instructor_cut: '-5' }))
+
+    expect(result.error).toBe('Instructor cut is required')
+  })
+
+  it('should_return_error_when_instructor_cut_is_non_numeric_string', async () => {
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', instructor_cut: 'abc' }))
+
+    expect(result.error).toBe('Instructor cut is required')
+  })
+
+  it('should_accept_zero_instructor_cut', async () => {
+    await expect(
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', instructor_cut: '0' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null, 0)
+  })
+
+  it('should_pass_instructor_cut_to_createTier', async () => {
+    await expect(
+      createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '75', instructor_cut: '30' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 75, false, null, null, 30)
   })
 })
 
@@ -183,7 +223,7 @@ describe('updateTierAction', () => {
 
   it('should_call_requireMembership_with_manager_role', async () => {
     await expect(
-      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' }))
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
@@ -191,49 +231,49 @@ describe('updateTierAction', () => {
 
   it('should_call_updateTier_when_manager', async () => {
     await expect(
-      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' }))
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 90, default_jumping: null, default_exertion_level: null })
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 90, default_jumping: null, default_exertion_level: null, instructor_cut: 10 })
   })
 
   it('should_redirect_to_settings_after_updateTier', async () => {
     await expect(
-      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' }))
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
   })
 
   it('should_return_error_when_price_is_blank', async () => {
-    const result = await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '' }))
+    const result = await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '' , instructor_cut: '10' }))
 
     expect(result.error).toBe('Price is required')
   })
 
   it('should_not_call_updateTier_when_price_is_blank', async () => {
-    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '' }))
+    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '' , instructor_cut: '10' }))
 
     expect(updateTier).not.toHaveBeenCalled()
   })
 
   it('should_accept_zero_price', async () => {
     await expect(
-      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '0' }))
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '0' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
-    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 0, default_jumping: null, default_exertion_level: null })
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, { name: 'Gold', price: 0, default_jumping: null, default_exertion_level: null, instructor_cut: 10 })
   })
 
   it('should_return_early_when_name_is_blank', async () => {
-    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: '', price: '90' }))
+    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: '', price: '90' , instructor_cut: '10' }))
 
     expect(updateTier).not.toHaveBeenCalled()
   })
 
   it('should_pass_default_jumping_true_when_field_is_true', async () => {
     await expect(
-      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', default_jumping: 'true' }))
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', default_jumping: 'true' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_jumping: true }))
@@ -241,7 +281,7 @@ describe('updateTierAction', () => {
 
   it('should_pass_default_jumping_false_when_field_is_false', async () => {
     await expect(
-      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', default_jumping: 'false' }))
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', default_jumping: 'false' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_jumping: false }))
@@ -249,29 +289,57 @@ describe('updateTierAction', () => {
 
   it('should_pass_default_exertion_level_when_field_is_valid', async () => {
     await expect(
-      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', default_exertion_level: '4' }))
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', default_exertion_level: '4' , instructor_cut: '10' }))
     ).rejects.toThrow('NEXT_REDIRECT')
 
     expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ default_exertion_level: 4 }))
   })
 
   it('should_call_setDefaultTier_when_set_as_default_is_checked', async () => {
-    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', set_as_default: 'on' })).catch(() => {})
+    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', set_as_default: 'on' , instructor_cut: '10' })).catch(() => {})
 
     expect(setDefaultTier).toHaveBeenCalledWith('tier-1', mockBarn.id)
   })
 
   it('should_not_call_setDefaultTier_when_set_as_default_is_unchecked', async () => {
-    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' })).catch(() => {})
+    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90' , instructor_cut: '10' })).catch(() => {})
 
     expect(setDefaultTier).not.toHaveBeenCalled()
   })
 
   it('should_not_call_setDefaultTier_when_tier_is_inactive', async () => {
     vi.mocked(updateTier).mockResolvedValueOnce(createMockLessonTier({ is_active: false }))
-    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', set_as_default: 'on' })).catch(() => {})
+    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', set_as_default: 'on' , instructor_cut: '10' })).catch(() => {})
 
     expect(setDefaultTier).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_instructor_cut_is_blank', async () => {
+    const result = await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', instructor_cut: '' }))
+
+    expect(result.error).toBe('Instructor cut is required')
+  })
+
+  it('should_not_call_updateTier_when_instructor_cut_is_blank', async () => {
+    await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', instructor_cut: '' }))
+
+    expect(updateTier).not.toHaveBeenCalled()
+  })
+
+  it('should_accept_zero_instructor_cut', async () => {
+    await expect(
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', instructor_cut: '0' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ instructor_cut: 0 }))
+  })
+
+  it('should_pass_instructor_cut_to_updateTier', async () => {
+    await expect(
+      updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '90', instructor_cut: '35' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateTier).toHaveBeenCalledWith('tier-1', mockBarn.id, expect.objectContaining({ instructor_cut: 35 }))
   })
 })
 

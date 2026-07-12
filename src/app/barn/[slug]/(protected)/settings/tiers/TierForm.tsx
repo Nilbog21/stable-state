@@ -11,6 +11,7 @@ type TierFormProps = {
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   onDeactivate?: () => Promise<void>
   onActivate?: () => Promise<void>
+  defaultInstructorCut?: number
 }
 
 export function TierForm({
@@ -19,15 +20,20 @@ export function TierForm({
   action,
   onDeactivate,
   onActivate,
+  defaultInstructorCut = 0,
 }: TierFormProps) {
   const [name, setName] = useState(initialTier?.name ?? '')
   const initialPrice = initialTier?.price != null ? String(initialTier.price) : ''
   const [price, setPrice] = useState(initialPrice)
+  const initialInstructorCut = initialTier?.instructor_cut != null ? String(initialTier.instructor_cut) : String(defaultInstructorCut)
+  const [instructorCut, setInstructorCut] = useState(initialInstructorCut)
   const [state, formAction] = useActionState(action, { error: null })
   const isActive = initialTier?.is_active ?? true
   const nameChanged = mode === 'edit' && isActive && name !== (initialTier?.name ?? '')
   const priceChanged =
     mode === 'edit' && isActive && Number(price) !== Number(initialPrice)
+  const instructorCutChanged =
+    mode === 'edit' && isActive && Number(instructorCut) !== Number(initialInstructorCut)
 
   return (
     <div className="w-full max-w-md space-y-6">
@@ -94,6 +100,31 @@ export function TierForm({
           {priceChanged && (
             <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
               Changing the price will not affect past lessons
+            </p>
+          )}
+        </div>
+
+        <div>
+          <label
+            htmlFor="tier-instructor-cut"
+            className="block text-sm font-medium text-zinc-700 dark:text-zinc-300"
+          >
+            Instructor Cut
+          </label>
+          <input
+            id="tier-instructor-cut"
+            name="instructor_cut"
+            type="text"
+            inputMode="decimal"
+            required
+            value={instructorCut}
+            onChange={(e) => setInstructorCut(e.target.value)}
+            disabled={!isActive}
+            className="mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+          {instructorCutChanged && (
+            <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+              Changing the instructor cut will not affect past lessons
             </p>
           )}
         </div>

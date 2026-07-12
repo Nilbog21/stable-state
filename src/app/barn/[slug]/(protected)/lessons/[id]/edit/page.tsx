@@ -94,6 +94,7 @@ export default async function EditLessonPage({
         instructors={instructors}
         currentMembershipId={membership.id}
         tiers={tiers}
+        defaultInstructorCut={barn.default_instructor_cut}
         action={update}
         initialNotes={initialNotes}
         getProjectedExhaustion={getProjectedExhaustion}

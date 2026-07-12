@@ -14,6 +14,8 @@ export async function createLessonSeries(params: {
   jumping?: boolean
   tierName?: string
   paymentType?: PaymentType | null
+  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
+  instructorCut?: number
 }, client?: SupabaseClient): Promise<Lesson> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
@@ -29,6 +31,7 @@ export async function createLessonSeries(params: {
     p_jumping: params.jumping ?? false,
     p_tier_name: params.tierName ?? 'Custom',
     p_payment_type: params.paymentType ?? null,
+    p_instructor_cut: params.instructorCut ?? 0,
   })
   if (error) throw error
   return data as Lesson

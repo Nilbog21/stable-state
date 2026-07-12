@@ -43,10 +43,13 @@ export async function createTierAction(
   const price = parsePrice(formData.get('price') as string | null)
   if (price == null) return { error: 'Price is required' }
 
+  const instructorCut = parseNonNegativeNumber(formData.get('instructor_cut') as string | null)
+  if (instructorCut == null) return { error: 'Instructor cut is required' }
+
   const defaultJumping = parseBoolean(formData.get('default_jumping') as string | null)
   const defaultExertionLevel = parseExertion(formData.get('default_exertion_level') as string | null)
 
-  await createTier(barn.id, name, price, false, defaultExertionLevel, defaultJumping)
+  await createTier(barn.id, name, price, false, defaultExertionLevel, defaultJumping, instructorCut)
   redirect(`/barn/${barnSlug}/settings`)
 }
 
@@ -64,10 +67,13 @@ export async function updateTierAction(
   const price = parsePrice(formData.get('price') as string | null)
   if (price == null) return { error: 'Price is required' }
 
+  const instructor_cut = parseNonNegativeNumber(formData.get('instructor_cut') as string | null)
+  if (instructor_cut == null) return { error: 'Instructor cut is required' }
+
   const default_jumping = parseBoolean(formData.get('default_jumping') as string | null)
   const default_exertion_level = parseExertion(formData.get('default_exertion_level') as string | null)
 
-  const tier = await updateTier(tierId, barn.id, { name, price, default_jumping, default_exertion_level })
+  const tier = await updateTier(tierId, barn.id, { name, price, default_jumping, default_exertion_level, instructor_cut })
 
   if (formData.get('set_as_default') === 'on' && tier.is_active) {
     await setDefaultTier(tierId, barn.id)

@@ -73,6 +73,8 @@ export async function createLessonWithParticipants(params: {
   jumping?: boolean
   tierName?: string
   paymentType?: PaymentType | null
+  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
+  instructorCut?: number
 }, client?: SupabaseClient): Promise<Lesson> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
@@ -88,6 +90,7 @@ export async function createLessonWithParticipants(params: {
     p_jumping: params.jumping ?? false,
     p_tier_name: params.tierName ?? 'Custom',
     p_payment_type: params.paymentType ?? null,
+    p_instructor_cut: params.instructorCut ?? 0,
   })
   if (error) throw error
   return data as Lesson
@@ -106,6 +109,8 @@ export async function updateLessonWithParticipants(params: {
   horseIds: string[]
   exertionLevels: number[]
   riderIds: string[]
+  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
+  instructorCut: number
 }): Promise<Lesson> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('update_lesson_with_participants', {
@@ -121,6 +126,7 @@ export async function updateLessonWithParticipants(params: {
     p_horse_ids: params.horseIds,
     p_exertion_levels: params.exertionLevels,
     p_rider_ids: params.riderIds,
+    p_instructor_cut: params.instructorCut,
   })
   if (error) throw error
   return data as Lesson

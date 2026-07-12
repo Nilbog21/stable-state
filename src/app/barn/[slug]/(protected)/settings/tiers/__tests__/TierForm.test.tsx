@@ -381,3 +381,104 @@ describe('TierForm — price change warning', () => {
     expect((screen.getByLabelText(/price/i) as HTMLInputElement).value).toBe('65.')
   })
 })
+
+describe('TierForm — instructor cut field', () => {
+  it('should_render_instructor_cut_field', () => {
+    render(<TierForm mode="new" action={mockAction} />)
+
+    expect(screen.getByLabelText(/instructor cut/i)).toBeDefined()
+  })
+
+  it('should_mark_instructor_cut_input_as_required', () => {
+    render(<TierForm mode="new" action={mockAction} />)
+
+    expect((screen.getByLabelText(/instructor cut/i) as HTMLInputElement).required).toBe(true)
+  })
+
+  it('should_prefill_instructor_cut_from_barn_default_in_new_mode', () => {
+    render(<TierForm mode="new" action={mockAction} defaultInstructorCut={25} />)
+
+    expect((screen.getByLabelText(/instructor cut/i) as HTMLInputElement).value).toBe('25')
+  })
+
+  it('should_prefill_instructor_cut_from_initial_tier_in_edit_mode', () => {
+    const tier = createMockLessonTier({ id: 'tier-1', instructor_cut: 15, is_active: true })
+    render(<TierForm mode="edit" initialTier={tier} action={mockAction} onDeactivate={mockDeactivate} defaultInstructorCut={25} />)
+
+    expect((screen.getByLabelText(/instructor cut/i) as HTMLInputElement).value).toBe('15')
+  })
+})
+
+describe('TierForm — instructor cut change warning', () => {
+  const activeTier = createMockLessonTier({ id: 'tier-1', instructor_cut: 20, is_active: true })
+
+  it('should_not_show_instructor_cut_warning_in_new_mode', () => {
+    render(<TierForm mode="new" action={mockAction} />)
+
+    expect(screen.queryByText(/instructor cut will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_instructor_cut_warning_when_unchanged', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    expect(screen.queryByText(/instructor cut will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_show_instructor_cut_warning_when_changed', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/instructor cut/i), { target: { value: '30' } })
+
+    expect(screen.getByText(/instructor cut will not affect past lessons/i)).toBeDefined()
+  })
+
+  it('should_hide_instructor_cut_warning_when_reverted', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/instructor cut/i), { target: { value: '30' } })
+    fireEvent.change(screen.getByLabelText(/instructor cut/i), { target: { value: '20' } })
+
+    expect(screen.queryByText(/instructor cut will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_instructor_cut_warning_when_no_initial_tier', () => {
+    render(<TierForm mode="edit" action={mockAction} />)
+
+    expect(screen.queryByText(/instructor cut will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_instructor_cut_warning_for_inactive_tier', () => {
+    const inactiveTier = createMockLessonTier({ id: 'tier-2', instructor_cut: 20, is_active: false })
+    render(<TierForm mode="edit" initialTier={inactiveTier} action={mockAction} onActivate={mockActivate} />)
+
+    fireEvent.change(screen.getByLabelText(/instructor cut/i), { target: { value: '30' } })
+
+    expect(screen.queryByText(/instructor cut will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_not_show_instructor_cut_warning_when_reformatted_to_same_numeric_value', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/instructor cut/i), { target: { value: '20.00' } })
+
+    expect(screen.queryByText(/instructor cut will not affect past lessons/i)).toBeNull()
+  })
+
+  it('should_allow_typing_a_trailing_decimal_point_without_clearing_the_instructor_cut_field', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    fireEvent.change(screen.getByLabelText(/instructor cut/i), { target: { value: '22.' } })
+
+    expect((screen.getByLabelText(/instructor cut/i) as HTMLInputElement).value).toBe('22.')
+  })
+})

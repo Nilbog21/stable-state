@@ -214,8 +214,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date),
-      mockBarn.instructor_cut
+      expect.any(Date)
     )
   })
 
@@ -299,8 +298,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-04-01T00:00:00.000Z'),
-      expect.any(Date),
-      mockBarn.instructor_cut
+      expect.any(Date)
     )
   })
 
@@ -314,8 +312,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date),
-      mockBarn.instructor_cut
+      expect.any(Date)
     )
   })
 
@@ -330,8 +327,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       'barn-1',
       new Date('2026-03-01T00:00:00.000Z'),
-      expect.any(Date),
-      25
+      expect.any(Date)
     )
   })
 
@@ -345,8 +341,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      expect.any(Date),
-      mockBarn.instructor_cut
+      expect.any(Date)
     )
   })
 
@@ -412,8 +407,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-07-01T00:00:00.000Z'),
-      mockBarn.instructor_cut
+      new Date('2026-07-01T00:00:00.000Z')
     )
   })
 
@@ -427,8 +421,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getFinancialSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       expect.any(Date),
-      new Date('2026-06-01T00:00:00.000Z'),
-      mockBarn.instructor_cut
+      new Date('2026-06-01T00:00:00.000Z')
     )
   })
 
@@ -1031,8 +1024,7 @@ describe('FinancesPage', () => {
     expect(vi.mocked(getTrainerIncomeSummary)).toHaveBeenCalledWith(
       mockBarn.id,
       new Date('2026-06-01T00:00:00.000Z'),
-      new Date('2026-07-01T00:00:00.000Z'),
-      mockBarn.instructor_cut
+      new Date('2026-07-01T00:00:00.000Z')
     )
   })
 
