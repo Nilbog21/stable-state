@@ -219,7 +219,9 @@ export async function getFinancialSummary(
       price: tierName === 'Custom' ? null : (tierPrices.get(tierName) ?? null),
       lessonCount: count,
       subtotal: total,
-      instructorCut: cutByTier.get(tierName) ?? 0,
+      // tierGroups and cutByTier are both built from paidLessons with the same
+      // tier_name || 'Custom' key, so every tierGroups key has a cutByTier entry.
+      instructorCut: cutByTier.get(tierName)!,
     }))
     .sort((a, b) => a.tierName.localeCompare(b.tierName))
 
