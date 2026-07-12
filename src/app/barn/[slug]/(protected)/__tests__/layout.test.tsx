@@ -352,11 +352,12 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members$/)
   })
 
-  it('should_not_render_members_link_for_rider', async () => {
+  it('should_render_members_link_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.queryByRole('link', { name: /members/i })).toBeNull()
+    const link = screen.getByRole('link', { name: /members/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members$/)
   })
 
   it('should_render_horses_overview_link_for_trainer', async () => {
