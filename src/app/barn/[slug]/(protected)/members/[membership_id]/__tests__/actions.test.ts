@@ -33,8 +33,10 @@ const mockRedirect = vi.hoisted(() =>
     })
   })
 )
+const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
+  notFound: mockNotFound,
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
@@ -723,6 +725,7 @@ describe('setCanInstructAction', () => {
     vi.mocked(setCanInstruct).mockReset()
     vi.mocked(revalidatePath).mockReset()
     mockRedirect.mockClear()
+    mockNotFound.mockClear()
 
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(setCanInstruct).mockResolvedValue(undefined)
@@ -735,27 +738,27 @@ describe('setCanInstructAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_redirect_to_login_when_target_not_found', async () => {
+  it('should_404_when_target_not_found', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(null)
 
-    await expect(setCanInstructAction('green-acres', 'mem-gone', true)).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    await expect(setCanInstructAction('green-acres', 'mem-gone', true)).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 
-  it('should_redirect_to_login_when_target_in_different_barn', async () => {
+  it('should_404_when_target_in_different_barn', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(
       createMockMembership({ id: 'mem-other-barn', barn_id: 'barn-other', role: 'trainer' })
     )
 
-    await expect(setCanInstructAction('green-acres', 'mem-other-barn', true)).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    await expect(setCanInstructAction('green-acres', 'mem-other-barn', true)).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 
-  it('should_redirect_to_login_when_target_role_is_rider', async () => {
+  it('should_404_when_target_role_is_rider', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
-    await expect(setCanInstructAction('green-acres', 'mem-target-rdr', true)).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    await expect(setCanInstructAction('green-acres', 'mem-target-rdr', true)).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 
   it('should_call_setCanInstruct_for_trainer_target', async () => {

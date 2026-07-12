@@ -1,7 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
 import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
@@ -203,9 +203,9 @@ export async function setCanInstructAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const targetMembership = await getMembershipById(membershipId)
-  if (!targetMembership || targetMembership.barn_id !== barn.id) redirect(`/barn/${barnSlug}/login`)
+  if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
   if (targetMembership.role !== 'manager' && targetMembership.role !== 'trainer') {
-    redirect(`/barn/${barnSlug}/login`)
+    notFound()
   }
 
   await setCanInstruct(membershipId, barn.id, nextValue)
