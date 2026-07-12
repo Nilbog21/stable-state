@@ -117,6 +117,9 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
 - [ ] From the Lessons list, click **Cancel** on a **normal** lesson (whole-lesson cancel) → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle identical to the per-rider cancel page; confirm with notes → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes** on the detail page
 - [ ] Whole-lesson cancel on a **group** lesson → no toggle shown; confirmation text instead lists the count and names of enrolled riders who will be affected
+- [ ] On a **normal** lesson, per-rider-cancel the only rider (do not use the whole-lesson Cancel link) → the lesson itself now shows a **Cancelled** badge on the list, detail page, and Dashboard, even though you never used the whole-lesson cancel flow
+- [ ] On a **group** lesson, per-rider-cancel every enrolled rider one at a time → after the last one, the lesson shows a **Cancelled** badge everywhere; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
+- [ ] On an already-cancelled lesson's detail page, edit the **Cancellation Notes** field (manager and, separately, the instructing trainer) → blur to save, refresh the page, confirm the new text persists; a rider viewing the same lesson sees the notes as read-only text, no input field
 
 Expenses (`/barn/dev-barn/expenses`):
 
@@ -133,6 +136,8 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Available section sorted by total exertion ascending (7d); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
 - [ ] Open Apple's detail page → rename it via the manager form → Save → name updates
 - [ ] Documents section: upload a PDF to a horse, open it via its link (signed URL), then delete it
+- [ ] Attempt to upload a document over 4.5MB to a horse — rejected with an inline error, not a crash
+- [ ] Upload a document to a horse — the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override; uncheck it, set Moderate/High, Save → values persist on reload and the toggle is now unchecked; re-check "Use barn defaults" and Save → inputs revert to barn defaults; try Moderate ≥ High while unchecked → rejected with a field error and values unchanged
 - [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this horse
@@ -144,6 +149,8 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section still shows "No account linked — documents unavailable"
 - [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload; a trainer opening the same page sees Contact Info read-only, with no Save button
 - [ ] Open a trainer's member detail page → upload a document → it lists with a working link → delete it
+- [ ] Attempt to upload a document over 4.5MB to a member — rejected with an inline error, not a crash
+- [ ] Upload a document to a member — the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] On that same document, edit the Reminder Date inline (tap the field, set a date, tap away) → it saves
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
 - [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
@@ -173,7 +180,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 
 - [ ] Invite Link section shows a copyable barn invite link
 - [ ] **Approve** Quinn Pending under Pending Requests → Quinn moves to Active Members
-- [ ] **Remove** Quinn from Active Members
+- [ ] **Remove** Quinn from Active Members (confirm the browser prompt)
 - [ ] Toggle `can_instruct` on for a rider → they appear in the instructor dropdown on the new-lesson form; toggle it back off
 - [ ] **Default Instructor Cut** field shows the current value (default `25`); change it and **Save** → value persists on reload; try `0` (allowed) and blank (rejected — field stays unchanged); confirm the helper text says the change doesn't affect past lessons, not that it recalculates historical income
 - [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected; revert to the original price → warning disappears → Save
