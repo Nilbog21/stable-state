@@ -66,7 +66,7 @@ function InstructorAccess({ slug, targetMembership }: { slug: string; targetMemb
             ? 'Can be assigned as an instructor.'
             : 'Cannot be assigned as an instructor.'}
         </p>
-        <Button type="submit" variant={targetMembership.can_instruct ? 'ghost' : 'primary'}>
+        <Button type="submit" variant={targetMembership.can_instruct ? 'danger' : 'primary'}>
           {targetMembership.can_instruct ? 'Revoke Instructor Access' : 'Grant Instructor Access'}
         </Button>
       </form>
