@@ -168,7 +168,7 @@ export async function cancelLesson(lessonId: string, barnId: string, notes?: str
 export async function updateLesson(
   lessonId: string,
   barnId: string,
-  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'payment_type' | 'tier_name'>>
+  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'payment_type' | 'tier_name' | 'cancellation_notes'>>
 ): Promise<Lesson> {
   const supabase = await createClient()
   const { data, error } = await supabase

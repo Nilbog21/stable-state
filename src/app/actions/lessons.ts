@@ -286,6 +286,27 @@ export async function updatePaymentTypeAction(
   return { error: null }
 }
 
+export async function updateCancellationNotesAction(
+  lessonId: string,
+  barnSlug: string,
+  notes: string
+): Promise<{ error: string | null }> {
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+
+  const lesson = await getLessonById(lessonId, barn.id, membership.role)
+  if (!lesson) return { error: 'lesson not found' }
+  if (!canManageLesson(membership.role, membership.id, lesson)) return { error: 'not authorized' }
+  if (lesson.cancelled_at === null) return { error: 'lesson is not cancelled' }
+
+  try {
+    await updateLesson(lessonId, barn.id, { cancellation_notes: notes.trim() || null })
+  } catch {
+    return { error: 'Failed to update cancellation notes' }
+  }
+
+  return { error: null }
+}
+
 export async function stopLessonSeriesAction(barnSlug: string, lessonId: string, seriesId: string): Promise<void> {
   const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
