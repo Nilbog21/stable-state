@@ -39,6 +39,7 @@ Lesson tiers (`/barn/dev-barn/settings` → Add Tier → `/barn/dev-barn/setting
 - [ ] All three appear in the Lesson Tiers list on the settings page
 - [ ] Try saving a tier with a blank price — rejected with "Price is required"; $0 price is accepted
 - [ ] Try saving a tier with a blank or whitespace-only name — rejected with "Name is required" (same for editing an existing tier)
+- [ ] Try saving a tier with both name and price blank — rejected with both errors shown together ("Name is required, Price is required")
 
 Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 

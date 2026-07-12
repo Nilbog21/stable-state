@@ -292,10 +292,10 @@ describe('TierForm — set as default checkbox', () => {
 })
 
 describe('TierForm — price validation', () => {
-  it('should_mark_price_input_as_required', () => {
+  it('should_not_mark_price_input_as_required', () => {
     render(<TierForm mode="new" action={mockAction} />)
 
-    expect((screen.getByLabelText(/price/i) as HTMLInputElement).required).toBe(true)
+    expect((screen.getByLabelText(/price/i) as HTMLInputElement).required).toBe(false)
   })
 
   it('should_display_error_message_when_action_returns_error', async () => {
@@ -389,10 +389,10 @@ describe('TierForm — instructor cut field', () => {
     expect(screen.getByLabelText(/instructor cut/i)).toBeDefined()
   })
 
-  it('should_mark_instructor_cut_input_as_required', () => {
+  it('should_not_mark_instructor_cut_input_as_required', () => {
     render(<TierForm mode="new" action={mockAction} />)
 
-    expect((screen.getByLabelText(/instructor cut/i) as HTMLInputElement).required).toBe(true)
+    expect((screen.getByLabelText(/instructor cut/i) as HTMLInputElement).required).toBe(false)
   })
 
   it('should_prefill_instructor_cut_from_barn_default_in_new_mode', () => {
