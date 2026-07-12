@@ -18,7 +18,7 @@ import { notFound } from 'next/navigation'
 import CancelRiderParticipationPage from '../page'
 import { createMockBarn, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
 
-const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', instructor_cut: 25, created_at: '' })
+const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' })
 
 const mockManagerMembership = createMockMembership({
   id: 'mem-manager-1', user_id: 'user-1', barn_id: 'barn-1',

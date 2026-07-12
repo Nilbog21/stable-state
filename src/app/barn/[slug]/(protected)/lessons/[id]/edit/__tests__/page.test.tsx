@@ -254,7 +254,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
       jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
-      is_active: true, created_at: '',
+      is_active: true, created_at: '', instructor_cut: 25,
     })
     await EditLessonPage({ params })
     expect(getSeriesById).toHaveBeenCalledWith('series-1', 'barn-1')
@@ -265,7 +265,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
       jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
-      is_active: true, created_at: '',
+      is_active: true, created_at: '', instructor_cut: 25,
     })
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -277,7 +277,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
       jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
-      is_active: true, created_at: '',
+      is_active: true, created_at: '', instructor_cut: 25,
     })
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -301,7 +301,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
       jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
-      is_active: false, created_at: '',
+      is_active: false, created_at: '', instructor_cut: 25,
     })
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -313,7 +313,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
       jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
-      is_active: false, created_at: '',
+      is_active: false, created_at: '', instructor_cut: 25,
     })
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -342,7 +342,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'other-trainer', fee: 50, lesson_type: 'normal',
       jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
-      is_active: true, created_at: '',
+      is_active: true, created_at: '', instructor_cut: 25,
     })
     const jsx = await EditLessonPage({ params })
     render(jsx)
@@ -355,7 +355,7 @@ describe('EditLessonPage', () => {
     vi.mocked(getSeriesById).mockResolvedValue({
       id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
       jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
-      is_active: true, created_at: '',
+      is_active: true, created_at: '', instructor_cut: 25,
     })
     const jsx = await EditLessonPage({ params })
     render(jsx)

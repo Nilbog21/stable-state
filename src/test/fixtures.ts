@@ -102,7 +102,7 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
     cancelled_at: null,
     cancellation_notes: null,
     series_id: null,
-    instructor_cut: 25,
+    instructor_cut: 0,
     ...overrides,
   }
 }
@@ -147,7 +147,7 @@ export function createMockLessonSeries(overrides: Partial<LessonSeries> = {}): L
     rider_ids: ['rider-1'],
     is_active: true,
     created_at: '2026-05-19T09:00:00Z',
-    instructor_cut: 25,
+    instructor_cut: 0,
     ...overrides,
   }
 }
@@ -205,7 +205,7 @@ export function createMockLessonTier(overrides: Partial<LessonTier> = {}): Lesso
     created_at: '',
     default_exertion_level: null,
     default_jumping: null,
-    instructor_cut: 25,
+    instructor_cut: 0,
     ...overrides,
   }
 }

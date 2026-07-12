@@ -21,6 +21,7 @@ const mockLesson: LessonWithDetails = {
   cancelled_at: null,
   cancellation_notes: null,
   series_id: null,
+  instructor_cut: 0,
   horse_names: ['Comet'],
   horse_ids: ['horse-1'],
   horse_count: 1,

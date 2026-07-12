@@ -553,28 +553,28 @@ describe('getPaidLessonRows', () => {
     expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
   })
 
-  it('should_always_select_fee', async () => {
+  it('should_always_select_fee_and_instructor_cut', async () => {
     const { mockSelect } = makeChain([])
     await getPaidLessonRows('barn-1', startDate, endDate, [])
-    expect(mockSelect).toHaveBeenCalledWith('fee')
+    expect(mockSelect).toHaveBeenCalledWith('fee, instructor_cut')
   })
 
-  it('should_select_fee_plus_the_given_id_column', async () => {
+  it('should_select_fee_instructor_cut_plus_the_given_id_column', async () => {
     const { mockSelect } = makeChain([])
     await getPaidLessonRows('barn-1', startDate, endDate, ['id'])
-    expect(mockSelect).toHaveBeenCalledWith('fee, id')
+    expect(mockSelect).toHaveBeenCalledWith('fee, instructor_cut, id')
   })
 
-  it('should_select_fee_plus_the_given_instructor_column', async () => {
+  it('should_select_fee_instructor_cut_plus_the_given_instructor_column', async () => {
     const { mockSelect } = makeChain([])
     await getPaidLessonRows('barn-1', startDate, endDate, ['instructor_id'])
-    expect(mockSelect).toHaveBeenCalledWith('fee, instructor_id')
+    expect(mockSelect).toHaveBeenCalledWith('fee, instructor_cut, instructor_id')
   })
 
-  it('should_select_fee_plus_the_given_id_and_lesson_at_columns', async () => {
+  it('should_select_fee_instructor_cut_plus_the_given_id_and_lesson_at_columns', async () => {
     const { mockSelect } = makeChain([])
     await getPaidLessonRows('barn-1', startDate, endDate, ['id', 'lesson_at'])
-    expect(mockSelect).toHaveBeenCalledWith('fee, id, lesson_at')
+    expect(mockSelect).toHaveBeenCalledWith('fee, instructor_cut, id, lesson_at')
   })
 
   it('should_return_the_raw_rows', async () => {
