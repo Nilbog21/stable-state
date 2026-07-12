@@ -38,6 +38,7 @@ Lesson tiers (`/barn/dev-barn/settings` → Add Tier → `/barn/dev-barn/setting
 - [ ] Create tier **Group Special** — $90, no defaults
 - [ ] All three appear in the Lesson Tiers list on the settings page
 - [ ] Try saving a tier with a blank price — rejected with "Price is required"; $0 price is accepted
+- [ ] Try saving a tier with a blank or whitespace-only name — rejected with "Name is required" (same for editing an existing tier)
 
 Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 

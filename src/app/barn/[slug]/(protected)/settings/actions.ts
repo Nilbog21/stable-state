@@ -38,7 +38,7 @@ export async function createTierAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const name = (formData.get('name') as string | null)?.trim()
-  if (!name) return { error: null }
+  if (!name) return { error: 'Name is required' }
 
   const price = parsePrice(formData.get('price') as string | null)
   if (price == null) return { error: 'Price is required' }
@@ -62,7 +62,7 @@ export async function updateTierAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const name = (formData.get('name') as string | null)?.trim()
-  if (!name) return { error: null }
+  if (!name) return { error: 'Name is required' }
 
   const price = parsePrice(formData.get('price') as string | null)
   if (price == null) return { error: 'Price is required' }
