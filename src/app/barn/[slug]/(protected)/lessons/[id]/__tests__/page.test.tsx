@@ -752,4 +752,40 @@ describe('LessonDetailPage', () => {
     render(jsx)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
+
+  it('should_render_editable_cancellation_notes_field_for_manager_on_cancelled_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      cancelled_at: '2026-01-01T00:00:00Z',
+      cancellation_notes: 'weather',
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByDisplayValue('weather')).toBeDefined()
+  })
+
+  it('should_render_readonly_cancellation_notes_for_rider_on_cancelled_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      cancelled_at: '2026-01-01T00:00:00Z',
+      cancellation_notes: 'weather',
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByRole('textbox')).toBeNull()
+  })
+
+  it('should_render_dash_for_rider_when_lesson_cancellation_notes_is_null', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      cancelled_at: '2026-01-01T00:00:00Z',
+      cancellation_notes: null,
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
+  })
 })
