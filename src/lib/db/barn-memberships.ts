@@ -214,7 +214,25 @@ export async function resolveMemberNames(
     query.eq('barn_id', barnId).in('id', membershipIds)
   )
 
-  return new Map(rows.map((m) => [m.id, m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.id]))
+  const nameMap = new Map(rows.map((m) => [m.id, m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.id]))
+
+  // Rows the caller isn't the instructor of (or enrolled under) never come back from the
+  // query above — barn_memberships RLS only covers own-row + trainer-reads-riders. Resolve
+  // those via a column-limited RPC instead of a broad row-level policy, so the fetch can't
+  // also expose invite_token (see get_instructor_membership_names, #739 follow-up).
+  const unresolvedIds = membershipIds.filter((id) => !nameMap.has(id))
+  if (unresolvedIds.length) {
+    const { data: instructorRows, error } = await supabase.rpc('get_instructor_membership_names', {
+      p_membership_ids: unresolvedIds,
+      p_barn_id: barnId,
+    })
+    if (error) throw error
+    for (const row of instructorRows ?? []) {
+      nameMap.set(row.id, `${row.first_name} ${row.last_name}`)
+    }
+  }
+
+  return nameMap
 }
 
 export async function resolveMemberNamesByUserId(
