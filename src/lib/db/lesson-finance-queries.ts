@@ -125,20 +125,22 @@ export async function getLessonJunctionRows<C extends 'rider_id' | 'horse_id'>(
 
 export type PaidLessonColumn = 'id' | 'lesson_at' | 'instructor_id'
 
-/** Row shape covering every column combination the three former fetchers selected; `fee` is always selected. */
+/** Row shape covering every column combination the three former fetchers selected; `fee`/`instructor_cut` are always selected. */
 export interface PaidLessonRow {
   id?: string
   fee: number
+  instructor_cut: number
   lesson_at?: string
   instructor_id?: string | null
 }
 
 /**
  * Paid lessons (non-null payment_type) in a barn-scoped date range, projected
- * to `fee` plus the given extra columns — merges the three former near-identical
- * fetchers (id+fee, instructor_id+fee, id+fee+lesson_at) into one parameterized
- * query. `fee` is always selected (not caller-specified), matching `PaidLessonRow.fee`
- * being non-optional.
+ * to `fee`/`instructor_cut` plus the given extra columns — merges the three former
+ * near-identical fetchers (id+fee, instructor_id+fee, id+fee+lesson_at) into one
+ * parameterized query. `fee`/`instructor_cut` are always selected (not caller-specified),
+ * matching `PaidLessonRow.fee`/`instructor_cut` being non-optional — each row's own
+ * snapshotted cut is what lesson-finances.ts nets out, not a caller-supplied rate.
  */
 export async function getPaidLessonRows(
   barnId: string,
@@ -150,7 +152,7 @@ export async function getPaidLessonRows(
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('lessons')
-    .select(['fee', ...columns].join(', '))
+    .select(['fee', 'instructor_cut', ...columns].join(', '))
     .eq('barn_id', barnId)
     .not('payment_type', 'is', null)
     .gte('lesson_at', startDate.toISOString())
