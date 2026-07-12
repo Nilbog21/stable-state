@@ -148,6 +148,9 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
 - [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
 - [ ] Rider Emery's member detail page shows **Boarding: $X/month** linking to their boarding agreement; a rider with no boarding agreement shows an **Add boarding** link into `/agreements?kind=board`; a managed (unclaimed) rider's detail page shows the same boarding status line
+- [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it → trainer reappears in the instructor select
+- [ ] Open your own manager member detail page → **Instructor Access** section shows **Grant Instructor Access** → tap it → you now appear in the instructor select on the new-lesson form; tap **Revoke Instructor Access** to undo
+- [ ] Open rider Gale Test's member detail page — no **Instructor Access** section is shown
 
 Finances (`/barn/dev-barn/finances`):
 
