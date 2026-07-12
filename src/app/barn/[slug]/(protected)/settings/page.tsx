@@ -216,7 +216,7 @@ export default async function SettingsPage({
           <Button type="submit">Save</Button>
         </form>
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
-          Changing this doesn't affect past lessons — only new tiers and Custom lessons booked afterward.
+          Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
         </p>
       </section>
 
