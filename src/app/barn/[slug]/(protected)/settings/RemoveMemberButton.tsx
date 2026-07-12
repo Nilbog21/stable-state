@@ -16,7 +16,7 @@ export function RemoveMemberButton({
         variant="danger"
         size="sm"
         onClick={(e) => {
-          if (!window.confirm(`Remove ${name} from the barn?`)) {
+          if (!window.confirm(`This cannot be undone. Remove ${name} from the barn?`)) {
             e.preventDefault()
           }
         }}
