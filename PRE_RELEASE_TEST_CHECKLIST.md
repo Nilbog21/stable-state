@@ -117,6 +117,9 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
 - [ ] From the Lessons list, click **Cancel** on a **normal** lesson (whole-lesson cancel) → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle identical to the per-rider cancel page; confirm with notes → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes** on the detail page
 - [ ] Whole-lesson cancel on a **group** lesson → no toggle shown; confirmation text instead lists the count and names of enrolled riders who will be affected
+- [ ] On a **normal** lesson, per-rider-cancel the only rider (do not use the whole-lesson Cancel link) → the lesson itself now shows a **Cancelled** badge on the list, detail page, and Dashboard, even though you never used the whole-lesson cancel flow
+- [ ] On a **group** lesson, per-rider-cancel every enrolled rider one at a time → after the last one, the lesson shows a **Cancelled** badge everywhere; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
+- [ ] On an already-cancelled lesson's detail page, edit the **Cancellation Notes** field (manager and, separately, the instructing trainer) → blur to save, refresh the page, confirm the new text persists; a rider viewing the same lesson sees the notes as read-only text, no input field
 
 Expenses (`/barn/dev-barn/expenses`):
 

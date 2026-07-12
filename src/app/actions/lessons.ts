@@ -242,7 +242,7 @@ export async function cancelRiderParticipationAction(
   const isLate = computeCancellationIsLate(lesson.lesson_at, formData, membership.role !== 'rider')
 
   const notes = (formData.get('notes') as string | null)?.trim() || null
-  await cancelRiderParticipation(lessonId, barnId, riderId, notes, isLate)
+  const cascaded = await cancelRiderParticipation(lessonId, barnId, riderId, notes, isLate)
 
   const recipientIds = await resolveCancellationRecipients({
     scope: 'rider_participation',
@@ -262,6 +262,32 @@ export async function cancelRiderParticipationAction(
     () => `/barn/${barnSlug}/lessons/${lessonId}`,
     sendNotificationViaRpc
   )
+
+  if (cascaded) {
+    const riderUserIds = lesson.lesson_riders
+      .map((lr) => lr.barn_membership?.user_id)
+      .filter((id): id is string => id != null)
+
+    const lessonCancelledRecipientIds = await resolveCancellationRecipients({
+      scope: 'lesson',
+      actorRole: membership.role,
+      riderUserIds,
+      instructorUserId: lesson.instructor_user_id,
+      getManagerUserIds: () => getActiveManagerUserIds(barnId),
+    })
+
+    const lessonCancelledRecipients = new Map(
+      lessonCancelledRecipientIds.map((userId) => [userId, { userId, barnId, payload: undefined }])
+    )
+    await upsertNotificationsForRecipients(
+      supabase,
+      lessonCancelledRecipients,
+      () => ({ title: 'Lesson cancelled', body: '' }),
+      'lesson_cancelled',
+      () => `/barn/${barnSlug}/lessons/${lessonId}`,
+      sendNotificationViaRpc
+    )
+  }
 
   redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
 }
@@ -283,6 +309,27 @@ export async function updatePaymentTypeAction(
     await updateLesson(lessonId, barn.id, { payment_type: paymentType as PaymentType | null })
   } catch {
     return { error: 'Failed to update payment type' }
+  }
+
+  return { error: null }
+}
+
+export async function updateCancellationNotesAction(
+  lessonId: string,
+  barnSlug: string,
+  notes: string
+): Promise<{ error: string | null }> {
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+
+  const lesson = await getLessonById(lessonId, barn.id, membership.role)
+  if (!lesson) return { error: 'lesson not found' }
+  if (!canManageLesson(membership.role, membership.id, lesson)) return { error: 'not authorized' }
+  if (lesson.cancelled_at === null) return { error: 'lesson is not cancelled' }
+
+  try {
+    await updateLesson(lessonId, barn.id, { cancellation_notes: notes.trim() || null })
+  } catch {
+    return { error: 'Failed to update cancellation notes' }
   }
 
   return { error: null }

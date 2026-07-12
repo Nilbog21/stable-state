@@ -5,6 +5,7 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
+import { CancellationNotesField } from './CancellationNotesField'
 
 function RiderParticipationAction({
   slug,
@@ -128,7 +129,13 @@ export default async function LessonDetailPage({
           {lesson.cancelled_at !== null && (
             <div className="flex flex-col gap-1 py-4">
               <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Cancellation Notes</dt>
-              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{lesson.cancellation_notes ?? '—'}</dd>
+              <dd className="text-sm text-zinc-900 dark:text-zinc-50">
+                {canManage ? (
+                  <CancellationNotesField barnSlug={slug} lessonId={lesson.id} initialNotes={lesson.cancellation_notes} />
+                ) : (
+                  lesson.cancellation_notes ?? '—'
+                )}
+              </dd>
             </div>
           )}
           <div className="flex flex-col gap-1 py-4">
@@ -172,14 +179,18 @@ export default async function LessonDetailPage({
                             />
                           )}
                         </div>
-                        {canSeeNotes && lr.barn_membership?.id && (
+                        {(canSeeNotes || lr.cancelled_at !== null) && lr.barn_membership?.id && (
                           <div className="mt-1 flex flex-col gap-1">
-                            <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
-                            <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
-                            <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
-                              <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
-                              <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
-                            </div>
+                            {canSeeNotes && (
+                              <>
+                                <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
+                                <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
+                                <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
+                                  <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
+                                </div>
+                              </>
+                            )}
                             {lr.cancelled_at !== null && (
                               <div>
                                 <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
@@ -206,12 +217,6 @@ export default async function LessonDetailPage({
                         )}
                       </div>
                       <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
-                      {myRiderEntry.cancelled_at !== null && (
-                        <div className="mt-1">
-                          <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
-                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.cancellation_notes ?? '—'}</p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </>
@@ -231,14 +236,18 @@ export default async function LessonDetailPage({
                           />
                         )}
                       </div>
-                      {canSeeNotes && lr.barn_membership?.id && (
+                      {(canSeeNotes || lr.cancelled_at !== null) && lr.barn_membership?.id && (
                         <div className="mt-1 flex flex-col gap-1">
-                          <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
-                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
-                          <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
-                            <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
-                            <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
-                          </div>
+                          {canSeeNotes && (
+                            <>
+                              <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
+                              <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
+                              <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+                                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
+                                <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
+                              </div>
+                            </>
+                          )}
                           {lr.cancelled_at !== null && (
                             <div>
                               <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
@@ -264,12 +273,6 @@ export default async function LessonDetailPage({
                         )}
                       </div>
                       <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
-                      {myRiderEntry.cancelled_at !== null && (
-                        <div className="mt-1">
-                          <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
-                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.cancellation_notes ?? '—'}</p>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
