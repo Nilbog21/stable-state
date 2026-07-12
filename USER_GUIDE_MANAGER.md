@@ -56,6 +56,8 @@ Tap any member card to open their detail page. A **Contact Info** section shows 
 
 A rider's detail page also shows a **Boarding** status line: if they have an active boarding agreement, it shows the monthly fee linked to the agreement detail page; otherwise it shows an **Add boarding** link straight into the Boarding form. This works even for a rider who hasn't claimed their invite yet.
 
+A manager's or trainer's detail page also shows an **Instructor Access** section with a **Grant Instructor Access** / **Revoke Instructor Access** button — use this to let a manager teach lessons, or to remove a trainer/manager from the instructor list. This works even for a member who hasn't claimed their invite yet.
+
 ## Lessons
 
 **View lessons** — Go to **Lessons** to see recent activity. Older lessons are hidden by default; tap **Show older lessons** to expand them. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee.

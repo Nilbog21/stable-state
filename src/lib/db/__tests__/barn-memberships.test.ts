@@ -24,6 +24,7 @@ import {
   createManagedMember,
   claimManagedMember,
   revokeInviteToken,
+  setCanInstruct,
 } from '../barn-memberships'
 
 const mockMembership = createMockMembership()
@@ -1438,5 +1439,47 @@ describe('revokeInviteToken', () => {
     } as any
     await revokeInviteToken('mem-1', 'barn-1', injectedClient)
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+})
+
+describe('setCanInstruct', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_correct_arguments', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await setCanInstruct('mem-1', 'barn-1', true)
+
+    expect(mockRpc).toHaveBeenCalledWith('set_can_instruct', {
+      p_membership_id: 'mem-1',
+      p_barn_id: 'barn-1',
+      p_value: true,
+    })
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const dbError = new Error('not authorized')
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ error: dbError }),
+    } as any)
+
+    await expect(setCanInstruct('mem-1', 'barn-1', true)).rejects.toThrow('not authorized')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const mockClient = { rpc: mockRpc } as any
+
+    await setCanInstruct('mem-1', 'barn-1', false, mockClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(mockRpc).toHaveBeenCalledWith('set_can_instruct', {
+      p_membership_id: 'mem-1',
+      p_barn_id: 'barn-1',
+      p_value: false,
+    })
   })
 })

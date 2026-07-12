@@ -1,8 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getMembershipById } from '@/lib/db/barn-memberships'
+import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
 import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
@@ -192,4 +193,23 @@ export async function updateDocumentReminderDateAction(
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
   return { error: null }
+}
+
+export async function setCanInstructAction(
+  barnSlug: string,
+  membershipId: string,
+  nextValue: boolean
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const targetMembership = await getMembershipById(membershipId)
+  if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
+  if (targetMembership.role !== 'manager' && targetMembership.role !== 'trainer') {
+    notFound()
+  }
+
+  await setCanInstruct(membershipId, barn.id, nextValue)
+
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  redirect(`/barn/${barnSlug}/members/${membershipId}`)
 }
