@@ -1041,7 +1041,13 @@ describe('getActiveManagerUserIds', () => {
 })
 
 describe('resolveMemberNames', () => {
-  function makeClient(membershipsData: unknown, membershipsError: unknown, profilesData: unknown, profilesError: unknown) {
+  function makeClient(
+    membershipsData: unknown,
+    membershipsError: unknown,
+    profilesData: unknown,
+    profilesError: unknown,
+    rpc: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue({ data: [], error: null })
+  ) {
     return {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'barn_memberships') {
@@ -1059,6 +1065,7 @@ describe('resolveMemberNames', () => {
           }),
         }
       }),
+      rpc,
     } as any
   }
 
@@ -1146,6 +1153,69 @@ describe('resolveMemberNames', () => {
     await resolveMemberNames(['mem-1'], 'barn-1')
 
     expect(mockProfilesFrom).not.toHaveBeenCalled()
+  })
+
+  it('should_resolve_instructor_name_via_rpc_when_membership_row_not_returned_by_base_query', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ id: 'instr-1', first_name: 'Terry', last_name: 'Trainer' }],
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    const result = await resolveMemberNames(['instr-1'], 'barn-1')
+
+    expect(result).toEqual(new Map([['instr-1', 'Terry Trainer']]))
+  })
+
+  it('should_not_call_rpc_when_all_membership_ids_resolved_by_base_query', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-1', profile_id: 'profile-1' }], null, [{ id: 'profile-1', first_name: 'Jane', last_name: 'Rider' }], null, rpc)
+    )
+
+    await resolveMemberNames(['mem-1'], 'barn-1')
+
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('should_call_rpc_with_only_the_unresolved_membership_ids_and_barn_id', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([{ id: 'mem-1', profile_id: 'profile-1' }], null, [{ id: 'profile-1', first_name: 'Jane', last_name: 'Rider' }], null, rpc)
+    )
+
+    await resolveMemberNames(['mem-1', 'instr-1'], 'barn-1')
+
+    expect(rpc).toHaveBeenCalledWith('get_instructor_membership_names', {
+      p_membership_ids: ['instr-1'],
+      p_barn_id: 'barn-1',
+    })
+  })
+
+  it('should_omit_membership_id_from_map_when_neither_base_query_nor_rpc_resolves_it', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    const result = await resolveMemberNames(['instr-1'], 'barn-1')
+
+    expect(result).toEqual(new Map())
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const dbError = new Error('rpc failed')
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: dbError })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    await expect(resolveMemberNames(['instr-1'], 'barn-1')).rejects.toThrow('rpc failed')
+  })
+
+  it('should_omit_membership_id_from_map_when_rpc_data_is_null', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    const result = await resolveMemberNames(['instr-1'], 'barn-1')
+
+    expect(result).toEqual(new Map())
   })
 })
 
