@@ -24,6 +24,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
+import { RemoveMemberButton } from './RemoveMemberButton'
 import type { BarnMembership, Profile } from '@/lib/db/types'
 
 function profileName(profiles: Profile[], userId: string | null): string {
@@ -170,20 +171,22 @@ export default async function SettingsPage({
                 </tr>
               </thead>
               <tbody>
-                {removable.map((m) => (
-                  <MemberRow
-                    key={m.id}
-                    membership={m}
-                    name={profileName(profiles, m.user_id)}
-                    actionSlot={
-                      <form action={removeMembershipAction.bind(null, slug, m.id)}>
-                        <Button type="submit" variant="danger" size="sm">
-                          Remove
-                        </Button>
-                      </form>
-                    }
-                  />
-                ))}
+                {removable.map((m) => {
+                  const name = profileName(profiles, m.user_id)
+                  return (
+                    <MemberRow
+                      key={m.id}
+                      membership={m}
+                      name={name}
+                      actionSlot={
+                        <RemoveMemberButton
+                          action={removeMembershipAction.bind(null, slug, m.id)}
+                          name={name}
+                        />
+                      }
+                    />
+                  )
+                })}
               </tbody>
             </table>
           </div>
