@@ -81,6 +81,8 @@ If a 3rd+ distinct revenue type appears or the Finances UNION gets painful, cons
 
 `auth_is_enrolled_rider(p_lesson_id uuid, p_barn_id uuid)` is a `SECURITY DEFINER` SQL function that returns `true` if the calling user has an active `barn_memberships` row enrolled (via `lesson_riders`) in the given lesson. Used by `lessons_select_rider`, `lesson_horses_select_rider`, and `lesson_riders_select_rider` to scope rider SELECT to enrolled lessons only. The SECURITY DEFINER is required because `lesson_riders_select_rider` needs to check `lesson_riders` from a policy defined on `lesson_riders` itself; a plain subquery there causes the same infinite-recursion class of bug as `auth_is_barn_manager`.
 
+`auth_can_read_instructor_membership(p_membership_id uuid, p_barn_id uuid)` is a `SECURITY DEFINER` SQL function that returns `true` if the calling user can already see (per `lessons` SELECT policies) a lesson whose `instructor_id` is `p_membership_id`. Backs the `barn_memberships_read_as_instructor` policy, letting `resolveMemberNames` resolve an instructor's name for a trainer/rider viewing a lesson they don't instruct/aren't the instructor of — SECURITY DEFINER avoids the same barn_memberships↔lessons recursion class a plain subquery would hit.
+
 RLS policies always go in a **separate migration file** from schema changes.
 
 `service_role` has `GRANT ALL ON ALL TABLES IN SCHEMA public` plus a default-privileges rule so future tables are covered automatically. Supabase normally applies this at project creation; it was made explicit in migration `20260614000000_service_role_grants.sql`.
