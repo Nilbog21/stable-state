@@ -223,7 +223,7 @@ Switch role (pick **Dana** from the list — same `Barn slug` prompt as Phase 5)
 bash scripts/change-user.sh
 ```
 
-- [ ] Nav shows only: barn name, Lessons, Horses, Guide — **no Members link, no Leases, no Boarding, no Expenses**
+- [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
