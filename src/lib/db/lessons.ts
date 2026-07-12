@@ -139,7 +139,6 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
         ...lr,
         private_notes: null,
         rider_notes: lr.barn_membership?.user_id === userId ? lr.rider_notes : null,
-        cancellation_notes: lr.barn_membership?.user_id === userId ? lr.cancellation_notes : null,
       })),
     } as LessonDetail
   }

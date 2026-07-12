@@ -787,7 +787,7 @@ describe('getLessonById', () => {
     expect(result?.lesson_riders[0].cancellation_notes).toBe('called in sick')
   })
 
-  it('should_null_cancellation_notes_for_non_self_riders_when_role_is_rider', async () => {
+  it('should_preserve_cancellation_notes_for_non_self_riders_when_role_is_rider', async () => {
     const riderLessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
@@ -801,7 +801,7 @@ describe('getLessonById', () => {
 
     const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
 
-    expect(result?.lesson_riders[1].cancellation_notes).toBeNull()
+    expect(result?.lesson_riders[1].cancellation_notes).toBe('family emergency')
   })
 
   it('should_fallback_to_membership_id_as_name_when_membership_map_has_no_entry', async () => {
