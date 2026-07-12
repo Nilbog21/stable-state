@@ -73,6 +73,7 @@ export async function createLessonWithParticipants(params: {
   jumping?: boolean
   tierName?: string
   paymentType?: PaymentType | null
+  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
   instructorCut?: number
 }, client?: SupabaseClient): Promise<Lesson> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
@@ -108,6 +109,7 @@ export async function updateLessonWithParticipants(params: {
   horseIds: string[]
   exertionLevels: number[]
   riderIds: string[]
+  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
   instructorCut: number
 }): Promise<Lesson> {
   const supabase = await createClient()
