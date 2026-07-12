@@ -830,6 +830,24 @@ describe('cancelRiderParticipation', () => {
       cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
     ).rejects.toThrow('rpc error')
   })
+
+  it('should_return_true_when_rpc_reports_cascade', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: true, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+
+    expect(result).toBe(true)
+  })
+
+  it('should_return_false_when_rpc_reports_no_cascade', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: false, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+
+    expect(result).toBe(false)
+  })
 })
 
 describe('hydrateParticipants', () => {

@@ -206,9 +206,9 @@ export async function cancelRiderParticipation(
   riderId: string,
   notes: string | null | undefined,
   isLate: boolean
-): Promise<void> {
+): Promise<boolean> {
   const supabase = await createClient()
-  const { error } = await supabase.rpc('cancel_rider_participation', {
+  const { data, error } = await supabase.rpc('cancel_rider_participation', {
     p_lesson_id: lessonId,
     p_barn_id: barnId,
     p_rider_id: riderId,
@@ -216,6 +216,7 @@ export async function cancelRiderParticipation(
     p_is_late: isLate,
   })
   if (error) throw error
+  return data === true
 }
 
 export async function getRiderEnrolledLessonIds(barnId: string, userId: string, client?: SupabaseClient): Promise<string[]> {

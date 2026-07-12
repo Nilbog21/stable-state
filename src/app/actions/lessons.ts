@@ -240,7 +240,7 @@ export async function cancelRiderParticipationAction(
   const isLate = computeCancellationIsLate(lesson.lesson_at, formData, membership.role !== 'rider')
 
   const notes = (formData.get('notes') as string | null)?.trim() || null
-  await cancelRiderParticipation(lessonId, barnId, riderId, notes, isLate)
+  const cascaded = await cancelRiderParticipation(lessonId, barnId, riderId, notes, isLate)
 
   const recipientIds = await resolveCancellationRecipients({
     scope: 'rider_participation',
@@ -260,6 +260,32 @@ export async function cancelRiderParticipationAction(
     () => `/barn/${barnSlug}/lessons/${lessonId}`,
     sendNotificationViaRpc
   )
+
+  if (cascaded) {
+    const riderUserIds = lesson.lesson_riders
+      .map((lr) => lr.barn_membership?.user_id)
+      .filter((id): id is string => id != null)
+
+    const lessonCancelledRecipientIds = await resolveCancellationRecipients({
+      scope: 'lesson',
+      actorRole: membership.role,
+      riderUserIds,
+      instructorUserId: lesson.instructor_user_id,
+      getManagerUserIds: () => getActiveManagerUserIds(barnId),
+    })
+
+    const lessonCancelledRecipients = new Map(
+      lessonCancelledRecipientIds.map((userId) => [userId, { userId, barnId, payload: undefined }])
+    )
+    await upsertNotificationsForRecipients(
+      supabase,
+      lessonCancelledRecipients,
+      () => ({ title: 'Lesson cancelled', body: '' }),
+      'lesson_cancelled',
+      () => `/barn/${barnSlug}/lessons/${lessonId}`,
+      sendNotificationViaRpc
+    )
+  }
 
   redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
 }
