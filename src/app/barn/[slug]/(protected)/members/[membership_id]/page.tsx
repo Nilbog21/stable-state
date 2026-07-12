@@ -14,8 +14,9 @@ import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
-import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction } from './actions'
-import type { TrainerDocument, RiderDocument, Agreement, Profile } from '@/lib/db/types'
+import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction } from './actions'
+import { Button } from '@/components/ui/Button'
+import type { TrainerDocument, RiderDocument, Agreement, Profile, BarnMembership } from '@/lib/db/types'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   instructor_contract: 'Instructor Contract',
@@ -49,6 +50,26 @@ function ContactInfo({ profile }: { profile: Profile | null }) {
           <dd className="inline">{profile?.emergency_contact_phone ?? '—'}</dd>
         </div>
       </dl>
+    </section>
+  )
+}
+
+function InstructorAccess({ slug, targetMembership }: { slug: string; targetMembership: BarnMembership }) {
+  return (
+    <section className="mb-8">
+      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Instructor Access
+      </h2>
+      <form action={setCanInstructAction.bind(null, slug, targetMembership.id, !targetMembership.can_instruct)}>
+        <p className="mb-2 text-sm text-zinc-700 dark:text-zinc-300">
+          {targetMembership.can_instruct
+            ? 'Can be assigned as an instructor.'
+            : 'Cannot be assigned as an instructor.'}
+        </p>
+        <Button type="submit" size="sm" variant={targetMembership.can_instruct ? 'ghost' : 'primary'}>
+          {targetMembership.can_instruct ? 'Revoke Instructor Access' : 'Grant Instructor Access'}
+        </Button>
+      </form>
     </section>
   )
 }
@@ -133,6 +154,9 @@ export default async function MemberDetailPage({
   const canEditContactInfo = callerRole === 'manager' && targetProfile?.is_managed === true
   const boundUpdateContactInfo = updateContactInfoAction.bind(null, slug, membership_id)
 
+  const canManageInstructorAccess =
+    callerRole === 'manager' && (targetRole === 'manager' || targetRole === 'trainer')
+
   if (!targetMembership.user_id) {
     return (
       <main className="mx-auto max-w-3xl px-4 py-12">
@@ -145,6 +169,7 @@ export default async function MemberDetailPage({
         ) : (
           <ContactInfo profile={targetProfile} />
         )}
+        {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>
       </main>
     )
@@ -183,6 +208,8 @@ export default async function MemberDetailPage({
       ) : (
         <ContactInfo profile={targetProfile} />
       )}
+
+      {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
 
       <section className="mb-10">
         <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
