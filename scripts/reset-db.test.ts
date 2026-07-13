@@ -247,43 +247,56 @@ describe('getPaymentType', () => {
 })
 
 describe('buildExpenseSeeds', () => {
+  const NOW = new Date('2026-07-04T10:00:00.000Z')
+
   it('should_include_at_least_one_planned_expense_with_null_amount', () => {
-    const seeds = buildExpenseSeeds()
+    const seeds = buildExpenseSeeds(NOW)
     expect(seeds.some((s) => s.amount === null && s.daysOffset > 0)).toBe(true)
   })
 
   it('should_include_exactly_one_future_dated_expense', () => {
-    const seeds = buildExpenseSeeds()
+    const seeds = buildExpenseSeeds(NOW)
     expect(seeds.filter((s) => s.daysOffset > 0)).toHaveLength(1)
   })
 
   it('should_include_a_recurring_farrier_recipient_with_a_consistent_expense_type', () => {
-    const seeds = buildExpenseSeeds()
+    const seeds = buildExpenseSeeds(NOW)
     const farrierSeeds = seeds.filter((s) => s.recipient === 'Dr. Hoof Farrier')
     expect(farrierSeeds.length).toBeGreaterThanOrEqual(2)
     expect(farrierSeeds.every((s) => s.expenseType === 'Farrier')).toBe(true)
   })
 
   it('should_include_a_recurring_vet_recipient_with_a_consistent_expense_type', () => {
-    const seeds = buildExpenseSeeds()
+    const seeds = buildExpenseSeeds(NOW)
     const vetSeeds = seeds.filter((s) => s.recipient === 'Riverside Vet Clinic')
     expect(vetSeeds.length).toBeGreaterThanOrEqual(2)
     expect(vetSeeds.every((s) => s.expenseType === 'Veterinary')).toBe(true)
   })
 
   it('should_include_at_least_one_barn_wide_expense', () => {
-    const seeds = buildExpenseSeeds()
+    const seeds = buildExpenseSeeds(NOW)
     expect(seeds.some((s) => s.appliesToAllHorses)).toBe(true)
   })
 
   it('should_include_at_least_one_individual_horse_expense', () => {
-    const seeds = buildExpenseSeeds()
+    const seeds = buildExpenseSeeds(NOW)
     expect(seeds.some((s) => !s.appliesToAllHorses)).toBe(true)
   })
 
   it('should_keep_all_non_future_daysOffset_within_the_barn_age_window', () => {
-    const seeds = buildExpenseSeeds()
+    const seeds = buildExpenseSeeds(NOW)
     expect(seeds.filter((s) => s.daysOffset <= 0).every((s) => s.daysOffset >= -85)).toBe(true)
+  })
+
+  it('should_include_a_today_dated_timed_planned_expense', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.some((s) => s.daysOffset === 0 && s.time !== null && s.amount === null)).toBe(true)
+  })
+
+  it('should_set_the_today_expense_time_two_hours_after_now_so_it_stays_upcoming', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    const today = seeds.find((s) => s.daysOffset === 0)
+    expect(today?.time).toBe('12:00:00')
   })
 })
 
