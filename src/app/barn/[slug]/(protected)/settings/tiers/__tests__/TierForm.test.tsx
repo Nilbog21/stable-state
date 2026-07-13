@@ -6,7 +6,7 @@ import { TierForm } from '../TierForm'
 afterEach(() => vi.restoreAllMocks())
 
 const mockAction = vi.fn().mockResolvedValue({ error: null })
-const mockDeactivate = vi.fn() as unknown as () => Promise<void>
+const mockDeactivate = vi.fn().mockResolvedValue({ error: null })
 const mockActivate = vi.fn() as unknown as () => Promise<void>
 
 describe('TierForm — new mode', () => {
@@ -288,6 +288,29 @@ describe('TierForm — set as default checkbox', () => {
     render(<TierForm mode="edit" initialTier={inactiveTier} action={mockAction} />)
 
     expect((screen.getByLabelText(/set as default tier/i) as HTMLInputElement).disabled).toBe(true)
+  })
+})
+
+describe('TierForm — deactivate error', () => {
+  const activeTier = createMockLessonTier({ id: 'tier-1', name: 'Standard', is_active: true })
+
+  it('should_display_error_message_when_deactivate_action_returns_error', async () => {
+    const failingDeactivate = vi.fn().mockResolvedValue({ error: 'Cannot deactivate the default tier' })
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={failingDeactivate} />
+    )
+
+    fireEvent.submit(screen.getByRole('button', { name: /deactivate/i }).closest('form')!)
+
+    expect(await screen.findByText('Cannot deactivate the default tier')).toBeDefined()
+  })
+
+  it('should_not_show_deactivate_error_before_submission', () => {
+    render(
+      <TierForm mode="edit" initialTier={activeTier} action={mockAction} onDeactivate={mockDeactivate} />
+    )
+
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })
 

@@ -9,7 +9,7 @@ type TierFormProps = {
   mode: 'new' | 'edit'
   initialTier?: LessonTier
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
-  onDeactivate?: () => Promise<void>
+  onDeactivate?: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   onActivate?: () => Promise<void>
   defaultInstructorCut?: number
 }
@@ -28,6 +28,9 @@ export function TierForm({
   const initialInstructorCut = initialTier?.instructor_cut != null ? String(initialTier.instructor_cut) : String(defaultInstructorCut)
   const [instructorCut, setInstructorCut] = useState(initialInstructorCut)
   const [state, formAction] = useActionState(action, { error: null })
+  const [deactivateState, deactivateFormAction] = useActionState(onDeactivate ?? action, {
+    error: null,
+  })
   const isActive = initialTier?.is_active ?? true
   const nameChanged = mode === 'edit' && isActive && name !== (initialTier?.name ?? '')
   const priceChanged =
@@ -38,14 +41,21 @@ export function TierForm({
   return (
     <div className="w-full max-w-md space-y-6">
       {mode === 'edit' && (
-        <div className="flex gap-2">
-          {isActive && onDeactivate && <DeactivateButton action={onDeactivate} />}
-          {!isActive && onActivate && (
-            <form action={onActivate}>
-              <Button type="submit" variant="ghost" size="sm">
-                Activate
-              </Button>
-            </form>
+        <div>
+          <div className="flex gap-2">
+            {isActive && onDeactivate && <DeactivateButton action={deactivateFormAction} />}
+            {!isActive && onActivate && (
+              <form action={onActivate}>
+                <Button type="submit" variant="ghost" size="sm">
+                  Activate
+                </Button>
+              </form>
+            )}
+          </div>
+          {deactivateState.error && (
+            <p role="alert" className="mt-2 text-sm text-red-600 dark:text-red-400">
+              {deactivateState.error}
+            </p>
           )}
         </div>
       )}

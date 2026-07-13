@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/Button'
 
-export function DeactivateButton({ action }: { action: () => Promise<void> }) {
+export function DeactivateButton({ action }: { action: (formData: FormData) => void }) {
   return (
     <form action={action}>
       <Button
