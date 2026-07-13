@@ -261,11 +261,29 @@ describe('ProfileLayout - barn nav (valid barn param + active membership)', () =
     expect(screen.queryByRole('link', { name: /manage barn/i })).toBeNull()
   })
 
-  it('should_not_render_members_link_for_rider', async () => {
+  it('should_render_members_link_for_rider', async () => {
     setupBarnNav(mockRiderMembership)
     const jsx = await ProfileLayout({ children: <span>child</span> })
     render(jsx as React.ReactElement)
-    expect(screen.queryByRole('link', { name: /members/i })).toBeNull()
+    expect(screen.getByRole('link', { name: /members/i })).toBeDefined()
+  })
+
+  it('should_render_expenses_link_for_manager', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('link', { name: /expenses/i })).toBeDefined()
+  })
+
+  it('should_render_leases_link_for_manager', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('link', { name: /leases/i })).toBeDefined()
+  })
+
+  it('should_render_boarding_link_for_manager', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('link', { name: /boarding/i })).toBeDefined()
   })
 
   it('should_render_user_menu_button', async () => {

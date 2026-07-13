@@ -206,7 +206,7 @@ Notifications and profile:
 
 - [ ] Notification bell shows an unread-count badge; opening it lists notifications with title/body/timestamp
 - [ ] **Mark all read** clears the badge
-- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders; edit phone → Save → redirected back to the barn
+- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages; edit phone → Save → redirected back to the barn
 - [ ] Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
 
 Mobile spot-check (resize the browser to ~390px wide, or use your browser's device toolbar):
@@ -240,6 +240,7 @@ bash scripts/change-user.sh
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper/Indigo Test, whichever are still unclaimed) render as plain card links — name only, **no Unlinked badge, no Copy Invite or Revoke buttons**; the card still links to the member detail page
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **no Contact Info section**, and **no Documents section**; open Blake's (a rider's) detail page — no Contact Info and no Documents section either (#779 narrowed this from the prior read-only rider-document access)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
+- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
 ## Phase 6 — Rider
 
@@ -261,6 +262,7 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
 - [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms and no Copy Invite/Revoke controls on any managed/unclaimed row
 - [ ] Open another member's detail page from the roster (a trainer, a manager) — page loads (no 404), shows only their name — no Contact Info, no Documents section
+- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
 ## Phase 7 — Multi-barn
 

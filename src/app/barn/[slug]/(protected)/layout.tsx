@@ -11,6 +11,7 @@ import { NotificationBell } from './NotificationBell'
 import { NavigationBlockerProvider, NavigationConfirmDialog } from './NavigationBlocker'
 import { NavDrawer } from './NavDrawer'
 import { DesktopNavLinks } from './DesktopNavLinks'
+import { buildNavLinks } from './nav-links'
 
 export async function generateMetadata({
   params,
@@ -57,34 +58,7 @@ export default async function ProtectedBarnLayout({
   const activeBarnMemberships = activeMemberships.map((m) => ({ slug: m.barn.slug, name: m.barn.name }))
   const email = user.email ?? ''
 
-  let navLinks: { href: string; label: string }[]
-  if (membership.role === 'manager') {
-    navLinks = [
-      { href: `/barn/${slug}/lessons`, label: 'Lessons' },
-      { href: `/barn/${slug}/expenses`, label: 'Expenses' },
-      { href: `/barn/${slug}/horses`, label: 'Horses' },
-      { href: `/barn/${slug}/agreements?kind=lease`, label: 'Leases' },
-      { href: `/barn/${slug}/agreements?kind=board`, label: 'Boarding' },
-      { href: `/barn/${slug}/members`, label: 'Members' },
-      { href: `/barn/${slug}/finances`, label: 'Finances' },
-      { href: `/barn/${slug}/settings`, label: 'Manage Barn' },
-      { href: `/barn/${slug}/guide`, label: 'Guide' },
-    ]
-  } else if (membership.role === 'trainer') {
-    navLinks = [
-      { href: `/barn/${slug}/lessons`, label: 'Lessons' },
-      { href: `/barn/${slug}/horses`, label: 'Horses' },
-      { href: `/barn/${slug}/members`, label: 'Members' },
-      { href: `/barn/${slug}/guide`, label: 'Guide' },
-    ]
-  } else {
-    navLinks = [
-      { href: `/barn/${slug}/lessons`, label: 'Lessons' },
-      { href: `/barn/${slug}/horses`, label: 'Horses' },
-      { href: `/barn/${slug}/members`, label: 'Members' },
-      { href: `/barn/${slug}/guide`, label: 'Guide' },
-    ]
-  }
+  const navLinks = buildNavLinks(slug, membership.role)
 
   return (
     <NavigationBlockerProvider>
