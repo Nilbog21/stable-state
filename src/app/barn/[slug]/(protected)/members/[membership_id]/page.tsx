@@ -160,35 +160,17 @@ export default async function MemberDetailPage({
   const canManageInstructorAccess =
     callerRole === 'manager' && (targetRole === 'manager' || targetRole === 'trainer')
 
-  if (!targetMembership.user_id) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-12">
-        <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-          {displayName}
-        </h1>
-        {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
-        {canViewContactInfo && (canEditContactInfo && targetProfile ? (
-          <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
-        ) : (
-          <ContactInfo profile={targetProfile} />
-        ))}
-        {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
-        {canUpload && <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>}
-      </main>
-    )
-  }
-
   type DocWithUrl = { doc: TrainerDocument | RiderDocument; signedUrl: string }
   let docsWithUrls: DocWithUrl[] = []
 
   if (canUpload) {
     if (targetRole === 'rider') {
-      const docs = await getDocuments('rider', targetMembership.user_id, barn.id)
+      const docs = await getDocuments('rider', targetMembership.id, barn.id)
       docsWithUrls = await Promise.all(
         docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
       )
     } else {
-      const docs = await getDocuments('trainer', targetMembership.user_id, barn.id)
+      const docs = await getDocuments('trainer', targetMembership.id, barn.id)
       docsWithUrls = await Promise.all(
         docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
       )

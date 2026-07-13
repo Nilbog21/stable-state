@@ -25,9 +25,9 @@ export async function deleteDocumentAction(
 
   try {
     if (entity === 'rider') {
-      await deleteDocument('rider', docId, targetMembership.user_id, barn.id)
+      await deleteDocument('rider', docId, targetMembership.id, barn.id)
     } else {
-      await deleteDocument('trainer', docId, targetMembership.user_id, barn.id)
+      await deleteDocument('trainer', docId, targetMembership.id, barn.id)
     }
   } catch (dbError) {
     return { error: getErrorMessage(dbError) }
@@ -96,13 +96,11 @@ export async function updateDocumentReminderDateAction(
     return { error: 'Forbidden' }
   }
 
-  if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
-
   try {
     if (targetMembership.role === 'rider') {
-      await updateDocumentReminderDate('rider', docId, targetMembership.user_id, barn.id, reminderDate)
+      await updateDocumentReminderDate('rider', docId, targetMembership.id, barn.id, reminderDate)
     } else {
-      await updateDocumentReminderDate('trainer', docId, targetMembership.user_id, barn.id, reminderDate)
+      await updateDocumentReminderDate('trainer', docId, targetMembership.id, barn.id, reminderDate)
     }
   } catch (dbError) {
     return { error: getErrorMessage(dbError) }

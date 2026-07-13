@@ -62,7 +62,7 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 
 > The UI creates managed **rider** stubs only. Trainer stubs cannot be created from the UI — the trainer phase (Phase 5) uses the seeded trainers via `change-user.sh` instead.
 
-- [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row shows an **Unlinked** badge with **Copy invite** and **Revoke** buttons
+- [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row's name is a link to its member detail page, alongside an **Unlinked** badge with **Copy invite** and **Revoke** buttons
 - [ ] Click **Copy invite** on Gale Test → in a browser where you're signed in to your **secondary Google account** (or logged out), open the copied URL (`/barn/dev-barn/login?token=<uuid>`) and sign in with the secondary account
 - [ ] The secondary account is redirected to `/profile/complete` — fill contact fields and save → lands in Dev Barn as rider Gale Test
 - [ ] Back as manager: Gale Test's row no longer shows the Unlinked badge and now links to a member detail page
@@ -155,8 +155,9 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 - [ ] "You" card plus Managers (Morgan, own entry excluded), Trainers, and Riders sections all render
 - [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
-- [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section still shows "No account linked — documents unavailable"
+- [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section renders normally (not blocked) with an **Add Document** button
 - [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload; a trainer opening the same page sees Contact Info read-only, with no Save button
+- [ ] Tap **Add Document** on Harper Test's page, upload a document → redirects back to the member page and the document lists with a working signed-URL link → delete it → row disappears
 - [ ] Open a trainer's member detail page → tap **Add Document**, upload a document → redirects back to this member's page; it lists with a working link → delete it
 - [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
 - [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
@@ -233,6 +234,7 @@ bash scripts/change-user.sh
 - [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no delete** button, **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
+- [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper/Indigo Test, whichever are still unclaimed) render as plain card links — name only, **no Unlinked badge, no Copy Invite or Revoke buttons**; the card still links to the member detail page
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **no Contact Info section**, and **no Documents section**; open Blake's (a rider's) detail page — no Contact Info and no Documents section either (#779 narrowed this from the prior read-only rider-document access)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 

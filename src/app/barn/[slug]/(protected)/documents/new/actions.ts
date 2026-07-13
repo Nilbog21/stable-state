@@ -32,7 +32,8 @@ export async function uploadDocumentAction(
   // trainer/rider branch, the table actually written to is re-derived from the
   // target's real DB role, never from this caller-suppliable value.
   let documentEntity: DocumentEntity = entity
-  let entityId = routeId
+  let dbEntityId = routeId
+  let storageEntityId = routeId
   let folder = 'horses'
   let redirectPath = `/barn/${barnSlug}/horses/${routeId}`
 
@@ -42,7 +43,14 @@ export async function uploadDocumentAction(
     const { targetMembership, entity: resolvedEntity } = resolved
 
     documentEntity = resolvedEntity
-    entityId = targetMembership.user_id
+    // rider_documents/staff_documents key off the membership id (supports managed/unclaimed
+    // members with no auth.users row). The storage bucket path keeps using the member's own
+    // user_id when they have one, so already-uploaded files for claimed members stay reachable
+    // under the existing self-service storage RLS (which still checks auth.uid()); a managed
+    // member with no user_id falls back to the membership id there too — that path segment is
+    // only ever written/read by a manager, who bypasses the folder-owner check entirely.
+    dbEntityId = targetMembership.id
+    storageEntityId = targetMembership.user_id ?? targetMembership.id
     folder =
       targetMembership.role === 'trainer' ? 'trainers'
       : targetMembership.role === 'manager' ? 'managers'
@@ -63,7 +71,7 @@ export async function uploadDocumentAction(
 
   const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
   const reminderDate = ((formData.get('reminder_date') as string | null) ?? '').trim() || null
-  const storagePath = `${barn.id}/${folder}/${entityId}/${Date.now()}.${ext}`
+  const storagePath = `${barn.id}/${folder}/${storageEntityId}/${Date.now()}.${ext}`
 
   try {
     await uploadFile(storagePath, file!, file!.type)
@@ -73,11 +81,11 @@ export async function uploadDocumentAction(
 
   try {
     if (documentEntity === 'horse') {
-      await createDocument('horse', barn.id, entityId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
+      await createDocument('horse', barn.id, dbEntityId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
     } else if (documentEntity === 'rider') {
-      await createDocument('rider', barn.id, entityId, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
+      await createDocument('rider', barn.id, dbEntityId, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
     } else {
-      await createDocument('trainer', barn.id, entityId, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
+      await createDocument('trainer', barn.id, dbEntityId, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
     }
   } catch (dbError) {
     await removeFile(storagePath).catch(() => {})
