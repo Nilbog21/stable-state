@@ -24,15 +24,15 @@ export function HorseManagerForm({
   action,
 }: {
   horse: Horse
-  action: (formData: FormData) => Promise<void>
+  action: (formData: FormData) => Promise<{ error: string | null }>
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
   const { show, flash } = useSaveFlash()
 
   async function handleSubmit(formData: FormData) {
-    await action(formData)
-    flash()
+    const result = await action(formData)
+    if (!result.error) flash()
   }
 
   return (

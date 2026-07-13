@@ -145,11 +145,26 @@ describe('updateHorseDetailsAction', () => {
     expect(updateHorseDetails).not.toHaveBeenCalled()
   })
 
+  it('should_return_error_when_status_is_invalid', async () => {
+    const fd = new FormData()
+    fd.set('name', 'Stormy')
+    fd.set('status', 'deleted')
+    const result = await updateHorseDetailsAction('green-acres', 'horse-1', fd)
+    expect(result).toEqual({ error: 'invalid status' })
+  })
+
   it('should_not_call_updateHorseDetails_when_status_is_absent', async () => {
     const fd = new FormData()
     fd.set('name', 'Stormy')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
     expect(updateHorseDetails).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_status_is_absent', async () => {
+    const fd = new FormData()
+    fd.set('name', 'Stormy')
+    const result = await updateHorseDetailsAction('green-acres', 'horse-1', fd)
+    expect(result).toEqual({ error: 'invalid status' })
   })
 
   it('should_trim_name_before_calling_updateHorseDetails', async () => {
@@ -179,6 +194,14 @@ describe('updateHorseDetailsAction', () => {
     fd.set('status', 'active')
     await updateHorseDetailsAction('green-acres', 'horse-1', fd)
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_return_null_error_on_success', async () => {
+    const fd = new FormData()
+    fd.set('name', 'Stormy')
+    fd.set('status', 'active')
+    const result = await updateHorseDetailsAction('green-acres', 'horse-1', fd)
+    expect(result).toEqual({ error: null })
   })
 })
 

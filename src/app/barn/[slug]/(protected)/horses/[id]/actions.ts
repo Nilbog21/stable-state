@@ -11,11 +11,13 @@ export async function updateHorseDetailsAction(
   barnSlug: string,
   horseId: string,
   formData: FormData
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const status = formData.get('status')
-  if (status !== 'active' && status !== 'unavailable' && status !== 'inactive') return
+  if (status !== 'active' && status !== 'unavailable' && status !== 'inactive') {
+    return { error: 'invalid status' }
+  }
 
   const name = (formData.get('name') as string | null)?.trim() || null
   const isActive = status !== 'inactive'
@@ -33,6 +35,7 @@ export async function updateHorseDetailsAction(
 
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  return { error: null }
 }
 
 function parseNonNegativeInt(raw: string | null): number | null {

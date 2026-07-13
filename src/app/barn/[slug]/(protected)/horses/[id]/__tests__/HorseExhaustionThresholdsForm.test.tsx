@@ -134,4 +134,21 @@ describe('HorseExhaustionThresholdsForm', () => {
 
     expect(checkbox.checked).toBe(false)
   })
+
+  it('should_keep_use_barn_defaults_unchecked_after_a_real_successful_submit', async () => {
+    // The onReset guard above only intercepts an explicit .reset() call — it does not
+    // intercept React 19's own post-action auto-reset, which desyncs the checkbox's DOM
+    // `checked` property from state without going through the 'reset' event (#762 review).
+    render(<HorseExhaustionThresholdsForm horse={defaultsHorse} barn={mockBarn} action={mockAction} />)
+    const checkbox = screen.getByRole('checkbox', { name: /use barn defaults/i }) as HTMLInputElement
+
+    fireEvent.click(checkbox)
+    expect(checkbox.checked).toBe(false)
+
+    await act(async () => {
+      fireEvent.submit(checkbox.closest('form')!)
+    })
+
+    expect(checkbox.checked).toBe(false)
+  })
 })

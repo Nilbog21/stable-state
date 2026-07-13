@@ -13,10 +13,18 @@ type HorseExhaustionThresholdsFormProps = {
 
 export function HorseExhaustionThresholdsForm({ horse, barn, action }: HorseExhaustionThresholdsFormProps) {
   const { show, flash } = useSaveFlash()
+  // React 19 resets the DOM's `checked` property on the "Use barn defaults" checkbox
+  // to its mount-time value after a successful form action, without re-syncing the
+  // controlled `checked` prop (#762 review) — remounting the input on every successful
+  // save forces React to reapply the real current value.
+  const [saveCount, setSaveCount] = useState(0)
 
   async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
     const result = await action(prevState, formData)
-    if (!result.error) flash()
+    if (!result.error) {
+      flash()
+      setSaveCount(c => c + 1)
+    }
     return result
   }
 
@@ -38,6 +46,7 @@ export function HorseExhaustionThresholdsForm({ horse, barn, action }: HorseExha
 
       <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
         <input
+          key={saveCount}
           type="checkbox"
           name="use_barn_defaults"
           value="true"
