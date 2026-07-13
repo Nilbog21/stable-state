@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockHorseExertionSummary } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockHorseExertionSummary, createMockHorse } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
@@ -14,6 +14,7 @@ vi.mock('@/lib/db/horses', async () => {
     ...actual,
     getHorseExertionSummary: vi.fn(),
     getHorseProjectedExhaustion: vi.fn(),
+    getHorsesByBarn: vi.fn(),
   }
 })
 vi.mock('../actions', () => ({
@@ -45,7 +46,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary, getHorseProjectedExhaustion } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn } from '@/lib/db/horses'
 import HorsesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -64,11 +65,13 @@ describe('HorsesPage', () => {
     vi.mocked(getUserMembership).mockReset()
     vi.mocked(getHorseExertionSummary).mockReset()
     vi.mocked(getHorseProjectedExhaustion).mockReset()
+    vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getHorseExertionSummary).mockResolvedValue([])
     vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([])
+    vi.mocked(getHorsesByBarn).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -136,7 +139,7 @@ describe('HorsesPage', () => {
 
   it('should_hide_inactive_section_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
-    vi.mocked(getHorseExertionSummary).mockResolvedValue([inactiveHorse])
+    vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-3', name: 'Retired' })])
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByText('Inactive')).toBeNull()
@@ -297,5 +300,63 @@ describe('HorsesPage', () => {
     render(jsx)
     const link = screen.getByText('Thunderbolt')
     expect(link.getAttribute('data-row-count')).toBe('2')
+  })
+
+  describe('rider role', () => {
+    beforeEach(() => {
+      vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    })
+
+    it('should_not_call_getHorseExertionSummary_for_rider', async () => {
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(getHorseExertionSummary).not.toHaveBeenCalled()
+    })
+
+    it('should_not_call_getHorseProjectedExhaustion_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt' })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(getHorseProjectedExhaustion).not.toHaveBeenCalled()
+    })
+
+    it('should_call_getHorsesByBarn_scoped_to_the_current_barn_for_rider', async () => {
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(getHorsesByBarn).toHaveBeenCalledWith(mockBarn.id)
+    })
+
+    it('should_render_available_horse_from_getHorsesByBarn_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('Available')).toBeDefined()
+      expect(screen.getByText('Thunderbolt')).toBeDefined()
+    })
+
+    it('should_render_unavailable_horse_from_getHorsesByBarn_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([
+        createMockHorse({ id: 'horse-2', name: 'Hobbled', is_available: false, unavailability_reason: 'Injury' }),
+      ])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('Unavailable')).toBeDefined()
+      expect(screen.getByText('Hobbled')).toBeDefined()
+    })
+
+    it('should_render_horse_card_with_no_exhaustion_data_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      const link = screen.getByText('Thunderbolt')
+      expect(link.getAttribute('data-thresholds')).toBeNull()
+      expect(link.getAttribute('data-row-count')).toBeNull()
+    })
+
+    it('should_show_empty_state_when_rider_has_no_horses', async () => {
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('No horses yet')).toBeDefined()
+    })
   })
 })
