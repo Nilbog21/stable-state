@@ -120,7 +120,7 @@ export default async function HorseDetailPage({
                     <Th>Notes</Th>
                     <Th>Link</Th>
                     <Th>Reminder Date</Th>
-                    <Th className="text-right">Action</Th>
+                    <Th align="right">Actions</Th>
                   </tr>
                 </thead>
                 <tbody>
