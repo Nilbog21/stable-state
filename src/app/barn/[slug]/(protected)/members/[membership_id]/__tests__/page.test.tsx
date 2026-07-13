@@ -438,7 +438,7 @@ describe('MemberDetailPage', () => {
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
     const link = screen.getByRole('link', { name: /450/ }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/agreements/agreement-9')
+    expect(link.href).toContain('/barn/green-acres/agreements/agreement-9?kind=board')
   })
 
   it('should_show_add_boarding_link_when_no_active_agreement', async () => {

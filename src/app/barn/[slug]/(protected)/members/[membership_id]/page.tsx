@@ -80,7 +80,7 @@ function BoardingStatus({ slug, agreement }: { slug: string; agreement: Agreemen
         <p className="text-sm text-zinc-700 dark:text-zinc-300">
           Boarding:{' '}
           <Link
-            href={`/barn/${slug}/agreements/${agreement.id}`}
+            href={`/barn/${slug}/agreements/${agreement.id}?kind=board`}
             className="underline hover:text-zinc-900 dark:hover:text-zinc-50"
           >
             {formatFee(agreement.fee)}/month

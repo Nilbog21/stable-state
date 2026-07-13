@@ -228,7 +228,7 @@ describe('HorseIncomePage', () => {
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     const link = screen.getByRole('link', { name: /May 1, 2026/i })
-    expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1')
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1?kind=lease')
   })
 
   it('should_render_dash_for_horses_column_on_charge_row', async () => {

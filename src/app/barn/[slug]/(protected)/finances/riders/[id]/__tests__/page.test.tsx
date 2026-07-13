@@ -181,7 +181,7 @@ describe('RiderIncomePage', () => {
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     const link = screen.getByRole('link', { name: /May 1, 2026/i })
-    expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1')
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1?kind=lease')
   })
 
   it('should_combine_lesson_and_charge_rows_in_total', async () => {
