@@ -41,4 +41,12 @@ describe('isValidPhone', () => {
   it('should_reject_string_with_no_digits', () => {
     expect(isValidPhone('+ - ()')).toBe(false)
   })
+
+  it('should_reject_plus_sign_not_at_start', () => {
+    expect(isValidPhone('1+800+5551234')).toBe(false)
+  })
+
+  it('should_reject_plus_sign_at_end', () => {
+    expect(isValidPhone('5551234567+')).toBe(false)
+  })
 })

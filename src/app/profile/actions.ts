@@ -24,8 +24,12 @@ export async function updateProfileAction(
   const ecName = (formData.get('emergency_contact_name') as string | null)?.trim() || null
   const ecPhone = (formData.get('emergency_contact_phone') as string | null)?.trim() || null
 
-  if (phone && !isValidPhone(phone)) return { error: 'Phone number must contain 7–15 digits' }
-  if (ecPhone && !isValidPhone(ecPhone)) return { error: 'Phone number must contain 7–15 digits' }
+  if (phone && phone !== profile.phone && !isValidPhone(phone)) {
+    return { error: 'Phone number must contain 7–15 digits' }
+  }
+  if (ecPhone && ecPhone !== profile.emergency_contact_phone && !isValidPhone(ecPhone)) {
+    return { error: 'Emergency contact phone must contain 7–15 digits' }
+  }
 
   try {
     await updateProfile(profile.id, {

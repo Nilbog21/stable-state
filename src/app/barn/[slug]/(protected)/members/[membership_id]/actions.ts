@@ -151,8 +151,16 @@ export async function updateContactInfoAction(
   const emergencyContactName = (formData.get('emergency_contact_name') as string | null)?.trim() || null
   const emergencyContactPhone = (formData.get('emergency_contact_phone') as string | null)?.trim() || null
 
-  if (phone && !isValidPhone(phone)) return { error: 'Phone number must contain 7–15 digits' }
-  if (emergencyContactPhone && !isValidPhone(emergencyContactPhone)) return { error: 'Phone number must contain 7–15 digits' }
+  if (phone && phone !== targetProfile.phone && !isValidPhone(phone)) {
+    return { error: 'Phone number must contain 7–15 digits' }
+  }
+  if (
+    emergencyContactPhone &&
+    emergencyContactPhone !== targetProfile.emergency_contact_phone &&
+    !isValidPhone(emergencyContactPhone)
+  ) {
+    return { error: 'Emergency contact phone must contain 7–15 digits' }
+  }
 
   try {
     await updateContactInfo(targetMembership.profile_id, {
