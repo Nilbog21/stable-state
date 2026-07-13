@@ -109,7 +109,19 @@ describe('NewDocumentPage', () => {
     await expect(NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_call_notFound_when_target_has_no_user_id', async () => {
+  it('should_render_form_when_target_has_no_user_id_and_caller_is_manager', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue({ ...targetTrainerMembership, user_id: null } as any)
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form')).toBeDefined()
+  })
+
+  it('should_call_notFound_when_target_has_no_user_id_and_caller_is_not_manager', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-trn' } as any,
+      barn: mockBarn,
+      membership: trainerMembership,
+    })
     vi.mocked(getMembershipById).mockResolvedValue({ ...targetTrainerMembership, user_id: null } as any)
     await expect(NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))).rejects.toThrow('NEXT_NOT_FOUND')
   })

@@ -103,7 +103,7 @@ export default async function MembersPage({
         {trainers.length > 0 ? (
           <ul className="space-y-2">
             {trainers.map((t) =>
-              t.isManaged && t.inviteToken ? (
+              t.isManaged && t.inviteToken && membership.role === 'manager' ? (
                 <li key={t.membershipId}>
                   <ManagedMemberRow
                     name={t.name}
@@ -156,7 +156,7 @@ export default async function MembersPage({
         {riders.length > 0 ? (
           <ul className="space-y-2">
             {riders.map((r) =>
-              r.isManaged && r.inviteToken ? (
+              r.isManaged && r.inviteToken && membership.role === 'manager' ? (
                 <li key={r.membershipId}>
                   <ManagedMemberRow
                     name={r.name}

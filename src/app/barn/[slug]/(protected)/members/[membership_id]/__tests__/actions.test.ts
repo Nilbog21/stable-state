@@ -87,7 +87,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-target-trn', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-target-trn', 'barn-1')
   })
 
   it('should_delete_own_trainer_document_as_trainer', async () => {
@@ -96,7 +96,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-trn', 'doc-1', 'barn-1/trainers/user-trn/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-trn', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-trn', 'barn-1')
   })
 
   it('should_delete_own_rider_document_as_rider', async () => {
@@ -105,7 +105,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-rdr', 'doc-1', 'barn-1/riders/user-rdr/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-1', 'user-rdr', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-1', 'mem-rdr', 'barn-1')
   })
 
   it('should_reject_delete_when_trainer_targets_rider_document', async () => {
@@ -122,7 +122,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-mgr-target', 'doc-1', 'barn-1/managers/user-mgr-target/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-mgr-target', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-mgr-target', 'barn-1')
   })
 
   it('should_revalidate_member_detail_path_after_delete', async () => {
@@ -140,17 +140,17 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'barn-1/riders/user-target-rdr/waiver.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-2', 'user-target-rdr', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-2', 'mem-target-rdr', 'barn-1')
   })
 
-  it('should_return_error_when_target_has_no_user_id_on_delete', async () => {
+  it('should_delete_document_for_managed_member_with_no_user_id_as_manager', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(
       createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
     )
 
-    const result = await deleteDocumentAction('green-acres', 'mem-nouser', 'doc-1', 'path')
-    expect(result.error).toBe('Target member has no account linked')
+    await deleteDocumentAction('green-acres', 'mem-nouser', 'doc-1', 'path')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-nouser', 'barn-1')
   })
 
   it('should_reject_delete_when_target_has_unknown_role', async () => {
@@ -214,7 +214,7 @@ describe('updateDocumentReminderDateAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
-    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'user-target-trn', 'barn-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-target-trn', 'barn-1', '2027-01-01')
   })
 
   it('should_update_rider_reminder_date', async () => {
@@ -222,7 +222,7 @@ describe('updateDocumentReminderDateAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
     await updateDocumentReminderDateAction('green-acres', 'mem-target-rdr', 'doc-2', '2027-01-01')
-    expect(updateDocumentReminderDate).toHaveBeenCalledWith('rider', 'doc-2', 'user-target-rdr', 'barn-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('rider', 'doc-2', 'mem-target-rdr', 'barn-1', '2027-01-01')
   })
 
   it('should_update_manager_reminder_date_using_staff_documents_table', async () => {
@@ -230,7 +230,7 @@ describe('updateDocumentReminderDateAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
     await updateDocumentReminderDateAction('green-acres', 'mem-mgr-target', 'doc-1', '2027-01-01')
-    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'user-mgr-target', 'barn-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-mgr-target', 'barn-1', '2027-01-01')
   })
 
   it('should_revalidate_member_detail_path', async () => {
@@ -249,14 +249,14 @@ describe('updateDocumentReminderDateAction', () => {
     expect(result.error).toBe('Not found')
   })
 
-  it('should_return_error_when_target_has_no_user_id', async () => {
+  it('should_update_reminder_date_for_managed_member_with_no_user_id', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(
       createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
     )
 
-    const result = await updateDocumentReminderDateAction('green-acres', 'mem-nouser', 'doc-1', '2027-01-01')
-    expect(result.error).toBe('Target member has no account linked')
+    await updateDocumentReminderDateAction('green-acres', 'mem-nouser', 'doc-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-nouser', 'barn-1', '2027-01-01')
   })
 
   it('should_reject_when_target_has_unknown_role', async () => {

@@ -16,7 +16,7 @@ describe('RemoveMemberButton', () => {
     vi.spyOn(window, 'confirm').mockReturnValue(false)
     render(<RemoveMemberButton action={vi.fn() as unknown as () => Promise<void>} name="Jane Rider" />)
     fireEvent.click(screen.getByRole('button', { name: /remove/i }))
-    expect(window.confirm).toHaveBeenCalledWith('This cannot be undone. Remove Jane Rider from the barn?')
+    expect(window.confirm).toHaveBeenCalledWith('This cannot be undone. Remove Jane Rider from the barn and delete any documents associated with them?')
   })
 
   it('should_not_submit_when_confirm_cancelled', () => {

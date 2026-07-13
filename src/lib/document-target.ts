@@ -13,7 +13,7 @@ export async function resolveManageableTarget(
   callerUserId: string
 ): Promise<
   | { error: string }
-  | { targetMembership: BarnMembership & { user_id: string }; entity: 'rider' | 'trainer' }
+  | { targetMembership: BarnMembership; entity: 'rider' | 'trainer' }
 > {
   const targetMembership = await getMembershipById(membershipId)
   if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
@@ -27,10 +27,8 @@ export async function resolveManageableTarget(
     return { error: 'Forbidden' }
   }
 
-  if (!targetMembership.user_id) return { error: 'Target member has no account linked' }
-
   return {
-    targetMembership: targetMembership as BarnMembership & { user_id: string },
+    targetMembership,
     entity: targetMembership.role === 'rider' ? 'rider' : 'trainer',
   }
 }

@@ -496,6 +496,46 @@ describe('MembersPage', () => {
     expect(screen.getByText('Unlinked')).toBeDefined()
   })
 
+  it('should_not_render_unlinked_badge_for_managed_rider_when_viewer_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const managedRiders = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('Unlinked')).toBeNull()
+  })
+
+  it('should_not_render_revoke_button_for_managed_rider_when_viewer_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const managedRiders = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /revoke/i })).toBeNull()
+  })
+
+  it('should_render_plain_card_link_for_managed_rider_when_viewer_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const managedRiders = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /ghost rider/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members\/mem-m1$/)
+  })
+
   it('should_render_add_trainer_form_for_manager', async () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

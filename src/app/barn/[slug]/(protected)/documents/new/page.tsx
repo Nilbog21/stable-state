@@ -41,7 +41,6 @@ export default async function NewDocumentPage({
 
   const targetMembership = await getMembershipById(id)
   if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
-  if (!targetMembership.user_id) notFound()
 
   const isOwnPage = targetMembership.user_id === user.id
   const canUpload =
