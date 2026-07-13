@@ -219,7 +219,7 @@ bash scripts/change-user.sh
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
-- [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
+- [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Lessons list shows every lesson in the barn, not just yours (Alex's) — including Blake's; filter pills show the same two-level `All | By Instructor | By Rider | By Horse` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
@@ -228,7 +228,7 @@ bash scripts/change-user.sh
 - [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no delete** button, **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Members page shows the Riders section only; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
-- [ ] `/barn/dev-barn/finances` is blocked (redirect); `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
+- [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
 
 ## Phase 6 — Rider
 
@@ -239,13 +239,13 @@ bash scripts/change-user.sh
 ```
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Leases, no Boarding, no Expenses**
-- [ ] `/barn/dev-barn/expenses` is blocked (redirect) if visited directly
+- [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
-- [ ] `/barn/dev-barn/finances` is blocked (redirect)
+- [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
 - [ ] `/barn/dev-barn/members` shows only the "You" card — no Managers/Trainers/Riders management sections
 
