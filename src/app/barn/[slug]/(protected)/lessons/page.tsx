@@ -49,6 +49,7 @@ export default async function LessonsPage({
   params: Promise<{ slug: string }>
   searchParams?: Promise<{ filter?: string; id?: string }>
 }) {
+  throw new Error('smoke test')
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
 
