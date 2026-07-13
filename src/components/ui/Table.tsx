@@ -18,6 +18,10 @@ export function Td({ tone = 'primary', className, ...rest }: TdProps) {
   return <td {...rest} className={`${td}${className ? ` ${className}` : ''}`} />
 }
 
-export function TableActions({ className, ...rest }: TdProps) {
-  return <Td {...rest} className={`text-right${className ? ` ${className}` : ''}`} />
+export function TableActions({ className, children, ...rest }: TdProps) {
+  return (
+    <Td {...rest} className={`text-right${className ? ` ${className}` : ''}`}>
+      <span className="inline-flex items-center justify-end gap-2 whitespace-nowrap">{children}</span>
+    </Td>
+  )
 }
