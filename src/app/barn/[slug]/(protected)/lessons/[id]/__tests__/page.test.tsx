@@ -217,6 +217,19 @@ describe('LessonDetailPage', () => {
     expect(screen.getByText('Normal')).toBeDefined()
   })
 
+  it('should_show_recurring_badge_when_lesson_has_series_id', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, series_id: 'series-1' })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Recurring')).toBeDefined()
+  })
+
+  it('should_not_show_recurring_badge_when_series_id_null', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Recurring')).toBeNull()
+  })
+
   it('should_show_rider_names_for_group_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,

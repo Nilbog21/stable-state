@@ -284,6 +284,20 @@ describe('EditLessonPage', () => {
     expect(screen.getByTestId('stop-series-button')).toBeDefined()
   })
 
+  it('should_render_series_indicator_before_lesson_form', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, series_id: 'series-1' })
+    vi.mocked(getSeriesById).mockResolvedValue({
+      id: 'series-1', barn_id: 'barn-1', instructor_id: 'mem-1', fee: 50, lesson_type: 'normal',
+      jumping: false, tier_name: 'Custom', horse_ids: [], exertion_levels: [], rider_ids: [],
+      is_active: true, created_at: '', instructor_cut: 25,
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    const indicator = screen.getByText(/this is part of a recurring series/i)
+    const form = screen.getByTestId('edit-lesson-form')
+    expect(indicator.compareDocumentPosition(form) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
   it('should_not_show_series_indicator_when_lesson_has_no_series_id', async () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)

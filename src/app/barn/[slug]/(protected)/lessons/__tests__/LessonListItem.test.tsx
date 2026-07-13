@@ -86,6 +86,24 @@ describe('LessonListItem', () => {
     expect(screen.queryByText('Alice')).toBeNull()
   })
 
+  it('should_show_recurring_badge_when_series_id_set', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, series_id: 'series-1' }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentMembershipId="user-1"
+      />
+    )
+    expect(screen.getByText('Recurring')).toBeDefined()
+  })
+
+  it('should_not_show_recurring_badge_when_series_id_null', () => {
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentMembershipId="user-1" />)
+    expect(screen.queryByText('Recurring')).toBeNull()
+  })
+
   it('should_show_tier_name_alongside_fee', () => {
     render(
       <LessonListItem
