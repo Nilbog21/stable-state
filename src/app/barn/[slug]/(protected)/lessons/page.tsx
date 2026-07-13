@@ -49,7 +49,6 @@ export default async function LessonsPage({
   params: Promise<{ slug: string }>
   searchParams?: Promise<{ filter?: string; id?: string }>
 }) {
-  throw new Error('smoke test')
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
 
@@ -96,6 +95,8 @@ export default async function LessonsPage({
   const riderOptions = isManager || isTrainer ? buildRiderOptions(allLessons) : []
   const trainerOptions = isManager || isTrainer ? buildTrainerOptions(allLessons) : []
   const horseOptions = isManager || isTrainer ? buildHorseOptions(allLessons) : []
+
+  if (allLessons) throw new Error('smoke test')
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
