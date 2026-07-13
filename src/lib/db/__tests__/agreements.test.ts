@@ -227,6 +227,15 @@ describe('getActiveAgreementsForRider', () => {
     expect(result).toEqual([])
   })
 
+  it('should_return_empty_array_when_supabase_returns_null_data', async () => {
+    const { select } = makeChain(null)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getActiveAgreementsForRider('barn-1', 'rider-1')
+
+    expect(result).toEqual([])
+  })
+
   it('should_throw_when_supabase_returns_error', async () => {
     const { select } = makeChain(null, new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)

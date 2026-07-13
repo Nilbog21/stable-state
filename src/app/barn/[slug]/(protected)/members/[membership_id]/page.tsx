@@ -6,7 +6,9 @@ import { getUserMembership, getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
-import { getActiveAgreementForRider } from '@/lib/db/agreements'
+import { getActiveAgreementsForRider } from '@/lib/db/agreements'
+import { resolveHorseNames } from '@/lib/db/horses'
+import { Card } from '@/components/ui/Card'
 import { UploadForm } from './UploadForm'
 import { ContactInfoForm } from './ContactInfoForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
@@ -74,29 +76,39 @@ function InstructorAccess({ slug, targetMembership }: { slug: string; targetMemb
   )
 }
 
-function BoardingStatus({ slug, agreement }: { slug: string; agreement: Agreement | null }) {
+const AGREEMENT_KIND_LABELS: Record<Agreement['kind'], string> = {
+  lease: 'Lease',
+  board: 'Boarding',
+}
+
+function ActiveAgreements({
+  slug,
+  agreements,
+  horseNames,
+}: {
+  slug: string
+  agreements: Agreement[]
+  horseNames: Map<string, string>
+}) {
   return (
     <section className="mb-8">
-      {agreement ? (
-        <p className="text-sm text-zinc-700 dark:text-zinc-300">
-          Boarding:{' '}
-          <Link
-            href={`/barn/${slug}/agreements/${agreement.id}`}
-            className="underline hover:text-zinc-900 dark:hover:text-zinc-50"
-          >
-            {formatFee(agreement.fee)}/month
-          </Link>
-        </p>
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Active Agreements
+      </h2>
+      {agreements.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {agreements.map((agreement) => (
+            <Card key={agreement.id} href={`/barn/${slug}/agreements/${agreement.id}`} className="p-3">
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                {AGREEMENT_KIND_LABELS[agreement.kind]} · {horseNames.get(agreement.horse_id) ?? '—'} ·{' '}
+                {formatFee(agreement.fee)}
+                {agreement.cadence === 'monthly' ? '/month' : ''}
+              </p>
+            </Card>
+          ))}
+        </div>
       ) : (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
-          Boarding: none —{' '}
-          <Link
-            href={`/barn/${slug}/agreements?kind=board`}
-            className="underline hover:text-zinc-900 dark:hover:text-zinc-50"
-          >
-            Add boarding
-          </Link>
-        </p>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">No active agreements</p>
       )}
     </section>
   )
@@ -138,12 +150,17 @@ export default async function MemberDetailPage({
     (callerRole === 'rider' && isOwnPage)
 
   // agreements RLS only grants SELECT to the barn manager and the rider themself —
-  // a trainer's query would be silently filtered to zero rows, showing a false "no boarding" status
-  const canViewBoardingStatus = targetRole === 'rider' && (callerRole === 'manager' || isOwnPage)
+  // a trainer's query would be silently filtered to zero rows, showing a false "no agreements" status
+  const canViewAgreements = targetRole === 'rider' && (callerRole === 'manager' || isOwnPage)
 
-  let boardingAgreement: Agreement | null = null
-  if (canViewBoardingStatus) {
-    boardingAgreement = await getActiveAgreementForRider(barn.id, targetMembership.id, 'board')
+  let activeAgreements: Agreement[] = []
+  let agreementHorseNames = new Map<string, string>()
+  if (canViewAgreements) {
+    activeAgreements = await getActiveAgreementsForRider(barn.id, targetMembership.id)
+    agreementHorseNames = await resolveHorseNames(
+      activeAgreements.map((a) => a.horse_id),
+      barn.id
+    )
   }
 
   const targetProfile = await getProfileById(targetMembership.profile_id)
@@ -163,7 +180,9 @@ export default async function MemberDetailPage({
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {displayName}
         </h1>
-        {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
+        {canViewAgreements && (
+          <ActiveAgreements slug={slug} agreements={activeAgreements} horseNames={agreementHorseNames} />
+        )}
         {canEditContactInfo && targetProfile ? (
           <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
         ) : (
@@ -201,7 +220,9 @@ export default async function MemberDetailPage({
         {displayName}
       </h1>
 
-      {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
+      {canViewAgreements && (
+        <ActiveAgreements slug={slug} agreements={activeAgreements} horseNames={agreementHorseNames} />
+      )}
 
       {canEditContactInfo && targetProfile ? (
         <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />

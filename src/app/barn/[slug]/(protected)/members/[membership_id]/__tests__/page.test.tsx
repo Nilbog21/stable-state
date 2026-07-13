@@ -427,6 +427,29 @@ describe('MemberDetailPage', () => {
     expect(screen.getByRole('link', { name: /300/ })).toBeDefined()
   })
 
+  it('should_fall_back_to_em_dash_when_horse_name_unresolved', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board', cadence: 'monthly', horse_id: 'horse-1' }),
+    ])
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /450/ })
+    expect(link.textContent).toContain('—')
+  })
+
+  it('should_not_append_slash_month_for_one_time_cadence', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'lease', cadence: 'one_time', horse_id: 'horse-1' }),
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Bella']]))
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /450/ })
+    expect(link.textContent).not.toContain('/month')
+  })
+
   it('should_show_no_active_agreements_text_and_no_add_boarding_link_when_empty', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
