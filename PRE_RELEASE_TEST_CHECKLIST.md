@@ -142,9 +142,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending (7d); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
 - [ ] Open Apple's detail page → rename it via the manager form → Save → name updates
-- [ ] Documents section: upload a PDF to a horse, open it via its link (signed URL), then delete it
-- [ ] Attempt to upload a document over 4.5MB to a horse — rejected with an inline error, not a crash
-- [ ] Upload a document to a horse — the Upload button disables and an indeterminate progress bar shows while the upload is pending
+- [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page; open the document via its link (signed URL), then delete it
+- [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
+- [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override; uncheck it, set Moderate/High, Save → values persist on reload and the toggle is now unchecked; re-check "Use barn defaults" and Save → inputs revert to barn defaults; try Moderate ≥ High while unchecked → rejected with a field error and values unchanged
 - [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this horse
@@ -155,12 +155,12 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
 - [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section still shows "No account linked — documents unavailable"
 - [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload; a trainer opening the same page sees Contact Info read-only, with no Save button
-- [ ] Open a trainer's member detail page → upload a document → it lists with a working link → delete it
-- [ ] Attempt to upload a document over 4.5MB to a member — rejected with an inline error, not a crash
-- [ ] Upload a document to a member — the Upload button disables and an indeterminate progress bar shows while the upload is pending
+- [ ] Open a trainer's member detail page → tap **Add Document**, upload a document → redirects back to this member's page; it lists with a working link → delete it
+- [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
+- [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] On that same document, edit the Reminder Date inline (tap the field, set a date, tap away) → it saves
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
-- [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
+- [ ] Open rider Gale Test's member detail page — **Add Document** button is available (manager can manage rider docs)
 - [ ] Rider Emery's member detail page shows **Boarding: $X/month** linking to their boarding agreement; a rider with no boarding agreement shows an **Add boarding** link into `/agreements?kind=board`; a managed (unclaimed) rider's detail page shows the same boarding status line
 - [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it → trainer reappears in the instructor select
 - [ ] Open your own manager member detail page → **Instructor Access** section shows **Grant Instructor Access** → tap it → you now appear in the instructor select on the new-lesson form; tap **Revoke Instructor Access** to undo
