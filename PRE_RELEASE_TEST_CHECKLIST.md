@@ -229,7 +229,8 @@ bash scripts/change-user.sh
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
-- [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear; stopping works the same as manager
+- [ ] Lesson 9 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
+- [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no delete** button, **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Members page shows the Riders section only; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
