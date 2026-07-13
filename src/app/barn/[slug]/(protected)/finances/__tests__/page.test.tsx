@@ -84,24 +84,24 @@ describe('FinancesPage', () => {
 
   it('should_throw_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
+    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_redirect_to_login_when_user_has_no_membership', async () => {
+  it('should_call_notFound_when_user_has_no_membership', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
     try { await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 
   it('should_throw_when_user_is_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
-    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
+    await expect(FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_redirect_to_login_when_user_is_trainer', async () => {
+  it('should_call_notFound_when_user_is_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     try { await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 
   it('should_render_page_for_manager', async () => {

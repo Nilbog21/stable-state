@@ -1,8 +1,5 @@
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary } from '@/lib/db/expenses'
@@ -111,21 +108,7 @@ export default async function FinancesPage({
   searchParams?: Promise<{ month?: string; tab?: string }>
 }) {
   const { slug } = await params
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
-
-  const user = await getAuthenticatedUser()
-  if (!user) redirect(`/barn/${slug}/login`)
-
-  const actorMembership = await getUserMembership(user.id, barn.id)
-
-  if (
-    !actorMembership ||
-    actorMembership.status !== 'active' ||
-    actorMembership.role !== 'manager'
-  ) {
-    redirect(`/barn/${slug}/login`)
-  }
+  const { barn } = await requireMembership(slug, ['manager'])
 
   const { month: monthParam, tab: tabParam } = await searchParams
   const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'horse'
