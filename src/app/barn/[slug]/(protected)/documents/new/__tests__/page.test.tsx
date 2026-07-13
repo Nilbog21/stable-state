@@ -29,6 +29,7 @@ const horse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt' })
 
 const targetTrainerMembership = createMockMembership({ id: 'mem-target-trn', user_id: 'user-target-trn', barn_id: 'barn-1', role: 'trainer' })
 const targetProfile = createMockProfile({ user_id: 'user-target-trn', first_name: 'Bob', last_name: 'Trainer' })
+const targetRiderMembership = createMockMembership({ id: 'mem-target-rdr', user_id: 'user-target-rdr', barn_id: 'barn-1', role: 'rider' })
 
 function makeParams(slug: string, entity?: string, id?: string) {
   return {
@@ -158,5 +159,18 @@ describe('NewDocumentPage', () => {
     const jsx = await NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-trn'))
     render(jsx)
     expect(screen.getByTestId('document-upload-form')).toBeDefined()
+  })
+
+  it('should_render_document_upload_form_using_targets_actual_role_when_url_entity_is_mismatched', async () => {
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'rider', 'mem-target-trn'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form').textContent).toBe('trainer')
+  })
+
+  it('should_render_document_upload_form_with_rider_entity_for_rider_target', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'rider', 'mem-target-rdr'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form').textContent).toBe('rider')
   })
 })

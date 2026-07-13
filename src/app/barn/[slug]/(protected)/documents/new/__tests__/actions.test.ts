@@ -389,4 +389,26 @@ describe('uploadDocumentAction — trainer/rider (member) entity', () => {
       'trainer', mockBarn.id, 'user-target-trn', 'instructor_contract', expect.any(String), expect.any(String), expect.any(Number), null, '2027-01-01'
     )
   })
+
+  it('should_reject_upload_when_target_has_unknown_role', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-unknown', user_id: 'user-unknown', barn_id: 'barn-1', role: 'unknown' as any })
+    )
+    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
+    const result = await uploadDocumentAction('green-acres', 'trainer', 'mem-unknown', { error: null }, fd)
+    expect(result.error).toBeTruthy()
+  })
+
+  it('should_write_using_targets_actual_role_when_url_entity_is_mismatched', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
+    await uploadDocumentAction('green-acres', 'rider', 'mem-target-trn', { error: null }, fd).catch(() => {})
+    expect(createDocument).toHaveBeenCalledWith(
+      'trainer', mockBarn.id, 'user-target-trn', 'instructor_contract', expect.any(String), expect.any(String), expect.any(Number), null, null
+    )
+  })
+
+  it('should_reject_record_type_invalid_for_targets_actual_role_even_when_valid_for_mismatched_url_entity', async () => {
+    const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
+    await expect(uploadDocumentAction('green-acres', 'rider', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Invalid/) })
+  })
 })

@@ -1,9 +1,9 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
+import { Button } from '@/components/ui/Button'
 import { DocumentUploadForm } from './DocumentUploadForm'
 import { uploadDocumentAction, type DocumentEntity } from './actions'
 
@@ -30,12 +30,9 @@ export default async function NewDocumentPage({
           Add Document — {horse.name}
         </h1>
         <DocumentUploadForm entity="horse" action={uploadDocumentAction.bind(null, slug, 'horse' as DocumentEntity, horse.id)} />
-        <Link
-          href={`/barn/${slug}/horses/${horse.id}`}
-          className="mt-4 inline-block text-sm text-zinc-500 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-        >
+        <Button href={`/barn/${slug}/horses/${horse.id}`} variant="ghost" className="mt-4">
           Cancel
-        </Link>
+        </Button>
       </main>
     )
   }
@@ -53,6 +50,10 @@ export default async function NewDocumentPage({
     (callerMembership.role === 'rider' && isOwnPage)
   if (!canUpload) notFound()
 
+  // Rendered form options must match the target's real role, not the caller-suppliable
+  // `entity` query param (mirrors the server-side derivation in uploadDocumentAction).
+  const resolvedEntity: DocumentEntity = targetMembership.role === 'rider' ? 'rider' : 'trainer'
+
   const targetProfile = await getProfileById(targetMembership.profile_id)
   const displayName = targetProfile ? `${targetProfile.first_name} ${targetProfile.last_name}` : targetMembership.id
 
@@ -61,13 +62,10 @@ export default async function NewDocumentPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Add Document — {displayName}
       </h1>
-      <DocumentUploadForm entity={entity} action={uploadDocumentAction.bind(null, slug, entity, targetMembership.id)} />
-      <Link
-        href={`/barn/${slug}/members/${targetMembership.id}`}
-        className="mt-4 inline-block text-sm text-zinc-500 underline hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-50"
-      >
+      <DocumentUploadForm entity={resolvedEntity} action={uploadDocumentAction.bind(null, slug, resolvedEntity, targetMembership.id)} />
+      <Button href={`/barn/${slug}/members/${targetMembership.id}`} variant="ghost" className="mt-4">
         Cancel
-      </Link>
+      </Button>
     </main>
   )
 }
