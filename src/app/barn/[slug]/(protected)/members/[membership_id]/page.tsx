@@ -234,7 +234,7 @@ export default async function MemberDetailPage({
                   <Th>Notes</Th>
                   <Th>Link</Th>
                   <Th>Reminder Date</Th>
-                  <Th>Action</Th>
+                  <Th className="text-right">Action</Th>
                 </tr>
               </thead>
               <tbody>
