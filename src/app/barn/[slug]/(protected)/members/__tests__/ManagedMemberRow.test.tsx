@@ -56,4 +56,10 @@ describe('ManagedMemberRow', () => {
     render(<ManagedMemberRow {...defaultProps} name="Ghost Trainer" />)
     expect(screen.getByText('Ghost Trainer')).toBeDefined()
   })
+
+  it('should_link_name_to_member_detail_page', () => {
+    render(<ManagedMemberRow {...defaultProps} />)
+    const link = screen.getByRole('link', { name: /ghost member/i })
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/members/mem-1')
+  })
 })

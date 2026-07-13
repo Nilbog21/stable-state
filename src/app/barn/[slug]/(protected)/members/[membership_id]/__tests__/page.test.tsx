@@ -257,7 +257,7 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByRole('heading', { name: /^documents$/i })).toBeNull()
   })
 
-  it('should_hide_no_account_message_when_non_manager_non_self_views_stub_member', async () => {
+  it('should_hide_documents_heading_when_non_manager_non_self_views_stub_member', async () => {
     setupAuth({ id: 'user-trn', email: 'trn@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
@@ -266,7 +266,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ first_name: 'Stub', last_name: 'Rider' }))
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-stub-rdr') })
     render(jsx)
-    expect(screen.queryByText(/no account linked/i)).toBeNull()
+    expect(screen.queryByRole('heading', { name: /^documents$/i })).toBeNull()
   })
 
   it('should_show_add_document_link_when_manager_views_trainer', async () => {
@@ -285,13 +285,31 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByRole('link', { name: /add document/i })).toBeNull()
   })
 
-  it('should_show_no_account_message_when_target_has_no_user_id', async () => {
+  it('should_show_documents_heading_when_manager_views_stub_member_with_no_user_id', async () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
       createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
     )
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-nouser') })
     render(jsx)
-    expect(screen.getByText(/no account linked/i)).toBeDefined()
+    expect(screen.getByRole('heading', { name: /^documents$/i })).toBeDefined()
+  })
+
+  it('should_show_add_document_link_when_manager_views_stub_member_with_no_user_id', async () => {
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
+      createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
+    )
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-nouser') })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /add document/i })).toBeDefined()
+  })
+
+  it('should_fetch_documents_using_membership_id_for_stub_member_with_no_user_id', async () => {
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
+      createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
+    )
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-nouser') })
+    render(jsx)
+    expect(getDocuments).toHaveBeenCalledWith('trainer', 'mem-nouser', 'barn-1')
   })
 
   it('should_show_heading_and_name_for_stub_member_with_no_user_id', async () => {
