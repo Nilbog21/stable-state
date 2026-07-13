@@ -6,7 +6,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 
 ## Prerequisites
 
-- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — only `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 has no default and requires it set or typed manually)
+- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — only `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 doesn't use `DEV_BARN` at all — it prompts with a numbered list of barns to pick from)
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
 - [ ] A **secondary Google account** (not `DEV_EMAIL`) available for the stub-claim step in Phase 2 — one Google account can only claim one managed stub
 - [ ] Email provider enabled in the Supabase dashboard (required by `seed-test-barn.sh` in Phase 7)
@@ -217,7 +217,7 @@ Switch role (interactive):
 bash scripts/change-user.sh
 ```
 
-> First prompt is **Barn slug** — type `dev-barn` if `DEV_BARN` isn't set in `.env.local` (unlike `seed-account.sh`, this script has no built-in default and errors on a blank input). Then pick **Alex** from the profile list — this list is global (every profile, not barn-scoped), so pick carefully.
+> First prompt is a numbered list of barns — pick **Dev Barn**. Then pick **Alex** from the profile list — this list is scoped to Dev Barn's members only (active or pending), so no other barn's profiles appear. If the selected profile's membership is **pending**, you'll be prompted to activate it (y/N) before the switch proceeds.
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
@@ -235,7 +235,7 @@ bash scripts/change-user.sh
 
 ## Phase 6 — Rider
 
-Switch role (pick **Dana** from the list — same `Barn slug` prompt as Phase 5):
+Switch role (pick **Dev Barn**, then **Dana**, from the same barn/member lists as Phase 5):
 
 ```bash
 bash scripts/change-user.sh
@@ -255,7 +255,7 @@ bash scripts/change-user.sh
 
 ## Phase 7 — Multi-barn
 
-Restore yourself to manager first (pick **your own name** from the list — same `Barn slug` prompt as Phase 5):
+Restore yourself to manager first (pick **Dev Barn**, then **your own name**, from the same barn/member lists as Phase 5):
 
 ```bash
 bash scripts/change-user.sh

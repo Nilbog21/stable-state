@@ -1,7 +1,6 @@
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
 import { createClient } from '@supabase/supabase-js'
-import { getBarnBySlug } from '@/lib/db/barns'
 import { assertDevProject } from './script-utils'
 
 export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
@@ -21,17 +20,41 @@ export function formatProfileLine(
   return `${index + 1}. ${profile.first_name} ${profile.last_name} <${profile.email}>`
 }
 
+export function formatBarnLine(barn: { name: string; slug: string }, index: number): string {
+  return `${index + 1}. ${barn.name} (${barn.slug})`
+}
+
+export function mergeMembersWithProfiles<M extends { profile_id: string }, P extends { id: string }>(
+  memberships: M[],
+  profiles: P[]
+): P[] {
+  const profileMap = new Map(profiles.map((p) => [p.id, p]))
+  return memberships.map((m) => profileMap.get(m.profile_id)).filter((p): p is P => p !== undefined)
+}
+
 async function promptSelection(max: number): Promise<number> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   return new Promise((resolve, reject) => {
+    rl.once('close', () => reject(new Error('input closed before a selection was made')))
     rl.question(`Select a profile [1-${max}]: `, (answer) => {
-      rl.close()
       const n = parseInt(answer, 10)
       if (isNaN(n) || n < 1 || n > max) {
         reject(new Error(`Invalid selection: "${answer}"`))
       } else {
         resolve(n)
       }
+      rl.close()
+    })
+  })
+}
+
+async function promptConfirm(question: string): Promise<boolean> {
+  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
+  return new Promise((resolve, reject) => {
+    rl.once('close', () => reject(new Error('input closed before an answer was given')))
+    rl.question(`${question} (y/N): `, (answer) => {
+      resolve(answer.trim().toLowerCase() === 'y')
+      rl.close()
     })
   })
 }
@@ -41,37 +64,29 @@ async function run() {
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   const DEV_EMAIL = process.env.DEV_EMAIL
   const DEV_NAME = process.env.DEV_NAME
-  const BARN_SLUG = process.env.CHANGE_USER_BARN_SLUG
 
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!DEV_EMAIL) throw new Error('DEV_EMAIL is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
-  if (!BARN_SLUG) throw new Error('CHANGE_USER_BARN_SLUG is required')
   assertDevProject(SUPABASE_URL)
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const barn = await getBarnBySlug(BARN_SLUG, supabase)
-  if (!barn) throw new Error(`barn not found: ${BARN_SLUG}`)
-  const barnId: string = barn.id
-
-  const profiles = mustSucceed(
-    await supabase
-      .from('profiles')
-      .select('user_id, email, first_name, last_name')
-      .order('created_at', { ascending: true }),
-    'fetch profiles'
+  const barns = mustSucceed(
+    await supabase.from('barns').select('id, name, slug').order('name', { ascending: true }),
+    'fetch barns'
   )
+  if (barns.length === 0) {
+    console.error('no barns found')
+    process.exit(1)
+  }
 
-  profiles.forEach((p: { user_id: string | null; email: string; first_name: string; last_name: string }, i: number) => {
-    console.log(formatProfileLine(p, i))
-  })
-
-  const selection = await promptSelection(profiles.length)
-  const target = profiles[selection - 1] as { user_id: string | null; email: string; first_name: string; last_name: string }
+  barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))
+  const barnSelection = await promptSelection(barns.length)
+  const barnId: string = barns[barnSelection - 1].id
 
   const devProfile = mustSucceed<{ user_id: string | null }>(
     await supabase.from('profiles').select('user_id').eq('email', DEV_EMAIL).single(),
@@ -85,11 +100,63 @@ async function run() {
 
   const devUserId: string = devProfile.user_id
 
+  const devMembership = mustSucceed<{ status: string } | null>(
+    await supabase.from('barn_memberships').select('status').eq('user_id', devUserId).eq('barn_id', barnId).maybeSingle(),
+    'fetch dev membership'
+  )
+
+  if (!devMembership) {
+    console.error(`${DEV_EMAIL} is not a member of this barn — pick a different barn`)
+    process.exit(1)
+  }
+
+  const memberships = mustSucceed(
+    await supabase
+      .from('barn_memberships')
+      .select('profile_id, status')
+      .eq('barn_id', barnId)
+      .in('status', ['active', 'pending'])
+      .order('created_at', { ascending: true }),
+    'fetch barn memberships'
+  )
+
+  const profileIds = memberships.map((m: { profile_id: string }) => m.profile_id)
+  const allProfiles = profileIds.length
+    ? mustSucceed(
+        await supabase.from('profiles').select('id, user_id, email, first_name, last_name').in('id', profileIds),
+        'fetch profiles'
+      )
+    : []
+  const profiles = mergeMembersWithProfiles(memberships, allProfiles)
+
+  if (profiles.length === 0) {
+    console.error('no members found for this barn')
+    process.exit(1)
+  }
+
+  profiles.forEach((p: { user_id: string | null; email: string; first_name: string; last_name: string }, i: number) => {
+    console.log(formatProfileLine(p, i))
+  })
+
+  const selection = await promptSelection(profiles.length)
+  const target = profiles[selection - 1] as { user_id: string | null; email: string; first_name: string; last_name: string }
+
   if (isSelfSelect(DEV_EMAIL, target.email)) {
+    if (devMembership.status === 'pending') {
+      const activate = await promptConfirm('Your own membership in this barn is pending — activate it?')
+      if (!activate) {
+        console.error('cannot switch to a pending membership without activating it')
+        process.exit(1)
+      }
+    }
     mustSucceed(
       await supabase
         .from('barn_memberships')
-        .update({ role: 'manager', can_instruct: false })
+        .update({
+          role: 'manager',
+          can_instruct: false,
+          ...(devMembership.status === 'pending' ? { status: 'active' } : {}),
+        })
         .eq('user_id', devUserId)
         .eq('barn_id', barnId),
       'restore manager membership'
@@ -105,15 +172,29 @@ async function run() {
 
   const targetUserId: string = target.user_id
 
-  const targetMembership = mustSucceed<{ role: string; can_instruct: boolean }>(
+  const targetMembership = mustSucceed<{ role: string; can_instruct: boolean; status: string }>(
     await supabase
       .from('barn_memberships')
-      .select('role, can_instruct')
+      .select('role, can_instruct, status')
       .eq('user_id', targetUserId)
       .eq('barn_id', barnId)
       .single(),
     'fetch target membership'
   )
+
+  if (targetMembership.status === 'pending') {
+    const activate = await promptConfirm(
+      `${target.first_name} ${target.last_name}'s membership is pending — activate it?`
+    )
+    if (!activate) {
+      console.error('cannot switch to a pending membership without activating it')
+      process.exit(1)
+    }
+    mustSucceed(
+      await supabase.from('barn_memberships').update({ status: 'active' }).eq('user_id', targetUserId).eq('barn_id', barnId),
+      'activate target membership'
+    )
+  }
 
   mustSucceed(
     await supabase
