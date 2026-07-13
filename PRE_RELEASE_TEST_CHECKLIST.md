@@ -63,8 +63,10 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 > The UI creates managed **rider** stubs only. Trainer stubs cannot be created from the UI — the trainer phase (Phase 5) uses the seeded trainers via `change-user.sh` instead.
 
 - [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row's name is a link to its member detail page, alongside an **Unlinked** badge with **Copy invite** and **Revoke** buttons
+- [ ] While Gale Test is still unclaimed, open their member detail page as manager and upload a document — confirms manager can upload/delete documents for a managed/unclaimed rider
 - [ ] Click **Copy invite** on Gale Test → in a browser where you're signed in to your **secondary Google account** (or logged out), open the copied URL (`/barn/dev-barn/login?token=<uuid>`) and sign in with the secondary account
 - [ ] The secondary account is redirected to `/profile/complete` — fill contact fields and save → lands in Dev Barn as rider Gale Test
+- [ ] As Gale Test, open your own member detail page and confirm the document uploaded before claiming still opens via its signed-URL link (regression check: a claimed member's pre-claim documents must remain readable, not just the manager's)
 - [ ] Back as manager: Gale Test's row no longer shows the Unlinked badge and now links to a member detail page
 - [ ] Click **Revoke** on Harper Test → click **Copy invite** again → the copied URL contains a **different** token than before
 

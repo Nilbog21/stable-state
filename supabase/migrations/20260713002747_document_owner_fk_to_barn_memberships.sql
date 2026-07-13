@@ -4,6 +4,13 @@
 -- lessons.instructor_id / lesson_riders.rider_id / agreements.rider_id precedent for
 -- managed/stub members (see 20260704163936_lessons_instructor_id_fk_to_barn_memberships.sql).
 
+-- Drop the old auth.users(id) FKs *before* backfilling: the UPDATE below sets rider_id/
+-- trainer_id to a barn_memberships.id value, which the old FK (still pointing at auth.users)
+-- would reject outright on any table with existing rows. CI's empty ephemeral DB never has
+-- rows here, so this ordering bug passed CI but would fail against stable-state-dev/prod.
+ALTER TABLE public.rider_documents DROP CONSTRAINT rider_documents_rider_id_fkey;
+ALTER TABLE public.staff_documents DROP CONSTRAINT staff_documents_trainer_id_fkey;
+
 -- Backfill existing rows: rider_id/trainer_id currently hold an auth.users id: resolve it to
 -- the matching barn_memberships row for the same barn.
 UPDATE public.rider_documents rd
@@ -25,9 +32,6 @@ WHERE NOT EXISTS (SELECT 1 FROM public.barn_memberships bm WHERE bm.id = rd.ride
 
 DELETE FROM public.staff_documents sd
 WHERE NOT EXISTS (SELECT 1 FROM public.barn_memberships bm WHERE bm.id = sd.trainer_id);
-
-ALTER TABLE public.rider_documents DROP CONSTRAINT rider_documents_rider_id_fkey;
-ALTER TABLE public.staff_documents DROP CONSTRAINT staff_documents_trainer_id_fkey;
 
 -- ON DELETE CASCADE matches lesson_riders/agreements (dependent records tied to the
 -- membership), not lessons.instructor_id's SET NULL (financial history that must survive).
