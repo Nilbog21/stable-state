@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import { createMockHorse } from '@/test/fixtures'
 import { HorseManagerForm } from '../HorseManagerForm'
 
@@ -12,7 +12,7 @@ const activeHorse = createMockHorse({ is_active: true, is_available: true, unava
 const unavailableHorse = createMockHorse({ is_active: true, is_available: false, unavailability_reason: 'on stall rest' })
 const inactiveHorse = createMockHorse({ is_active: false, is_available: true, unavailability_reason: null })
 
-const mockAction = vi.fn()
+const mockAction = vi.fn().mockResolvedValue({ error: null })
 
 describe('HorseManagerForm', () => {
   it('should_render_name_input_prefilled_with_horse_name', () => {
@@ -155,5 +155,20 @@ describe('HorseManagerForm', () => {
   it('should_render_save_button', () => {
     render(<HorseManagerForm horse={activeHorse} action={mockAction} />)
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
+  })
+
+  it('should_show_saved_indicator_after_successful_save', async () => {
+    render(<HorseManagerForm horse={activeHorse} action={mockAction} />)
+    fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+    expect(await screen.findByText(/saved/i)).toBeDefined()
+  })
+
+  it('should_not_show_saved_indicator_when_save_fails', async () => {
+    const failingAction = vi.fn().mockResolvedValue({ error: 'invalid status' })
+    render(<HorseManagerForm horse={activeHorse} action={failingAction} />)
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+    })
+    expect(screen.queryByText(/saved/i)).toBeNull()
   })
 })
