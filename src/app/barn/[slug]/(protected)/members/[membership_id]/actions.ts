@@ -8,6 +8,7 @@ import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/li
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
+import { isValidPhone } from '@/lib/phone'
 import type { TrainerDocumentType, RiderDocumentType, BarnMembership, Barn } from '@/lib/db/types'
 
 const TRAINER_RECORD_TYPES = new Set<TrainerDocumentType>(['instructor_contract', 'other'])
@@ -149,6 +150,9 @@ export async function updateContactInfoAction(
   const phone = (formData.get('phone') as string | null)?.trim() || null
   const emergencyContactName = (formData.get('emergency_contact_name') as string | null)?.trim() || null
   const emergencyContactPhone = (formData.get('emergency_contact_phone') as string | null)?.trim() || null
+
+  if (phone && !isValidPhone(phone)) return { error: 'Phone number must contain 7–15 digits' }
+  if (emergencyContactPhone && !isValidPhone(emergencyContactPhone)) return { error: 'Phone number must contain 7–15 digits' }
 
   try {
     await updateContactInfo(targetMembership.profile_id, {

@@ -37,4 +37,8 @@ describe('isValidPhone', () => {
   it('should_reject_letters', () => {
     expect(isValidPhone('555-CALL-NOW')).toBe(false)
   })
+
+  it('should_reject_string_with_no_digits', () => {
+    expect(isValidPhone('+ - ()')).toBe(false)
+  })
 })

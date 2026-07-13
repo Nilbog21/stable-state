@@ -1,6 +1,7 @@
 'use server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId, updateProfile } from '@/lib/db/profiles'
+import { isValidPhone } from '@/lib/phone'
 
 // Not barn-scoped — no barnSlug/role dimension, every authenticated user
 // edits only their own profile, so requireMembership doesn't apply.
@@ -22,6 +23,9 @@ export async function updateProfileAction(
   const phone = (formData.get('phone') as string | null)?.trim() || null
   const ecName = (formData.get('emergency_contact_name') as string | null)?.trim() || null
   const ecPhone = (formData.get('emergency_contact_phone') as string | null)?.trim() || null
+
+  if (phone && !isValidPhone(phone)) return { error: 'Phone number must contain 7–15 digits' }
+  if (ecPhone && !isValidPhone(ecPhone)) return { error: 'Phone number must contain 7–15 digits' }
 
   try {
     await updateProfile(profile.id, {
