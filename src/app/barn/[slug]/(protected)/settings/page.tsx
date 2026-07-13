@@ -113,7 +113,7 @@ export default async function SettingsPage({
                   <Th>Name</Th>
                   <Th>Role</Th>
                   <Th>Requested</Th>
-                  <Th>Actions</Th>
+                  <Th align="right">Actions</Th>
                 </tr>
               </thead>
               <tbody>
@@ -158,7 +158,7 @@ export default async function SettingsPage({
                   <Th>Name</Th>
                   <Th>Role</Th>
                   <Th>Since</Th>
-                  <Th>Actions</Th>
+                  <Th align="right">Actions</Th>
                 </tr>
               </thead>
               <tbody>
@@ -244,7 +244,7 @@ export default async function SettingsPage({
                   <Th>Price</Th>
                   <Th>Default</Th>
                   <Th>Status</Th>
-                  <Th>Actions</Th>
+                  <Th align="right">Actions</Th>
                 </tr>
               </thead>
               <tbody>

@@ -1,7 +1,11 @@
 import type { ComponentProps } from 'react'
 
 const th =
-  'border-b border-zinc-200 pb-2 pr-6 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 last:pr-0 dark:border-zinc-700 dark:text-zinc-400'
+  'border-b border-zinc-200 pb-2 pr-6 text-xs font-medium uppercase tracking-wide text-zinc-500 last:pr-0 dark:border-zinc-700 dark:text-zinc-400'
+const thAlign = {
+  left: 'text-left',
+  right: 'text-right',
+}
 const tones = {
   primary: 'text-zinc-900 dark:text-zinc-50',
   secondary: 'text-zinc-500 dark:text-zinc-400',
@@ -9,8 +13,8 @@ const tones = {
 
 type TdProps = ComponentProps<'td'> & { tone?: keyof typeof tones }
 
-export function Th({ className, ...rest }: ComponentProps<'th'>) {
-  return <th {...rest} className={`${th}${className ? ` ${className}` : ''}`} />
+export function Th({ className, align = 'left', ...rest }: ComponentProps<'th'> & { align?: keyof typeof thAlign }) {
+  return <th {...rest} className={`${th} ${thAlign[align]}${className ? ` ${className}` : ''}`} />
 }
 
 export function Td({ tone = 'primary', className, ...rest }: TdProps) {
