@@ -8,7 +8,9 @@ vi.mock('@/lib/db/barn-memberships', () => ({ getMembershipById: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfileById: vi.fn() }))
 vi.mock('../actions', () => ({ uploadDocumentAction: vi.fn() }))
 vi.mock('../DocumentUploadForm', () => ({
-  DocumentUploadForm: ({ entity }: { entity: string }) => <div data-testid="document-upload-form">{entity}</div>,
+  DocumentUploadForm: ({ entity, cancelHref }: { entity: string; cancelHref: string }) => (
+    <div data-testid="document-upload-form" data-cancel-href={cancelHref}>{entity}</div>
+  ),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -94,8 +96,7 @@ describe('NewDocumentPage', () => {
   it('should_render_cancel_link_to_horse_detail_page', async () => {
     const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1'))
     render(jsx)
-    const link = screen.getByRole('link', { name: /cancel/i }) as HTMLAnchorElement
-    expect(link.href).toMatch(/\/barn\/green-acres\/horses\/horse-1$/)
+    expect(screen.getByTestId('document-upload-form').dataset.cancelHref).toBe('/barn/green-acres/horses/horse-1')
   })
 
   it('should_call_notFound_when_target_membership_does_not_exist', async () => {
@@ -144,8 +145,7 @@ describe('NewDocumentPage', () => {
   it('should_render_cancel_link_to_member_detail_page', async () => {
     const jsx = await NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))
     render(jsx)
-    const link = screen.getByRole('link', { name: /cancel/i }) as HTMLAnchorElement
-    expect(link.href).toMatch(/\/barn\/green-acres\/members\/mem-target-trn$/)
+    expect(screen.getByTestId('document-upload-form').dataset.cancelHref).toBe('/barn/green-acres/members/mem-target-trn')
   })
 
   it('should_allow_trainer_to_upload_to_own_page', async () => {

@@ -30,9 +30,10 @@ const MAX_FILE_SIZE = 4500000
 interface Props {
   entity: DocumentEntity
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
+  cancelHref: string
 }
 
-export function DocumentUploadForm({ entity, action }: Props) {
+export function DocumentUploadForm({ entity, action, cancelHref }: Props) {
   const [state, formAction, pending] = useActionState(action, { error: null })
   const types = TYPE_OPTIONS[entity]
   const [selectedType, setSelectedType] = useState(types[0].value)
@@ -114,13 +115,18 @@ export function DocumentUploadForm({ entity, action }: Props) {
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
-        {pending ? 'Uploading…' : 'Upload'}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          {pending ? 'Uploading…' : 'Upload'}
+        </button>
+        <Button href={cancelHref} variant="ghost">
+          Cancel
+        </Button>
+      </div>
 
       {pending && (
         <div role="progressbar" className="h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">

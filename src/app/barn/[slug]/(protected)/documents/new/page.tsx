@@ -3,7 +3,6 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
-import { Button } from '@/components/ui/Button'
 import { DocumentUploadForm } from './DocumentUploadForm'
 import { uploadDocumentAction, type DocumentEntity } from './actions'
 
@@ -29,10 +28,11 @@ export default async function NewDocumentPage({
         <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           Add Document — {horse.name}
         </h1>
-        <DocumentUploadForm entity="horse" action={uploadDocumentAction.bind(null, slug, 'horse' as DocumentEntity, horse.id)} />
-        <Button href={`/barn/${slug}/horses/${horse.id}`} variant="ghost" className="mt-4">
-          Cancel
-        </Button>
+        <DocumentUploadForm
+          entity="horse"
+          action={uploadDocumentAction.bind(null, slug, 'horse' as DocumentEntity, horse.id)}
+          cancelHref={`/barn/${slug}/horses/${horse.id}`}
+        />
       </main>
     )
   }
@@ -62,10 +62,11 @@ export default async function NewDocumentPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Add Document — {displayName}
       </h1>
-      <DocumentUploadForm entity={resolvedEntity} action={uploadDocumentAction.bind(null, slug, resolvedEntity, targetMembership.id)} />
-      <Button href={`/barn/${slug}/members/${targetMembership.id}`} variant="ghost" className="mt-4">
-        Cancel
-      </Button>
+      <DocumentUploadForm
+        entity={resolvedEntity}
+        action={uploadDocumentAction.bind(null, slug, resolvedEntity, targetMembership.id)}
+        cancelHref={`/barn/${slug}/members/${targetMembership.id}`}
+      />
     </main>
   )
 }
