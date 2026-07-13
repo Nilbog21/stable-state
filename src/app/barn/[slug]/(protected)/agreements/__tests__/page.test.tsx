@@ -150,4 +150,22 @@ describe('AgreementsPage', () => {
     render(jsx)
     expect(screen.queryByRole('link', { name: /^edit$/i })).toBeNull()
   })
+
+  it('should_include_kind_query_param_in_card_link_for_lease', async () => {
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ id: 'agreement-9' })])
+    const jsx = await callPage('lease')
+    render(jsx)
+    const links = screen.getAllByRole('link')
+    const cardLink = links.find((l) => (l as HTMLAnchorElement).href.includes('agreement-9'))
+    expect((cardLink as HTMLAnchorElement).href).toContain('?kind=lease')
+  })
+
+  it('should_include_kind_query_param_in_card_link_for_board', async () => {
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ id: 'agreement-9' })])
+    const jsx = await callPage('board')
+    render(jsx)
+    const links = screen.getAllByRole('link')
+    const cardLink = links.find((l) => (l as HTMLAnchorElement).href.includes('agreement-9'))
+    expect((cardLink as HTMLAnchorElement).href).toContain('?kind=board')
+  })
 })
