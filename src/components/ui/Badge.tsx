@@ -18,7 +18,7 @@ export function Badge({
   children: ReactNode
 }) {
   return (
-    <span className={`text-xs font-medium ${toneClasses[tone]}${className ? ` ${className}` : ''}`}>
+    <span className={`text-xs font-medium whitespace-nowrap ${toneClasses[tone]}${className ? ` ${className}` : ''}`}>
       {children}
     </span>
   )
