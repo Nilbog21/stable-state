@@ -1,4 +1,4 @@
-import { redirect } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
@@ -13,11 +13,11 @@ export async function requireMembership(
   if (!user) redirect(`/barn/${barnSlug}/login`)
 
   const barn = await getBarnBySlug(barnSlug)
-  if (!barn) redirect(`/barn/${barnSlug}/login`)
+  if (!barn) notFound()
 
   const membership = await getUserMembership(user.id, barn.id)
   if (!membership || membership.status !== 'active' || !allowedRoles.includes(membership.role)) {
-    redirect(`/barn/${barnSlug}/login`)
+    notFound()
   }
 
   return { user, barn, membership }
