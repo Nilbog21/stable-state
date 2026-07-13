@@ -12,7 +12,7 @@ import {
   createAgreement,
   getAgreementsByBarn,
   getAgreementById,
-  getActiveAgreementForRider,
+  getActiveAgreementsForRider,
   updateAgreement,
   endAgreement,
   getChargesForAgreement,
@@ -184,73 +184,72 @@ describe('getAgreementById', () => {
   })
 })
 
-describe('getActiveAgreementForRider', () => {
+describe('getActiveAgreementsForRider', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
   })
 
   function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockLimit = vi.fn().mockResolvedValue({ data, error })
-    const mockOrder = vi.fn().mockReturnValue({ limit: mockLimit })
-    const mockEq3 = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockEq2 = vi.fn().mockReturnValue({ order: mockOrder })
     const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
     const mockEq0 = vi.fn().mockReturnValue({ eq: mockEq1 })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq0 })
     return { select: mockSelect, mockEq0 }
   }
 
-  it('should_filter_by_barn_rider_kind_and_is_active', async () => {
+  it('should_filter_by_barn_rider_and_is_active', async () => {
     const { select, mockEq0 } = makeChain([mockAgreement])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
+    await getActiveAgreementsForRider('barn-1', 'rider-1')
 
     expect(mockEq0).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
-  it('should_return_agreement_when_found', async () => {
-    const { select } = makeChain([mockAgreement])
+  it('should_return_all_active_agreements_of_any_kind', async () => {
+    const boardAgreement = createMockAgreement({ id: 'agreement-board', kind: 'board' })
+    const leaseAgreement = createMockAgreement({ id: 'agreement-lease', kind: 'lease' })
+    const { select } = makeChain([boardAgreement, leaseAgreement])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
+    const result = await getActiveAgreementsForRider('barn-1', 'rider-1')
 
-    expect(result).toEqual(mockAgreement)
+    expect(result).toEqual([boardAgreement, leaseAgreement])
   })
 
-  it('should_return_null_when_no_active_agreement', async () => {
+  it('should_return_empty_array_when_no_active_agreements', async () => {
     const { select } = makeChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
+    const result = await getActiveAgreementsForRider('barn-1', 'rider-1')
 
-    expect(result).toBeNull()
+    expect(result).toEqual([])
   })
 
-  it('should_return_most_recent_when_rider_has_multiple_active_agreements', async () => {
-    const olderAgreement = { ...mockAgreement, id: 'agreement-older' }
-    const { select } = makeChain([mockAgreement, olderAgreement])
+  it('should_return_empty_array_when_supabase_returns_null_data', async () => {
+    const { select } = makeChain(null)
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board')
+    const result = await getActiveAgreementsForRider('barn-1', 'rider-1')
 
-    expect(result).toEqual(mockAgreement)
+    expect(result).toEqual([])
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
     const { select } = makeChain(null, new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await expect(getActiveAgreementForRider('barn-1', 'rider-1', 'board')).rejects.toThrow('db error')
+    await expect(getActiveAgreementsForRider('barn-1', 'rider-1')).rejects.toThrow('db error')
   })
 
   it('should_use_injected_client_when_provided', async () => {
     const { select } = makeChain([mockAgreement])
     const mockClient = { from: vi.fn().mockReturnValue({ select }) } as any
 
-    const result = await getActiveAgreementForRider('barn-1', 'rider-1', 'board', mockClient)
+    const result = await getActiveAgreementsForRider('barn-1', 'rider-1', mockClient)
 
-    expect(result).toEqual(mockAgreement)
+    expect(result).toEqual([mockAgreement])
   })
 })
 

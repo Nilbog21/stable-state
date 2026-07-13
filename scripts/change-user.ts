@@ -234,6 +234,14 @@ async function run() {
         .eq('barn_id', barnId),
       'reassign lesson riders'
     )
+    mustSucceed(
+      await supabase
+        .from('agreements')
+        .update({ rider_id: devBm.id })
+        .eq('rider_id', targetBm.id)
+        .eq('barn_id', barnId),
+      'reassign agreements'
+    )
   }
 
   console.log('Refresh your preview page.')
