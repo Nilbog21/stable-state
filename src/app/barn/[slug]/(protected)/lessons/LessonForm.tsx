@@ -333,20 +333,6 @@ export function LessonForm({
         Jumping
       </label>
 
-      {mode === 'new' && (
-        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-          <input
-            type="checkbox"
-            aria-label="Recurring (weekly)"
-            checked={isRecurring}
-            onChange={e => setIsRecurring(e.target.checked)}
-            className="rounded border-zinc-300 dark:border-zinc-600"
-          />
-          Recurring (weekly)
-          <input type="hidden" name="is_recurring" value={isRecurring ? 'true' : 'false'} />
-        </label>
-      )}
-
       {isManager ? (
         <div className="flex flex-col gap-1">
           <label htmlFor="instructor_id" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
@@ -545,10 +531,25 @@ export function LessonForm({
         )}
       </fieldset>
 
+      {mode === 'new' && (
+        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+          <input
+            type="checkbox"
+            aria-label="Recurring (weekly)"
+            checked={isRecurring}
+            onChange={e => setIsRecurring(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600"
+          />
+          Recurring (weekly)
+          <input type="hidden" name="is_recurring" value={isRecurring ? 'true' : 'false'} />
+        </label>
+      )}
+
       <DateHourPicker
         initialDate={mode === 'edit' && initialLesson ? parseInitialDate(initialLesson.lesson_at) : undefined}
         initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
         onChange={setLessonAt}
+        dateLabel={isRecurring ? 'Starting Date' : 'Date'}
       />
 
       <div className="flex flex-col gap-1">

@@ -4,6 +4,7 @@ import { createTier } from '@/lib/db/lesson-tiers'
 
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
+import { createLessonSeries } from '@/lib/db/lesson-series'
 import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from '@/lib/db/agreements'
 import { createExpense } from '@/lib/db/expenses'
@@ -350,6 +351,19 @@ async function run() {
     fee: tier1.price,
     horseIds: [horseIds[2]],
     exertionLevels: [EXHAUSTION_TOPUP_EXERTION],
+    riderIds: [riderRowIds[0]],
+    lessonType: 'normal',
+    jumping: false,
+    tierName: tier1.name,
+  }, supabase)
+
+  await createLessonSeries({
+    barnId: DEV_BARN_ID,
+    instructorId: trainerRowIds[0],
+    lessonAt: dayOffset(now, 7).toISOString(),
+    fee: tier1.price,
+    horseIds: [horseIds[0]],
+    exertionLevels: [3],
     riderIds: [riderRowIds[0]],
     lessonType: 'normal',
     jumping: false,

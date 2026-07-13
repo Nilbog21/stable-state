@@ -13,10 +13,12 @@ export function DateHourPicker({
   initialDate,
   initialHour,
   onChange,
+  dateLabel = 'Date',
 }: {
   initialDate?: string
   initialHour?: number
   onChange?: (lessonAt: string) => void
+  dateLabel?: string
 } = {}) {
   const [date, setDate] = useState(initialDate ?? localToday)
   const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
@@ -31,7 +33,7 @@ export function DateHourPicker({
     <div className="flex gap-2">
       <div className="flex flex-col gap-1 flex-1">
         <label htmlFor="dh-date" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Date
+          {dateLabel}
         </label>
         <input
           id="dh-date"

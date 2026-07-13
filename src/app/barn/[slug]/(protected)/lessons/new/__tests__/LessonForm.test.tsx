@@ -248,6 +248,24 @@ describe('LessonForm', () => {
     expect(isRecurringInput.value).toBe('true')
   })
 
+  it('should_render_recurring_checkbox_before_date_field', () => {
+    render(<LessonForm {...baseProps} />)
+    const recurringCheckbox = screen.getByRole('checkbox', { name: /recurring/i })
+    const dateField = screen.getByLabelText('Date')
+    expect(recurringCheckbox.compareDocumentPosition(dateField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('should_show_Date_label_by_default', () => {
+    render(<LessonForm {...baseProps} />)
+    expect(screen.getByLabelText('Date')).toBeDefined()
+  })
+
+  it('should_show_Starting_Date_label_when_recurring_checked', () => {
+    render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /recurring/i }))
+    expect(screen.getByLabelText('Starting Date')).toBeDefined()
+  })
+
   it('should_snap_exertion_to_4_when_jumping_toggled_on_with_single_horse_below_4', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     render(<LessonForm {...baseProps} horses={[horse]} />)

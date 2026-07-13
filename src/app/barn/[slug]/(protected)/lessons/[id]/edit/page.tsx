@@ -85,6 +85,12 @@ export default async function EditLessonPage({
       <h1 className="w-full max-w-sm text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Edit Lesson
       </h1>
+      {series?.is_active && stopSeries && (
+        <div className="flex w-full max-w-sm flex-col gap-3">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">This is part of a recurring series</p>
+          <StopSeriesButton action={stopSeries} />
+        </div>
+      )}
       <LessonForm
         mode="edit"
         initialLesson={lesson}
@@ -99,12 +105,6 @@ export default async function EditLessonPage({
         initialNotes={initialNotes}
         getProjectedExhaustion={getProjectedExhaustion}
       />
-      {series?.is_active && stopSeries && (
-        <div className="flex w-full max-w-sm flex-col gap-3">
-          <p className="text-sm text-zinc-600 dark:text-zinc-400">This is part of a recurring series</p>
-          <StopSeriesButton action={stopSeries} />
-        </div>
-      )}
     </main>
   )
 }

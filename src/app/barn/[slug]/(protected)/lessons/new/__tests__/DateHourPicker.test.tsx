@@ -19,6 +19,16 @@ describe('DateHourPicker', () => {
     expect(screen.getByLabelText('Date')).toBeDefined()
   })
 
+  it('should_default_date_label_to_Date_when_not_provided', () => {
+    render(<DateHourPicker />)
+    expect(screen.getByText('Date')).toBeDefined()
+  })
+
+  it('should_use_custom_dateLabel_when_provided', () => {
+    render(<DateHourPicker dateLabel="Starting Date" />)
+    expect(screen.getByLabelText('Starting Date')).toBeDefined()
+  })
+
   it('should_render_hour_selector_with_24_options', () => {
     render(<DateHourPicker />)
     const select = screen.getByLabelText('Hour') as HTMLSelectElement
