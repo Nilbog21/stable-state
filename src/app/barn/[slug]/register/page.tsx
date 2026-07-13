@@ -1,7 +1,9 @@
 import { notFound, redirect } from 'next/navigation'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, claimManagedMember } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAuthenticatedUser } from '@/lib/db/auth'
+import { acceptInvite } from './actions'
+import { Button } from '@/components/ui/Button'
 
 function InvalidInvite({ barnName }: { barnName: string }) {
   return (
@@ -22,17 +24,17 @@ export default async function BarnRegisterPage({
   searchParams,
 }: {
   params: Promise<{ slug: string }>
-  searchParams: Promise<{ token?: string }>
+  searchParams: Promise<{ token?: string; error?: string }>
 }) {
   const { slug } = await params
-  const { token } = await searchParams
+  const { token, error } = await searchParams
   const barn = await getBarnBySlug(slug)
 
   if (!barn) {
     notFound()
   }
 
-  if (!token) {
+  if (!token || error) {
     return <InvalidInvite barnName={barn.name} />
   }
 
@@ -50,15 +52,17 @@ export default async function BarnRegisterPage({
     redirect(`/barn/${slug}/pending`)
   }
 
-  if (!user.email) {
-    return <InvalidInvite barnName={barn.name} />
-  }
-
-  try {
-    await claimManagedMember(token, user.id, user.email)
-  } catch {
-    return <InvalidInvite barnName={barn.name} />
-  }
-
-  redirect(`/barn/${slug}/`)
+  return (
+    <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
+      <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+        Join {barn.name}
+      </h1>
+      <p className="text-zinc-500 dark:text-zinc-400">
+        Accept your invite to activate your membership.
+      </p>
+      <form action={acceptInvite.bind(null, slug, token)}>
+        <Button type="submit">Accept Invite</Button>
+      </form>
+    </main>
+  )
 }

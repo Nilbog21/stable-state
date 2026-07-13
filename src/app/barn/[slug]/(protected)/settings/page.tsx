@@ -103,7 +103,7 @@ export default async function SettingsPage({
         {pending.length === 0 ? (
           <EmptyState
             heading="No pending requests"
-            subtext="Membership requests to join this barn will appear here."
+            subtext="New members join via a per-person invite link from Members, not by requesting access."
           />
         ) : (
           <div className="overflow-x-auto">

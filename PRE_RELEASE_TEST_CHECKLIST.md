@@ -270,6 +270,7 @@ bash scripts/seed-test-barn.sh test-barn-checklist
 - [ ] As `DEV_EMAIL`, open `/barn/test-barn-checklist/register` with no `?token=` → shows an "Invite invalid" message, not a self-registration form
 - [ ] In a private/incognito window, sign in at `/barn/test-barn-checklist/login` as `manager@test-barn-checklist.e2e` / `TestPass123!` → create a managed rider in Members → **Copy invite** → sign out
 - [ ] As `DEV_EMAIL`, open the copied invite URL (`/barn/test-barn-checklist/login?token=<uuid>`) and sign in → claims the stub directly (active membership, no approval step) and lands on the barn dashboard
+- [ ] Still as manager, create a second managed rider and **Copy invite**; as `DEV_EMAIL` (already signed in), open the `/register?token=<uuid>` URL directly instead of the copied `/login?token=...` one → shows a "Join test-barn-checklist" confirmation with an **Accept Invite** button (no auto-claim on page load); tapping it claims the stub and lands on the barn dashboard
 - [ ] Back as `DEV_EMAIL`: the nav barn name now has a caret — the **BarnSwitcher** dropdown lists both barns, current one checkmarked; clicking the other navigates to its dashboard
 - [ ] At a mobile viewport (~390px wide, or your browser's device toolbar), the BarnSwitcher caret is still tappable (≥44px target) and the dropdown behaves the same as desktop
 - [ ] Visit `/barns` — one card per membership showing role, each linking to its barn

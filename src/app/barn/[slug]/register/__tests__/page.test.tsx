@@ -5,10 +5,8 @@ import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
-  claimManagedMember: vi.fn(),
-}))
+vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
+vi.mock('../actions', () => ({ acceptInvite: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
@@ -17,15 +15,15 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedirect }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, claimManagedMember } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import BarnRegisterPage from '../page'
 
 const mockBarn = createMockBarn()
 
-function renderPage(slug: string, token?: string) {
+function renderPage(slug: string, token?: string, error?: string) {
   return BarnRegisterPage({
     params: Promise.resolve({ slug }),
-    searchParams: Promise.resolve(token ? { token } : {}),
+    searchParams: Promise.resolve({ ...(token ? { token } : {}), ...(error ? { error } : {}) }),
   })
 }
 
@@ -33,13 +31,11 @@ describe('BarnRegisterPage', () => {
   beforeEach(() => {
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
-    vi.mocked(claimManagedMember).mockReset()
     mockNotFound.mockClear()
     mockRedirect.mockClear()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth(createMockUser())
     vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(claimManagedMember).mockResolvedValue(undefined)
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -60,6 +56,12 @@ describe('BarnRegisterPage', () => {
     expect(getAuthenticatedUser).not.toHaveBeenCalled()
   })
 
+  it('should_render_invalid_invite_message_when_error_param_is_present', async () => {
+    const jsx = await renderPage('green-acres', 'tok-1', '1')
+    render(jsx)
+    expect(screen.getByText(/invalid or has expired/i)).toBeDefined()
+  })
+
   it('should_redirect_to_login_with_token_when_user_is_not_authenticated', async () => {
     setupAuth(null)
     await expect(renderPage('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
@@ -78,28 +80,22 @@ describe('BarnRegisterPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
   })
 
-  it('should_render_invalid_invite_message_when_user_has_no_email', async () => {
+  it('should_render_join_barn_heading', async () => {
+    const jsx = await renderPage('green-acres', 'tok-1')
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /join green acres/i })).toBeDefined()
+  })
+
+  it('should_render_accept_invite_button', async () => {
+    const jsx = await renderPage('green-acres', 'tok-1')
+    render(jsx)
+    expect(screen.getByRole('button', { name: /accept invite/i })).toBeDefined()
+  })
+
+  it('should_render_accept_invite_button_even_when_user_has_no_email', async () => {
     setupAuth({ id: 'user-1', email: null })
     const jsx = await renderPage('green-acres', 'tok-1')
     render(jsx)
-    expect(screen.getByText(/invalid or has expired/i)).toBeDefined()
-  })
-
-  it('should_claim_membership_with_token_user_id_and_email', async () => {
-    setupAuth(createMockUser({ id: 'user-1', email: 'jane@example.com' }))
-    await renderPage('green-acres', 'tok-1').catch(() => {})
-    expect(claimManagedMember).toHaveBeenCalledWith('tok-1', 'user-1', 'jane@example.com')
-  })
-
-  it('should_redirect_to_barn_home_after_successful_claim', async () => {
-    await expect(renderPage('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/')
-  })
-
-  it('should_render_invalid_invite_message_when_claim_fails', async () => {
-    vi.mocked(claimManagedMember).mockRejectedValue(new Error('token_not_found'))
-    const jsx = await renderPage('green-acres', 'tok-1')
-    render(jsx)
-    expect(screen.getByText(/invalid or has expired/i)).toBeDefined()
+    expect(screen.getByRole('button', { name: /accept invite/i })).toBeDefined()
   })
 })
