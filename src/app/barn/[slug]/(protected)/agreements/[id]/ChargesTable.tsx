@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { updateChargeFeeAction, updateChargePaymentTypeAction } from '../actions'
 import { Th, Td } from '@/components/ui/Table'
+import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
 import { EmptyState } from '@/components/EmptyState'
 import type { AgreementCharge } from '@/lib/db/types'
 
@@ -23,6 +24,8 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
   const [paymentType, setPaymentType] = useState(charge.payment_type ?? '')
   const [feeError, setFeeError] = useState<string | null>(null)
   const [paymentTypeError, setPaymentTypeError] = useState<string | null>(null)
+  const feeSaved = useSaveFlash()
+  const paymentTypeSaved = useSaveFlash()
 
   async function handleFeeBlur() {
     if (fee === String(charge.fee)) return
@@ -34,6 +37,7 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
     }
     setFeeError(null)
     router.refresh()
+    feeSaved.flash()
   }
 
   async function handlePaymentTypeChange(value: string) {
@@ -46,6 +50,7 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
     }
     setPaymentTypeError(null)
     router.refresh()
+    paymentTypeSaved.flash()
   }
 
   return (
@@ -62,6 +67,7 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
           className="w-24 rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
         />
         {feeError && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{feeError}</p>}
+        <SavedIndicator show={feeSaved.show} />
       </Td>
       <Td>
         <select
@@ -79,6 +85,7 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
         {paymentTypeError && (
           <p className="mt-1 text-xs text-red-600 dark:text-red-400">{paymentTypeError}</p>
         )}
+        <SavedIndicator show={paymentTypeSaved.show} />
       </Td>
     </tr>
   )

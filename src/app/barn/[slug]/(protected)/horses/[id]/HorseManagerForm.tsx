@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import type { Horse } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
+import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
 
 type Status = 'active' | 'unavailable' | 'inactive'
 
@@ -27,9 +28,15 @@ export function HorseManagerForm({
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
+  const { show, flash } = useSaveFlash()
+
+  async function handleSubmit(formData: FormData) {
+    await action(formData)
+    flash()
+  }
 
   return (
-    <form action={action} className="flex w-full flex-col gap-5">
+    <form action={handleSubmit} className="flex w-full flex-col gap-5">
       <div className="flex flex-col gap-1">
         <label htmlFor="horse-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Name
@@ -93,9 +100,12 @@ export function HorseManagerForm({
         </div>
       )}
 
-      <Button type="submit" className="self-start">
-        Save
-      </Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit" className="self-start">
+          Save
+        </Button>
+        <SavedIndicator show={show} />
+      </div>
     </form>
   )
 }

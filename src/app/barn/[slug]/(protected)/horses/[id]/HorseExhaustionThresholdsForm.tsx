@@ -2,6 +2,7 @@
 
 import { useActionState, useState } from 'react'
 import { Button } from '@/components/ui/Button'
+import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
 import type { Barn, Horse } from '@/lib/db/types'
 
 type HorseExhaustionThresholdsFormProps = {
@@ -11,7 +12,15 @@ type HorseExhaustionThresholdsFormProps = {
 }
 
 export function HorseExhaustionThresholdsForm({ horse, barn, action }: HorseExhaustionThresholdsFormProps) {
-  const [state, formAction] = useActionState(action, { error: null })
+  const { show, flash } = useSaveFlash()
+
+  async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
+    const result = await action(prevState, formData)
+    if (!result.error) flash()
+    return result
+  }
+
+  const [state, formAction] = useActionState(wrappedAction, { error: null })
   const [useBarnDefaults, setUseBarnDefaults] = useState(
     horse.exhaustion_threshold_moderate === null && horse.exhaustion_threshold_high === null
   )
@@ -80,7 +89,10 @@ export function HorseExhaustionThresholdsForm({ horse, barn, action }: HorseExha
         </div>
       </div>
 
-      <Button type="submit">Save</Button>
+      <div className="flex items-center gap-3">
+        <Button type="submit">Save</Button>
+        <SavedIndicator show={show} />
+      </div>
     </form>
   )
 }
