@@ -103,7 +103,7 @@ export default async function SettingsPage({
         {pending.length === 0 ? (
           <EmptyState
             heading="No pending requests"
-            subtext="New members join via a per-person invite link from Members, not by requesting access."
+            subtext='From the Members page, add a member then share the link from "Copy Invite".'
           />
         ) : (
           <div className="overflow-x-auto">
