@@ -94,6 +94,18 @@ describe('Button', () => {
     })
   })
 
+  describe('vertical centering', () => {
+    it('should_center_content_on_button_variant', () => {
+      render(<Button>Save</Button>)
+      expect(screen.getByRole('button').className).toContain('items-center')
+    })
+
+    it('should_center_content_on_link_variant', () => {
+      render(<Button href="/somewhere">Cancel</Button>)
+      expect(screen.getByRole('link').className).toContain('items-center')
+    })
+  })
+
   describe('href', () => {
     it('should_render_as_link_when_href_provided', () => {
       render(<Button href="/somewhere">Cancel</Button>)
