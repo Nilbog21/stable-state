@@ -438,8 +438,19 @@ async function run() {
   )
   const leaseLastMonthCharge = await generateChargeForMonth(leaseAgreement.id, DEV_BARN_ID, lastMonth, supabase)
 
+  // second, simultaneously-active agreement for the same rider (Emery) — exercises the
+  // member detail page's multi-card Active Agreements view (#772)
+  const emeryBoardAgreement = await createAgreement(
+    { barnId: DEV_BARN_ID, riderId: riderRowIds[1], horseId: horseIds[2], fee: defaultBoardFee, kind: 'board', cadence: 'monthly' },
+    supabase
+  )
+  const emeryBoardLastMonthCharge = await generateChargeForMonth(emeryBoardAgreement.id, DEV_BARN_ID, lastMonth, supabase)
+
   mustSucceed(
-    await supabase.from('agreement_charges').update({ payment_type: 'zelle' }).in('id', [boardLastMonthCharge.id, leaseLastMonthCharge.id]),
+    await supabase
+      .from('agreement_charges')
+      .update({ payment_type: 'zelle' })
+      .in('id', [boardLastMonthCharge.id, leaseLastMonthCharge.id, emeryBoardLastMonthCharge.id]),
     'mark last-month agreement charges paid'
   )
 
@@ -467,7 +478,7 @@ async function run() {
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming)`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
-  console.log(`  Agreements: 1 board ($${defaultBoardFee}), 1 lease ($200) — each with a paid charge last month and an unpaid charge this month`)
+  console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month`)
   console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet)`)
 }
 
