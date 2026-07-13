@@ -163,11 +163,7 @@ export default async function HorseDetailPage({
               </table>
             </div>
           ) : (
-            <EmptyState
-              heading="No documents yet"
-              subtext="Documents you upload will appear here."
-              cta={{ label: 'Add Document', href: `/barn/${slug}/documents/new?entity=horse&id=${horse.id}` }}
-            />
+            <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
           )}
         </section>
       )}

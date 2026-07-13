@@ -266,11 +266,7 @@ export default async function MemberDetailPage({
             </table>
           </div>
         ) : (
-          <EmptyState
-            heading="No documents yet"
-            subtext="Documents you upload will appear here."
-            cta={canUpload ? { label: 'Add Document', href: addDocumentHref } : undefined}
-          />
+          <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
         )}
       </section>
     </main>
