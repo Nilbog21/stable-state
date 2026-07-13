@@ -123,7 +123,7 @@ export default async function SettingsPage({
                     membership={m}
                     name={nameMap.get(m.id) ?? m.id}
                     actionSlot={
-                      <div className="flex justify-end gap-2">
+                      <>
                         <form action={approveMembershipAction.bind(null, slug, m.id)}>
                           <Button type="submit" size="sm">
                             Approve
@@ -134,7 +134,7 @@ export default async function SettingsPage({
                             Reject
                           </Button>
                         </form>
-                      </div>
+                      </>
                     }
                   />
                 ))}
