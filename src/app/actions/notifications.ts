@@ -10,11 +10,11 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import type { NotificationType } from '@/lib/db/types'
 
-// requireMembership takes a barnSlug and redirects a page's caller on auth
-// failure. This action authorizes against an arbitrary target barnId (not
-// the caller's current page) and isn't wired to any UI page today — it's a
-// general-purpose primitive that must return { error } rather than
-// redirect, so the manual check stays.
+// requireMembership takes a barnSlug and redirects/404s a page's caller on
+// auth failure. This action authorizes against an arbitrary target barnId
+// (not the caller's current page) and isn't wired to any UI page today —
+// it's a general-purpose primitive that must return { error } rather than
+// throw, so the manual check stays.
 export async function createNotificationAction(params: {
   userId: string
   barnId: string
@@ -59,9 +59,9 @@ export async function markNotificationReadAction(
 }
 
 // Invoked from NotificationBell's dropdown while the user stays on the
-// current page — requireMembership's redirect-on-failure would yank them to
-// the login page mid-interaction, so this keeps the manual check + graceful
-// { error } return, same contract as its sibling actions above.
+// current page — requireMembership would redirect or 404 on failure,
+// yanking them away mid-interaction, so this keeps the manual check +
+// graceful { error } return, same contract as its sibling actions above.
 export async function markAllNotificationsReadAction(
   barnSlug: string
 ): Promise<{ error: string | null }> {
