@@ -326,30 +326,51 @@ describe('HorsesPage', () => {
       expect(getHorsesByBarn).toHaveBeenCalledWith(mockBarn.id)
     })
 
-    it('should_render_available_horse_from_getHorsesByBarn_for_rider', async () => {
+    it('should_render_available_section_heading_from_getHorsesByBarn_for_rider', async () => {
       vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
       expect(screen.getByText('Available')).toBeDefined()
+    })
+
+    it('should_render_available_horse_name_from_getHorsesByBarn_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
       expect(screen.getByText('Thunderbolt')).toBeDefined()
     })
 
-    it('should_render_unavailable_horse_from_getHorsesByBarn_for_rider', async () => {
+    it('should_render_unavailable_section_heading_from_getHorsesByBarn_for_rider', async () => {
       vi.mocked(getHorsesByBarn).mockResolvedValue([
         createMockHorse({ id: 'horse-2', name: 'Hobbled', is_available: false, unavailability_reason: 'Injury' }),
       ])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
       expect(screen.getByText('Unavailable')).toBeDefined()
+    })
+
+    it('should_render_unavailable_horse_name_from_getHorsesByBarn_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([
+        createMockHorse({ id: 'horse-2', name: 'Hobbled', is_available: false, unavailability_reason: 'Injury' }),
+      ])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
       expect(screen.getByText('Hobbled')).toBeDefined()
     })
 
-    it('should_render_horse_card_with_no_exhaustion_data_for_rider', async () => {
+    it('should_render_horse_card_with_no_exhaustion_thresholds_for_rider', async () => {
       vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
       const link = screen.getByText('Thunderbolt')
       expect(link.getAttribute('data-thresholds')).toBeNull()
+    })
+
+    it('should_render_horse_card_with_no_exhaustion_row_count_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      const link = screen.getByText('Thunderbolt')
       expect(link.getAttribute('data-row-count')).toBeNull()
     })
 
