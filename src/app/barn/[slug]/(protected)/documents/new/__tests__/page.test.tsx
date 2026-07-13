@@ -107,6 +107,11 @@ describe('NewDocumentPage', () => {
     await expect(NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
+  it('should_call_notFound_when_target_has_no_user_id', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue({ ...targetTrainerMembership, user_id: null } as any)
+    await expect(NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
   it('should_call_notFound_when_rider_targets_another_member', async () => {
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-rdr' } as any,
@@ -120,6 +125,13 @@ describe('NewDocumentPage', () => {
     const jsx = await NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))
     render(jsx)
     expect(screen.getByRole('heading', { name: /bob trainer/i })).toBeDefined()
+  })
+
+  it('should_fall_back_to_membership_id_in_heading_when_profile_not_found', async () => {
+    vi.mocked(getProfileById).mockResolvedValue(null)
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'trainer', 'mem-target-trn'))
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /mem-target-trn/i })).toBeDefined()
   })
 
   it('should_render_document_upload_form_with_trainer_entity', async () => {
