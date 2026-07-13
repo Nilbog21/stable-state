@@ -268,6 +268,7 @@ export default async function FinancesPage({
                 </tr>
               </thead>
               <tbody>
+                {/* ponytail: tierName === NON_LESSON_INCOME_LABEL assumes no real tier is ever named "Non-lesson income" (same assumption elsewhere in this file for NO_HORSE_LABEL/NO_RIDER_LABEL/NO_INSTRUCTOR_LABEL); switch synthetic rows to a discriminated shape if that collision risk ever becomes real */}
                 {breakdown.map((tier) => (
                   <tr key={tier.tierName}>
                     <Td>
