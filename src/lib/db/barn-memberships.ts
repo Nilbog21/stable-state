@@ -19,6 +19,8 @@ export async function getUserMembership(
   return data
 }
 
+// No longer called from the app (self-registration is closed, #777) — kept for
+// scripts/reset-db.ts, which still seeds a baseline pending row for testing approve/reject.
 export async function createPendingMembership(
   userId: string,
   barnId: string,
@@ -26,7 +28,6 @@ export async function createPendingMembership(
   profileId: string,
   client?: SupabaseClient
 ): Promise<BarnMembership> {
-  // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')

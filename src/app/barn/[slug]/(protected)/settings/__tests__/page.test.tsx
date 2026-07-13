@@ -17,12 +17,6 @@ vi.mock('../approvals/actions', () => ({
   rejectMembershipAction: vi.fn(),
   removeMembershipAction: vi.fn(),
 }))
-vi.mock('../InviteLink', () => ({
-  default: ({ slug }: { slug: string }) => (
-    <div data-testid="invite-link" data-slug={slug}>Invite Link</div>
-  ),
-}))
-
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => { throw new Error('NEXT_NOT_FOUND') })
 )
@@ -222,16 +216,6 @@ describe('SettingsPage', () => {
     const heading = screen.getByRole('heading', { name: /lesson tiers/i })
     const [link] = screen.getAllByRole('link', { name: /add tier/i })
     expect(link.parentElement).toBe(heading.parentElement)
-  })
-
-  it('should_render_invite_link_section', async () => {
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    expect(screen.getByTestId('invite-link')).toBeDefined()
   })
 
   it('should_render_pending_requests_heading_in_label_style', async () => {

@@ -1,183 +1,57 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn } from '@/test/fixtures'
-import { makeFormData } from '@/test/utils/forms'
+import { createMockUser } from '@/test/fixtures'
+import { setupAuth } from '@/test/mocks/auth'
 
-vi.mock('@/lib/db/auth', () => ({
-  getAuthenticatedUser: vi.fn(),
+vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
+vi.mock('@/lib/db/barn-memberships', () => ({ claimManagedMember: vi.fn() }))
+
+const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
+  throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
 }))
+vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
-vi.mock('@/lib/db/barns', () => ({
-  getBarnBySlug: vi.fn(),
-}))
+import { claimManagedMember } from '@/lib/db/barn-memberships'
+import { acceptInvite } from '../actions'
 
-vi.mock('@/lib/db/barn-memberships', () => ({
-  getUserMembership: vi.fn(),
-  createPendingMembership: vi.fn(),
-}))
-
-vi.mock('@/lib/db/profiles', () => ({
-  upsertProfile: vi.fn(),
-}))
-
-const mockRedirect = vi.hoisted(() => vi.fn((url: string) => { throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` }) }))
-vi.mock('next/navigation', () => ({
-  redirect: mockRedirect,
-  notFound: vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }),
-}))
-
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, createPendingMembership } from '@/lib/db/barn-memberships'
-import { upsertProfile } from '@/lib/db/profiles'
-import { registerForBarn } from '../actions'
-
-const mockBarn = createMockBarn()
-const mockUser = { id: 'user-1', email: 'trainer@example.com', user_metadata: {} }
-
-describe('registerForBarn', () => {
+describe('acceptInvite', () => {
   beforeEach(() => {
-    vi.mocked(getAuthenticatedUser).mockReset()
-    vi.mocked(getBarnBySlug).mockReset()
-    vi.mocked(getUserMembership).mockReset()
-    vi.mocked(createPendingMembership).mockReset()
-    vi.mocked(upsertProfile).mockReset()
-    vi.mocked(getAuthenticatedUser).mockResolvedValue(mockUser as any)
-    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
-    vi.mocked(getUserMembership).mockResolvedValue(null)
-    vi.mocked(createPendingMembership).mockResolvedValue({
-      id: 'm1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer', status: 'pending', created_at: '',
-    } as any)
-    vi.mocked(upsertProfile).mockResolvedValue({
-      id: 'profile-1', user_id: 'user-1', email: 'trainer@example.com', barn_id: null, role: null,
-      first_name: 'Jane', last_name: 'Doe', created_at: '',
-    } as any)
+    mockRedirect.mockClear()
+    vi.mocked(claimManagedMember).mockReset()
+    setupAuth(createMockUser({ id: 'user-1', email: 'jane@example.com' }))
+    vi.mocked(claimManagedMember).mockResolvedValue(undefined)
   })
 
-  it('should_call_upsertProfile_with_user_id_email_and_name', async () => {
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-
-    expect(upsertProfile).toHaveBeenCalledWith('user-1', 'trainer@example.com', 'Jane', 'Doe')
+  it('should_redirect_to_login_with_token_when_unauthenticated', async () => {
+    setupAuth(null)
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login?token=tok-1')
   })
 
-  it('should_call_createPendingMembership_with_user_and_barn', async () => {
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-
-    expect(createPendingMembership).toHaveBeenCalledWith('user-1', 'barn-1', 'trainer', 'profile-1')
+  it('should_not_call_claimManagedMember_when_unauthenticated', async () => {
+    setupAuth(null)
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(claimManagedMember).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_to_pending_page_after_successful_registration', async () => {
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
+  it('should_claim_membership_with_token_user_id_and_email', async () => {
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(claimManagedMember).toHaveBeenCalledWith('tok-1', 'user-1', 'jane@example.com')
   })
 
-  it('should_redirect_to_pending_page_if_user_already_has_pending_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      id: 'm1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer', status: 'pending', created_at: '',
-    } as any)
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
+  it('should_claim_membership_with_null_email_when_user_has_no_email', async () => {
+    setupAuth({ id: 'user-1', email: null })
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(claimManagedMember).toHaveBeenCalledWith('tok-1', 'user-1', null)
   })
 
-  it('should_not_call_createPendingMembership_if_user_already_has_pending_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      id: 'm1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer', status: 'pending', created_at: '',
-    } as any)
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-
-    expect(createPendingMembership).not.toHaveBeenCalled()
-  })
-
-  it('should_redirect_to_barn_home_if_user_already_has_active_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      id: 'm1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer', status: 'active', created_at: '',
-    } as any)
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-
+  it('should_redirect_to_barn_home_after_successful_claim', async () => {
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/')
   })
 
-  it('should_not_call_createPendingMembership_if_user_already_has_active_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      id: 'm1', user_id: 'user-1', barn_id: 'barn-1', role: 'trainer', status: 'active', created_at: '',
-    } as any)
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-
-    expect(createPendingMembership).not.toHaveBeenCalled()
-  })
-
-  it('should_return_error_for_invalid_role', async () => {
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'admin' })
-    const result = await registerForBarn('green-acres', null, fd)
-    expect(result).toEqual({ error: 'Please select a valid role.' })
-  })
-
-  it('should_return_error_for_blank_first_name', async () => {
-    const fd = makeFormData({ firstName: '   ', lastName: 'Doe', role: 'trainer' })
-    const result = await registerForBarn('green-acres', null, fd)
-    expect(result).toEqual({ error: 'First name is required.' })
-  })
-
-  // covers the null branch of ?.trim() — fd.get() returns null when key is absent
-  it('should_return_error_when_firstName_is_missing_from_form', async () => {
-    const fd = makeFormData({ lastName: 'Doe', role: 'trainer' })
-    const result = await registerForBarn('green-acres', null, fd)
-    expect(result).toEqual({ error: 'First name is required.' })
-  })
-
-  it('should_return_error_for_blank_last_name', async () => {
-    const fd = makeFormData({ firstName: 'Jane', lastName: '', role: 'trainer' })
-    const result = await registerForBarn('green-acres', null, fd)
-    expect(result).toEqual({ error: 'Last name is required.' })
-  })
-
-  // covers the null branch of ?.trim() — fd.get() returns null when key is absent
-  it('should_return_error_when_lastName_is_missing_from_form', async () => {
-    const fd = makeFormData({ firstName: 'Jane', role: 'trainer' })
-    const result = await registerForBarn('green-acres', null, fd)
-    expect(result).toEqual({ error: 'Last name is required.' })
-  })
-
-  it('should_redirect_to_login_error_when_barn_is_not_found', async () => {
-    vi.mocked(getBarnBySlug).mockResolvedValue(null)
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-    await registerForBarn('unknown-barn', null, fd).catch(() => {})
-    expect(mockRedirect).toHaveBeenCalledWith('/login?error=auth_callback_failed')
-  })
-
-  it('should_redirect_to_barn_login_when_user_is_not_authenticated', async () => {
-    vi.mocked(getAuthenticatedUser).mockResolvedValue(null)
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-    await registerForBarn('green-acres', null, fd).catch(() => {})
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
-  })
-
-  it('should_return_error_when_db_write_fails', async () => {
-    vi.mocked(upsertProfile).mockRejectedValue(new Error('DB error'))
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-    const result = await registerForBarn('green-acres', null, fd)
-    expect(result).toEqual({ error: 'Something went wrong. Please try again.' })
-  })
-
-  it('should_return_error_when_user_has_no_email', async () => {
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: null } as any)
-    const fd = makeFormData({ firstName: 'Jane', lastName: 'Doe', role: 'trainer' })
-    const result = await registerForBarn('green-acres', null, fd)
-    expect(result).toEqual({ error: 'Account email is required.' })
+  it('should_redirect_back_to_register_with_error_param_when_claim_fails', async () => {
+    vi.mocked(claimManagedMember).mockRejectedValue(new Error('token_not_found'))
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/register?token=tok-1&error=1')
   })
 })

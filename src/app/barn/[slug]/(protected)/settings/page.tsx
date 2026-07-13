@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/Button'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
-import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { RemoveMemberButton } from './RemoveMemberButton'
 import type { BarnMembership } from '@/lib/db/types'
@@ -97,8 +96,6 @@ export default async function SettingsPage({
         Manage Barn
       </h1>
 
-      <InviteLink slug={slug} />
-
       <section className="mb-12">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           Pending Requests
@@ -106,7 +103,7 @@ export default async function SettingsPage({
         {pending.length === 0 ? (
           <EmptyState
             heading="No pending requests"
-            subtext="Membership requests to join this barn will appear here."
+            subtext='From the Members page, add a member then share the link from "Copy Invite".'
           />
         ) : (
           <div className="overflow-x-auto">

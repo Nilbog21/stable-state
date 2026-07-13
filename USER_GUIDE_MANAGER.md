@@ -47,7 +47,7 @@ Go to **Members** to browse the barn roster. You will see a **Managers** section
 **Adding a rider without an account** — At the top of the Riders section, enter a first and last name and tap **Add Rider**. This creates a record immediately so you can enter their lessons right away, even if they have not signed in yet.
 
 Managed trainers and riders both show an **Unlinked** badge and two controls instead of a link:
-- **Copy invite** — copies a personal invite link to the clipboard. Share this with them; when they tap the link and sign in with Google, their account is automatically linked to the existing record and lesson history.
+- **Copy invite** — copies a personal invite link to the clipboard. Share this with them; when they tap the link, sign in with Google, and confirm, their account is automatically linked to the existing record and lesson history. This is the only way new members join a barn — there is no general "request access" flow.
 - **Revoke** — invalidates the current invite link and generates a new one. Use this if a link is shared with the wrong person. The previous link stops working immediately.
 
 Once someone claims their invite, the **Unlinked** badge disappears and their row becomes a normal link to their detail page.
@@ -108,7 +108,7 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 
 ## Approvals
 
-Go to **Settings** to review pending membership requests. Approving a request grants the member active access to the barn.
+New members always join through a per-person invite link (see **Members** above), not by requesting access, so this section is normally empty. Go to **Settings** to review any pending membership requests — approving one grants the member active access to the barn.
 
 ## Profile & Guide
 
@@ -120,7 +120,6 @@ If you are a member of more than one barn, a **▾** caret appears next to the b
 
 You will receive notifications for situations that need attention. Tap the bell icon in the nav bar to view them; tap **Mark all read** to dismiss them.
 
-- **New membership request** — a rider has requested to join the barn. Tap the notification to go to **Settings** and approve or reject the request.
 - **Lesson cancelled** — a lesson you instructed was cancelled by another manager, or a trainer cancelled a lesson somewhere in the barn.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go to your profile and fill in the missing fields.
 - **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.
