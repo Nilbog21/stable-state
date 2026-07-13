@@ -30,6 +30,8 @@ const DEV_RIDERS = [
 
 const DEV_HORSES = ['Apple', 'Butter', 'Clover']
 const DEV_RETIRED_HORSE = 'Willow'
+const DEV_UNAVAILABLE_HORSE = 'Hazel'
+const DEV_UNAVAILABLE_REASON = 'Recovering from minor injury'
 
 export const DEV_PENDING_RIDER = { email: 'pending1@dev.local', firstName: 'Quinn', lastName: 'Pending' }
 export const DEV_MANAGER_2 = { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' }
@@ -305,6 +307,15 @@ async function run() {
 
   const retiredHorse = await createHorse(DEV_BARN_ID, DEV_RETIRED_HORSE, supabase)
 
+  const unavailableHorse = await createHorse(DEV_BARN_ID, DEV_UNAVAILABLE_HORSE, supabase)
+  mustSucceed(
+    await supabase.from('horses').update({
+      is_available: false,
+      unavailability_reason: DEV_UNAVAILABLE_REASON,
+    }).eq('id', unavailableHorse.id),
+    'mark seed horse unavailable'
+  )
+
   const lessonDates = buildLessonDates(now)
   const lessonTotal = lessonDates.length
 
@@ -464,7 +475,7 @@ async function run() {
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`)
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
-  console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming)`)
+  console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming), plus ${DEV_UNAVAILABLE_HORSE} (unavailable: "${DEV_UNAVAILABLE_REASON}")`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 1 board ($${defaultBoardFee}), 1 lease ($200) — each with a paid charge last month and an unpaid charge this month`)
