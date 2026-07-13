@@ -12,7 +12,7 @@ export function DeactivateButton({ action }: { action: () => Promise<void> }) {
         onClick={(e) => {
           if (
             !window.confirm(
-              'Deactivate this tier? You can reactivate it later from the tier list.'
+              'Deactivate this tier? You can reactivate it later from this page.'
             )
           ) {
             e.preventDefault()
