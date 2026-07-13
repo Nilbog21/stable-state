@@ -8,7 +8,6 @@ vi.mock('@/lib/supabase/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import {
   getUserMembership,
-  createPendingMembership,
   getPendingMemberships,
   getActiveMemberships,
   approveMembership,
@@ -104,90 +103,6 @@ describe('getUserMembership', () => {
 
     expect(mockUserEq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-})
-
-describe('createPendingMembership', () => {
-  it('should_insert_membership_with_pending_status', async () => {
-    const mockInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: createMockMembership({ status: 'pending' }), error: null }),
-      }),
-    })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'pending' })
-    )
-  })
-
-  it('should_return_the_created_membership', async () => {
-    const pending = createMockMembership({ status: 'pending' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: pending, error: null }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')
-
-    expect(result).toEqual(pending)
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('insert failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: null, error: dbError }),
-          }),
-        }),
-      }),
-    } as any)
-
-    await expect(createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')).rejects.toThrow('insert failed')
-  })
-
-  it('should_not_call_createClient_when_client_is_injected', async () => {
-    vi.mocked(createClient).mockReset()
-    const injectedClient = {
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: createMockMembership({ status: 'pending' }), error: null }),
-          }),
-        }),
-      }),
-    } as any
-
-    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1', injectedClient)
-
-    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
-  })
-
-  it('should_use_injected_client_for_db_operation', async () => {
-    vi.mocked(createClient).mockReset()
-    const mockFrom = vi.fn().mockReturnValue({
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: createMockMembership({ status: 'pending' }), error: null }),
-        }),
-      }),
-    })
-    const injectedClient = { from: mockFrom } as any
-
-    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1', injectedClient)
-
-    expect(mockFrom).toHaveBeenCalled()
   })
 })
 
