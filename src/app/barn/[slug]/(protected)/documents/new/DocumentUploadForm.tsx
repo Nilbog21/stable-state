@@ -1,0 +1,132 @@
+'use client'
+
+import { useActionState, useRef, useState } from 'react'
+import { Button } from '@/components/ui/Button'
+import type { DocumentEntity } from './actions'
+
+const TYPE_OPTIONS: Record<DocumentEntity, { value: string; label: string }[]> = {
+  horse: [
+    { value: 'insurance_binder', label: 'Insurance Binder' },
+    { value: 'coggins', label: 'Coggins' },
+    { value: 'shot_record', label: 'Shot Record' },
+    { value: 'contract', label: 'Contract' },
+    { value: 'other', label: 'Other' },
+  ],
+  trainer: [
+    { value: 'instructor_contract', label: 'Instructor Contract' },
+    { value: 'other', label: 'Other' },
+  ],
+  rider: [
+    { value: 'liability_waiver', label: 'Liability Waiver' },
+    { value: 'lease_agreement', label: 'Lease Agreement' },
+    { value: 'boarding_contract', label: 'Boarding Contract' },
+    { value: 'other', label: 'Other' },
+  ],
+}
+
+// Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
+const MAX_FILE_SIZE = 4500000
+
+interface Props {
+  entity: DocumentEntity
+  action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
+}
+
+export function DocumentUploadForm({ entity, action }: Props) {
+  const [state, formAction, pending] = useActionState(action, { error: null })
+  const types = TYPE_OPTIONS[entity]
+  const [selectedType, setSelectedType] = useState(types[0].value)
+  const [fileError, setFileError] = useState<string | null>(null)
+  const [fileName, setFileName] = useState<string | null>(null)
+  const inputRef = useRef<HTMLInputElement>(null)
+
+  return (
+    <form action={formAction} className="space-y-4" onSubmit={() => setFileName(null)}>
+      {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
+      <input type="hidden" name="record_type" value={selectedType} />
+
+      <div>
+        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+          Document Type
+        </label>
+        <select
+          value={selectedType}
+          onChange={(e) => setSelectedType(e.target.value)}
+          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          {types.map((t) => (
+            <option key={t.value} value={t.value}>{t.label}</option>
+          ))}
+        </select>
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 4.5 MB)</span>
+        </label>
+        <input
+          ref={inputRef}
+          type="file"
+          name="file"
+          accept=".pdf,.jpg,.jpeg,.png,.docx"
+          required
+          onChange={(e) => {
+            const file = e.target.files?.[0]
+            if (file && file.size > MAX_FILE_SIZE) {
+              setFileError('File exceeds 4.5 MB limit')
+              setFileName(null)
+              e.target.value = ''
+            } else {
+              setFileError(null)
+              setFileName(file?.name ?? null)
+            }
+          }}
+          className="sr-only"
+        />
+        <div className="flex items-center gap-3">
+          <Button type="button" variant="ghost" onClick={() => inputRef.current?.click()}>
+            Choose File
+          </Button>
+          {fileName && <span className="text-sm text-zinc-700 dark:text-zinc-300">{fileName}</span>}
+        </div>
+        {fileError && <p className="mt-1 text-xs text-red-600">{fileError}</p>}
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+          Notes <span className="normal-case font-normal">(optional)</span>
+        </label>
+        <input
+          type="text"
+          name="notes"
+          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </div>
+
+      <div>
+        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+          Expiration reminder date <span className="normal-case font-normal">(optional)</span>
+        </label>
+        <input
+          type="date"
+          name="reminder_date"
+          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </div>
+
+      <button
+        type="submit"
+        disabled={pending}
+        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+      >
+        {pending ? 'Uploading…' : 'Upload'}
+      </button>
+
+      {pending && (
+        <div role="progressbar" className="h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+          <div className="h-full w-1/3 rounded-full bg-zinc-900 [animation:indeterminate-progress_1.2s_ease-in-out_infinite] dark:bg-zinc-50" />
+        </div>
+      )}
+    </form>
+  )
+}
