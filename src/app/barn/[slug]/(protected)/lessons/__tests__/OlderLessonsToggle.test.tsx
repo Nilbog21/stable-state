@@ -148,12 +148,12 @@ describe('OlderLessonsToggle', () => {
     expect(screen.queryByText('Comet')).toBeNull()
   })
 
-  it('should_display_rider_name_in_older_lessons', () => {
+  it('should_display_rider_name_in_older_lessons_for_manager', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
         slug="green-acres"
-        isManager={false}
+        isManager={true}
         isTrainer={false}
         currentMembershipId="user-1"
       />

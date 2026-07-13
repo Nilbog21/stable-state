@@ -45,9 +45,14 @@ describe('LessonListItem', () => {
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
-  it('should_show_rider_name_for_normal_lesson', () => {
-    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentMembershipId="user-1" />)
+  it('should_show_rider_name_for_normal_lesson_to_manager', () => {
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={true} isTrainer={false} currentMembershipId="user-1" />)
     expect(screen.getByText('Alice')).toBeDefined()
+  })
+
+  it('should_not_show_rider_name_for_rider_role_even_when_present', () => {
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={false} isTrainer={false} currentMembershipId="user-1" />)
+    expect(screen.queryByText('Alice')).toBeNull()
   })
 
   it('should_show_counts_for_group_lesson', () => {
@@ -68,12 +73,12 @@ describe('LessonListItem', () => {
     expect(screen.queryByText('Thunderbolt')).toBeNull()
   })
 
-  it('should_not_show_rider_name_when_rider_names_empty_and_normal', () => {
+  it('should_not_show_rider_name_when_rider_names_empty_and_normal_for_manager', () => {
     render(
       <LessonListItem
         lesson={{ ...normalLesson, rider_names: [], rider_count: 0 }}
         slug="green-acres"
-        isManager={false}
+        isManager={true}
         isTrainer={false}
         currentMembershipId="user-1"
       />
@@ -438,5 +443,11 @@ describe('LessonListItem', () => {
     )
     expect(screen.queryByText('Cancelled')).toBeNull()
     expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_render_lesson_row_as_single_link_to_detail_page', () => {
+    render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={true} isTrainer={false} currentMembershipId="user-1" />)
+    const link = screen.getByRole('link', { name: /thunderbolt/i })
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1')
   })
 })

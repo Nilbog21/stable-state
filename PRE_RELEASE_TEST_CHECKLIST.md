@@ -108,7 +108,10 @@ Dashboard (`/barn/dev-barn`):
 Lessons (`/barn/dev-barn/lessons`):
 
 - [ ] Recent lessons (last 7 days) shown immediately; older lessons appear only after the older-lessons toggle
-- [ ] Filter pills show `All | By Instructor | By Rider | By Horse`; picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
+- [ ] Each lesson renders as a full-card link (whole row is tappable to the detail page); the **Cancel** button sits beside the card, not inside it
+- [ ] Filter pills show `My Lessons | All | By Instructor | By Rider | By Horse`, wrapping onto multiple lines at ~390px width instead of requiring horizontal scroll; **My Lessons** is active by default and shows only lessons you instruct
+- [ ] Picking **All** shows every barn lesson regardless of instructor
+- [ ] Picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
 - [ ] **By Rider → Dana** filters correctly
 - [ ] **By Horse → Apple** filters correctly
 - [ ] Times display in 12-hour AM/PM format everywhere (no military time)
@@ -220,7 +223,7 @@ bash scripts/change-user.sh
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
-- [ ] Lessons list shows every lesson in the barn, not just yours (Alex's) — including Blake's; filter pills show the same two-level `All | By Instructor | By Rider | By Horse` bar as the manager view
+- [ ] Lessons list defaults to **My Lessons** (only Alex's, now reassigned to you); switch to **All** to see every barn lesson including Blake's — filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
@@ -241,7 +244,7 @@ bash scripts/change-user.sh
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
-- [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
+- [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected

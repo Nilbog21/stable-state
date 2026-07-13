@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
 import type { LessonWithDetails } from '@/lib/db/types'
 
@@ -31,8 +31,8 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMemb
     (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
 
   return (
-    <li className="flex items-center justify-between py-5">
-      <Link href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 hover:underline">
+    <li className="flex items-center gap-2">
+      <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="flex-1 flex flex-col gap-1 p-4">
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
           {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(lesson.lesson_at))}
         </span>
@@ -46,7 +46,7 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMemb
             {lesson.horse_names.length > 0 && (
               <span className="text-sm text-zinc-500">{lesson.horse_names.join(', ')}{lesson.jumping ? ' · Jumping' : ''}</span>
             )}
-            {lesson.rider_names.length > 0 && (
+            {(isManager || isTrainer) && lesson.rider_names.length > 0 && (
               <span className="text-sm text-zinc-500">{lesson.rider_names.join(', ')}</span>
             )}
           </>
@@ -63,7 +63,7 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMemb
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
           )}
         </span>
-      </Link>
+      </Card>
       {canCancel && (
         <Button href={`/barn/${slug}/lessons/${lesson.id}/cancel`} variant="danger">
           Cancel
