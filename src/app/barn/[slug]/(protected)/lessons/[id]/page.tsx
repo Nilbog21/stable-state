@@ -107,6 +107,11 @@ export default async function LessonDetailPage({
                 Jumping
               </span>
             )}
+            {lesson.series_id !== null && (
+              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+                Recurring
+              </span>
+            )}
             {lesson.cancelled_at !== null && (
               <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
                 Cancelled
