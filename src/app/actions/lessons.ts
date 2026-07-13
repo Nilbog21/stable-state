@@ -1,7 +1,7 @@
 'use server'
 
 import { requireMembership } from '@/lib/auth/guard'
-import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { cancelLesson, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import type { NotificationType, PaymentType } from '@/lib/db/types'
@@ -194,6 +194,23 @@ export async function cancelLessonAction(
     sendNotificationViaRpc
   )
 
+  redirect(`/barn/${barnSlug}/lessons`)
+}
+
+export async function deleteLessonAction(
+  barnId: string,
+  barnSlug: string,
+  lessonId: string
+): Promise<void> {
+  const { user, membership } = await requireMembership(barnSlug, ['manager'])
+
+  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  if (!lesson) {
+    redirect(`/barn/${barnSlug}/lessons`)
+    return
+  }
+
+  await deleteLesson(lessonId, barnId)
   redirect(`/barn/${barnSlug}/lessons`)
 }
 

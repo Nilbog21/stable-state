@@ -68,14 +68,14 @@ describe('formatSeriesStoppedNotification', () => {
   it('should_use_singular_wording_for_one_series', () => {
     expect(formatSeriesStoppedNotification(1)).toEqual({
       title: '1 recurring series stopped',
-      body: '1 recurring lesson series was stopped because a rider is no longer a member.',
+      body: '1 recurring lesson series was stopped — a rider is no longer active, or the series has no lessons left to continue from.',
     })
   })
 
   it('should_use_plural_wording_for_multiple_series', () => {
     expect(formatSeriesStoppedNotification(2)).toEqual({
       title: '2 recurring series stopped',
-      body: '2 recurring lesson series were stopped because a rider is no longer a member.',
+      body: '2 recurring lesson series were stopped — a rider is no longer active, or the series has no lessons left to continue from.',
     })
   })
 })

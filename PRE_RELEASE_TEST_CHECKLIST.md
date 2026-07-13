@@ -26,6 +26,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app as manager of Dev Barn
 - [ ] Shrink the browser below 768px wide — the nav bar's section links disappear and a ☰ button appears; tapping it opens a left drawer listing the same links, which closes on link tap, backdrop tap, and Escape; the bell icon now sits to the left of the avatar (reversed from desktop's avatar-then-bell order)
 - [ ] **Lessons** is bolded/highlighted in both the desktop nav bar and the drawer while on `/barn/dev-barn/lessons` or a nested page like `/barn/dev-barn/lessons/[id]`; other links stay unhighlighted
+- [ ] Temporarily `throw new Error('smoke test')` at the top of any page or Server Action, load it, then revert — confirm the global error boundary (`src/app/error.tsx`) renders "Something went wrong" with a working **Try again** button instead of a raw stack trace
 
 **Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; pending rider Quinn Pending; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
 
@@ -122,6 +123,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] On a **normal** lesson, per-rider-cancel the only rider (do not use the whole-lesson Cancel link) → the lesson itself now shows a **Cancelled** badge on the list, detail page, and Dashboard, even though you never used the whole-lesson cancel flow
 - [ ] On a **group** lesson, per-rider-cancel every enrolled rider one at a time → after the last one, the lesson shows a **Cancelled** badge everywhere; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
 - [ ] On an already-cancelled lesson's detail page, edit the **Cancellation Notes** field (manager and, separately, the instructing trainer) → blur to save, refresh the page, confirm the new text persists; a rider viewing the same lesson sees the notes as read-only text, no input field
+- [ ] As manager, open a lesson's detail page and click **Delete** → confirm the browser prompt → lesson disappears entirely from the Lessons list and Finances (no **Cancelled** badge, no notification to instructor/riders); repeat on an already-cancelled lesson and a past/paid lesson to confirm Delete is reachable regardless of state; as trainer, confirm no **Delete** button is shown on any lesson
 
 Expenses (`/barn/dev-barn/expenses`):
 

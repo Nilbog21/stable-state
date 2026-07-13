@@ -20,6 +20,11 @@ describe('ReminderDueBadge', () => {
     expect(screen.getByText(/reminder due/i)).toBeDefined()
   })
 
+  it('should_render_badge_without_wrapping_text', () => {
+    render(<ReminderDueBadge reminderDate="2026-01-01" today="2026-07-07" />)
+    expect(screen.getByText(/reminder due/i).className).toContain('whitespace-nowrap')
+  })
+
   it('should_render_badge_when_reminder_date_is_today', () => {
     render(<ReminderDueBadge reminderDate="2026-07-07" today="2026-07-07" />)
     expect(screen.getByText(/reminder due/i)).toBeDefined()

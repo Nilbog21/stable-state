@@ -8,6 +8,7 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/lessons', () => ({
   cancelLesson: vi.fn(),
+  deleteLesson: vi.fn(),
   getLessonById: vi.fn(),
   updateLesson: vi.fn(),
 }))
@@ -54,7 +55,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { cancelLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { cancelLesson, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveManagerUserIds } from '@/lib/db/barn-memberships'
@@ -62,7 +63,7 @@ import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { submitLesson, cancelLessonAction, updateLessonAction, updatePaymentTypeAction, updateCancellationNotesAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
+import { submitLesson, cancelLessonAction, deleteLessonAction, updateLessonAction, updatePaymentTypeAction, updateCancellationNotesAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
 import { parseLessonFormData } from '../lesson-form-parsing'
 
 const mockBarn = createMockBarn()
@@ -998,6 +999,63 @@ describe('cancelLessonAction', () => {
 
   it('should_redirect_to_lessons_list_after_successful_cancellation', async () => {
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+  })
+})
+
+describe('deleteLessonAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getLessonById).mockReset()
+    vi.mocked(deleteLesson).mockReset()
+    vi.mocked(redirect).mockReset()
+    guardAs(mockManagerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ lesson_at: futureIso, payment_type: null, cancelled_at: null })
+    )
+    vi.mocked(deleteLesson).mockResolvedValue(undefined)
+  })
+
+  it('should_require_manager_membership', async () => {
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
+  })
+
+  it('should_redirect_to_lessons_list_when_lesson_not_found', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(null)
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+  })
+
+  it('should_not_call_deleteLesson_when_lesson_not_found', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(null)
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(deleteLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_call_deleteLesson_for_an_upcoming_unpaid_lesson', async () => {
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+  })
+
+  it('should_call_deleteLesson_for_a_past_paid_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ lesson_at: pastIso, payment_type: 'cash', cancelled_at: null })
+    )
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+  })
+
+  it('should_call_deleteLesson_for_an_already_cancelled_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetail({ lesson_at: pastIso, cancelled_at: '2026-01-01T00:00:00Z' })
+    )
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+  })
+
+  it('should_redirect_to_lessons_list_after_successful_delete', async () => {
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
   })
 })

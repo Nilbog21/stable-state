@@ -21,6 +21,7 @@ import { resolveMemberNames } from '../barn-memberships'
 import {
   createLesson,
   cancelLesson,
+  deleteLesson,
   getLessonsByBarn,
   getLessonById,
   getUpcomingLessons,
@@ -190,6 +191,39 @@ describe('cancelLesson', () => {
   it('should_throw_when_supabase_returns_an_error', async () => {
     makeCancelChain(new Error('db error'))
     await expect(cancelLesson('lesson-1', 'barn-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('deleteLesson', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  function makeDeleteChain(error: Error | null = null) {
+    const mockEq2 = vi.fn().mockResolvedValue({ error })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ delete: mockDelete }),
+    } as any)
+    return { mockDelete, mockEq1, mockEq2 }
+  }
+
+  it('should_filter_by_lesson_id', async () => {
+    const { mockEq1 } = makeDeleteChain()
+    await deleteLesson('lesson-1', 'barn-1')
+    expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockEq2 } = makeDeleteChain()
+    await deleteLesson('lesson-1', 'barn-1')
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    makeDeleteChain(new Error('db error'))
+    await expect(deleteLesson('lesson-1', 'barn-1')).rejects.toThrow('db error')
   })
 })
 

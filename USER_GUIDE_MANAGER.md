@@ -74,6 +74,8 @@ A manager's or trainer's detail page also shows an **Instructor Access** section
 
 **Edit cancellation notes** — On an already-cancelled lesson's detail page, the **Cancellation Notes** field stays editable — useful for filling it in after a cancellation cascaded automatically, or correcting a note later. Just edit the text and click away to save.
 
+**Delete a lesson** — If a lesson was entered by mistake, open it and click **Delete** (visible to managers only, on any lesson regardless of state). Unlike Cancel, this permanently removes the lesson with no trace: no "Cancelled" badge, no fee change, no notifications to the instructor or riders. Confirm the prompt to proceed — this cannot be undone.
+
 **Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
 
 ## Expenses
@@ -124,3 +126,7 @@ You will receive notifications for situations that need attention. Tap the bell 
 - **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.
 - **Outstanding payment** — the barn has past-due unpaid lessons or lease/boarding charges. Tap the notification to go to the full outstanding list. This is checked and updated once nightly, so it may take up to a day to clear after you mark everything paid.
 - **Recurring series stopped** — a weekly recurring lesson series stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review the barn's lessons.
+
+## If something goes wrong
+
+If a page shows a "Something went wrong" message, tap **Try again**. If the problem continues, contact support.

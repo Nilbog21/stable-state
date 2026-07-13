@@ -38,3 +38,7 @@ Go to **Horses** to see horses grouped into two sections:
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name, the reason provided by the barn manager, and the same exhaustion bar.
 
 Tap any card to open the horse's detail page.
+
+## If something goes wrong
+
+If a page shows a "Something went wrong" message, tap **Try again**. If the problem continues, contact your barn manager.

@@ -35,7 +35,7 @@ export function hasUnavailableHorse(horseIds: string[], horses: { id: string; is
 export function formatSeriesStoppedNotification(count: number): { title: string; body: string } {
   return {
     title: `${count} recurring series stopped`,
-    body: `${count} recurring lesson series ${count === 1 ? 'was' : 'were'} stopped because a rider is no longer a member.`,
+    body: `${count} recurring lesson series ${count === 1 ? 'was' : 'were'} stopped — a rider is no longer active, or the series has no lessons left to continue from.`,
   }
 }
 
@@ -104,6 +104,15 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
   const seriesStoppedRecipients = new Map<string, Recipient>()
   const horseWarningRecipients = new Map<string, Recipient>()
 
+  async function stopSeriesAndNotify(s: LessonSeries): Promise<void> {
+    await stopLessonSeries(s.id, s.barn_id, supabase)
+    stoppedCount++
+    if (s.instructor_id) addRecipient(seriesStoppedRecipients, await getMembershipUserId(s.instructor_id), s.barn_id)
+    for (const managerId of await getBarnManagerUserIds(s.barn_id)) {
+      addRecipient(seriesStoppedRecipients, managerId, s.barn_id)
+    }
+  }
+
   for (const s of series) {
     try {
       const latestRows = mustSucceed<{ lesson_at: string }[]>(
@@ -111,7 +120,13 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
         `select latest lesson for series ${s.id}`
       )
       const latestLessonAt = latestRows[0]?.lesson_at
-      if (!latestLessonAt || !isDueForGeneration(latestLessonAt, now)) continue
+      // A hard-deleted anchor lesson (#744) leaves no lessons row for this series — stop it here
+      // instead of silently `continue`-ing forever, mirroring the missing-rider stop below
+      if (!latestLessonAt) {
+        await stopSeriesAndNotify(s)
+        continue
+      }
+      if (!isDueForGeneration(latestLessonAt, now)) continue
 
       const memberships = mustSucceed<{ id: string; status: string }[]>(
         await supabase.from('barn_memberships').select('id, status').eq('barn_id', s.barn_id).in('id', s.rider_ids),
@@ -119,12 +134,7 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
       )
 
       if (hasMissingRider(s.rider_ids, memberships)) {
-        await stopLessonSeries(s.id, s.barn_id, supabase)
-        stoppedCount++
-        if (s.instructor_id) addRecipient(seriesStoppedRecipients, await getMembershipUserId(s.instructor_id), s.barn_id)
-        for (const managerId of await getBarnManagerUserIds(s.barn_id)) {
-          addRecipient(seriesStoppedRecipients, managerId, s.barn_id)
-        }
+        await stopSeriesAndNotify(s)
         continue
       }
 
