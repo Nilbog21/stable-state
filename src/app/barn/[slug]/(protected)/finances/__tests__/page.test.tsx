@@ -911,6 +911,22 @@ describe('FinancesPage', () => {
     expect(row?.querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
+  it('should_render_blank_lessons_cell_for_non_lesson_income_row', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 300,
+      pendingIncome: 0,
+      breakdown: [{ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300, instructorCut: 0 }],
+    })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')
+    const lessonsCell = row?.querySelectorAll('td')[2]
+    expect(lessonsCell?.textContent).toBe('')
+  })
+
   it('should_render_non_lesson_income_row_with_info_popover_on_trainer_tab', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
       { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300 },

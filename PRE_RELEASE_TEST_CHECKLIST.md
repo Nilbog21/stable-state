@@ -6,7 +6,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 
 ## Prerequisites
 
-- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — only `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 has no default and requires it set or typed manually)
+- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — only `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 doesn't use `DEV_BARN` at all — it prompts with a numbered list of barns to pick from)
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
 - [ ] A **secondary Google account** (not `DEV_EMAIL`) available for the stub-claim step in Phase 2 — one Google account can only claim one managed stub
 - [ ] Email provider enabled in the Supabase dashboard (required by `seed-test-barn.sh` in Phase 7)
@@ -54,17 +54,20 @@ Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 - [ ] **Boarding** in the nav opens the board-kind list and stays highlighted; **Add Boarding** → select rider Emery, horse Butter — fee is pre-filled from the barn's default board fee → Save
 - [ ] Both agreements appear as full-card links in their respective kind-scoped lists, each showing rider, horse, fee, and **Active** status — no separate View/Edit buttons on the card, the whole card is the link
 - [ ] Add a one-time lease (rider Dana, horse Apple, cadence One time) → its card shows **Complete** instead of Active, both in the Leases list and on its detail page
-- [ ] Click the monthly lease's card → detail page shows rider, horse, fee, cadence, and status, plus a charges table with the first auto-generated charge; **Edit** button top-right → rider, horse, start date, and cadence are read-only; change the fee → Save → new fee reflected in the list
+- [ ] Click the monthly lease's card → detail page shows rider, horse, fee, cadence, and status, plus a charges table with the first auto-generated charge; nav still shows **Leases** highlighted (not Boarding) on the detail page; **Edit** button top-right → nav still shows **Leases** highlighted on the edit page too; rider, horse, start date, and cadence are read-only; change the fee → Save → new fee reflected in the list
 - [ ] On the lease detail page's charge row, select a **Payment Type** → page refreshes and the selection persists; edit the **Fee** field and blur → new amount persists after refresh
-- [ ] **End Agreement** on the boarding agreement (confirm the browser prompt) → it now shows **Ended** in the Boarding list
+- [ ] Click the boarding agreement's card → detail page shows nav still highlighting **Boarding** (not Leases); **End Agreement** (confirm the browser prompt) → it now shows **Ended** in the Boarding list
+- [ ] On a rider's member detail page with an active boarding agreement, click the **Boarding: $X/month** link → lands on the agreement detail page with **Boarding** still highlighted in the nav
 
 Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Riders section):
 
 > The UI creates managed **rider** stubs only. Trainer stubs cannot be created from the UI — the trainer phase (Phase 5) uses the seeded trainers via `change-user.sh` instead.
 
-- [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row shows an **Unlinked** badge with **Copy invite** and **Revoke** buttons
+- [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row's name is a link to its member detail page, alongside an **Unlinked** badge with **Copy invite** and **Revoke** buttons
+- [ ] While Gale Test is still unclaimed, open their member detail page as manager and upload a document — confirms manager can upload/delete documents for a managed/unclaimed rider
 - [ ] Click **Copy invite** on Gale Test → in a browser where you're signed in to your **secondary Google account** (or logged out), open the copied URL (`/barn/dev-barn/login?token=<uuid>`) and sign in with the secondary account
 - [ ] The secondary account is redirected to `/profile/complete` — fill contact fields and save → lands in Dev Barn as rider Gale Test
+- [ ] As Gale Test, open your own member detail page and confirm the document uploaded before claiming still opens via its signed-URL link (regression check: a claimed member's pre-claim documents must remain readable, not just the manager's)
 - [ ] Back as manager: Gale Test's row no longer shows the Unlinked badge and now links to a member detail page
 - [ ] Click **Revoke** on Harper Test → click **Copy invite** again → the copied URL contains a **different** token than before
 
@@ -91,8 +94,10 @@ Future:
 - [ ] Daisy (Unavailable) appears **disabled** in the horse picker while creating lessons
 - [ ] Try saving a lesson with a blank fee (Custom tier) — rejected with "fee is required"; in edit mode, blank fee is rejected too
 - [ ] Select a named tier (e.g. Beginner) — fee field stays visible and editable, pre-filled with the tier's price; change the fee and save — lesson saves with the edited fee and keeps the tier's name (not "Custom")
+- [ ] On the new-lesson form, check **Recurring (weekly)** — the Date field label changes to "Starting Date" (reverts to "Date" when unchecked); the checkbox sits directly above the date field
 - [ ] Lesson 9: check **Recurring (weekly)**, Beginner tier, trainer Alex, rider Dana, horse Apple — saves successfully; the checkbox does not appear when editing this (or any) lesson
-- [ ] Open Lesson 9's edit page as manager — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear; confirm the dialog, click Stop — button and indicator disappear on reload, the lesson itself is unchanged
+- [ ] Lesson 9 shows a **Recurring** badge on the Lessons list row and on its Lesson Detail page
+- [ ] Open Lesson 9's edit page as manager — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; confirm the dialog, click Stop — button and indicator disappear on reload, the lesson itself is unchanged (still shows its Recurring badge on list/detail, since it's still that lesson's own occurrence of the series)
 - [ ] On the new-lesson form, pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar below its name (no bars before a date is picked); adjust a checked horse's exertion level and watch its ghost segment move live, while unchecked horses' bars stay solid (no ghost); change the date and confirm the bars refresh; open Lesson 3's edit page and confirm Clover's bar still renders (excluding Lesson 3 itself from its own window)
 
 ## Phase 4 — Manager verification
@@ -108,7 +113,10 @@ Dashboard (`/barn/dev-barn`):
 Lessons (`/barn/dev-barn/lessons`):
 
 - [ ] Recent lessons (last 7 days) shown immediately; older lessons appear only after the older-lessons toggle
-- [ ] Filter pills show `All | By Instructor | By Rider | By Horse`; picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
+- [ ] Each lesson renders as a full-card link (whole row is tappable to the detail page); the **Cancel** button sits beside the card, not inside it
+- [ ] Filter pills show `My Lessons | All | By Instructor | By Rider | By Horse`, wrapping onto multiple lines at ~390px width instead of requiring horizontal scroll; **My Lessons** is active by default and shows only lessons you instruct
+- [ ] Picking **All** shows every barn lesson regardless of instructor
+- [ ] Picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
 - [ ] **By Rider → Dana** filters correctly
 - [ ] **By Horse → Apple** filters correctly
 - [ ] Times display in 12-hour AM/PM format everywhere (no military time)
@@ -139,9 +147,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending (7d); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
 - [ ] Open Apple's detail page → rename it via the manager form → Save → name updates
-- [ ] Documents section: upload a PDF to a horse, open it via its link (signed URL), then delete it
-- [ ] Attempt to upload a document over 4.5MB to a horse — rejected with an inline error, not a crash
-- [ ] Upload a document to a horse — the Upload button disables and an indeterminate progress bar shows while the upload is pending
+- [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page; open the document via its link (signed URL), then delete it
+- [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
+- [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override; uncheck it, set Moderate/High, Save → values persist on reload and the toggle is now unchecked; re-check "Use barn defaults" and Save → inputs revert to barn defaults; try Moderate ≥ High while unchecked → rejected with a field error and values unchanged
 - [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this horse
@@ -150,14 +158,15 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 - [ ] "You" card plus Managers (Morgan, own entry excluded), Trainers, and Riders sections all render
 - [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
-- [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section still shows "No account linked — documents unavailable"
+- [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render (blank fields show "—") even though the account has no linked `user_id`; Documents section renders normally (not blocked) with an **Add Document** button
 - [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload; a trainer opening the same page sees Contact Info read-only, with no Save button
-- [ ] Open a trainer's member detail page → upload a document → it lists with a working link → delete it
-- [ ] Attempt to upload a document over 4.5MB to a member — rejected with an inline error, not a crash
-- [ ] Upload a document to a member — the Upload button disables and an indeterminate progress bar shows while the upload is pending
+- [ ] Tap **Add Document** on Harper Test's page, upload a document → redirects back to the member page and the document lists with a working signed-URL link → delete it → row disappears
+- [ ] Open a trainer's member detail page → tap **Add Document**, upload a document → redirects back to this member's page; it lists with a working link → delete it
+- [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
+- [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] On that same document, edit the Reminder Date inline (tap the field, set a date, tap away) → it saves
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
-- [ ] Open rider Gale Test's member detail page — document upload form is available (manager can manage rider docs)
+- [ ] Open rider Gale Test's member detail page — **Add Document** button is available (manager can manage rider docs)
 - [ ] As manager, rider Emery's member detail page shows an **Active Agreements** header with one card each for her seeded lease and boarding agreements (kind, horse, fee), each linking to its agreement detail page; a rider with no active agreements shows **No active agreements** with no add-boarding link; a managed (unclaimed) rider's detail page shows the same section
 - [ ] As Emery herself (`change-user.sh`), her own member detail page shows the same two Active Agreements cards, but they are plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page
 - [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it → trainer reappears in the instructor select
@@ -177,13 +186,12 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] **By Instructor** tab: collected income per trainer full name, net of the instructor cut
 - [ ] Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it) and renders in parentheses, e.g. `($25.00)`, not with a leading minus sign; it's still included in Collected income (not dropped or clamped to zero)
 - [ ] Collected vs Pending income figures are consistent with what you marked paid, net of the instructor cut; the **Outstanding** section above stays at the raw (gross) fee
-- [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding"); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
+- [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding") and a blank Lessons cell (not a charge count); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
 - [ ] **By Instructor** tab also shows the same **Non-lesson income** row
 - [ ] Remove a trainer's membership after they've instructed a paid lesson → **By Instructor** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Collected income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
 
 Manage Barn (`/barn/dev-barn/settings`):
 
-- [ ] Invite Link section shows a copyable barn invite link
 - [ ] **Approve** Quinn Pending under Pending Requests → Quinn moves to Active Members
 - [ ] **Remove** Quinn from Active Members (confirm the browser prompt)
 - [ ] Toggle `can_instruct` on for a rider → they appear in the instructor dropdown on the new-lesson form; toggle it back off
@@ -199,7 +207,7 @@ Notifications and profile:
 
 - [ ] Notification bell shows an unread-count badge; opening it lists notifications with title/body/timestamp
 - [ ] **Mark all read** clears the badge
-- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders; edit phone → Save → redirected back to the barn
+- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages; edit phone → Save → redirected back to the barn
 - [ ] Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
 
 Mobile spot-check (resize the browser to ~390px wide, or use your browser's device toolbar):
@@ -215,25 +223,29 @@ Switch role (interactive):
 bash scripts/change-user.sh
 ```
 
-> First prompt is **Barn slug** — type `dev-barn` if `DEV_BARN` isn't set in `.env.local` (unlike `seed-account.sh`, this script has no built-in default and errors on a blank input). Then pick **Alex** from the profile list — this list is global (every profile, not barn-scoped), so pick carefully.
+> First prompt is a numbered list of barns — pick **Dev Barn**. Then pick **Alex** from the profile list — this list is scoped to Dev Barn's members only (active or pending), so no other barn's profiles appear. If the selected profile's membership is **pending**, you'll be prompted to activate it (y/N) before the switch proceeds.
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Finances, no Manage Barn, no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
-- [ ] Lessons list shows every lesson in the barn, not just yours (Alex's) — including Blake's; filter pills show the same two-level `All | By Instructor | By Rider | By Horse` bar as the manager view
+- [ ] Lessons list defaults to **My Lessons** (only Alex's, now reassigned to you); switch to **All** to see every barn lesson including Blake's — filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] Edit one of your own lessons — the instructor field is **read-only**
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
-- [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear; stopping works the same as manager
+- [ ] Lesson 9 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
+- [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no delete** button, **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
-- [ ] Members page shows the Riders section only; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
+- [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
+- [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper/Indigo Test, whichever are still unclaimed) render as plain card links — name only, **no Unlinked badge, no Copy Invite or Revoke buttons**; the card still links to the member detail page
+- [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **no Contact Info section**, and **no Documents section**; open Blake's (a rider's) detail page — no Contact Info and no Documents section either (#779 narrowed this from the prior read-only rider-document access)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
+- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
 ## Phase 6 — Rider
 
-Switch role (pick **Dana** from the list — same `Barn slug` prompt as Phase 5):
+Switch role (pick **Dev Barn**, then **Dana**, from the same barn/member lists as Phase 5):
 
 ```bash
 bash scripts/change-user.sh
@@ -241,18 +253,21 @@ bash scripts/change-user.sh
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
+- [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
-- [ ] Lessons list shows only Dana's enrolled lessons, with **no filter pills**
+- [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
-- [ ] `/barn/dev-barn/members` shows only the "You" card — no Managers/Trainers/Riders management sections
+- [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms and no Copy Invite/Revoke controls on any managed/unclaimed row
+- [ ] Open another member's detail page from the roster (a trainer, a manager) — page loads (no 404), shows only their name — no Contact Info, no Documents section
+- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
 ## Phase 7 — Multi-barn
 
-Restore yourself to manager first (pick **your own name** from the list — same `Barn slug` prompt as Phase 5):
+Restore yourself to manager first (pick **Dev Barn**, then **your own name**, from the same barn/member lists as Phase 5):
 
 ```bash
 bash scripts/change-user.sh
@@ -266,8 +281,10 @@ bash scripts/seed-test-barn.sh test-barn-checklist
 
 > **Caution:** `reset-db.sh` (Phase 1) wipes **all** barns project-wide, not just Dev Barn. If you need to restart this checklist from the top after this point, re-running it will also delete `test-barn-checklist`.
 
-- [ ] As `DEV_EMAIL`, open `/barn/test-barn-checklist/register` → request access as **rider** → redirected to the pending page
-- [ ] In a private/incognito window, sign in at `/barn/test-barn-checklist/login` as `manager@test-barn-checklist.e2e` / `TestPass123!` → approve the pending request in Manage Barn → sign out
+- [ ] As `DEV_EMAIL`, open `/barn/test-barn-checklist/register` with no `?token=` → shows an "Invite invalid" message, not a self-registration form
+- [ ] In a private/incognito window, sign in at `/barn/test-barn-checklist/login` as `manager@test-barn-checklist.e2e` / `TestPass123!` → create a managed rider in Members → **Copy invite** → sign out
+- [ ] As `DEV_EMAIL`, open the copied invite URL (`/barn/test-barn-checklist/login?token=<uuid>`) and sign in → claims the stub directly (active membership, no approval step) and lands on the barn dashboard
+- [ ] Still as manager, create a second managed rider and **Copy invite**; as `DEV_EMAIL` (already signed in), open the `/register?token=<uuid>` URL directly instead of the copied `/login?token=...` one → shows a "Join test-barn-checklist" confirmation with an **Accept Invite** button (no auto-claim on page load); tapping it claims the stub and lands on the barn dashboard
 - [ ] Back as `DEV_EMAIL`: the nav barn name now has a caret — the **BarnSwitcher** dropdown lists both barns, current one checkmarked; clicking the other navigates to its dashboard
 - [ ] At a mobile viewport (~390px wide, or your browser's device toolbar), the BarnSwitcher caret is still tappable (≥44px target) and the dropdown behaves the same as desktop
 - [ ] Visit `/barns` — one card per membership showing role, each linking to its barn

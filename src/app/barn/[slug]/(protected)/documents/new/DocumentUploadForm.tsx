@@ -1,27 +1,42 @@
 'use client'
 
 import { useActionState, useRef, useState } from 'react'
-import type { HorseDocumentType } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
+import type { DocumentEntity } from './actions'
 
-const HORSE_TYPES: { value: HorseDocumentType; label: string }[] = [
-  { value: 'insurance_binder', label: 'Insurance Binder' },
-  { value: 'coggins', label: 'Coggins' },
-  { value: 'shot_record', label: 'Shot Record' },
-  { value: 'contract', label: 'Contract' },
-  { value: 'other', label: 'Other' },
-]
+const TYPE_OPTIONS: Record<DocumentEntity, { value: string; label: string }[]> = {
+  horse: [
+    { value: 'insurance_binder', label: 'Insurance Binder' },
+    { value: 'coggins', label: 'Coggins' },
+    { value: 'shot_record', label: 'Shot Record' },
+    { value: 'contract', label: 'Contract' },
+    { value: 'other', label: 'Other' },
+  ],
+  trainer: [
+    { value: 'instructor_contract', label: 'Instructor Contract' },
+    { value: 'other', label: 'Other' },
+  ],
+  rider: [
+    { value: 'liability_waiver', label: 'Liability Waiver' },
+    { value: 'lease_agreement', label: 'Lease Agreement' },
+    { value: 'boarding_contract', label: 'Boarding Contract' },
+    { value: 'other', label: 'Other' },
+  ],
+}
 
 // Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
 const MAX_FILE_SIZE = 4500000
 
 interface Props {
+  entity: DocumentEntity
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
+  cancelHref: string
 }
 
-export function HorseDocumentUploadForm({ action }: Props) {
+export function DocumentUploadForm({ entity, action, cancelHref }: Props) {
   const [state, formAction, pending] = useActionState(action, { error: null })
-  const [selectedType, setSelectedType] = useState<HorseDocumentType>(HORSE_TYPES[0].value)
+  const types = TYPE_OPTIONS[entity]
+  const [selectedType, setSelectedType] = useState(types[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
@@ -37,10 +52,10 @@ export function HorseDocumentUploadForm({ action }: Props) {
         </label>
         <select
           value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value as HorseDocumentType)}
+          onChange={(e) => setSelectedType(e.target.value)}
           className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         >
-          {HORSE_TYPES.map((t) => (
+          {types.map((t) => (
             <option key={t.value} value={t.value}>{t.label}</option>
           ))}
         </select>
@@ -100,13 +115,18 @@ export function HorseDocumentUploadForm({ action }: Props) {
         />
       </div>
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
-        {pending ? 'Uploading…' : 'Upload'}
-      </button>
+      <div className="flex items-center gap-3">
+        <button
+          type="submit"
+          disabled={pending}
+          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          {pending ? 'Uploading…' : 'Upload'}
+        </button>
+        <Button href={cancelHref} variant="ghost">
+          Cancel
+        </Button>
+      </div>
 
       {pending && (
         <div role="progressbar" className="h-1 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">

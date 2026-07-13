@@ -105,7 +105,7 @@ export default async function RiderIncomePage({
                     <tr key={row.chargeId}>
                       <Td>
                         <Link
-                          href={`/barn/${slug}/agreements/${row.agreementId}`}
+                          href={`/barn/${slug}/agreements/${row.agreementId}?kind=${row.kind}`}
                           className="underline"
                         >
                           {formatDate(row.period)}

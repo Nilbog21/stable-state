@@ -36,7 +36,7 @@ export default async function AgreementDetailPage({
         <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           {label} Detail
         </h1>
-        <Button href={`/barn/${slug}/agreements/${id}/edit`} variant="ghost">
+        <Button href={`/barn/${slug}/agreements/${id}/edit?kind=${agreement.kind}`} variant="ghost">
           Edit
         </Button>
       </div>

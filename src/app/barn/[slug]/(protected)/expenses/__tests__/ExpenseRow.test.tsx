@@ -77,6 +77,18 @@ describe('ExpenseRow', () => {
     const link = screen.getByRole('link', { name: /edit/i })
     expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/expenses\/expense-1$/)
   })
+
+  it('should_render_edit_link_at_compact_row_action_size', () => {
+    renderRow()
+    const link = screen.getByRole('link', { name: /edit/i })
+    expect(link.className).toContain('text-xs')
+  })
+
+  it('should_render_delete_link_at_compact_row_action_size', () => {
+    renderRow()
+    const link = screen.getByRole('link', { name: /delete/i })
+    expect(link.className).toContain('text-xs')
+  })
 })
 
 describe('formatExpenseAmount', () => {

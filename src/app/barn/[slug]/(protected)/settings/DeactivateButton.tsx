@@ -2,7 +2,7 @@
 
 import { Button } from '@/components/ui/Button'
 
-export function DeactivateButton({ action }: { action: () => Promise<void> }) {
+export function DeactivateButton({ action }: { action: (formData: FormData) => void }) {
   return (
     <form action={action}>
       <Button
@@ -10,7 +10,11 @@ export function DeactivateButton({ action }: { action: () => Promise<void> }) {
         variant="danger"
         size="sm"
         onClick={(e) => {
-          if (!window.confirm('This cannot be undone. Deactivate this tier?')) {
+          if (
+            !window.confirm(
+              'Deactivate this tier? You can reactivate it later from this page.'
+            )
+          ) {
             e.preventDefault()
           }
         }}

@@ -3,12 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails, updateHorseExhaustionThresholds } from '@/lib/db/horses'
-import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
-import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
+import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
+import { removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
-import type { HorseDocumentType } from '@/lib/db/types'
-
-const HORSE_RECORD_TYPES = new Set<HorseDocumentType>(['insurance_binder', 'coggins', 'shot_record', 'contract', 'other'])
 
 export async function updateHorseDetailsAction(
   barnSlug: string,
@@ -74,48 +71,6 @@ export async function updateHorseExhaustionThresholdsAction(
   } catch (err) {
     return { error: getErrorMessage(err) }
   }
-  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-  return { error: null }
-}
-
-export async function uploadHorseDocumentAction(
-  barnSlug: string,
-  horseId: string,
-  prevState: { error: string | null },
-  formData: FormData
-): Promise<{ error: string | null }> {
-  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
-
-  const file = formData.get('file') as File | null
-  let ext: string
-  try {
-    ext = validateFile(file)
-  } catch (err) {
-    return { error: getErrorMessage(err) }
-  }
-
-  const recordType = formData.get('record_type') as string
-  if (!HORSE_RECORD_TYPES.has(recordType as HorseDocumentType)) {
-    return { error: 'Invalid record type' }
-  }
-
-  const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
-  const reminderDate = ((formData.get('reminder_date') as string | null) ?? '').trim() || null
-  const storagePath = `${barn.id}/horses/${horseId}/${Date.now()}.${ext}`
-
-  try {
-    await uploadFile(storagePath, file!, file!.type)
-  } catch (err) {
-    return { error: getErrorMessage(err) }
-  }
-
-  try {
-    await createDocument('horse', barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
-  } catch (dbError) {
-    await removeFile(storagePath).catch(() => {})
-    return { error: getErrorMessage(dbError) }
-  }
-
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
   return { error: null }
 }

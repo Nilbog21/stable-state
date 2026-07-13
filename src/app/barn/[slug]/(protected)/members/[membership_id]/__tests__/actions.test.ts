@@ -9,7 +9,6 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   setCanInstruct: vi.fn(),
 }))
 vi.mock('@/lib/db/documents', () => ({
-  createDocument: vi.fn(),
   deleteDocument: vi.fn(),
   updateDocumentReminderDate: vi.fn(),
 }))
@@ -20,7 +19,7 @@ vi.mock('@/lib/db/profiles', () => ({
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/db/document-storage')>()
-  return { ...actual, uploadFile: vi.fn(), removeFile: vi.fn() }
+  return { ...actual, removeFile: vi.fn() }
 })
 vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
@@ -41,12 +40,11 @@ vi.mock('next/navigation', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
-import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
+import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
-import { uploadFile, removeFile } from '@/lib/db/document-storage'
+import { removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
 import {
-  uploadDocumentAction,
   deleteDocumentAction,
   updateDocumentReminderDateAction,
   updateContactInfoAction,
@@ -62,312 +60,6 @@ const riderMembership = createMockMembership({ id: 'mem-rdr', user_id: 'user-rdr
 const targetTrainerMembership = createMockMembership({ id: 'mem-target-trn', user_id: 'user-target-trn', barn_id: 'barn-1', role: 'trainer' })
 const targetRiderMembership = createMockMembership({ id: 'mem-target-rdr', user_id: 'user-target-rdr', barn_id: 'barn-1', role: 'rider' })
 const managerTargetMembership = createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
-
-function makePdfFile(sizeBytes = 1024): File {
-  const buf = new Uint8Array(sizeBytes)
-  return new File([buf], 'test.pdf', { type: 'application/pdf' })
-}
-
-function makeUploadFormData(file: File, recordType: string, notes = ''): FormData {
-  const fd = new FormData()
-  fd.set('file', file)
-  fd.set('record_type', recordType)
-  fd.set('notes', notes)
-  return fd
-}
-
-describe('uploadDocumentAction', () => {
-  beforeEach(() => {
-    vi.mocked(requireMembership).mockReset()
-    vi.mocked(getMembershipById).mockReset()
-    vi.mocked(createDocument).mockReset()
-    vi.mocked(uploadFile).mockReset()
-    vi.mocked(removeFile).mockReset()
-    vi.mocked(revalidatePath).mockReset()
-
-    vi.mocked(uploadFile).mockResolvedValue(undefined)
-    vi.mocked(removeFile).mockResolvedValue(undefined)
-    vi.mocked(createDocument).mockResolvedValue({} as any)
-  })
-
-  it('should_upload_trainer_document_as_manager', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalled()
-  })
-
-  it('should_upload_rider_document_as_manager', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalled()
-  })
-
-  it('should_upload_own_trainer_document_as_trainer', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-trn' } as any, barn: mockBarn, membership: trainerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(trainerMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-trn', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalled()
-  })
-
-  it('should_upload_own_rider_document_as_rider', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await uploadDocumentAction('green-acres', 'mem-rdr', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalled()
-  })
-
-  it('should_reject_upload_when_trainer_targets_rider', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-trn' } as any, barn: mockBarn, membership: trainerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
-  })
-
-  it('should_reject_upload_when_rider_targets_other_member', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
-  })
-
-  it('should_upload_manager_document_as_manager', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalled()
-  })
-
-  it('should_use_managers_storage_path_for_manager_target', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)
-
-    expect(uploadFile).toHaveBeenCalledWith(
-      expect.stringContaining('/managers/'),
-      expect.any(File),
-      expect.any(String)
-    )
-  })
-
-  it('should_accept_instructor_contract_for_manager_target', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)).resolves.toEqual({ error: null })
-  })
-
-  it('should_reject_liability_waiver_for_manager_target', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await expect(uploadDocumentAction('green-acres', 'mem-mgr-target', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
-  })
-
-  it('should_reject_upload_when_target_has_unknown_role', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(
-      createMockMembership({ id: 'mem-unknown', user_id: 'user-unknown', barn_id: 'barn-1', role: 'unknown' as any })
-    )
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-unknown', { error: null }, fd)).resolves.toEqual({ error: expect.any(String) })
-  })
-
-  it('should_reject_file_over_4_5mb', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const bigFile = makePdfFile(5 * 1024 * 1024)
-    const fd = makeUploadFormData(bigFile, 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/4\.5 MB/) })
-  })
-
-  it('should_reject_unsupported_file_type', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const exeFile = new File([new Uint8Array(100)], 'virus.exe', { type: 'application/octet-stream' })
-    const fd = new FormData()
-    fd.set('file', exeFile)
-    fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Unsupported/) })
-  })
-
-  it('should_reject_file_with_no_extension', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const noExtFile = new File([new Uint8Array(100)], 'noextension', { type: 'application/pdf' })
-    const fd = new FormData()
-    fd.set('file', noExtFile)
-    fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Unsupported/) })
-  })
-
-  it('should_reject_file_with_trailing_dot', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const trailingDotFile = new File([new Uint8Array(100)], 'file.', { type: 'application/pdf' })
-    const fd = new FormData()
-    fd.set('file', trailingDotFile)
-    fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Unsupported/) })
-  })
-
-  it('should_reject_invalid_record_type_for_trainer', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Invalid/) })
-  })
-
-  it('should_reject_invalid_record_type_for_rider', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/Invalid/) })
-  })
-
-  it('should_accept_other_as_valid_trainer_record_type', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'other')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalled()
-  })
-
-  it('should_accept_other_as_valid_rider_record_type', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'other')
-    await uploadDocumentAction('green-acres', 'mem-target-rdr', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalled()
-  })
-
-  it('should_revalidate_member_detail_path_after_upload', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
-
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
-  })
-
-  it('should_return_error_when_target_membership_not_found', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(null)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-gone', { error: null }, fd)).resolves.toEqual({ error: 'Not found' })
-  })
-
-  it('should_return_error_when_target_has_no_user_id', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(
-      createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
-    )
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-nouser', { error: null }, fd)).resolves.toEqual({ error: 'Target member has no account linked' })
-  })
-
-  it('should_return_error_when_no_file_provided', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = new FormData()
-    fd.set('record_type', 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: expect.stringMatching(/No file/) })
-  })
-
-  it('should_return_error_when_storage_upload_fails', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-    vi.mocked(uploadFile).mockRejectedValue(new Error('storage upload failed'))
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: 'storage upload failed' })
-  })
-
-  it('should_cleanup_storage_on_db_insert_failure', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-    vi.mocked(createDocument).mockRejectedValue(new Error('db error'))
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: 'db error' })
-    expect(removeFile).toHaveBeenCalled()
-  })
-
-  it('should_return_generic_error_when_non_error_is_thrown', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-    vi.mocked(createDocument).mockRejectedValue('not an Error instance')
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    await expect(uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)).resolves.toEqual({ error: 'not an Error instance' })
-  })
-
-  it('should_use_null_for_empty_notes', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = new FormData()
-    fd.set('file', makePdfFile())
-    fd.set('record_type', 'instructor_contract')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalledWith(
-      'trainer', expect.any(String), expect.any(String), expect.any(String),
-      expect.any(String), expect.any(String), expect.any(Number), null, null
-    )
-  })
-
-  it('should_pass_reminder_date_when_provided', async () => {
-    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
-
-    const fd = makeUploadFormData(makePdfFile(), 'instructor_contract')
-    fd.set('reminder_date', '2027-01-01')
-    await uploadDocumentAction('green-acres', 'mem-target-trn', { error: null }, fd)
-
-    expect(createDocument).toHaveBeenCalledWith(
-      'trainer', expect.any(String), expect.any(String), expect.any(String),
-      expect.any(String), expect.any(String), expect.any(Number), null, '2027-01-01'
-    )
-  })
-})
 
 describe('deleteDocumentAction', () => {
   beforeEach(() => {
@@ -395,7 +87,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-target-trn', 'doc-1', 'barn-1/trainers/user-target-trn/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-target-trn', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-target-trn', 'barn-1')
   })
 
   it('should_delete_own_trainer_document_as_trainer', async () => {
@@ -404,7 +96,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-trn', 'doc-1', 'barn-1/trainers/user-trn/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-trn', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-trn', 'barn-1')
   })
 
   it('should_delete_own_rider_document_as_rider', async () => {
@@ -413,7 +105,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-rdr', 'doc-1', 'barn-1/riders/user-rdr/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-1', 'user-rdr', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-1', 'mem-rdr', 'barn-1')
   })
 
   it('should_reject_delete_when_trainer_targets_rider_document', async () => {
@@ -430,7 +122,7 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-mgr-target', 'doc-1', 'barn-1/managers/user-mgr-target/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'user-mgr-target', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-mgr-target', 'barn-1')
   })
 
   it('should_revalidate_member_detail_path_after_delete', async () => {
@@ -448,17 +140,17 @@ describe('deleteDocumentAction', () => {
 
     await deleteDocumentAction('green-acres', 'mem-target-rdr', 'doc-2', 'barn-1/riders/user-target-rdr/waiver.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-2', 'user-target-rdr', 'barn-1')
+    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-2', 'mem-target-rdr', 'barn-1')
   })
 
-  it('should_return_error_when_target_has_no_user_id_on_delete', async () => {
+  it('should_delete_document_for_managed_member_with_no_user_id_as_manager', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(
       createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
     )
 
-    const result = await deleteDocumentAction('green-acres', 'mem-nouser', 'doc-1', 'path')
-    expect(result.error).toBe('Target member has no account linked')
+    await deleteDocumentAction('green-acres', 'mem-nouser', 'doc-1', 'path')
+    expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-nouser', 'barn-1')
   })
 
   it('should_reject_delete_when_target_has_unknown_role', async () => {
@@ -522,7 +214,7 @@ describe('updateDocumentReminderDateAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
     await updateDocumentReminderDateAction('green-acres', 'mem-target-trn', 'doc-1', '2027-01-01')
-    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'user-target-trn', 'barn-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-target-trn', 'barn-1', '2027-01-01')
   })
 
   it('should_update_rider_reminder_date', async () => {
@@ -530,7 +222,7 @@ describe('updateDocumentReminderDateAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
 
     await updateDocumentReminderDateAction('green-acres', 'mem-target-rdr', 'doc-2', '2027-01-01')
-    expect(updateDocumentReminderDate).toHaveBeenCalledWith('rider', 'doc-2', 'user-target-rdr', 'barn-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('rider', 'doc-2', 'mem-target-rdr', 'barn-1', '2027-01-01')
   })
 
   it('should_update_manager_reminder_date_using_staff_documents_table', async () => {
@@ -538,7 +230,7 @@ describe('updateDocumentReminderDateAction', () => {
     vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
 
     await updateDocumentReminderDateAction('green-acres', 'mem-mgr-target', 'doc-1', '2027-01-01')
-    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'user-mgr-target', 'barn-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-mgr-target', 'barn-1', '2027-01-01')
   })
 
   it('should_revalidate_member_detail_path', async () => {
@@ -557,14 +249,14 @@ describe('updateDocumentReminderDateAction', () => {
     expect(result.error).toBe('Not found')
   })
 
-  it('should_return_error_when_target_has_no_user_id', async () => {
+  it('should_update_reminder_date_for_managed_member_with_no_user_id', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(
       createMockMembership({ id: 'mem-nouser', user_id: null as any, barn_id: 'barn-1', role: 'trainer' })
     )
 
-    const result = await updateDocumentReminderDateAction('green-acres', 'mem-nouser', 'doc-1', '2027-01-01')
-    expect(result.error).toBe('Target member has no account linked')
+    await updateDocumentReminderDateAction('green-acres', 'mem-nouser', 'doc-1', '2027-01-01')
+    expect(updateDocumentReminderDate).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-nouser', 'barn-1', '2027-01-01')
   })
 
   it('should_reject_when_target_has_unknown_role', async () => {
@@ -661,6 +353,68 @@ describe('updateContactInfoAction', () => {
 
     await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData())
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
+  })
+
+  it('should_return_error_when_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-CALL-NOW'))
+    expect(result).toEqual({ error: 'Phone number must contain 7–15 digits' })
+  })
+
+  it('should_not_call_updateContactInfo_when_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-CALL-NOW'))
+    expect(updateContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_emergency_contact_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-1111', 'Alice', '123'))
+    expect(result).toEqual({ error: 'Emergency contact phone must contain 7–15 digits' })
+  })
+
+  it('should_not_call_updateContactInfo_when_emergency_contact_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-1111', 'Alice', '123'))
+    expect(updateContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('should_allow_save_when_phone_is_unchanged_legacy_format', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(getProfileById).mockResolvedValue(
+      createMockProfile({ id: 'profile-1', is_managed: true, phone: '555-123-4567 x205' })
+    )
+
+    const result = await updateContactInfoAction(
+      'green-acres',
+      'mem-target-trn',
+      makeContactFormData('555-123-4567 x205')
+    )
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_allow_save_when_emergency_contact_phone_is_unchanged_legacy_format', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(getProfileById).mockResolvedValue(
+      createMockProfile({ id: 'profile-1', is_managed: true, emergency_contact_phone: '212.555.0123' })
+    )
+
+    const result = await updateContactInfoAction(
+      'green-acres',
+      'mem-target-trn',
+      makeContactFormData('555-1111', 'Alice', '212.555.0123')
+    )
+    expect(result).toEqual({ error: null })
   })
 
   it('should_return_error_when_target_membership_not_found', async () => {

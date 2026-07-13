@@ -268,6 +268,7 @@ export default async function FinancesPage({
                 </tr>
               </thead>
               <tbody>
+                {/* ponytail: tierName === NON_LESSON_INCOME_LABEL assumes no real tier is ever named "Non-lesson income" (same assumption elsewhere in this file for NO_HORSE_LABEL/NO_RIDER_LABEL/NO_INSTRUCTOR_LABEL); switch synthetic rows to a discriminated shape if that collision risk ever becomes real */}
                 {breakdown.map((tier) => (
                   <tr key={tier.tierName}>
                     <Td>
@@ -277,7 +278,7 @@ export default async function FinancesPage({
                     <Td>
                       {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
                     </Td>
-                    <Td>{tier.lessonCount}</Td>
+                    <Td>{tier.tierName === NON_LESSON_INCOME_LABEL ? '' : tier.lessonCount}</Td>
                     <Td>
                       {tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}
                     </Td>

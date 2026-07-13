@@ -204,12 +204,12 @@ describe('MembersPage', () => {
     expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members\/mem-r1$/)
   })
 
-  it('should_not_render_trainers_section_for_trainer', async () => {
+  it('should_render_trainers_section_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue(mockRiders)
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('heading', { name: /trainers/i })).toBeNull()
+    expect(screen.getByRole('heading', { name: /trainers/i })).toBeDefined()
   })
 
   it('should_render_riders_section_for_trainer', async () => {
@@ -220,18 +220,24 @@ describe('MembersPage', () => {
     expect(screen.getByRole('heading', { name: /riders/i })).toBeDefined()
   })
 
-  it('should_not_render_trainers_section_for_rider', async () => {
+  it('should_render_trainers_section_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('heading', { name: /trainers/i })).toBeNull()
+    expect(screen.getByRole('heading', { name: /trainers/i })).toBeDefined()
   })
 
-  it('should_not_render_riders_section_for_rider', async () => {
+  it('should_render_riders_section_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('heading', { name: /riders/i })).toBeNull()
+    expect(screen.getByRole('heading', { name: /riders/i })).toBeDefined()
+  })
+
+  it('should_fetch_managers_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'manager')
   })
 
   it('should_fetch_trainers_for_manager', async () => {
@@ -246,6 +252,20 @@ describe('MembersPage', () => {
     expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'rider')
   })
 
+  it('should_fetch_managers_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'manager')
+  })
+
+  it('should_fetch_trainers_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'trainer')
+  })
+
   it('should_fetch_riders_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
@@ -253,17 +273,25 @@ describe('MembersPage', () => {
     expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'rider')
   })
 
-  it('should_not_fetch_trainers_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+  it('should_fetch_managers_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
     await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(vi.mocked(getActiveMembersWithProfiles)).not.toHaveBeenCalledWith('barn-1', 'trainer')
+    expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'manager')
   })
 
-  it('should_not_fetch_members_for_rider', async () => {
+  it('should_fetch_trainers_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
     await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
-    expect(vi.mocked(getActiveMembersWithProfiles)).not.toHaveBeenCalled()
+    expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'trainer')
+  })
+
+  it('should_fetch_riders_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(vi.mocked(getActiveMembersWithProfiles)).toHaveBeenCalledWith('barn-1', 'rider')
   })
 
   it('should_show_you_label_on_you_card', async () => {
@@ -369,19 +397,91 @@ describe('MembersPage', () => {
     expect(screen.getByText('No managers yet')).toBeDefined()
   })
 
-  it('should_not_render_managers_section_for_trainer', async () => {
+  it('should_render_managers_section_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('heading', { name: /managers/i })).toBeNull()
+    expect(screen.getByRole('heading', { name: /managers/i })).toBeDefined()
   })
 
-  it('should_not_render_managers_section_for_rider', async () => {
+  it('should_render_managers_section_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('heading', { name: /managers/i })).toBeNull()
+    expect(screen.getByRole('heading', { name: /managers/i })).toBeDefined()
+  })
+
+  it('should_exclude_caller_from_trainers_section_when_caller_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const callerAsTrainer = { membershipId: 'mem-trn', userId: 'user-1', name: 'Jane Doe', isManaged: false, inviteToken: null }
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'trainer' ? [callerAsTrainer, ...mockTrainers] : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const links = screen.getAllByRole('link', { name: /jane doe/i })
+    expect(links).toHaveLength(1)
+  })
+
+  it('should_exclude_caller_from_riders_section_when_caller_is_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const callerAsRider = { membershipId: 'mem-rdr', userId: 'user-1', name: 'Jane Doe', isManaged: false, inviteToken: null }
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? [callerAsRider, ...mockRiders] : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const links = screen.getAllByRole('link', { name: /jane doe/i })
+    expect(links).toHaveLength(1)
+  })
+
+  it('should_not_render_add_rider_form_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /add rider/i })).toBeNull()
+  })
+
+  it('should_not_render_add_rider_form_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /add rider/i })).toBeNull()
+  })
+
+  it('should_not_render_add_trainer_form_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /add trainer/i })).toBeNull()
+  })
+
+  it('should_not_render_unlinked_badge_when_invite_token_is_null', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const managedRiderNoToken = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: null },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiderNoToken : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('Unlinked')).toBeNull()
+  })
+
+  it('should_render_plain_card_link_when_invite_token_is_null', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    const managedRiderNoToken = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: null },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiderNoToken : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /ghost rider/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members\/mem-m1$/)
   })
 
   it('should_render_unlinked_badge_for_managed_rider', async () => {
@@ -394,6 +494,46 @@ describe('MembersPage', () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Unlinked')).toBeDefined()
+  })
+
+  it('should_not_render_unlinked_badge_for_managed_rider_when_viewer_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const managedRiders = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('Unlinked')).toBeNull()
+  })
+
+  it('should_not_render_revoke_button_for_managed_rider_when_viewer_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const managedRiders = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /revoke/i })).toBeNull()
+  })
+
+  it('should_render_plain_card_link_for_managed_rider_when_viewer_is_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    const managedRiders = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiders : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /ghost rider/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members\/mem-m1$/)
   })
 
   it('should_render_add_trainer_form_for_manager', async () => {

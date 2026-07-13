@@ -6,8 +6,8 @@ import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import {
   getPendingMemberships,
   getActiveMemberships,
+  resolveMemberNames,
 } from '@/lib/db/barn-memberships'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
 import {
   approveMembershipAction,
   rejectMembershipAction,
@@ -22,16 +22,9 @@ import { Button } from '@/components/ui/Button'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
-import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { RemoveMemberButton } from './RemoveMemberButton'
-import type { BarnMembership, Profile } from '@/lib/db/types'
-
-function profileName(profiles: Profile[], userId: string | null): string {
-  if (!userId) return 'Unknown'
-  const p = profiles.find((p) => p.user_id === userId)
-  return p ? `${p.first_name} ${p.last_name}` : 'Unknown'
-}
+import type { BarnMembership } from '@/lib/db/types'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -94,16 +87,14 @@ export default async function SettingsPage({
 
   const removable = active.filter((m) => m.user_id !== user!.id)
 
-  const allUserIds = [...new Set([...pending, ...active].map((m) => m.user_id).filter((id): id is string => id !== null))]
-  const profiles = await getProfilesByUserIds(allUserIds)
+  const allMembershipIds = [...pending, ...active].map((m) => m.id)
+  const nameMap = await resolveMemberNames(allMembershipIds, barn.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Manage Barn
       </h1>
-
-      <InviteLink slug={slug} />
 
       <section className="mb-12">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -112,7 +103,7 @@ export default async function SettingsPage({
         {pending.length === 0 ? (
           <EmptyState
             heading="No pending requests"
-            subtext="Membership requests to join this barn will appear here."
+            subtext='From the Members page, add a member then share the link from "Copy Invite".'
           />
         ) : (
           <div className="overflow-x-auto">
@@ -122,7 +113,7 @@ export default async function SettingsPage({
                   <Th>Name</Th>
                   <Th>Role</Th>
                   <Th>Requested</Th>
-                  <Th>Actions</Th>
+                  <Th align="right">Actions</Th>
                 </tr>
               </thead>
               <tbody>
@@ -130,9 +121,9 @@ export default async function SettingsPage({
                   <MemberRow
                     key={m.id}
                     membership={m}
-                    name={profileName(profiles, m.user_id)}
+                    name={nameMap.get(m.id) ?? m.id}
                     actionSlot={
-                      <div className="flex justify-end gap-2">
+                      <>
                         <form action={approveMembershipAction.bind(null, slug, m.id)}>
                           <Button type="submit" size="sm">
                             Approve
@@ -143,7 +134,7 @@ export default async function SettingsPage({
                             Reject
                           </Button>
                         </form>
-                      </div>
+                      </>
                     }
                   />
                 ))}
@@ -167,12 +158,12 @@ export default async function SettingsPage({
                   <Th>Name</Th>
                   <Th>Role</Th>
                   <Th>Since</Th>
-                  <Th>Actions</Th>
+                  <Th align="right">Actions</Th>
                 </tr>
               </thead>
               <tbody>
                 {removable.map((m) => {
-                  const name = profileName(profiles, m.user_id)
+                  const name = nameMap.get(m.id) ?? m.id
                   return (
                     <MemberRow
                       key={m.id}
@@ -253,7 +244,7 @@ export default async function SettingsPage({
                   <Th>Price</Th>
                   <Th>Default</Th>
                   <Th>Status</Th>
-                  <Th>Actions</Th>
+                  <Th align="right">Actions</Th>
                 </tr>
               </thead>
               <tbody>

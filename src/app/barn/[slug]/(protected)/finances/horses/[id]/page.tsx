@@ -67,7 +67,7 @@ export default async function HorseIncomePage({
       kind: row.kind,
       key: row.chargeId,
       date: row.period,
-      href: `/barn/${slug}/agreements/${row.agreementId}`,
+      href: `/barn/${slug}/agreements/${row.agreementId}?kind=${row.kind}`,
       amount: row.fee,
     })),
     ...expenseDetail.rows.map((row): CombinedRow => ({

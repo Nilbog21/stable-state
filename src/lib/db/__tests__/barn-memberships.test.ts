@@ -15,12 +15,12 @@ import {
   deleteMembership,
   getActiveTrainerMembershipsByBarn,
   getMembershipById,
+  getMembershipByIdForBarn,
   getBarnMembershipsForUser,
   getInstructorsByBarn,
   getActiveMembersWithProfiles,
   getActiveManagerUserIds,
   resolveMemberNames,
-  resolveMemberNamesByUserId,
   createManagedMember,
   claimManagedMember,
   revokeInviteToken,
@@ -559,6 +559,138 @@ describe('getMembershipById', () => {
 
     await expect(getMembershipById('mem-1')).rejects.toThrow('query failed')
   })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const maybeSingle = vi.fn().mockResolvedValue({ data: mockMembership, error: null })
+    const injectedClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle }) }),
+      }),
+    } as any
+
+    const result = await getMembershipById('mem-1', injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(result).toEqual(mockMembership)
+  })
+})
+
+describe('getMembershipByIdForBarn', () => {
+  function makeDirectClient(data: unknown, error: unknown = null) {
+    return {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data, error }),
+          }),
+        }),
+      }),
+      rpc: vi.fn(),
+    } as any
+  }
+
+  it('should_return_direct_result_when_narrow_policy_query_finds_row', async () => {
+    const client = makeDirectClient(mockMembership)
+
+    const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(result).toEqual(mockMembership)
+  })
+
+  it('should_not_call_rpc_when_narrow_policy_query_finds_row', async () => {
+    const client = makeDirectClient(mockMembership)
+
+    await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(client.rpc).not.toHaveBeenCalled()
+  })
+
+  it('should_call_rpc_with_barn_id_when_direct_query_returns_null', async () => {
+    const client = makeDirectClient(null)
+    client.rpc = vi.fn().mockResolvedValue({
+      data: [
+        { id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', role: 'rider', can_instruct: false, created_at: '2026-01-01T00:00:00Z' },
+      ],
+      error: null,
+    })
+
+    await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(client.rpc).toHaveBeenCalledWith('get_active_barn_member_summaries', { p_barn_id: 'barn-1' })
+  })
+
+  it('should_return_resolved_membership_from_rpc_when_direct_query_returns_null', async () => {
+    const client = makeDirectClient(null)
+    client.rpc = vi.fn().mockResolvedValue({
+      data: [
+        { id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', role: 'rider', can_instruct: false, created_at: '2026-01-01T00:00:00Z' },
+      ],
+      error: null,
+    })
+
+    const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(result).toEqual({
+      id: 'mem-1',
+      user_id: 'user-1',
+      profile_id: 'profile-1',
+      barn_id: 'barn-1',
+      role: 'rider',
+      status: 'active',
+      can_instruct: false,
+      invite_token: null,
+      created_at: '2026-01-01T00:00:00Z',
+    })
+  })
+
+  it('should_return_null_when_neither_direct_query_nor_rpc_finds_row', async () => {
+    const client = makeDirectClient(null)
+    client.rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+
+    const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(result).toBeNull()
+  })
+
+  it('should_return_null_when_rpc_data_is_null', async () => {
+    const client = makeDirectClient(null)
+    client.rpc = vi.fn().mockResolvedValue({ data: null, error: null })
+
+    const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(result).toBeNull()
+  })
+
+  it('should_throw_when_direct_query_errors', async () => {
+    const client = makeDirectClient(null, new Error('direct query failed'))
+
+    await expect(getMembershipByIdForBarn('mem-1', 'barn-1', client)).rejects.toThrow('direct query failed')
+  })
+
+  it('should_throw_when_rpc_errors', async () => {
+    const client = makeDirectClient(null)
+    client.rpc = vi.fn().mockResolvedValue({ data: null, error: new Error('rpc failed') })
+
+    await expect(getMembershipByIdForBarn('mem-1', 'barn-1', client)).rejects.toThrow('rpc failed')
+  })
+
+  it('should_call_createClient_when_no_client_provided', async () => {
+    const client = makeDirectClient(mockMembership)
+    vi.mocked(createClient).mockResolvedValue(client)
+
+    await getMembershipByIdForBarn('mem-1', 'barn-1')
+
+    expect(createClient).toHaveBeenCalled()
+  })
+
+  it('should_return_direct_result_when_no_client_provided', async () => {
+    const client = makeDirectClient(mockMembership)
+    vi.mocked(createClient).mockResolvedValue(client)
+
+    const result = await getMembershipByIdForBarn('mem-1', 'barn-1')
+
+    expect(result).toEqual(mockMembership)
+  })
 })
 
 describe('getBarnMembershipsForUser', () => {
@@ -817,7 +949,13 @@ describe('getInstructorsByBarn', () => {
 })
 
 describe('getActiveMembersWithProfiles', () => {
-  function makeClient(membershipsData: unknown, membershipsError: unknown, profilesData: unknown, profilesError: unknown) {
+  function makeClient(
+    membershipsData: unknown,
+    membershipsError: unknown,
+    profilesData: unknown,
+    profilesError: unknown,
+    rpc: ReturnType<typeof vi.fn> = vi.fn().mockResolvedValue({ data: [], error: null })
+  ) {
     return {
       from: vi.fn().mockImplementation((table: string) => {
         if (table === 'barn_memberships') {
@@ -839,6 +977,7 @@ describe('getActiveMembersWithProfiles', () => {
           }),
         }
       }),
+      rpc,
     } as any
   }
 
@@ -942,6 +1081,163 @@ describe('getActiveMembersWithProfiles', () => {
       makeClient([{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', invite_token: null }], null, null, dbError)
     )
     await expect(getActiveMembersWithProfiles('barn-1', 'rider')).rejects.toThrow('profiles query failed')
+  })
+
+  it('should_skip_rpc_fallback_when_caller_supplies_a_client', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    const client = makeClient(
+      [{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', invite_token: null }],
+      null,
+      [{ id: 'profile-1', first_name: 'Carol', last_name: 'Rider', is_managed: false }],
+      null,
+      rpc
+    )
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider', client)
+
+    expect(rpc).not.toHaveBeenCalled()
+    expect(result).toEqual([{
+      membershipId: 'mem-1',
+      userId: 'user-1',
+      name: 'Carol Rider',
+      isManaged: false,
+      inviteToken: null,
+    }])
+  })
+
+  it('should_call_get_active_barn_member_summaries_rpc_with_barn_id', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    await getActiveMembersWithProfiles('barn-42', 'rider')
+
+    expect(rpc).toHaveBeenCalledWith('get_active_barn_member_summaries', { p_barn_id: 'barn-42' })
+  })
+
+  it('should_merge_rpc_fallback_rows_not_returned_by_direct_query', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ id: 'mem-rpc-1', user_id: 'user-9', profile_id: 'profile-9', role: 'rider', can_instruct: false, created_at: '2026-01-01' }],
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([], null, [{ id: 'profile-9', first_name: 'Riley', last_name: 'Rider', is_managed: false }], null, rpc)
+    )
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider')
+
+    expect(result).toEqual([{
+      membershipId: 'mem-rpc-1',
+      userId: 'user-9',
+      name: 'Riley Rider',
+      isManaged: false,
+      inviteToken: null,
+    }])
+  })
+
+  it('should_not_duplicate_rows_present_in_both_direct_query_and_rpc', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', role: 'rider', can_instruct: false, created_at: '2026-01-01' }],
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient(
+        [{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', invite_token: 'tok-1' }],
+        null,
+        [{ id: 'profile-1', first_name: 'Carol', last_name: 'Rider', is_managed: false }],
+        null,
+        rpc
+      )
+    )
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider')
+
+    expect(result).toEqual([{
+      membershipId: 'mem-1',
+      userId: 'user-1',
+      name: 'Carol Rider',
+      isManaged: false,
+      inviteToken: 'tok-1',
+    }])
+  })
+
+  it('should_filter_rpc_rows_by_requested_role', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ id: 'mem-manager-1', user_id: 'user-5', profile_id: 'profile-5', role: 'manager', can_instruct: false, created_at: '2026-01-01' }],
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_set_invite_token_null_for_rpc_sourced_managed_member', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ id: 'mem-rpc-2', user_id: null, profile_id: 'profile-managed', role: 'rider', can_instruct: false, created_at: '2026-01-01' }],
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([], null, [{ id: 'profile-managed', first_name: 'Stub', last_name: 'Rider', is_managed: true }], null, rpc)
+    )
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider')
+
+    expect(result).toEqual([{
+      membershipId: 'mem-rpc-2',
+      userId: null,
+      name: 'Stub Rider',
+      isManaged: true,
+      inviteToken: null,
+    }])
+  })
+
+  it('should_fall_back_to_unknown_member_when_rpc_sourced_profile_not_found', async () => {
+    const rpc = vi.fn().mockResolvedValue({
+      data: [{ id: 'mem-rpc-3', user_id: 'user-3', profile_id: 'profile-missing', role: 'rider', can_instruct: false, created_at: '2026-01-01' }],
+      error: null,
+    })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider')
+
+    expect(result).toEqual([{
+      membershipId: 'mem-rpc-3',
+      userId: 'user-3',
+      name: 'Unknown Member',
+      isManaged: false,
+      inviteToken: null,
+    }])
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: new Error('rpc failed') })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    await expect(getActiveMembersWithProfiles('barn-1', 'rider')).rejects.toThrow('rpc failed')
+  })
+
+  it('should_return_direct_rows_when_rpc_data_is_null', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: null, error: null })
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient(
+        [{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', invite_token: null }],
+        null,
+        [{ id: 'profile-1', first_name: 'Carol', last_name: 'Rider', is_managed: false }],
+        null,
+        rpc
+      )
+    )
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider')
+
+    expect(result).toEqual([{
+      membershipId: 'mem-1',
+      userId: 'user-1',
+      name: 'Carol Rider',
+      isManaged: false,
+      inviteToken: null,
+    }])
   })
 })
 
@@ -1217,75 +1513,6 @@ describe('resolveMemberNames', () => {
     const result = await resolveMemberNames(['instr-1'], 'barn-1')
 
     expect(result).toEqual(new Map())
-  })
-})
-
-describe('resolveMemberNamesByUserId', () => {
-  function makeClient(membershipsData: unknown, membershipsError: unknown, profilesData: unknown, profilesError: unknown) {
-    return {
-      from: vi.fn().mockImplementation((table: string) => {
-        if (table === 'barn_memberships') {
-          return {
-            select: vi.fn().mockReturnValue({
-              eq: vi.fn().mockReturnValue({
-                in: vi.fn().mockResolvedValue({ data: membershipsData, error: membershipsError }),
-              }),
-            }),
-          }
-        }
-        return {
-          select: vi.fn().mockReturnValue({
-            in: vi.fn().mockResolvedValue({ data: profilesData, error: profilesError }),
-          }),
-        }
-      }),
-    } as any
-  }
-
-  it('should_return_empty_map_when_user_ids_is_empty', async () => {
-    const result = await resolveMemberNamesByUserId([], 'barn-1')
-    expect(result).toEqual(new Map())
-  })
-
-  it('should_return_map_with_membership_id_and_name_for_known_user', async () => {
-    vi.mocked(createClient).mockResolvedValue(
-      makeClient(
-        [{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1' }],
-        null,
-        [{ id: 'profile-1', first_name: 'Jane', last_name: 'Rider' }],
-        null
-      )
-    )
-    const result = await resolveMemberNamesByUserId(['user-1'], 'barn-1')
-    expect(result).toEqual(new Map([['user-1', { membershipId: 'mem-1', name: 'Jane Rider' }]]))
-  })
-
-  it('should_fall_back_to_user_id_as_name_when_profile_is_missing', async () => {
-    vi.mocked(createClient).mockResolvedValue(
-      makeClient([{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1' }], null, [], null)
-    )
-    const result = await resolveMemberNamesByUserId(['user-1'], 'barn-1')
-    expect(result).toEqual(new Map([['user-1', { membershipId: 'mem-1', name: 'user-1' }]]))
-  })
-
-  it('should_return_empty_map_when_no_membership_found', async () => {
-    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null))
-    const result = await resolveMemberNamesByUserId(['user-1'], 'barn-1')
-    expect(result).toEqual(new Map())
-  })
-
-  it('should_throw_when_barn_memberships_query_fails', async () => {
-    const dbError = new Error('memberships query failed')
-    vi.mocked(createClient).mockResolvedValue(makeClient(null, dbError, null, null))
-    await expect(resolveMemberNamesByUserId(['user-1'], 'barn-1')).rejects.toThrow('memberships query failed')
-  })
-
-  it('should_throw_when_profiles_query_fails', async () => {
-    const dbError = new Error('profiles query failed')
-    vi.mocked(createClient).mockResolvedValue(
-      makeClient([{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1' }], null, null, dbError)
-    )
-    await expect(resolveMemberNamesByUserId(['user-1'], 'barn-1')).rejects.toThrow('profiles query failed')
   })
 })
 

@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { useActionState } from 'react'
-import { HorseDocumentUploadForm } from '../HorseDocumentUploadForm'
+import { DocumentUploadForm } from '../DocumentUploadForm'
 
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
@@ -10,61 +10,96 @@ vi.mock('react', async (importOriginal) => {
 
 const noop = async () => ({ error: null })
 
-describe('HorseDocumentUploadForm', () => {
+describe('DocumentUploadForm', () => {
   beforeEach(() => {
     vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, false] as any)
   })
 
   it('should_render_server_error_inline', () => {
     vi.mocked(useActionState).mockReturnValue([{ error: 'boom' }, noop, false] as any)
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByRole('alert').textContent).toBe('boom')
   })
 
   it('should_render_upload_button', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByRole('button', { name: /upload/i })).toBeDefined()
+  })
+
+  it('should_render_cancel_link_to_cancel_href', () => {
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
+    expect(screen.getByRole('link', { name: /cancel/i }).getAttribute('href')).toBe('/back')
   })
 
   it('should_disable_upload_button_when_pending', () => {
     vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, true] as any)
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByRole('button', { name: /uploading/i }).hasAttribute('disabled')).toBe(true)
   })
 
   it('should_show_progress_bar_when_pending', () => {
     vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, true] as any)
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByRole('progressbar')).toBeDefined()
   })
 
   it('should_not_show_progress_bar_when_not_pending', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.queryByRole('progressbar')).toBeNull()
   })
 
-  it('should_show_insurance_binder_option', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+  it('should_show_insurance_binder_option_for_horse_entity', () => {
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByText('Insurance Binder')).toBeDefined()
   })
 
-  it('should_show_coggins_option', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+  it('should_show_coggins_option_for_horse_entity', () => {
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByText('Coggins')).toBeDefined()
   })
 
-  it('should_show_shot_record_option', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+  it('should_show_shot_record_option_for_horse_entity', () => {
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByText('Shot Record')).toBeDefined()
   })
 
-  it('should_show_contract_option', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+  it('should_show_contract_option_for_horse_entity', () => {
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByText('Contract')).toBeDefined()
   })
 
+  it('should_show_instructor_contract_option_for_trainer_entity', () => {
+    render(<DocumentUploadForm entity="trainer" action={noop} cancelHref="/back" />)
+    expect(screen.getByText('Instructor Contract')).toBeDefined()
+  })
+
+  it('should_not_show_horse_only_options_for_trainer_entity', () => {
+    render(<DocumentUploadForm entity="trainer" action={noop} cancelHref="/back" />)
+    expect(screen.queryByText('Coggins')).toBeNull()
+  })
+
+  it('should_show_liability_waiver_option_for_rider_entity', () => {
+    render(<DocumentUploadForm entity="rider" action={noop} cancelHref="/back" />)
+    expect(screen.getByText('Liability Waiver')).toBeDefined()
+  })
+
+  it('should_show_lease_agreement_option_for_rider_entity', () => {
+    render(<DocumentUploadForm entity="rider" action={noop} cancelHref="/back" />)
+    expect(screen.getByText('Lease Agreement')).toBeDefined()
+  })
+
+  it('should_show_boarding_contract_option_for_rider_entity', () => {
+    render(<DocumentUploadForm entity="rider" action={noop} cancelHref="/back" />)
+    expect(screen.getByText('Boarding Contract')).toBeDefined()
+  })
+
+  it('should_show_other_option_for_every_entity', () => {
+    render(<DocumentUploadForm entity="rider" action={noop} cancelHref="/back" />)
+    expect(screen.getByText('Other')).toBeDefined()
+  })
+
   it('should_update_hidden_input_when_select_changes', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const select = screen.getByRole('combobox')
     fireEvent.change(select, { target: { value: 'shot_record' } })
     const hidden = document.querySelector('input[name="record_type"]') as HTMLInputElement
@@ -72,7 +107,7 @@ describe('HorseDocumentUploadForm', () => {
   })
 
   it('should_show_file_size_error_when_file_exceeds_4_5mb', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     const bigFile = new File([new Uint8Array(5 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [bigFile], configurable: true })
@@ -81,7 +116,7 @@ describe('HorseDocumentUploadForm', () => {
   })
 
   it('should_clear_file_size_error_when_valid_file_selected', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
 
     const bigFile = new File([new Uint8Array(5 * 1024 * 1024)], 'big.pdf', { type: 'application/pdf' })
@@ -96,17 +131,17 @@ describe('HorseDocumentUploadForm', () => {
   })
 
   it('should_render_choose_file_button', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByRole('button', { name: /choose file/i })).toBeDefined()
   })
 
   it('should_not_display_filename_before_file_selected', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.queryByText('small.pdf')).toBeNull()
   })
 
   it('should_display_filename_after_file_selected', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File([new Uint8Array(100)], 'small.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
@@ -115,13 +150,13 @@ describe('HorseDocumentUploadForm', () => {
   })
 
   it('should_hide_native_file_input', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     expect(fileInput.className).toContain('sr-only')
   })
 
   it('should_invoke_file_input_click_when_choose_file_button_clicked', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     let clicked = false
     fileInput.click = () => { clicked = true }
@@ -130,7 +165,7 @@ describe('HorseDocumentUploadForm', () => {
   })
 
   it('should_clear_filename_when_change_fires_with_no_file', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
@@ -141,7 +176,7 @@ describe('HorseDocumentUploadForm', () => {
   })
 
   it('should_clear_filename_on_form_submit', () => {
-    render(<HorseDocumentUploadForm action={noop} />)
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
     const file = new File([new Uint8Array(100)], 'upload.pdf', { type: 'application/pdf' })
     Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })

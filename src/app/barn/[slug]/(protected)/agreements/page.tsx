@@ -54,7 +54,7 @@ export default async function AgreementsPage({
       ) : (
         <div className="mt-6 flex flex-col gap-2">
           {agreements.map((a) => (
-            <Card key={a.id} href={`/barn/${slug}/agreements/${a.id}`} className="p-4">
+            <Card key={a.id} href={`/barn/${slug}/agreements/${a.id}?kind=${kind}`} className="p-4">
               <p className="font-medium text-zinc-900 dark:text-zinc-50">
                 {riderNames.get(a.rider_id) ?? '—'}
               </p>

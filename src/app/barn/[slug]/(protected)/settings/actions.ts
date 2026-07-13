@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import {
   createTier,
@@ -90,26 +91,32 @@ export async function updateTierAction(
   redirect(`/barn/${barnSlug}/settings`)
 }
 
-export async function deactivateTierAction(barnSlug: string, tierId: string): Promise<void> {
+export async function deactivateTierAction(
+  barnSlug: string,
+  tierId: string,
+  _prevState: { error: string | null },
+  _formData: FormData
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const tier = await getTierById(tierId, barn.id)
   if (!tier) redirect(`/barn/${barnSlug}/login`)
 
   if (tier.is_default) {
-    redirect(
-      `/barn/${barnSlug}/settings?error=cannot_deactivate_default&errorTierId=${tierId}`
-    )
+    return { error: 'Cannot deactivate the default tier — set another tier as default first.' }
   }
 
   await deactivateTier(tierId, barn.id)
-  redirect(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings/tiers/${tierId}`)
+  return { error: null }
 }
 
 export async function reactivateTierAction(barnSlug: string, tierId: string): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await reactivateTier(tierId, barn.id)
-  redirect(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings/tiers/${tierId}`)
 }
 
 export async function updateDefaultBoardFeeAction(barnSlug: string, formData: FormData): Promise<void> {

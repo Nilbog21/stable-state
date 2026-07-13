@@ -35,7 +35,7 @@ export function OlderExpensesToggle({ expenses, slug }: Props) {
                 <Th scope="col">Type</Th>
                 <Th scope="col">Horse(s)</Th>
                 <Th scope="col">Amount</Th>
-                <Th scope="col" />
+                <Th scope="col" align="right">Actions</Th>
               </tr>
             </thead>
             <tbody>

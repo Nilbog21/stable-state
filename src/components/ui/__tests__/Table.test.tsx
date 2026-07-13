@@ -143,4 +143,48 @@ describe('TableActions', () => {
     renderTd(<TableActions tone="secondary">Edit</TableActions>)
     expect(screen.getByRole('cell').className).toContain('text-zinc-500')
   })
+
+  it('should_wrap_children_in_an_inline_flex_container', () => {
+    renderTd(
+      <TableActions>
+        <span>Edit</span>
+        <span>Delete</span>
+      </TableActions>
+    )
+    const wrapper = screen.getByRole('cell').firstElementChild as HTMLElement
+    expect(wrapper.className).toContain('inline-flex')
+  })
+
+  it('should_prevent_actions_from_wrapping', () => {
+    renderTd(
+      <TableActions>
+        <span>Edit</span>
+        <span>Delete</span>
+      </TableActions>
+    )
+    const wrapper = screen.getByRole('cell').firstElementChild as HTMLElement
+    expect(wrapper.className).toContain('whitespace-nowrap')
+  })
+
+  it('should_right_align_actions_within_the_wrapper', () => {
+    renderTd(
+      <TableActions>
+        <span>Edit</span>
+        <span>Delete</span>
+      </TableActions>
+    )
+    const wrapper = screen.getByRole('cell').firstElementChild as HTMLElement
+    expect(wrapper.className).toContain('justify-end')
+  })
+
+  it('should_space_multiple_actions', () => {
+    renderTd(
+      <TableActions>
+        <span>Edit</span>
+        <span>Delete</span>
+      </TableActions>
+    )
+    const wrapper = screen.getByRole('cell').firstElementChild as HTMLElement
+    expect(wrapper.className).toContain('gap-2')
+  })
 })

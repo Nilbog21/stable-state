@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockLessonTier, createMockProfile } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockLessonTier } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
@@ -9,20 +9,14 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
   getPendingMemberships: vi.fn(),
   getActiveMemberships: vi.fn(),
+  resolveMemberNames: vi.fn(),
 }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
-vi.mock('@/lib/db/profiles', () => ({ getProfilesByUserIds: vi.fn() }))
 vi.mock('../approvals/actions', () => ({
   approveMembershipAction: vi.fn(),
   rejectMembershipAction: vi.fn(),
   removeMembershipAction: vi.fn(),
 }))
-vi.mock('../InviteLink', () => ({
-  default: ({ slug }: { slug: string }) => (
-    <div data-testid="invite-link" data-slug={slug}>Invite Link</div>
-  ),
-}))
-
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => { throw new Error('NEXT_NOT_FOUND') })
 )
@@ -38,8 +32,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
-import { getPendingMemberships, getActiveMemberships } from '@/lib/db/barn-memberships'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
+import { getPendingMemberships, getActiveMemberships, resolveMemberNames } from '@/lib/db/barn-memberships'
 import SettingsPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -52,14 +45,14 @@ describe('SettingsPage', () => {
     vi.mocked(getAllTiersByBarn).mockReset()
     vi.mocked(getPendingMemberships).mockReset()
     vi.mocked(getActiveMemberships).mockReset()
-    vi.mocked(getProfilesByUserIds).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getAllTiersByBarn).mockResolvedValue([])
     vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(getActiveMemberships).mockResolvedValue([])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -225,16 +218,6 @@ describe('SettingsPage', () => {
     expect(link.parentElement).toBe(heading.parentElement)
   })
 
-  it('should_render_invite_link_section', async () => {
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
-    })
-    render(jsx)
-
-    expect(screen.getByTestId('invite-link')).toBeDefined()
-  })
-
   it('should_render_pending_requests_heading_in_label_style', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -267,9 +250,8 @@ describe('SettingsPage', () => {
 
   it('should_render_approve_button_for_pending_member', async () => {
     const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
-    const profile = createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' })
     vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-p', 'Jane Doe']]))
 
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -282,9 +264,8 @@ describe('SettingsPage', () => {
 
   it('should_render_reject_button_for_pending_member', async () => {
     const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
-    const profile = createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' })
     vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-p', 'Jane Doe']]))
 
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -297,9 +278,8 @@ describe('SettingsPage', () => {
 
   it('should_render_profile_name_for_pending_member', async () => {
     const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
-    const profile = createMockProfile({ user_id: 'user-2', first_name: 'Jane', last_name: 'Doe' })
     vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-p', 'Jane Doe']]))
 
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -340,10 +320,10 @@ describe('SettingsPage', () => {
     expect(screen.getByText(/no active members/i)).toBeDefined()
   })
 
-  it('should_show_unknown_for_pending_member_with_no_matching_profile', async () => {
+  it('should_render_membership_id_for_pending_member_when_name_unresolved', async () => {
     const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-99', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
     vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -351,14 +331,13 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    expect(screen.getByText('Unknown')).toBeDefined()
+    expect(screen.getByText('mem-p')).toBeDefined()
   })
 
   it('should_render_remove_button_for_non_self_active_member', async () => {
     const activeMember = createMockMembership({ id: 'mem-a', user_id: 'user-3', created_at: '2026-01-01T00:00:00Z' })
-    const profile = createMockProfile({ user_id: 'user-3', first_name: 'Bob', last_name: 'Smith' })
     vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-a', 'Bob Smith']]))
 
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -371,9 +350,8 @@ describe('SettingsPage', () => {
 
   it('should_render_profile_name_for_active_member', async () => {
     const activeMember = createMockMembership({ id: 'mem-a', user_id: 'user-3', created_at: '2026-01-01T00:00:00Z' })
-    const profile = createMockProfile({ user_id: 'user-3', first_name: 'Bob', last_name: 'Smith' })
     vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([profile])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-a', 'Bob Smith']]))
 
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -384,10 +362,10 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Bob Smith')).toBeDefined()
   })
 
-  it('should_show_unknown_for_active_member_with_null_user_id', async () => {
-    const activeMember = createMockMembership({ id: 'mem-b', user_id: null as any, created_at: '2026-01-01T00:00:00Z' })
+  it('should_render_membership_id_for_active_member_when_name_unresolved', async () => {
+    const activeMember = createMockMembership({ id: 'mem-b', user_id: 'user-4', created_at: '2026-01-01T00:00:00Z' })
     vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
-    vi.mocked(getProfilesByUserIds).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -395,7 +373,21 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    expect(screen.getByText('Unknown')).toBeDefined()
+    expect(screen.getByText('mem-b')).toBeDefined()
+  })
+
+  it('should_render_real_name_for_managed_unclaimed_active_member', async () => {
+    const managedMember = createMockMembership({ id: 'mem-c', user_id: null as any, created_at: '2026-01-01T00:00:00Z' })
+    vi.mocked(getActiveMemberships).mockResolvedValue([managedMember])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-c', 'Casey Managed']]))
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('Casey Managed')).toBeDefined()
   })
 
   it('should_render_default_instructor_cut_heading', async () => {

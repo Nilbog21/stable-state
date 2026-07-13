@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveHorseNames } from './horses'
-import { resolveMemberNamesByUserId } from './barn-memberships'
+import { resolveMemberNames } from './barn-memberships'
 import type {
   DueDocument,
   HorseDocument,
@@ -160,29 +160,16 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
   const horseIds = [...new Set(horseDocsList.map((d) => d.horse_id as string))]
   const horseNames = await resolveHorseNames(horseIds, barnId, supabase)
 
-  const ownerUserIds = [
+  // trainer_id/rider_id are barn_memberships ids (the FK's ON DELETE CASCADE guarantees a
+  // document can't outlive its owning membership, so no "membership removed" fallback is needed).
+  const membershipIds = [
     ...new Set([
       ...trainerDocsList.map((d) => d.trainer_id as string),
       ...riderDocsList.map((d) => d.rider_id as string),
     ]),
   ]
 
-  const ownersByUserId = await resolveMemberNamesByUserId(ownerUserIds, barnId, supabase)
-
-  // A document's owner may no longer have a barn_memberships row (e.g. removed from the
-  // barn) while their profile — and this still-outstanding document — persists; fall back
-  // to a direct profiles lookup by user_id so their name still resolves (membershipId is
-  // not available in that case, so ownerId below falls back to the raw user id).
-  const unresolvedUserIds = ownerUserIds.filter((id) => !ownersByUserId.has(id))
-  const fallbackNameByUserId = new Map<string, string>()
-  if (unresolvedUserIds.length) {
-    const { data: profiles, error: profilesError } = await supabase
-      .from('profiles')
-      .select('user_id, first_name, last_name')
-      .in('user_id', unresolvedUserIds)
-    if (profilesError) throw profilesError
-    for (const p of profiles ?? []) fallbackNameByUserId.set(p.user_id, `${p.first_name} ${p.last_name}`)
-  }
+  const namesByMembershipId = await resolveMemberNames(membershipIds, barnId, supabase)
 
   const results: DueDocument[] = [
     ...horseDocsList.map((d) => ({
@@ -200,8 +187,8 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: ownersByUserId.get(d.trainer_id)?.name ?? fallbackNameByUserId.get(d.trainer_id) ?? 'Unknown Member',
-      ownerId: ownersByUserId.get(d.trainer_id)?.membershipId ?? d.trainer_id,
+      ownerName: namesByMembershipId.get(d.trainer_id) ?? 'Unknown Member',
+      ownerId: d.trainer_id,
     })),
     ...riderDocsList.map((d) => ({
       id: d.id,
@@ -209,8 +196,8 @@ export async function getDueDocuments(barnId: string, today: string): Promise<Du
       recordType: d.record_type,
       fileName: d.file_name,
       reminderDate: d.reminder_date as string,
-      ownerName: ownersByUserId.get(d.rider_id)?.name ?? fallbackNameByUserId.get(d.rider_id) ?? 'Unknown Member',
-      ownerId: ownersByUserId.get(d.rider_id)?.membershipId ?? d.rider_id,
+      ownerName: namesByMembershipId.get(d.rider_id) ?? 'Unknown Member',
+      ownerId: d.rider_id,
     })),
   ]
 
