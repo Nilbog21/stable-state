@@ -51,7 +51,7 @@ export default async function ExpensesPage({
                     <Th scope="col">Type</Th>
                     <Th scope="col">Horse(s)</Th>
                     <Th scope="col">Amount</Th>
-                    <Th scope="col" />
+                    <Th scope="col">Actions</Th>
                   </tr>
                 </thead>
                 <tbody>
