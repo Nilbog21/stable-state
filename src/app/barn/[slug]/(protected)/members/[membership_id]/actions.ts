@@ -4,15 +4,12 @@ import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
-import { createDocument, deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
+import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
-import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
+import { removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { isValidPhone } from '@/lib/phone'
-import type { TrainerDocumentType, RiderDocumentType, BarnMembership, Barn } from '@/lib/db/types'
-
-const TRAINER_RECORD_TYPES = new Set<TrainerDocumentType>(['instructor_contract', 'other'])
-const RIDER_RECORD_TYPES = new Set<RiderDocumentType>(['liability_waiver', 'lease_agreement', 'boarding_contract', 'other'])
+import type { BarnMembership, Barn } from '@/lib/db/types'
 
 function canManage(callerRole: string, isOwnPage: boolean): boolean {
   if (callerRole === 'manager') return true
@@ -48,62 +45,6 @@ async function resolveManageableTarget(
     targetMembership: targetMembership as BarnMembership & { user_id: string },
     entity: targetMembership.role === 'rider' ? 'rider' : 'trainer',
   }
-}
-
-export async function uploadDocumentAction(
-  barnSlug: string,
-  membershipId: string,
-  prevState: { error: string | null },
-  formData: FormData
-): Promise<{ error: string | null }> {
-  const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
-
-  const resolved = await resolveManageableTarget(barn, callerMembership, membershipId, user.id)
-  if ('error' in resolved) return { error: resolved.error }
-  const { targetMembership, entity } = resolved
-
-  const file = formData.get('file') as File | null
-  let ext: string
-  try {
-    ext = validateFile(file)
-  } catch (err) {
-    return { error: getErrorMessage(err) }
-  }
-
-  const recordType = formData.get('record_type') as string
-  const validTypes = entity === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
-  if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) {
-    return { error: 'Invalid record type' }
-  }
-
-  const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
-  const reminderDate = ((formData.get('reminder_date') as string | null) ?? '').trim() || null
-
-  const folder =
-    targetMembership.role === 'trainer' ? 'trainers'
-    : targetMembership.role === 'manager' ? 'managers'
-    : 'riders'
-  const storagePath = `${barn.id}/${folder}/${targetMembership.user_id}/${Date.now()}.${ext}`
-
-  try {
-    await uploadFile(storagePath, file!, file!.type)
-  } catch (err) {
-    return { error: getErrorMessage(err) }
-  }
-
-  try {
-    if (entity === 'rider') {
-      await createDocument('rider', barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
-    } else {
-      await createDocument('trainer', barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes, reminderDate)
-    }
-  } catch (dbError) {
-    await removeFile(storagePath).catch(() => {})
-    return { error: getErrorMessage(dbError) }
-  }
-
-  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
-  return { error: null }
 }
 
 export async function deleteDocumentAction(

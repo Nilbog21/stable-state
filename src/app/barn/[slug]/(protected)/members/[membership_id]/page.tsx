@@ -7,14 +7,13 @@ import { getProfileById } from '@/lib/db/profiles'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementForRider } from '@/lib/db/agreements'
-import { UploadForm } from './UploadForm'
 import { ContactInfoForm } from './ContactInfoForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
-import { uploadDocumentAction, deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction } from './actions'
+import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction } from './actions'
 import { Button } from '@/components/ui/Button'
 import type { TrainerDocument, RiderDocument, Agreement, Profile, BarnMembership } from '@/lib/db/types'
 
@@ -190,10 +189,11 @@ export default async function MemberDetailPage({
     )
   }
 
-  const boundUpload = uploadDocumentAction.bind(null, slug, membership_id)
   const boundDelete = deleteDocumentAction.bind(null, slug, membership_id)
   const boundReminderDate = updateDocumentReminderDateAction.bind(null, slug, membership_id)
   const canEditReminderDate = callerRole === 'manager'
+  const docEntity = targetRole === 'rider' ? 'rider' : 'trainer'
+  const addDocumentHref = `/barn/${slug}/documents/new?entity=${docEntity}&id=${membership_id}`
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -212,9 +212,12 @@ export default async function MemberDetailPage({
       {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
 
       <section className="mb-10">
-        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Documents
-        </h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Documents
+          </h2>
+          {canUpload && <Button href={addDocumentHref}>Add Document</Button>}
+        </div>
         {docsWithUrls.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -263,18 +266,13 @@ export default async function MemberDetailPage({
             </table>
           </div>
         ) : (
-          <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
+          <EmptyState
+            heading="No documents yet"
+            subtext="Documents you upload will appear here."
+            cta={canUpload ? { label: 'Add Document', href: addDocumentHref } : undefined}
+          />
         )}
       </section>
-
-      {canUpload && (
-        <section>
-          <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Upload Document
-          </h2>
-          <UploadForm memberRole={targetRole as 'trainer' | 'rider' | 'manager'} action={boundUpload} />
-        </section>
-      )}
     </main>
   )
 }
