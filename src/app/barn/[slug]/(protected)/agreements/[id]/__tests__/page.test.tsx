@@ -84,6 +84,26 @@ describe('AgreementDetailPage', () => {
     )
   })
 
+  it('should_include_kind_query_param_in_edit_link_for_lease', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(createMockAgreement({ kind: 'lease' }))
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByRole('link', { name: /edit/i })).toHaveProperty(
+      'href',
+      expect.stringContaining('?kind=lease')
+    )
+  })
+
+  it('should_include_kind_query_param_in_edit_link_for_board', async () => {
+    vi.mocked(getAgreementById).mockResolvedValue(createMockAgreement({ kind: 'board' }))
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByRole('link', { name: /edit/i })).toHaveProperty(
+      'href',
+      expect.stringContaining('?kind=board')
+    )
+  })
+
   it('should_render_a_charge_row', async () => {
     vi.mocked(getChargesForAgreement).mockResolvedValue([createMockAgreementCharge({ fee: 350 })])
     const jsx = await callPage()
