@@ -663,6 +663,68 @@ describe('updateContactInfoAction', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
 
+  it('should_return_error_when_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-CALL-NOW'))
+    expect(result).toEqual({ error: 'Phone number must contain 7–15 digits' })
+  })
+
+  it('should_not_call_updateContactInfo_when_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-CALL-NOW'))
+    expect(updateContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_emergency_contact_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-1111', 'Alice', '123'))
+    expect(result).toEqual({ error: 'Emergency contact phone must contain 7–15 digits' })
+  })
+
+  it('should_not_call_updateContactInfo_when_emergency_contact_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-1111', 'Alice', '123'))
+    expect(updateContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('should_allow_save_when_phone_is_unchanged_legacy_format', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(getProfileById).mockResolvedValue(
+      createMockProfile({ id: 'profile-1', is_managed: true, phone: '555-123-4567 x205' })
+    )
+
+    const result = await updateContactInfoAction(
+      'green-acres',
+      'mem-target-trn',
+      makeContactFormData('555-123-4567 x205')
+    )
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_allow_save_when_emergency_contact_phone_is_unchanged_legacy_format', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+    vi.mocked(getProfileById).mockResolvedValue(
+      createMockProfile({ id: 'profile-1', is_managed: true, emergency_contact_phone: '212.555.0123' })
+    )
+
+    const result = await updateContactInfoAction(
+      'green-acres',
+      'mem-target-trn',
+      makeContactFormData('555-1111', 'Alice', '212.555.0123')
+    )
+    expect(result).toEqual({ error: null })
+  })
+
   it('should_return_error_when_target_membership_not_found', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(null)

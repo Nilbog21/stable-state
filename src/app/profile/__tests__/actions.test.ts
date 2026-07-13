@@ -165,6 +165,90 @@ describe('updateProfileAction', () => {
     expect(consoleSpy).toHaveBeenCalledWith('updateProfileAction failed:', dbError)
   })
 
+  it('should_return_error_when_phone_is_invalid', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('phone', '555-CALL-NOW')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'Phone number must contain 7–15 digits' })
+  })
+
+  it('should_not_call_updateProfile_when_phone_is_invalid', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('phone', '555-CALL-NOW')
+
+    await updateProfileAction(form)
+
+    expect(updateProfile).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_emergency_contact_phone_is_invalid', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('emergency_contact_phone', '123')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'Emergency contact phone must contain 7–15 digits' })
+  })
+
+  it('should_not_call_updateProfile_when_emergency_contact_phone_is_invalid', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('emergency_contact_phone', '123')
+
+    await updateProfileAction(form)
+
+    expect(updateProfile).not.toHaveBeenCalled()
+  })
+
+  it('should_allow_save_when_phone_is_unchanged_legacy_format', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(
+      createMockProfile({ phone: '555-123-4567 x205' })
+    )
+    vi.mocked(updateProfile).mockResolvedValue(undefined)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('phone', '555-123-4567 x205')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_allow_save_when_emergency_contact_phone_is_unchanged_legacy_format', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(
+      createMockProfile({ emergency_contact_phone: '212.555.0123' })
+    )
+    vi.mocked(updateProfile).mockResolvedValue(undefined)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('emergency_contact_phone', '212.555.0123')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: null })
+  })
+
   it('should_pass_null_for_empty_optional_fields', async () => {
     mockAuthUser()
     vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
