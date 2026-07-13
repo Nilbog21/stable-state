@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getMembershipById } from '@/lib/db/barn-memberships'
+import { getUserMembership, getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
@@ -117,20 +117,24 @@ export default async function MemberDetailPage({
   const callerMembership = await getUserMembership(user.id, barn.id)
   if (!callerMembership || callerMembership.status !== 'active') redirect(`/barn/${slug}/login`)
 
-  const targetMembership = await getMembershipById(membership_id)
+  const targetMembership = await getMembershipByIdForBarn(membership_id, barn.id)
   if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
 
   const isOwnPage = targetMembership.user_id === user.id
   const callerRole = callerMembership.role
   const targetRole = targetMembership.role
 
-  const canAccess =
+  // #779: any active barn member can now open this page, but Contact Info is unchanged —
+  // it keeps the pre-#779 access rule (previously the page's own canAccess gate; nothing
+  // else can reach it now that page access is broadened) since AC #5 leaves it untouched.
+  const canViewContactInfo =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && (isOwnPage || targetRole === 'rider')) ||
     (callerRole === 'rider' && isOwnPage)
 
-  if (!canAccess) notFound()
-
+  // Documents is the section that narrows under #779, not page access. canUpload's
+  // "manager or self" scope already is that rule, so it also gates Documents visibility
+  // below; keep them coupled rather than duplicating the same expression under a second name.
   const canUpload =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && isOwnPage) ||
@@ -163,13 +167,13 @@ export default async function MemberDetailPage({
           {displayName}
         </h1>
         {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
-        {canEditContactInfo && targetProfile ? (
+        {canViewContactInfo && (canEditContactInfo && targetProfile ? (
           <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
         ) : (
           <ContactInfo profile={targetProfile} />
-        )}
+        ))}
         {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>
+        {canUpload && <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>}
       </main>
     )
   }
@@ -177,16 +181,18 @@ export default async function MemberDetailPage({
   type DocWithUrl = { doc: TrainerDocument | RiderDocument; signedUrl: string }
   let docsWithUrls: DocWithUrl[] = []
 
-  if (targetRole === 'rider') {
-    const docs = await getDocuments('rider', targetMembership.user_id, barn.id)
-    docsWithUrls = await Promise.all(
-      docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
-    )
-  } else {
-    const docs = await getDocuments('trainer', targetMembership.user_id, barn.id)
-    docsWithUrls = await Promise.all(
-      docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
-    )
+  if (canUpload) {
+    if (targetRole === 'rider') {
+      const docs = await getDocuments('rider', targetMembership.user_id, barn.id)
+      docsWithUrls = await Promise.all(
+        docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
+      )
+    } else {
+      const docs = await getDocuments('trainer', targetMembership.user_id, barn.id)
+      docsWithUrls = await Promise.all(
+        docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
+      )
+    }
   }
 
   const boundDelete = deleteDocumentAction.bind(null, slug, membership_id)
@@ -203,14 +209,15 @@ export default async function MemberDetailPage({
 
       {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
 
-      {canEditContactInfo && targetProfile ? (
+      {canViewContactInfo && (canEditContactInfo && targetProfile ? (
         <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
       ) : (
         <ContactInfo profile={targetProfile} />
-      )}
+      ))}
 
       {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
 
+      {canUpload && (
       <section className="mb-10">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
@@ -269,6 +276,7 @@ export default async function MemberDetailPage({
           <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
         )}
       </section>
+      )}
     </main>
   )
 }
