@@ -6,6 +6,8 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
 import { CancellationNotesField } from './CancellationNotesField'
+import { DeleteLessonButton } from '../DeleteLessonButton'
+import { deleteLessonAction } from '@/app/actions/lessons'
 
 function RiderParticipationAction({
   slug,
@@ -111,11 +113,16 @@ export default async function LessonDetailPage({
               </span>
             )}
           </div>
-          {canManage && (
-            <Button href={`/barn/${slug}/lessons/${lesson.id}/edit`} variant="ghost">
-              Edit
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            {canManage && (
+              <Button href={`/barn/${slug}/lessons/${lesson.id}/edit`} variant="ghost">
+                Edit
+              </Button>
+            )}
+            {role === 'manager' && (
+              <DeleteLessonButton action={deleteLessonAction.bind(null, barn.id, slug, lesson.id)} />
+            )}
+          </div>
         </div>
         <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">

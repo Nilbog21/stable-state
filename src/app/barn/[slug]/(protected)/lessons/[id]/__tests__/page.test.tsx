@@ -24,6 +24,14 @@ vi.mock('next/navigation', () => ({
   useRouter: vi.fn(() => ({ push: vi.fn() })),
 }))
 
+vi.mock('@/app/actions/lessons', () => ({
+  deleteLessonAction: vi.fn(),
+}))
+
+vi.mock('../../DeleteLessonButton', () => ({
+  DeleteLessonButton: () => <div data-testid="delete-lesson-button" />,
+}))
+
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
@@ -334,6 +342,42 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
+  })
+
+  it('should_show_delete_button_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
+  })
+
+  it('should_show_delete_button_for_manager_on_an_already_cancelled_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, cancelled_at: '2026-01-01T00:00:00Z' })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
+  })
+
+  it('should_show_delete_button_for_manager_on_a_past_paid_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: 'cash' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
+  })
+
+  it('should_not_show_delete_button_for_trainer', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByTestId('delete-lesson-button')).toBeNull()
+  })
+
+  it('should_not_show_delete_button_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByTestId('delete-lesson-button')).toBeNull()
   })
 
   it('should_show_jumping_badge_when_lesson_is_jumping', async () => {

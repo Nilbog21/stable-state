@@ -74,6 +74,8 @@ A manager's or trainer's detail page also shows an **Instructor Access** section
 
 **Edit cancellation notes** — On an already-cancelled lesson's detail page, the **Cancellation Notes** field stays editable — useful for filling it in after a cancellation cascaded automatically, or correcting a note later. Just edit the text and click away to save.
 
+**Delete a lesson** — If a lesson was entered by mistake, open it and click **Delete** (visible to managers only, on any lesson regardless of state). Unlike Cancel, this permanently removes the lesson with no trace: no "Cancelled" badge, no fee change, no notifications to the instructor or riders. Confirm the prompt to proceed — this cannot be undone.
+
 **Lesson notes** — Open any lesson to see per-horse and per-rider notes inline (read-only). To edit notes, tap the **Edit** button on the lesson and use the Notes section below the main form. Private notes (visually distinguished) are visible to trainers and managers only — riders cannot see them.
 
 ## Expenses

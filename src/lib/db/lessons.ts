@@ -164,6 +164,17 @@ export async function cancelLesson(lessonId: string, barnId: string, notes?: str
   if (error) throw error
 }
 
+export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('lessons')
+    .delete()
+    .eq('id', lessonId)
+    .eq('barn_id', barnId)
+
+  if (error) throw error
+}
+
 export async function updateLesson(
   lessonId: string,
   barnId: string,
