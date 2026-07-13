@@ -84,10 +84,12 @@ function ActiveAgreements({
   slug,
   agreements,
   horseNames,
+  linkable,
 }: {
   slug: string
   agreements: Agreement[]
   horseNames: Map<string, string>
+  linkable: boolean
 }) {
   return (
     <section className="mb-8">
@@ -97,7 +99,11 @@ function ActiveAgreements({
       {agreements.length > 0 ? (
         <div className="flex flex-col gap-2">
           {agreements.map((agreement) => (
-            <Card key={agreement.id} href={`/barn/${slug}/agreements/${agreement.id}`} className="p-3">
+            <Card
+              key={agreement.id}
+              href={linkable ? `/barn/${slug}/agreements/${agreement.id}` : undefined}
+              className="p-3"
+            >
               <p className="text-sm text-zinc-700 dark:text-zinc-300">
                 {AGREEMENT_KIND_LABELS[agreement.kind]} · {horseNames.get(agreement.horse_id) ?? '—'} ·{' '}
                 {formatFee(agreement.fee)}
@@ -180,7 +186,12 @@ export default async function MemberDetailPage({
           {displayName}
         </h1>
         {canViewAgreements && (
-          <ActiveAgreements slug={slug} agreements={activeAgreements} horseNames={agreementHorseNames} />
+          <ActiveAgreements
+            slug={slug}
+            agreements={activeAgreements}
+            horseNames={agreementHorseNames}
+            linkable={callerRole === 'manager'}
+          />
         )}
         {canEditContactInfo && targetProfile ? (
           <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
@@ -220,7 +231,12 @@ export default async function MemberDetailPage({
       </h1>
 
       {canViewAgreements && (
-        <ActiveAgreements slug={slug} agreements={activeAgreements} horseNames={agreementHorseNames} />
+        <ActiveAgreements
+          slug={slug}
+          agreements={activeAgreements}
+          horseNames={agreementHorseNames}
+          linkable={callerRole === 'manager'}
+        />
       )}
 
       {canEditContactInfo && targetProfile ? (

@@ -507,7 +507,21 @@ describe('MemberDetailPage', () => {
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Bella']]))
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
     render(jsx)
-    expect(screen.getByRole('link', { name: /450/ })).toBeDefined()
+    expect(screen.getByText(/450/)).toBeDefined()
+  })
+
+  it('should_not_render_agreement_cards_as_links_for_rider_viewing_own_page', async () => {
+    setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board', cadence: 'monthly', horse_id: 'horse-1' }),
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Bella']]))
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /450/ })).toBeNull()
   })
 
   it('should_call_uploadDocumentAction_when_upload_form_submits', async () => {
