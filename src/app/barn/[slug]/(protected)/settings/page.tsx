@@ -22,7 +22,6 @@ import { Button } from '@/components/ui/Button'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
-import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { RemoveMemberButton } from './RemoveMemberButton'
 import type { BarnMembership } from '@/lib/db/types'
@@ -96,8 +95,6 @@ export default async function SettingsPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Manage Barn
       </h1>
-
-      <InviteLink slug={slug} />
 
       <section className="mb-12">
         <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
