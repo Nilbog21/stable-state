@@ -165,6 +165,34 @@ describe('updateProfileAction', () => {
     expect(consoleSpy).toHaveBeenCalledWith('updateProfileAction failed:', dbError)
   })
 
+  it('should_return_error_when_phone_is_invalid', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('phone', '555-CALL-NOW')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'Phone number must contain 7–15 digits' })
+    expect(updateProfile).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_emergency_contact_phone_is_invalid', async () => {
+    mockAuthUser()
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+    form.set('emergency_contact_phone', '123')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'Phone number must contain 7–15 digits' })
+    expect(updateProfile).not.toHaveBeenCalled()
+  })
+
   it('should_pass_null_for_empty_optional_fields', async () => {
     mockAuthUser()
     vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)

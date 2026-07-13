@@ -663,6 +663,24 @@ describe('updateContactInfoAction', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
 
+  it('should_return_error_when_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-CALL-NOW'))
+    expect(result).toEqual({ error: 'Phone number must contain 7–15 digits' })
+    expect(updateContactInfo).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_emergency_contact_phone_is_invalid', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    const result = await updateContactInfoAction('green-acres', 'mem-target-trn', makeContactFormData('555-1111', 'Alice', '123'))
+    expect(result).toEqual({ error: 'Phone number must contain 7–15 digits' })
+    expect(updateContactInfo).not.toHaveBeenCalled()
+  })
+
   it('should_return_error_when_target_membership_not_found', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getMembershipById).mockResolvedValue(null)
