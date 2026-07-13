@@ -6,7 +6,6 @@ import { getHorseById } from '@/lib/db/horses'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { HorseManagerForm } from './HorseManagerForm'
-import { HorseDocumentUploadForm } from './HorseDocumentUploadForm'
 import { HorseExhaustionThresholdsForm } from './HorseExhaustionThresholdsForm'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
@@ -15,7 +14,6 @@ import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/EmptyState'
 import {
   updateHorseDetailsAction,
-  uploadHorseDocumentAction,
   deleteHorseDocumentAction,
   updateHorseExhaustionThresholdsAction,
   updateHorseDocumentReminderDateAction,
@@ -59,7 +57,6 @@ export default async function HorseDetailPage({
     : []
 
   const boundUpdateAction = updateHorseDetailsAction.bind(null, slug, horse.id)
-  const boundUploadAction = uploadHorseDocumentAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
   const boundUpdateThresholdsAction = updateHorseExhaustionThresholdsAction.bind(null, slug, horse.id)
   const boundReminderDateAction = updateHorseDocumentReminderDateAction.bind(null, slug, horse.id)
@@ -108,9 +105,12 @@ export default async function HorseDetailPage({
 
       {canSeeDocuments && (
         <section className="mt-10">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Documents
-          </h2>
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Documents
+            </h2>
+            <Button href={`/barn/${slug}/documents/new?entity=horse&id=${horse.id}`}>Add Document</Button>
+          </div>
           {docsWithUrls.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full">
@@ -163,15 +163,12 @@ export default async function HorseDetailPage({
               </table>
             </div>
           ) : (
-            <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
+            <EmptyState
+              heading="No documents yet"
+              subtext="Documents you upload will appear here."
+              cta={{ label: 'Add Document', href: `/barn/${slug}/documents/new?entity=horse&id=${horse.id}` }}
+            />
           )}
-
-          <section className="mt-6">
-            <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Upload Document
-            </h2>
-            <HorseDocumentUploadForm action={boundUploadAction} />
-          </section>
         </section>
       )}
     </main>
