@@ -6,8 +6,8 @@ import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import {
   getPendingMemberships,
   getActiveMemberships,
+  resolveMemberNames,
 } from '@/lib/db/barn-memberships'
-import { getProfilesByUserIds } from '@/lib/db/profiles'
 import {
   approveMembershipAction,
   rejectMembershipAction,
@@ -25,13 +25,7 @@ import { Badge } from '@/components/ui/Badge'
 import InviteLink from './InviteLink'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { RemoveMemberButton } from './RemoveMemberButton'
-import type { BarnMembership, Profile } from '@/lib/db/types'
-
-function profileName(profiles: Profile[], userId: string | null): string {
-  if (!userId) return 'Unknown'
-  const p = profiles.find((p) => p.user_id === userId)
-  return p ? `${p.first_name} ${p.last_name}` : 'Unknown'
-}
+import type { BarnMembership } from '@/lib/db/types'
 
 function formatDate(iso: string) {
   return new Date(iso).toLocaleDateString('en-US', {
@@ -94,8 +88,8 @@ export default async function SettingsPage({
 
   const removable = active.filter((m) => m.user_id !== user!.id)
 
-  const allUserIds = [...new Set([...pending, ...active].map((m) => m.user_id).filter((id): id is string => id !== null))]
-  const profiles = await getProfilesByUserIds(allUserIds)
+  const allMembershipIds = [...pending, ...active].map((m) => m.id)
+  const nameMap = await resolveMemberNames(allMembershipIds, barn.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -130,7 +124,7 @@ export default async function SettingsPage({
                   <MemberRow
                     key={m.id}
                     membership={m}
-                    name={profileName(profiles, m.user_id)}
+                    name={nameMap.get(m.id) ?? m.id}
                     actionSlot={
                       <div className="flex justify-end gap-2">
                         <form action={approveMembershipAction.bind(null, slug, m.id)}>
@@ -172,7 +166,7 @@ export default async function SettingsPage({
               </thead>
               <tbody>
                 {removable.map((m) => {
-                  const name = profileName(profiles, m.user_id)
+                  const name = nameMap.get(m.id) ?? m.id
                   return (
                     <MemberRow
                       key={m.id}
