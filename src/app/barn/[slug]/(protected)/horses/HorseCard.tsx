@@ -9,7 +9,7 @@ export function HorseCard({
   variant,
   exhaustion,
 }: {
-  horse: HorseExertionSummary
+  horse: Pick<HorseExertionSummary, 'id' | 'name' | 'is_active' | 'is_available' | 'unavailability_reason'>
   barnSlug: string
   variant: 'available' | 'unavailable' | 'inactive'
   exhaustion?: { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }

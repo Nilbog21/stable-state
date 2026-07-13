@@ -34,8 +34,8 @@ If you are a member of more than one barn, a **▾** caret appears next to the b
 
 Go to **Horses** to see horses grouped into two sections:
 
-- **Available** — horses in active rotation, sorted by total exertion (7d) ascending. Each card shows the name and an exhaustion bar reflecting exertion from lessons within 3 days of today; tap the bar to see the individual lessons behind it.
-- **Unavailable** — horses temporarily out of rotation; each card shows the horse name, the reason provided by the barn manager, and the same exhaustion bar.
+- **Available** — horses in active rotation; each card shows the name.
+- **Unavailable** — horses temporarily out of rotation; each card shows the horse name and the reason provided by the barn manager.
 
 Tap any card to open the horse's detail page.
 
