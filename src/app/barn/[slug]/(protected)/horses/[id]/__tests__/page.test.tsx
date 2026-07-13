@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockHorse } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
@@ -15,20 +15,12 @@ vi.mock('@/lib/db/document-storage', () => ({
 }))
 vi.mock('../actions', () => ({
   updateHorseDetailsAction: vi.fn(),
-  uploadHorseDocumentAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
   updateHorseExhaustionThresholdsAction: vi.fn(),
   updateHorseDocumentReminderDateAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
-}))
-vi.mock('../HorseDocumentUploadForm', () => ({
-  HorseDocumentUploadForm: ({ action }: { action: (formData: FormData) => Promise<void> }) => (
-    <div data-testid="horse-document-upload-form">
-      <button onClick={() => action(new FormData())}>trigger-upload</button>
-    </div>
-  ),
 }))
 vi.mock('../HorseExhaustionThresholdsForm', () => ({
   HorseExhaustionThresholdsForm: () => <div data-testid="horse-exhaustion-thresholds-form" />,
@@ -42,7 +34,6 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
-import { uploadHorseDocumentAction } from '../actions'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -210,30 +201,25 @@ describe('HorseDetailPage', () => {
     expect(screen.getByRole('heading', { name: /^documents$/i }).className).toContain('text-sm')
   })
 
-  it('should_render_upload_document_heading_in_text_sm', async () => {
+  it('should_render_add_document_link_for_manager', async () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.getByRole('heading', { name: /upload document/i }).className).toContain('text-sm')
+    const links = screen.getAllByRole('link', { name: /add document/i }) as HTMLAnchorElement[]
+    expect(links[0].href).toMatch(/\/barn\/green-acres\/documents\/new\?entity=horse&id=horse-1$/)
   })
 
-  it('should_render_upload_form_for_manager', async () => {
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.getByTestId('horse-document-upload-form')).toBeDefined()
-  })
-
-  it('should_render_upload_form_for_trainer', async () => {
+  it('should_render_add_document_link_for_trainer', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.getByTestId('horse-document-upload-form')).toBeDefined()
+    expect(screen.getAllByRole('link', { name: /add document/i }).length).toBeGreaterThan(0)
   })
 
-  it('should_not_render_upload_form_for_rider', async () => {
+  it('should_not_render_add_document_link_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.queryByTestId('horse-document-upload-form')).toBeNull()
+    expect(screen.queryByRole('link', { name: /add document/i })).toBeNull()
   })
 
   it('should_render_documents_list_for_manager_when_documents_exist', async () => {
@@ -297,14 +283,6 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('check annually')).toBeDefined()
-  })
-
-  it('should_call_uploadHorseDocumentAction_when_upload_form_submits', async () => {
-    vi.mocked(uploadHorseDocumentAction).mockResolvedValue({ error: null })
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    fireEvent.click(screen.getByRole('button', { name: 'trigger-upload' }))
-    expect(uploadHorseDocumentAction).toHaveBeenCalledWith('green-acres', 'horse-1', expect.any(FormData))
   })
 
   it('should_render_reminder_due_badge_when_document_reminder_date_is_past', async () => {
