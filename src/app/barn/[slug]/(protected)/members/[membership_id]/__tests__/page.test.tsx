@@ -168,7 +168,7 @@ describe('MemberDetailPage', () => {
     expect(screen.getByText('contract.pdf')).toBeDefined()
   })
 
-  it('should_not_render_documents_section_when_trainer_views_rider', async () => {
+  it('should_not_render_rider_document_when_trainer_views_rider', async () => {
     setupAuth({ id: 'user-trn', email: 'trn@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
@@ -177,16 +177,34 @@ describe('MemberDetailPage', () => {
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
     expect(screen.queryByText('waiver.pdf')).toBeNull()
+  })
+
+  it('should_not_render_documents_heading_when_trainer_views_rider', async () => {
+    setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
+    vi.mocked(getDocuments).mockResolvedValue([mockRiderDoc] as any)
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    render(jsx)
     expect(screen.queryByRole('heading', { name: /^documents$/i })).toBeNull()
   })
 
-  it('should_render_page_without_documents_when_trainer_views_other_trainer', async () => {
+  it('should_render_name_heading_when_trainer_views_other_trainer', async () => {
     setupAuth({ id: 'user-trn', email: 'trn@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetTrainerMembership)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByRole('heading', { name: /bob trainer/i })).toBeDefined()
+  })
+
+  it('should_not_render_documents_heading_when_trainer_views_other_trainer', async () => {
+    setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetTrainerMembership)
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+    render(jsx)
     expect(screen.queryByRole('heading', { name: /^documents$/i })).toBeNull()
   })
 
@@ -212,14 +230,13 @@ describe('MemberDetailPage', () => {
     expect(screen.getByText('waiver.pdf')).toBeDefined()
   })
 
-  it('should_render_page_without_documents_when_rider_views_other_member', async () => {
+  it('should_render_name_heading_when_rider_views_other_member', async () => {
     setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetTrainerMembership)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByRole('heading', { name: /bob trainer/i })).toBeDefined()
-    expect(screen.queryByRole('heading', { name: /^documents$/i })).toBeNull()
   })
 
   it('should_render_page_when_rider_views_trainer_membership', async () => {

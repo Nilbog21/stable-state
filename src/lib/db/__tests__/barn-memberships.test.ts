@@ -590,16 +590,37 @@ describe('getMembershipByIdForBarn', () => {
     } as any
   }
 
-  it('should_return_direct_result_without_calling_rpc_when_narrow_policy_query_finds_row', async () => {
+  it('should_return_direct_result_when_narrow_policy_query_finds_row', async () => {
     const client = makeDirectClient(mockMembership)
 
     const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
 
     expect(result).toEqual(mockMembership)
+  })
+
+  it('should_not_call_rpc_when_narrow_policy_query_finds_row', async () => {
+    const client = makeDirectClient(mockMembership)
+
+    await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
     expect(client.rpc).not.toHaveBeenCalled()
   })
 
-  it('should_fall_back_to_rpc_when_direct_query_returns_null', async () => {
+  it('should_call_rpc_with_barn_id_when_direct_query_returns_null', async () => {
+    const client = makeDirectClient(null)
+    client.rpc = vi.fn().mockResolvedValue({
+      data: [
+        { id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', role: 'rider', can_instruct: false, created_at: '2026-01-01T00:00:00Z' },
+      ],
+      error: null,
+    })
+
+    await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(client.rpc).toHaveBeenCalledWith('get_active_barn_member_summaries', { p_barn_id: 'barn-1' })
+  })
+
+  it('should_return_resolved_membership_from_rpc_when_direct_query_returns_null', async () => {
     const client = makeDirectClient(null)
     client.rpc = vi.fn().mockResolvedValue({
       data: [
@@ -610,7 +631,6 @@ describe('getMembershipByIdForBarn', () => {
 
     const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
 
-    expect(client.rpc).toHaveBeenCalledWith('get_active_barn_member_summaries', { p_barn_id: 'barn-1' })
     expect(result).toEqual({
       id: 'mem-1',
       user_id: 'user-1',
@@ -655,13 +675,21 @@ describe('getMembershipByIdForBarn', () => {
     await expect(getMembershipByIdForBarn('mem-1', 'barn-1', client)).rejects.toThrow('rpc failed')
   })
 
-  it('should_use_default_client_when_none_provided', async () => {
+  it('should_call_createClient_when_no_client_provided', async () => {
+    const client = makeDirectClient(mockMembership)
+    vi.mocked(createClient).mockResolvedValue(client)
+
+    await getMembershipByIdForBarn('mem-1', 'barn-1')
+
+    expect(createClient).toHaveBeenCalled()
+  })
+
+  it('should_return_direct_result_when_no_client_provided', async () => {
     const client = makeDirectClient(mockMembership)
     vi.mocked(createClient).mockResolvedValue(client)
 
     const result = await getMembershipByIdForBarn('mem-1', 'barn-1')
 
-    expect(createClient).toHaveBeenCalled()
     expect(result).toEqual(mockMembership)
   })
 })
