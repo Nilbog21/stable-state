@@ -277,7 +277,7 @@ export default async function FinancesPage({
                     <Td>
                       {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
                     </Td>
-                    <Td>{tier.lessonCount}</Td>
+                    <Td>{tier.tierName === NON_LESSON_INCOME_LABEL ? '' : tier.lessonCount}</Td>
                     <Td>
                       {tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}
                     </Td>
