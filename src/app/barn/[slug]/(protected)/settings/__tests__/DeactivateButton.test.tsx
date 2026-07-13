@@ -18,4 +18,13 @@ describe('DeactivateButton', () => {
     fireEvent.click(screen.getByRole('button', { name: /deactivate/i }))
     expect(window.confirm).toHaveBeenCalledOnce()
   })
+
+  it('should_mention_reactivation_is_possible_in_confirm_copy', () => {
+    vi.spyOn(window, 'confirm').mockReturnValue(false)
+    render(<DeactivateButton action={vi.fn() as unknown as () => Promise<void>} />)
+    fireEvent.click(screen.getByRole('button', { name: /deactivate/i }))
+    expect(window.confirm).toHaveBeenCalledWith(
+      expect.stringMatching(/reactivat/i)
+    )
+  })
 })
