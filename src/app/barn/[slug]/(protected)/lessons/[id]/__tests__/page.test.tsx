@@ -28,7 +28,7 @@ vi.mock('@/app/actions/lessons', () => ({
   deleteLessonAction: vi.fn(),
 }))
 
-vi.mock('../DeleteLessonButton', () => ({
+vi.mock('../../DeleteLessonButton', () => ({
   DeleteLessonButton: () => <div data-testid="delete-lesson-button" />,
 }))
 
