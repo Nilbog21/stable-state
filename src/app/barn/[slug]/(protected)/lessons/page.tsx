@@ -69,21 +69,25 @@ export default async function LessonsPage({
   }
 
   const { filter: filterParam, id: filterId } = await searchParams
-  const filter = filterParam === 'trainer' || filterParam === 'rider' || filterParam === 'horse' ? filterParam : null
+  const filter =
+    filterParam === 'mine' || filterParam === 'all' || filterParam === 'trainer' || filterParam === 'rider' || filterParam === 'horse'
+      ? filterParam
+      : null
 
   const allLessons = await getLessonsByBarn(barn.id, user.id, membership.role)
   const isManager = membership.role === 'manager'
   const isTrainer = membership.role === 'trainer'
+  const effectiveFilter = filter ?? (isManager || isTrainer ? 'mine' : 'all')
 
   let lessons = allLessons
-  if (filter && filterId) {
-    if (filter === 'trainer' && (isManager || isTrainer)) {
-      lessons = allLessons.filter((l) => l.instructor_id === filterId)
-    } else if (filter === 'rider' && (isManager || isTrainer)) {
-      lessons = allLessons.filter((l) => l.rider_ids.includes(filterId))
-    } else if (filter === 'horse' && (isManager || isTrainer)) {
-      lessons = allLessons.filter((l) => l.horse_ids.includes(filterId))
-    }
+  if (effectiveFilter === 'mine') {
+    lessons = allLessons.filter((l) => l.instructor_id === membership.id)
+  } else if (effectiveFilter === 'trainer' && filterId) {
+    lessons = allLessons.filter((l) => l.instructor_id === filterId)
+  } else if (effectiveFilter === 'rider' && filterId) {
+    lessons = allLessons.filter((l) => l.rider_ids.includes(filterId))
+  } else if (effectiveFilter === 'horse' && filterId) {
+    lessons = allLessons.filter((l) => l.horse_ids.includes(filterId))
   }
   const canCreateLesson = isManager || isTrainer
 
@@ -93,8 +97,8 @@ export default async function LessonsPage({
   const olderLessons = lessons.filter((l) => new Date(l.lesson_at) < cutoff)
 
   const riderOptions = isManager || isTrainer ? buildRiderOptions(allLessons) : []
-  const trainerOptions = isManager || isTrainer ? buildTrainerOptions(allLessons) : []
-  const horseOptions = isManager || isTrainer ? buildHorseOptions(allLessons) : []
+  const trainerOptions = buildTrainerOptions(allLessons)
+  const horseOptions = buildHorseOptions(allLessons)
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -107,54 +111,49 @@ export default async function LessonsPage({
         )}
       </div>
 
-      {(isManager || isTrainer) && (
-        <div className="w-full max-w-2xl flex flex-col gap-2">
-          <div className="overflow-x-auto">
-            <div className="flex min-w-max gap-2 pb-2">
-              <Pill href="?" active={!filter}>All</Pill>
-              <Pill href="?filter=trainer" active={filter === 'trainer'}>By Instructor</Pill>
-              <Pill href="?filter=rider" active={filter === 'rider'}>By Rider</Pill>
-              <Pill href="?filter=horse" active={filter === 'horse'}>By Horse</Pill>
-            </div>
-          </div>
-          {filter === 'trainer' && (
-            <div className="overflow-x-auto">
-              <div className="flex min-w-max gap-2 pb-2">
-                <Pill href="?filter=trainer" active={!filterId}>All</Pill>
-                {trainerOptions.map((t) => (
-                  <Pill key={t.id} href={`?filter=trainer&id=${t.id}`} active={filterId === t.id}>
-                    {t.name}
-                  </Pill>
-                ))}
-              </div>
-            </div>
+      <div className="w-full max-w-2xl flex flex-col gap-2">
+        <div className="flex flex-wrap gap-2 pb-2">
+          {(isManager || isTrainer) && (
+            <Pill href="?filter=mine" active={effectiveFilter === 'mine'}>My Lessons</Pill>
           )}
-          {filter === 'rider' && (
-            <div className="overflow-x-auto">
-              <div className="flex min-w-max gap-2 pb-2">
-                <Pill href="?filter=rider" active={!filterId}>All</Pill>
-                {riderOptions.map((r) => (
-                  <Pill key={r.id} href={`?filter=rider&id=${r.id}`} active={filterId === r.id}>
-                    {r.name}
-                  </Pill>
-                ))}
-              </div>
-            </div>
+          <Pill href="?filter=all" active={effectiveFilter === 'all'}>All</Pill>
+          <Pill href="?filter=trainer" active={effectiveFilter === 'trainer'}>By Instructor</Pill>
+          {(isManager || isTrainer) && (
+            <Pill href="?filter=rider" active={effectiveFilter === 'rider'}>By Rider</Pill>
           )}
-          {filter === 'horse' && (
-            <div className="overflow-x-auto">
-              <div className="flex min-w-max gap-2 pb-2">
-                <Pill href="?filter=horse" active={!filterId}>All</Pill>
-                {horseOptions.map((h) => (
-                  <Pill key={h.id} href={`?filter=horse&id=${h.id}`} active={filterId === h.id}>
-                    {h.name}
-                  </Pill>
-                ))}
-              </div>
-            </div>
-          )}
+          <Pill href="?filter=horse" active={effectiveFilter === 'horse'}>By Horse</Pill>
         </div>
-      )}
+        {effectiveFilter === 'trainer' && (
+          <div className="flex flex-wrap gap-2 pb-2">
+            <Pill href="?filter=trainer" active={!filterId}>All</Pill>
+            {trainerOptions.map((t) => (
+              <Pill key={t.id} href={`?filter=trainer&id=${t.id}`} active={filterId === t.id}>
+                {t.name}
+              </Pill>
+            ))}
+          </div>
+        )}
+        {effectiveFilter === 'rider' && (isManager || isTrainer) && (
+          <div className="flex flex-wrap gap-2 pb-2">
+            <Pill href="?filter=rider" active={!filterId}>All</Pill>
+            {riderOptions.map((r) => (
+              <Pill key={r.id} href={`?filter=rider&id=${r.id}`} active={filterId === r.id}>
+                {r.name}
+              </Pill>
+            ))}
+          </div>
+        )}
+        {effectiveFilter === 'horse' && (
+          <div className="flex flex-wrap gap-2 pb-2">
+            <Pill href="?filter=horse" active={!filterId}>All</Pill>
+            {horseOptions.map((h) => (
+              <Pill key={h.id} href={`?filter=horse&id=${h.id}`} active={filterId === h.id}>
+                {h.name}
+              </Pill>
+            ))}
+          </div>
+        )}
+      </div>
 
       {lessons.length === 0 ? (
         <EmptyState
