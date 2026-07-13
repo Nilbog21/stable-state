@@ -1084,6 +1084,28 @@ describe('getActiveMembersWithProfiles', () => {
     await expect(getActiveMembersWithProfiles('barn-1', 'rider')).rejects.toThrow('profiles query failed')
   })
 
+  it('should_skip_rpc_fallback_when_caller_supplies_a_client', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    const client = makeClient(
+      [{ id: 'mem-1', user_id: 'user-1', profile_id: 'profile-1', invite_token: null }],
+      null,
+      [{ id: 'profile-1', first_name: 'Carol', last_name: 'Rider', is_managed: false }],
+      null,
+      rpc
+    )
+
+    const result = await getActiveMembersWithProfiles('barn-1', 'rider', client)
+
+    expect(rpc).not.toHaveBeenCalled()
+    expect(result).toEqual([{
+      membershipId: 'mem-1',
+      userId: 'user-1',
+      name: 'Carol Rider',
+      isManaged: false,
+      inviteToken: null,
+    }])
+  })
+
   it('should_call_get_active_barn_member_summaries_rpc_with_barn_id', async () => {
     const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
