@@ -124,10 +124,17 @@ export default async function MemberDetailPage({
   const callerRole = callerMembership.role
   const targetRole = targetMembership.role
 
-  // #779: any active barn member can now open this page — Documents is the section that
-  // narrows, not page access. canUpload's "manager or self" scope already is that rule,
-  // so it also gates Documents visibility below; keep them coupled rather than duplicating
-  // the same expression under a second name.
+  // #779: any active barn member can now open this page, but Contact Info is unchanged —
+  // it keeps the pre-#779 access rule (previously the page's own canAccess gate; nothing
+  // else can reach it now that page access is broadened) since AC #5 leaves it untouched.
+  const canViewContactInfo =
+    callerRole === 'manager' ||
+    (callerRole === 'trainer' && (isOwnPage || targetRole === 'rider')) ||
+    (callerRole === 'rider' && isOwnPage)
+
+  // Documents is the section that narrows under #779, not page access. canUpload's
+  // "manager or self" scope already is that rule, so it also gates Documents visibility
+  // below; keep them coupled rather than duplicating the same expression under a second name.
   const canUpload =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && isOwnPage) ||
@@ -160,11 +167,11 @@ export default async function MemberDetailPage({
           {displayName}
         </h1>
         {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
-        {canEditContactInfo && targetProfile ? (
+        {canViewContactInfo && (canEditContactInfo && targetProfile ? (
           <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
         ) : (
           <ContactInfo profile={targetProfile} />
-        )}
+        ))}
         {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
         {canUpload && <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>}
       </main>
@@ -202,11 +209,11 @@ export default async function MemberDetailPage({
 
       {canViewBoardingStatus && <BoardingStatus slug={slug} agreement={boardingAgreement} />}
 
-      {canEditContactInfo && targetProfile ? (
+      {canViewContactInfo && (canEditContactInfo && targetProfile ? (
         <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
       ) : (
         <ContactInfo profile={targetProfile} />
-      )}
+      ))}
 
       {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
 
