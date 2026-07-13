@@ -165,9 +165,16 @@ export function expenseDateFor(now: Date, daysOffset: number): string {
 }
 
 export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
-  // now + 2h rather than a fixed time, so it's always still upcoming today
-  // regardless of when the script runs (mirrors the today-dated lesson at buildLessonDates)
-  const todayTime = new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString().slice(11, 19)
+  // now + 2h rather than a fixed time, so it's always still upcoming (mirrors buildLessonDates).
+  // Date and time are both derived from this same shifted instant so they can't disagree
+  // about the calendar day when the shift crosses UTC midnight.
+  const upcoming = new Date(now.getTime() + 2 * 60 * 60 * 1000)
+  const todayOffset = Math.round(
+    (Date.UTC(upcoming.getUTCFullYear(), upcoming.getUTCMonth(), upcoming.getUTCDate()) -
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) /
+      86400000
+  )
+  const todayTime = upcoming.toISOString().slice(11, 19)
   return [
     { daysOffset: -80, time: null, amount: 450, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
     { daysOffset: -75, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
@@ -179,7 +186,7 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
     { daysOffset: -10, time: null, amount: 275, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
     { daysOffset: -5, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -3, time: null, amount: 65, recipient: 'Saddle Up Supply', expenseType: 'Tack', appliesToAllHorses: false, horseIndex: 2 },
-    { daysOffset: 0, time: todayTime, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
+    { daysOffset: todayOffset, time: todayTime, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: 2, time: '14:00:00', amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
   ]
 }

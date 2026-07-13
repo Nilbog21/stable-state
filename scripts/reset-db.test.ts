@@ -298,6 +298,13 @@ describe('buildExpenseSeeds', () => {
     const today = seeds.find((s) => s.daysOffset === 0)
     expect(today?.time).toBe('12:00:00')
   })
+
+  it('should_roll_the_upcoming_expense_to_the_next_day_when_the_two_hour_shift_crosses_utc_midnight', () => {
+    const lateNow = new Date('2026-07-12T23:30:00.000Z')
+    const seeds = buildExpenseSeeds(lateNow)
+    const upcoming = seeds.find((s) => s.time === '01:30:00')
+    expect(upcoming?.daysOffset).toBe(1)
+  })
 })
 
 describe('expenseDateFor', () => {
