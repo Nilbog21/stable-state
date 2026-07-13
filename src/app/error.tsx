@@ -16,10 +16,10 @@ export default function Error({
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-3 px-4 text-center">
-      <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+      <h1 className="text-3xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Something went wrong
-      </p>
-      <p className="text-sm text-zinc-500 dark:text-zinc-400">
+      </h1>
+      <p className="max-w-sm text-zinc-500 dark:text-zinc-400">
         Please try again, or contact your barn manager if the problem continues.
       </p>
       <Button className="mt-1" onClick={reset}>
