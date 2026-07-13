@@ -1,6 +1,7 @@
 'use server'
 
 import { redirect } from 'next/navigation'
+import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import {
   createTier,
@@ -103,13 +104,15 @@ export async function deactivateTierAction(barnSlug: string, tierId: string): Pr
   }
 
   await deactivateTier(tierId, barn.id)
-  redirect(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings/tiers/${tierId}`)
 }
 
 export async function reactivateTierAction(barnSlug: string, tierId: string): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await reactivateTier(tierId, barn.id)
-  redirect(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings`)
+  revalidatePath(`/barn/${barnSlug}/settings/tiers/${tierId}`)
 }
 
 export async function updateDefaultBoardFeeAction(barnSlug: string, formData: FormData): Promise<void> {
