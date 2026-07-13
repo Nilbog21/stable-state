@@ -136,6 +136,44 @@ describe('ChargesTable', () => {
     expect(mockRefresh).not.toHaveBeenCalled()
   })
 
+  it('should_show_saved_indicator_after_successful_fee_save', async () => {
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    const input = screen.getByDisplayValue('200')
+    fireEvent.change(input, { target: { value: '150' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(screen.getByText(/saved/i)).toBeDefined()
+  })
+
+  it('should_not_show_saved_indicator_when_fee_save_fails', async () => {
+    vi.mocked(updateChargeFeeAction).mockResolvedValue({ error: 'a valid, non-negative fee is required' })
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    const input = screen.getByDisplayValue('200')
+    fireEvent.change(input, { target: { value: '' } })
+    await act(async () => {
+      fireEvent.blur(input)
+    })
+    expect(screen.queryByText(/saved/i)).toBeNull()
+  })
+
+  it('should_show_saved_indicator_after_successful_payment_type_save', async () => {
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByText(/saved/i)).toBeDefined()
+  })
+
+  it('should_not_show_saved_indicator_when_payment_type_save_fails', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.queryByText(/saved/i)).toBeNull()
+  })
+
   it('should_show_payment_type_error_message_when_action_returns_error', async () => {
     vi.mocked(updateChargePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
     render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)

@@ -94,6 +94,26 @@ describe('HorseExhaustionThresholdsForm', () => {
     ).toBeDefined()
   })
 
+  it('should_show_saved_indicator_after_successful_save', async () => {
+    render(<HorseExhaustionThresholdsForm horse={customHorse} barn={mockBarn} action={mockAction} />)
+
+    fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+
+    expect(await screen.findByText(/saved/i)).toBeDefined()
+  })
+
+  it('should_not_show_saved_indicator_when_save_fails', async () => {
+    const failingAction = vi
+      .fn()
+      .mockResolvedValue({ error: 'Moderate threshold must be less than high threshold' })
+    render(<HorseExhaustionThresholdsForm horse={customHorse} barn={mockBarn} action={failingAction} />)
+
+    fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+
+    await screen.findByText('Moderate threshold must be less than high threshold')
+    expect(screen.queryByText(/saved/i)).toBeNull()
+  })
+
   it('should_render_save_button', () => {
     render(<HorseExhaustionThresholdsForm horse={defaultsHorse} barn={mockBarn} action={mockAction} />)
     expect(screen.getByRole('button', { name: /save/i })).toBeDefined()
