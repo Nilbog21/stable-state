@@ -18,7 +18,10 @@ vi.mock('@/lib/db/document-storage', () => ({
   getSignedUrl: vi.fn(),
 }))
 vi.mock('@/lib/db/agreements', () => ({
-  getActiveAgreementForRider: vi.fn(),
+  getActiveAgreementsForRider: vi.fn(),
+}))
+vi.mock('@/lib/db/horses', () => ({
+  resolveHorseNames: vi.fn(),
 }))
 vi.mock('../actions', () => ({
   uploadDocumentAction: vi.fn(),
@@ -43,7 +46,8 @@ import { getUserMembership, getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
-import { getActiveAgreementForRider } from '@/lib/db/agreements'
+import { getActiveAgreementsForRider } from '@/lib/db/agreements'
+import { resolveHorseNames } from '@/lib/db/horses'
 import { uploadDocumentAction, deleteDocumentAction } from '../actions'
 import MemberDetailPage from '../page'
 
@@ -85,8 +89,10 @@ describe('MemberDetailPage', () => {
     vi.mocked(getProfileById).mockResolvedValue(targetProfile)
     vi.mocked(getDocuments).mockResolvedValue([])
     vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
-    vi.mocked(getActiveAgreementForRider).mockReset()
-    vi.mocked(getActiveAgreementForRider).mockResolvedValue(null)
+    vi.mocked(getActiveAgreementsForRider).mockReset()
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([])
+    vi.mocked(resolveHorseNames).mockReset()
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
   })
 
   it('should_show_not_found_when_barn_does_not_exist', async () => {
@@ -394,67 +400,88 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByText(/reminder due/i)).toBeNull()
   })
 
-  it('should_show_boarding_fee_and_link_when_active_agreement_exists', async () => {
+  it('should_show_active_agreements_header_and_card_when_active_agreement_exists', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
-    vi.mocked(getActiveAgreementForRider).mockResolvedValue(createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board' }))
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board', cadence: 'monthly', horse_id: 'horse-1' }),
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Bella']]))
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
+    expect(screen.getByRole('heading', { name: /active agreements/i })).toBeDefined()
     const link = screen.getByRole('link', { name: /450/ }) as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/agreements/agreement-9')
+    expect(link.textContent).toContain('Bella')
   })
 
-  it('should_show_add_boarding_link_when_no_active_agreement', async () => {
+  it('should_show_a_card_per_agreement_for_multiple_simultaneously_active_agreements', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board', cadence: 'monthly', horse_id: 'horse-1' }),
+      createMockAgreement({ id: 'agreement-10', fee: 300, kind: 'board', cadence: 'monthly', horse_id: 'horse-2' }),
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Bella'], ['horse-2', 'Rocket']]))
+    const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /450/ })).toBeDefined()
+    expect(screen.getByRole('link', { name: /300/ })).toBeDefined()
+  })
+
+  it('should_show_no_active_agreements_text_and_no_add_boarding_link_when_empty', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
-    const link = screen.getByRole('link', { name: /add boarding/i }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/agreements?kind=board')
+    expect(screen.getByText(/no active agreements/i)).toBeDefined()
+    expect(screen.queryByRole('link', { name: /add boarding/i })).toBeNull()
   })
 
-  it('should_not_render_boarding_section_for_trainer_target', async () => {
+  it('should_not_render_active_agreements_section_for_trainer_target', async () => {
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
-    expect(screen.queryByText(/boarding/i)).toBeNull()
+    expect(screen.queryByText(/active agreements/i)).toBeNull()
   })
 
-  it('should_not_call_getActiveAgreementForRider_for_non_rider_targets', async () => {
+  it('should_not_call_getActiveAgreementsForRider_for_non_rider_targets', async () => {
     await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
-    expect(getActiveAgreementForRider).not.toHaveBeenCalled()
+    expect(getActiveAgreementsForRider).not.toHaveBeenCalled()
   })
 
-  it('should_render_boarding_section_for_managed_rider_with_no_user_id', async () => {
+  it('should_render_active_agreements_section_for_managed_rider_with_no_user_id', async () => {
     const managedRiderMembership = createMockMembership({ id: 'mem-managed-rdr', user_id: null as any, barn_id: 'barn-1', role: 'rider' })
     vi.mocked(getMembershipById).mockResolvedValue(managedRiderMembership)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-managed-rdr') })
     render(jsx)
-    expect(screen.getByRole('link', { name: /add boarding/i })).toBeDefined()
+    expect(screen.getByText(/no active agreements/i)).toBeDefined()
   })
 
-  it('should_not_render_boarding_section_for_trainer_viewing_rider', async () => {
+  it('should_not_render_active_agreements_section_for_trainer_viewing_rider', async () => {
     setupAuth({ id: 'user-trn', email: 'trn@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
-    expect(screen.queryByText(/boarding/i)).toBeNull()
+    expect(screen.queryByText(/active agreements/i)).toBeNull()
   })
 
-  it('should_not_call_getActiveAgreementForRider_when_trainer_views_rider', async () => {
+  it('should_not_call_getActiveAgreementsForRider_when_trainer_views_rider', async () => {
     setupAuth({ id: 'user-trn', email: 'trn@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
     await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
-    expect(getActiveAgreementForRider).not.toHaveBeenCalled()
+    expect(getActiveAgreementsForRider).not.toHaveBeenCalled()
   })
 
-  it('should_render_boarding_section_for_rider_viewing_own_page', async () => {
+  it('should_render_active_agreements_section_for_rider_viewing_own_page', async () => {
     setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
-    vi.mocked(getActiveAgreementForRider).mockResolvedValue(createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board' }))
+    vi.mocked(getActiveAgreementsForRider).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-9', fee: 450, kind: 'board', cadence: 'monthly', horse_id: 'horse-1' }),
+    ])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Bella']]))
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
     render(jsx)
     expect(screen.getByRole('link', { name: /450/ })).toBeDefined()
