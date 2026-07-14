@@ -279,6 +279,9 @@ export async function getPaidCharges(
   }))
 }
 
+// ponytail: barn-wide, no role/userId scoping (unlike getOutstandingCharges) — its only caller
+// is the manager-only /barn/[slug]/agreements page. Add role-based scoping (mirroring
+// getOutstandingCharges) before reusing this from a trainer- or rider-facing surface.
 export async function getUnpaidAgreementIds(barnId: string, client?: SupabaseClient): Promise<Set<string>> {
   const supabase = client ?? await createClient()
   const now = new Date()
