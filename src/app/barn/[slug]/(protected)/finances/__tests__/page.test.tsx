@@ -1132,7 +1132,7 @@ describe('FinancesPage', () => {
     render(jsx)
     const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')!
     const cells = within(row).getAllByRole('cell')
-    expect(cells[cells.length - 1].textContent).toBe('—')
+    expect(cells[1].textContent).toBe('—')
   })
 
   it('should_link_trainer_name_to_trainer_drilldown_with_month_param', async () => {
