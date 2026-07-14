@@ -6,8 +6,8 @@ import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import {
   getPendingMemberships,
   getActiveMemberships,
-  resolveMemberNames,
 } from '@/lib/db/barn-memberships'
+import { resolveMemberNames } from '@/lib/db/member-names'
 import {
   approveMembershipAction,
   rejectMembershipAction,

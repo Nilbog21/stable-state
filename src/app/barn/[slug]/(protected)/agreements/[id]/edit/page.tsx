@@ -1,7 +1,7 @@
 import { notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getAgreementById } from '@/lib/db/agreements'
-import { resolveMemberNames } from '@/lib/db/barn-memberships'
+import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { updateAgreementAction, endAgreementAction } from '../../actions'
 import { AgreementForm } from '../../AgreementForm'
