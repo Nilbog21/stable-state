@@ -372,9 +372,25 @@ describe('LessonDetailPage', () => {
     expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
   })
 
-  it('should_show_delete_button_for_manager_on_a_past_paid_lesson', async () => {
+  it('should_show_delete_confirmation_link_instead_of_delete_button_for_manager_on_a_paid_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: 'cash' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByTestId('delete-lesson-button')).toBeNull()
+  })
+
+  it('should_link_to_the_delete_confirmation_page_for_manager_on_a_paid_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: 'cash' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /delete/i }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/delete')
+  })
+
+  it('should_show_bare_delete_button_for_manager_on_an_unpaid_past_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByTestId('delete-lesson-button')).toBeDefined()

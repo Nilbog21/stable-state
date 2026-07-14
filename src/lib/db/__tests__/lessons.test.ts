@@ -21,6 +21,7 @@ import { resolveMemberNames } from '../barn-memberships'
 import {
   createLesson,
   cancelLesson,
+  collectLessonPayment,
   deleteLesson,
   getLessonsByBarn,
   getLessonById,
@@ -199,31 +200,72 @@ describe('deleteLesson', () => {
     vi.clearAllMocks()
   })
 
-  function makeDeleteChain(error: Error | null = null) {
-    const mockEq2 = vi.fn().mockResolvedValue({ error })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ delete: mockDelete }),
-    } as any)
-    return { mockDelete, mockEq1, mockEq2 }
-  }
+  it('should_call_the_delete_lesson_with_transactions_rpc_with_default_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-  it('should_filter_by_lesson_id', async () => {
-    const { mockEq1 } = makeDeleteChain()
     await deleteLesson('lesson-1', 'barn-1')
-    expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
+
+    expect(mockRpc).toHaveBeenCalledWith('delete_lesson_with_transactions', {
+      p_lesson_id: 'lesson-1',
+      p_barn_id: 'barn-1',
+      p_delete_collected: false,
+    })
   })
 
-  it('should_filter_by_barn_id', async () => {
-    const { mockEq2 } = makeDeleteChain()
-    await deleteLesson('lesson-1', 'barn-1')
-    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  it('should_pass_delete_collected_transactions_true_through_to_the_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await deleteLesson('lesson-1', 'barn-1', true)
+
+    expect(mockRpc).toHaveBeenCalledWith('delete_lesson_with_transactions',
+      expect.objectContaining({ p_delete_collected: true })
+    )
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
-    makeDeleteChain(new Error('db error'))
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
     await expect(deleteLesson('lesson-1', 'barn-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('collectLessonPayment', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should_call_the_collect_lesson_payment_rpc_with_correct_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await collectLessonPayment('lesson-1', 'barn-1', 'venmo')
+
+    expect(mockRpc).toHaveBeenCalledWith('collect_lesson_payment', {
+      p_lesson_id: 'lesson-1',
+      p_barn_id: 'barn-1',
+      p_payment_type: 'venmo',
+    })
+  })
+
+  it('should_pass_null_payment_type_through_to_the_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await collectLessonPayment('lesson-1', 'barn-1', null)
+
+    expect(mockRpc).toHaveBeenCalledWith('collect_lesson_payment',
+      expect.objectContaining({ p_payment_type: null })
+    )
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('rpc error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await expect(collectLessonPayment('lesson-1', 'barn-1', 'cash')).rejects.toThrow('rpc error')
   })
 })
 
