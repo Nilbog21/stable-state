@@ -29,6 +29,7 @@ export function UpcomingLessonCard({
 
   const myRiderIndex = role === 'rider' && viewerMembershipId ? lesson.rider_ids.indexOf(viewerMembershipId) : -1
   const isOwnParticipationCancelled = myRiderIndex >= 0 && lesson.rider_cancelled_ats[myRiderIndex] !== null
+  const needsAttention = lesson.cancelled_at === null && lesson.needs_attention && new Date(lesson.lesson_at) > new Date()
 
   return (
     <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="p-4">
@@ -39,6 +40,9 @@ export function UpcomingLessonCard({
       )}
       {lesson.cancelled_at === null && isOwnParticipationCancelled && (
         <span className="mt-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+      )}
+      {needsAttention && (
+        <span className="mt-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Needs Attention</span>
       )}
       {lesson.horse_names.length > 0 && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">

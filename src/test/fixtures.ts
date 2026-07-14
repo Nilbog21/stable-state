@@ -118,6 +118,7 @@ export function createMockLessonWithDetails(overrides: Partial<LessonWithDetails
     rider_ids: ['rider-1'],
     rider_count: 1,
     rider_cancelled_ats: [null],
+    needs_attention: false,
     ...overrides,
   }
 }

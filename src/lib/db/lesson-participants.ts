@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './barn-memberships'
-import { resolveHorseNames } from './horses'
+import { resolveHorseNames, getHorseStatusMap } from './horses'
 import type { Lesson, LessonHorse, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
 
 export async function hydrateParticipants(
@@ -27,9 +27,10 @@ export async function hydrateParticipants(
   const horseIds = [...new Set((lessonHorses ?? []).map((lh) => lh.horse_id))]
   const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
 
-  const [horseNameMap, membershipMap] = await Promise.all([
+  const [horseNameMap, membershipMap, horseStatusMap] = await Promise.all([
     resolveHorseNames(horseIds, barnId, supabase),
     resolveMemberNames([...riderIds, ...instructorIds], barnId, supabase),
+    getHorseStatusMap(horseIds, barnId, supabase),
   ])
 
   return lessons.map((lesson) => {
@@ -47,6 +48,10 @@ export async function hydrateParticipants(
     const riderNames = riderParticipants.map((p) => p.name)
     const riderIdsForLesson = riderParticipants.map((p) => p.id)
     const riderCancelledAts = riderParticipants.map((p) => p.cancelledAt)
+    const needsAttention = horseParticipants.some((p) => {
+      const status = horseStatusMap.get(p.id)
+      return status ? !status.is_active || !status.is_available : false
+    })
     return {
       ...lesson,
       instructor_name: instructorName,
@@ -57,6 +62,7 @@ export async function hydrateParticipants(
       rider_ids: riderIdsForLesson,
       rider_count: riderJunctionRows.length,
       rider_cancelled_ats: riderCancelledAts,
+      needs_attention: needsAttention,
     }
   })
 }

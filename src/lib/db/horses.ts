@@ -124,6 +124,27 @@ export async function resolveHorseNames(
   return new Map((data ?? []).map((h: { id: string; name: string }) => [h.id, h.name]))
 }
 
+export async function getHorseStatusMap(
+  horseIds: string[],
+  barnId: string,
+  client?: SupabaseClient
+): Promise<Map<string, { is_active: boolean; is_available: boolean }>> {
+  if (!horseIds.length) return new Map()
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('horses')
+    .select('id, is_active, is_available')
+    .eq('barn_id', barnId)
+    .in('id', horseIds)
+  if (error) throw error
+  return new Map(
+    (data ?? []).map((h: { id: string; is_active: boolean; is_available: boolean }) => [
+      h.id,
+      { is_active: h.is_active, is_available: h.is_available },
+    ])
+  )
+}
+
 export async function setHorseAvailability(
   horseId: string,
   barnId: string,

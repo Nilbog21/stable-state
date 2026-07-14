@@ -119,6 +119,7 @@ export interface LessonWithDetails extends Lesson {
   rider_ids: string[]
   rider_count: number
   rider_cancelled_ats: (string | null)[]
+  needs_attention: boolean
 }
 
 export interface LessonDetail extends Lesson {
