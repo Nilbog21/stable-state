@@ -1,16 +1,11 @@
 import type { PaymentType } from '@/lib/db/types'
 import { getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
+import { parseNonNegativeAmount } from '@/lib/parse-amount'
 
 function parseExertionLevel(raw: FormDataEntryValue | null): number {
   const n = parseInt(raw as string ?? '', 10)
   return Number.isNaN(n) ? 3 : Math.max(1, Math.min(5, n))
-}
-
-function parseFee(raw: string | null): number | null {
-  if (!raw || raw.trim() === '') return null
-  const n = parseFloat(raw)
-  return isNaN(n) ? null : n
 }
 
 /**
@@ -99,7 +94,7 @@ export async function parseLessonFormData(
     }
   }
 
-  const fee = parseFee(feeRaw)
+  const fee = parseNonNegativeAmount(feeRaw)
   if (fee == null) return { error: 'fee is required' }
 
   const instructorCut = parseInstructorCut(formData.get('instructor_cut') as string | null)

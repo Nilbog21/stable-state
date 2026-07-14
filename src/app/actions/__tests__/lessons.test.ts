@@ -186,6 +186,12 @@ describe('parseLessonFormData', () => {
     expect(result).toEqual({ error: 'fee is required' })
   })
 
+  it('should_return_error_when_fee_is_negative', async () => {
+    const fd = makeFormData({ fee: '-10', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
+    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
+    expect(result).toEqual({ error: 'fee is required' })
+  })
+
   it('should_return_parsed_data_on_valid_input', async () => {
     const fd = makeFormData({ fee: '75.5', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', jumping: 'true', payment_type: 'venmo', instructor_cut: '25' })
     const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)

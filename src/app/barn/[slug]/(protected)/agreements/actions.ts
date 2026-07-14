@@ -11,14 +11,9 @@ import {
   updateChargePaymentType,
 } from '@/lib/db/agreements'
 import type { AgreementKind, AgreementCadence, PaymentType } from '@/lib/db/types'
+import { parseNonNegativeAmount as parseFee } from '@/lib/parse-amount'
 
 const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
-
-function parseFee(raw: string | null): number | null {
-  if (!raw || raw.trim() === '') return null
-  const n = parseFloat(raw)
-  return isNaN(n) || n < 0 ? null : n
-}
 
 export type AgreementFormState = { error: string | null }
 
