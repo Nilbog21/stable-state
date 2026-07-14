@@ -7,6 +7,7 @@ import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
 import { resolveHorseNames } from '@/lib/db/horses'
+import { canManage } from '@/lib/document-target'
 import { Card } from '@/components/ui/Card'
 import { ContactInfoForm } from './ContactInfoForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
@@ -165,13 +166,14 @@ export default async function MemberDetailPage({
     (callerRole === 'trainer' && (isOwnPage || targetRole === 'rider')) ||
     (callerRole === 'rider' && isOwnPage)
 
-  // Documents is the section that narrows under #779, not page access. canUpload's
-  // "manager or self" scope already is that rule, so it also gates Documents visibility
-  // below; keep them coupled rather than duplicating the same expression under a second name.
-  const canUpload =
+  // Documents is the section that narrows under #779, not page access — canViewDocuments's
+  // "manager or self" scope is that rule. #864: viewing and managing (upload/delete) diverge for
+  // a self-viewing rider, so they're two booleans now instead of one shared canUpload.
+  const canViewDocuments =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && isOwnPage) ||
     (callerRole === 'rider' && isOwnPage)
+  const canManageDocuments = canManage(callerRole, isOwnPage)
 
   // agreements RLS only grants SELECT to the barn manager and the rider themself —
   // a trainer's query would be silently filtered to zero rows, showing a false "no agreements" status
@@ -204,7 +206,7 @@ export default async function MemberDetailPage({
   type DocWithUrl = { doc: TrainerDocument | RiderDocument; signedUrl: string }
   let docsWithUrls: DocWithUrl[] = []
 
-  if (canUpload) {
+  if (canViewDocuments) {
     if (targetRole === 'rider') {
       const docs = await getDocuments('rider', targetMembership.id, barn.id)
       docsWithUrls = await Promise.all(
@@ -255,13 +257,13 @@ export default async function MemberDetailPage({
 
       {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
 
-      {canUpload && (
+      {canViewDocuments && (
       <section className="mb-10">
         <div className="mb-3 flex items-center justify-between">
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Documents
           </h2>
-          {canUpload && <Button href={addDocumentHref}>Add Document</Button>}
+          {canManageDocuments && <Button href={addDocumentHref}>Add Document</Button>}
         </div>
         {docsWithUrls.length > 0 ? (
           <div className="overflow-x-auto">
@@ -301,7 +303,7 @@ export default async function MemberDetailPage({
                       </div>
                     </Td>
                     <TableActions>
-                      {canUpload && (
+                      {canManageDocuments && (
                         <DeleteDocumentButton docId={doc.id} storagePath={doc.storage_path} action={boundDelete} />
                       )}
                     </TableActions>

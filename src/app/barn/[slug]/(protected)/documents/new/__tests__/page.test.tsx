@@ -173,6 +173,16 @@ describe('NewDocumentPage', () => {
     expect(screen.getByTestId('document-upload-form')).toBeDefined()
   })
 
+  it('should_call_notFound_when_rider_views_own_page', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    await expect(NewDocumentPage(makeParams('green-acres', 'rider', 'mem-rdr'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
   it('should_render_document_upload_form_using_targets_actual_role_when_url_entity_is_mismatched', async () => {
     const jsx = await NewDocumentPage(makeParams('green-acres', 'rider', 'mem-target-trn'))
     render(jsx)

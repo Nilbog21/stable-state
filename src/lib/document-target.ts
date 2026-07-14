@@ -3,7 +3,7 @@ import type { Barn, BarnMembership } from '@/lib/db/types'
 
 export function canManage(callerRole: string, isOwnPage: boolean): boolean {
   if (callerRole === 'manager') return true
-  return (callerRole === 'trainer' || callerRole === 'rider') && isOwnPage
+  return callerRole === 'trainer' && isOwnPage
 }
 
 export async function resolveManageableTarget(

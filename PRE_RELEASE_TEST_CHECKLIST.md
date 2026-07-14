@@ -187,6 +187,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and a card shows up under the Dashboard's Reminders section, linking back to this member
 - [ ] Delete the trainer's document → row disappears
 - [ ] Open rider Gale Test's member detail page — **Add Document** button is available (manager can manage rider docs)
+- [ ] As manager, upload a document on rider Dana's member detail page — succeeds (manager can manage any rider's docs); this document is used to verify Dana's own read-only access in Phase 6
 - [ ] As manager, rider Emery's member detail page shows an **Active Agreements** header with one card each for her seeded lease and boarding agreements (kind, horse, fee), each linking to its agreement detail page; a rider with no active agreements shows **No active agreements** with no add-boarding link; a managed (unclaimed) rider's detail page shows the same section
 - [ ] As Emery herself (`change-user.sh`), her own member detail page shows the same two Active Agreements cards, but they are plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page
 - [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it → trainer reappears in the instructor select
@@ -290,6 +291,7 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
 - [ ] Dashboard: if Dana has unpaid lessons and/or unpaid leases/boarding, a "Reminders" section with "N unpaid lessons"/"N unpaid leases/boarding" cards appears, each linking to `/barn/dev-barn/finances/outstanding` — this is Dana's only nav path to that page (no Finances link in the nav)
 - [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms, and no Unlinked badge on any managed/unclaimed row (rider never sees it, unlike a manager)
+- [ ] Open your own member detail page's Documents section — the document a manager uploaded on your behalf (Phase 4) is listed and its link opens, but there is **no Add Document button** and **no Delete action** in the Actions column (#864 — rider self-service is read-only)
 - [ ] Open another member's detail page from the roster (a trainer, a manager) — page loads (no 404), shows only their name — no Contact Info, no Documents section
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
