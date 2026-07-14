@@ -241,7 +241,7 @@ export async function getActiveMembersWithProfiles(
   // Rows not returned above fall outside barn_memberships' narrow SELECT policies (e.g. a
   // rider viewing managers/trainers/other riders, or a trainer viewing managers/other
   // trainers) — broadened per #779 via a column-limited RPC that never selects
-  // invite_token, mirroring resolveMemberNames' RPC fallback above.
+  // invite_token, mirroring resolveMemberNames' RPC fallback (member-names.ts).
   const seenIds = new Set(rows.map((m) => m.id))
   const { data: summaryRows, error } = await supabase.rpc('get_active_barn_member_summaries', {
     p_barn_id: barnId,
