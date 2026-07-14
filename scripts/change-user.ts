@@ -32,6 +32,8 @@ export function mergeMembersWithProfiles<M extends { profile_id: string }, P ext
   return memberships.map((m) => profileMap.get(m.profile_id)).filter((p): p is P => p !== undefined)
 }
 
+// Vacating the dev's own row must null it (not restore devUserId) since the target row is about
+// to take devUserId — barn_memberships' UNIQUE(user_id, barn_id) forbids both holding it at once.
 export function resolveRevertUserId(
   currentRowProfileId: string,
   devProfileId: string,
