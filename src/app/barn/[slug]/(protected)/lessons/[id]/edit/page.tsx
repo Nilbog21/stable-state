@@ -7,8 +7,10 @@ import { getHorsesByBarn } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getSeriesById } from '@/lib/db/lesson-series'
 import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '@/app/actions/lessons'
+import { getHorseAttentionReasons } from '@/lib/lesson-authorization'
 import { LessonForm } from '../../LessonForm'
 import { StopSeriesButton } from '../../StopSeriesButton'
+import { HorseStatusBanner } from '../../HorseStatusBanner'
 
 export default async function EditLessonPage({
   params,
@@ -80,11 +82,14 @@ export default async function EditLessonPage({
       .map(lr => ({ membershipId: lr.barn_membership!.id, name: lr.barn_membership!.name, rider_notes: lr.rider_notes, private_notes: lr.private_notes })),
   }
 
+  const attentionReasons = getHorseAttentionReasons(lesson)
+
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white pt-8 dark:bg-black">
       <h1 className="w-full max-w-sm text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Edit Lesson
       </h1>
+      <HorseStatusBanner reasons={attentionReasons} />
       {series?.is_active && stopSeries && (
         <div className="flex w-full max-w-sm flex-col gap-3">
           <p className="text-sm text-zinc-600 dark:text-zinc-400">This is part of a recurring series</p>
