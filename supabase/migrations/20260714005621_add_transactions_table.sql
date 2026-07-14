@@ -41,11 +41,16 @@ CREATE TABLE public.transactions (
     ON DELETE SET NULL (agreement_charge_id),
   FOREIGN KEY (barn_id, expense_id) REFERENCES public.horse_expenses (barn_id, id)
     ON DELETE SET NULL (expense_id),
+  -- At most one, not exactly one: each source FK uses ON DELETE SET NULL so a
+  -- transaction outlives deletion of its source row, which nulls that one column
+  -- and would drop the sum to 0. An exactly-one CHECK would reject that SET NULL
+  -- update and block the delete entirely. Exactly-one at creation time is enforced
+  -- by the writing RPCs added in later issues, not by this constraint.
   CHECK (
     (CASE WHEN lesson_id IS NOT NULL THEN 1 ELSE 0 END) +
     (CASE WHEN lesson_rider_id IS NOT NULL THEN 1 ELSE 0 END) +
     (CASE WHEN agreement_charge_id IS NOT NULL THEN 1 ELSE 0 END) +
-    (CASE WHEN expense_id IS NOT NULL THEN 1 ELSE 0 END) = 1
+    (CASE WHEN expense_id IS NOT NULL THEN 1 ELSE 0 END) <= 1
   )
 );
 
