@@ -158,14 +158,6 @@ export default async function MemberDetailPage({
   const callerRole = callerMembership.role
   const targetRole = targetMembership.role
 
-  // #779: any active barn member can now open this page, but Contact Info is unchanged —
-  // it keeps the pre-#779 access rule (previously the page's own canAccess gate; nothing
-  // else can reach it now that page access is broadened) since AC #5 leaves it untouched.
-  const canViewContactInfo =
-    callerRole === 'manager' ||
-    (callerRole === 'trainer' && (isOwnPage || targetRole === 'rider')) ||
-    (callerRole === 'rider' && isOwnPage)
-
   // Documents is the section that narrows under #779, not page access — canViewDocuments's
   // "manager or self" scope is that rule. #864: viewing and managing (upload/delete) diverge for
   // a self-viewing rider, so they're two booleans now instead of one shared canUpload.
@@ -249,11 +241,12 @@ export default async function MemberDetailPage({
         />
       )}
 
-      {canViewContactInfo && (canEditContactInfo && targetProfile ? (
+      {/* #863: any active barn member can view any other's Contact Info — page access above is already the gate */}
+      {canEditContactInfo && targetProfile ? (
         <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
       ) : (
         <ContactInfo profile={targetProfile} slug={slug} isOwnPage={isOwnPage} />
-      ))}
+      )}
 
       {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
 
