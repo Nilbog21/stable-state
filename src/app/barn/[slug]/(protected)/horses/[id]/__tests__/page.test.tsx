@@ -14,16 +14,12 @@ vi.mock('@/lib/db/document-storage', () => ({
   getSignedUrl: vi.fn(),
 }))
 vi.mock('../actions', () => ({
-  updateHorseDetailsAction: vi.fn(),
+  updateHorseAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
-  updateHorseExhaustionThresholdsAction: vi.fn(),
   updateHorseDocumentReminderDateAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
-}))
-vi.mock('../HorseExhaustionThresholdsForm', () => ({
-  HorseExhaustionThresholdsForm: () => <div data-testid="horse-exhaustion-thresholds-form" />,
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -144,32 +140,6 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByTestId('horse-manager-form')).toBeNull()
-  })
-
-  it('should_render_horse_exhaustion_thresholds_form_for_manager', async () => {
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.getByTestId('horse-exhaustion-thresholds-form')).toBeDefined()
-  })
-
-  it('should_not_render_horse_exhaustion_thresholds_form_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.queryByTestId('horse-exhaustion-thresholds-form')).toBeNull()
-  })
-
-  it('should_not_render_horse_exhaustion_thresholds_form_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.queryByTestId('horse-exhaustion-thresholds-form')).toBeNull()
-  })
-
-  it('should_render_exhaustion_thresholds_heading_in_text_sm', async () => {
-    const jsx = await HorseDetailPage({ params: pageParams })
-    render(jsx)
-    expect(screen.getByRole('heading', { name: /exhaustion thresholds/i }).className).toContain('text-sm')
   })
 
   it('should_render_unavailability_reason_for_trainer_when_unavailable', async () => {
