@@ -167,6 +167,7 @@ export interface TrainerIncomeSummary {
   trainerId: string
   trainerName: string
   totalIncome: number
+  grossIncome: number | null
 }
 
 export interface HorseExertionSummary {
@@ -241,6 +242,12 @@ export interface RiderIncomeDetailRow {
   fee: number
   riderCount: number
   splitAmount: number
+}
+
+export interface TrainerIncomeDetailRow {
+  lessonId: string
+  lessonAt: string
+  fee: number
 }
 
 export interface HorseNetIncomeRow {

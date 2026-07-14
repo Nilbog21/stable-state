@@ -586,6 +586,18 @@ export function LessonForm({
       {initialNotes && (
         <div className="flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-700" onChange={() => setNotesDirty(true)}>
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Notes</p>
+          {mode === 'edit' && initialLesson?.cancelled_at != null && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="cancellation_notes" className="text-xs font-medium text-zinc-500">Cancellation Notes</label>
+              <textarea
+                id="cancellation_notes"
+                name="cancellation_notes"
+                defaultValue={initialLesson.cancellation_notes ?? ''}
+                rows={2}
+                className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          )}
           {initialNotes.horses.map((h) => (
             <div key={h.id} className="flex flex-col gap-1">
               <input type="hidden" name="noteHorseId" value={h.id} />

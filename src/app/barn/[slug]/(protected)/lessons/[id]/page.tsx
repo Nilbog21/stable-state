@@ -3,9 +3,9 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
+import type { LessonDetail } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
-import { CancellationNotesField } from './CancellationNotesField'
 import { DeleteLessonButton } from '../DeleteLessonButton'
 import { deleteLessonAction } from '@/app/actions/lessons'
 
@@ -34,6 +34,74 @@ function RiderParticipationAction({
     <Button href={`/barn/${slug}/lessons/${lessonId}/cancel-rider/${riderId}`} variant="danger">
       Cancel
     </Button>
+  )
+}
+
+function RiderNotesBlock({
+  lr,
+  canSeeNotes,
+}: {
+  lr: LessonDetail['lesson_riders'][number]
+  canSeeNotes: boolean
+}) {
+  if (!lr.barn_membership?.id) return null
+  const hasStaffNotes = canSeeNotes && (lr.rider_notes || lr.private_notes)
+  if (!hasStaffNotes && !lr.cancellation_notes) return null
+  return (
+    <div className="mt-1 flex flex-col gap-1">
+      {canSeeNotes && lr.rider_notes && (
+        <div>
+          <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
+          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes}</p>
+        </div>
+      )}
+      {canSeeNotes && lr.private_notes && (
+        <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
+          <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
+          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes}</p>
+        </div>
+      )}
+      {lr.cancellation_notes && (
+        <div>
+          <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
+          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.cancellation_notes}</p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function OwnRiderNotesBlock({
+  slug,
+  lessonId,
+  myRiderEntry,
+  showOwnRiderAction,
+  eligible,
+}: {
+  slug: string
+  lessonId: string
+  myRiderEntry: LessonDetail['lesson_riders'][number]
+  showOwnRiderAction: boolean
+  eligible: boolean
+}) {
+  return (
+    <div className="mt-2">
+      <div className={`flex items-center gap-2 ${myRiderEntry.rider_notes ? 'justify-between' : 'justify-end'}`}>
+        {myRiderEntry.rider_notes && <p className="text-xs font-medium text-zinc-500">Your Notes</p>}
+        {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
+          <RiderParticipationAction
+            slug={slug}
+            lessonId={lessonId}
+            riderId={myRiderEntry.barn_membership.id}
+            cancelledAt={myRiderEntry.cancelled_at}
+            eligible={eligible}
+          />
+        )}
+      </div>
+      {myRiderEntry.rider_notes && (
+        <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes}</p>
+      )}
+    </div>
   )
 }
 
@@ -138,16 +206,10 @@ export default async function LessonDetailPage({
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Instructor</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">{instructorName}</dd>
           </div>
-          {lesson.cancelled_at !== null && (
+          {lesson.cancellation_notes && (
             <div className="flex flex-col gap-1 py-4">
               <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Cancellation Notes</dt>
-              <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-                {canManage ? (
-                  <CancellationNotesField barnSlug={slug} lessonId={lesson.id} initialNotes={lesson.cancellation_notes} />
-                ) : (
-                  lesson.cancellation_notes ?? '—'
-                )}
-              </dd>
+              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{lesson.cancellation_notes}</dd>
             </div>
           )}
           <div className="flex flex-col gap-1 py-4">
@@ -159,10 +221,10 @@ export default async function LessonDetailPage({
                     <li key={lh.horses?.id ?? i}>
                       <span>{lh.horses?.name ?? '—'}</span>{' '}
                       <span className="text-zinc-500">(exertion {lh.exertion_level})</span>
-                      {canSeeNotes && lh.horses?.id && (
+                      {canSeeNotes && lh.horses?.id && lh.horse_notes && (
                         <div className="mt-1">
                           <p className="text-xs font-medium text-zinc-500">Horse Notes</p>
-                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lh.horse_notes ?? '—'}</p>
+                          <p className="text-sm text-zinc-900 dark:text-zinc-50">{lh.horse_notes}</p>
                         </div>
                       )}
                     </li>
@@ -191,45 +253,18 @@ export default async function LessonDetailPage({
                             />
                           )}
                         </div>
-                        {(canSeeNotes || lr.cancelled_at !== null) && lr.barn_membership?.id && (
-                          <div className="mt-1 flex flex-col gap-1">
-                            {canSeeNotes && (
-                              <>
-                                <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
-                                <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
-                                <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
-                                  <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
-                                  <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
-                                </div>
-                              </>
-                            )}
-                            {lr.cancelled_at !== null && (
-                              <div>
-                                <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
-                                <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.cancellation_notes ?? '—'}</p>
-                              </div>
-                            )}
-                          </div>
-                        )}
+                        <RiderNotesBlock lr={lr} canSeeNotes={canSeeNotes} />
                       </li>
                     ))}
                   </ul>
                   {role === 'rider' && myRiderEntry && (
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-medium text-zinc-500">Your Notes</p>
-                        {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
-                          <RiderParticipationAction
-                            slug={slug}
-                            lessonId={lesson.id}
-                            riderId={myRiderEntry.barn_membership.id}
-                            cancelledAt={myRiderEntry.cancelled_at}
-                            eligible={lessonEligibleWindow}
-                          />
-                        )}
-                      </div>
-                      <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
-                    </div>
+                    <OwnRiderNotesBlock
+                      slug={slug}
+                      lessonId={lesson.id}
+                      myRiderEntry={myRiderEntry}
+                      showOwnRiderAction={showOwnRiderAction}
+                      eligible={lessonEligibleWindow}
+                    />
                   )}
                 </>
               ) : (
@@ -248,44 +283,17 @@ export default async function LessonDetailPage({
                           />
                         )}
                       </div>
-                      {(canSeeNotes || lr.cancelled_at !== null) && lr.barn_membership?.id && (
-                        <div className="mt-1 flex flex-col gap-1">
-                          {canSeeNotes && (
-                            <>
-                              <p className="text-xs font-medium text-zinc-500">Rider Notes</p>
-                              <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.rider_notes ?? '—'}</p>
-                              <div className="rounded border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-700 dark:bg-zinc-900">
-                                <p className="text-xs font-semibold uppercase tracking-wide text-zinc-500">Private</p>
-                                <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.private_notes ?? '—'}</p>
-                              </div>
-                            </>
-                          )}
-                          {lr.cancelled_at !== null && (
-                            <div>
-                              <p className="text-xs font-medium text-zinc-500">Cancellation Notes</p>
-                              <p className="text-sm text-zinc-900 dark:text-zinc-50">{lr.cancellation_notes ?? '—'}</p>
-                            </div>
-                          )}
-                        </div>
-                      )}
+                      <RiderNotesBlock lr={lr} canSeeNotes={canSeeNotes} />
                     </div>
                   ))}
                   {role === 'rider' && myRiderEntry && (
-                    <div className="mt-2">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-xs font-medium text-zinc-500">Your Notes</p>
-                        {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
-                          <RiderParticipationAction
-                            slug={slug}
-                            lessonId={lesson.id}
-                            riderId={myRiderEntry.barn_membership.id}
-                            cancelledAt={myRiderEntry.cancelled_at}
-                            eligible={lessonEligibleWindow}
-                          />
-                        )}
-                      </div>
-                      <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes ?? '—'}</p>
-                    </div>
+                    <OwnRiderNotesBlock
+                      slug={slug}
+                      lessonId={lesson.id}
+                      myRiderEntry={myRiderEntry}
+                      showOwnRiderAction={showOwnRiderAction}
+                      eligible={lessonEligibleWindow}
+                    />
                   )}
                 </div>
               )}

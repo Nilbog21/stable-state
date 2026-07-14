@@ -65,7 +65,7 @@ describe('RiderIncomePage', () => {
   it('should_render_empty_state_when_no_rows', async () => {
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(screen.getByText(/no lessons/i)).toBeDefined()
+    expect(screen.getByText(/no activity/i)).toBeDefined()
   })
 
   it('should_render_lesson_date_in_table', async () => {
@@ -110,6 +110,17 @@ describe('RiderIncomePage', () => {
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     expect(screen.getAllByText('$50.00').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_lesson_type_label', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
+      chargeRows: [], total: 100,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getByText('Lesson')).toBeDefined()
   })
 
   it('should_render_total_row', async () => {
@@ -184,6 +195,18 @@ describe('RiderIncomePage', () => {
     expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1?kind=lease')
   })
 
+  it('should_render_dash_for_riders_column_on_charge_row', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      total: 200,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getByText('—')).toBeDefined()
+  })
+
   it('should_combine_lesson_and_charge_rows_in_total', async () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
@@ -194,5 +217,18 @@ describe('RiderIncomePage', () => {
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     expect(screen.getAllByText('$600.00').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_rows_in_date_ascending_order', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-20T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-05', kind: 'board', fee: 40 }],
+      total: 140,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    const { container } = render(jsx)
+    const text = container.textContent ?? ''
+    expect(text.indexOf('May 5, 2026')).toBeLessThan(text.indexOf('May 20, 2026'))
   })
 })
