@@ -155,6 +155,7 @@ export function HorseManagerForm({
               Moderate threshold
             </label>
             <input
+              key={saveCount}
               id="horse-exhaustion-moderate"
               name="moderate"
               type="number"
@@ -174,6 +175,7 @@ export function HorseManagerForm({
               High threshold
             </label>
             <input
+              key={saveCount}
               id="horse-exhaustion-high"
               name="high"
               type="number"
