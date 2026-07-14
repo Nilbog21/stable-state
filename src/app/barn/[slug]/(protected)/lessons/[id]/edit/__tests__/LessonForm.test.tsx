@@ -719,6 +719,15 @@ describe('LessonForm notes fields', () => {
     expect(screen.queryByText('Cancellation Notes')).toBeNull()
   })
 
+  it('should_render_empty_cancellation_notes_textarea_when_notes_is_null', () => {
+    const props = {
+      ...notesProps,
+      initialLesson: { ...normalLesson, cancelled_at: '2026-05-18T00:00:00Z', cancellation_notes: null },
+    }
+    render(<LessonForm {...props} />)
+    expect(screen.getByLabelText('Cancellation Notes')).toBeDefined()
+  })
+
   it('should_not_render_notes_section_when_initialNotes_not_provided', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByText('Notes')).toBeNull()
