@@ -101,13 +101,13 @@ describe('deleteDocumentAction', () => {
     expect(deleteDocument).toHaveBeenCalledWith('trainer', 'doc-1', 'mem-trn', 'barn-1')
   })
 
-  it('should_delete_own_rider_document_as_rider', async () => {
+  it('should_reject_delete_of_own_rider_document_as_rider', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
     vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
 
-    await deleteDocumentAction('green-acres', 'mem-rdr', 'doc-1', 'barn-1/riders/user-rdr/file.pdf')
+    const result = await deleteDocumentAction('green-acres', 'mem-rdr', 'doc-1', 'barn-1/riders/user-rdr/file.pdf')
 
-    expect(deleteDocument).toHaveBeenCalledWith('rider', 'doc-1', 'mem-rdr', 'barn-1')
+    expect(result.error).toBeTruthy()
   })
 
   it('should_reject_delete_when_trainer_targets_rider_document', async () => {

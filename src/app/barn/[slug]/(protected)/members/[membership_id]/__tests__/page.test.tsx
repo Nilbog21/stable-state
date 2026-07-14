@@ -394,17 +394,17 @@ describe('MemberDetailPage', () => {
     expect(screen.getAllByRole('link', { name: /add document/i }).length).toBeGreaterThan(0)
   })
 
-  it('should_show_add_document_link_when_rider_views_own_page', async () => {
+  it('should_not_show_add_document_link_when_rider_views_own_page', async () => {
     setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(riderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
     render(jsx)
-    expect(screen.getAllByRole('link', { name: /add document/i }).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('link', { name: /add document/i })).toBeNull()
   })
 
-  it('should_show_delete_button_when_rider_views_own_doc', async () => {
+  it('should_not_show_delete_button_when_rider_views_own_doc', async () => {
     setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(riderMembership)
@@ -412,7 +412,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getDocuments).mockResolvedValue([mockRiderDoc] as any)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
     render(jsx)
-    expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
   it('should_render_documents_table_when_documents_exist', async () => {

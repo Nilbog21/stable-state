@@ -265,15 +265,14 @@ describe('uploadDocumentAction — trainer/rider (member) entity', () => {
     expect(createDocument).toHaveBeenCalled()
   })
 
-  it('should_upload_own_rider_document_as_rider', async () => {
+  it('should_reject_upload_of_own_rider_document_as_rider', async () => {
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-rdr' } as any,
       barn: mockBarn,
       membership: ownRiderMembership,
     })
     const fd = makeUploadFormData(makePdfFile(), 'liability_waiver')
-    await uploadDocumentAction('green-acres', 'rider', 'mem-rdr', { error: null }, fd).catch(() => {})
-    expect(createDocument).toHaveBeenCalled()
+    await expect(uploadDocumentAction('green-acres', 'rider', 'mem-rdr', { error: null }, fd)).resolves.toEqual({ error: 'Forbidden' })
   })
 
   it('should_reject_upload_when_trainer_targets_another_member', async () => {
