@@ -175,7 +175,6 @@ export default async function LessonsPage({
                   slug={slug}
                   isManager={isManager}
                   isTrainer={isTrainer}
-                  currentMembershipId={membership.id}
                   viewerMembershipId={membership.id}
                 />
               ))}
@@ -186,7 +185,6 @@ export default async function LessonsPage({
             slug={slug}
             isManager={isManager}
             isTrainer={isTrainer}
-            currentMembershipId={membership.id}
             viewerMembershipId={membership.id}
           />
         </>
