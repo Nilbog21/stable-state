@@ -136,14 +136,14 @@ describe('LessonNewPage', () => {
     expect(screen.queryByLabelText(/instructor/i)).toBeNull()
   })
 
-  it('should_display_trainer_full_name_when_profile_is_found', async () => {
+  it('should_not_display_trainer_full_name_when_profile_is_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
       { membershipId: mockTrainerMembership.id, userId: 'user-1', name: 'John Trainer' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('John Trainer')).toBeDefined()
+    expect(screen.queryByText('John Trainer')).toBeNull()
   })
 
   it('should_render_instructor_select_when_user_is_a_manager', async () => {
