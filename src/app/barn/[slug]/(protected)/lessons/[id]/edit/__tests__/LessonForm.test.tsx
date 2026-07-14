@@ -661,6 +661,76 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     handler!(mockEvent)
     expect(mockEvent.preventDefault).toHaveBeenCalled()
   })
+
+  const futureNormalLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+  const futureGroupLesson: LessonDetail = { ...groupLesson, lesson_at: '2099-01-01T10:00:00Z' }
+
+  it('should_set_dirty_when_fee_changed', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const feeInput = container.querySelector('input[name="fee"]') as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '99' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_set_dirty_false_when_fee_reverted_to_original', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const feeInput = container.querySelector('input[name="fee"]') as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '99' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+    fireEvent.change(feeInput, { target: { value: String(futureNormalLesson.fee) } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_set_dirty_when_horse_checkbox_toggled', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const horseCheckbox = container.querySelector('input[name="horse_id"]') as HTMLInputElement
+    fireEvent.click(horseCheckbox)
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_set_dirty_when_normal_rider_changed', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const select = container.querySelector('select[name="rider_id"]') as HTMLSelectElement
+    fireEvent.change(select, { target: { value: 'rider-2' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_set_dirty_when_group_rider_checkbox_toggled', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureGroupLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const riderCheckboxes = container.querySelectorAll('input[name="rider_id"]')
+    fireEvent.click(riderCheckboxes[0])
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
 })
 
 describe('LessonForm notes fields', () => {
