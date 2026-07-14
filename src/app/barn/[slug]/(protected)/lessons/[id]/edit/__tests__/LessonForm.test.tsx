@@ -731,6 +731,22 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     fireEvent.click(riderCheckboxes[0])
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
+
+  it('should_set_dirty_when_group_riders_swapped_keeping_same_count', async () => {
+    const mockRider3 = { id: 'rider-3', name: 'Cara' }
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} riders={[mockRider, mockRider2, mockRider3]} initialLesson={futureGroupLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const [rider1Checkbox, rider2Checkbox, rider3Checkbox] = container.querySelectorAll('input[name="rider_id"]')
+    fireEvent.click(rider2Checkbox)
+    fireEvent.click(rider3Checkbox)
+    expect(rider1Checkbox).toBeDefined()
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
 })
 
 describe('LessonForm notes fields', () => {
