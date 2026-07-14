@@ -114,7 +114,7 @@ Dashboard (`/barn/dev-barn`):
 - [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
 - [ ] A "Reminders" section header appears above the pending-requests/document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
 - [ ] Pending-requests badge is visible under the Reminders header (Quinn Pending), reads "1 pending new member request" (singular wording, not "1 pending request"), and links to settings
-- [ ] Document Reminders section is hidden when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), it appears here and links to that horse's or member's detail page
+- [ ] No document-reminder cards appear under Reminders when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders (no separate "Document Reminders" heading) and links to that horse's or member's detail page
 - [ ] If any lessons/charges are unpaid, "N unpaid lessons" and/or "N unpaid leases/boarding" cards appear under Reminders, each linking to `/barn/dev-barn/finances/outstanding`; each is hidden individually when its own count is zero
 
 Lessons (`/barn/dev-barn/lessons`):
@@ -160,7 +160,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
 - [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
-- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this horse
+- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and a card shows up under the Dashboard's Reminders section, linking back to this horse
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
@@ -174,7 +174,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
 - [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] On that same document, edit the Reminder Date inline (tap the field, set a date, tap away) → it saves
-- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this member
+- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and a card shows up under the Dashboard's Reminders section, linking back to this member
 - [ ] Delete the trainer's document → row disappears
 - [ ] Open rider Gale Test's member detail page — **Add Document** button is available (manager can manage rider docs)
 - [ ] As manager, rider Emery's member detail page shows an **Active Agreements** header with one card each for her seeded lease and boarding agreements (kind, horse, fee), each linking to its agreement detail page; a rider with no active agreements shows **No active agreements** with no add-boarding link; a managed (unclaimed) rider's detail page shows the same section

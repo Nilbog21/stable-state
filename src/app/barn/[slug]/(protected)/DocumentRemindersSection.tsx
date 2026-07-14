@@ -1,7 +1,7 @@
 'use client'
-import Link from 'next/link'
 import type { DueDocument } from '@/lib/db/types'
 import { localToday } from '@/lib/local-day'
+import { Button } from '@/components/ui/Button'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   insurance_binder: 'Insurance Binder',
@@ -36,25 +36,14 @@ export function DocumentRemindersSection({ slug, dueDocuments }: { slug: string;
   if (due.length === 0) return null
 
   return (
-    <div className="mt-4">
-      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        Document Reminders
-      </h3>
-      <ul className="space-y-2">
-        {due.map((doc) => (
-          <li key={doc.id}>
-            <Link
-              href={dueDocumentHref(slug, doc)}
-              className="flex items-center justify-between rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-800 hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50"
-            >
-              <span className="font-medium">
-                {doc.ownerName} — {RECORD_TYPE_LABELS[doc.recordType] ?? doc.recordType}
-              </span>
-              <span>{formatDate(doc.reminderDate)}</span>
-            </Link>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <>
+      {due.map((doc) => (
+        <div key={doc.id}>
+          <Button href={dueDocumentHref(slug, doc)} variant="warning">
+            {doc.ownerName} — {RECORD_TYPE_LABELS[doc.recordType] ?? doc.recordType} — {formatDate(doc.reminderDate)}
+          </Button>
+        </div>
+      ))}
+    </>
   )
 }

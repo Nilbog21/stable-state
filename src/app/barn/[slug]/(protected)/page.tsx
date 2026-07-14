@@ -93,8 +93,8 @@ export default async function BarnDashboardPage({
                 </Button>
               </div>
             )}
+            <DocumentRemindersSection slug={slug} dueDocuments={dueDocuments} />
           </div>
-          <DocumentRemindersSection slug={slug} dueDocuments={dueDocuments} />
         </section>
       )}
       {upcomingLessons !== null && userRole !== null && (
