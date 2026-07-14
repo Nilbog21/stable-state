@@ -7,6 +7,7 @@ import {
   getTierPricesByNames,
   getOutstandingLessonRows,
   getLessonJunctionRows,
+  type LessonFeeRow,
 } from './lesson-finance-queries'
 import { getChargesForSummary, getPaidCharges } from './agreements'
 import { getTiersByBarn } from './lesson-tiers'
@@ -101,6 +102,17 @@ function toSortedIncomeRows(
 function foldChargesCollected(charges: Pick<ChargeSummaryRow, 'fee' | 'payment_type'>[]): { count: number; total: number } {
   const paid = charges.filter((c) => c.payment_type !== null)
   return { count: paid.length, total: paid.reduce((sum, c) => sum + c.fee, 0) }
+}
+
+/**
+ * A collected row whose lesson was deleted (see getLessonFeeRows) has no junction
+ * rows left to attribute to a specific horse/rider/trainer drill-down — its income
+ * still counts in the summary totals above (via NO_HORSE_LABEL/NO_RIDER_LABEL/
+ * NO_INSTRUCTOR_LABEL) but is excluded from these per-entity detail pages, since
+ * there's no lesson left to link the row to.
+ */
+function hasLesson(row: LessonFeeRow): row is LessonFeeRow & { lessonId: string } {
+  return row.lessonId !== null
 }
 
 /** Shared body for getHorseIncomeDetail/getRiderIncomeDetail — per-lesson rows for a single target participant. */
@@ -293,7 +305,10 @@ export async function getHorseIncomeSummary(
 
   let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
-    const lessonIds = lessons.map((l) => l.lessonId)
+    // A deleted lesson's kept-around transaction has lessonId=null and no junction
+    // rows to find (lesson_horses cascades on delete) — excluded from the query,
+    // it naturally falls into NO_HORSE_LABEL below via `key`'s empty-array return.
+    const lessonIds = lessons.map((l) => l.lessonId).filter((id): id is string => id !== null)
     const lessonHorses = await getLessonJunctionRows('lesson_horses', 'horse_id', barnId, lessonIds, supabase)
     grouped = computeGroupedIncome(
       lessons,
@@ -334,7 +349,9 @@ export async function getRiderIncomeSummary(
 
   let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
-    const lessonIds = lessons.map((l) => l.lessonId)
+    // See getHorseIncomeSummary above — a deleted lesson's orphaned transaction has
+    // no junction rows to find and falls into NO_RIDER_LABEL via `key`'s empty array.
+    const lessonIds = lessons.map((l) => l.lessonId).filter((id): id is string => id !== null)
     const lessonRiders = await getLessonJunctionRows('lesson_riders', 'rider_id', barnId, lessonIds, supabase)
     grouped = computeGroupedIncome(
       lessons,
@@ -419,7 +436,7 @@ export async function getHorseIncomeDetail(
     getLessonFeeRows(barnId, startDate, endDate, supabase),
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
-  const lessonsData = rows.filter((r) => r.collected)
+  const lessonsData = rows.filter((r) => r.collected).filter(hasLesson)
 
   const horseNameMap = await resolveHorseNames([horseId], barnId, supabase)
   const horseName = horseNameMap.get(horseId) ?? horseId
@@ -456,7 +473,7 @@ export async function getRiderIncomeDetail(
     getLessonFeeRows(barnId, startDate, endDate, supabase),
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
-  const lessonsData = rows.filter((r) => r.collected)
+  const lessonsData = rows.filter((r) => r.collected).filter(hasLesson)
 
   const memberNameMap = await resolveMemberNames([riderId], barnId, supabase)
   const riderName = memberNameMap.get(riderId) ?? riderId
@@ -490,7 +507,7 @@ export async function getTrainerIncomeDetail(
   const supabase = await createClient()
 
   const rows = await getLessonFeeRows(barnId, startDate, endDate, supabase)
-  const lessonsData = rows.filter((r) => r.collected)
+  const lessonsData = rows.filter((r) => r.collected).filter(hasLesson)
 
   const memberNameMap = await resolveMemberNames([trainerId], barnId, supabase)
   const trainerName = memberNameMap.get(trainerId) ?? trainerId

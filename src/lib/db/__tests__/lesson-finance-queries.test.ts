@@ -29,17 +29,17 @@ describe('getLessonFeeRows', () => {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockIn = vi.fn().mockReturnValue({ not: mockNot })
+    const mockIn = vi.fn().mockReturnValue({ gte: mockGte })
     const mockEq = vi.fn().mockReturnValue({ in: mockIn })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockSelect, mockEq, mockIn, mockNot, mockGte, mockLt, mockOrder }
+    return { from, mockSelect, mockEq, mockIn, mockGte, mockLt, mockOrder }
   }
 
   function txRow(overrides: Record<string, unknown>) {
     return {
+      id: 'txn-1',
       lesson_id: 'lesson-1',
       kind: 'lesson_fee',
       amount: 100,
@@ -62,7 +62,7 @@ describe('getLessonFeeRows', () => {
     const { mockSelect } = makeChain([])
     await getLessonFeeRows('barn-1', startDate, endDate)
     expect(mockSelect).toHaveBeenCalledWith(
-      'lesson_id, kind, amount, collected, membership_id, occurred_at, lessons!transactions_barn_id_lesson_id_fkey!inner(tier_name)'
+      'id, lesson_id, kind, amount, collected, membership_id, occurred_at, lessons!transactions_barn_id_lesson_id_fkey(tier_name)'
     )
   })
 
@@ -76,12 +76,6 @@ describe('getLessonFeeRows', () => {
     const { mockIn } = makeChain([])
     await getLessonFeeRows('barn-1', startDate, endDate)
     expect(mockIn).toHaveBeenCalledWith('kind', ['lesson_fee', 'instructor_payout'])
-  })
-
-  it('should_filter_out_rows_with_no_lesson_id', async () => {
-    const { mockNot } = makeChain([])
-    await getLessonFeeRows('barn-1', startDate, endDate)
-    expect(mockNot).toHaveBeenCalledWith('lesson_id', 'is', null)
   })
 
   it('should_filter_by_start_date', async () => {
@@ -176,12 +170,34 @@ describe('getLessonFeeRows', () => {
     expect(result.map((r) => r.lessonId).sort()).toEqual(['lesson-1', 'lesson-2'])
   })
 
+  it('should_include_an_orphaned_lesson_fee_row_whose_lesson_was_deleted', async () => {
+    makeChain([txRow({ id: 'txn-1', lesson_id: null, lessons: null, amount: 100 })])
+    const result = await getLessonFeeRows('barn-1', startDate, endDate)
+    expect(result).toEqual([
+      expect.objectContaining({ lessonId: null, fee: 100, collected: true }),
+    ])
+  })
+
+  it('should_fall_back_to_a_placeholder_tier_name_for_an_orphaned_row', async () => {
+    makeChain([txRow({ id: 'txn-1', lesson_id: null, lessons: null })])
+    const result = await getLessonFeeRows('barn-1', startDate, endDate)
+    expect(result[0].tierName).toBe('Deleted Lesson')
+  })
+
+  it('should_key_orphaned_rows_by_their_own_transaction_id_so_unrelated_deleted_lessons_are_not_merged', async () => {
+    makeChain([
+      txRow({ id: 'txn-1', lesson_id: null, lessons: null, kind: 'lesson_fee', amount: 100 }),
+      txRow({ id: 'txn-2', lesson_id: null, lessons: null, kind: 'lesson_fee', amount: 40 }),
+    ])
+    const result = await getLessonFeeRows('barn-1', startDate, endDate)
+    expect(result.map((r) => r.fee).sort((a, b) => a - b)).toEqual([40, 100])
+  })
+
   it('should_use_injected_client_when_provided', async () => {
     const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockIn = vi.fn().mockReturnValue({ not: mockNot })
+    const mockIn = vi.fn().mockReturnValue({ gte: mockGte })
     const mockEq = vi.fn().mockReturnValue({ in: mockIn })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })

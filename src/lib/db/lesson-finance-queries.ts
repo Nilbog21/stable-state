@@ -11,7 +11,7 @@ import type { Lesson, Role } from './types'
  */
 
 export interface LessonFeeRow {
-  lessonId: string
+  lessonId: string | null
   fee: number
   instructorCut: number
   collected: boolean
@@ -20,6 +20,10 @@ export interface LessonFeeRow {
   tierName: string
 }
 
+/** tier_name shown for a collected transaction whose lesson was deleted (kept via the
+ * lesson_id `ON DELETE SET NULL` FK) — there's no lessons row left to read a real one from. */
+export const DELETED_LESSON_LABEL = 'Deleted Lesson'
+
 /**
  * Every lesson_fee/instructor_payout transaction (#827) in a barn-scoped occurred_at
  * range, merged one row per lesson. tier_name is the only lesson attribute not itself
@@ -27,6 +31,18 @@ export interface LessonFeeRow {
  * agreements.ts:getPaidCharges); instructor_id comes from the instructor_payout row's
  * own membership_id (present only once collected) rather than a second join, since
  * lesson_fee never carries a membership_id.
+ *
+ * `lesson_id` is nullable on this table (`ON DELETE SET NULL`) so a collected
+ * transaction can outlive the deletion of its lesson (see `deleteLesson`'s
+ * `deleteCollectedTransactions=false` default) — those rows must still count toward
+ * income totals, so they're not filtered out. The embed is a left join (no `!inner`)
+ * for the same reason: an orphaned row has no `lessons` match. Merge keys off
+ * `lesson_id` when present; an orphaned lesson_fee and its paired instructor_payout
+ * both have `lesson_id = NULL` once nulled, so they can no longer be correlated with
+ * each other — each is kept as its own row, keyed by its own transaction `id`, rather
+ * than merged into one. This double-counts a deleted lesson as two "Deleted Lesson"
+ * rows instead of one, but the dollar totals (which is what income summaries actually
+ * need) stay correct either way.
  */
 export async function getLessonFeeRows(
   barnId: string,
@@ -37,10 +53,9 @@ export async function getLessonFeeRows(
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('transactions')
-    .select('lesson_id, kind, amount, collected, membership_id, occurred_at, lessons!transactions_barn_id_lesson_id_fkey!inner(tier_name)')
+    .select('id, lesson_id, kind, amount, collected, membership_id, occurred_at, lessons!transactions_barn_id_lesson_id_fkey(tier_name)')
     .eq('barn_id', barnId)
     .in('kind', ['lesson_fee', 'instructor_payout'])
-    .not('lesson_id', 'is', null)
     .gte('occurred_at', startDate.toISOString())
     .lt('occurred_at', endDate.toISOString())
     .order('occurred_at', { ascending: true })
@@ -48,25 +63,27 @@ export async function getLessonFeeRows(
   if (error) throw error
 
   type RawRow = {
-    lesson_id: string
+    id: string
+    lesson_id: string | null
     kind: 'lesson_fee' | 'instructor_payout'
     amount: number
     collected: boolean
     membership_id: string | null
     occurred_at: string
-    lessons: { tier_name: string }
+    lessons: { tier_name: string } | null
   }
 
   const rows = new Map<string, LessonFeeRow>()
   for (const raw of (data ?? []) as unknown as RawRow[]) {
-    const existing = rows.get(raw.lesson_id) ?? {
+    const key = raw.lesson_id ?? raw.id
+    const existing = rows.get(key) ?? {
       lessonId: raw.lesson_id,
       fee: 0,
       instructorCut: 0,
       collected: false,
       instructorId: null,
       occurredAt: raw.occurred_at,
-      tierName: raw.lessons.tier_name,
+      tierName: raw.lessons?.tier_name ?? DELETED_LESSON_LABEL,
     }
     if (raw.kind === 'lesson_fee') {
       existing.fee = raw.amount
@@ -76,7 +93,7 @@ export async function getLessonFeeRows(
       existing.instructorCut = -raw.amount
       existing.instructorId = raw.membership_id
     }
-    rows.set(raw.lesson_id, existing)
+    rows.set(key, existing)
   }
   return [...rows.values()]
 }
