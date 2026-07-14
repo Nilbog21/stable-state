@@ -159,6 +159,14 @@ describe('CancelLessonPage', () => {
     expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(true)
   })
 
+  it('should_default_cancel_type_radio_to_instructor_when_actor_instructs_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-1' })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect((screen.getByLabelText(/cancelled by instructor/i) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(false)
+  })
+
   it('should_not_render_cancel_type_radio_for_group_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,

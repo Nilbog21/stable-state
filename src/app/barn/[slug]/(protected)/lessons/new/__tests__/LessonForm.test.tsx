@@ -30,6 +30,19 @@ describe('LessonForm', () => {
     expect(screen.queryByRole('spinbutton', { name: /Exertion level for Thunder/i })).toBeNull()
   })
 
+  it('should_label_horse_picker_as_singular_for_normal_lesson', () => {
+    render(<LessonForm {...baseProps} />)
+    expect(screen.getByText('Horse', { exact: true })).toBeDefined()
+    expect(screen.queryByText(/select at least one/i)).toBeNull()
+  })
+
+  it('should_label_horse_picker_as_plural_with_hint_for_group_lesson', () => {
+    render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
+    expect(screen.getByText(/Horses/)).toBeDefined()
+    expect(screen.getByText(/select at least one/i)).toBeDefined()
+  })
+
   it('should_not_render_instructor_select_when_isManager_is_false', () => {
     render(<LessonForm {...baseProps} isManager={false} />)
     expect(screen.queryByLabelText(/instructor/i)).toBeNull()
@@ -422,6 +435,22 @@ describe('LessonForm', () => {
     render(<LessonForm {...baseProps} tiers={[tier]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     expect(screen.getByRole('spinbutton', { name: /fee/i })).toBeDefined()
+  })
+
+  it('should_show_payment_type_when_fee_is_nonzero', () => {
+    const tier = createMockLessonTier({ name: 'Standard', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '45' } })
+    expect(screen.queryByLabelText(/payment type/i)).not.toBeNull()
+  })
+
+  it('should_hide_payment_type_when_fee_is_zero', () => {
+    const tier = createMockLessonTier({ name: 'Standard', is_default: true })
+    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
+    fireEvent.change(feeInput, { target: { value: '0' } })
+    expect(screen.queryByLabelText(/payment type/i)).toBeNull()
   })
 
   it('should_require_fee_input_when_custom_tier_is_selected', () => {

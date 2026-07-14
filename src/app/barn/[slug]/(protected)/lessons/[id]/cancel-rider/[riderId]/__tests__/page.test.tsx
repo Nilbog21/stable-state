@@ -183,6 +183,14 @@ describe('CancelRiderParticipationPage', () => {
     expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(true)
   })
 
+  it('should_default_type_selector_to_cancelled_by_instructor_when_actor_instructs_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-manager-1' })
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
+    expect((screen.getByLabelText(/cancelled by instructor/i) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(false)
+  })
+
   it('should_render_static_cancelled_by_rider_text_for_rider_without_selector', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const, user_id: 'rider-user-1' })
     const jsx = await CancelRiderParticipationPage({ params })
