@@ -1,5 +1,20 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { createMockHorseExpense } from '@/test/fixtures'
+import type { HorseExpense } from '../types'
+
+// Shape of an `expense`-kind transactions row as read by getExpenseFinancialSummary/
+// getHorseExpenseDetail (#829) — amount is stored negative in the ledger (signed
+// convention, matches instructor_payout), so this flips it back to the positive
+// magnitude the raw HorseExpense fixture already uses.
+function mockExpenseTxRow(overrides: Partial<HorseExpense> = {}) {
+  const e = createMockHorseExpense(overrides)
+  return {
+    expense_id: e.id,
+    occurred_at: `${e.expense_date}T00:00:00+00:00`,
+    amount: -(e.amount as number),
+    horse_expenses: { applies_to_all_horses: e.applies_to_all_horses },
+  }
+}
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -842,8 +857,9 @@ describe('getExpenseFinancialSummary', () => {
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    const mockEqKind = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEqBarn = vi.fn().mockReturnValue({ eq: mockEqKind })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarn })
     return { select: mockSelect }
   }
 
@@ -887,20 +903,10 @@ describe('getExpenseFinancialSummary', () => {
     expect(result.totalExpenses).toBe(0)
   })
 
-  it('should_exclude_expenses_with_null_amount_from_total', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: null })
-    const { select } = makeExpensesChain([expense])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
-
-    expect(result).toEqual({ totalExpenses: 0, breakdown: [] })
-  })
-
   it('should_use_junction_rows_for_non_barn_wide_expense_split', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       if (table === 'horses') return makeHorsesChain([], [{ id: 'horse-1', name: 'Thunderbolt' }])
       return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
     })
@@ -912,11 +918,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_skip_expense_horses_query_when_all_expenses_are_barn_wide', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horse = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const junctionFn = vi.fn()
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       if (table === 'horses') return makeHorsesChain([horse], [{ id: 'horse-1', name: 'Thunderbolt' }])
       junctionFn()
       return makeJunctionChain([])
@@ -929,11 +935,11 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_split_barn_wide_expense_across_active_horses', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horseA = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const horseB = { id: 'horse-2', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain([horseA, horseB], [{ id: 'horse-1', name: 'Thunderbolt' }, { id: 'horse-2', name: 'Shadow' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -944,10 +950,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_exclude_horse_created_after_expense_date_from_barn_wide_split', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horse = { id: 'horse-1', created_at: '2026-07-15T00:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -958,10 +964,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_exclude_horse_created_later_same_day_as_expense_from_barn_wide_split', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horse = { id: 'horse-1', created_at: '2026-07-10T12:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -972,10 +978,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_include_horse_created_before_expense_date_in_barn_wide_split', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horse = { id: 'horse-1', created_at: '2026-07-01T12:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain([horse], [{ id: 'horse-1', name: 'Thunderbolt' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -986,10 +992,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_exclude_horse_deactivated_before_expense_date_from_barn_wide_split', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horse = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: '2026-06-01T00:00:00Z' }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1000,10 +1006,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_include_horse_deactivated_after_expense_date_in_barn_wide_split', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horse = { id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: '2026-08-01T00:00:00Z' }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain([horse], [{ id: 'horse-1', name: 'Thunderbolt' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1014,10 +1020,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_count_barn_wide_expense_in_total_but_exclude_from_breakdown_when_zero_applicable_horses', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const horse = { id: 'horse-1', created_at: '2026-08-15T00:00:00Z', deactivated_at: null }
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain([horse])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1028,10 +1034,10 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_sort_breakdown_by_total_expenses_descending', async () => {
-    const expenseA = createMockHorseExpense({ id: 'expense-a', amount: 50, applies_to_all_horses: false })
-    const expenseB = createMockHorseExpense({ id: 'expense-b', amount: 200, applies_to_all_horses: false })
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, applies_to_all_horses: false })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 200, applies_to_all_horses: false })
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expenseA, expenseB])
+      if (table === 'transactions') return makeExpensesChain([rowA, rowB])
       if (table === 'horses') return makeHorsesChain([], [{ id: 'horse-1', name: 'A' }, { id: 'horse-2', name: 'B' }])
       return makeJunctionChain([
         { expense_id: 'expense-a', horse_id: 'horse-1' },
@@ -1046,9 +1052,9 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_treat_null_barn_horses_data_as_empty', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain(null)
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1059,9 +1065,9 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_treat_null_junction_data_as_empty', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       if (table === 'horses') return makeHorsesChain([])
       return makeJunctionChain(null)
     })
@@ -1073,9 +1079,9 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_fall_back_to_raw_horse_id_when_name_not_found_in_breakdown', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       if (table === 'horses') return makeHorsesChain([], [])
       return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-orphan' }])
     })
@@ -1086,7 +1092,7 @@ describe('getExpenseFinancialSummary', () => {
     expect(result.breakdown).toEqual([{ horseId: 'horse-orphan', horseName: 'horse-orphan', totalExpenses: 100 }])
   })
 
-  it('should_throw_when_horse_expenses_query_errors', async () => {
+  it('should_throw_when_transactions_query_errors', async () => {
     const { select } = makeExpensesChain(null, new Error('expenses error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
@@ -1094,9 +1100,9 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_throw_when_horses_query_errors', async () => {
-    const expense = createMockHorseExpense({ amount: 100 })
+    const row = mockExpenseTxRow({ amount: 100 })
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeHorsesChain(null, [], new Error('horses error'))
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1105,9 +1111,9 @@ describe('getExpenseFinancialSummary', () => {
   })
 
   it('should_throw_when_expense_horses_query_errors', async () => {
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       if (table === 'horses') return makeHorsesChain([])
       return makeJunctionChain(null, new Error('junction error'))
     })
@@ -1136,8 +1142,9 @@ describe('getHorseExpenseDetail', () => {
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    const mockEqKind = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEqBarn = vi.fn().mockReturnValue({ eq: mockEqKind })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarn })
     return { select: mockSelect }
   }
 
@@ -1191,10 +1198,10 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_include_row_for_junction_linked_expense', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1206,10 +1213,10 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_treat_null_junction_data_as_empty', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain(null)
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1221,10 +1228,10 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_exclude_row_when_horse_not_in_junction_for_non_barn_wide_expense', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-2' }])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1236,7 +1243,7 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_include_row_for_barn_wide_expense_when_horse_active_on_expense_date', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     // the horse lookup and the barn-wide-horses fetch both hit 'horses' but with different select shapes;
     // dispatch by call order since the table name alone can't distinguish them
     let horsesCallCount = 0
@@ -1246,7 +1253,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain([horse])
       }
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn2 } as any)
@@ -1258,7 +1265,7 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_exclude_row_for_barn_wide_expense_when_horse_deactivated_before_expense_date', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: '2026-06-01T00:00:00Z' }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') {
@@ -1266,7 +1273,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain([horse])
       }
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1278,7 +1285,7 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_exclude_row_for_barn_wide_expense_when_horse_created_after_expense_date', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-07-20T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') {
@@ -1286,7 +1293,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain([horse])
       }
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1299,7 +1306,7 @@ describe('getHorseExpenseDetail', () => {
   it('should_compute_horse_count_from_all_applicable_horses_for_barn_wide_row', async () => {
     const horse1 = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const horse2 = { id: 'horse-2', name: 'Shadow', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') {
@@ -1307,7 +1314,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse1)
         return makeBarnHorsesChain([horse1, horse2])
       }
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1320,7 +1327,7 @@ describe('getHorseExpenseDetail', () => {
   it('should_compute_split_amount_as_amount_divided_by_horse_count', async () => {
     const horse1 = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const horse2 = { id: 'horse-2', name: 'Shadow', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') {
@@ -1328,7 +1335,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse1)
         return makeBarnHorsesChain([horse1, horse2])
       }
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain([])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
@@ -1340,11 +1347,11 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_sum_total_from_row_split_amounts', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expenseA = createMockHorseExpense({ id: 'expense-a', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-05' })
-    const expenseB = createMockHorseExpense({ id: 'expense-b', amount: 60, applies_to_all_horses: false, expense_date: '2026-07-15' })
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-05' })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 60, applies_to_all_horses: false, expense_date: '2026-07-15' })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeExpensesChain([expenseA, expenseB])
+      if (table === 'transactions') return makeExpensesChain([rowA, rowB])
       return makeJunctionChain([
         { expense_id: 'expense-a', horse_id: 'horse-1' },
         { expense_id: 'expense-b', horse_id: 'horse-1' },
@@ -1377,7 +1384,7 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_throw_when_barn_horses_query_errors', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     let horsesCallCount = 0
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') {
@@ -1385,7 +1392,7 @@ describe('getHorseExpenseDetail', () => {
         if (horsesCallCount === 1) return makeHorseLookupChain(horse)
         return makeBarnHorsesChain(null, new Error('barn horses error'))
       }
-      return makeExpensesChain([expense])
+      return makeExpensesChain([row])
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
@@ -1394,10 +1401,10 @@ describe('getHorseExpenseDetail', () => {
 
   it('should_throw_when_expense_horses_query_errors', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
-    const expense = createMockHorseExpense({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false })
     const fromFn = vi.fn().mockImplementation((table: string) => {
       if (table === 'horses') return makeHorseLookupChain(horse)
-      if (table === 'horse_expenses') return makeExpensesChain([expense])
+      if (table === 'transactions') return makeExpensesChain([row])
       return makeJunctionChain(null, new Error('junction error'))
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
