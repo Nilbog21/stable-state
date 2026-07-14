@@ -49,22 +49,32 @@ export default async function CancelRiderParticipationPage({
           cannot be undone.
         </p>
         <form action={cancel} className="flex flex-col gap-4">
-          {role === 'rider' ? (
-            <div className="flex flex-col gap-1">
-              <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</span>
-              <span className="text-sm text-zinc-600 dark:text-zinc-400">Cancelled by Rider</span>
-            </div>
-          ) : (
+          {role !== 'rider' && (
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</legend>
-              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                <input type="radio" name="cancel_type" value="rider" defaultChecked={!cancelledByInstructorDefault} />
-                Cancelled by Rider
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                <input type="radio" name="cancel_type" value="instructor" defaultChecked={cancelledByInstructorDefault} />
-                Cancelled by Instructor
-              </label>
+              {cancelledByInstructorDefault ? (
+                <>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="instructor" defaultChecked />
+                    Cancelled by Instructor
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="rider" />
+                    Cancelled by Rider
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="rider" defaultChecked />
+                    Cancelled by Rider
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="instructor" />
+                    Cancelled by Instructor
+                  </label>
+                </>
+              )}
             </fieldset>
           )}
           <div className="flex flex-col gap-1">

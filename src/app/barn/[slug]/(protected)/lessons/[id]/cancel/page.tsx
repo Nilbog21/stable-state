@@ -59,14 +59,29 @@ export default async function CancelLessonPage({
           {lesson.lesson_type === 'normal' && (
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</legend>
-              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                <input type="radio" name="cancel_type" value="rider" defaultChecked={!cancelledByInstructorDefault} />
-                Cancelled by Rider
-              </label>
-              <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                <input type="radio" name="cancel_type" value="instructor" defaultChecked={cancelledByInstructorDefault} />
-                Cancelled by Instructor
-              </label>
+              {cancelledByInstructorDefault ? (
+                <>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="instructor" defaultChecked />
+                    Cancelled by Instructor
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="rider" />
+                    Cancelled by Rider
+                  </label>
+                </>
+              ) : (
+                <>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="rider" defaultChecked />
+                    Cancelled by Rider
+                  </label>
+                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
+                    <input type="radio" name="cancel_type" value="instructor" />
+                    Cancelled by Instructor
+                  </label>
+                </>
+              )}
             </fieldset>
           )}
           <div className="flex flex-col gap-1">
