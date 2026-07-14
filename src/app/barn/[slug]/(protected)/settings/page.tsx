@@ -34,6 +34,38 @@ function formatDate(iso: string) {
   })
 }
 
+function AccordionSection({
+  title,
+  defaultOpen = false,
+  headerExtra,
+  children,
+}: {
+  title: string
+  defaultOpen?: boolean
+  headerExtra?: React.ReactNode
+  children: React.ReactNode
+}) {
+  return (
+    <details open={defaultOpen} className="mb-6 rounded-lg border border-zinc-200 dark:border-zinc-700">
+      <summary className="cursor-pointer px-4 py-3">
+        {headerExtra ? (
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {title}
+            </h2>
+            {headerExtra}
+          </div>
+        ) : (
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            {title}
+          </h2>
+        )}
+      </summary>
+      <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">{children}</div>
+    </details>
+  )
+}
+
 function MemberRow({
   membership,
   name,
@@ -96,10 +128,7 @@ export default async function SettingsPage({
         Manage Barn
       </h1>
 
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Pending Requests
-        </h2>
+      <AccordionSection title="Pending Requests" defaultOpen={pending.length > 0}>
         {pending.length === 0 ? (
           <EmptyState
             heading="No pending requests"
@@ -142,12 +171,9 @@ export default async function SettingsPage({
             </table>
           </div>
         )}
-      </section>
+      </AccordionSection>
 
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Active Members
-        </h2>
+      <AccordionSection title="Active Members">
         {removable.length === 0 ? (
           <EmptyState heading="No active members" subtext="Approved barn members will appear here." />
         ) : (
@@ -182,12 +208,9 @@ export default async function SettingsPage({
             </table>
           </div>
         )}
-      </section>
+      </AccordionSection>
 
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Default Instructor Cut
-        </h2>
+      <AccordionSection title="Default Instructor Cut">
         <form action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">
           <div>
             <label
@@ -212,12 +235,9 @@ export default async function SettingsPage({
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Changing this doesn&apos;t affect past lessons — only new tiers and Custom lessons booked afterward.
         </p>
-      </section>
+      </AccordionSection>
 
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Horse Exhaustion Thresholds
-        </h2>
+      <AccordionSection title="Horse Exhaustion Thresholds">
         <ExhaustionThresholdsForm
           barn={barn}
           action={updateExhaustionThresholdsAction.bind(null, slug)}
@@ -225,16 +245,12 @@ export default async function SettingsPage({
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Default exertion-sum thresholds used when a horse has no per-horse override.
         </p>
-      </section>
+      </AccordionSection>
 
-      <section className="mb-12">
-        <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Lesson Tiers
-          </h2>
-          <Button href={`/barn/${slug}/settings/tiers/new`}>Add Tier</Button>
-        </div>
-
+      <AccordionSection
+        title="Lesson Tiers"
+        headerExtra={<Button href={`/barn/${slug}/settings/tiers/new`}>Add Tier</Button>}
+      >
         {tiers.length > 0 ? (
           <div className="overflow-x-auto">
             <table className="w-full">
@@ -277,12 +293,9 @@ export default async function SettingsPage({
             cta={{ label: 'Add Tier', href: `/barn/${slug}/settings/tiers/new` }}
           />
         )}
-      </section>
+      </AccordionSection>
 
-      <section className="mb-12">
-        <h2 className="mb-4 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Default Board Fee
-        </h2>
+      <AccordionSection title="Default Board Fee">
         <form action={updateDefaultBoardFeeAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
           <div>
             <label htmlFor="default_board_fee" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
@@ -303,7 +316,7 @@ export default async function SettingsPage({
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           Applies to new boarding agreements only — existing boarders are unchanged.
         </p>
-      </section>
+      </AccordionSection>
     </main>
   )
 }
