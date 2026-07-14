@@ -25,11 +25,12 @@ export function UpcomingLessonCard({
   slug: string
   viewerMembershipId?: string
 }) {
-  const display = formatLessonDate(lesson.lesson_at, new Date())
+  const now = new Date()
+  const display = formatLessonDate(lesson.lesson_at, now)
 
   const myRiderIndex = role === 'rider' && viewerMembershipId ? lesson.rider_ids.indexOf(viewerMembershipId) : -1
   const isOwnParticipationCancelled = myRiderIndex >= 0 && lesson.rider_cancelled_ats[myRiderIndex] !== null
-  const needsAttention = lesson.cancelled_at === null && lesson.needs_attention && new Date(lesson.lesson_at) > new Date()
+  const needsAttention = lesson.cancelled_at === null && lesson.needs_attention && new Date(lesson.lesson_at) > now
 
   return (
     <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="p-4">

@@ -7,7 +7,6 @@ vi.mock('@/lib/supabase/server', () => ({
 
 vi.mock('../horses', () => ({
   resolveHorseNames: vi.fn(),
-  getHorseStatusMap: vi.fn(),
 }))
 
 vi.mock('../barn-memberships', () => ({
@@ -15,7 +14,7 @@ vi.mock('../barn-memberships', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { resolveHorseNames, getHorseStatusMap } from '../horses'
+import { resolveHorseNames } from '../horses'
 import { resolveMemberNames } from '../barn-memberships'
 import {
   addHorseToLesson,
@@ -901,8 +900,6 @@ describe('hydrateParticipants', () => {
   beforeEach(() => {
     vi.mocked(resolveHorseNames).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
-    vi.mocked(getHorseStatusMap).mockReset()
-    vi.mocked(getHorseStatusMap).mockResolvedValue(new Map())
   })
 
   function makeInChain(data: unknown[] | null, error: Error | null = null) {
@@ -1172,8 +1169,10 @@ describe('hydrateParticipants', () => {
     const lesson = createMockLesson({ instructor_id: null })
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getHorseStatusMap).mockResolvedValue(new Map([['horse-1', { is_active: false, is_available: true }]]))
-    const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: false, is_available: true } }],
+      []
+    )
 
     const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
 
@@ -1184,8 +1183,10 @@ describe('hydrateParticipants', () => {
     const lesson = createMockLesson({ instructor_id: null })
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getHorseStatusMap).mockResolvedValue(new Map([['horse-1', { is_active: true, is_available: false }]]))
-    const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: false } }],
+      []
+    )
 
     const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
 
@@ -1196,8 +1197,10 @@ describe('hydrateParticipants', () => {
     const lesson = createMockLesson({ instructor_id: null })
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getHorseStatusMap).mockResolvedValue(new Map([['horse-1', { is_active: true, is_available: true }]]))
-    const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: true } }],
+      []
+    )
 
     const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
 
@@ -1208,13 +1211,9 @@ describe('hydrateParticipants', () => {
     const lesson = createMockLesson({ instructor_id: null, lesson_type: 'group' })
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
-    vi.mocked(getHorseStatusMap).mockResolvedValue(new Map([
-      ['horse-1', { is_active: true, is_available: true }],
-      ['horse-2', { is_active: false, is_available: true }],
-    ]))
     const supabase = makeSupabase([
-      { lesson_id: lesson.id, horse_id: 'horse-1' },
-      { lesson_id: lesson.id, horse_id: 'horse-2' },
+      { lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: true } },
+      { lesson_id: lesson.id, horse_id: 'horse-2', horses: { is_active: false, is_available: true } },
     ], [])
 
     const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')

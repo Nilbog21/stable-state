@@ -1,8 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './barn-memberships'
-import { resolveHorseNames, getHorseStatusMap } from './horses'
+import { resolveHorseNames } from './horses'
 import type { Lesson, LessonHorse, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
+
+interface LessonHorseJunctionRow {
+  lesson_id: string
+  horse_id: string
+  horses: { is_active: boolean; is_available: boolean } | null
+}
 
 export async function hydrateParticipants(
   supabase: Awaited<ReturnType<typeof createClient>>,
@@ -14,31 +20,36 @@ export async function hydrateParticipants(
   const instructorIds = [...new Set(lessons.map((l) => l.instructor_id).filter(Boolean))] as string[]
 
   const [
-    { data: lessonHorses, error: lessonHorsesError },
+    { data: lessonHorsesData, error: lessonHorsesError },
     { data: lessonRiders, error: lessonRidersError },
   ] = await Promise.all([
-    supabase.from('lesson_horses').select('lesson_id, horse_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
+    supabase
+      .from('lesson_horses')
+      // embeds horse status onto the same round trip instead of a second query against `horses`
+      .select('lesson_id, horse_id, horses!lesson_horses_barn_id_horse_id_fkey(is_active, is_available)')
+      .eq('barn_id', barnId)
+      .in('lesson_id', lessonIds),
     supabase.from('lesson_riders').select('lesson_id, rider_id, cancelled_at').eq('barn_id', barnId).in('lesson_id', lessonIds),
   ])
 
   if (lessonHorsesError) throw lessonHorsesError
   if (lessonRidersError) throw lessonRidersError
 
-  const horseIds = [...new Set((lessonHorses ?? []).map((lh) => lh.horse_id))]
+  const lessonHorses = (lessonHorsesData ?? []) as unknown as LessonHorseJunctionRow[]
+  const horseIds = [...new Set(lessonHorses.map((lh) => lh.horse_id))]
   const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
 
-  const [horseNameMap, membershipMap, horseStatusMap] = await Promise.all([
+  const [horseNameMap, membershipMap] = await Promise.all([
     resolveHorseNames(horseIds, barnId, supabase),
     resolveMemberNames([...riderIds, ...instructorIds], barnId, supabase),
-    getHorseStatusMap(horseIds, barnId, supabase),
   ])
 
   return lessons.map((lesson) => {
     const instructorName = lesson.instructor_id ? membershipMap.get(lesson.instructor_id) ?? null : null
-    const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
+    const horseJunctionRows = lessonHorses.filter((lh) => lh.lesson_id === lesson.id)
     const horseParticipants = horseJunctionRows
-      .map((lh) => ({ id: lh.horse_id, name: horseNameMap.get(lh.horse_id) }))
-      .filter((p): p is { id: string; name: string } => Boolean(p.name))
+      .map((lh) => ({ id: lh.horse_id, name: horseNameMap.get(lh.horse_id), status: lh.horses }))
+      .filter((p): p is { id: string; name: string; status: LessonHorseJunctionRow['horses'] } => Boolean(p.name))
     const horseNames = horseParticipants.map((p) => p.name)
     const horseIdsForLesson = horseParticipants.map((p) => p.id)
     const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
@@ -48,10 +59,7 @@ export async function hydrateParticipants(
     const riderNames = riderParticipants.map((p) => p.name)
     const riderIdsForLesson = riderParticipants.map((p) => p.id)
     const riderCancelledAts = riderParticipants.map((p) => p.cancelledAt)
-    const needsAttention = horseParticipants.some((p) => {
-      const status = horseStatusMap.get(p.id)
-      return status ? !status.is_active || !status.is_available : false
-    })
+    const needsAttention = horseParticipants.some((p) => (p.status ? !p.status.is_active || !p.status.is_available : false))
     return {
       ...lesson,
       instructor_name: instructorName,

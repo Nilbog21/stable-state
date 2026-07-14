@@ -7,7 +7,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { createMockBarn } from '@/test/fixtures'
-import { getHorsesByBarn, getHorsesByIds, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, getHorseStatusMap, updateHorseDetails, getHorseProjectedExhaustion, resolveExhaustionThresholds, getExhaustionBand } from '../horses'
+import { getHorsesByBarn, getHorsesByIds, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, updateHorseDetails, getHorseProjectedExhaustion, resolveExhaustionThresholds, getExhaustionBand } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -714,95 +714,6 @@ describe('resolveHorseNames', () => {
     await resolveHorseNames(['horse-1'], 'barn-1', injectedClient)
 
     expect(mockFrom).toHaveBeenCalledWith('horses')
-  })
-})
-
-describe('getHorseStatusMap', () => {
-  function makeSelectChain(data: unknown, error: Error | null = null) {
-    const mockIn = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
-    return { select: vi.fn().mockReturnValue({ eq: mockEq }) }
-  }
-
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  it('should_return_empty_map_when_ids_is_empty', async () => {
-    const result = await getHorseStatusMap([], 'barn-1')
-
-    expect(result).toEqual(new Map())
-  })
-
-  it('should_not_call_create_client_when_ids_is_empty', async () => {
-    await getHorseStatusMap([], 'barn-1')
-
-    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
-  })
-
-  it('should_return_status_keyed_by_horse_id', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeSelectChain([
-        { id: 'horse-1', is_active: false, is_available: true },
-        { id: 'horse-2', is_active: true, is_available: false },
-      ])),
-    } as any)
-
-    const result = await getHorseStatusMap(['horse-1', 'horse-2'], 'barn-1')
-
-    expect(result.get('horse-1')).toEqual({ is_active: false, is_available: true })
-  })
-
-  it('should_return_status_for_second_horse_id', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeSelectChain([
-        { id: 'horse-1', is_active: false, is_available: true },
-        { id: 'horse-2', is_active: true, is_available: false },
-      ])),
-    } as any)
-
-    const result = await getHorseStatusMap(['horse-1', 'horse-2'], 'barn-1')
-
-    expect(result.get('horse-2')).toEqual({ is_active: true, is_available: false })
-  })
-
-  it('should_scope_query_to_barn_id', async () => {
-    const mockIn = vi.fn().mockResolvedValue({ data: [], error: null })
-    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockEq }) }),
-    } as any)
-
-    await getHorseStatusMap(['horse-1'], 'barn-1')
-
-    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeSelectChain(null, new Error('db error'))),
-    } as any)
-
-    await expect(getHorseStatusMap(['horse-1'], 'barn-1')).rejects.toThrow('db error')
-  })
-
-  it('should_return_empty_map_when_data_is_null', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeSelectChain(null)),
-    } as any)
-
-    const result = await getHorseStatusMap(['horse-1'], 'barn-1')
-
-    expect(result).toEqual(new Map())
-  })
-
-  it('should_use_injected_client_for_db_operation', async () => {
-    const mockFrom = vi.fn().mockReturnValue(makeSelectChain([{ id: 'horse-1', is_active: true, is_available: true }]))
-    const injectedClient = { from: mockFrom } as any
-
-    await getHorseStatusMap(['horse-1'], 'barn-1', injectedClient)
-
-    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 })
 
