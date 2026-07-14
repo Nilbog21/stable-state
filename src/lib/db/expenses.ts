@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveHorseNames } from './horses'
+import { getTransactionRows, positiveAmount } from './transactions'
 import type { ExpenseFinancialSummary, ExpenseInput, ExpenseWithHorses, HorseExpense, HorseExpenseDetailRow, ScheduledExpense } from './types'
 
 function applicableHorseIdsForExpense(
@@ -19,39 +20,39 @@ function applicableHorseIdsForExpense(
   return junctionRows.filter((r) => r.expense_id === expense.id).map((r) => r.horse_id)
 }
 
-// #829: expense-kind transactions rows are the ledger source of truth for
+// #829/#865: expense-kind transactions rows are the ledger source of truth for
 // getExpenseFinancialSummary/getHorseExpenseDetail — only an expense whose amount is
 // known has one (see sync_expense_transaction), so this already excludes planned
-// expenses without a separate null-amount filter. amount is stored negative in the
-// ledger (signed convention, matches instructor_payout); flipped back to positive here
-// to preserve the shape callers already expect.
+// expenses without a separate null-amount filter. Reads the base rows via
+// transactions.ts:getTransactionRows, then resolves applies_to_all_horses (the one
+// extra field it needs) via a small follow-up horse_expenses lookup.
 async function fetchExpenseTransactionsInRange(
   supabase: SupabaseClient,
   barnId: string,
   startDate: Date,
   endDate: Date
 ): Promise<{ id: string; expense_date: string; amount: number; applies_to_all_horses: boolean }[]> {
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('expense_id, occurred_at, amount, horse_expenses!transactions_barn_id_expense_id_fkey!inner(applies_to_all_horses)')
-    .eq('barn_id', barnId)
-    .eq('kind', 'expense')
-    .gte('occurred_at', startDate.toISOString().slice(0, 10))
-    .lt('occurred_at', endDate.toISOString().slice(0, 10))
-  if (error) throw error
+  const rows = await getTransactionRows(barnId, ['expense'], { startDate, endDate }, supabase)
+  if (!rows.length) return []
 
-  type ExpenseTransactionRow = {
-    expense_id: string
-    occurred_at: string
-    amount: number
-    horse_expenses: { applies_to_all_horses: boolean }
-  }
-  return ((data ?? []) as unknown as ExpenseTransactionRow[]).map((row) => ({
-    id: row.expense_id,
-    expense_date: row.occurred_at.slice(0, 10),
-    amount: -row.amount,
-    applies_to_all_horses: row.horse_expenses.applies_to_all_horses,
-  }))
+  const expenseIds = rows.map((r) => r.expenseId as string)
+  const { data, error } = await supabase
+    .from('horse_expenses')
+    .select('id, applies_to_all_horses')
+    .eq('barn_id', barnId)
+    .in('id', expenseIds)
+  if (error) throw error
+  const appliesToAllByExpenseId = new Map((data ?? []).map((e) => [e.id, e.applies_to_all_horses]))
+
+  return rows.map((row) => {
+    const expenseId = row.expenseId as string
+    return {
+      id: expenseId,
+      expense_date: row.occurredAt.slice(0, 10),
+      amount: positiveAmount(row.kind, row.amount),
+      applies_to_all_horses: appliesToAllByExpenseId.get(expenseId) ?? false,
+    }
+  })
 }
 
 async function getExpenseHorseJunctionRows(
