@@ -193,6 +193,20 @@ describe('getLessonFeeRows', () => {
     expect(result.map((r) => r.fee).sort((a, b) => a - b)).toEqual([40, 100])
   })
 
+  it('should_mark_a_standalone_orphaned_instructor_payout_row_as_collected', async () => {
+    // once its paired lesson_fee row is also nulled, they land under different
+    // keys (both keyed by lesson_id=null falls back to their own distinct id) —
+    // this payout-only row must still read its own `collected` column rather
+    // than default to false, or its cut silently drops out of every income sum.
+    makeChain([
+      txRow({ id: 'txn-payout-1', lesson_id: null, lessons: null, kind: 'instructor_payout', amount: -25, membership_id: 'mem-1', collected: true }),
+    ])
+    const result = await getLessonFeeRows('barn-1', startDate, endDate)
+    expect(result).toEqual([
+      expect.objectContaining({ instructorCut: 25, collected: true, fee: 0 }),
+    ])
+  })
+
   it('should_use_injected_client_when_provided', async () => {
     const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })

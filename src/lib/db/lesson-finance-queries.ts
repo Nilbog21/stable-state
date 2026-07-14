@@ -85,9 +85,14 @@ export async function getLessonFeeRows(
       occurredAt: raw.occurred_at,
       tierName: raw.lessons?.tier_name ?? DELETED_LESSON_LABEL,
     }
+    // `collected` is read off both kinds, not just lesson_fee: an orphaned
+    // instructor_payout row (its paired lesson_fee nulled to a different key,
+    // see the merge-key comment above) has no lesson_fee row to inherit
+    // `collected` from — and instructor_payout is only ever inserted when
+    // already collected (see sync_lesson_transactions), so this is always safe.
+    existing.collected = raw.collected
     if (raw.kind === 'lesson_fee') {
       existing.fee = raw.amount
-      existing.collected = raw.collected
       existing.occurredAt = raw.occurred_at
     } else {
       existing.instructorCut = -raw.amount
