@@ -15,9 +15,15 @@ vi.mock('../barn-memberships', async () => {
   return { ...actual, resolveMemberNames: vi.fn(), getMembershipByIdForBarn: vi.fn() }
 })
 
+vi.mock('../profiles', async () => {
+  const actual = await vi.importActual<typeof import('../profiles')>('../profiles')
+  return { ...actual, getProfileById: vi.fn() }
+})
+
 import { createClient } from '@/lib/supabase/server'
 import { hydrateParticipants } from '../lesson-participants'
 import { resolveMemberNames, getMembershipByIdForBarn } from '../barn-memberships'
+import { getProfileById } from '../profiles'
 import {
   createLesson,
   cancelLesson,
@@ -520,6 +526,8 @@ describe('getLessonById', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     vi.mocked(getMembershipByIdForBarn).mockReset()
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(null)
+    vi.mocked(getProfileById).mockReset()
+    vi.mocked(getProfileById).mockResolvedValue(null)
   })
 
   const rawLessonData = {
@@ -545,19 +553,34 @@ describe('getLessonById', () => {
 
   it('should_return_lesson_with_instructor_name', async () => {
     mockLessonsFrom(rawLessonData)
-    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-instructor-1', 'Jane Smith']]))
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1', profile_id: 'profile-1' } as any)
+    vi.mocked(getProfileById).mockResolvedValue({ first_name: 'Jane', last_name: 'Smith' } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.instructor_name).toBe('Jane Smith')
   })
 
-  it('should_call_resolve_member_names_with_rider_and_instructor_membership_ids', async () => {
+  it('should_fallback_to_instructor_id_as_name_when_instructor_has_no_profile', async () => {
+    mockLessonsFrom(rawLessonData)
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1', profile_id: 'profile-1' } as any)
+    vi.mocked(getProfileById).mockResolvedValue(null)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.instructor_name).toBe('mem-instructor-1')
+  })
+
+  it('should_call_resolve_member_names_with_only_rider_membership_ids', async () => {
+    // Instructor resolution no longer flows through resolveMemberNames — it's resolved via
+    // getMembershipByIdForBarn + getProfileById instead, so a rider caller viewing a lesson
+    // taught by an instructor they can't otherwise see doesn't trigger the
+    // get_active_barn_member_summaries RPC fallback twice for the same instructor. #845 follow-up.
     mockLessonsFrom(rawLessonData)
 
     await getLessonById('lesson-1', 'barn-1', 'trainer')
 
-    expect(resolveMemberNames).toHaveBeenCalledWith(['mem-rider-1', 'mem-instructor-1'], 'barn-1', expect.anything())
+    expect(resolveMemberNames).toHaveBeenCalledWith(['mem-rider-1'], 'barn-1', expect.anything())
   })
 
   it('should_return_instructor_user_id', async () => {
@@ -577,9 +600,17 @@ describe('getLessonById', () => {
     mockLessonsFrom(rawLessonData)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1' } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'rider-user-1')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'rider-membership-1')
 
     expect(result?.instructor_user_id).toBe('user-instructor-1')
+  })
+
+  it('should_call_get_membership_by_id_for_barn_with_instructor_id_and_barn_id', async () => {
+    mockLessonsFrom(rawLessonData)
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1' } as any)
+
+    await getLessonById('lesson-1', 'barn-1', 'rider', 'rider-membership-1')
+
     expect(getMembershipByIdForBarn).toHaveBeenCalledWith('mem-instructor-1', 'barn-1', expect.anything())
   })
 
@@ -616,9 +647,9 @@ describe('getLessonById', () => {
     expect(getMembershipByIdForBarn).not.toHaveBeenCalled()
   })
 
-  it('should_return_null_instructor_name_when_membership_map_has_no_entry', async () => {
+  it('should_return_null_instructor_name_when_instructor_membership_not_found', async () => {
     mockLessonsFrom(rawLessonData)
-    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue(null)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
@@ -785,7 +816,23 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(riderLessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
+    // Anchored to the caller's own membership ID (mem-1), not the embed-sourced user_id.
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'mem-1')
+
+    expect(result?.lesson_riders[0].rider_notes).toBe('good position')
+  })
+
+  it('should_preserve_rider_notes_for_self_even_when_own_barn_memberships_embed_is_null', async () => {
+    // Masking no longer depends on barn_memberships_read_own returning the caller's own
+    // embed — it's anchored to rider_id (always present) instead. Regression test for #845.
+    const riderLessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: 'good position', barn_memberships: null }],
+    }
+    mockLessonsFrom(riderLessonData)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'mem-1')
 
     expect(result?.lesson_riders[0].rider_notes).toBe('good position')
   })
@@ -801,7 +848,8 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(riderLessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
+    // Anchored to the caller's own membership ID (mem-1), not the embed-sourced user_id.
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'mem-1')
 
     expect(result?.lesson_riders[1].rider_notes).toBeNull()
   })
