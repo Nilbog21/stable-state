@@ -19,6 +19,11 @@ function parseInitialHour(lessonAt: string): number {
   return parseInt(lessonAt.slice(11, 13), 10)
 }
 
+export function computeUnpaidWarn(unpaidPastDue: boolean, paymentType: string, fee: string): boolean {
+  const feeIsZero = fee !== '' && Number(fee) === 0
+  return unpaidPastDue && paymentType === '' && !feeIsZero
+}
+
 export function LessonForm({
   mode,
   horses,
@@ -115,12 +120,13 @@ export function LessonForm({
   const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
 
   const { setDirty, setMessage } = useNavigationBlocker()
+  const feeIsZero = fee !== '' && Number(fee) === 0
   const unpaidPastDue =
     mode === 'edit' &&
     (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
     new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
     Number(initialLesson?.fee) > 0
-  const unpaidWarn = unpaidPastDue && paymentType === ''
+  const unpaidWarn = computeUnpaidWarn(unpaidPastDue, paymentType, fee)
   const shouldWarn = unpaidWarn || notesDirty
 
   useEffect(() => {
@@ -566,7 +572,7 @@ export function LessonForm({
         />
       </div>
 
-      {!(fee !== '' && Number(fee) === 0) && (
+      {!feeIsZero && (
         <div className="flex flex-col gap-1">
           <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Payment type

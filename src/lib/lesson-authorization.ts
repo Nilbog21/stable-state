@@ -8,6 +8,10 @@ export function canManageLesson(role: Role, membershipId: string, lesson: { inst
   return role === 'manager' || (role === 'trainer' && lesson.instructor_id === membershipId)
 }
 
+export function isInstructorOfLesson(membershipId: string, lesson: { instructor_id: string | null }): boolean {
+  return lesson.instructor_id === membershipId
+}
+
 export function isLateCancellation(lessonAt: string, cancelledByInstructor: boolean): boolean {
   if (cancelledByInstructor) return false
   return new Date(lessonAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000

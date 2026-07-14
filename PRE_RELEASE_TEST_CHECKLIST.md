@@ -104,6 +104,8 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] Lesson 9 shows a **Recurring** badge on the Lessons list row and on its Lesson Detail page
 - [ ] Open Lesson 9's edit page as manager — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; confirm the dialog, click Stop — button and indicator disappear on reload, the lesson itself is unchanged (still shows its Recurring badge on list/detail, since it's still that lesson's own occurrence of the series)
 - [ ] On the new-lesson form, pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar below its name (no bars before a date is picked); adjust a checked horse's exertion level and watch its ghost segment move live, while unchecked horses' bars stay solid (no ghost); change the date and confirm the bars refresh; open Lesson 3's edit page and confirm Clover's bar still renders (excluding Lesson 3 itself from its own window)
+- [ ] On the new-lesson form (Normal type), the horse picker legend reads plain "Horse"; switch to **Group**, legend reads "Horses (select at least one)"
+- [ ] Set the fee to `0` — Payment Type field disappears; raise the fee back above `0` — Payment Type field reappears
 
 ## Phase 4 — Manager verification
 
@@ -130,6 +132,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Edit the group lesson (Lesson 4) → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
 - [ ] Delete one seeded lesson — it disappears from the list
 - [ ] On a lesson's detail page, click **Cancel** next to a rider's name → confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away; that rider shows a **Cancelled** badge and the rest of the lesson is unaffected
+- [ ] Open the per-rider or whole-lesson Cancel page as the manager on a lesson you also instruct (or as the instructing trainer) — the type radio defaults to **Cancelled by Instructor**; open it on a lesson someone else instructs — the radio defaults to **Cancelled by Rider**
 - [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
 - [ ] From the Lessons list, click **Cancel** on a **normal** lesson (whole-lesson cancel) → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle identical to the per-rider cancel page; confirm with notes → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes** on the detail page
 - [ ] Whole-lesson cancel on a **group** lesson → no toggle shown; confirmation text instead lists the count and names of enrolled riders who will be affected

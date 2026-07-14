@@ -5,7 +5,7 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { cancelRiderParticipationAction } from '@/app/actions/lessons'
 import { Button } from '@/components/ui/Button'
-import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
+import { canManageLesson, isLessonCancellationEligible, isInstructorOfLesson } from '@/lib/lesson-authorization'
 
 export default async function CancelRiderParticipationPage({
   params,
@@ -36,7 +36,7 @@ export default async function CancelRiderParticipationPage({
   if (!isEligible) notFound()
 
   const cancel = cancelRiderParticipationAction.bind(null, barn.id, slug, lesson.id, riderId)
-  const cancelledByInstructorDefault = lesson.instructor_id === membership.id
+  const cancelledByInstructorDefault = isInstructorOfLesson(membership.id, lesson)
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">

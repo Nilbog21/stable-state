@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
 import { createMockLessonTier, createMockHorse } from '@/test/fixtures'
-import { LessonForm } from '../../LessonForm'
+import { LessonForm, computeUnpaidWarn } from '../../LessonForm'
 
 afterEach(cleanup)
 
@@ -19,6 +19,24 @@ const baseProps = {
   defaultInstructorCut: 25,
 }
 
+describe('computeUnpaidWarn', () => {
+  it('should_warn_when_past_due_and_unpaid_and_fee_nonzero', () => {
+    expect(computeUnpaidWarn(true, '', '45')).toBe(true)
+  })
+
+  it('should_not_warn_when_fee_is_zeroed_out', () => {
+    expect(computeUnpaidWarn(true, '', '0')).toBe(false)
+  })
+
+  it('should_not_warn_when_not_past_due', () => {
+    expect(computeUnpaidWarn(false, '', '45')).toBe(false)
+  })
+
+  it('should_not_warn_when_payment_type_is_set', () => {
+    expect(computeUnpaidWarn(true, 'cash', '45')).toBe(false)
+  })
+})
+
 describe('LessonForm', () => {
   it('should_hide_exertion_input_when_horse_checkbox_is_unchecked', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
@@ -33,13 +51,22 @@ describe('LessonForm', () => {
   it('should_label_horse_picker_as_singular_for_normal_lesson', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.getByText('Horse', { exact: true })).toBeDefined()
+  })
+
+  it('should_hide_select_at_least_one_hint_for_normal_lesson', () => {
+    render(<LessonForm {...baseProps} />)
     expect(screen.queryByText(/select at least one/i)).toBeNull()
   })
 
-  it('should_label_horse_picker_as_plural_with_hint_for_group_lesson', () => {
+  it('should_label_horse_picker_as_plural_for_group_lesson', () => {
     render(<LessonForm {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     expect(screen.getByText(/Horses/)).toBeDefined()
+  })
+
+  it('should_show_select_at_least_one_hint_for_group_lesson', () => {
+    render(<LessonForm {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     expect(screen.getByText(/select at least one/i)).toBeDefined()
   })
 
