@@ -7,6 +7,7 @@ vi.mock('@/lib/auth/guard', () => ({
 vi.mock('@/lib/db/barn-memberships', () => ({
   getMembershipById: vi.fn(),
   setCanInstruct: vi.fn(),
+  revokeInviteToken: vi.fn(),
 }))
 vi.mock('@/lib/db/documents', () => ({
   deleteDocument: vi.fn(),
@@ -39,7 +40,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
+import { getMembershipById, setCanInstruct, revokeInviteToken } from '@/lib/db/barn-memberships'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { removeFile } from '@/lib/db/document-storage'
@@ -49,6 +50,7 @@ import {
   updateDocumentReminderDateAction,
   updateContactInfoAction,
   setCanInstructAction,
+  revokeInviteTokenAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -541,5 +543,36 @@ describe('setCanInstructAction', () => {
 
     await expect(setCanInstructAction('green-acres', 'mem-target-trn', true)).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
+  })
+})
+
+describe('revokeInviteTokenAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(revokeInviteToken).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(revokeInviteToken).mockResolvedValue('new-tok-abc')
+  })
+
+  it('should_call_revokeInviteToken_with_membership_and_barn_ids', async () => {
+    await revokeInviteTokenAction('green-acres', 'mem-target-trn')
+    expect(revokeInviteToken).toHaveBeenCalledWith('mem-target-trn', 'barn-1')
+  })
+
+  it('should_require_manager_role', async () => {
+    await revokeInviteTokenAction('green-acres', 'mem-target-trn')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_revalidate_members_list_path_after_revoke', async () => {
+    await revokeInviteTokenAction('green-acres', 'mem-target-trn')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members')
+  })
+
+  it('should_revalidate_member_detail_path_after_revoke', async () => {
+    await revokeInviteTokenAction('green-acres', 'mem-target-trn')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
 })
