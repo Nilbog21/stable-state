@@ -288,6 +288,12 @@ describe('updateTierAction', () => {
     expect(updateTier).not.toHaveBeenCalled()
   })
 
+  it('should_return_error_when_price_is_negative', async () => {
+    const result = await updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '-5' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Price is required')
+  })
+
   it('should_accept_zero_price', async () => {
     await expect(
       updateTierAction('green-acres', 'tier-1', { error: null }, makeFormData({ name: 'Gold', price: '0' , instructor_cut: '10' }))
@@ -806,6 +812,12 @@ describe('updateDefaultBoardFeeAction', () => {
 
   it('should_return_early_when_fee_is_non_numeric', async () => {
     await updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: 'abc' }))
+
+    expect(updateBarnDefaultBoardFee).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_fee_is_negative', async () => {
+    await updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: '-5' }))
 
     expect(updateBarnDefaultBoardFee).not.toHaveBeenCalled()
   })
