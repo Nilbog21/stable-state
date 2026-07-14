@@ -588,6 +588,43 @@ describe('LessonDetailPage', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
+  it('should_show_inactive_badge_next_to_inactive_horse', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Willow', is_active: false, is_available: true } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Inactive')).toBeDefined()
+  })
+
+  it('should_show_unavailable_badge_next_to_unavailable_horse', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: true, is_available: false } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Unavailable')).toBeDefined()
+  })
+
+  it('should_show_inactive_badge_not_unavailable_when_horse_is_both', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Willow', is_active: false, is_available: false } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Unavailable')).toBeNull()
+  })
+
+  it('should_not_show_status_badge_for_active_available_horse', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Inactive')).toBeNull()
+    expect(screen.queryByText('Unavailable')).toBeNull()
+  })
+
   it('should_hide_horse_notes_label_when_horse_notes_is_null', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,

@@ -484,12 +484,22 @@ async function run() {
   )
   const emeryBoardLastMonthCharge = await generateChargeForMonth(emeryBoardAgreement.id, DEV_BARN_ID, lastMonth, supabase)
 
+  // mark_agreement_charge_paid has no service-role escape hatch (interactive-only RPC,
+  // see ARCHITECTURE.md) so this seed script can't call it — raw updates to both tables
+  // instead, mirroring what the RPC itself would write.
   mustSucceed(
     await supabase
       .from('agreement_charges')
       .update({ payment_type: 'zelle' })
       .in('id', [boardLastMonthCharge.id, leaseLastMonthCharge.id, emeryBoardLastMonthCharge.id]),
     'mark last-month agreement charges paid'
+  )
+  mustSucceed(
+    await supabase
+      .from('transactions')
+      .update({ collected: true, payment_type: 'zelle' })
+      .in('agreement_charge_id', [boardLastMonthCharge.id, leaseLastMonthCharge.id, emeryBoardLastMonthCharge.id]),
+    'mark last-month agreement-charge transactions collected'
   )
 
   const expenseSeeds = buildExpenseSeeds(now)

@@ -29,6 +29,7 @@ const mockLesson: LessonWithDetails = {
   rider_ids: ['rider-mem-1'],
   rider_count: 1,
   rider_cancelled_ats: [null],
+  needs_attention: false,
 }
 
 describe('OlderLessonsToggle', () => {

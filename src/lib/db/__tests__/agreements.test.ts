@@ -357,27 +357,30 @@ describe('updateCharge', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeChain(data: unknown | null, error: Error | null = null) {
-    const mockSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEq2 = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
-    return { update: mockUpdate, mockUpdate }
-  }
-
-  it('should_update_fee', async () => {
-    const { update, mockUpdate } = makeChain({ ...mockCharge, fee: 300 })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_call_the_update_agreement_charge_fee_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockCharge, fee: 300 }, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateCharge('charge-1', 'barn-1', 300)
 
-    expect(mockUpdate).toHaveBeenCalledWith({ fee: 300 })
+    expect(mockRpc).toHaveBeenCalledWith('update_agreement_charge_fee', {
+      p_charge_id: 'charge-1', p_barn_id: 'barn-1', p_fee: 300,
+    })
   })
 
-  it('should_throw_when_supabase_returns_error', async () => {
-    const { update } = makeChain(null, new Error('db error'))
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_return_rpc_data', async () => {
+    const updated = { ...mockCharge, fee: 300 }
+    const mockRpc = vi.fn().mockResolvedValue({ data: updated, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await updateCharge('charge-1', 'barn-1', 300)
+
+    expect(result).toEqual(updated)
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(updateCharge('charge-1', 'barn-1', 300)).rejects.toThrow('db error')
   })
@@ -388,36 +391,41 @@ describe('updateChargePaymentType', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeChain(data: unknown | null, error: Error | null = null) {
-    const mockSingle = vi.fn().mockResolvedValue({ data, error })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEq2 = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
-    return { update: mockUpdate, mockUpdate }
-  }
-
-  it('should_update_payment_type', async () => {
-    const { update, mockUpdate } = makeChain({ ...mockCharge, payment_type: 'venmo' })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_call_the_mark_agreement_charge_paid_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockCharge, payment_type: 'venmo' }, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateChargePaymentType('charge-1', 'barn-1', 'venmo')
 
-    expect(mockUpdate).toHaveBeenCalledWith({ payment_type: 'venmo' })
+    expect(mockRpc).toHaveBeenCalledWith('mark_agreement_charge_paid', {
+      p_charge_id: 'charge-1', p_barn_id: 'barn-1', p_payment_type: 'venmo',
+    })
   })
 
-  it('should_clear_payment_type_when_null', async () => {
-    const { update, mockUpdate } = makeChain({ ...mockCharge, payment_type: null })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_pass_null_payment_type_through_to_the_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: { ...mockCharge, payment_type: null }, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateChargePaymentType('charge-1', 'barn-1', null)
 
-    expect(mockUpdate).toHaveBeenCalledWith({ payment_type: null })
+    expect(mockRpc).toHaveBeenCalledWith('mark_agreement_charge_paid', {
+      p_charge_id: 'charge-1', p_barn_id: 'barn-1', p_payment_type: null,
+    })
   })
 
-  it('should_throw_when_supabase_returns_error', async () => {
-    const { update } = makeChain(null, new Error('db error'))
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_return_rpc_data', async () => {
+    const updated = { ...mockCharge, payment_type: 'venmo' }
+    const mockRpc = vi.fn().mockResolvedValue({ data: updated, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await updateChargePaymentType('charge-1', 'barn-1', 'venmo')
+
+    expect(result).toEqual(updated)
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(updateChargePaymentType('charge-1', 'barn-1', 'venmo')).rejects.toThrow('db error')
   })
@@ -507,17 +515,24 @@ describe('getChargesForSummary', () => {
   function makeChain(data: unknown[] | null, error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockIn = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockEq, mockGte, mockLt }
+    return { from, mockSelect, mockEq, mockIn, mockGte, mockLt }
   }
 
-  it('should_query_the_agreement_charges_table', async () => {
+  it('should_query_the_transactions_table', async () => {
     const { from } = makeChain([])
     await getChargesForSummary('barn-1', startDate, endDate)
-    expect(from).toHaveBeenCalledWith('agreement_charges')
+    expect(from).toHaveBeenCalledWith('transactions')
+  })
+
+  it('should_select_occurred_at_amount_and_payment_type', async () => {
+    const { mockSelect } = makeChain([])
+    await getChargesForSummary('barn-1', startDate, endDate)
+    expect(mockSelect).toHaveBeenCalledWith('occurred_at, amount, payment_type')
   })
 
   it('should_filter_by_barn_id', async () => {
@@ -526,23 +541,29 @@ describe('getChargesForSummary', () => {
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
-  it('should_filter_by_period_start', async () => {
+  it('should_filter_to_charge_transaction_kinds', async () => {
+    const { mockIn } = makeChain([])
+    await getChargesForSummary('barn-1', startDate, endDate)
+    expect(mockIn).toHaveBeenCalledWith('kind', ['lease_charge', 'board_charge'])
+  })
+
+  it('should_filter_by_occurred_at_start', async () => {
     const { mockGte } = makeChain([])
     await getChargesForSummary('barn-1', startDate, endDate)
-    expect(mockGte).toHaveBeenCalledWith('period', '2026-07-01')
+    expect(mockGte).toHaveBeenCalledWith('occurred_at', '2026-07-01')
   })
 
-  it('should_filter_by_period_end', async () => {
+  it('should_filter_by_occurred_at_end', async () => {
     const { mockLt } = makeChain([])
     await getChargesForSummary('barn-1', startDate, endDate)
-    expect(mockLt).toHaveBeenCalledWith('period', '2026-08-01')
+    expect(mockLt).toHaveBeenCalledWith('occurred_at', '2026-08-01')
   })
 
-  it('should_return_the_raw_rows', async () => {
-    const row = { fee: 200, payment_type: 'venmo' }
+  it('should_map_rows_to_period_fee_and_payment_type', async () => {
+    const row = { occurred_at: '2026-07-01T00:00:00+00:00', amount: 200, payment_type: 'venmo' }
     makeChain([row])
     const result = await getChargesForSummary('barn-1', startDate, endDate)
-    expect(result).toEqual([row])
+    expect(result).toEqual([{ period: '2026-07-01', fee: 200, payment_type: 'venmo' }])
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {
@@ -559,7 +580,8 @@ describe('getChargesForSummary', () => {
   it('should_use_injected_client_when_provided', async () => {
     const mockLt = vi.fn().mockResolvedValue({ data: [], error: null })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockIn = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     const mockClient = { from } as any
@@ -567,7 +589,7 @@ describe('getChargesForSummary', () => {
     await getChargesForSummary('barn-1', startDate, endDate, mockClient)
 
     expect(createClient).not.toHaveBeenCalled()
-    expect(from).toHaveBeenCalledWith('agreement_charges')
+    expect(from).toHaveBeenCalledWith('transactions')
   })
 })
 
@@ -582,25 +604,26 @@ describe('getPaidCharges', () => {
   function makeChain(data: unknown[] | null, error: Error | null = null) {
     const mockLt = vi.fn().mockResolvedValue({ data, error })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockNot = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ not: mockNot })
+    const mockCollected = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockIn = vi.fn().mockReturnValue({ eq: mockCollected })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockSelect, mockEq, mockNot, mockGte, mockLt }
+    return { from, mockSelect, mockEq, mockIn, mockCollected, mockGte, mockLt }
   }
 
-  it('should_query_the_agreement_charges_table', async () => {
+  it('should_query_the_transactions_table', async () => {
     const { from } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(from).toHaveBeenCalledWith('agreement_charges')
+    expect(from).toHaveBeenCalledWith('transactions')
   })
 
-  it('should_select_with_the_agreements_fk_hint_embed', async () => {
+  it('should_select_with_the_agreement_charges_fk_hint_embed', async () => {
     const { mockSelect } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
     expect(mockSelect).toHaveBeenCalledWith(
-      'id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id, horse_id)'
+      'agreement_charge_id, occurred_at, amount, kind, membership_id, horse_id, agreement_charges!transactions_barn_id_agreement_charge_id_fkey!inner(agreement_id)'
     )
   })
 
@@ -610,28 +633,34 @@ describe('getPaidCharges', () => {
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
-  it('should_filter_out_unpaid_charges', async () => {
-    const { mockNot } = makeChain([])
+  it('should_filter_to_charge_transaction_kinds', async () => {
+    const { mockIn } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(mockNot).toHaveBeenCalledWith('payment_type', 'is', null)
+    expect(mockIn).toHaveBeenCalledWith('kind', ['lease_charge', 'board_charge'])
   })
 
-  it('should_filter_by_period_start', async () => {
+  it('should_filter_to_collected_transactions', async () => {
+    const { mockCollected } = makeChain([])
+    await getPaidCharges('barn-1', startDate, endDate)
+    expect(mockCollected).toHaveBeenCalledWith('collected', true)
+  })
+
+  it('should_filter_by_occurred_at_start', async () => {
     const { mockGte } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(mockGte).toHaveBeenCalledWith('period', '2026-07-01')
+    expect(mockGte).toHaveBeenCalledWith('occurred_at', '2026-07-01')
   })
 
-  it('should_filter_by_period_end', async () => {
+  it('should_filter_by_occurred_at_end', async () => {
     const { mockLt } = makeChain([])
     await getPaidCharges('barn-1', startDate, endDate)
-    expect(mockLt).toHaveBeenCalledWith('period', '2026-08-01')
+    expect(mockLt).toHaveBeenCalledWith('occurred_at', '2026-08-01')
   })
 
-  it('should_join_each_charge_row_with_its_nested_agreement_fields', async () => {
+  it('should_map_each_transaction_row_with_its_nested_agreement_id', async () => {
     makeChain([{
-      id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01', fee: 200,
-      agreements: { kind: 'lease', rider_id: 'rider-1', horse_id: 'horse-1' },
+      agreement_charge_id: 'charge-1', occurred_at: '2026-07-01T00:00:00+00:00', amount: 200, kind: 'lease_charge',
+      membership_id: 'rider-1', horse_id: 'horse-1', agreement_charges: { agreement_id: 'agreement-1' },
     }])
 
     const result = await getPaidCharges('barn-1', startDate, endDate)
@@ -640,6 +669,17 @@ describe('getPaidCharges', () => {
       chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-07-01', fee: 200,
       kind: 'lease', riderId: 'rider-1', horseId: 'horse-1',
     }])
+  })
+
+  it('should_map_board_charge_kind_to_board', async () => {
+    makeChain([{
+      agreement_charge_id: 'charge-1', occurred_at: '2026-07-01T00:00:00+00:00', amount: 1000, kind: 'board_charge',
+      membership_id: 'rider-1', horse_id: 'horse-1', agreement_charges: { agreement_id: 'agreement-1' },
+    }])
+
+    const result = await getPaidCharges('barn-1', startDate, endDate)
+
+    expect(result[0].kind).toBe('board')
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {

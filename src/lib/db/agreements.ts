@@ -136,16 +136,13 @@ export async function updateCharge(
   fee: number
 ): Promise<AgreementCharge> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('agreement_charges')
-    .update({ fee })
-    .eq('id', chargeId)
-    .eq('barn_id', barnId)
-    .select()
-    .single()
-
+  const { data, error } = await supabase.rpc('update_agreement_charge_fee', {
+    p_charge_id: chargeId,
+    p_barn_id: barnId,
+    p_fee: fee,
+  })
   if (error) throw error
-  return data
+  return data as AgreementCharge
 }
 
 export async function updateChargePaymentType(
@@ -154,16 +151,13 @@ export async function updateChargePaymentType(
   paymentType: PaymentType | null
 ): Promise<AgreementCharge> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('agreement_charges')
-    .update({ payment_type: paymentType })
-    .eq('id', chargeId)
-    .eq('barn_id', barnId)
-    .select()
-    .single()
-
+  const { data, error } = await supabase.rpc('mark_agreement_charge_paid', {
+    p_charge_id: chargeId,
+    p_barn_id: barnId,
+    p_payment_type: paymentType,
+  })
   if (error) throw error
-  return data
+  return data as AgreementCharge
 }
 
 export async function generateChargeForMonth(
@@ -204,6 +198,8 @@ export interface ChargeSummaryRow {
   payment_type: PaymentType | null
 }
 
+const CHARGE_TRANSACTION_KINDS = ['lease_charge', 'board_charge'] as const
+
 export async function getChargesForSummary(
   barnId: string,
   startDate: Date,
@@ -212,14 +208,20 @@ export async function getChargesForSummary(
 ): Promise<ChargeSummaryRow[]> {
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
-    .from('agreement_charges')
-    .select('period, fee, payment_type')
+    .from('transactions')
+    .select('occurred_at, amount, payment_type')
     .eq('barn_id', barnId)
-    .gte('period', startDate.toISOString().slice(0, 10))
-    .lt('period', endDate.toISOString().slice(0, 10))
+    .in('kind', CHARGE_TRANSACTION_KINDS)
+    .gte('occurred_at', startDate.toISOString().slice(0, 10))
+    .lt('occurred_at', endDate.toISOString().slice(0, 10))
 
   if (error) throw error
-  return data ?? []
+  type ChargeTransactionRow = { occurred_at: string; amount: number; payment_type: PaymentType | null }
+  return ((data ?? []) as unknown as ChargeTransactionRow[]).map((row) => ({
+    period: row.occurred_at.slice(0, 10),
+    fee: row.amount,
+    payment_type: row.payment_type,
+  }))
 }
 
 export interface PaidCharge {
@@ -239,36 +241,41 @@ export async function getPaidCharges(
   client?: SupabaseClient
 ): Promise<PaidCharge[]> {
   const supabase = client ?? await createClient()
-  // FK-hint embed pinned to the exact composite constraint (verified against the live
-  // schema — resolves in one round trip; unqualified `agreements!inner` would instead
-  // throw PGRST201 if a second agreement_charges->agreements FK is ever added). A prior
-  // attempt at this used an unqualified embed and was reverted (commit a4f8196) out of
-  // caution over #407's schema-cache failure — but #407's tables had no FK at all, unlike
-  // this composite FK, and the pinned constraint name here was re-verified live (#665).
+  // `kind`/`membership_id`/`horse_id` are already denormalized onto the transaction row
+  // (see the transactions table), so only `agreement_id` needs a join — one hop via the
+  // FK-hint embed, pinned to the exact composite constraint (`transactions_barn_id_agreement_charge_id_fkey`,
+  // Postgres's standard auto-generated name for the unnamed FK added in #826 — re-verified
+  // against the live stable-state-dev schema for this #828 change — see getPaidCharges
+  // history for why an unqualified `agreements!inner` embed is avoided, #407/#665).
   const { data, error } = await supabase
-    .from('agreement_charges')
-    .select('id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id, horse_id)')
+    .from('transactions')
+    .select(
+      'agreement_charge_id, occurred_at, amount, kind, membership_id, horse_id, agreement_charges!transactions_barn_id_agreement_charge_id_fkey!inner(agreement_id)'
+    )
     .eq('barn_id', barnId)
-    .not('payment_type', 'is', null)
-    .gte('period', startDate.toISOString().slice(0, 10))
-    .lt('period', endDate.toISOString().slice(0, 10))
+    .in('kind', CHARGE_TRANSACTION_KINDS)
+    .eq('collected', true)
+    .gte('occurred_at', startDate.toISOString().slice(0, 10))
+    .lt('occurred_at', endDate.toISOString().slice(0, 10))
 
   if (error) throw error
-  type PaidChargeRow = {
-    id: string
-    agreement_id: string
-    period: string
-    fee: number
-    agreements: { kind: AgreementKind; rider_id: string; horse_id: string }
+  type PaidChargeTransactionRow = {
+    agreement_charge_id: string
+    occurred_at: string
+    amount: number
+    kind: 'lease_charge' | 'board_charge'
+    membership_id: string
+    horse_id: string
+    agreement_charges: { agreement_id: string }
   }
-  return ((data ?? []) as unknown as PaidChargeRow[]).map((row) => ({
-    chargeId: row.id,
-    agreementId: row.agreement_id,
-    period: row.period,
-    fee: row.fee,
-    kind: row.agreements.kind,
-    riderId: row.agreements.rider_id,
-    horseId: row.agreements.horse_id,
+  return ((data ?? []) as unknown as PaidChargeTransactionRow[]).map((row) => ({
+    chargeId: row.agreement_charge_id,
+    agreementId: row.agreement_charges.agreement_id,
+    period: row.occurred_at.slice(0, 10),
+    fee: row.amount,
+    kind: row.kind === 'lease_charge' ? 'lease' : 'board',
+    riderId: row.membership_id,
+    horseId: row.horse_id,
   }))
 }
 

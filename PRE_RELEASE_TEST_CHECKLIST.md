@@ -132,6 +132,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] **By Rider → Dana** filters correctly
 - [ ] **By Horse → Apple** filters correctly
 - [ ] Times display in 12-hour AM/PM format everywhere (no military time)
+- [ ] Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list and on the Dashboard's Barn Schedule (Willow is seeded inactive); it does not appear on Willow's past lessons or on any cancelled lesson
 - [ ] Open a lesson's detail page (`/barn/dev-barn/lessons/[id]`) — horse notes and rider notes render read-only; Edit link visible; open a lesson with no notes recorded at all and confirm every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
 - [ ] Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, save, verify the change on the detail page
 - [ ] Edit the group lesson (Lesson 4) → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)

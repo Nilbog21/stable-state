@@ -64,7 +64,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     .from('lessons')
     .select(`
       *,
-      lesson_horses ( horse_notes, exertion_level, horses ( id, name ) ),
+      lesson_horses ( horse_notes, exertion_level, horses ( id, name, is_active, is_available ) ),
       lesson_riders ( ${riderSelect} ),
       instructor_membership:barn_memberships!lessons_barn_id_instructor_id_fkey ( user_id )
     `)
