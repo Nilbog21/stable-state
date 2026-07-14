@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import { getMostCommonExpenseTypeAction, type ExpenseFormState } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
+import { localToday } from '@/lib/local-day'
 
 type ExpenseFormInitial = {
   recipient: string
@@ -40,8 +41,8 @@ export function ExpenseForm({
 }: ExpenseFormProps) {
   const [state, formAction] = useActionState(onSave, { error: null })
   const [expenseDate, setExpenseDate] = useState(defaultDate ?? '')
-  const today = new Date().toISOString().slice(0, 10)
-  const isPastDate = expenseDate !== '' && expenseDate < today
+  const isPastDate = expenseDate !== '' && expenseDate < localToday()
+  const [expenseTime, setExpenseTime] = useState(initial?.expenseTime ?? '')
   const [recipient, setRecipient] = useState(initial?.recipient ?? '')
   const [lastCheckedRecipient, setLastCheckedRecipient] = useState(initial?.recipient ?? '')
   const [expenseType, setExpenseType] = useState(initial?.expenseType ?? '')
@@ -124,7 +125,9 @@ export function ExpenseForm({
         />
       </div>
 
-      {!isPastDate && (
+      {isPastDate ? (
+        <input type="hidden" name="expense_time" value={expenseTime} />
+      ) : (
         <div>
           <label htmlFor="expense-time" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Time <span className="font-normal text-zinc-500">(optional — presence signals a planned visit)</span>
@@ -133,7 +136,8 @@ export function ExpenseForm({
             id="expense-time"
             name="expense_time"
             type="time"
-            defaultValue={initial?.expenseTime ?? undefined}
+            value={expenseTime}
+            onChange={(e) => setExpenseTime(e.target.value)}
             className={inputClassName}
           />
         </div>

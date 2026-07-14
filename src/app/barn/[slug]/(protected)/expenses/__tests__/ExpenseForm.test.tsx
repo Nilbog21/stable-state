@@ -321,4 +321,21 @@ describe('ExpenseForm', () => {
     renderForm({ defaultDate: undefined })
     expect(screen.getByLabelText(/time/i)).toBeDefined()
   })
+
+  it('should_update_time_when_user_edits_it_manually', () => {
+    renderForm()
+    const timeInput = screen.getByLabelText(/time/i) as HTMLInputElement
+    fireEvent.change(timeInput, { target: { value: '09:15' } })
+    expect(timeInput.value).toBe('09:15')
+  })
+
+  it('should_preserve_existing_time_in_form_data_when_editing_a_past_dated_expense', () => {
+    const { container } = renderForm({
+      defaultDate: '2026-07-03',
+      initial: { recipient: '', expenseType: '', expenseTime: '14:30', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
+    })
+    const form = container.querySelector('form')!
+    const fd = new FormData(form)
+    expect(fd.get('expense_time')).toBe('14:30')
+  })
 })
