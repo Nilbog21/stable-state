@@ -97,7 +97,7 @@ export default async function LessonDetailPage({
   }
 
   const role = membership.role
-  const lesson = await getLessonById(id, barn.id, role, user.id)
+  const lesson = await getLessonById(id, barn.id, role, membership.id)
 
   if (!lesson) {
     notFound()
@@ -114,7 +114,7 @@ export default async function LessonDetailPage({
   const canSeeNotes = role === 'trainer' || role === 'manager'
 
   const myRiderEntry = role === 'rider'
-    ? lesson.lesson_riders.find((lr) => lr.barn_membership?.user_id === user.id) ?? null
+    ? lesson.lesson_riders.find((lr) => lr.barn_membership?.id === membership.id) ?? null
     : null
 
   if (role === 'rider' && myRiderEntry === null) {
@@ -206,7 +206,12 @@ export default async function LessonDetailPage({
                   {lesson.lesson_horses.map((lh, i) => (
                     <li key={lh.horses?.id ?? i}>
                       <span>{lh.horses?.name ?? '—'}</span>{' '}
-                      <span className="text-zinc-500">(exertion {lh.exertion_level})</span>
+                      <span className="text-zinc-500">(exertion {lh.exertion_level})</span>{' '}
+                      {lh.horses?.is_active === false ? (
+                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Inactive</span>
+                      ) : lh.horses?.is_available === false ? (
+                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unavailable</span>
+                      ) : null}
                       {canSeeNotes && lh.horses?.id && lh.horse_notes && (
                         <div className="mt-1">
                           <p className="text-xs font-medium text-zinc-500">Horse Notes</p>

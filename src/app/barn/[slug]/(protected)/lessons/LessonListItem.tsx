@@ -11,6 +11,7 @@ interface Props {
 
 export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembershipId }: Props) {
   const isCancelled = lesson.cancelled_at !== null
+  const needsAttention = !isCancelled && lesson.needs_attention && new Date(lesson.lesson_at) > new Date()
 
   const myRiderIndex = viewerMembershipId ? lesson.rider_ids.indexOf(viewerMembershipId) : -1
   const myCancelledAt = myRiderIndex >= 0 ? lesson.rider_cancelled_ats[myRiderIndex] : null
@@ -50,6 +51,9 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembe
           )}
           {!isCancelled && lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
+          )}
+          {needsAttention && (
+            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Needs Attention</span>
           )}
         </span>
       </Card>
