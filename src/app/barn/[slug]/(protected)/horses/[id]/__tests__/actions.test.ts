@@ -7,7 +7,6 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/horses', () => ({
   updateHorseDetails: vi.fn(),
-  updateHorseExhaustionThresholds: vi.fn(),
 }))
 
 vi.mock('@/lib/db/documents', () => ({
@@ -25,7 +24,7 @@ vi.mock('next/cache', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails, updateHorseExhaustionThresholds } from '@/lib/db/horses'
+import { updateHorseDetails } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
@@ -51,7 +50,6 @@ describe('updateHorseAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(updateHorseDetails).mockReset()
-    vi.mocked(updateHorseExhaustionThresholds).mockReset()
     vi.mocked(revalidatePath).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
@@ -59,7 +57,6 @@ describe('updateHorseAction', () => {
       membership: mockManagerMembership,
     })
     vi.mocked(updateHorseDetails).mockResolvedValue(undefined)
-    vi.mocked(updateHorseExhaustionThresholds).mockResolvedValue(undefined)
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
@@ -74,6 +71,7 @@ describe('updateHorseAction', () => {
       is_active: true,
       is_available: true,
       unavailability_reason: null,
+      exhaustion_thresholds: { moderate: 4, high: 10 },
     })
   })
 
@@ -87,6 +85,7 @@ describe('updateHorseAction', () => {
       is_active: true,
       is_available: false,
       unavailability_reason: 'stall rest',
+      exhaustion_thresholds: { moderate: 4, high: 10 },
     })
   })
 
@@ -100,6 +99,7 @@ describe('updateHorseAction', () => {
       is_active: true,
       is_available: false,
       unavailability_reason: null,
+      exhaustion_thresholds: { moderate: 4, high: 10 },
     })
   })
 
@@ -112,6 +112,7 @@ describe('updateHorseAction', () => {
       is_active: false,
       is_available: false,
       unavailability_reason: null,
+      exhaustion_thresholds: { moderate: 4, high: 10 },
     })
   })
 
@@ -123,6 +124,7 @@ describe('updateHorseAction', () => {
       is_active: true,
       is_available: true,
       unavailability_reason: null,
+      exhaustion_thresholds: { moderate: 4, high: 10 },
     })
   })
 
@@ -134,6 +136,7 @@ describe('updateHorseAction', () => {
       is_active: true,
       is_available: true,
       unavailability_reason: null,
+      exhaustion_thresholds: { moderate: 4, high: 10 },
     })
   })
 
@@ -146,6 +149,7 @@ describe('updateHorseAction', () => {
       is_active: true,
       is_available: true,
       unavailability_reason: null,
+      exhaustion_thresholds: { moderate: 4, high: 10 },
     })
   })
 
@@ -154,13 +158,6 @@ describe('updateHorseAction', () => {
     fd.set('status', 'deleted')
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
     expect(updateHorseDetails).not.toHaveBeenCalled()
-  })
-
-  it('should_not_call_updateHorseExhaustionThresholds_when_status_is_invalid', async () => {
-    const fd = validThresholdsFormData()
-    fd.set('status', 'deleted')
-    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseExhaustionThresholds).not.toHaveBeenCalled()
   })
 
   it('should_return_error_when_status_is_invalid', async () => {
@@ -199,24 +196,30 @@ describe('updateHorseAction', () => {
     expect(result).toEqual({ error: null })
   })
 
-  it('should_call_updateHorseExhaustionThresholds_with_null_when_use_barn_defaults_is_true', async () => {
+  it('should_call_updateHorseDetails_with_null_thresholds_when_use_barn_defaults_is_true', async () => {
     const fd = validThresholdsFormData()
     fd.set('use_barn_defaults', 'true')
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseExhaustionThresholds).toHaveBeenCalledWith('horse-1', mockBarn.id, null)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      exhaustion_thresholds: null,
+    }))
   })
 
-  it('should_call_updateHorseExhaustionThresholds_with_parsed_values_when_custom', async () => {
+  it('should_call_updateHorseDetails_with_parsed_thresholds_when_custom', async () => {
     const fd = validThresholdsFormData()
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseExhaustionThresholds).toHaveBeenCalledWith('horse-1', mockBarn.id, { moderate: 4, high: 10 })
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      exhaustion_thresholds: { moderate: 4, high: 10 },
+    }))
   })
 
   it('should_accept_zero_as_a_valid_moderate_value', async () => {
     const fd = validThresholdsFormData()
     fd.set('moderate', '0')
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseExhaustionThresholds).toHaveBeenCalledWith('horse-1', mockBarn.id, { moderate: 0, high: 10 })
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      exhaustion_thresholds: { moderate: 0, high: 10 },
+    }))
   })
 
   it('should_return_error_when_moderate_is_blank', async () => {
@@ -254,13 +257,6 @@ describe('updateHorseAction', () => {
     expect(updateHorseDetails).not.toHaveBeenCalled()
   })
 
-  it('should_not_call_updateHorseExhaustionThresholds_when_parsing_fails', async () => {
-    const fd = validThresholdsFormData()
-    fd.set('moderate', '')
-    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseExhaustionThresholds).not.toHaveBeenCalled()
-  })
-
   it('should_return_error_when_moderate_equals_high', async () => {
     const fd = validThresholdsFormData()
     fd.set('moderate', '10')
@@ -285,30 +281,16 @@ describe('updateHorseAction', () => {
     expect(updateHorseDetails).not.toHaveBeenCalled()
   })
 
-  it('should_not_call_updateHorseExhaustionThresholds_when_moderate_gte_high', async () => {
-    const fd = validThresholdsFormData()
-    fd.set('moderate', '10')
-    fd.set('high', '10')
-    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseExhaustionThresholds).not.toHaveBeenCalled()
-  })
-
   it('should_return_error_when_updateHorseDetails_fails', async () => {
     vi.mocked(updateHorseDetails).mockRejectedValue(new Error('details db error'))
     const result = await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
     expect(result).toEqual({ error: 'details db error' })
   })
 
-  it('should_not_call_updateHorseExhaustionThresholds_when_updateHorseDetails_fails', async () => {
+  it('should_not_revalidate_when_updateHorseDetails_fails', async () => {
     vi.mocked(updateHorseDetails).mockRejectedValue(new Error('details db error'))
     await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
-    expect(updateHorseExhaustionThresholds).not.toHaveBeenCalled()
-  })
-
-  it('should_return_error_when_updateHorseExhaustionThresholds_fails', async () => {
-    vi.mocked(updateHorseExhaustionThresholds).mockRejectedValue(new Error('thresholds db error'))
-    const result = await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
-    expect(result).toEqual({ error: 'thresholds db error' })
+    expect(revalidatePath).not.toHaveBeenCalled()
   })
 })
 

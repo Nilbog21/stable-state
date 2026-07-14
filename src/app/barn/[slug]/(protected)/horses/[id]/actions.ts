@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails, updateHorseExhaustionThresholds } from '@/lib/db/horses'
+import { updateHorseDetails } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
@@ -47,8 +47,8 @@ export async function updateHorseAction(
       is_active: isActive,
       is_available: isAvailable,
       unavailability_reason: reason,
+      exhaustion_thresholds: thresholds,
     })
-    await updateHorseExhaustionThresholds(horseId, barn.id, thresholds)
   } catch (err) {
     return { error: getErrorMessage(err) }
   }

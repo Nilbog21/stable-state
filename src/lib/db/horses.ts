@@ -143,7 +143,13 @@ export async function setHorseAvailability(
 export async function updateHorseDetails(
   horseId: string,
   barnId: string,
-  updates: { name?: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null }
+  updates: {
+    name?: string
+    is_active: boolean
+    is_available: boolean
+    unavailability_reason: string | null
+    exhaustion_thresholds: { moderate: number; high: number } | null
+  }
 ): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('update_horse_details', {
@@ -153,25 +159,9 @@ export async function updateHorseDetails(
     p_is_active: updates.is_active,
     p_is_available: updates.is_available,
     p_unavailability_reason: updates.unavailability_reason,
+    p_exhaustion_threshold_moderate: updates.exhaustion_thresholds?.moderate ?? null,
+    p_exhaustion_threshold_high: updates.exhaustion_thresholds?.high ?? null,
   })
-  if (error) throw error
-}
-
-export async function updateHorseExhaustionThresholds(
-  horseId: string,
-  barnId: string,
-  thresholds: { moderate: number; high: number } | null
-): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('horses')
-    .update({
-      exhaustion_threshold_moderate: thresholds?.moderate ?? null,
-      exhaustion_threshold_high: thresholds?.high ?? null,
-    })
-    .eq('id', horseId)
-    .eq('barn_id', barnId)
-
   if (error) throw error
 }
 
