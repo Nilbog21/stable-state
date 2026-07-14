@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 import { ManageMemberSection } from '../ManageMemberSection'
 
 afterEach(cleanup)
@@ -54,7 +54,9 @@ describe('ManageMemberSection', () => {
     vi.useFakeTimers()
     render(<ManageMemberSection {...defaultProps} />)
     fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
-    vi.advanceTimersByTime(2000)
+    act(() => {
+      vi.advanceTimersByTime(2000)
+    })
     expect(screen.getByRole('button', { name: /^copy invite$/i })).toBeDefined()
     vi.useRealTimers()
   })

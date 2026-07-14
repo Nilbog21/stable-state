@@ -6,7 +6,7 @@ import { getProfileByUserId } from '@/lib/db/profiles'
 import { EmptyState } from '@/components/EmptyState'
 import { Card } from '@/components/ui/Card'
 import { Button } from '@/components/ui/Button'
-import { ManagedMemberRow } from './ManagedMemberRow'
+import { Badge } from '@/components/ui/Badge'
 import { createManagedMemberAction } from './actions'
 
 export default async function MembersPage({
@@ -102,27 +102,17 @@ export default async function MembersPage({
         )}
         {trainers.length > 0 ? (
           <ul className="space-y-2">
-            {trainers.map((t) =>
-              t.isManaged && t.inviteToken && membership.role === 'manager' ? (
-                <li key={t.membershipId}>
-                  <ManagedMemberRow
-                    name={t.name}
-                    barnSlug={slug}
-                    membershipId={t.membershipId}
-                    inviteToken={t.inviteToken}
-                  />
-                </li>
-              ) : (
-                <li key={t.membershipId}>
-                  <Card
-                    href={`/barn/${slug}/members/${t.membershipId}`}
-                    className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
-                  >
-                    {t.name}
-                  </Card>
-                </li>
-              )
-            )}
+            {trainers.map((t) => (
+              <li key={t.membershipId}>
+                <Card
+                  href={`/barn/${slug}/members/${t.membershipId}`}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
+                >
+                  {t.name}
+                  {t.isManaged && membership.role === 'manager' && <Badge tone="amber">Unlinked</Badge>}
+                </Card>
+              </li>
+            ))}
           </ul>
         ) : (
           <EmptyState
@@ -155,27 +145,17 @@ export default async function MembersPage({
         )}
         {riders.length > 0 ? (
           <ul className="space-y-2">
-            {riders.map((r) =>
-              r.isManaged && r.inviteToken && membership.role === 'manager' ? (
-                <li key={r.membershipId}>
-                  <ManagedMemberRow
-                    name={r.name}
-                    barnSlug={slug}
-                    membershipId={r.membershipId}
-                    inviteToken={r.inviteToken}
-                  />
-                </li>
-              ) : (
-                <li key={r.membershipId}>
-                  <Card
-                    href={`/barn/${slug}/members/${r.membershipId}`}
-                    className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
-                  >
-                    {r.name}
-                  </Card>
-                </li>
-              )
-            )}
+            {riders.map((r) => (
+              <li key={r.membershipId}>
+                <Card
+                  href={`/barn/${slug}/members/${r.membershipId}`}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
+                >
+                  {r.name}
+                  {r.isManaged && membership.role === 'manager' && <Badge tone="amber">Unlinked</Badge>}
+                </Card>
+              </li>
+            ))}
           </ul>
         ) : (
           <EmptyState
