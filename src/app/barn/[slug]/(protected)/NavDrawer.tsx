@@ -45,6 +45,8 @@ export function NavDrawer({ navLinks }: Props) {
 
   return (
     <>
+      {/* Raw Tailwind, not <Button>: icon-only unpadded hamburger trigger —
+          same reasoning as NotificationBell's bell trigger. */}
       <button
         onClick={() => setOpen(true)}
         aria-label="Open navigation menu"

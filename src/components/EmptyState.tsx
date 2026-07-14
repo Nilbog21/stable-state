@@ -1,4 +1,4 @@
-import Link from 'next/link'
+import { Button } from '@/components/ui/Button'
 
 export function EmptyState({
   heading,
@@ -29,12 +29,9 @@ export function EmptyState({
       <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{heading}</p>
       <p className="text-sm text-zinc-500 dark:text-zinc-400">{subtext}</p>
       {cta && (
-        <Link
-          href={cta.href}
-          className="mt-1 rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+        <Button href={cta.href} className="mt-1">
           {cta.label}
-        </Link>
+        </Button>
       )}
     </div>
   )

@@ -60,6 +60,8 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
 
   return (
     <div ref={ref} className="relative">
+      {/* Raw Tailwind, not <Button>: wraps a progress-bar visual, not a
+          normal CTA — same reasoning as NotificationBell's bell trigger. */}
       <button
         type="button"
         onClick={(e) => {

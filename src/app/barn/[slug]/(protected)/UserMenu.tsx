@@ -31,6 +31,8 @@ export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }
 
   return (
     <div ref={ref} className="relative">
+      {/* Raw Tailwind, not <Button>: fixed-content circular avatar/initials
+          trigger — no Button variant targets this shape. */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="User menu"
@@ -84,6 +86,9 @@ export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }
           >
             User Guide
           </Link>
+          {/* Raw Tailwind, not <Button>: styled identically to the sibling
+              Link menu rows above (Profile/Switch Barn/User Guide) — a
+              dropdown menu-item pattern, not a button pattern. */}
           <form action={signOut}>
             <button
               type="submit"

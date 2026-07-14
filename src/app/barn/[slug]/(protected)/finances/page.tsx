@@ -167,6 +167,11 @@ export default async function FinancesPage({
         </section>
       )}
 
+      {/* Raw Tailwind, not <Button>/<Pill>: unpadded circular icon-arrow nav
+          control — no Button/Pill variant fits this shape. Deliberately reuses
+          Pill's pillInactive color tokens (border-zinc-300/text-zinc-600/hover
+          states) so it stays visually consistent with Pill if that palette
+          ever changes. */}
       <div className="mb-8 flex items-center gap-4">
         {prevUrl ? (
           <Link href={prevUrl} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">

@@ -46,6 +46,8 @@ export function BarnSwitcher({ barnName, barnSlug, activeBarnMemberships }: Prop
       >
         {barnName}
       </BlockingLink>
+      {/* Raw Tailwind, not <Button>: icon-only unpadded caret trigger — same
+          reasoning as NotificationBell's bell trigger. */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Switch barn"
