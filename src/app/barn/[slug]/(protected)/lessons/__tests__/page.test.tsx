@@ -209,18 +209,18 @@ describe('LessonsPage', () => {
     expect(screen.getByText('RiderScopedHorse')).toBeDefined()
   })
 
-  it('should_show_cancel_link_for_manager', async () => {
+  it('should_never_show_cancel_link_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
   })
 
-  it('should_show_cancel_link_for_trainer_on_own_lesson', async () => {
+  it('should_never_show_cancel_link_for_trainer_on_own_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
   })
 
   it('should_show_new_lesson_link_for_trainer', async () => {

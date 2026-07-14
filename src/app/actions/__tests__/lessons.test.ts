@@ -806,6 +806,7 @@ describe('cancelLessonAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getLessonById).mockReset()
     vi.mocked(cancelLesson).mockReset()
+    vi.mocked(cancelRiderParticipation).mockReset()
     vi.mocked(getActiveManagerUserIds).mockReset()
     vi.mocked(createNotification).mockReset()
     vi.mocked(createClient).mockReset()
@@ -815,6 +816,7 @@ describe('cancelLessonAction', () => {
       makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null }, [], 'instructor-1')
     )
     vi.mocked(cancelLesson).mockResolvedValue(undefined)
+    vi.mocked(cancelRiderParticipation).mockResolvedValue(false)
     vi.mocked(getActiveManagerUserIds).mockResolvedValue([])
     vi.mocked(createNotification).mockResolvedValue(undefined)
     vi.mocked(createClient).mockResolvedValue({} as any)
@@ -925,7 +927,7 @@ describe('cancelLessonAction', () => {
     expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, true)
   })
 
-  it('should_always_pass_is_late_false_for_group_lesson_regardless_of_cancel_type', async () => {
+  it('should_call_cancelLesson_for_group_lesson_when_cancel_type_is_instructor', async () => {
     const soonIso = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetail(
@@ -934,8 +936,80 @@ describe('cancelLessonAction', () => {
         'instructor-1'
       )
     )
-    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'instructor' }))
     expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, false)
+  })
+
+  it('should_delegate_to_cancelRiderParticipation_for_group_lesson_when_cancel_type_is_rider_with_valid_rider_id', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider', rider_id: 'rider-mem-1' }))
+    expect(cancelRiderParticipation).toHaveBeenCalledWith('lesson-1', 'barn-1', 'rider-mem-1', null, expect.any(Boolean))
+  })
+
+  it('should_not_call_cancelLesson_when_delegating_to_rider_cancellation', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider', rider_id: 'rider-mem-1' }))
+    expect(cancelLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_lesson_detail_after_delegated_rider_cancellation', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider', rider_id: 'rider-mem-1' }))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
+  })
+
+  it('should_not_call_cancelLesson_when_group_rider_selected_but_rider_id_missing', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(cancelLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_cancelRiderParticipation_when_group_rider_selected_but_rider_id_missing', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(cancelRiderParticipation).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_lesson_detail_when_group_rider_selected_but_rider_id_missing', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
   })
 
   it('should_notify_barn_managers_when_trainer_cancels', async () => {
@@ -997,9 +1071,9 @@ describe('cancelLessonAction', () => {
     )
   })
 
-  it('should_redirect_to_lessons_list_after_successful_cancellation', async () => {
+  it('should_redirect_to_lesson_detail_after_successful_cancellation', async () => {
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
   })
 })
 
