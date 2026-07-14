@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isLessonCancellationEligible, canManageLesson, isLateCancellation, isInstructorOfLesson, getHorseAttentionReasons } from '@/lib/lesson-authorization'
+import { isLessonCancellationEligible, canManageLesson, isLateCancellation, isInstructorOfLesson, getHorseAttentionReasons, isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
 
 describe('isLessonCancellationEligible', () => {
   it('should_return_true_when_lesson_at_is_future_and_paid', () => {
@@ -60,6 +60,20 @@ describe('isLateCancellation', () => {
   it('should_return_false_when_cancelled_by_rider_more_than_24_hours_before_lesson', () => {
     const farLessonAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
     expect(isLateCancellation(farLessonAt, false)).toBe(false)
+  })
+})
+
+describe('isLessonEligibleForAttentionBadge', () => {
+  it('should_return_true_when_lesson_is_future_and_not_cancelled', () => {
+    expect(isLessonEligibleForAttentionBadge({ lesson_at: '2099-01-01T10:00:00Z', cancelled_at: null })).toBe(true)
+  })
+
+  it('should_return_false_when_lesson_is_in_the_past', () => {
+    expect(isLessonEligibleForAttentionBadge({ lesson_at: '2020-01-01T10:00:00Z', cancelled_at: null })).toBe(false)
+  })
+
+  it('should_return_false_when_lesson_is_cancelled', () => {
+    expect(isLessonEligibleForAttentionBadge({ lesson_at: '2099-01-01T10:00:00Z', cancelled_at: '2026-01-01T00:00:00Z' })).toBe(false)
   })
 })
 

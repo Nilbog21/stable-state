@@ -17,6 +17,13 @@ export function isLateCancellation(lessonAt: string, cancelledByInstructor: bool
   return new Date(lessonAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000
 }
 
+// Shared by the #847 "Needs Attention" badge (LessonListItem, UpcomingLessonCard) and this
+// file's own getHorseAttentionReasons — a lesson only ever flags a horse issue while it's
+// still upcoming and hasn't been cancelled.
+export function isLessonEligibleForAttentionBadge(lesson: { lesson_at: string; cancelled_at: string | null }): boolean {
+  return lesson.cancelled_at === null && new Date(lesson.lesson_at) > new Date()
+}
+
 type HorseStatus = {
   name: string
   is_active?: boolean
@@ -29,8 +36,7 @@ export function getHorseAttentionReasons(lesson: {
   cancelled_at: string | null
   lesson_horses: { horses: HorseStatus | null }[]
 }): string[] {
-  if (lesson.cancelled_at !== null) return []
-  if (new Date(lesson.lesson_at) <= new Date()) return []
+  if (!isLessonEligibleForAttentionBadge(lesson)) return []
 
   return lesson.lesson_horses
     .filter((lh): lh is { horses: HorseStatus } => lh.horses !== null && (lh.horses.is_active === false || lh.horses.is_available === false))
