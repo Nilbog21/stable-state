@@ -40,6 +40,14 @@ vi.mock('@/lib/db/expenses', () => ({
   getUpcomingScheduledExpenses: vi.fn(),
 }))
 
+vi.mock('@/lib/db/lesson-finances', () => ({
+  getOutstandingLessons: vi.fn(),
+}))
+
+vi.mock('@/lib/db/agreements', () => ({
+  getOutstandingCharges: vi.fn(),
+}))
+
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => {
     throw new Error('NEXT_NOT_FOUND')
@@ -57,6 +65,8 @@ import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { getDueDocuments } from '@/lib/db/documents'
 import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
+import { getOutstandingLessons } from '@/lib/db/lesson-finances'
+import { getOutstandingCharges } from '@/lib/db/agreements'
 import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarn, createMockMembership } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 
@@ -106,6 +116,10 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getDueDocuments).mockResolvedValue([])
     vi.mocked(getUpcomingScheduledExpenses).mockReset()
     vi.mocked(getUpcomingScheduledExpenses).mockResolvedValue([])
+    vi.mocked(getOutstandingLessons).mockReset()
+    vi.mocked(getOutstandingLessons).mockResolvedValue([])
+    vi.mocked(getOutstandingCharges).mockReset()
+    vi.mocked(getOutstandingCharges).mockResolvedValue([])
   })
 
   it('should_throw_when_barn_does_not_exist', async () => {
@@ -216,7 +230,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText(/pending request/i)).toBeDefined()
+    expect(screen.getByText(/pending new member request/i)).toBeDefined()
   })
 
   it('should_not_render_pending_approvals_badge_when_count_is_zero', async () => {
@@ -225,7 +239,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.queryByText(/pending request/i)).toBeNull()
+    expect(screen.queryByText(/pending new member request/i)).toBeNull()
   })
 
   it('should_render_pending_approvals_badge_with_link_to_settings', async () => {
@@ -236,7 +250,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    const link = screen.getByRole('link', { name: /pending request/i }) as HTMLAnchorElement
+    const link = screen.getByRole('link', { name: /pending new member request/i }) as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/settings')
   })
 
@@ -246,7 +260,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.queryByText(/pending request/i)).toBeNull()
+    expect(screen.queryByText(/pending new member request/i)).toBeNull()
   })
 
   it('should_pass_viewer_membership_id_to_upcoming_lessons_sections', async () => {
@@ -274,7 +288,18 @@ describe('BarnDashboardPage', () => {
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
-    expect(screen.getByText(/2 pending requests/i)).toBeDefined()
+    expect(screen.getByText(/2 pending new member requests/i)).toBeDefined()
+  })
+
+  it('should_use_singular_new_member_request_wording_when_count_is_one', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('1 pending new member request')).toBeDefined()
   })
 
   const mockDueHorseDoc = {
@@ -348,5 +373,138 @@ describe('BarnDashboardPage', () => {
     await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
     expect(getUpcomingScheduledExpenses).toHaveBeenCalledWith(mockBarn.id, expect.any(String), expect.any(String))
+  })
+
+  it('should_not_render_reminders_heading_when_nothing_to_show', async () => {
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByRole('heading', { name: 'Reminders' })).toBeNull()
+  })
+
+  it('should_render_reminders_heading_when_pending_count_nonzero', async () => {
+    vi.mocked(getPendingMemberships).mockResolvedValue([
+      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
+    ] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: 'Reminders' })).toBeDefined()
+  })
+
+  it('should_render_reminders_heading_when_unpaid_lessons_count_nonzero', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{ id: 'l1' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: 'Reminders' })).toBeDefined()
+  })
+
+  it('should_render_unpaid_lessons_card_with_singular_text_when_count_is_one', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{ id: 'l1' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('1 unpaid lesson')).toBeDefined()
+  })
+
+  it('should_render_unpaid_lessons_card_with_plural_text_when_count_is_greater_than_one', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{ id: 'l1' }, { id: 'l2' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('2 unpaid lessons')).toBeDefined()
+  })
+
+  it('should_not_render_unpaid_lessons_card_when_count_is_zero', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/unpaid lesson/i)).toBeNull()
+  })
+
+  it('should_link_unpaid_lessons_card_to_finances_outstanding', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{ id: 'l1' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: '1 unpaid lesson' }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/finances/outstanding')
+  })
+
+  it('should_render_unpaid_leases_boarding_card_with_singular_text_when_count_is_one', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([{ id: 'c1' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('1 unpaid lease/boarding')).toBeDefined()
+  })
+
+  it('should_render_unpaid_leases_boarding_card_with_plural_text_when_count_is_greater_than_one', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([{ id: 'c1' }, { id: 'c2' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('2 unpaid leases/boarding')).toBeDefined()
+  })
+
+  it('should_not_render_unpaid_leases_boarding_card_when_count_is_zero', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/unpaid lease/i)).toBeNull()
+  })
+
+  it('should_link_unpaid_leases_boarding_card_to_finances_outstanding', async () => {
+    vi.mocked(getOutstandingCharges).mockResolvedValue([{ id: 'c1' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: '1 unpaid lease/boarding' }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/finances/outstanding')
+  })
+
+  it('should_call_getOutstandingLessons_with_user_id_and_role_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getOutstandingLessons).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockRiderMembership.role)
+  })
+
+  it('should_call_getOutstandingCharges_with_user_id_and_role_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockRiderMembership.role)
+  })
+
+  it('should_call_getOutstandingLessons_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getOutstandingLessons).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockTrainerMembership.role)
+  })
+
+  it('should_call_getOutstandingCharges_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockTrainerMembership.role)
   })
 })
