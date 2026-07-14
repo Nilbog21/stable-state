@@ -1289,6 +1289,12 @@ describe('cancelRiderParticipationAction', () => {
   })
 
   it('should_notify_instructor_when_rider_self_cancels', async () => {
+    // Regression coverage for #845: getLessonById used to resolve a null instructor_user_id
+    // for a rider caller (nested barn_memberships embed blocked by RLS), which silently
+    // dropped the instructor from resolveCancellationRecipients here. This action trusts
+    // whatever getLessonById resolves — it has no embed-based lookup of its own — so a
+    // non-null instructor_user_id (as getLessonById now correctly returns even for a rider
+    // caller, see lessons.test.ts) is sufficient to prove the instructor gets notified.
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(

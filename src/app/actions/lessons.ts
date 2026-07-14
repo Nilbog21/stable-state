@@ -157,9 +157,9 @@ export async function cancelLessonAction(
   lessonId: string,
   formData: FormData
 ): Promise<void> {
-  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -213,9 +213,9 @@ export async function deleteLessonAction(
   lessonId: string,
   formData: FormData
 ): Promise<void> {
-  const { user, membership } = await requireMembership(barnSlug, ['manager'])
+  const { membership } = await requireMembership(barnSlug, ['manager'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -235,7 +235,7 @@ export async function cancelRiderParticipationAction(
 ): Promise<void> {
   const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return

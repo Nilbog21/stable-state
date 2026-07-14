@@ -130,7 +130,7 @@ export default async function LessonDetailPage({
   }
 
   const role = membership.role
-  const lesson = await getLessonById(id, barn.id, role, user.id)
+  const lesson = await getLessonById(id, barn.id, role, membership.id)
 
   if (!lesson) {
     notFound()
@@ -147,7 +147,7 @@ export default async function LessonDetailPage({
   const canSeeNotes = role === 'trainer' || role === 'manager'
 
   const myRiderEntry = role === 'rider'
-    ? lesson.lesson_riders.find((lr) => lr.barn_membership?.user_id === user.id) ?? null
+    ? lesson.lesson_riders.find((lr) => lr.barn_membership?.id === membership.id) ?? null
     : null
 
   if (role === 'rider' && myRiderEntry === null) {

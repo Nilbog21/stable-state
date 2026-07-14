@@ -206,7 +206,7 @@ describe('SettingsPage', () => {
     expect(link.href).toContain('/barn/green-acres/settings/tiers/new')
   })
 
-  it('should_render_add_tier_link_in_header_row_with_heading', async () => {
+  it('should_not_render_add_tier_link_inside_summary', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({}),
@@ -215,7 +215,21 @@ describe('SettingsPage', () => {
 
     const heading = screen.getByRole('heading', { name: /lesson tiers/i })
     const [link] = screen.getAllByRole('link', { name: /add tier/i })
-    expect(link.parentElement).toBe(heading.parentElement)
+    const summary = heading.closest('summary') as HTMLElement
+    expect(summary.contains(link)).toBe(false)
+  })
+
+  it('should_render_add_tier_link_within_lesson_tiers_section', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /lesson tiers/i })
+    const [link] = screen.getAllByRole('link', { name: /add tier/i })
+    const sectionWrapper = heading.closest('details')!.parentElement as HTMLElement
+    expect(sectionWrapper.contains(link)).toBe(true)
   })
 
   it('should_render_pending_requests_heading_in_label_style', async () => {
@@ -472,5 +486,86 @@ describe('SettingsPage', () => {
 
     const input = screen.getByLabelText(/high threshold/i) as HTMLInputElement
     expect(input.value).toBe(String(mockBarn.exhaustion_threshold_high))
+  })
+
+  it('should_render_pending_requests_section_open_when_pending_count_is_positive', async () => {
+    const pendingMember = createMockMembership({ id: 'mem-p', user_id: 'user-2', status: 'pending', created_at: '2026-01-01T00:00:00Z' })
+    vi.mocked(getPendingMemberships).mockResolvedValue([pendingMember])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-p', 'Jane Doe']]))
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /pending requests/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(true)
+  })
+
+  it('should_render_pending_requests_section_closed_when_pending_count_is_zero', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /pending requests/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_render_active_members_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /active members/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_render_default_instructor_cut_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /default instructor cut/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_render_exhaustion_thresholds_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /horse exhaustion thresholds/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_render_lesson_tiers_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /lesson tiers/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_render_default_board_fee_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /default board fee/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
   })
 })
