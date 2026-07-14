@@ -772,6 +772,41 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     fireEvent.click(rider3Checkbox)
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
+
+  it('should_set_dirty_when_lesson_has_unresolved_horse_issue', async () => {
+    const cleanFutureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={cleanFutureLesson} hasHorseIssue />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_not_set_dirty_when_hasHorseIssue_is_false_and_nothing_else_dirty', async () => {
+    const cleanFutureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={cleanFutureLesson} hasHorseIssue={false} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
+  it('should_stay_dirty_when_hasHorseIssue_true_and_fee_also_changed', async () => {
+    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureLesson} hasHorseIssue />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+    fireEvent.change(screen.getByLabelText('Fee'), { target: { value: '999' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
 })
 
 describe('LessonForm notes fields', () => {
