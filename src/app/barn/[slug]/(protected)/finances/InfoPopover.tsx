@@ -10,7 +10,7 @@ export function InfoPopover({ text, align = 'right' }: { text: string; align?: '
       <button
         type="button"
         onClick={() => setOpen(o => !o)}
-        className="ml-1 text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
+        className="ml-1 flex min-h-[44px] min-w-[44px] items-center justify-center text-zinc-400 hover:text-zinc-600 dark:text-zinc-500 dark:hover:text-zinc-300"
         aria-label="Info"
       >
         ⓘ
