@@ -188,7 +188,7 @@ describe('CancelLessonPage', () => {
     expect(radios).toEqual(['instructor', 'rider'])
   })
 
-  it('should_render_cancel_type_radio_for_group_lesson', async () => {
+  it('should_render_rider_radio_for_group_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
       lesson_type: 'group' as const,
@@ -200,6 +200,19 @@ describe('CancelLessonPage', () => {
     const jsx = await CancelLessonPage({ params })
     render(jsx)
     expect(screen.getByLabelText(/cancelled by rider/i)).toBeDefined()
+  })
+
+  it('should_render_instructor_radio_for_group_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
     expect(screen.getByLabelText(/cancelled by instructor/i)).toBeDefined()
   })
 
@@ -278,7 +291,7 @@ describe('CancelLessonPage', () => {
     expect(screen.queryByRole('radio', { name: 'Alice' })).toBeNull()
   })
 
-  it('should_show_rider_picker_for_group_lesson_by_default_when_rider_cancels', async () => {
+  it('should_show_alice_in_rider_picker_for_group_lesson_by_default_when_rider_cancels', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
       lesson_type: 'group' as const,
@@ -290,7 +303,34 @@ describe('CancelLessonPage', () => {
     const jsx = await CancelLessonPage({ params })
     render(jsx)
     expect(screen.getByRole('radio', { name: 'Alice' })).toBeDefined()
+  })
+
+  it('should_show_bob_in_rider_picker_for_group_lesson_by_default_when_rider_cancels', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
     expect(screen.getByRole('radio', { name: 'Bob' })).toBeDefined()
+  })
+
+  it('should_include_active_rider_in_group_lesson_picker', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: '2026-01-01T00:00:00Z', barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByRole('radio', { name: 'Alice' })).toBeDefined()
   })
 
   it('should_exclude_already_cancelled_riders_from_group_lesson_picker', async () => {
@@ -304,7 +344,6 @@ describe('CancelLessonPage', () => {
     })
     const jsx = await CancelLessonPage({ params })
     render(jsx)
-    expect(screen.getByRole('radio', { name: 'Alice' })).toBeDefined()
     expect(screen.queryByRole('radio', { name: 'Bob' })).toBeNull()
   })
 
