@@ -209,6 +209,13 @@ describe('getLessonFeeRows', () => {
     expect(result[0].tierName).toBe('Deleted Lesson')
   })
 
+  it('should_treat_null_lessons_lookup_data_as_empty', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([txRow({ lessonId: 'lesson-1' })])
+    makeLessonsLookupChain(null)
+    const result = await getLessonFeeRows('barn-1', startDate, endDate)
+    expect(result[0].tierName).toBe('Deleted Lesson')
+  })
+
   it('should_throw_when_lessons_lookup_query_errors', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([txRow()])
     makeLessonsLookupChain(null, new Error('lessons error'))

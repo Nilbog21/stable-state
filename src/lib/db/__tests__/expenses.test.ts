@@ -1131,6 +1131,21 @@ describe('getExpenseFinancialSummary', () => {
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
   })
 
+  it('should_treat_null_horse_expenses_lookup_data_as_empty', async () => {
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: true, expense_date: '2026-07-10' })
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horse_expenses') return makeHorseExpensesLookupChain(null)
+      if (table === 'horses') return makeHorsesChain([{ id: 'horse-1', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }])
+      return makeJunctionChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
+  })
+
   it('should_propagate_error_from_getTransactionRows', async () => {
     vi.mocked(getTransactionRows).mockRejectedValue(new Error('expenses error'))
 

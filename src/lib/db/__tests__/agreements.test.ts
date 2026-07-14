@@ -651,6 +651,13 @@ describe('getPaidCharges', () => {
     expect(result[0].agreementId).toBe('charge-missing')
   })
 
+  it('should_treat_null_agreement_charges_lookup_data_as_empty', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([paidChargeRow({ agreementChargeId: 'charge-missing' })])
+    makeAgreementChargesChain(null)
+    const result = await getPaidCharges('barn-1', startDate, endDate)
+    expect(result[0].agreementId).toBe('charge-missing')
+  })
+
   it('should_throw_when_followup_query_errors', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([paidChargeRow()])
     makeAgreementChargesChain(null, new Error('db error'))
