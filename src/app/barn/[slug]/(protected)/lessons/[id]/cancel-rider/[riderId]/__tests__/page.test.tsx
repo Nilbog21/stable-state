@@ -183,11 +183,25 @@ describe('CancelRiderParticipationPage', () => {
     expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(true)
   })
 
-  it('should_render_static_cancelled_by_rider_text_for_rider_without_selector', async () => {
+  it('should_check_instructor_radio_when_actor_instructs_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-manager-1' })
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
+    expect((screen.getByLabelText(/cancelled by instructor/i) as HTMLInputElement).checked).toBe(true)
+  })
+
+  it('should_uncheck_rider_radio_when_actor_instructs_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-manager-1' })
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
+    expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('should_not_render_type_section_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const, user_id: 'rider-user-1' })
     const jsx = await CancelRiderParticipationPage({ params })
     render(jsx)
-    expect(screen.getByText(/cancelled by rider/i)).toBeDefined()
+    expect(screen.queryByText('Type')).toBeNull()
   })
 
   it('should_not_render_instructor_selector_option_for_rider', async () => {
@@ -195,6 +209,28 @@ describe('CancelRiderParticipationPage', () => {
     const jsx = await CancelRiderParticipationPage({ params })
     render(jsx)
     expect(screen.queryByLabelText(/cancelled by instructor/i)).toBeNull()
+  })
+
+  it('should_not_render_rider_selector_option_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, role: 'rider' as const, user_id: 'rider-user-1' })
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
+    expect(screen.queryByLabelText(/cancelled by rider/i)).toBeNull()
+  })
+
+  it('should_order_instructor_radio_before_rider_radio_when_actor_instructs_lesson', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-manager-1' })
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
+    const labels = screen.getAllByRole('radio').map((el) => (el as HTMLInputElement).value)
+    expect(labels).toEqual(['instructor', 'rider'])
+  })
+
+  it('should_order_rider_radio_before_instructor_radio_by_default', async () => {
+    const jsx = await CancelRiderParticipationPage({ params })
+    render(jsx)
+    const labels = screen.getAllByRole('radio').map((el) => (el as HTMLInputElement).value)
+    expect(labels).toEqual(['rider', 'instructor'])
   })
 
   it('should_render_notes_textarea', async () => {
