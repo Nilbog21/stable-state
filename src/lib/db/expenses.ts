@@ -19,6 +19,41 @@ function applicableHorseIdsForExpense(
   return junctionRows.filter((r) => r.expense_id === expense.id).map((r) => r.horse_id)
 }
 
+// #829: expense-kind transactions rows are the ledger source of truth for
+// getExpenseFinancialSummary/getHorseExpenseDetail — only an expense whose amount is
+// known has one (see sync_expense_transaction), so this already excludes planned
+// expenses without a separate null-amount filter. amount is stored negative in the
+// ledger (signed convention, matches instructor_payout); flipped back to positive here
+// to preserve the shape callers already expect.
+async function fetchExpenseTransactionsInRange(
+  supabase: SupabaseClient,
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<{ id: string; expense_date: string; amount: number; applies_to_all_horses: boolean }[]> {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select('expense_id, occurred_at, amount, horse_expenses!transactions_barn_id_expense_id_fkey!inner(applies_to_all_horses)')
+    .eq('barn_id', barnId)
+    .eq('kind', 'expense')
+    .gte('occurred_at', startDate.toISOString().slice(0, 10))
+    .lt('occurred_at', endDate.toISOString().slice(0, 10))
+  if (error) throw error
+
+  type ExpenseTransactionRow = {
+    expense_id: string
+    occurred_at: string
+    amount: number
+    horse_expenses: { applies_to_all_horses: boolean }
+  }
+  return ((data ?? []) as unknown as ExpenseTransactionRow[]).map((row) => ({
+    id: row.expense_id,
+    expense_date: row.occurred_at.slice(0, 10),
+    amount: -row.amount,
+    applies_to_all_horses: row.horse_expenses.applies_to_all_horses,
+  }))
+}
+
 async function attachHorseNames<T extends { id: string }>(
   supabase: SupabaseClient,
   barnId: string,
@@ -195,17 +230,7 @@ export async function getExpenseFinancialSummary(
   endDate: Date
 ): Promise<ExpenseFinancialSummary> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('horse_expenses')
-    .select('id, expense_date, amount, applies_to_all_horses')
-    .eq('barn_id', barnId)
-    .gte('expense_date', startDate.toISOString().slice(0, 10))
-    .lt('expense_date', endDate.toISOString().slice(0, 10))
-  if (error) throw error
-
-  const expenses = (data ?? []).filter(
-    (e): e is { id: string; expense_date: string; amount: number; applies_to_all_horses: boolean } => e.amount !== null
-  )
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
   if (!expenses.length) return { totalExpenses: 0, breakdown: [] }
 
   const { data: barnHorses, error: horsesError } = await supabase
@@ -269,17 +294,7 @@ export async function getHorseExpenseDetail(
   if (horseError) throw horseError
   if (!horse) return { horseName: horseId, rows: [], total: 0 }
 
-  const { data: expensesData, error: expensesError } = await supabase
-    .from('horse_expenses')
-    .select('id, expense_date, amount, applies_to_all_horses')
-    .eq('barn_id', barnId)
-    .gte('expense_date', startDate.toISOString().slice(0, 10))
-    .lt('expense_date', endDate.toISOString().slice(0, 10))
-  if (expensesError) throw expensesError
-
-  const expenses = (expensesData ?? []).filter(
-    (e): e is { id: string; expense_date: string; amount: number; applies_to_all_horses: boolean } => e.amount !== null
-  )
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
   if (!expenses.length) return { horseName: horse.name, rows: [], total: 0 }
 
   const { data: barnHorses, error: barnHorsesError } = await supabase
