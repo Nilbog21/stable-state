@@ -706,6 +706,32 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
 
+  it('should_set_dirty_when_new_horse_name_entered', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const newHorseInput = container.querySelector('input[name="new_horse_name"]') as HTMLInputElement
+    fireEvent.change(newHorseInput, { target: { value: 'Star' } })
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
+  })
+
+  it('should_not_set_dirty_in_new_mode_when_horse_checked', async () => {
+    const { container } = render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} mode="new" initialLesson={undefined} />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+    const horseCheckbox = container.querySelector('input[name="horse_id"]') as HTMLInputElement
+    fireEvent.click(horseCheckbox)
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
+
   it('should_set_dirty_when_normal_rider_changed', async () => {
     const { container } = render(
       <NavigationBlockerProvider>
@@ -741,10 +767,9 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
-    const [rider1Checkbox, rider2Checkbox, rider3Checkbox] = container.querySelectorAll('input[name="rider_id"]')
+    const [, rider2Checkbox, rider3Checkbox] = container.querySelectorAll('input[name="rider_id"]')
     fireEvent.click(rider2Checkbox)
     fireEvent.click(rider3Checkbox)
-    expect(rider1Checkbox).toBeDefined()
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
 })

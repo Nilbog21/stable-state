@@ -141,11 +141,11 @@ export function LessonForm({
     Number(initialLesson?.fee) > 0
   const unpaidWarn = computeUnpaidWarn(unpaidPastDue, paymentType, fee)
   const feeDirty = fee !== initialFee
-  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds)
+  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds) || newHorseName.trim() !== ''
   const ridersDirty = lessonType === 'normal'
     ? normalRiderId !== initialNormalRiderId
     : !setsEqual(checkedRiderIds, initialRiderIds)
-  const fieldsDirty = feeDirty || horsesDirty || ridersDirty
+  const fieldsDirty = mode === 'edit' && (feeDirty || horsesDirty || ridersDirty)
   const shouldWarn = unpaidWarn || notesDirty || fieldsDirty
 
   useEffect(() => {
