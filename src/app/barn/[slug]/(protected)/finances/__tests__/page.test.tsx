@@ -189,6 +189,20 @@ describe('FinancesPage', () => {
     expect(incomeCell.textContent).toBe('$150.00')
   })
 
+  it('should_style_horse_name_link_with_persistent_underline', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Thunderbolt' })
+    expect(link.className).toContain('underline')
+    expect(link.className).not.toContain('hover:underline')
+  })
+
   it('should_display_empty_state_when_no_horse_activity', async () => {
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
     const jsx = await FinancesPage({
@@ -264,6 +278,20 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     expect(screen.getByText('$75.00')).toBeDefined()
+  })
+
+  it('should_style_rider_name_link_with_persistent_underline', async () => {
+    vi.mocked(getRiderIncomeSummary).mockResolvedValue([
+      { riderId: 'rider-1', riderName: 'Alice', totalIncome: 75 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Alice' })
+    expect(link.className).toContain('underline')
+    expect(link.className).not.toContain('hover:underline')
   })
 
   it('should_display_empty_state_when_no_rider_income', async () => {
@@ -1042,6 +1070,99 @@ describe('FinancesPage', () => {
       new Date('2026-06-01T00:00:00.000Z'),
       new Date('2026-07-01T00:00:00.000Z')
     )
+  })
+
+  it('should_render_by_instructor_table_raw_fees_header', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByRole('columnheader', { name: 'Raw Fees' })).toBeDefined()
+  })
+
+  it('should_display_trainer_raw_fees_amount', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText('Jane Smith').closest('tr')!
+    expect(within(row).getByText('$350.00')).toBeDefined()
+  })
+
+  it('should_display_dash_for_null_raw_fees', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')!
+    const cells = within(row).getAllByRole('cell')
+    expect(cells[cells.length - 1].textContent).toBe('—')
+  })
+
+  it('should_link_trainer_name_to_trainer_drilldown_with_month_param', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 300 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Jane Smith' })
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/finances/trainers/t-1?month=2026-06')
+  })
+
+  it('should_style_trainer_name_link_with_persistent_underline', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 300 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Jane Smith' })
+    expect(link.className).toContain('underline')
+  })
+
+  it('should_render_non_lesson_income_trainer_row_without_a_link', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')!
+    expect(within(row).queryByRole('link')).toBeNull()
+  })
+
+  it('should_render_no_instructor_trainer_row_without_a_link', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100, grossIncome: 100 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NO_INSTRUCTOR_LABEL).closest('tr')!
+    expect(within(row).queryByRole('link')).toBeNull()
   })
 
   it('should_preserve_month_param_in_tab_links_when_viewing_past_month', async () => {

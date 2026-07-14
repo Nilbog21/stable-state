@@ -8,6 +8,7 @@ vi.mock('../lesson-finance-queries')
 vi.mock('../barn-memberships')
 vi.mock('../horses')
 vi.mock('../agreements')
+vi.mock('../lesson-tiers')
 
 import { createClient } from '@/lib/supabase/server'
 import {
@@ -18,6 +19,7 @@ import {
   getTrainerIncomeSummary,
   getHorseIncomeDetail,
   getRiderIncomeDetail,
+  getTrainerIncomeDetail,
   mergeOutstandingItems,
   computeGroupedIncome,
   computeHorseNetIncome,
@@ -37,6 +39,7 @@ import {
 import { resolveMemberNames } from '../barn-memberships'
 import { resolveHorseNames } from '../horses'
 import { getChargesForSummary, getPaidCharges } from '../agreements'
+import { getTiersByBarn } from '../lesson-tiers'
 
 describe('splitNetFee', () => {
   it('should_subtract_instructor_cut_from_fee_to_get_net_fee', () => {
@@ -111,6 +114,8 @@ describe('getFinancialSummary', () => {
     vi.mocked(getTierPricesByNames).mockReset()
     vi.mocked(getChargesForSummary).mockReset()
     vi.mocked(getChargesForSummary).mockResolvedValue([])
+    vi.mocked(getTiersByBarn).mockReset()
+    vi.mocked(getTiersByBarn).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -527,6 +532,79 @@ describe('getFinancialSummary', () => {
 
       const breakdownTotal = result.breakdown.reduce((sum, b) => sum + b.subtotal, 0)
       expect(breakdownTotal).toBe(result.collectedIncome)
+    })
+  })
+
+  describe('zero-collected active tiers', () => {
+    it('should_include_an_active_tier_with_no_paid_lessons_as_a_zero_row', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([])
+      vi.mocked(getTiersByBarn).mockResolvedValue([
+        { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.breakdown).toContainEqual({ tierName: 'Premium', price: 100, lessonCount: 0, subtotal: 0, instructorCut: 0 })
+    })
+
+    it('should_not_duplicate_a_tier_that_already_has_paid_lessons', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 100, payment_type: 'venmo', tier_name: 'Premium', lesson_at: '2026-05-10T10:00:00Z' }),
+      ])
+      vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Premium', price: 100 }])
+      vi.mocked(getTiersByBarn).mockResolvedValue([
+        { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.breakdown.filter((b) => b.tierName === 'Premium')).toHaveLength(1)
+    })
+
+    it('should_sort_zero_tier_rows_alphabetically_with_the_rest_of_the_breakdown', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 50, payment_type: 'venmo', tier_name: 'Zeta', lesson_at: '2026-05-10T10:00:00Z' }),
+      ])
+      vi.mocked(getTierPricesByNames).mockResolvedValue([{ name: 'Zeta', price: 50 }])
+      vi.mocked(getTiersByBarn).mockResolvedValue([
+        { id: 'tier-1', barn_id: 'barn-1', name: 'Alpha', price: 40, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.breakdown.map((b) => b.tierName)).toEqual(['Alpha', 'Zeta'])
+    })
+
+    it('should_place_the_non_lesson_income_row_after_zero_tier_rows', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
+      vi.mocked(getTiersByBarn).mockResolvedValue([
+        { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.breakdown[result.breakdown.length - 1].tierName).toBe(NON_LESSON_INCOME_LABEL)
+    })
+
+    it('should_not_affect_collected_income_when_a_zero_tier_is_added', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([
+        createMockLesson({ fee: 75, payment_type: 'venmo' }),
+      ])
+      vi.mocked(getTiersByBarn).mockResolvedValue([
+        { id: 'tier-1', barn_id: 'barn-1', name: 'Premium', price: 100, is_default: false, is_active: true, default_exertion_level: null, default_jumping: null, instructor_cut: 0, created_at: '2026-01-01T00:00:00Z' },
+      ])
+
+      const result = await getFinancialSummary('barn-1', startDate, endDate)
+
+      expect(result.collectedIncome).toBe(75)
+    })
+
+    it('should_throw_when_getTiersByBarn_rejects', async () => {
+      vi.mocked(getLessonsForSummary).mockResolvedValue([])
+      vi.mocked(getTiersByBarn).mockRejectedValue(new Error('tiers error'))
+
+      await expect(getFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('tiers error')
     })
   })
 })
@@ -1260,7 +1338,7 @@ describe('getTrainerIncomeSummary', () => {
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100 }])
+    expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100, grossIncome: 100 }])
   })
 
   it('should_resolve_member_names_with_empty_array_when_no_collected_lessons', async () => {
@@ -1277,7 +1355,7 @@ describe('getTrainerIncomeSummary', () => {
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 100 }])
+    expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 100, grossIncome: 100 }])
   })
 
   it('should_aggregate_income_across_multiple_lessons_for_same_trainer', async () => {
@@ -1289,7 +1367,7 @@ describe('getTrainerIncomeSummary', () => {
 
     const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-    expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 175 }])
+    expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 175, grossIncome: 175 }])
   })
 
   it('should_return_two_entries_for_two_trainers', async () => {
@@ -1355,8 +1433,8 @@ describe('getTrainerIncomeSummary', () => {
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
       expect(result).toEqual([
-        { trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 100 },
-        { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 60 },
+        { trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 100, grossIncome: 100 },
+        { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 60, grossIncome: 60 },
       ])
     })
 
@@ -1365,7 +1443,7 @@ describe('getTrainerIncomeSummary', () => {
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 75 }])
+      expect(result).toEqual([{ trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 75, grossIncome: 100 }])
     })
 
     it('should_not_append_no_instructor_row_when_all_lessons_have_a_trainer', async () => {
@@ -1386,7 +1464,7 @@ describe('getTrainerIncomeSummary', () => {
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
       expect(result).toEqual([
-        { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300 },
+        { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
       ])
     })
 
@@ -1410,7 +1488,7 @@ describe('getTrainerIncomeSummary', () => {
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
       expect(result).toEqual([
-        { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300 },
+        { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
       ])
     })
 
@@ -1432,7 +1510,7 @@ describe('getTrainerIncomeSummary', () => {
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 125 }])
+      expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: 125, grossIncome: 175 }])
     })
 
     it('should_not_apply_cut_to_non_lesson_income_row', async () => {
@@ -1442,7 +1520,7 @@ describe('getTrainerIncomeSummary', () => {
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
       expect(result).toEqual([
-        { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300 },
+        { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
       ])
     })
 
@@ -1452,7 +1530,46 @@ describe('getTrainerIncomeSummary', () => {
 
       const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: -25 }])
+      expect(result).toEqual([{ trainerId: 'mem-trainer-1', trainerName: 'Jane Smith', totalIncome: -25, grossIncome: 0 }])
+    })
+  })
+
+  describe('gross income (pre-cut fees)', () => {
+    it('should_report_raw_fee_sum_uncut_for_a_trainer', async () => {
+      vi.mocked(getPaidLessonRows).mockResolvedValue([
+        { instructor_id: 'mem-trainer-1', fee: 100, instructor_cut: 25 },
+        { instructor_id: 'mem-trainer-1', fee: 75, instructor_cut: 10 },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result[0].grossIncome).toBe(175)
+    })
+
+    it('should_track_gross_income_separately_per_trainer', async () => {
+      vi.mocked(getPaidLessonRows).mockResolvedValue([
+        { instructor_id: 'mem-trainer-1', fee: 100, instructor_cut: 25 },
+        { instructor_id: 'mem-trainer-2', fee: 50, instructor_cut: 0 },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([
+        ['mem-trainer-1', 'Jane Smith'],
+        ['mem-trainer-2', 'Bob Jones'],
+      ]))
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      const gross = new Map(result.map((r) => [r.trainerId, r.grossIncome]))
+      expect([gross.get('mem-trainer-1'), gross.get('mem-trainer-2')]).toEqual([100, 50])
+    })
+
+    it('should_return_null_gross_income_for_non_lesson_income_row', async () => {
+      vi.mocked(getPaidLessonRows).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 300, payment_type: 'venmo' }])
+
+      const result = await getTrainerIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result.find((r) => r.trainerId === NON_LESSON_INCOME_LABEL)?.grossIncome).toBeNull()
     })
   })
 })
@@ -1939,6 +2056,131 @@ describe('getRiderIncomeDetail', () => {
   })
 })
 
+describe('getTrainerIncomeDetail', () => {
+  beforeEach(() => {
+    vi.mocked(getPaidLessonRows).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
+  })
+
+  const startDate = new Date('2026-05-01T00:00:00Z')
+  const endDate = new Date('2026-06-01T00:00:00Z')
+
+  it('should_return_trainer_name_when_no_paid_lessons', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.trainerName).toBe('Jane Smith')
+  })
+
+  it('should_return_empty_rows_when_no_paid_lessons', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.rows).toEqual([])
+  })
+
+  it('should_return_zero_total_when_no_paid_lessons', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.total).toBe(0)
+  })
+
+  it('should_fall_back_to_trainer_id_when_name_not_resolved', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.trainerName).toBe('mem-trainer-1')
+  })
+
+  it('should_scope_resolveMemberNames_to_barn_and_trainer_id', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(resolveMemberNames).toHaveBeenCalledWith(['mem-trainer-1'], 'barn-1', expect.anything())
+  })
+
+  it('should_only_include_lessons_this_trainer_instructed', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
+      { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z', instructor_id: 'mem-trainer-1', instructor_cut: 0 },
+      { id: 'lesson-2', fee: 80, lesson_at: '2026-05-15T10:00:00Z', instructor_id: 'mem-trainer-2', instructor_cut: 0 },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.rows).toHaveLength(1)
+  })
+
+  it('should_return_correct_lesson_id_and_date_in_row', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
+      { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z', instructor_id: 'mem-trainer-1', instructor_cut: 0 },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.rows[0]).toEqual({ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100 })
+  })
+
+  it('should_net_the_instructor_cut_from_the_row_fee', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
+      { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z', instructor_id: 'mem-trainer-1', instructor_cut: 25 },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.rows[0].fee).toBe(75)
+  })
+
+  it('should_accumulate_total_across_multiple_lessons', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
+      { id: 'lesson-1', fee: 100, lesson_at: '2026-05-10T10:00:00Z', instructor_id: 'mem-trainer-1', instructor_cut: 0 },
+      { id: 'lesson-2', fee: 60, lesson_at: '2026-05-15T10:00:00Z', instructor_id: 'mem-trainer-1', instructor_cut: 0 },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.total).toBe(160)
+  })
+
+  it('should_allow_negative_row_fee_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([
+      { id: 'lesson-1', fee: 0, lesson_at: '2026-05-10T10:00:00Z', instructor_id: 'mem-trainer-1', instructor_cut: 25 },
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+
+    expect(result.total).toBe(-25)
+  })
+
+  it('should_throw_on_lessons_error', async () => {
+    vi.mocked(getPaidLessonRows).mockRejectedValue(new Error('lessons error'))
+
+    await expect(getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)).rejects.toThrow('lessons error')
+  })
+
+  it('should_throw_when_resolveMemberNames_rejects', async () => {
+    vi.mocked(getPaidLessonRows).mockResolvedValue([])
+    vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
+
+    await expect(getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)).rejects.toThrow('resolve error')
+  })
+})
+
 describe('mergeOutstandingItems', () => {
   it('should_map_a_lesson_row_to_an_outstanding_item', () => {
     const result = mergeOutstandingItems(
@@ -1997,6 +2239,8 @@ describe('reconciliation regression', () => {
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getPaidCharges).mockReset()
     vi.mocked(getPaidCharges).mockResolvedValue([])
+    vi.mocked(getTiersByBarn).mockReset()
+    vi.mocked(getTiersByBarn).mockResolvedValue([])
   })
 
   const startDate = new Date('2026-05-01T00:00:00Z')
