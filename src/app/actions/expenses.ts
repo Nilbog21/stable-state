@@ -4,6 +4,7 @@ import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpenseById, deleteExpense, createExpense, updateExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
 import type { ExpenseInput } from '@/lib/db/types'
+import { parseNonNegativeAmount } from '@/lib/parse-amount'
 
 export async function deleteExpenseAction(
   barnId: string,
@@ -24,13 +25,6 @@ export async function deleteExpenseAction(
 
 export type ExpenseFormState = { error: string | null }
 
-function parseAmount(raw: string | null): number | null {
-  const trimmed = (raw ?? '').trim()
-  if (trimmed === '') return null
-  const n = parseFloat(trimmed)
-  return isNaN(n) || n < 0 ? NaN : n
-}
-
 function parseExpenseFormData(formData: FormData): { error: string } | { data: ExpenseInput } {
   const recipient = (formData.get('recipient') as string | null)?.trim()
   if (!recipient) return { error: 'recipient required' }
@@ -38,8 +32,11 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
   const expenseDate = (formData.get('expense_date') as string | null)?.trim()
   if (!expenseDate) return { error: 'date required' }
 
-  const amount = parseAmount(formData.get('amount') as string | null)
-  if (Number.isNaN(amount)) return { error: 'a valid, non-negative amount is required' }
+  const amountRaw = formData.get('amount') as string | null
+  const amount = parseNonNegativeAmount(amountRaw)
+  if (amount === null && (amountRaw ?? '').trim() !== '') {
+    return { error: 'a valid, non-negative amount is required' }
+  }
 
   const expenseTypeRaw = (formData.get('expense_type') as string | null)?.trim()
   const expenseType = expenseTypeRaw || 'Unspecified'
