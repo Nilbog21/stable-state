@@ -6,16 +6,14 @@ import { getHorseById } from '@/lib/db/horses'
 import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { HorseManagerForm } from './HorseManagerForm'
-import { HorseExhaustionThresholdsForm } from './HorseExhaustionThresholdsForm'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/EmptyState'
 import {
-  updateHorseDetailsAction,
+  updateHorseAction,
   deleteHorseDocumentAction,
-  updateHorseExhaustionThresholdsAction,
   updateHorseDocumentReminderDateAction,
 } from './actions'
 
@@ -56,9 +54,8 @@ export default async function HorseDetailPage({
       })()
     : []
 
-  const boundUpdateAction = updateHorseDetailsAction.bind(null, slug, horse.id)
+  const boundUpdateAction = updateHorseAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
-  const boundUpdateThresholdsAction = updateHorseExhaustionThresholdsAction.bind(null, slug, horse.id)
   const boundReminderDateAction = updateHorseDocumentReminderDateAction.bind(null, slug, horse.id)
 
   return (
@@ -87,19 +84,7 @@ export default async function HorseDetailPage({
 
       {role === 'manager' && (
         <section className="mt-6">
-          <HorseManagerForm horse={horse} action={boundUpdateAction} />
-        </section>
-      )}
-
-      {role === 'manager' && (
-        <section className="mt-6">
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Exhaustion Thresholds
-          </h2>
-          <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
-            Override this horse&apos;s exhaustion thresholds — useful for horses on light duty. Leave on barn defaults otherwise.
-          </p>
-          <HorseExhaustionThresholdsForm horse={horse} barn={barn} action={boundUpdateThresholdsAction} />
+          <HorseManagerForm horse={horse} barn={barn} action={boundUpdateAction} />
         </section>
       )}
 

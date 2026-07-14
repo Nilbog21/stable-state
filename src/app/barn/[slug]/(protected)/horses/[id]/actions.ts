@@ -7,9 +7,15 @@ import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 
-export async function updateHorseDetailsAction(
+function parseNonNegativeInt(raw: string | null): number | null {
+  if (raw === null || !/^\d+$/.test(raw.trim())) return null
+  return parseInt(raw, 10)
+}
+
+export async function updateHorseAction(
   barnSlug: string,
   horseId: string,
+  prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
@@ -26,54 +32,28 @@ export async function updateHorseDetailsAction(
     ? ((formData.get('reason') as string | null)?.trim() || null)
     : null
 
-  await updateHorseDetails(horseId, barn.id, {
-    ...(name ? { name } : {}),
-    is_active: isActive,
-    is_available: isAvailable,
-    unavailability_reason: reason,
-  })
-
-  revalidatePath(`/barn/${barnSlug}/horses`)
-  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-  return { error: null }
-}
-
-function parseNonNegativeInt(raw: string | null): number | null {
-  if (raw === null || !/^\d+$/.test(raw.trim())) return null
-  return parseInt(raw, 10)
-}
-
-export async function updateHorseExhaustionThresholdsAction(
-  barnSlug: string,
-  horseId: string,
-  prevState: { error: string | null },
-  formData: FormData
-): Promise<{ error: string | null }> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-
-  if (formData.get('use_barn_defaults') === 'true') {
-    try {
-      await updateHorseExhaustionThresholds(horseId, barn.id, null)
-    } catch (err) {
-      return { error: getErrorMessage(err) }
-    }
-    revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-    return { error: null }
-  }
-
-  const moderate = parseNonNegativeInt(formData.get('moderate') as string | null)
-  const high = parseNonNegativeInt(formData.get('high') as string | null)
-  if (moderate === null || high === null) return { error: 'Thresholds must be numbers ≥ 0' }
-
-  if (moderate >= high) {
-    return { error: 'Moderate threshold must be less than high threshold' }
+  let thresholds: { moderate: number; high: number } | null = null
+  if (formData.get('use_barn_defaults') !== 'true') {
+    const moderate = parseNonNegativeInt(formData.get('moderate') as string | null)
+    const high = parseNonNegativeInt(formData.get('high') as string | null)
+    if (moderate === null || high === null) return { error: 'Thresholds must be numbers ≥ 0' }
+    if (moderate >= high) return { error: 'Moderate threshold must be less than high threshold' }
+    thresholds = { moderate, high }
   }
 
   try {
-    await updateHorseExhaustionThresholds(horseId, barn.id, { moderate, high })
+    await updateHorseDetails(horseId, barn.id, {
+      ...(name ? { name } : {}),
+      is_active: isActive,
+      is_available: isAvailable,
+      unavailability_reason: reason,
+    })
+    await updateHorseExhaustionThresholds(horseId, barn.id, thresholds)
   } catch (err) {
     return { error: getErrorMessage(err) }
   }
+
+  revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
   return { error: null }
 }
