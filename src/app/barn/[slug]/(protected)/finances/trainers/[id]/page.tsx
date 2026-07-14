@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
-import { getRiderIncomeDetail } from '@/lib/db/lesson-finances'
+import { getTrainerIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth } from '../../page'
 import { formatCurrency } from '@/lib/format-currency'
 import { Th, Td } from '@/components/ui/Table'
@@ -22,52 +22,25 @@ function formatDate(isoString: string): string {
   })
 }
 
-type CombinedRow =
-  | { kind: 'lesson'; key: string; date: string; href: string; amount: number; riderCount: number; split: number }
-  | { kind: 'lease' | 'board'; key: string; date: string; href: string; amount: number }
-
-const TYPE_LABELS: Record<CombinedRow['kind'], string> = {
-  lesson: 'Lesson',
-  lease: 'Lease',
-  board: 'Boarding',
-}
-
-export default async function RiderIncomePage({
+export default async function TrainerIncomePage({
   params,
   searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ slug: string; id: string }>
   searchParams?: Promise<{ month?: string }>
 }) {
-  const { slug, id: riderId } = await params
+  const { slug, id: trainerId } = await params
   const { barn } = await requireMembership(slug, ['manager'])
 
   const { month: monthParam } = await searchParams
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const { riderName, rows, chargeRows, total } = await getRiderIncomeDetail(barn.id, riderId, startDate, endDate)
+  const { trainerName, rows, total } = await getTrainerIncomeDetail(barn.id, trainerId, startDate, endDate)
 
-  const combinedRows: CombinedRow[] = [
-    ...rows.map((row): CombinedRow => ({
-      kind: 'lesson',
-      key: row.lessonId,
-      date: row.lessonAt,
-      href: `/barn/${slug}/lessons/${row.lessonId}`,
-      amount: row.fee,
-      riderCount: row.riderCount,
-      split: row.splitAmount,
-    })),
-    ...chargeRows.map((row): CombinedRow => ({
-      kind: row.kind,
-      key: row.chargeId,
-      date: row.period,
-      href: `/barn/${slug}/agreements/${row.agreementId}?kind=${row.kind}`,
-      amount: row.fee,
-    })),
-  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  const sortedRows = [...rows].sort((a, b) => new Date(a.lessonAt).getTime() - new Date(b.lessonAt).getTime())
 
   const monthQ = `month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
-  const backHref = `/barn/${slug}/finances?tab=rider&${monthQ}`
+  const backHref = `/barn/${slug}/finances?tab=trainer&${monthQ}`
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -80,11 +53,11 @@ export default async function RiderIncomePage({
         </Link>
       </div>
       <h1 className="mb-2 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {riderName}
+        {trainerName}
       </h1>
       <p className="mb-8 text-sm text-zinc-500 dark:text-zinc-400">{monthLabel}</p>
 
-      {combinedRows.length === 0 ? (
+      {sortedRows.length === 0 ? (
         <p className="text-sm text-zinc-500 dark:text-zinc-400">No activity in {monthLabel}.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -94,22 +67,18 @@ export default async function RiderIncomePage({
                 <Th>Date</Th>
                 <Th>Type</Th>
                 <Th>Amount</Th>
-                <Th>Riders</Th>
-                <Th>Split</Th>
               </tr>
             </thead>
             <tbody>
-              {combinedRows.map((row) => (
-                <tr key={row.key}>
+              {sortedRows.map((row) => (
+                <tr key={row.lessonId}>
                   <Td>
-                    <Link href={row.href} className="underline">
-                      {formatDate(row.date)}
+                    <Link href={`/barn/${slug}/lessons/${row.lessonId}`} className="underline">
+                      {formatDate(row.lessonAt)}
                     </Link>
                   </Td>
-                  <Td>{TYPE_LABELS[row.kind]}</Td>
-                  <Td>{formatCurrency(row.amount)}</Td>
-                  <Td>{'riderCount' in row ? row.riderCount : '—'}</Td>
-                  <Td>{formatCurrency('split' in row ? row.split : row.amount)}</Td>
+                  <Td>Lesson</Td>
+                  <Td>{formatCurrency(row.fee)}</Td>
                 </tr>
               ))}
             </tbody>
