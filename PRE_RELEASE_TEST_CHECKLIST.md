@@ -106,6 +106,8 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] On the new-lesson form, pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar below its name (no bars before a date is picked); adjust a checked horse's exertion level and watch its ghost segment move live, while unchecked horses' bars stay solid (no ghost); change the date and confirm the bars refresh; open Lesson 3's edit page and confirm Clover's bar still renders (excluding Lesson 3 itself from its own window)
 - [ ] On the new-lesson form (Normal type), the horse picker legend reads plain "Horse"; switch to **Group**, legend reads "Horses (select at least one)"
 - [ ] Set the fee to `0` — Payment Type field disappears; raise the fee back above `0` — Payment Type field reappears
+- [ ] On the new-lesson form's horse picker, check one horse then confirm it jumps to the top of the list, ahead of unchecked available horses (which are ordered least-to-most worked), with Daisy (Unavailable) sorted last; set the lesson's date/hour to the past — no exhaustion bars render for any horse; set it back to the present/future — bars reappear
+- [ ] Open the edit page for a lesson whose horse was later marked Inactive (deactivated) on the Horses page — that horse still appears checked, sorted first, and still shows its exhaustion bar; uncheck it — it moves to the bottom of the list (grouped with Unavailable horses) and its bar disappears
 
 ## Phase 4 — Manager verification
 
