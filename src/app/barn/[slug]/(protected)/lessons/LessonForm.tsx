@@ -356,8 +356,11 @@ export function LessonForm({
 
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
         <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Horse{' '}
-          <span className="font-normal text-zinc-500">(select at least one)</span>
+          {lessonType === 'group' ? (
+            <>Horses <span className="font-normal text-zinc-500">(select at least one)</span></>
+          ) : (
+            'Horse'
+          )}
         </legend>
         {[...horses].sort((a, b) => {
           const aAvail = a.is_available === false ? 1 : 0
@@ -563,25 +566,27 @@ export function LessonForm({
         />
       </div>
 
-      <div className="flex flex-col gap-1">
-        <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Payment type
-        </label>
-        <select
-          id="payment_type"
-          name="payment_type"
-          value={paymentType}
-          onChange={e => setPaymentType(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        >
-          <option value="">Unpaid</option>
-          <option value="venmo">Venmo</option>
-          <option value="zelle">Zelle</option>
-          <option value="cash">Cash</option>
-          <option value="check">Check</option>
-          <option value="freshbooks">FreshBooks Invoice</option>
-        </select>
-      </div>
+      {!(fee !== '' && Number(fee) === 0) && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Payment type
+          </label>
+          <select
+            id="payment_type"
+            name="payment_type"
+            value={paymentType}
+            onChange={e => setPaymentType(e.target.value)}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            <option value="">Unpaid</option>
+            <option value="venmo">Venmo</option>
+            <option value="zelle">Zelle</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="freshbooks">FreshBooks Invoice</option>
+          </select>
+        </div>
+      )}
 
       {initialNotes && (
         <div className="flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-700" onChange={() => setNotesDirty(true)}>

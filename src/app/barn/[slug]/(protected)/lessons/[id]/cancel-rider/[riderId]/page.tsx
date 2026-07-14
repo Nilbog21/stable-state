@@ -36,6 +36,7 @@ export default async function CancelRiderParticipationPage({
   if (!isEligible) notFound()
 
   const cancel = cancelRiderParticipationAction.bind(null, barn.id, slug, lesson.id, riderId)
+  const cancelledByInstructorDefault = lesson.instructor_id === membership.id
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -57,11 +58,11 @@ export default async function CancelRiderParticipationPage({
             <fieldset className="flex flex-col gap-2">
               <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</legend>
               <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                <input type="radio" name="cancel_type" value="rider" defaultChecked />
+                <input type="radio" name="cancel_type" value="rider" defaultChecked={!cancelledByInstructorDefault} />
                 Cancelled by Rider
               </label>
               <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                <input type="radio" name="cancel_type" value="instructor" />
+                <input type="radio" name="cancel_type" value="instructor" defaultChecked={cancelledByInstructorDefault} />
                 Cancelled by Instructor
               </label>
             </fieldset>
