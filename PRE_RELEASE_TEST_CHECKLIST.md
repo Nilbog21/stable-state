@@ -73,7 +73,7 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 - [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row's name is a link to its member detail page, alongside an **Unlinked** badge with **Copy invite** and **Revoke** buttons
 - [ ] While Gale Test is still unclaimed, open their member detail page as manager and upload a document — confirms manager can upload/delete documents for a managed/unclaimed rider
 - [ ] Click **Copy invite** on Gale Test → the copied URL matches `/barn/dev-barn/login?token=<uuid>` (a well-formed UUID token)
-- [ ] *(Optional — requires a second Google account signed into a separate browser session; not exercisable on Vercel preview, which supports only one signed-in Google session per environment)* Open the copied URL as the secondary account → redirected to `/profile/complete` → fill contact fields and save → lands in Dev Barn as rider Gale Test; as Gale Test, open your own member detail page and confirm the document uploaded before claiming still opens via its signed-URL link (regression check: a claimed member's pre-claim documents must remain readable, not just the manager's); back as manager, confirm Gale Test's row no longer shows the Unlinked badge and now links to a member detail page
+- [ ] *(Optional — requires a second Google account signed into a separate browser session; not exercisable on Vercel preview, which supports only one signed-in Google session per environment. This is the only checklist step that exercises the pre-claim-document-readability regression below — if you don't have a second Google account handy, prefer running this step locally with two browser profiles over skipping it outright.)* Open the copied URL as the secondary account → redirected to `/profile/complete` → fill contact fields and save → lands in Dev Barn as rider Gale Test; as Gale Test, open your own member detail page and confirm the document uploaded before claiming still opens via its signed-URL link (regression check: a claimed member's pre-claim documents must remain readable, not just the manager's); back as manager, confirm Gale Test's row no longer shows the Unlinked badge and now links to a member detail page
 - [ ] Click **Revoke** on Harper Test → click **Copy invite** again → the copied URL contains a **different** token than before
 
 ## Phase 3 — Manager lesson entry
@@ -151,7 +151,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending (7d); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
 - [ ] Open Apple's detail page → rename it via the manager form → Save → name updates and a brief "✓ Saved" confirmation appears next to the Save button
-- [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page; open the document via its link (signed URL), then delete it
+- [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page
+- [ ] Open the document via its link (signed URL)
+- [ ] Delete it → row disappears
 - [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
 - [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
 - [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override
@@ -290,20 +292,20 @@ bash scripts/seed-test-barn.sh test-barn-checklist
 
 - [ ] As `DEV_EMAIL`, open `/barn/test-barn-checklist/register` with no `?token=` → shows an "Invite invalid" message, not a self-registration form
 
-`DEV_EMAIL` already has a claimed profile from Phase 1, so it can't claim a fresh managed-member stub in this second barn — `claim_managed_member` only links a brand-new profile, and a private/incognito second-manager sign-in isn't exercisable on Vercel preview (one signed-in Google session per environment). Instead, give the existing profile a pending membership directly and activate it via `change-user.sh`'s activate-on-switch prompt:
+`DEV_EMAIL` already has a claimed profile from Phase 1, so it can't claim a fresh managed-member stub in this second barn — the claim would try to point `profiles.user_id` at `DEV_EMAIL`'s auth id, which already belongs to that Phase-1 profile, violating `profiles.user_id`'s UNIQUE constraint. A private/incognito second-manager sign-in isn't exercisable on Vercel preview either (one signed-in Google session per environment). Instead, give the existing profile a pending membership directly and activate it via `change-user.sh`'s activate-on-switch prompt:
 
-- [ ] Insert a pending membership for `DEV_EMAIL`'s existing profile into `test-barn-checklist` (Supabase SQL editor or `psql`):
+- [ ] Insert a pending membership for `DEV_EMAIL`'s existing profile into `test-barn-checklist` (Supabase SQL editor or `psql`) — `change-user.sh`'s self-select branch always activates your own membership as `manager` regardless of the role inserted here, so use `'manager'`:
   ```sql
   insert into barn_memberships (barn_id, profile_id, user_id, role, status)
-  select b.id, p.id, p.user_id, 'rider', 'pending'
+  select b.id, p.id, p.user_id, 'manager', 'pending'
   from barns b, profiles p
   where b.slug = 'test-barn-checklist' and p.email = '<DEV_EMAIL>';
   ```
-- [ ] Run `change-user.sh` → pick **test-barn-checklist** → pick your own name → prompted to activate the pending membership (y/N) → answer **y**
+- [ ] Run `change-user.sh` → pick **test-barn-checklist** → pick your own name → prompted to activate the pending membership (y/N) → answer **y** → you're now manager of **both** barns
 - [ ] Run `change-user.sh` again → pick **Dev Barn** → pick your own name → restores your manager role in Dev Barn (undoing the Phase 5/6 role swaps)
 - [ ] Back as `DEV_EMAIL`: the nav barn name now has a caret — the **BarnSwitcher** dropdown lists both barns, current one checkmarked; clicking the other navigates to its dashboard
 - [ ] At a mobile viewport (~390px wide, or your browser's device toolbar), the BarnSwitcher caret is still tappable (≥44px target) and the dropdown behaves the same as desktop
-- [ ] Visit `/barns` — one card per membership showing role, each linking to its barn
+- [ ] Visit `/barns` — one card per membership, both showing **Manager**, each linking to its barn
 - [ ] Visit `/` — as a multi-barn member you are redirected to `/barns`
 - [ ] Sign out, then visit `/login` — connection status dot is green and the "Keep me logged in" checkbox is present and checked
 
