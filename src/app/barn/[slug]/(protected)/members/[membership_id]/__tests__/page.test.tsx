@@ -716,6 +716,23 @@ describe('MemberDetailPage', () => {
       render(jsx)
       expect(screen.queryByRole('heading', { name: /contact info/i })).toBeNull()
     })
+
+    it('should_show_edit_link_when_self_viewing_own_page', async () => {
+      setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
+      vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(riderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
+      render(jsx)
+      const link = screen.getByRole('link', { name: /edit/i })
+      expect(link.getAttribute('href')).toBe('/profile?barn=green-acres')
+    })
+
+    it('should_not_show_edit_link_when_manager_views_other_target', async () => {
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
+    })
   })
 
   describe('Contact Info edit form', () => {
