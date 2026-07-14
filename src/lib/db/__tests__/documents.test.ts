@@ -5,12 +5,12 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
-vi.mock('../barn-memberships', () => ({
+vi.mock('../member-names', () => ({
   resolveMemberNames: vi.fn(),
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { resolveMemberNames } from '../barn-memberships'
+import { resolveMemberNames } from '../member-names'
 import { getDocuments, createDocument, deleteDocument, updateDocumentReminderDate, getDueDocuments } from '../documents'
 
 type EntityCase = {

@@ -11,12 +11,12 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/agreements', () => ({ getAgreementById: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ resolveMemberNames: vi.fn() }))
+vi.mock('@/lib/db/member-names', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ resolveHorseNames: vi.fn() }))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getAgreementById } from '@/lib/db/agreements'
-import { resolveMemberNames } from '@/lib/db/barn-memberships'
+import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
 import EditAgreementPage from '../page'
 

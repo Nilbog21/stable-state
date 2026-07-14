@@ -4,10 +4,10 @@ import { createMockAgreement, createMockAgreementCharge } from '@/test/fixtures'
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
-vi.mock('../barn-memberships')
+vi.mock('../member-names')
 
 import { createClient } from '@/lib/supabase/server'
-import { resolveMemberNames } from '../barn-memberships'
+import { resolveMemberNames } from '../member-names'
 import {
   createAgreement,
   getAgreementsByBarn,

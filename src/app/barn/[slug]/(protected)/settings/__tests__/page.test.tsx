@@ -9,6 +9,8 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
   getPendingMemberships: vi.fn(),
   getActiveMemberships: vi.fn(),
+}))
+vi.mock('@/lib/db/member-names', () => ({
   resolveMemberNames: vi.fn(),
 }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
@@ -32,7 +34,8 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
-import { getPendingMemberships, getActiveMemberships, resolveMemberNames } from '@/lib/db/barn-memberships'
+import { getPendingMemberships, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { resolveMemberNames } from '@/lib/db/member-names'
 import SettingsPage from '../page'
 
 const mockBarn = createMockBarn()

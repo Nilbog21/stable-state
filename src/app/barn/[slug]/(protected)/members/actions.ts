@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { createManagedMember } from '@/lib/db/barn-memberships'
+import { createManagedMember } from '@/lib/db/member-invites'
 import type { Role } from '@/lib/db/types'
 
 export async function createManagedMemberAction(

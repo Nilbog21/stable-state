@@ -9,13 +9,13 @@ vi.mock('../horses', () => ({
   resolveHorseNames: vi.fn(),
 }))
 
-vi.mock('../barn-memberships', () => ({
+vi.mock('../member-names', () => ({
   resolveMemberNames: vi.fn(),
 }))
 
 import { createClient } from '@/lib/supabase/server'
 import { resolveHorseNames } from '../horses'
-import { resolveMemberNames } from '../barn-memberships'
+import { resolveMemberNames } from '../member-names'
 import {
   addHorseToLesson,
   addRiderToLesson,

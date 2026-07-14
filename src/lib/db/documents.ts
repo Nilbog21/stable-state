@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { resolveHorseNames } from './horses'
-import { resolveMemberNames } from './barn-memberships'
+import { resolveMemberNames } from './member-names'
 import type {
   DueDocument,
   HorseDocument,

@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn().mockResolvedValue({}),
 }))
 vi.mock('../lesson-finance-queries')
-vi.mock('../barn-memberships')
+vi.mock('../member-names')
 vi.mock('../horses')
 vi.mock('../agreements')
 vi.mock('../lesson-tiers')
@@ -35,7 +35,7 @@ import {
   getOutstandingLessonRows,
   getLessonJunctionRows,
 } from '../lesson-finance-queries'
-import { resolveMemberNames } from '../barn-memberships'
+import { resolveMemberNames } from '../member-names'
 import { resolveHorseNames } from '../horses'
 import { getChargesForSummary, getPaidCharges } from '../agreements'
 import { getTiersByBarn } from '../lesson-tiers'

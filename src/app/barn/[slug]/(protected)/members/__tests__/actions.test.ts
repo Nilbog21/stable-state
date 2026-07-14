@@ -6,7 +6,7 @@ vi.mock('@/lib/auth/guard', () => ({
   requireMembership: vi.fn(),
 }))
 
-vi.mock('@/lib/db/barn-memberships', () => ({
+vi.mock('@/lib/db/member-invites', () => ({
   createManagedMember: vi.fn(),
 }))
 
@@ -16,7 +16,7 @@ vi.mock('next/cache', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { createManagedMember } from '@/lib/db/barn-memberships'
+import { createManagedMember } from '@/lib/db/member-invites'
 import { createManagedMemberAction } from '../actions'
 
 const mockBarn = createMockBarn()

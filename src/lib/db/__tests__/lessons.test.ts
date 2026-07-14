@@ -12,8 +12,12 @@ vi.mock('../lesson-participants', async () => {
 
 vi.mock('../barn-memberships', async () => {
   const actual = await vi.importActual<typeof import('../barn-memberships')>('../barn-memberships')
-  return { ...actual, resolveMemberNames: vi.fn(), getMembershipByIdForBarn: vi.fn() }
+  return { ...actual, getMembershipByIdForBarn: vi.fn() }
 })
+
+vi.mock('../member-names', () => ({
+  resolveMemberNames: vi.fn(),
+}))
 
 vi.mock('../profiles', async () => {
   const actual = await vi.importActual<typeof import('../profiles')>('../profiles')
@@ -22,7 +26,8 @@ vi.mock('../profiles', async () => {
 
 import { createClient } from '@/lib/supabase/server'
 import { hydrateParticipants } from '../lesson-participants'
-import { resolveMemberNames, getMembershipByIdForBarn } from '../barn-memberships'
+import { getMembershipByIdForBarn } from '../barn-memberships'
+import { resolveMemberNames } from '../member-names'
 import { getProfileById } from '../profiles'
 import {
   createLesson,
@@ -116,87 +121,49 @@ describe('cancelLesson', () => {
     vi.clearAllMocks()
   })
 
-  function makeCancelChain(error: Error | null = null) {
-    const mockEq2 = vi.fn().mockResolvedValue({ error })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
-    return { mockUpdate, mockEq1, mockEq2 }
+  function makeRpcMock(error: Error | null = null) {
+    const mockRpc = vi.fn().mockResolvedValue({ error })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    return mockRpc
   }
 
-  it('should_set_cancelled_at_to_current_timestamp', async () => {
-    const { mockUpdate } = makeCancelChain()
+  it('should_call_the_cancel_lesson_with_transactions_rpc_with_default_params', async () => {
+    const mockRpc = makeRpcMock()
     await cancelLesson('lesson-1', 'barn-1')
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancelled_at: expect.any(String) }))
-  })
-
-  it('should_zero_the_fee', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1')
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ fee: 0 }))
-  })
-
-  it('should_null_out_payment_type', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1')
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ payment_type: null }))
-  })
-
-  it('should_save_cancellation_notes_when_provided', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1', 'Trainer unavailable')
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancellation_notes: 'Trainer unavailable' }))
-  })
-
-  it('should_save_null_cancellation_notes_when_omitted', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1')
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ cancellation_notes: null }))
-  })
-
-  it('should_zero_fee_when_not_late', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1', null, false)
-    expect(mockUpdate).toHaveBeenCalledWith(expect.objectContaining({ fee: 0 }))
-  })
-
-  it('should_not_zero_fee_when_is_late', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1', null, true)
-    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ fee: 0 }))
-  })
-
-  it('should_not_null_payment_type_when_is_late', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1', null, true)
-    expect(mockUpdate).not.toHaveBeenCalledWith(expect.objectContaining({ payment_type: null }))
-  })
-
-  it('should_still_set_cancelled_at_and_notes_when_is_late', async () => {
-    const { mockUpdate } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1', 'called in sick', true)
-    expect(mockUpdate).toHaveBeenCalledWith({
-      cancelled_at: expect.any(String),
-      cancellation_notes: 'called in sick',
+    expect(mockRpc).toHaveBeenCalledWith('cancel_lesson_with_transactions', {
+      p_lesson_id: 'lesson-1',
+      p_barn_id: 'barn-1',
+      p_notes: null,
+      p_is_late: false,
     })
   })
 
-  it('should_filter_by_lesson_id', async () => {
-    const { mockEq1 } = makeCancelChain()
-    await cancelLesson('lesson-1', 'barn-1')
-    expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
+  it('should_pass_notes_through_to_the_rpc', async () => {
+    const mockRpc = makeRpcMock()
+    await cancelLesson('lesson-1', 'barn-1', 'Trainer unavailable')
+    expect(mockRpc).toHaveBeenCalledWith('cancel_lesson_with_transactions',
+      expect.objectContaining({ p_notes: 'Trainer unavailable' })
+    )
   })
 
-  it('should_filter_by_barn_id', async () => {
-    const { mockEq2 } = makeCancelChain()
+  it('should_pass_null_notes_when_omitted', async () => {
+    const mockRpc = makeRpcMock()
     await cancelLesson('lesson-1', 'barn-1')
-    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockRpc).toHaveBeenCalledWith('cancel_lesson_with_transactions',
+      expect.objectContaining({ p_notes: null })
+    )
+  })
+
+  it('should_pass_is_late_true_through_to_the_rpc', async () => {
+    const mockRpc = makeRpcMock()
+    await cancelLesson('lesson-1', 'barn-1', null, true)
+    expect(mockRpc).toHaveBeenCalledWith('cancel_lesson_with_transactions',
+      expect.objectContaining({ p_is_late: true })
+    )
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
-    makeCancelChain(new Error('db error'))
+    makeRpcMock(new Error('db error'))
     await expect(cancelLesson('lesson-1', 'barn-1')).rejects.toThrow('db error')
   })
 })

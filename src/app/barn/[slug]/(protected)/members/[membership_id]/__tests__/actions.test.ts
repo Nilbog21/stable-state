@@ -7,6 +7,8 @@ vi.mock('@/lib/auth/guard', () => ({
 vi.mock('@/lib/db/barn-memberships', () => ({
   getMembershipById: vi.fn(),
   setCanInstruct: vi.fn(),
+}))
+vi.mock('@/lib/db/member-invites', () => ({
   revokeInviteToken: vi.fn(),
 }))
 vi.mock('@/lib/db/documents', () => ({
@@ -40,7 +42,8 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getMembershipById, setCanInstruct, revokeInviteToken } from '@/lib/db/barn-memberships'
+import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
+import { revokeInviteToken } from '@/lib/db/member-invites'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { removeFile } from '@/lib/db/document-storage'
