@@ -22,6 +22,7 @@ function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetai
     rider_ids: ['rider-mem-1'],
     rider_count: 1,
     rider_cancelled_ats: [null],
+    needs_attention: false,
     ...overrides,
   }
 }
@@ -136,6 +137,50 @@ describe('UpcomingLessonCard', () => {
       />
     )
     expect(screen.getAllByText('Cancelled').length).toBe(1)
+  })
+
+  it('should_show_needs_attention_badge_when_future_uncancelled_lesson_needs_attention', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.getByText('Needs Attention')).toBeDefined()
+  })
+
+  it('should_not_show_needs_attention_badge_when_lesson_is_in_the_past', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2026-01-01T10:00:00Z', needs_attention: true })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_not_show_needs_attention_badge_when_lesson_is_cancelled', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_not_show_needs_attention_badge_when_needs_attention_is_false', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: false })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
   })
 
   it('should_not_show_cancel_button_on_dashboard_card', () => {

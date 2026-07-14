@@ -463,6 +463,58 @@ describe('LessonListItem', () => {
     expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
   })
 
+  it('should_show_needs_attention_badge_when_future_uncancelled_lesson_needs_attention', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', needs_attention: true }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentMembershipId="user-1"
+      />
+    )
+    expect(screen.getByText('Needs Attention')).toBeDefined()
+  })
+
+  it('should_not_show_needs_attention_badge_when_lesson_is_in_the_past', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2026-01-01T10:00:00Z', needs_attention: true }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentMembershipId="user-1"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_not_show_needs_attention_badge_when_lesson_is_cancelled', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentMembershipId="user-1"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_not_show_needs_attention_badge_when_needs_attention_is_false', () => {
+    render(
+      <LessonListItem
+        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', needs_attention: false }}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        currentMembershipId="user-1"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
   it('should_render_lesson_row_as_single_link_to_detail_page', () => {
     render(<LessonListItem lesson={normalLesson} slug="green-acres" isManager={true} isTrainer={false} currentMembershipId="user-1" />)
     const link = screen.getByRole('link', { name: /thunderbolt/i })
