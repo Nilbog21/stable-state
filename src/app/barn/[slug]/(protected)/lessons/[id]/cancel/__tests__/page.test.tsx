@@ -173,7 +173,7 @@ describe('CancelLessonPage', () => {
     expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(false)
   })
 
-  it('should_order_instructor_radio_before_rider_radio_when_actor_instructs_lesson', async () => {
+  it('should_render_instructor_radio_before_rider_radio_regardless_of_default', async () => {
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, instructor_id: 'mem-1' })
     const jsx = await CancelLessonPage({ params })
     render(jsx)
@@ -181,11 +181,11 @@ describe('CancelLessonPage', () => {
     expect(radios).toEqual(['instructor', 'rider'])
   })
 
-  it('should_order_rider_radio_before_instructor_radio_by_default', async () => {
+  it('should_keep_fixed_radio_order_when_rider_is_the_default', async () => {
     const jsx = await CancelLessonPage({ params })
     render(jsx)
     const radios = screen.getAllByRole('radio').map((el) => (el as HTMLInputElement).value)
-    expect(radios).toEqual(['rider', 'instructor'])
+    expect(radios).toEqual(['instructor', 'rider'])
   })
 
   it('should_render_cancel_type_radio_for_group_lesson', async () => {

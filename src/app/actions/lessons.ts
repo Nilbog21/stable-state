@@ -176,6 +176,15 @@ export async function cancelLessonAction(
     return
   }
 
+  if (lesson.lesson_type === 'group' && formData.get('cancel_type') === 'rider') {
+    const riderId = formData.get('rider_id')
+    if (typeof riderId === 'string' && riderId) {
+      return cancelRiderParticipationAction(barnId, barnSlug, lessonId, riderId, formData)
+    }
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
+    return
+  }
+
   const isLate = lesson.lesson_type === 'normal' ? computeCancellationIsLate(lesson.lesson_at, formData, true) : false
 
   const notes = (formData.get('notes') as string | null)?.trim() || null
@@ -204,7 +213,7 @@ export async function cancelLessonAction(
     sendNotificationViaRpc
   )
 
-  redirect(`/barn/${barnSlug}/lessons`)
+  redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
 }
 
 export async function deleteLessonAction(
