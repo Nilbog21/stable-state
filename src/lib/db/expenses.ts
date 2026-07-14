@@ -54,6 +54,21 @@ async function fetchExpenseTransactionsInRange(
   }))
 }
 
+async function getExpenseHorseJunctionRows(
+  supabase: SupabaseClient,
+  barnId: string,
+  expenseIds: string[]
+): Promise<{ expense_id: string; horse_id: string }[]> {
+  if (!expenseIds.length) return []
+  const { data, error } = await supabase
+    .from('expense_horses')
+    .select('expense_id, horse_id')
+    .eq('barn_id', barnId)
+    .in('expense_id', expenseIds)
+  if (error) throw error
+  return data ?? []
+}
+
 async function attachHorseNames<T extends { id: string }>(
   supabase: SupabaseClient,
   barnId: string,
@@ -240,16 +255,7 @@ export async function getExpenseFinancialSummary(
   if (horsesError) throw horsesError
 
   const nonBarnWideIds = expenses.filter((e) => !e.applies_to_all_horses).map((e) => e.id)
-  let junctionRows: { expense_id: string; horse_id: string }[] = []
-  if (nonBarnWideIds.length) {
-    const { data: jData, error: jError } = await supabase
-      .from('expense_horses')
-      .select('expense_id, horse_id')
-      .eq('barn_id', barnId)
-      .in('expense_id', nonBarnWideIds)
-    if (jError) throw jError
-    junctionRows = jData ?? []
-  }
+  const junctionRows = await getExpenseHorseJunctionRows(supabase, barnId, nonBarnWideIds)
 
   let totalExpenses = 0
   const breakdownMap = new Map<string, number>()
@@ -304,16 +310,7 @@ export async function getHorseExpenseDetail(
   if (barnHorsesError) throw barnHorsesError
 
   const nonBarnWideIds = expenses.filter((e) => !e.applies_to_all_horses).map((e) => e.id)
-  let junctionRows: { expense_id: string; horse_id: string }[] = []
-  if (nonBarnWideIds.length) {
-    const { data: jData, error: jError } = await supabase
-      .from('expense_horses')
-      .select('expense_id, horse_id')
-      .eq('barn_id', barnId)
-      .in('expense_id', nonBarnWideIds)
-    if (jError) throw jError
-    junctionRows = jData ?? []
-  }
+  const junctionRows = await getExpenseHorseJunctionRows(supabase, barnId, nonBarnWideIds)
 
   const rows: HorseExpenseDetailRow[] = []
   for (const expense of expenses) {
