@@ -112,8 +112,10 @@ Dashboard (`/barn/dev-barn`):
 - [ ] Section is titled "Barn Schedule" and shows lessons and upcoming planned expenses (future date+time, no amount yet) together in the next 7 days, split into a "Today" section (only when something is scheduled today) and a "This Week" section (the remaining 6 days) — the seeded Riverside Vet Clinic expense 2 days out appears interleaved by time between that day's lessons
 - [ ] A date-only planned expense (no time set) does **not** appear on the dashboard
 - [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
-- [ ] Pending-requests badge is visible in the dashboard's reminders area (Quinn Pending) and links to settings
+- [ ] A "Reminders" section header appears above the pending-requests/document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
+- [ ] Pending-requests badge is visible under the Reminders header (Quinn Pending), reads "1 pending new member request" (singular wording, not "1 pending request"), and links to settings
 - [ ] Document Reminders section is hidden when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), it appears here and links to that horse's or member's detail page
+- [ ] If any lessons/charges are unpaid, "N unpaid lessons" and/or "N unpaid leases/boarding" cards appear under Reminders, each linking to `/barn/dev-barn/finances/outstanding`; each is hidden individually when its own count is zero
 
 Lessons (`/barn/dev-barn/lessons`):
 
@@ -253,6 +255,7 @@ bash scripts/change-user.sh
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper/Indigo Test, whichever are still unclaimed) render as plain card links — name only, **no Unlinked badge, no Copy Invite or Revoke buttons**; the card still links to the member detail page
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **no Contact Info section**, and **no Documents section**; open Blake's (a rider's) detail page — no Contact Info and no Documents section either (#779 narrowed this from the prior read-only rider-document access)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
+- [ ] Dashboard: if any of your instructed lessons are unpaid, a "Reminders" section with an "N unpaid lessons" card appears, linking to `/barn/dev-barn/finances/outstanding` — this is your only nav path to that page (no Finances link in the nav)
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
 ## Phase 6 — Rider
@@ -273,6 +276,7 @@ bash scripts/change-user.sh
 - [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
+- [ ] Dashboard: if Dana has unpaid lessons and/or unpaid leases/boarding, a "Reminders" section with "N unpaid lessons"/"N unpaid leases/boarding" cards appears, each linking to `/barn/dev-barn/finances/outstanding` — this is Dana's only nav path to that page (no Finances link in the nav)
 - [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms and no Copy Invite/Revoke controls on any managed/unclaimed row
 - [ ] Open another member's detail page from the roster (a trainer, a manager) — page loads (no 404), shows only their name — no Contact Info, no Documents section
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages

@@ -6,7 +6,7 @@ Stable State is a barn management app for scheduling lessons, tracking horses an
 
 ## Dashboard
 
-Go to **Dashboard** to see your **Barn Schedule** — upcoming lessons (where you are the instructor) and upcoming scheduled expenses (planned expenses with a date and time but no amount entered yet, like a vet visit) for the next 7 days, interleaved together in order and split into "Today" and "This Week". Tap an expense entry to open its detail page. If any horse, member, or your own documents have an expiration reminder date that's arrived, a **Document Reminders** section lists them — tap an entry to open that horse's or member's detail page. The section is hidden when nothing is due.
+Go to **Dashboard** to see your **Barn Schedule** — upcoming lessons (where you are the instructor) and upcoming scheduled expenses (planned expenses with a date and time but no amount entered yet, like a vet visit) for the next 7 days, interleaved together in order and split into "Today" and "This Week". Tap an expense entry to open its detail page. Above that, a **Reminders** section gathers anything needing your attention — a pending new member request badge, unpaid lessons and unpaid leases/boarding cards (tap either to open the full Outstanding Payments list), and a **Document Reminders** list of any horse, member, or your own documents with an expiration reminder date that's arrived (tap an entry to open that horse's or member's detail page). The whole Reminders section, and each item within it, is hidden when there's nothing to show.
 
 ## Horses
 

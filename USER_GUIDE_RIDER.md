@@ -14,7 +14,7 @@ Go to **Lessons** to see your lesson history. Tap any lesson to open it and see 
 
 ## Outstanding payments
 
-If you have past lessons with unpaid balances, you will receive a notification. Tap the notification to open the **Outstanding Payments** page, which lists all your enrolled past unpaid lessons plus any of your own past-due lease or boarding charges, each row showing its date, type, and fee. Tap a lesson row to open the lesson detail.
+If you have past lessons with unpaid balances, or past-due lease/boarding charges, a **Reminders** section appears on your **Dashboard** with "N unpaid lessons" and/or "N unpaid leases/boarding" cards — tap either to open the **Outstanding Payments** page, which lists all your enrolled past unpaid lessons plus any of your own past-due lease or boarding charges, each row showing its date, type, and fee. Tap a lesson row to open the lesson detail.
 
 ## Notifications
 

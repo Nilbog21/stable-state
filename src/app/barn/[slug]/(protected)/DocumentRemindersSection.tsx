@@ -36,10 +36,10 @@ export function DocumentRemindersSection({ slug, dueDocuments }: { slug: string;
   if (due.length === 0) return null
 
   return (
-    <section className="mb-8">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+    <div className="mt-4">
+      <h3 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
         Document Reminders
-      </h2>
+      </h3>
       <ul className="space-y-2">
         {due.map((doc) => (
           <li key={doc.id}>
@@ -55,6 +55,6 @@ export function DocumentRemindersSection({ slug, dueDocuments }: { slug: string;
           </li>
         ))}
       </ul>
-    </section>
+    </div>
   )
 }

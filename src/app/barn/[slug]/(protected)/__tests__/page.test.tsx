@@ -322,6 +322,8 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_pass_slug_to_document_reminders_section', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
+
     const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
 
