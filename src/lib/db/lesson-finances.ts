@@ -10,6 +10,7 @@ import {
   getPaidLessonRows,
 } from './lesson-finance-queries'
 import { getChargesForSummary, getPaidCharges } from './agreements'
+import { getTiersByBarn } from './lesson-tiers'
 import type {
   FinancialSummary,
   HorseChargeDetailRow,
@@ -24,6 +25,7 @@ import type {
   RiderIncomeDetailRow,
   RiderIncomeSummary,
   Role,
+  TrainerIncomeDetailRow,
   TrainerIncomeSummary,
 } from './types'
 import type { ChargeSummaryRow } from './agreements'
@@ -173,9 +175,10 @@ export async function getFinancialSummary(
   const supabase = await createClient()
   const now = new Date()
 
-  const [lessons, charges] = await Promise.all([
+  const [lessons, charges, activeTiers] = await Promise.all([
     getLessonsForSummary(barnId, startDate, endDate, supabase),
     getChargesForSummary(barnId, startDate, endDate, supabase),
+    getTiersByBarn(barnId),
   ])
 
   const paidLessons = lessons.filter((l) => l.payment_type !== null)
@@ -213,8 +216,14 @@ export async function getFinancialSummary(
     cutByTier.set(t, (cutByTier.get(t) ?? 0) + l.instructor_cut)
   }
 
-  const breakdown = Array.from(tierGroups.entries())
-    .map(([tierName, { count, total }]) => ({
+  // Active tiers with no paid lessons this month still get a $0 row, so the full
+  // current tier list is visible at a glance rather than only tiers that billed.
+  const zeroTierRows = activeTiers
+    .filter((t) => !tierGroups.has(t.name))
+    .map((t) => ({ tierName: t.name, price: t.price, lessonCount: 0, subtotal: 0, instructorCut: 0 }))
+
+  const breakdown = [
+    ...Array.from(tierGroups.entries()).map(([tierName, { count, total }]) => ({
       tierName,
       price: tierName === 'Custom' ? null : (tierPrices.get(tierName) ?? null),
       lessonCount: count,
@@ -222,8 +231,9 @@ export async function getFinancialSummary(
       // tierGroups and cutByTier are both built from paidLessons with the same
       // tier_name || 'Custom' key, so every tierGroups key has a cutByTier entry.
       instructorCut: cutByTier.get(tierName)!,
-    }))
-    .sort((a, b) => a.tierName.localeCompare(b.tierName))
+    })),
+    ...zeroTierRows,
+  ].sort((a, b) => a.tierName.localeCompare(b.tierName))
 
   if (chargesFold.count > 0) {
     breakdown.push({ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: chargesFold.count, subtotal: chargesFold.total, instructorCut: 0 })
@@ -369,6 +379,14 @@ export async function getTrainerIncomeSummary(
     NO_INSTRUCTOR_LABEL
   )
 
+  // Raw (pre-cut) fee sum per trainer, for the summary's "Raw Fees" column —
+  // mirrors getFinancialSummary's cutByTier direct-sum pattern above.
+  const grossByTrainer = new Map<string, number>()
+  for (const l of lessons) {
+    const k = l.instructor_id ?? NO_INSTRUCTOR_LABEL
+    grossByTrainer.set(k, (grossByTrainer.get(k) ?? 0) + l.fee)
+  }
+
   const instructorIds = [...grouped.keys()].filter((id) => id !== NO_INSTRUCTOR_LABEL)
   const memberNameMap = await resolveMemberNames(instructorIds, barnId, supabase)
 
@@ -376,11 +394,12 @@ export async function getTrainerIncomeSummary(
     trainerId: r.id,
     trainerName: r.name,
     totalIncome: r.totalIncome,
+    grossIncome: grossByTrainer.get(r.id) ?? null,
   }))
 
   const chargesFold = foldChargesCollected(charges)
   if (chargesFold.total > 0) {
-    result.push({ trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: chargesFold.total })
+    result.push({ trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: chargesFold.total, grossIncome: null })
   }
 
   return result
@@ -460,4 +479,29 @@ export async function getRiderIncomeDetail(
 
   const total = rows.reduce((sum, r) => sum + r.splitAmount, 0) + chargeRows.reduce((sum, r) => sum + r.fee, 0)
   return { riderName, rows, chargeRows, total }
+}
+
+export async function getTrainerIncomeDetail(
+  barnId: string,
+  trainerId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<{ trainerName: string; rows: TrainerIncomeDetailRow[]; total: number }> {
+  const supabase = await createClient()
+
+  const lessonsData = await getPaidLessonRows(barnId, startDate, endDate, ['id', 'lesson_at', 'instructor_id'], supabase) as
+    { id: string; fee: number; lesson_at: string; instructor_cut: number; instructor_id: string | null }[]
+
+  const memberNameMap = await resolveMemberNames([trainerId], barnId, supabase)
+  const trainerName = memberNameMap.get(trainerId) ?? trainerId
+
+  // No junction table for instructor (single lessons.instructor_id column, not a
+  // many-to-many like lesson_riders/lesson_horses), so each matching lesson's
+  // full net fee goes to this trainer — no split.
+  const rows: TrainerIncomeDetailRow[] = lessonsData
+    .filter((l) => l.instructor_id === trainerId)
+    .map((l) => ({ lessonId: l.id, lessonAt: l.lesson_at, fee: l.fee - l.instructor_cut }))
+
+  const total = rows.reduce((sum, r) => sum + r.fee, 0)
+  return { trainerName, rows, total }
 }

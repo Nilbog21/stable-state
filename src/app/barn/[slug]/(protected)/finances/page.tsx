@@ -320,7 +320,7 @@ export default async function FinancesPage({
                       ) : (
                         <Link
                           href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                          className="hover:underline"
+                          className="underline"
                         >
                           {row.horseName}
                         </Link>
@@ -364,7 +364,7 @@ export default async function FinancesPage({
                       ) : (
                         <Link
                           href={`/barn/${slug}/finances/riders/${row.riderId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                          className="hover:underline"
+                          className="underline"
                         >
                           {row.riderName}
                         </Link>
@@ -394,18 +394,33 @@ export default async function FinancesPage({
                 <tr>
                   <Th>Trainer</Th>
                   <Th>Income</Th>
+                  <Th>Raw Fees</Th>
                 </tr>
               </thead>
               <tbody>
                 {trainerIncome.map((row) => (
                   <tr key={row.trainerId}>
                     <Td>
-                      {row.trainerName}
-                      {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
-                      {row.trainerId === NO_INSTRUCTOR_LABEL && <InfoPopover text="Lessons whose instructor was removed from the barn" align="left" />}
+                      {row.trainerId === NON_LESSON_INCOME_LABEL || row.trainerId === NO_INSTRUCTOR_LABEL ? (
+                        <>
+                          {row.trainerName}
+                          {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
+                          {row.trainerId === NO_INSTRUCTOR_LABEL && <InfoPopover text="Lessons whose instructor was removed from the barn" align="left" />}
+                        </>
+                      ) : (
+                        <Link
+                          href={`/barn/${slug}/finances/trainers/${row.trainerId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
+                          className="underline"
+                        >
+                          {row.trainerName}
+                        </Link>
+                      )}
                     </Td>
                     <Td>
                       {formatCurrency(row.totalIncome)}
+                    </Td>
+                    <Td>
+                      {row.grossIncome != null ? formatCurrency(row.grossIncome) : '—'}
                     </Td>
                   </tr>
                 ))}
