@@ -30,12 +30,27 @@ function formatFee(fee: number): string {
   return fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
-function ContactInfo({ profile }: { profile: Profile | null }) {
+function ContactInfo({
+  profile,
+  slug,
+  isOwnPage,
+}: {
+  profile: Profile | null
+  slug: string
+  isOwnPage: boolean
+}) {
   return (
     <section className="mb-10">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        Contact Info
-      </h2>
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Contact Info
+        </h2>
+        {isOwnPage && (
+          <Button variant="ghost" size="sm" href={`/profile?barn=${slug}`}>
+            Edit
+          </Button>
+        )}
+      </div>
       <dl className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
         <div>
           <dt className="inline text-zinc-500 dark:text-zinc-400">Phone: </dt>
@@ -223,7 +238,7 @@ export default async function MemberDetailPage({
       {canViewContactInfo && (canEditContactInfo && targetProfile ? (
         <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
       ) : (
-        <ContactInfo profile={targetProfile} />
+        <ContactInfo profile={targetProfile} slug={slug} isOwnPage={isOwnPage} />
       ))}
 
       {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
