@@ -19,6 +19,13 @@ function parseInitialHour(lessonAt: string): number {
   return parseInt(lessonAt.slice(11, 13), 10)
 }
 
+function isPastLessonAt(lessonAt: string): boolean {
+  if (!lessonAt) return false
+  const now = new Date()
+  now.setMinutes(0, 0, 0)
+  return new Date(lessonAt) < now
+}
+
 export function LessonForm({
   mode,
   horses,
@@ -200,6 +207,17 @@ export function LessonForm({
 
   const isCustom = selectedId === CUSTOM_ID
   const selectedTier = tiers.find(t => t.id === selectedId) ?? null
+  const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
+  const isPastLesson = isPastLessonAt(lessonAt)
+
+  function horseTotalExertion(h: Horse): number {
+    return (exhaustionByHorseId?.[h.id]?.existingRows ?? []).reduce((sum, row) => sum + row.exertionLevel, 0)
+  }
+
+  function horseSortBucket(h: Horse): number {
+    if (checkedHorseIds.has(h.id)) return 0
+    return h.is_available === false || h.is_active === false ? 2 : 1
+  }
 
   function handleJumpingToggle(e: React.ChangeEvent<HTMLInputElement>) {
     const checked = e.target.checked
@@ -359,13 +377,8 @@ export function LessonForm({
           Horse{' '}
           <span className="font-normal text-zinc-500">(select at least one)</span>
         </legend>
-        {[...horses].sort((a, b) => {
-          const aAvail = a.is_available === false ? 1 : 0
-          const bAvail = b.is_available === false ? 1 : 0
-          return aAvail - bAvail
-        }).map((h) => {
+        {[...horses].sort((a, b) => horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a) - horseTotalExertion(b)).map((h) => {
           const isUnavailable = h.is_available === false
-          const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
           const exhaustion = exhaustionByHorseId?.[h.id]
           return (
           <div key={h.id} className="flex flex-col gap-1">
@@ -434,7 +447,7 @@ export function LessonForm({
               </>
             )}
           </div>
-          {exhaustion && (
+          {exhaustion && !isPastLesson && (checkedHorseIds.has(h.id) || (!isUnavailable && h.is_active !== false)) && (
             <ExhaustionBar
               existingRows={exhaustion.existingRows}
               thresholds={exhaustion.thresholds}

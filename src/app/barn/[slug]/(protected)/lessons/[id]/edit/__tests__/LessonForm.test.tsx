@@ -748,6 +748,15 @@ describe('LessonForm notes fields', () => {
 })
 
 describe('LessonForm (edit mode) exhaustion bars', () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-01-01T00:00:00Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
   it('should_fetch_projected_exhaustion_using_the_prefilled_lesson_date_on_mount', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
@@ -771,7 +780,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00', ['horse-1', 'horse-2']))
   })
 
-  it('should_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {
+  it('should_not_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {
     const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
@@ -779,7 +788,81 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     })
     render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
-      expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(2)
+      expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(1)
+    })
+  })
+
+  it('should_not_render_an_exhaustion_bar_for_an_unavailable_horse', async () => {
+    const unavailableHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+      'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+    })
+    render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(1)
+    })
+  })
+
+  it('should_not_render_exhaustion_bar_when_lesson_date_is_in_the_past', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+    })
+    render(<LessonForm {...baseProps} initialLesson={pastLesson} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
+    expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
+  })
+
+  it('should_sort_checked_horse_before_available_horse_regardless_of_exhaustion', async () => {
+    const availableHorse: Horse = { id: 'horse-avail', barn_id: 'barn-1', name: 'Zeal', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-1': { existingRows: [{ lessonAt: 'x', exertionLevel: 5 }], thresholds: { high: 11, moderate: 5 } },
+      'horse-avail': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+    })
+    const { container } = render(<LessonForm {...baseProps} horses={[availableHorse, mockHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
+    await waitFor(() => {
+      const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+      expect((checkboxes[0] as HTMLInputElement).value).toBe('horse-1')
+    })
+  })
+
+  it('should_sort_available_horses_least_to_most_exhausted', async () => {
+    const lessExhausted: Horse = { id: 'horse-low', barn_id: 'barn-1', name: 'Low', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const moreExhausted: Horse = { id: 'horse-high', barn_id: 'barn-1', name: 'High', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-high': { existingRows: [{ lessonAt: 'x', exertionLevel: 5 }], thresholds: { high: 11, moderate: 5 } },
+      'horse-low': { existingRows: [{ lessonAt: 'x', exertionLevel: 1 }], thresholds: { high: 11, moderate: 5 } },
+    })
+    const { container } = render(<LessonForm {...baseProps} horses={[moreExhausted, lessExhausted]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
+    await waitFor(() => {
+      const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+      expect((checkboxes[0] as HTMLInputElement).value).toBe('horse-low')
+    })
+  })
+
+  it('should_sort_an_unchecked_inactive_horse_after_an_available_horse', async () => {
+    const availableHorse: Horse = { id: 'horse-avail', barn_id: 'barn-1', name: 'Zeal', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const inactiveHorse: Horse = { id: 'horse-inactive', barn_id: 'barn-1', name: 'Retired', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    const { container } = render(<LessonForm {...baseProps} horses={[inactiveHorse, availableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
+    await waitFor(() => {
+      const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+      expect((checkboxes[checkboxes.length - 1] as HTMLInputElement).value).toBe('horse-inactive')
+    })
+  })
+
+  it('should_render_an_exhaustion_bar_for_an_inactive_horse_still_checked_on_this_lesson', async () => {
+    const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Retired (inactive)' } }] }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+    })
+    render(<LessonForm {...baseProps} initialLesson={lesson} horses={[inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
   })
 })

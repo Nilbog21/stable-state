@@ -908,4 +908,20 @@ describe('LessonForm exhaustion bars', () => {
     render(<LessonForm {...baseProps} horses={[horse]} />)
     expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
   })
+
+  it('should_not_render_exhaustion_bar_when_date_changed_to_the_past', async () => {
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      h1: { existingRows: [], thresholds },
+    })
+    const { container } = render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
+    })
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    fireEvent.change(dateInput, { target: { value: '2020-01-01' } })
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(2))
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
+    })
+  })
 })
