@@ -2280,6 +2280,17 @@ describe('getEntityIncome', () => {
       })
       expect(getLessonJunctionRows).not.toHaveBeenCalled()
     })
+
+    it('should_exclude_a_null_instructor_lesson_for_a_non_junction_descriptor', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([
+        { lessonId: 'lesson-1', fee: 100, instructorCut: 0, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' },
+      ])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const result = await getEntityIncome(TRAINER_INCOME_DESCRIPTOR, 'detail', 'barn-1', startDate, endDate, 'mem-trainer-1')
+
+      expect(result.rows).toEqual([])
+    })
   })
 
   describe('mode dispatch', () => {
