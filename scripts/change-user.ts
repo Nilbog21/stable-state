@@ -32,6 +32,14 @@ export function mergeMembersWithProfiles<M extends { profile_id: string }, P ext
   return memberships.map((m) => profileMap.get(m.profile_id)).filter((p): p is P => p !== undefined)
 }
 
+export function resolveRevertUserId(
+  currentRowProfileId: string,
+  devProfileId: string,
+  ownerUserId: string | null
+): string | null {
+  return currentRowProfileId === devProfileId ? null : ownerUserId
+}
+
 async function promptSelection(max: number): Promise<number> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   return new Promise((resolve, reject) => {
@@ -88,8 +96,8 @@ async function run() {
   const barnSelection = await promptSelection(barns.length)
   const barnId: string = barns[barnSelection - 1].id
 
-  const devProfile = mustSucceed<{ user_id: string | null }>(
-    await supabase.from('profiles').select('user_id').eq('email', DEV_EMAIL).single(),
+  const devProfile = mustSucceed<{ id: string; user_id: string | null }>(
+    await supabase.from('profiles').select('id, user_id').eq('email', DEV_EMAIL).single(),
     'fetch dev profile'
   )
 
@@ -99,13 +107,14 @@ async function run() {
   }
 
   const devUserId: string = devProfile.user_id
+  const devProfileId: string = devProfile.id
 
-  const devMembership = mustSucceed<{ status: string } | null>(
-    await supabase.from('barn_memberships').select('status').eq('user_id', devUserId).eq('barn_id', barnId).maybeSingle(),
+  const ownRow = mustSucceed<{ id: string } | null>(
+    await supabase.from('barn_memberships').select('id').eq('profile_id', devProfileId).eq('barn_id', barnId).maybeSingle(),
     'fetch dev membership'
   )
 
-  if (!devMembership) {
+  if (!ownRow) {
     console.error(`${DEV_EMAIL} is not a member of this barn — pick a different barn`)
     process.exit(1)
   }
@@ -139,30 +148,12 @@ async function run() {
   })
 
   const selection = await promptSelection(profiles.length)
-  const target = profiles[selection - 1] as { user_id: string | null; email: string; first_name: string; last_name: string }
-
-  if (isSelfSelect(DEV_EMAIL, target.email)) {
-    if (devMembership.status === 'pending') {
-      const activate = await promptConfirm('Your own membership in this barn is pending — activate it?')
-      if (!activate) {
-        console.error('cannot switch to a pending membership without activating it')
-        process.exit(1)
-      }
-    }
-    mustSucceed(
-      await supabase
-        .from('barn_memberships')
-        .update({
-          role: 'manager',
-          can_instruct: false,
-          ...(devMembership.status === 'pending' ? { status: 'active' } : {}),
-        })
-        .eq('user_id', devUserId)
-        .eq('barn_id', barnId),
-      'restore manager membership'
-    )
-    console.log('Refresh your preview page.')
-    return
+  const target = profiles[selection - 1] as {
+    id: string
+    user_id: string | null
+    email: string
+    first_name: string
+    last_name: string
   }
 
   if (!target.user_id) {
@@ -170,79 +161,52 @@ async function run() {
     process.exit(1)
   }
 
-  const targetUserId: string = target.user_id
+  const isSelf = isSelfSelect(DEV_EMAIL, target.email)
 
-  const targetMembership = mustSucceed<{ role: string; can_instruct: boolean; status: string }>(
+  const targetRow = mustSucceed<{ id: string; status: string }>(
     await supabase
       .from('barn_memberships')
-      .select('role, can_instruct, status')
-      .eq('user_id', targetUserId)
+      .select('id, status')
+      .eq('profile_id', target.id)
       .eq('barn_id', barnId)
       .single(),
     'fetch target membership'
   )
 
-  if (targetMembership.status === 'pending') {
-    const activate = await promptConfirm(
-      `${target.first_name} ${target.last_name}'s membership is pending — activate it?`
-    )
+  if (targetRow.status === 'pending') {
+    const label = isSelf ? 'Your own membership in this barn' : `${target.first_name} ${target.last_name}'s membership`
+    const activate = await promptConfirm(`${label} is pending — activate it?`)
     if (!activate) {
       console.error('cannot switch to a pending membership without activating it')
       process.exit(1)
     }
     mustSucceed(
-      await supabase.from('barn_memberships').update({ status: 'active' }).eq('user_id', targetUserId).eq('barn_id', barnId),
+      await supabase.from('barn_memberships').update({ status: 'active' }).eq('id', targetRow.id),
       'activate target membership'
     )
   }
 
+  const currentRow = mustSucceed<{ id: string; profile_id: string } | null>(
+    await supabase.from('barn_memberships').select('id, profile_id').eq('user_id', devUserId).eq('barn_id', barnId).maybeSingle(),
+    'fetch currently inhabited membership'
+  )
+
+  if (currentRow && currentRow.id !== targetRow.id) {
+    const ownerProfile = mustSucceed<{ user_id: string | null }>(
+      await supabase.from('profiles').select('user_id').eq('id', currentRow.profile_id).single(),
+      'fetch rightful owner profile'
+    )
+    const revertUserId = resolveRevertUserId(currentRow.profile_id, devProfileId, ownerProfile.user_id)
+    mustSucceed(
+      await supabase.from('barn_memberships').update({ user_id: revertUserId }).eq('id', currentRow.id),
+      'revert previous membership'
+    )
+  }
+
   mustSucceed(
-    await supabase
-      .from('barn_memberships')
-      .update({ role: targetMembership.role, can_instruct: targetMembership.can_instruct })
-      .eq('user_id', devUserId)
-      .eq('barn_id', barnId),
-    'update dev membership'
+    await supabase.from('barn_memberships').update({ user_id: devUserId }).eq('id', targetRow.id),
+    'become target membership'
   )
-
-  const targetBm = mustSucceed<{ id: string }>(
-    await supabase.from('barn_memberships').select('id').eq('user_id', targetUserId).eq('barn_id', barnId).single(),
-    'fetch target barn membership'
-  )
-  const devBm = mustSucceed<{ id: string }>(
-    await supabase.from('barn_memberships').select('id').eq('user_id', devUserId).eq('barn_id', barnId).single(),
-    'fetch dev barn membership'
-  )
-
-  if (targetMembership.can_instruct) {
-    mustSucceed(
-      await supabase
-        .from('lessons')
-        .update({ instructor_id: devBm.id })
-        .eq('instructor_id', targetBm.id)
-        .eq('barn_id', barnId),
-      'reassign lessons'
-    )
-  }
-
-  if (targetMembership.role === 'rider') {
-    mustSucceed(
-      await supabase
-        .from('lesson_riders')
-        .update({ rider_id: devBm.id })
-        .eq('rider_id', targetBm.id)
-        .eq('barn_id', barnId),
-      'reassign lesson riders'
-    )
-    mustSucceed(
-      await supabase
-        .from('agreements')
-        .update({ rider_id: devBm.id })
-        .eq('rider_id', targetBm.id)
-        .eq('barn_id', barnId),
-      'reassign agreements'
-    )
-  }
 
   console.log('Refresh your preview page.')
 }
