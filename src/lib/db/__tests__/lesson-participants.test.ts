@@ -1164,4 +1164,60 @@ describe('hydrateParticipants', () => {
 
     await expect(hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')).rejects.toThrow('resolve member names error')
   })
+
+  it('should_set_needs_attention_true_when_assigned_horse_is_inactive', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: false, is_available: true } }],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(true)
+  })
+
+  it('should_set_needs_attention_true_when_assigned_horse_is_unavailable', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: false } }],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(true)
+  })
+
+  it('should_set_needs_attention_false_when_all_assigned_horses_active_and_available', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: true } }],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(false)
+  })
+
+  it('should_set_needs_attention_true_for_group_lesson_when_any_one_horse_is_bad', async () => {
+    const lesson = createMockLesson({ instructor_id: null, lesson_type: 'group' })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([
+      { lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: true } },
+      { lesson_id: lesson.id, horse_id: 'horse-2', horses: { is_active: false, is_available: true } },
+    ], [])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(true)
+  })
 })

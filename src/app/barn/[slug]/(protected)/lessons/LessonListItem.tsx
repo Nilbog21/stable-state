@@ -13,6 +13,7 @@ interface Props {
 
 export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMembershipId, viewerMembershipId }: Props) {
   const isCancelled = lesson.cancelled_at !== null
+  const needsAttention = !isCancelled && lesson.needs_attention && new Date(lesson.lesson_at) > new Date()
   const canManageLesson = isManager || (isTrainer && lesson.instructor_id === currentMembershipId)
   const canCancel =
     canManageLesson &&
@@ -64,6 +65,9 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMemb
           )}
           {!isCancelled && lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
+          )}
+          {needsAttention && (
+            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Needs Attention</span>
           )}
         </span>
       </Card>
