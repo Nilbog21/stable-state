@@ -36,28 +36,73 @@ describe('ManageMemberSection', () => {
     expect(screen.getByRole('button', { name: /revoke/i })).toBeDefined()
   })
 
-  it('should_call_clipboard_with_invite_url_on_copy_click', () => {
+  it('should_call_clipboard_with_invite_url_on_copy_click', async () => {
     render(<ManageMemberSection {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
       expect.stringContaining('/barn/green-acres/login?token=tok-abc')
     )
   })
 
-  it('should_show_copied_label_after_copy_click', () => {
+  it('should_show_copied_label_after_copy_click', async () => {
     render(<ManageMemberSection {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
     expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
   })
 
-  it('should_revert_to_copy_invite_label_after_timeout', () => {
+  it('should_revert_to_copy_invite_label_after_timeout', async () => {
     vi.useFakeTimers()
     render(<ManageMemberSection {...defaultProps} />)
-    fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
     act(() => {
       vi.advanceTimersByTime(2000)
     })
     expect(screen.getByRole('button', { name: /^copy invite$/i })).toBeDefined()
+    vi.useRealTimers()
+  })
+
+  it('should_not_show_copied_when_clipboard_write_fails', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      writable: true,
+      configurable: true,
+    })
+    render(<ManageMemberSection {...defaultProps} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByRole('button', { name: /^copied!$/i })).toBeNull()
+  })
+
+  it('should_reset_timer_on_rapid_second_click', async () => {
+    vi.useFakeTimers()
+    render(<ManageMemberSection {...defaultProps} />)
+    const button = screen.getByRole('button', { name: /copy invite/i })
+    await act(async () => {
+      fireEvent.click(button)
+      await Promise.resolve()
+    })
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
+    await act(async () => {
+      fireEvent.click(button)
+      await Promise.resolve()
+    })
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
+    expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
     vi.useRealTimers()
   })
 

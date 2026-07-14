@@ -230,10 +230,10 @@ export default async function MemberDetailPage({
         {displayName}
       </h1>
 
-      {canManageInvite && (
+      {canManageInvite && targetMembership.invite_token !== null && (
         <ManageMemberSection
           barnSlug={slug}
-          inviteToken={targetMembership.invite_token as string}
+          inviteToken={targetMembership.invite_token}
           revokeAction={revokeInviteTokenAction.bind(null, slug, membership_id)}
         />
       )}

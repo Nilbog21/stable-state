@@ -893,10 +893,9 @@ describe('MemberDetailPage', () => {
       vi.mocked(getMembershipByIdForBarn).mockResolvedValue(unclaimedTargetMembership)
       vi.mocked(getProfileById).mockResolvedValue(unclaimedTargetProfile)
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
-      const { container } = render(jsx)
+      render(jsx)
       const heading = screen.getByRole('heading', { name: /bob trainer/i })
       expect(heading.nextElementSibling?.textContent).toMatch(/unlinked member/i)
-      expect(container).toBeDefined()
     })
 
     it('should_call_revokeInviteTokenAction_when_revoke_form_submits', async () => {
