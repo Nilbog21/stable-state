@@ -24,6 +24,12 @@ export function computeUnpaidWarn(unpaidPastDue: boolean, paymentType: string, f
   return unpaidPastDue && paymentType === '' && !feeIsZero
 }
 
+function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false
+  for (const item of a) if (!b.has(item)) return false
+  return true
+}
+
 function isPastLessonAt(lessonAt: string): boolean {
   if (!lessonAt) return false
   const now = new Date()
@@ -134,14 +140,21 @@ export function LessonForm({
     new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
     Number(initialLesson?.fee) > 0
   const unpaidWarn = computeUnpaidWarn(unpaidPastDue, paymentType, fee)
-  const shouldWarn = unpaidWarn || notesDirty
+  const feeDirty = fee !== initialFee
+  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds) || newHorseName.trim() !== ''
+  const ridersDirty = lessonType === 'normal'
+    ? normalRiderId !== initialNormalRiderId
+    : !setsEqual(checkedRiderIds, initialRiderIds)
+  const fieldsDirty = mode === 'edit' && (feeDirty || horsesDirty || ridersDirty)
+  const shouldWarn = unpaidWarn || notesDirty || fieldsDirty
 
   useEffect(() => {
     setDirty(shouldWarn)
     if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
     else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
+    else if (fieldsDirty) setMessage('You have unsaved changes. Leave without saving?')
     return () => setDirty(false)
-  }, [shouldWarn, unpaidWarn, notesDirty, setDirty, setMessage])
+  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, setDirty, setMessage])
 
   useEffect(() => {
     if (!shouldWarn) return
