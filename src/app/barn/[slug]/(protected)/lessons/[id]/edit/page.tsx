@@ -109,6 +109,7 @@ export default async function EditLessonPage({
         action={update}
         initialNotes={initialNotes}
         getProjectedExhaustion={getProjectedExhaustion}
+        hasHorseIssue={attentionReasons.length > 0}
       />
     </main>
   )

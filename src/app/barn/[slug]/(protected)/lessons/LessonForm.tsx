@@ -50,6 +50,7 @@ export function LessonForm({
   initialLesson,
   initialNotes,
   getProjectedExhaustion,
+  hasHorseIssue = false,
 }: {
   mode: 'new' | 'edit'
   horses: Horse[]
@@ -66,6 +67,7 @@ export function LessonForm({
     riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
   }
   getProjectedExhaustion?: (targetDateIso: string, horseIds: string[]) => Promise<ExhaustionByHorseId>
+  hasHorseIssue?: boolean
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
 
@@ -146,15 +148,16 @@ export function LessonForm({
     ? normalRiderId !== initialNormalRiderId
     : !setsEqual(checkedRiderIds, initialRiderIds)
   const fieldsDirty = mode === 'edit' && (feeDirty || horsesDirty || ridersDirty)
-  const shouldWarn = unpaidWarn || notesDirty || fieldsDirty
+  const shouldWarn = unpaidWarn || notesDirty || fieldsDirty || hasHorseIssue
 
   useEffect(() => {
     setDirty(shouldWarn)
     if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
     else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
     else if (fieldsDirty) setMessage('You have unsaved changes. Leave without saving?')
+    else if (hasHorseIssue) setMessage('This lesson has an unresolved horse issue. Leave without addressing it?')
     return () => setDirty(false)
-  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, setDirty, setMessage])
+  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, hasHorseIssue, setDirty, setMessage])
 
   useEffect(() => {
     if (!shouldWarn) return
