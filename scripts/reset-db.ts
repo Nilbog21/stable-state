@@ -422,6 +422,19 @@ async function run() {
       await supabase.from('lessons').update({ payment_type: pt }).eq('barn_id', DEV_BARN_ID).in('id', ids),
       `update payment_type ${pt}`
     )
+    // #827: createLessonWithParticipants already created the paired lesson_fee/instructor_payout
+    // transaction rows (uncollected); collect_lesson_payment's own auth check would reject a
+    // service-role caller (auth.uid() is null), so mark them collected via a raw update instead,
+    // per scripts/CLAUDE.md's guidance for RPCs with auth checks that block service-role callers.
+    mustSucceed(
+      await supabase
+        .from('transactions')
+        .update({ collected: true, payment_type: pt })
+        .eq('barn_id', DEV_BARN_ID)
+        .in('lesson_id', ids)
+        .in('kind', ['lesson_fee', 'instructor_payout']),
+      `sync transactions collected for payment_type ${pt}`
+    )
   }
 
   const cancelledLesson = pastLessons[0]
@@ -471,12 +484,22 @@ async function run() {
   )
   const emeryBoardLastMonthCharge = await generateChargeForMonth(emeryBoardAgreement.id, DEV_BARN_ID, lastMonth, supabase)
 
+  // mark_agreement_charge_paid has no service-role escape hatch (interactive-only RPC,
+  // see ARCHITECTURE.md) so this seed script can't call it — raw updates to both tables
+  // instead, mirroring what the RPC itself would write.
   mustSucceed(
     await supabase
       .from('agreement_charges')
       .update({ payment_type: 'zelle' })
       .in('id', [boardLastMonthCharge.id, leaseLastMonthCharge.id, emeryBoardLastMonthCharge.id]),
     'mark last-month agreement charges paid'
+  )
+  mustSucceed(
+    await supabase
+      .from('transactions')
+      .update({ collected: true, payment_type: 'zelle' })
+      .in('agreement_charge_id', [boardLastMonthCharge.id, leaseLastMonthCharge.id, emeryBoardLastMonthCharge.id]),
+    'mark last-month agreement-charge transactions collected'
   )
 
   const expenseSeeds = buildExpenseSeeds(now)

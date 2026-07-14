@@ -29,6 +29,7 @@ const mockLesson: LessonWithDetails = {
   rider_ids: ['rider-mem-1'],
   rider_count: 1,
   rider_cancelled_ats: [null],
+  needs_attention: false,
 }
 
 describe('OlderLessonsToggle', () => {
@@ -43,7 +44,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByRole('button', { name: /show older lessons/i })).toBeNull()
@@ -56,7 +56,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     expect(screen.getByRole('button', { name: /show older lessons/i })).toBeDefined()
@@ -69,7 +68,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     expect(screen.queryByText('Comet')).toBeNull()
@@ -82,7 +80,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -96,7 +93,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -111,7 +107,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -126,7 +121,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -140,7 +134,6 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -155,63 +148,19 @@ describe('OlderLessonsToggle', () => {
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.getByText('Bob')).toBeDefined()
   })
 
-  it('should_not_show_cancel_link_when_not_manager_or_trainer', () => {
-    render(
-      <OlderLessonsToggle
-        lessons={[mockLesson]}
-        slug="green-acres"
-        isManager={false}
-        isTrainer={false}
-        currentMembershipId="user-1"
-      />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
-    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
-  })
-
-  it('should_show_cancel_link_for_manager_on_eligible_lesson', () => {
+  it('should_never_show_cancel_link_regardless_of_role', () => {
     render(
       <OlderLessonsToggle
         lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' }]}
         slug="green-acres"
         isManager={true}
         isTrainer={false}
-        currentMembershipId="user-1"
-      />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
-    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
-  })
-
-  it('should_show_cancel_link_for_trainer_who_is_the_instructor', () => {
-    render(
-      <OlderLessonsToggle
-        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z', instructor_id: 'user-1' }]}
-        slug="green-acres"
-        isManager={false}
-        isTrainer={true}
-        currentMembershipId="user-1"
-      />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
-    expect(screen.getByRole('link', { name: 'Cancel' })).toBeDefined()
-  })
-
-  it('should_not_show_cancel_link_for_trainer_who_is_not_the_instructor', () => {
-    render(
-      <OlderLessonsToggle
-        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z', instructor_id: 'other-trainer' }]}
-        slug="green-acres"
-        isManager={false}
-        isTrainer={true}
-        currentMembershipId="user-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -221,15 +170,14 @@ describe('OlderLessonsToggle', () => {
   it('should_pass_viewer_membership_id_through_to_lesson_list_item', () => {
     render(
       <OlderLessonsToggle
-        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }]}
+        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }]}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
-        currentMembershipId="user-1"
         viewerMembershipId="viewer-mem-1"
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
-    expect(screen.getByRole('link', { name: 'Cancel' }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-old-1/cancel-rider/viewer-mem-1')
+    expect(screen.getByText('Cancelled')).toBeDefined()
   })
 })

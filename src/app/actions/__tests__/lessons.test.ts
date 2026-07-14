@@ -8,6 +8,7 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/lessons', () => ({
   cancelLesson: vi.fn(),
+  collectLessonPayment: vi.fn(),
   deleteLesson: vi.fn(),
   getLessonById: vi.fn(),
   updateLesson: vi.fn(),
@@ -55,7 +56,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { cancelLesson, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { cancelLesson, collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveManagerUserIds } from '@/lib/db/barn-memberships'
@@ -806,6 +807,7 @@ describe('cancelLessonAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getLessonById).mockReset()
     vi.mocked(cancelLesson).mockReset()
+    vi.mocked(cancelRiderParticipation).mockReset()
     vi.mocked(getActiveManagerUserIds).mockReset()
     vi.mocked(createNotification).mockReset()
     vi.mocked(createClient).mockReset()
@@ -815,6 +817,7 @@ describe('cancelLessonAction', () => {
       makeLessonDetail({ instructor_id: 'mem-instructor-1', lesson_at: futureIso, payment_type: null, cancelled_at: null }, [], 'instructor-1')
     )
     vi.mocked(cancelLesson).mockResolvedValue(undefined)
+    vi.mocked(cancelRiderParticipation).mockResolvedValue(false)
     vi.mocked(getActiveManagerUserIds).mockResolvedValue([])
     vi.mocked(createNotification).mockResolvedValue(undefined)
     vi.mocked(createClient).mockResolvedValue({} as any)
@@ -925,7 +928,7 @@ describe('cancelLessonAction', () => {
     expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, true)
   })
 
-  it('should_always_pass_is_late_false_for_group_lesson_regardless_of_cancel_type', async () => {
+  it('should_call_cancelLesson_for_group_lesson_when_cancel_type_is_instructor', async () => {
     const soonIso = new Date(Date.now() + 12 * 60 * 60 * 1000).toISOString()
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetail(
@@ -934,8 +937,80 @@ describe('cancelLessonAction', () => {
         'instructor-1'
       )
     )
-    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'instructor' }))
     expect(cancelLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', null, false)
+  })
+
+  it('should_delegate_to_cancelRiderParticipation_for_group_lesson_when_cancel_type_is_rider_with_valid_rider_id', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider', rider_id: 'rider-mem-1' }))
+    expect(cancelRiderParticipation).toHaveBeenCalledWith('lesson-1', 'barn-1', 'rider-mem-1', null, expect.any(Boolean))
+  })
+
+  it('should_not_call_cancelLesson_when_delegating_to_rider_cancellation', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider', rider_id: 'rider-mem-1' }))
+    expect(cancelLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_lesson_detail_after_delegated_rider_cancellation', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider', rider_id: 'rider-mem-1' }))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
+  })
+
+  it('should_not_call_cancelLesson_when_group_rider_selected_but_rider_id_missing', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(cancelLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_cancelRiderParticipation_when_group_rider_selected_but_rider_id_missing', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(cancelRiderParticipation).not.toHaveBeenCalled()
+  })
+
+  it('should_redirect_to_lesson_detail_when_group_rider_selected_but_rider_id_missing', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(
+      makeLessonDetailWithRiders(
+        { instructor_id: 'mem-instructor-1', lesson_type: 'group', lesson_at: futureIso, payment_type: null, cancelled_at: null },
+        [{ id: 'rider-mem-1', user_id: 'rider-user-1' }],
+        'instructor-1'
+      )
+    )
+    await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ cancel_type: 'rider' }))
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
   })
 
   it('should_notify_barn_managers_when_trainer_cancels', async () => {
@@ -997,9 +1072,9 @@ describe('cancelLessonAction', () => {
     )
   })
 
-  it('should_redirect_to_lessons_list_after_successful_cancellation', async () => {
+  it('should_redirect_to_lesson_detail_after_successful_cancellation', async () => {
     await cancelLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
-    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+    expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
   })
 })
 
@@ -1017,46 +1092,56 @@ describe('deleteLessonAction', () => {
   })
 
   it('should_require_manager_membership', async () => {
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
   })
 
   it('should_redirect_to_lessons_list_when_lesson_not_found', async () => {
     vi.mocked(getLessonById).mockResolvedValue(null)
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
   })
 
   it('should_not_call_deleteLesson_when_lesson_not_found', async () => {
     vi.mocked(getLessonById).mockResolvedValue(null)
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(deleteLesson).not.toHaveBeenCalled()
   })
 
   it('should_call_deleteLesson_for_an_upcoming_unpaid_lesson', async () => {
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
-    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', false)
   })
 
   it('should_call_deleteLesson_for_a_past_paid_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetail({ lesson_at: pastIso, payment_type: 'cash', cancelled_at: null })
     )
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
-    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', false)
   })
 
   it('should_call_deleteLesson_for_an_already_cancelled_lesson', async () => {
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetail({ lesson_at: pastIso, cancelled_at: '2026-01-01T00:00:00Z' })
     )
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
-    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1')
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', false)
   })
 
   it('should_redirect_to_lessons_list_after_successful_delete', async () => {
-    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1')
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+  })
+
+  it('should_pass_delete_collected_transactions_true_when_checkbox_is_checked', async () => {
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({ alsoDeleteTransactions: 'on' }))
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', true)
+  })
+
+  it('should_pass_delete_collected_transactions_false_when_checkbox_is_absent', async () => {
+    await deleteLessonAction('barn-1', 'barn-slug', 'lesson-1', makeFormData({}))
+    expect(deleteLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', false)
   })
 })
 
@@ -1278,6 +1363,12 @@ describe('cancelRiderParticipationAction', () => {
   })
 
   it('should_notify_instructor_when_rider_self_cancels', async () => {
+    // Regression coverage for #845: getLessonById used to resolve a null instructor_user_id
+    // for a rider caller (nested barn_memberships embed blocked by RLS), which silently
+    // dropped the instructor from resolveCancellationRecipients here. This action trusts
+    // whatever getLessonById resolves — it has no embed-based lookup of its own — so a
+    // non-null instructor_user_id (as getLessonById now correctly returns even for a rider
+    // caller, see lessons.test.ts) is sufficient to prove the instructor gets notified.
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
@@ -1887,8 +1978,10 @@ describe('updatePaymentTypeAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getLessonById).mockReset()
     vi.mocked(updateLesson).mockReset()
+    vi.mocked(collectLessonPayment).mockReset()
     guardAs(mockManagerMembership)
     vi.mocked(updateLesson).mockResolvedValue(mockLesson)
+    vi.mocked(collectLessonPayment).mockResolvedValue(undefined)
   })
 
   it('should_call_requireMembership_with_manager_and_trainer_roles', async () => {
@@ -1943,6 +2036,28 @@ describe('updatePaymentTypeAction', () => {
     vi.mocked(updateLesson).mockRejectedValue(new Error('db error'))
     const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
     expect(result).toEqual({ error: 'Failed to update payment type' })
+  })
+
+  it('should_call_collectLessonPayment_with_lesson_barn_and_payment_type', async () => {
+    await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
+    expect(collectLessonPayment).toHaveBeenCalledWith('lesson-1', 'barn-1', 'cash')
+  })
+
+  it('should_call_collectLessonPayment_with_null_payment_type', async () => {
+    await updatePaymentTypeAction('lesson-1', 'barn-slug', null)
+    expect(collectLessonPayment).toHaveBeenCalledWith('lesson-1', 'barn-1', null)
+  })
+
+  it('should_return_error_when_collectLessonPayment_throws', async () => {
+    vi.mocked(collectLessonPayment).mockRejectedValue(new Error('rpc error'))
+    const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
+    expect(result).toEqual({ error: 'Failed to update payment type' })
+  })
+
+  it('should_not_call_updateLesson_when_collectLessonPayment_throws', async () => {
+    vi.mocked(collectLessonPayment).mockRejectedValue(new Error('rpc error'))
+    await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
+    expect(updateLesson).not.toHaveBeenCalled()
   })
 })
 

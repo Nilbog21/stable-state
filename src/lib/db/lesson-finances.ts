@@ -3,11 +3,11 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './barn-memberships'
 import { resolveHorseNames } from './horses'
 import {
-  getLessonsForSummary,
+  getLessonFeeRows,
   getTierPricesByNames,
   getOutstandingLessonRows,
   getLessonJunctionRows,
-  getPaidLessonRows,
+  type LessonFeeRow,
 } from './lesson-finance-queries'
 import { getChargesForSummary, getPaidCharges } from './agreements'
 import { getTiersByBarn } from './lesson-tiers'
@@ -45,14 +45,14 @@ export const NO_HORSE_LABEL = 'No horse'
 export const NO_RIDER_LABEL = 'No rider'
 
 /**
- * Shared fold+cut+fallback pipeline: nets each row's own snapshotted instructor_cut
+ * Shared fold+cut+fallback pipeline: nets each row's own snapshotted instructorCut
  * once, splits the remainder across `key(row)`'s participant keys, and accumulates
  * rows with no keys under `fallbackLabel` instead of splitting. Single source of
  * cut-subtraction (via splitNetFee) and of "no participant" fallback accumulation
  * for all summary adapters below. The cut is read from each row rather than taken
  * as a shared parameter, since it's snapshotted per lesson at creation time.
  */
-export function computeGroupedIncome<T extends { fee: number; instructor_cut: number }>(
+export function computeGroupedIncome<T extends { fee: number; instructorCut: number }>(
   rows: T[],
   key: (row: T) => string[],
   fallbackLabel: string
@@ -65,7 +65,7 @@ export function computeGroupedIncome<T extends { fee: number; instructor_cut: nu
 
   for (const row of rows) {
     const keys = key(row)
-    const { netFee, splitAmount } = splitNetFee(row.fee, row.instructor_cut, keys.length || 1)
+    const { netFee, splitAmount } = splitNetFee(row.fee, row.instructorCut, keys.length || 1)
     if (!keys.length) {
       add(fallbackLabel, netFee)
       continue
@@ -104,9 +104,20 @@ function foldChargesCollected(charges: Pick<ChargeSummaryRow, 'fee' | 'payment_t
   return { count: paid.length, total: paid.reduce((sum, c) => sum + c.fee, 0) }
 }
 
+/**
+ * A collected row whose lesson was deleted (see getLessonFeeRows) has no junction
+ * rows left to attribute to a specific horse/rider/trainer drill-down — its income
+ * still counts in the summary totals above (via NO_HORSE_LABEL/NO_RIDER_LABEL/
+ * NO_INSTRUCTOR_LABEL) but is excluded from these per-entity detail pages, since
+ * there's no lesson left to link the row to.
+ */
+function hasLesson(row: LessonFeeRow): row is LessonFeeRow & { lessonId: string } {
+  return row.lessonId !== null
+}
+
 /** Shared body for getHorseIncomeDetail/getRiderIncomeDetail — per-lesson rows for a single target participant. */
 function computeDetailRows<P>(
-  lessons: { id: string; fee: number; lesson_at: string; instructor_cut: number }[],
+  lessons: { lessonId: string; fee: number; occurredAt: string; instructorCut: number }[],
   participantsByLessonId: (lessonId: string) => P[],
   getParticipantKey: (p: P) => string,
   targetId: string
@@ -114,11 +125,11 @@ function computeDetailRows<P>(
   const rows: { lessonId: string; lessonAt: string; fee: number; count: number; splitAmount: number }[] = []
 
   for (const lesson of lessons) {
-    const participants = participantsByLessonId(lesson.id)
+    const participants = participantsByLessonId(lesson.lessonId)
     if (!participants.some((p) => getParticipantKey(p) === targetId)) continue
     const count = participants.length
-    const { netFee, splitAmount } = splitNetFee(lesson.fee, lesson.instructor_cut, count)
-    rows.push({ lessonId: lesson.id, lessonAt: lesson.lesson_at, fee: netFee, count, splitAmount })
+    const { netFee, splitAmount } = splitNetFee(lesson.fee, lesson.instructorCut, count)
+    rows.push({ lessonId: lesson.lessonId, lessonAt: lesson.occurredAt, fee: netFee, count, splitAmount })
   }
 
   return rows
@@ -175,21 +186,21 @@ export async function getFinancialSummary(
   const supabase = await createClient()
   const now = new Date()
 
-  const [lessons, charges, activeTiers] = await Promise.all([
-    getLessonsForSummary(barnId, startDate, endDate, supabase),
+  const [rows, charges, activeTiers] = await Promise.all([
+    getLessonFeeRows(barnId, startDate, endDate, supabase),
     getChargesForSummary(barnId, startDate, endDate, supabase),
     getTiersByBarn(barnId),
   ])
 
-  const paidLessons = lessons.filter((l) => l.payment_type !== null)
-  const tierGroups = computeGroupedIncome(paidLessons, (l) => [l.tier_name || 'Custom'], 'Custom')
+  const paidLessons = rows.filter((r) => r.collected)
+  const tierGroups = computeGroupedIncome(paidLessons, (r) => [r.tierName || 'Custom'], 'Custom')
 
   let collectedIncome = 0
   for (const { total } of tierGroups.values()) collectedIncome += total
 
-  let pendingIncome = lessons
-    .filter((l) => l.payment_type === null && new Date(l.lesson_at) > now)
-    .reduce((sum, l) => sum + splitNetFee(l.fee, l.instructor_cut, 1).netFee, 0)
+  let pendingIncome = rows
+    .filter((r) => !r.collected && new Date(r.occurredAt) > now)
+    .reduce((sum, r) => sum + splitNetFee(r.fee, r.instructorCut, 1).netFee, 0)
 
   const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1)).toISOString().slice(0, 10)
 
@@ -207,13 +218,13 @@ export async function getFinancialSummary(
     for (const t of tiers) tierPrices.set(t.name, t.price)
   }
 
-  // Sum of each tier group's own paid lessons' snapshotted instructor_cut — tier
+  // Sum of each tier group's own paid lessons' snapshotted instructorCut — tier
   // grouping is always exactly one key per lesson, so this is a direct sum with
   // no split/double-count risk, unlike the by-horse/rider groupings above.
   const cutByTier = new Map<string, number>()
-  for (const l of paidLessons) {
-    const t = l.tier_name || 'Custom'
-    cutByTier.set(t, (cutByTier.get(t) ?? 0) + l.instructor_cut)
+  for (const r of paidLessons) {
+    const t = r.tierName || 'Custom'
+    cutByTier.set(t, (cutByTier.get(t) ?? 0) + r.instructorCut)
   }
 
   // Active tiers with no paid lessons this month still get a $0 row, so the full
@@ -229,7 +240,7 @@ export async function getFinancialSummary(
       lessonCount: count,
       subtotal: total,
       // tierGroups and cutByTier are both built from paidLessons with the same
-      // tier_name || 'Custom' key, so every tierGroups key has a cutByTier entry.
+      // tierName || 'Custom' key, so every tierGroups key has a cutByTier entry.
       instructorCut: cutByTier.get(tierName)!,
     })),
     ...zeroTierRows,
@@ -286,18 +297,22 @@ export async function getHorseIncomeSummary(
 ): Promise<HorseIncomeSummary[]> {
   const supabase = await createClient()
 
-  const [lessons, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id'], supabase) as Promise<{ id: string; fee: number; instructor_cut: number }[]>,
+  const [rows, charges] = await Promise.all([
+    getLessonFeeRows(barnId, startDate, endDate, supabase),
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
+  const lessons = rows.filter((r) => r.collected)
 
   let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
-    const lessonIds = lessons.map((l) => l.id)
+    // A deleted lesson's kept-around transaction has lessonId=null and no junction
+    // rows to find (lesson_horses cascades on delete) — excluded from the query,
+    // it naturally falls into NO_HORSE_LABEL below via `key`'s empty-array return.
+    const lessonIds = lessons.map((l) => l.lessonId).filter((id): id is string => id !== null)
     const lessonHorses = await getLessonJunctionRows('lesson_horses', 'horse_id', barnId, lessonIds, supabase)
     grouped = computeGroupedIncome(
       lessons,
-      (l) => lessonHorses.filter((lh) => lh.lesson_id === l.id).map((lh) => lh.horse_id),
+      (l) => lessonHorses.filter((lh) => lh.lesson_id === l.lessonId).map((lh) => lh.horse_id),
       NO_HORSE_LABEL
     )
   }
@@ -326,18 +341,21 @@ export async function getRiderIncomeSummary(
 ): Promise<RiderIncomeSummary[]> {
   const supabase = await createClient()
 
-  const [lessons, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id'], supabase) as Promise<{ id: string; fee: number; instructor_cut: number }[]>,
+  const [rows, charges] = await Promise.all([
+    getLessonFeeRows(barnId, startDate, endDate, supabase),
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
+  const lessons = rows.filter((r) => r.collected)
 
   let grouped = new Map<string, { total: number; count: number }>()
   if (lessons.length) {
-    const lessonIds = lessons.map((l) => l.id)
+    // See getHorseIncomeSummary above — a deleted lesson's orphaned transaction has
+    // no junction rows to find and falls into NO_RIDER_LABEL via `key`'s empty array.
+    const lessonIds = lessons.map((l) => l.lessonId).filter((id): id is string => id !== null)
     const lessonRiders = await getLessonJunctionRows('lesson_riders', 'rider_id', barnId, lessonIds, supabase)
     grouped = computeGroupedIncome(
       lessons,
-      (l) => lessonRiders.filter((lr) => lr.lesson_id === l.id).map((lr) => lr.rider_id),
+      (l) => lessonRiders.filter((lr) => lr.lesson_id === l.lessonId).map((lr) => lr.rider_id),
       NO_RIDER_LABEL
     )
   }
@@ -366,16 +384,15 @@ export async function getTrainerIncomeSummary(
 ): Promise<TrainerIncomeSummary[]> {
   const supabase = await createClient()
 
-  const [lessons, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['instructor_id'], supabase) as Promise<
-      { instructor_id: string | null; fee: number; instructor_cut: number }[]
-    >,
+  const [rows, charges] = await Promise.all([
+    getLessonFeeRows(barnId, startDate, endDate, supabase),
     getChargesForSummary(barnId, startDate, endDate, supabase),
   ])
+  const lessons = rows.filter((r) => r.collected)
 
   const grouped = computeGroupedIncome(
     lessons,
-    (l) => (l.instructor_id ? [l.instructor_id] : []),
+    (l) => (l.instructorId ? [l.instructorId] : []),
     NO_INSTRUCTOR_LABEL
   )
 
@@ -383,7 +400,7 @@ export async function getTrainerIncomeSummary(
   // mirrors getFinancialSummary's cutByTier direct-sum pattern above.
   const grossByTrainer = new Map<string, number>()
   for (const l of lessons) {
-    const k = l.instructor_id ? l.instructor_id : NO_INSTRUCTOR_LABEL
+    const k = l.instructorId ? l.instructorId : NO_INSTRUCTOR_LABEL
     grossByTrainer.set(k, (grossByTrainer.get(k) ?? 0) + l.fee)
   }
 
@@ -395,7 +412,7 @@ export async function getTrainerIncomeSummary(
     trainerName: r.name,
     totalIncome: r.totalIncome,
     // grouped and grossByTrainer are both built from the same lessons array with the
-    // same instructor_id-or-fallback key, so every grouped key has a grossByTrainer entry.
+    // same instructorId-or-fallback key, so every grouped key has a grossByTrainer entry.
     grossIncome: grossByTrainer.get(r.id)!,
   }))
 
@@ -415,21 +432,20 @@ export async function getHorseIncomeDetail(
 ): Promise<{ horseName: string; rows: HorseIncomeDetailRow[]; chargeRows: HorseChargeDetailRow[]; total: number }> {
   const supabase = await createClient()
 
-  const [lessonsData, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id', 'lesson_at'], supabase) as Promise<
-      { id: string; fee: number; lesson_at: string; instructor_cut: number }[]
-    >,
+  const [rows, charges] = await Promise.all([
+    getLessonFeeRows(barnId, startDate, endDate, supabase),
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
+  const lessonsData = rows.filter((r) => r.collected).filter(hasLesson)
 
   const horseNameMap = await resolveHorseNames([horseId], barnId, supabase)
   const horseName = horseNameMap.get(horseId) ?? horseId
 
-  let rows: HorseIncomeDetailRow[] = []
+  let detailRows: HorseIncomeDetailRow[] = []
   if (lessonsData.length) {
-    const lessonIds = lessonsData.map((l) => l.id)
+    const lessonIds = lessonsData.map((l) => l.lessonId)
     const lessonHorses = await getLessonJunctionRows('lesson_horses', 'horse_id', barnId, lessonIds, supabase)
-    rows = computeDetailRows(
+    detailRows = computeDetailRows(
       lessonsData,
       (lessonId) => lessonHorses.filter((lh) => lh.lesson_id === lessonId),
       (lh) => lh.horse_id,
@@ -441,8 +457,8 @@ export async function getHorseIncomeDetail(
     .filter((c) => c.horseId === horseId)
     .map((c) => ({ chargeId: c.chargeId, agreementId: c.agreementId, period: c.period, kind: c.kind, fee: c.fee }))
 
-  const total = rows.reduce((sum, r) => sum + r.splitAmount, 0) + chargeRows.reduce((sum, r) => sum + r.fee, 0)
-  return { horseName, rows, chargeRows, total }
+  const total = detailRows.reduce((sum, r) => sum + r.splitAmount, 0) + chargeRows.reduce((sum, r) => sum + r.fee, 0)
+  return { horseName, rows: detailRows, chargeRows, total }
 }
 
 export async function getRiderIncomeDetail(
@@ -453,21 +469,20 @@ export async function getRiderIncomeDetail(
 ): Promise<{ riderName: string; rows: RiderIncomeDetailRow[]; chargeRows: RiderChargeDetailRow[]; total: number }> {
   const supabase = await createClient()
 
-  const [lessonsData, charges] = await Promise.all([
-    getPaidLessonRows(barnId, startDate, endDate, ['id', 'lesson_at'], supabase) as Promise<
-      { id: string; fee: number; lesson_at: string; instructor_cut: number }[]
-    >,
+  const [rows, charges] = await Promise.all([
+    getLessonFeeRows(barnId, startDate, endDate, supabase),
     getPaidCharges(barnId, startDate, endDate, supabase),
   ])
+  const lessonsData = rows.filter((r) => r.collected).filter(hasLesson)
 
   const memberNameMap = await resolveMemberNames([riderId], barnId, supabase)
   const riderName = memberNameMap.get(riderId) ?? riderId
 
-  let rows: RiderIncomeDetailRow[] = []
+  let detailRows: RiderIncomeDetailRow[] = []
   if (lessonsData.length) {
-    const lessonIds = lessonsData.map((l) => l.id)
+    const lessonIds = lessonsData.map((l) => l.lessonId)
     const lessonRiders = await getLessonJunctionRows('lesson_riders', 'rider_id', barnId, lessonIds, supabase)
-    rows = computeDetailRows(
+    detailRows = computeDetailRows(
       lessonsData,
       (lessonId) => lessonRiders.filter((lr) => lr.lesson_id === lessonId),
       (lr) => lr.rider_id,
@@ -479,8 +494,8 @@ export async function getRiderIncomeDetail(
     .filter((c) => c.riderId === riderId)
     .map((c) => ({ chargeId: c.chargeId, agreementId: c.agreementId, period: c.period, kind: c.kind, fee: c.fee }))
 
-  const total = rows.reduce((sum, r) => sum + r.splitAmount, 0) + chargeRows.reduce((sum, r) => sum + r.fee, 0)
-  return { riderName, rows, chargeRows, total }
+  const total = detailRows.reduce((sum, r) => sum + r.splitAmount, 0) + chargeRows.reduce((sum, r) => sum + r.fee, 0)
+  return { riderName, rows: detailRows, chargeRows, total }
 }
 
 export async function getTrainerIncomeDetail(
@@ -491,8 +506,8 @@ export async function getTrainerIncomeDetail(
 ): Promise<{ trainerName: string; rows: TrainerIncomeDetailRow[]; total: number }> {
   const supabase = await createClient()
 
-  const lessonsData = await getPaidLessonRows(barnId, startDate, endDate, ['id', 'lesson_at', 'instructor_id'], supabase) as
-    { id: string; fee: number; lesson_at: string; instructor_cut: number; instructor_id: string | null }[]
+  const rows = await getLessonFeeRows(barnId, startDate, endDate, supabase)
+  const lessonsData = rows.filter((r) => r.collected).filter(hasLesson)
 
   const memberNameMap = await resolveMemberNames([trainerId], barnId, supabase)
   const trainerName = memberNameMap.get(trainerId) ?? trainerId
@@ -500,10 +515,10 @@ export async function getTrainerIncomeDetail(
   // No junction table for instructor (single lessons.instructor_id column, not a
   // many-to-many like lesson_riders/lesson_horses), so each matching lesson's
   // full net fee goes to this trainer — no split.
-  const rows: TrainerIncomeDetailRow[] = lessonsData
-    .filter((l) => l.instructor_id === trainerId)
-    .map((l) => ({ lessonId: l.id, lessonAt: l.lesson_at, fee: l.fee - l.instructor_cut }))
+  const detailRows: TrainerIncomeDetailRow[] = lessonsData
+    .filter((l) => l.instructorId === trainerId)
+    .map((l) => ({ lessonId: l.lessonId, lessonAt: l.occurredAt, fee: l.fee - l.instructorCut }))
 
-  const total = rows.reduce((sum, r) => sum + r.fee, 0)
-  return { trainerName, rows, total }
+  const total = detailRows.reduce((sum, r) => sum + r.fee, 0)
+  return { trainerName, rows: detailRows, total }
 }

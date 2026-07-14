@@ -126,7 +126,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_call_notFound_when_rider_is_not_enrolled_in_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } }],
@@ -159,7 +159,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_dash_for_null_horse_name_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: null }],
@@ -170,7 +170,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_dash_in_horses_section_when_lesson_has_no_horses', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_horses: [] })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -246,7 +246,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_riders_as_list_items_for_group_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -344,7 +344,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_not_show_edit_link_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
@@ -355,6 +355,30 @@ describe('LessonDetailPage', () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByRole('link', { name: /edit/i })).toBeNull()
+  })
+
+  it('should_show_header_cancel_link_for_manager_linking_to_cancel_page', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /^cancel$/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/lessons/lesson-1/cancel')
+    expect(link.href).not.toContain('/cancel-rider/')
+  })
+
+  it('should_show_header_cancel_link_for_instructing_trainer_linking_to_cancel_page', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /^cancel$/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/lessons/lesson-1/cancel')
+    expect(link.href).not.toContain('/cancel-rider/')
+  })
+
+  it('should_not_show_header_cancel_link_for_trainer_viewing_a_lesson_they_do_not_instruct', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, instructor_id: 'other-trainer-membership' })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /^cancel$/i })).toBeNull()
   })
 
   it('should_show_delete_button_for_manager', async () => {
@@ -372,12 +396,36 @@ describe('LessonDetailPage', () => {
     expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
   })
 
-  it('should_show_delete_button_for_manager_on_a_past_paid_lesson', async () => {
+  it('should_show_delete_confirmation_link_instead_of_delete_button_for_manager_on_a_paid_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: 'cash' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
+    expect(screen.queryByTestId('delete-lesson-button')).toBeNull()
+  })
+
+  it('should_link_to_the_delete_confirmation_page_for_manager_on_a_paid_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: 'cash' as const })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /delete/i }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/delete')
+  })
+
+  it('should_show_bare_delete_button_for_manager_on_an_unpaid_past_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: null })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
     expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
+  })
+
+  it('should_link_to_the_delete_confirmation_page_for_manager_on_a_zero_fee_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /delete/i }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/delete')
   })
 
   it('should_not_show_delete_button_for_trainer', async () => {
@@ -387,7 +435,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_not_show_delete_button_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByTestId('delete-lesson-button')).toBeNull()
@@ -420,7 +468,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_not_show_horse_notes_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('watch left lead')).toBeNull()
@@ -495,21 +543,21 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_rider_own_notes_readonly_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('good position')).toBeDefined()
   })
 
   it('should_not_show_private_notes_for_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('struggling with confidence')).toBeNull()
   })
 
   it('should_not_show_other_riders_notes_for_rider_in_group_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -524,7 +572,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_own_notes_for_rider_in_group_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -539,7 +587,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_dash_for_null_rider_name_in_group_lesson_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -564,6 +612,43 @@ describe('LessonDetailPage', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
+  it('should_show_inactive_badge_next_to_inactive_horse', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Willow', is_active: false, is_available: true } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Inactive')).toBeDefined()
+  })
+
+  it('should_show_unavailable_badge_next_to_unavailable_horse', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: true, is_available: false } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Unavailable')).toBeDefined()
+  })
+
+  it('should_show_inactive_badge_not_unavailable_when_horse_is_both', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Willow', is_active: false, is_available: false } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Unavailable')).toBeNull()
+  })
+
+  it('should_not_show_status_badge_for_active_available_horse', async () => {
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Inactive')).toBeNull()
+    expect(screen.queryByText('Unavailable')).toBeNull()
+  })
+
   it('should_hide_horse_notes_label_when_horse_notes_is_null', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
@@ -575,7 +660,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_hide_your_notes_label_when_rider_notes_is_null_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
@@ -586,7 +671,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_keep_cancel_link_when_rider_notes_is_null_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
@@ -624,15 +709,7 @@ describe('LessonDetailPage', () => {
     expect(screen.queryByText('Unpaid')).toBeNull()
   })
 
-  it('should_show_cancel_link_next_to_non_cancelled_rider_for_manager', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
-    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
-    render(jsx)
-    const link = screen.getByRole('link', { name: /^cancel$/i }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/lessons/lesson-1/cancel-rider/rider-1')
-  })
-
-  it('should_hide_cancel_link_for_ineligible_non_cancelled_rider', async () => {
+  it('should_hide_header_cancel_link_when_lesson_ineligible', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
@@ -656,7 +733,7 @@ describe('LessonDetailPage', () => {
     expect(screen.queryByText('Cancelled')).toBeNull()
   })
 
-  it('should_show_cancel_link_next_to_non_cancelled_rider_for_manager_in_group_lesson', async () => {
+  it('should_show_exactly_one_header_cancel_link_for_manager_in_group_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
@@ -668,7 +745,7 @@ describe('LessonDetailPage', () => {
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
-    expect(screen.getAllByRole('link', { name: /^cancel$/i })).toHaveLength(2)
+    expect(screen.getAllByRole('link', { name: /^cancel$/i })).toHaveLength(1)
   })
 
   it('should_show_cancelled_badge_next_to_cancelled_rider_for_manager', async () => {
@@ -682,18 +759,7 @@ describe('LessonDetailPage', () => {
     expect(screen.getByText('Cancelled')).toBeDefined()
   })
 
-  it('should_not_show_cancel_link_for_already_cancelled_rider', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
-    vi.mocked(getLessonById).mockResolvedValue({
-      ...mockLessonDetail,
-      lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z' }],
-    })
-    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
-    render(jsx)
-    expect(screen.queryByRole('link', { name: /^cancel$/i })).toBeNull()
-  })
-
-  it('should_not_show_per_rider_cancel_link_when_whole_lesson_is_cancelled', async () => {
+  it('should_not_show_any_cancel_link_when_whole_lesson_is_cancelled', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, cancelled_at: '2026-01-01T00:00:00Z' })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -702,7 +768,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_cancel_link_for_own_participation_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     const link = screen.getByRole('link', { name: /^cancel$/i }) as HTMLAnchorElement
@@ -710,7 +776,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_cancelled_badge_for_own_cancelled_participation_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z' }],
@@ -721,7 +787,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_not_show_cancel_link_for_rider_when_own_participation_already_cancelled', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z' }],
@@ -785,7 +851,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_own_cancellation_notes_for_rider_role', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_riders: [{ ...mockLessonDetail.lesson_riders[0], cancelled_at: '2026-01-01T00:00:00Z', cancellation_notes: 'called in sick' }],
@@ -808,7 +874,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_own_cancellation_notes_for_rider_role_in_group_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -820,7 +886,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_other_riders_cancellation_notes_for_rider_role_in_group_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -835,7 +901,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_not_show_other_riders_notes_when_not_cancelled_for_rider_role_in_group_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -862,7 +928,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_hide_own_cancellation_notes_label_when_null_in_group_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       lesson_type: 'group' as const,
@@ -898,7 +964,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_render_readonly_cancellation_notes_for_rider_on_cancelled_lesson', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       cancelled_at: '2026-01-01T00:00:00Z',
@@ -910,7 +976,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_hide_cancellation_notes_row_for_rider_when_lesson_cancellation_notes_is_null', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'rider' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
       cancelled_at: '2026-01-01T00:00:00Z',

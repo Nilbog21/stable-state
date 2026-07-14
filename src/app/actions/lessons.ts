@@ -1,7 +1,7 @@
 'use server'
 
 import { requireMembership } from '@/lib/auth/guard'
-import { cancelLesson, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { cancelLesson, collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import type { NotificationType, PaymentType } from '@/lib/db/types'
@@ -157,9 +157,9 @@ export async function cancelLessonAction(
   lessonId: string,
   formData: FormData
 ): Promise<void> {
-  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -173,6 +173,15 @@ export async function cancelLessonAction(
   const isEligible = lesson.cancelled_at === null && isLessonCancellationEligible(lesson)
   if (!isEligible) {
     redirect(`/barn/${barnSlug}/lessons`)
+    return
+  }
+
+  if (lesson.lesson_type === 'group' && formData.get('cancel_type') === 'rider') {
+    const riderId = formData.get('rider_id')
+    if (typeof riderId === 'string' && riderId) {
+      return cancelRiderParticipationAction(barnId, barnSlug, lessonId, riderId, formData)
+    }
+    redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return
   }
 
@@ -204,23 +213,25 @@ export async function cancelLessonAction(
     sendNotificationViaRpc
   )
 
-  redirect(`/barn/${barnSlug}/lessons`)
+  redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
 }
 
 export async function deleteLessonAction(
   barnId: string,
   barnSlug: string,
-  lessonId: string
+  lessonId: string,
+  formData: FormData
 ): Promise<void> {
-  const { user, membership } = await requireMembership(barnSlug, ['manager'])
+  const { membership } = await requireMembership(barnSlug, ['manager'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
   }
 
-  await deleteLesson(lessonId, barnId)
+  const deleteCollectedTransactions = formData.get('alsoDeleteTransactions') === 'on'
+  await deleteLesson(lessonId, barnId, deleteCollectedTransactions)
   redirect(`/barn/${barnSlug}/lessons`)
 }
 
@@ -233,7 +244,7 @@ export async function cancelRiderParticipationAction(
 ): Promise<void> {
   const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, user.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return
@@ -333,6 +344,7 @@ export async function updatePaymentTypeAction(
   }
 
   try {
+    await collectLessonPayment(lessonId, barn.id, paymentType as PaymentType | null)
     await updateLesson(lessonId, barn.id, { payment_type: paymentType as PaymentType | null })
   } catch {
     return { error: 'Failed to update payment type' }

@@ -1,5 +1,4 @@
 import { Card } from '@/components/ui/Card'
-import { Button } from '@/components/ui/Button'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 interface Props {
@@ -7,32 +6,20 @@ interface Props {
   slug: string
   isManager: boolean
   isTrainer: boolean
-  currentMembershipId: string
   viewerMembershipId?: string
 }
 
-export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMembershipId, viewerMembershipId }: Props) {
+export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembershipId }: Props) {
   const isCancelled = lesson.cancelled_at !== null
-  const canManageLesson = isManager || (isTrainer && lesson.instructor_id === currentMembershipId)
-  const canCancel =
-    canManageLesson &&
-    !isCancelled &&
-    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
+  const needsAttention = !isCancelled && lesson.needs_attention && new Date(lesson.lesson_at) > new Date()
 
   const myRiderIndex = viewerMembershipId ? lesson.rider_ids.indexOf(viewerMembershipId) : -1
   const myCancelledAt = myRiderIndex >= 0 ? lesson.rider_cancelled_ats[myRiderIndex] : null
   const isOwnParticipationCancelled = myCancelledAt !== null
-  const canCancelOwnParticipation =
-    !isManager &&
-    !isTrainer &&
-    myRiderIndex >= 0 &&
-    !isCancelled &&
-    !isOwnParticipationCancelled &&
-    (new Date(lesson.lesson_at) > new Date() || lesson.payment_type === null)
 
   return (
-    <li className="flex items-center gap-2">
-      <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="flex-1 flex flex-col gap-1 p-4">
+    <li>
+      <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 p-4">
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
           {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(lesson.lesson_at))}
         </span>
@@ -65,18 +52,11 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, currentMemb
           {!isCancelled && lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
             <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
           )}
+          {needsAttention && (
+            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Needs Attention</span>
+          )}
         </span>
       </Card>
-      {canCancel && (
-        <Button href={`/barn/${slug}/lessons/${lesson.id}/cancel`} variant="danger">
-          Cancel
-        </Button>
-      )}
-      {canCancelOwnParticipation && (
-        <Button href={`/barn/${slug}/lessons/${lesson.id}/cancel-rider/${viewerMembershipId}`} variant="danger">
-          Cancel
-        </Button>
-      )}
     </li>
   )
 }

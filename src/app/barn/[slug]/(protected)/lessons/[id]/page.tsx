@@ -9,31 +9,12 @@ import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-auth
 import { DeleteLessonButton } from '../DeleteLessonButton'
 import { deleteLessonAction } from '@/app/actions/lessons'
 
-function RiderParticipationAction({
-  slug,
-  lessonId,
-  riderId,
-  cancelledAt,
-  eligible,
-}: {
-  slug: string
-  lessonId: string
-  riderId: string
-  cancelledAt: string | null
-  eligible: boolean
-}) {
-  if (cancelledAt !== null) {
-    return (
-      <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
-        Cancelled
-      </span>
-    )
-  }
-  if (!eligible) return null
+function RiderStatusBadge({ cancelledAt }: { cancelledAt: string | null }) {
+  if (cancelledAt === null) return null
   return (
-    <Button href={`/barn/${slug}/lessons/${lessonId}/cancel-rider/${riderId}`} variant="danger">
-      Cancel
-    </Button>
+    <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
+      Cancelled
+    </span>
   )
 }
 
@@ -72,31 +53,17 @@ function RiderNotesBlock({
 }
 
 function OwnRiderNotesBlock({
-  slug,
-  lessonId,
   myRiderEntry,
-  showOwnRiderAction,
-  eligible,
+  showOwnRiderBadge,
 }: {
-  slug: string
-  lessonId: string
   myRiderEntry: LessonDetail['lesson_riders'][number]
-  showOwnRiderAction: boolean
-  eligible: boolean
+  showOwnRiderBadge: boolean
 }) {
   return (
     <div className="mt-2">
       <div className={`flex items-center gap-2 ${myRiderEntry.rider_notes ? 'justify-between' : 'justify-end'}`}>
         {myRiderEntry.rider_notes && <p className="text-xs font-medium text-zinc-500">Your Notes</p>}
-        {showOwnRiderAction && myRiderEntry.barn_membership?.id && (
-          <RiderParticipationAction
-            slug={slug}
-            lessonId={lessonId}
-            riderId={myRiderEntry.barn_membership.id}
-            cancelledAt={myRiderEntry.cancelled_at}
-            eligible={eligible}
-          />
-        )}
+        {showOwnRiderBadge && <RiderStatusBadge cancelledAt={myRiderEntry.cancelled_at} />}
       </div>
       {myRiderEntry.rider_notes && (
         <p className="text-sm text-zinc-900 dark:text-zinc-50">{myRiderEntry.rider_notes}</p>
@@ -130,7 +97,7 @@ export default async function LessonDetailPage({
   }
 
   const role = membership.role
-  const lesson = await getLessonById(id, barn.id, role, user.id)
+  const lesson = await getLessonById(id, barn.id, role, membership.id)
 
   if (!lesson) {
     notFound()
@@ -147,7 +114,7 @@ export default async function LessonDetailPage({
   const canSeeNotes = role === 'trainer' || role === 'manager'
 
   const myRiderEntry = role === 'rider'
-    ? lesson.lesson_riders.find((lr) => lr.barn_membership?.user_id === user.id) ?? null
+    ? lesson.lesson_riders.find((lr) => lr.barn_membership?.id === membership.id) ?? null
     : null
 
   if (role === 'rider' && myRiderEntry === null) {
@@ -158,6 +125,15 @@ export default async function LessonDetailPage({
   const canManage = canManageLesson(role, membership.id, lesson)
   const showManagerRiderActions = lesson.cancelled_at === null && canManage
   const showOwnRiderAction = lesson.cancelled_at === null && role === 'rider'
+
+  const canCancelWhole = canManage && lesson.cancelled_at === null && lessonEligibleWindow
+  const canCancelOwn =
+    role === 'rider' &&
+    myRiderEntry !== null &&
+    myRiderEntry.barn_membership?.id != null &&
+    lesson.cancelled_at === null &&
+    myRiderEntry.cancelled_at === null &&
+    lessonEligibleWindow
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -192,8 +168,20 @@ export default async function LessonDetailPage({
                 Edit
               </Button>
             )}
+            {canCancelWhole && (
+              <Button href={`/barn/${slug}/lessons/${lesson.id}/cancel`} variant="danger">
+                Cancel
+              </Button>
+            )}
+            {canCancelOwn && myRiderEntry?.barn_membership?.id && (
+              <Button href={`/barn/${slug}/lessons/${lesson.id}/cancel-rider/${myRiderEntry.barn_membership.id}`} variant="danger">
+                Cancel
+              </Button>
+            )}
             {role === 'manager' && (
-              <DeleteLessonButton action={deleteLessonAction.bind(null, barn.id, slug, lesson.id)} />
+              lesson.fee === 0 || lesson.payment_type !== null
+                ? <Button href={`/barn/${slug}/lessons/${lesson.id}/delete`} variant="danger">Delete</Button>
+                : <DeleteLessonButton action={deleteLessonAction.bind(null, barn.id, slug, lesson.id)} />
             )}
           </div>
         </div>
@@ -220,7 +208,12 @@ export default async function LessonDetailPage({
                   {lesson.lesson_horses.map((lh, i) => (
                     <li key={lh.horses?.id ?? i}>
                       <span>{lh.horses?.name ?? '—'}</span>{' '}
-                      <span className="text-zinc-500">(exertion {lh.exertion_level})</span>
+                      <span className="text-zinc-500">(exertion {lh.exertion_level})</span>{' '}
+                      {lh.horses?.is_active === false ? (
+                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Inactive</span>
+                      ) : lh.horses?.is_available === false ? (
+                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unavailable</span>
+                      ) : null}
                       {canSeeNotes && lh.horses?.id && lh.horse_notes && (
                         <div className="mt-1">
                           <p className="text-xs font-medium text-zinc-500">Horse Notes</p>
@@ -244,13 +237,7 @@ export default async function LessonDetailPage({
                         <div className="flex items-center justify-between gap-2">
                           <span>{lr.barn_membership?.name ?? '—'}</span>
                           {showManagerRiderActions && lr.barn_membership?.id && (
-                            <RiderParticipationAction
-                              slug={slug}
-                              lessonId={lesson.id}
-                              riderId={lr.barn_membership.id}
-                              cancelledAt={lr.cancelled_at}
-                              eligible={lessonEligibleWindow}
-                            />
+                            <RiderStatusBadge cancelledAt={lr.cancelled_at} />
                           )}
                         </div>
                         <RiderNotesBlock lr={lr} canSeeNotes={canSeeNotes} />
@@ -259,11 +246,8 @@ export default async function LessonDetailPage({
                   </ul>
                   {role === 'rider' && myRiderEntry && (
                     <OwnRiderNotesBlock
-                      slug={slug}
-                      lessonId={lesson.id}
                       myRiderEntry={myRiderEntry}
-                      showOwnRiderAction={showOwnRiderAction}
-                      eligible={lessonEligibleWindow}
+                      showOwnRiderBadge={showOwnRiderAction}
                     />
                   )}
                 </>
@@ -274,13 +258,7 @@ export default async function LessonDetailPage({
                       <div className="flex items-center justify-between gap-2">
                         <span>{lr.barn_membership?.name ?? '—'}</span>
                         {showManagerRiderActions && lr.barn_membership?.id && (
-                          <RiderParticipationAction
-                            slug={slug}
-                            lessonId={lesson.id}
-                            riderId={lr.barn_membership.id}
-                            cancelledAt={lr.cancelled_at}
-                            eligible={lessonEligibleWindow}
-                          />
+                          <RiderStatusBadge cancelledAt={lr.cancelled_at} />
                         )}
                       </div>
                       <RiderNotesBlock lr={lr} canSeeNotes={canSeeNotes} />
@@ -288,11 +266,8 @@ export default async function LessonDetailPage({
                   ))}
                   {role === 'rider' && myRiderEntry && (
                     <OwnRiderNotesBlock
-                      slug={slug}
-                      lessonId={lesson.id}
                       myRiderEntry={myRiderEntry}
-                      showOwnRiderAction={showOwnRiderAction}
-                      eligible={lessonEligibleWindow}
+                      showOwnRiderBadge={showOwnRiderAction}
                     />
                   )}
                 </div>

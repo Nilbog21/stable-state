@@ -6,6 +6,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { cancelLessonAction } from '@/app/actions/lessons'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible, isInstructorOfLesson } from '@/lib/lesson-authorization'
+import { CancelLessonFields } from './CancelLessonFields'
 
 export default async function CancelLessonPage({
   params,
@@ -24,7 +25,7 @@ export default async function CancelLessonPage({
   if (membership.role !== 'manager' && membership.role !== 'trainer') notFound()
 
   const role = membership.role as 'manager' | 'trainer'
-  const lesson = await getLessonById(id, barn.id, role, user.id)
+  const lesson = await getLessonById(id, barn.id, role, membership.id)
   if (!lesson) notFound()
   if (role === 'trainer' && !canManageLesson(role, membership.id, lesson)) notFound()
 
@@ -34,10 +35,14 @@ export default async function CancelLessonPage({
   const cancel = cancelLessonAction.bind(null, barn.id, slug, lesson.id)
   const cancelledByInstructorDefault = isInstructorOfLesson(membership.id, lesson)
 
-  const activeRiders = lesson.lesson_riders.filter((lr) => lr.cancelled_at === null)
-  const activeRiderNames = activeRiders
+  const activeLessonRiders = lesson.lesson_riders.filter((lr) => lr.cancelled_at === null)
+  const activeRiderNames = activeLessonRiders
     .map((lr) => lr.barn_membership?.name)
     .filter((name): name is string => Boolean(name))
+  const pickerRiders = activeLessonRiders
+    .filter((lr): lr is typeof lr & { barn_membership: NonNullable<typeof lr.barn_membership> } => Boolean(lr.barn_membership))
+    .map((lr) => ({ id: lr.barn_membership.id, name: lr.barn_membership.name }))
+  const groupInstructorDescription = `This will mark the lesson as cancelled and zero out its fee for ${activeLessonRiders.length} enrolled rider${activeLessonRiders.length === 1 ? '' : 's'}: ${activeRiderNames.join(', ')}. This cannot be undone.`
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
@@ -45,45 +50,18 @@ export default async function CancelLessonPage({
         <h1 className="mb-6 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
           Cancel Lesson
         </h1>
-        {lesson.lesson_type === 'group' ? (
-          <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
-            This will mark the lesson as cancelled and zero out its fee for {activeRiders.length} enrolled
-            rider{activeRiders.length === 1 ? '' : 's'}: {activeRiderNames.join(', ')}. This cannot be undone.
-          </p>
-        ) : (
+        {lesson.lesson_type === 'normal' && (
           <p className="mb-4 text-sm text-zinc-600 dark:text-zinc-400">
             This will mark the lesson as cancelled. This cannot be undone.
           </p>
         )}
         <form action={cancel} className="flex flex-col gap-4">
-          {lesson.lesson_type === 'normal' && (
-            <fieldset className="flex flex-col gap-2">
-              <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Type</legend>
-              {cancelledByInstructorDefault ? (
-                <>
-                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                    <input type="radio" name="cancel_type" value="instructor" defaultChecked />
-                    Cancelled by Instructor
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                    <input type="radio" name="cancel_type" value="rider" />
-                    Cancelled by Rider
-                  </label>
-                </>
-              ) : (
-                <>
-                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                    <input type="radio" name="cancel_type" value="rider" defaultChecked />
-                    Cancelled by Rider
-                  </label>
-                  <label className="flex items-center gap-2 text-sm text-zinc-700 dark:text-zinc-300">
-                    <input type="radio" name="cancel_type" value="instructor" />
-                    Cancelled by Instructor
-                  </label>
-                </>
-              )}
-            </fieldset>
-          )}
+          <CancelLessonFields
+            lessonType={lesson.lesson_type}
+            cancelledByInstructorDefault={cancelledByInstructorDefault}
+            groupInstructorDescription={groupInstructorDescription}
+            pickerRiders={pickerRiders}
+          />
           <div className="flex flex-col gap-1">
             <label htmlFor="notes" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Cancellation notes (optional)
