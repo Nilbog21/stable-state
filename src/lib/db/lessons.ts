@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
-import { getUserMembership, resolveMemberNames } from './barn-memberships'
+import { getMembershipByIdForBarn, getUserMembership, resolveMemberNames } from './barn-memberships'
 import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
 
 export async function createLesson({
@@ -58,15 +58,14 @@ export async function getLessonsByBarn(
 export async function getLessonById(lessonId: string, barnId: string, role: Role, userId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, cancellation_notes, cancelled_at, barn_memberships ( id, user_id )'
-    : 'rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( id, user_id )'
+    ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
+    : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
       *,
       lesson_horses ( horse_notes, exertion_level, horses ( id, name, is_active, is_available ) ),
-      lesson_riders ( ${riderSelect} ),
-      instructor_membership:barn_memberships!lessons_barn_id_instructor_id_fkey ( user_id )
+      lesson_riders ( ${riderSelect} )
     `)
     .eq('id', lessonId)
     .eq('barn_id', barnId)
@@ -76,21 +75,21 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   if (!data) return null
 
   type RawLessonRider = {
+    rider_id: string
     rider_notes: string | null
     private_notes?: string | null
     cancellation_notes: string | null
     cancelled_at: string | null
-    barn_memberships: { id: string; user_id: string | null } | null
+    barn_memberships: { user_id: string | null } | null
   }
 
-  const { instructor_membership, ...lessonData } = data as typeof data & {
-    instructor_membership: { user_id: string | null } | null
-  }
+  const lessonData = data
 
   const rawRiders = lessonData.lesson_riders as RawLessonRider[]
-  const riderMembershipIds = rawRiders
-    .map((lr) => lr.barn_memberships?.id)
-    .filter((id): id is string => id != null)
+  // rider_id is a plain lesson_riders column, unlike the nested barn_memberships embed —
+  // PostgREST enforces barn_memberships RLS on that embed independently, which returns null
+  // for a co-rider's row when the caller is a rider (only barn_memberships_read_own applies).
+  const riderMembershipIds = rawRiders.map((lr) => lr.rider_id)
 
   // instructor_id is itself a barn_memberships.id, so it's resolved by the same batched call
   const instructorId = lessonData.instructor_id
@@ -101,7 +100,10 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   )
 
   const instructor_name = instructorId ? membershipMap.get(instructorId) ?? null : null
-  const instructor_user_id = instructor_membership?.user_id ?? null
+  // Same RLS gap as the rider embed above — resolved via getMembershipByIdForBarn's
+  // direct-query + RPC fallback instead of a nested instructor embed.
+  const instructorMembership = instructorId ? await getMembershipByIdForBarn(instructorId, barnId, supabase) : null
+  const instructor_user_id = instructorMembership?.user_id ?? null
 
   type NormalizedLr = {
     rider_notes: string | null
@@ -116,13 +118,11 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
     cancellation_notes: lr.cancellation_notes ?? null,
     cancelled_at: lr.cancelled_at ?? null,
-    barn_membership: lr.barn_memberships
-      ? {
-          id: lr.barn_memberships.id,
-          user_id: lr.barn_memberships.user_id,
-          name: membershipMap.get(lr.barn_memberships.id) ?? lr.barn_memberships.id,
-        }
-      : null,
+    barn_membership: {
+      id: lr.rider_id,
+      user_id: lr.barn_memberships?.user_id ?? null,
+      name: membershipMap.get(lr.rider_id) ?? lr.rider_id,
+    },
   })
 
   const base = {
