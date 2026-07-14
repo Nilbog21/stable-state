@@ -396,6 +396,14 @@ describe('LessonDetailPage', () => {
     expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
   })
 
+  it('should_link_to_the_delete_confirmation_page_for_manager_on_a_zero_fee_lesson', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /delete/i }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/delete')
+  })
+
   it('should_not_show_delete_button_for_trainer', async () => {
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)

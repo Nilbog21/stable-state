@@ -193,7 +193,7 @@ export default async function LessonDetailPage({
               </Button>
             )}
             {role === 'manager' && (
-              lesson.payment_type !== null
+              lesson.fee === 0 || lesson.payment_type !== null
                 ? <Button href={`/barn/${slug}/lessons/${lesson.id}/delete`} variant="danger">Delete</Button>
                 : <DeleteLessonButton action={deleteLessonAction.bind(null, barn.id, slug, lesson.id)} />
             )}

@@ -422,6 +422,19 @@ async function run() {
       await supabase.from('lessons').update({ payment_type: pt }).eq('barn_id', DEV_BARN_ID).in('id', ids),
       `update payment_type ${pt}`
     )
+    // #827: createLessonWithParticipants already created the paired lesson_fee/instructor_payout
+    // transaction rows (uncollected); collect_lesson_payment's own auth check would reject a
+    // service-role caller (auth.uid() is null), so mark them collected via a raw update instead,
+    // per scripts/CLAUDE.md's guidance for RPCs with auth checks that block service-role callers.
+    mustSucceed(
+      await supabase
+        .from('transactions')
+        .update({ collected: true, payment_type: pt })
+        .eq('barn_id', DEV_BARN_ID)
+        .in('lesson_id', ids)
+        .in('kind', ['lesson_fee', 'instructor_payout']),
+      `sync transactions collected for payment_type ${pt}`
+    )
   }
 
   const cancelledLesson = pastLessons[0]

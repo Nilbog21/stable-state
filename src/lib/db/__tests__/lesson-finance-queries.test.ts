@@ -132,6 +132,25 @@ describe('getLessonFeeRows', () => {
     ])
   })
 
+  it('should_merge_an_uncollected_lesson_fee_and_payout_row_with_a_nonzero_cut', async () => {
+    makeChain([
+      txRow({ kind: 'lesson_fee', amount: 60, collected: false, payment_type: null }),
+      txRow({ kind: 'instructor_payout', amount: -25, collected: false, payment_type: null, membership_id: 'mem-1' }),
+    ])
+    const result = await getLessonFeeRows('barn-1', startDate, endDate)
+    expect(result).toEqual([
+      {
+        lessonId: 'lesson-1',
+        fee: 60,
+        instructorCut: 25,
+        collected: false,
+        instructorId: 'mem-1',
+        occurredAt: '2026-05-10T10:00:00Z',
+        tierName: 'Standard',
+      },
+    ])
+  })
+
   it('should_default_instructor_cut_and_instructor_id_when_no_payout_row_exists', async () => {
     makeChain([txRow({ kind: 'lesson_fee', amount: 50, collected: false, payment_type: null })])
     const result = await getLessonFeeRows('barn-1', startDate, endDate)
