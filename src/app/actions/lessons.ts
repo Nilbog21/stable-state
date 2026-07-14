@@ -1,7 +1,7 @@
 'use server'
 
 import { requireMembership } from '@/lib/auth/guard'
-import { cancelLesson, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
+import { cancelLesson, collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import type { NotificationType, PaymentType } from '@/lib/db/types'
@@ -219,7 +219,8 @@ export async function cancelLessonAction(
 export async function deleteLessonAction(
   barnId: string,
   barnSlug: string,
-  lessonId: string
+  lessonId: string,
+  formData: FormData
 ): Promise<void> {
   const { membership } = await requireMembership(barnSlug, ['manager'])
 
@@ -229,7 +230,8 @@ export async function deleteLessonAction(
     return
   }
 
-  await deleteLesson(lessonId, barnId)
+  const deleteCollectedTransactions = formData.get('alsoDeleteTransactions') === 'on'
+  await deleteLesson(lessonId, barnId, deleteCollectedTransactions)
   redirect(`/barn/${barnSlug}/lessons`)
 }
 
@@ -342,6 +344,7 @@ export async function updatePaymentTypeAction(
   }
 
   try {
+    await collectLessonPayment(lessonId, barn.id, paymentType as PaymentType | null)
     await updateLesson(lessonId, barn.id, { payment_type: paymentType as PaymentType | null })
   } catch {
     return { error: 'Failed to update payment type' }

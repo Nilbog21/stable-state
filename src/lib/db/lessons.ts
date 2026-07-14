@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
 import { getMembershipByIdForBarn, getUserMembership, resolveMemberNames } from './barn-memberships'
 import { getProfileById } from './profiles'
-import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
+import type { Lesson, LessonDetail, LessonWithDetails, PaymentType, Role } from './types'
 
 export async function createLesson({
   barnId,
@@ -169,13 +169,24 @@ export async function cancelLesson(lessonId: string, barnId: string, notes?: str
   if (error) throw error
 }
 
-export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
+export async function deleteLesson(lessonId: string, barnId: string, deleteCollectedTransactions = false): Promise<void> {
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('lessons')
-    .delete()
-    .eq('id', lessonId)
-    .eq('barn_id', barnId)
+  const { error } = await supabase.rpc('delete_lesson_with_transactions', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+    p_delete_collected: deleteCollectedTransactions,
+  })
+
+  if (error) throw error
+}
+
+export async function collectLessonPayment(lessonId: string, barnId: string, paymentType: PaymentType | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('collect_lesson_payment', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+    p_payment_type: paymentType,
+  })
 
   if (error) throw error
 }
