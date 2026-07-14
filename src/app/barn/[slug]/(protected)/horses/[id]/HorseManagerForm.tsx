@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import type { Horse } from '@/lib/db/types'
+import { useActionState, useState } from 'react'
+import type { Barn, Horse } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
 import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
 
@@ -21,22 +21,57 @@ const PILL_LABELS: { value: Status; label: string }[] = [
 
 export function HorseManagerForm({
   horse,
+  barn,
   action,
 }: {
   horse: Horse
-  action: (formData: FormData) => Promise<{ error: string | null }>
+  barn: Barn
+  action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
   const { show, flash } = useSaveFlash()
+  // React 19 resets the DOM's `checked`/`value` properties on uncontrolled form
+  // fields to their mount-time value after a successful form action, without
+  // re-syncing controlled props (#762 review) — remounting the inputs on every
+  // successful save forces React to reapply the real current value.
+  const [saveCount, setSaveCount] = useState(0)
+  // Sourced from the submitted FormData, not the `horse` prop — Next.js's
+  // revalidatePath-driven prop refresh isn't guaranteed to land before this
+  // continuation runs, so reading post-save values off `horse` here would
+  // remount the inputs with the *previous* save's values (#759 testIssue).
+  const [thresholds, setThresholds] = useState({
+    moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
+    high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
+  })
 
-  async function handleSubmit(formData: FormData) {
-    const result = await action(formData)
-    if (!result.error) flash()
+  async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
+    const result = await action(prevState, formData)
+    if (!result.error) {
+      flash()
+      setSaveCount(c => c + 1)
+      setThresholds(
+        formData.get('use_barn_defaults') === 'true'
+          ? { moderate: barn.exhaustion_threshold_moderate, high: barn.exhaustion_threshold_high }
+          : { moderate: Number(formData.get('moderate')), high: Number(formData.get('high')) }
+      )
+    }
+    return result
   }
 
+  const [state, formAction] = useActionState(wrappedAction, { error: null })
+  const [useBarnDefaults, setUseBarnDefaults] = useState(
+    horse.exhaustion_threshold_moderate === null && horse.exhaustion_threshold_high === null
+  )
+
   return (
-    <form action={handleSubmit} className="flex w-full flex-col gap-5">
+    <form action={formAction} onReset={(e) => e.preventDefault()} className="flex w-full flex-col gap-5">
+      {state.error && (
+        <p role="alert" className="text-sm text-red-600 dark:text-red-400">
+          {state.error}
+        </p>
+      )}
+
       <div className="flex flex-col gap-1">
         <label htmlFor="horse-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Name
@@ -99,6 +134,71 @@ export function HorseManagerForm({
           />
         </div>
       )}
+
+      <div className="flex flex-col gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Exhaustion Thresholds
+        </h2>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          Override this horse&apos;s exhaustion thresholds — useful for horses on light duty. Leave on barn defaults otherwise.
+        </p>
+
+        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+          <input
+            key={saveCount}
+            type="checkbox"
+            name="use_barn_defaults"
+            value="true"
+            checked={useBarnDefaults}
+            onChange={(e) => setUseBarnDefaults(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600"
+          />
+          Use barn defaults
+        </label>
+
+        <div className="flex flex-wrap items-end gap-3">
+          <div>
+            <label
+              htmlFor="horse-exhaustion-moderate"
+              className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300"
+            >
+              Moderate threshold
+            </label>
+            <input
+              key={saveCount}
+              id="horse-exhaustion-moderate"
+              name="moderate"
+              type="number"
+              min="0"
+              step="1"
+              required
+              disabled={useBarnDefaults}
+              defaultValue={thresholds.moderate}
+              className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+            />
+          </div>
+          <div>
+            <label
+              htmlFor="horse-exhaustion-high"
+              className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300"
+            >
+              High threshold
+            </label>
+            <input
+              key={saveCount}
+              id="horse-exhaustion-high"
+              name="high"
+              type="number"
+              min="0"
+              step="1"
+              required
+              disabled={useBarnDefaults}
+              defaultValue={thresholds.high}
+              className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+            />
+          </div>
+        </div>
+      </div>
 
       <div className="flex items-center gap-3">
         <Button type="submit" className="self-start">

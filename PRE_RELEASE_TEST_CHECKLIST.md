@@ -151,16 +151,12 @@ Expenses (`/barn/dev-barn/expenses`):
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending (7d); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
-- [ ] Open Apple's detail page → rename it via the manager form → Save → name updates and a brief "✓ Saved" confirmation appears next to the Save button
+- [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked; re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`); try Moderate ≥ High while unchecked → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
 - [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page
 - [ ] Open the document via its link (signed URL)
 - [ ] Delete it → row disappears
 - [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
 - [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
-- [ ] Exhaustion Thresholds section: "Use barn defaults" is checked and inputs are disabled/pre-filled with barn defaults (`5`/`11`) for a horse with no override
-- [ ] Uncheck "Use barn defaults", set Moderate/High, Save → values persist on reload, a brief "✓ Saved" confirmation appears next to the Save button, and the toggle is now unchecked
-- [ ] Re-check "Use barn defaults" and Save → inputs revert to barn defaults
-- [ ] Try Moderate ≥ High while unchecked → rejected with a field error, no "✓ Saved" confirmation, and values unchanged
 - [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and the document shows up in the Dashboard's Document Reminders section, linking back to this horse
 
