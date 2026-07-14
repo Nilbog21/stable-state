@@ -17,23 +17,23 @@ const pastDueHorseDoc: DueDocument = {
 
 describe('DocumentRemindersSection', () => {
   it('should_render_nothing_when_due_documents_is_empty', () => {
-    render(<DocumentRemindersSection slug="green-acres" dueDocuments={[]} />)
-    expect(screen.queryByText(/document reminders/i)).toBeNull()
+    const { container } = render(<DocumentRemindersSection slug="green-acres" dueDocuments={[]} />)
+    expect(container.firstChild).toBeNull()
   })
 
   it('should_render_nothing_when_every_document_is_not_yet_due_locally', () => {
-    render(
+    const { container } = render(
       <DocumentRemindersSection
         slug="green-acres"
         dueDocuments={[{ ...pastDueHorseDoc, reminderDate: '2099-01-01' }]}
       />
     )
-    expect(screen.queryByText(/document reminders/i)).toBeNull()
+    expect(container.firstChild).toBeNull()
   })
 
-  it('should_render_section_when_a_document_is_due', () => {
+  it('should_render_owner_record_type_and_date_as_a_single_line', () => {
     render(<DocumentRemindersSection slug="green-acres" dueDocuments={[pastDueHorseDoc]} />)
-    expect(screen.getByText(/document reminders/i)).toBeDefined()
+    expect(screen.getByText('Thunderbolt — Coggins — Jan 1, 2020')).toBeDefined()
   })
 
   it('should_link_horse_entity_document_to_horse_detail_page', () => {
