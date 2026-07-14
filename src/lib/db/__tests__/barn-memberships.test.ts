@@ -1514,6 +1514,87 @@ describe('resolveMemberNames', () => {
 
     expect(result).toEqual(new Map())
   })
+
+  it('should_resolve_a_co_rider_via_active_member_summaries_fallback_when_instructor_rpc_does_not_resolve_it', async () => {
+    const rpc = vi.fn().mockImplementation((fn: string) => {
+      if (fn === 'get_instructor_membership_names') return Promise.resolve({ data: [], error: null })
+      if (fn === 'get_active_barn_member_summaries') {
+        return Promise.resolve({
+          data: [{ id: 'rider-2', user_id: 'user-2', profile_id: 'profile-2', role: 'rider', can_instruct: false, created_at: '2026-01-01' }],
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: [], error: null })
+    })
+    vi.mocked(createClient).mockResolvedValue(
+      makeClient([], null, [{ id: 'profile-2', first_name: 'Riley', last_name: 'Rider' }], null, rpc)
+    )
+
+    const result = await resolveMemberNames(['rider-2'], 'barn-1')
+
+    expect(result).toEqual(new Map([['rider-2', 'Riley Rider']]))
+  })
+
+  it('should_call_active_member_summaries_rpc_with_barn_id', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    await resolveMemberNames(['rider-2'], 'barn-1')
+
+    expect(rpc).toHaveBeenCalledWith('get_active_barn_member_summaries', { p_barn_id: 'barn-1' })
+  })
+
+  it('should_not_call_active_member_summaries_rpc_when_all_ids_resolved_by_instructor_rpc', async () => {
+    const rpc = vi.fn().mockImplementation((fn: string) => {
+      if (fn === 'get_instructor_membership_names') {
+        return Promise.resolve({ data: [{ id: 'instr-1', first_name: 'Terry', last_name: 'Trainer' }], error: null })
+      }
+      return Promise.resolve({ data: [], error: null })
+    })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    await resolveMemberNames(['instr-1'], 'barn-1')
+
+    expect(rpc).not.toHaveBeenCalledWith('get_active_barn_member_summaries', expect.anything())
+  })
+
+  it('should_fall_back_to_membership_id_when_active_member_summaries_row_has_no_profile', async () => {
+    const rpc = vi.fn().mockImplementation((fn: string) => {
+      if (fn === 'get_instructor_membership_names') return Promise.resolve({ data: [], error: null })
+      if (fn === 'get_active_barn_member_summaries') {
+        return Promise.resolve({
+          data: [{ id: 'rider-2', user_id: 'user-2', profile_id: 'profile-2', role: 'rider', can_instruct: false, created_at: '2026-01-01' }],
+          error: null,
+        })
+      }
+      return Promise.resolve({ data: [], error: null })
+    })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    const result = await resolveMemberNames(['rider-2'], 'barn-1')
+
+    expect(result).toEqual(new Map([['rider-2', 'rider-2']]))
+  })
+
+  it('should_omit_membership_id_when_active_member_summaries_never_returns_it_either', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    const result = await resolveMemberNames(['rider-2'], 'barn-1')
+
+    expect(result).toEqual(new Map())
+  })
+
+  it('should_throw_when_active_member_summaries_rpc_returns_error', async () => {
+    const dbError = new Error('summaries rpc failed')
+    const rpc = vi.fn().mockImplementation((fn: string) => {
+      if (fn === 'get_instructor_membership_names') return Promise.resolve({ data: [], error: null })
+      return Promise.resolve({ data: null, error: dbError })
+    })
+    vi.mocked(createClient).mockResolvedValue(makeClient([], null, [], null, rpc))
+
+    await expect(resolveMemberNames(['rider-2'], 'barn-1')).rejects.toThrow('summaries rpc failed')
+  })
 })
 
 describe('createManagedMember', () => {

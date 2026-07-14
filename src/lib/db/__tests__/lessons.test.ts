@@ -12,12 +12,12 @@ vi.mock('../lesson-participants', async () => {
 
 vi.mock('../barn-memberships', async () => {
   const actual = await vi.importActual<typeof import('../barn-memberships')>('../barn-memberships')
-  return { ...actual, resolveMemberNames: vi.fn() }
+  return { ...actual, resolveMemberNames: vi.fn(), getMembershipByIdForBarn: vi.fn() }
 })
 
 import { createClient } from '@/lib/supabase/server'
 import { hydrateParticipants } from '../lesson-participants'
-import { resolveMemberNames } from '../barn-memberships'
+import { resolveMemberNames, getMembershipByIdForBarn } from '../barn-memberships'
 import {
   createLesson,
   cancelLesson,
@@ -518,13 +518,14 @@ describe('getLessonById', () => {
     vi.mocked(createClient).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    vi.mocked(getMembershipByIdForBarn).mockReset()
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue(null)
   })
 
   const rawLessonData = {
     ...createMockLesson({ instructor_id: 'mem-instructor-1' }),
     lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
-    lesson_riders: [{ barn_memberships: { id: 'mem-rider-1', user_id: null } }],
-    instructor_membership: { user_id: 'user-instructor-1' },
+    lesson_riders: [{ rider_id: 'mem-rider-1', barn_memberships: { user_id: null } }],
   }
 
   function makeLessonByIdChain(data: unknown, error: Error | null = null) {
@@ -561,14 +562,30 @@ describe('getLessonById', () => {
 
   it('should_return_instructor_user_id', async () => {
     mockLessonsFrom(rawLessonData)
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1' } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.instructor_user_id).toBe('user-instructor-1')
   })
 
+  it('should_resolve_instructor_user_id_via_get_membership_by_id_for_barn_even_for_rider_role', async () => {
+    // The instructor's own barn_memberships row is invisible to a rider caller under RLS
+    // (only barn_memberships_read_own applies), so instructor_user_id can no longer come
+    // from a nested embed — getMembershipByIdForBarn does a direct-query + RPC fallback
+    // that works for any caller. Regression test for #845.
+    mockLessonsFrom(rawLessonData)
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1' } as any)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'rider-user-1')
+
+    expect(result?.instructor_user_id).toBe('user-instructor-1')
+    expect(getMembershipByIdForBarn).toHaveBeenCalledWith('mem-instructor-1', 'barn-1', expect.anything())
+  })
+
   it('should_return_null_instructor_user_id_for_a_stub_trainer', async () => {
-    mockLessonsFrom({ ...rawLessonData, instructor_membership: { user_id: null } })
+    mockLessonsFrom(rawLessonData)
+    vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: null } as any)
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
@@ -576,7 +593,7 @@ describe('getLessonById', () => {
   })
 
   it('should_return_null_instructor_name_when_instructor_id_is_null', async () => {
-    mockLessonsFrom({ ...rawLessonData, instructor_id: null, instructor_membership: null })
+    mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
@@ -584,11 +601,19 @@ describe('getLessonById', () => {
   })
 
   it('should_return_null_instructor_user_id_when_instructor_id_is_null', async () => {
-    mockLessonsFrom({ ...rawLessonData, instructor_id: null, instructor_membership: null })
+    mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.instructor_user_id).toBeNull()
+  })
+
+  it('should_not_call_get_membership_by_id_for_barn_when_instructor_id_is_null', async () => {
+    mockLessonsFrom({ ...rawLessonData, instructor_id: null })
+
+    await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(getMembershipByIdForBarn).not.toHaveBeenCalled()
   })
 
   it('should_return_null_instructor_name_when_membership_map_has_no_entry', async () => {
@@ -612,10 +637,9 @@ describe('getLessonById', () => {
       ...createMockLesson({ lesson_type: 'group', instructor_id: null }),
       lesson_horses: [{ exertion_level: 3, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
       lesson_riders: [
-        { barn_memberships: { id: 'mem-1', user_id: null } },
-        { barn_memberships: { id: 'mem-2', user_id: null } },
+        { rider_id: 'mem-1', barn_memberships: { user_id: null } },
+        { rider_id: 'mem-2', barn_memberships: { user_id: null } },
       ],
-      instructor_membership: null,
     }
     mockLessonsFrom(groupLessonData)
 
@@ -625,7 +649,7 @@ describe('getLessonById', () => {
   })
 
   it('should_query_by_lesson_id_and_barn_id', async () => {
-    const { mockEq1, mockEq2 } = mockLessonsFrom({ ...rawLessonData, instructor_id: null, instructor_membership: null })
+    const { mockEq1, mockEq2 } = mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 
     await getLessonById('lesson-1', 'barn-1', 'trainer')
 
@@ -652,7 +676,6 @@ describe('getLessonById', () => {
       ...createMockLesson({ jumping: true, instructor_id: null }),
       lesson_horses: [],
       lesson_riders: [],
-      instructor_membership: null,
     }
     mockLessonsFrom(jumpingData)
 
@@ -661,8 +684,17 @@ describe('getLessonById', () => {
     expect(result?.jumping).toBe(true)
   })
 
+  it('should_select_rider_id_regardless_of_role', async () => {
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = mockLessonsFrom(noInstructorData)
+
+    await getLessonById('lesson-1', 'barn-1', 'rider')
+
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('rider_id'))
+  })
+
   it('should_select_private_notes_for_trainer_role', async () => {
-    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [], instructor_membership: null }
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
     await getLessonById('lesson-1', 'barn-1', 'trainer')
@@ -671,7 +703,7 @@ describe('getLessonById', () => {
   })
 
   it('should_select_private_notes_for_manager_role', async () => {
-    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [], instructor_membership: null }
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
     await getLessonById('lesson-1', 'barn-1', 'manager')
@@ -680,7 +712,7 @@ describe('getLessonById', () => {
   })
 
   it('should_not_select_private_notes_for_rider_role', async () => {
-    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [], instructor_membership: null }
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
     await getLessonById('lesson-1', 'barn-1', 'rider')
@@ -689,7 +721,7 @@ describe('getLessonById', () => {
   })
 
   it('should_select_cancelled_at_for_rider_role', async () => {
-    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [], instructor_membership: null }
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
     await getLessonById('lesson-1', 'barn-1', 'rider')
@@ -698,7 +730,7 @@ describe('getLessonById', () => {
   })
 
   it('should_select_cancelled_at_for_manager_role', async () => {
-    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [], instructor_membership: null }
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
     await getLessonById('lesson-1', 'barn-1', 'manager')
@@ -710,8 +742,7 @@ describe('getLessonById', () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, cancelled_at: '2026-06-01T00:00:00Z', barn_memberships: { id: 'mem-1', user_id: null } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: null, cancelled_at: '2026-06-01T00:00:00Z', barn_memberships: { user_id: null } }],
     }
     mockLessonsFrom(lessonData)
 
@@ -724,8 +755,7 @@ describe('getLessonById', () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: null } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: null, barn_memberships: { user_id: null } }],
     }
     mockLessonsFrom(lessonData)
 
@@ -738,8 +768,7 @@ describe('getLessonById', () => {
     const riderLessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: 'good position', barn_memberships: { id: 'mem-1', user_id: 'user-1' } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: 'good position', barn_memberships: { user_id: 'user-1' } }],
     }
     mockLessonsFrom(riderLessonData)
 
@@ -752,8 +781,7 @@ describe('getLessonById', () => {
     const riderLessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: 'good position', barn_memberships: { id: 'mem-1', user_id: 'user-1' } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: 'good position', barn_memberships: { user_id: 'user-1' } }],
     }
     mockLessonsFrom(riderLessonData)
 
@@ -767,10 +795,9 @@ describe('getLessonById', () => {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
       lesson_riders: [
-        { rider_notes: 'good position', barn_memberships: { id: 'mem-1', user_id: 'user-1' } },
-        { rider_notes: 'needs work', barn_memberships: { id: 'mem-2', user_id: 'user-2' } },
+        { rider_id: 'mem-1', rider_notes: 'good position', barn_memberships: { user_id: 'user-1' } },
+        { rider_id: 'mem-2', rider_notes: 'needs work', barn_memberships: { user_id: 'user-2' } },
       ],
-      instructor_membership: null,
     }
     mockLessonsFrom(riderLessonData)
 
@@ -783,8 +810,7 @@ describe('getLessonById', () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, cancellation_notes: 'Rider called in sick', barn_memberships: { id: 'mem-1', user_id: null } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: null, cancellation_notes: 'Rider called in sick', barn_memberships: { user_id: null } }],
     }
     mockLessonsFrom(lessonData)
 
@@ -797,8 +823,7 @@ describe('getLessonById', () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: null } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: null, barn_memberships: { user_id: null } }],
     }
     mockLessonsFrom(lessonData)
 
@@ -811,8 +836,7 @@ describe('getLessonById', () => {
     const riderLessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, cancellation_notes: 'called in sick', barn_memberships: { id: 'mem-1', user_id: 'user-1' } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: null, cancellation_notes: 'called in sick', barn_memberships: { user_id: 'user-1' } }],
     }
     mockLessonsFrom(riderLessonData)
 
@@ -826,10 +850,9 @@ describe('getLessonById', () => {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
       lesson_riders: [
-        { rider_notes: null, cancellation_notes: 'called in sick', barn_memberships: { id: 'mem-1', user_id: 'user-1' } },
-        { rider_notes: null, cancellation_notes: 'family emergency', barn_memberships: { id: 'mem-2', user_id: 'user-2' } },
+        { rider_id: 'mem-1', rider_notes: null, cancellation_notes: 'called in sick', barn_memberships: { user_id: 'user-1' } },
+        { rider_id: 'mem-2', rider_notes: null, cancellation_notes: 'family emergency', barn_memberships: { user_id: 'user-2' } },
       ],
-      instructor_membership: null,
     }
     mockLessonsFrom(riderLessonData)
 
@@ -842,8 +865,7 @@ describe('getLessonById', () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ barn_memberships: { id: 'mem-1', user_id: null } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', barn_memberships: { user_id: null } }],
     }
     mockLessonsFrom(lessonData)
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
@@ -853,26 +875,29 @@ describe('getLessonById', () => {
     expect(result?.lesson_riders[0].barn_membership?.name).toBe('mem-1')
   })
 
-  it('should_return_null_barn_membership_when_lesson_riders_barn_memberships_is_null', async () => {
+  it('should_resolve_co_rider_via_rider_id_even_when_barn_memberships_embed_is_null', async () => {
+    // A rider caller has no RLS visibility into another rider's barn_memberships row, so
+    // PostgREST returns a null embed for co-riders on a group lesson. rider_id (a plain
+    // column, not subject to that nested-embed RLS check) must still resolve the co-rider's
+    // identity via resolveMemberNames. Regression test for #845.
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, barn_memberships: null }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-2', rider_notes: null, barn_memberships: null }],
     }
     mockLessonsFrom(lessonData)
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-2', 'Riley Rider']]))
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'user-1')
 
-    expect(result?.lesson_riders[0].barn_membership).toBeNull()
+    expect(result?.lesson_riders[0].barn_membership).toEqual({ id: 'mem-2', user_id: null, name: 'Riley Rider' })
   })
 
   it('should_resolve_rider_name_via_resolve_member_names', async () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
-      lesson_riders: [{ rider_notes: null, barn_memberships: { id: 'mem-1', user_id: 'rider-user-1' } }],
-      instructor_membership: null,
+      lesson_riders: [{ rider_id: 'mem-1', rider_notes: null, barn_memberships: { user_id: 'rider-user-1' } }],
     }
     mockLessonsFrom(lessonData)
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
