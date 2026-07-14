@@ -122,6 +122,13 @@ export async function updateLessonAction(
     const riderIdSet = new Set(riderIds)
     const noteHorseIds = (formData.getAll('noteHorseId') as string[]).filter(id => horseIdSet.has(id))
     const noteRiderIds = (formData.getAll('noteRiderId') as string[]).filter(id => riderIdSet.has(id))
+    const cancellationNotesRaw = formData.get('cancellation_notes') as string | null
+    if (cancellationNotesRaw !== null) {
+      const currentLesson = await getLessonById(lessonId, barnId, membership.role)
+      if (!currentLesson || currentLesson.cancelled_at === null) {
+        return { error: 'lesson is not cancelled' }
+      }
+    }
     await Promise.all([
       ...noteHorseIds.map(hId =>
         updateLessonHorseNotes(lessonId, hId, barnId, (formData.get(`horse_notes_${hId}`) as string) || null)
@@ -133,6 +140,9 @@ export async function updateLessonAction(
           (formData.get(`private_notes_${rId}`) as string) || null,
         )
       ),
+      ...(cancellationNotesRaw !== null
+        ? [updateLesson(lessonId, barnId, { cancellation_notes: cancellationNotesRaw.trim() || null })]
+        : []),
     ])
   } catch {
     return { error: 'Failed to update lesson' }
@@ -326,27 +336,6 @@ export async function updatePaymentTypeAction(
     await updateLesson(lessonId, barn.id, { payment_type: paymentType as PaymentType | null })
   } catch {
     return { error: 'Failed to update payment type' }
-  }
-
-  return { error: null }
-}
-
-export async function updateCancellationNotesAction(
-  lessonId: string,
-  barnSlug: string,
-  notes: string
-): Promise<{ error: string | null }> {
-  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
-
-  const lesson = await getLessonById(lessonId, barn.id, membership.role)
-  if (!lesson) return { error: 'lesson not found' }
-  if (!canManageLesson(membership.role, membership.id, lesson)) return { error: 'not authorized' }
-  if (lesson.cancelled_at === null) return { error: 'lesson is not cancelled' }
-
-  try {
-    await updateLesson(lessonId, barn.id, { cancellation_notes: notes.trim() || null })
-  } catch {
-    return { error: 'Failed to update cancellation notes' }
   }
 
   return { error: null }

@@ -125,7 +125,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] **By Rider → Dana** filters correctly
 - [ ] **By Horse → Apple** filters correctly
 - [ ] Times display in 12-hour AM/PM format everywhere (no military time)
-- [ ] Open a lesson's detail page (`/barn/dev-barn/lessons/[id]`) — horse notes and rider notes render read-only; Edit link visible
+- [ ] Open a lesson's detail page (`/barn/dev-barn/lessons/[id]`) — horse notes and rider notes render read-only; Edit link visible; open a lesson with no notes recorded at all and confirm every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
 - [ ] Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, save, verify the change on the detail page
 - [ ] Edit the group lesson (Lesson 4) → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
 - [ ] Delete one seeded lesson — it disappears from the list
@@ -135,7 +135,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Whole-lesson cancel on a **group** lesson → no toggle shown; confirmation text instead lists the count and names of enrolled riders who will be affected
 - [ ] On a **normal** lesson, per-rider-cancel the only rider (do not use the whole-lesson Cancel link) → the lesson itself now shows a **Cancelled** badge on the list, detail page, and Dashboard, even though you never used the whole-lesson cancel flow
 - [ ] On a **group** lesson, per-rider-cancel every enrolled rider one at a time → after the last one, the lesson shows a **Cancelled** badge everywhere; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
-- [ ] On an already-cancelled lesson's detail page, edit the **Cancellation Notes** field (manager and, separately, the instructing trainer) → blur to save, refresh the page, confirm the new text persists; a rider viewing the same lesson sees the notes as read-only text, no input field
+- [ ] On an already-cancelled lesson, open **Edit Lesson** (manager and, separately, the instructing trainer) → the Notes section shows a **Cancellation Notes** textarea (confirm it does *not* appear when editing a non-cancelled lesson) → edit it and Save → the detail page shows the updated text read-only under **Cancellation Notes** for every role, including the instructing trainer and a rider; clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
 - [ ] As manager, open a lesson's detail page and click **Delete** → confirm the browser prompt → lesson disappears entirely from the Lessons list and Finances (no **Cancelled** badge, no notification to instructor/riders); repeat on an already-cancelled lesson and a past/paid lesson to confirm Delete is reachable regardless of state; as trainer, confirm no **Delete** button is shown on any lesson
 
 Expenses (`/barn/dev-barn/expenses`):

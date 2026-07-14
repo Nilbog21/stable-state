@@ -63,7 +63,7 @@ import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { submitLesson, cancelLessonAction, deleteLessonAction, updateLessonAction, updatePaymentTypeAction, updateCancellationNotesAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
+import { submitLesson, cancelLessonAction, deleteLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
 import { parseLessonFormData } from '../lesson-form-parsing'
 
 const mockBarn = createMockBarn()
@@ -1463,16 +1463,20 @@ describe('updateLessonAction', () => {
     vi.mocked(updateLessonWithParticipants).mockReset()
     vi.mocked(updateLessonHorseNotes).mockReset()
     vi.mocked(updateLessonRiderNotes).mockReset()
+    vi.mocked(updateLesson).mockReset()
     vi.mocked(getInstructorsByBarn).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
     vi.mocked(getActiveMembersWithProfiles).mockReset()
     vi.mocked(createHorse).mockReset()
     vi.mocked(redirect).mockReset()
+    vi.mocked(getLessonById).mockReset()
     guardAs(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     vi.mocked(updateLessonWithParticipants).mockResolvedValue(mockLesson)
     vi.mocked(updateLessonHorseNotes).mockResolvedValue({} as any)
     vi.mocked(updateLessonRiderNotes).mockResolvedValue({} as any)
+    vi.mocked(updateLesson).mockResolvedValue(mockLesson)
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ cancelled_at: '2026-05-01T00:00:00Z' }))
     vi.mocked(getHorsesByBarn).mockResolvedValue([
       createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
@@ -1840,6 +1844,42 @@ describe('updateLessonAction', () => {
     expect(updateLessonRiderNotes).not.toHaveBeenCalled()
   })
 
+  it('should_save_cancellation_notes_when_field_present', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.set('cancellation_notes', 'weather')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { cancellation_notes: 'weather' })
+  })
+
+  it('should_pass_null_for_blank_cancellation_notes', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.set('cancellation_notes', '   ')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { cancellation_notes: null })
+  })
+
+  it('should_not_call_updateLesson_for_cancellation_notes_when_field_absent', async () => {
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_saving_cancellation_notes_on_a_lesson_that_is_not_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ cancelled_at: null }))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.set('cancellation_notes', 'weather')
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'lesson is not cancelled' })
+  })
+
+  it('should_not_call_updateLesson_for_cancellation_notes_when_lesson_is_not_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ cancelled_at: null }))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.set('cancellation_notes', 'weather')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLesson).not.toHaveBeenCalled()
+  })
+
 })
 
 describe('updatePaymentTypeAction', () => {
@@ -1903,71 +1943,6 @@ describe('updatePaymentTypeAction', () => {
     vi.mocked(updateLesson).mockRejectedValue(new Error('db error'))
     const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
     expect(result).toEqual({ error: 'Failed to update payment type' })
-  })
-})
-
-describe('updateCancellationNotesAction', () => {
-  const mockCancelledLesson = createMockLessonDetail({ cancelled_at: '2026-05-01T00:00:00Z' })
-
-  beforeEach(() => {
-    vi.mocked(requireMembership).mockReset()
-    vi.mocked(getLessonById).mockReset()
-    vi.mocked(updateLesson).mockReset()
-    guardAs(mockManagerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(mockCancelledLesson)
-    vi.mocked(updateLesson).mockResolvedValue(mockLesson)
-  })
-
-  it('should_call_requireMembership_with_manager_and_trainer_roles', async () => {
-    await updateCancellationNotesAction('lesson-1', 'barn-slug', 'notes')
-    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager', 'trainer'])
-  })
-
-  it('should_return_error_when_lesson_not_found', async () => {
-    vi.mocked(getLessonById).mockResolvedValue(null)
-    const result = await updateCancellationNotesAction('lesson-1', 'barn-slug', 'notes')
-    expect(result).toEqual({ error: 'lesson not found' })
-  })
-
-  it('should_return_error_when_trainer_does_not_instruct_lesson', async () => {
-    guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: 'other-trainer', cancelled_at: '2026-05-01T00:00:00Z' }))
-    const result = await updateCancellationNotesAction('lesson-1', 'barn-slug', 'notes')
-    expect(result).toEqual({ error: 'not authorized' })
-  })
-
-  it('should_return_error_when_lesson_is_not_cancelled', async () => {
-    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ cancelled_at: null }))
-    const result = await updateCancellationNotesAction('lesson-1', 'barn-slug', 'notes')
-    expect(result).toEqual({ error: 'lesson is not cancelled' })
-  })
-
-  it('should_call_updateLesson_with_trimmed_notes_when_manager', async () => {
-    await updateCancellationNotesAction('lesson-1', 'barn-slug', '  updated notes  ')
-    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { cancellation_notes: 'updated notes' })
-  })
-
-  it('should_call_updateLesson_with_trimmed_notes_when_instructing_trainer', async () => {
-    guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: mockTrainerMembership.id, cancelled_at: '2026-05-01T00:00:00Z' }))
-    await updateCancellationNotesAction('lesson-1', 'barn-slug', 'updated notes')
-    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { cancellation_notes: 'updated notes' })
-  })
-
-  it('should_set_notes_to_null_when_blank', async () => {
-    await updateCancellationNotesAction('lesson-1', 'barn-slug', '   ')
-    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { cancellation_notes: null })
-  })
-
-  it('should_return_error_when_updateLesson_throws', async () => {
-    vi.mocked(updateLesson).mockRejectedValue(new Error('db error'))
-    const result = await updateCancellationNotesAction('lesson-1', 'barn-slug', 'notes')
-    expect(result).toEqual({ error: 'Failed to update cancellation notes' })
-  })
-
-  it('should_return_no_error_on_success', async () => {
-    const result = await updateCancellationNotesAction('lesson-1', 'barn-slug', 'notes')
-    expect(result).toEqual({ error: null })
   })
 })
 
