@@ -122,6 +122,12 @@ describe('createTierAction', () => {
     expect(createTier).toHaveBeenCalledWith(mockBarn.id, 'Premium', 0, false, null, null, 10)
   })
 
+  it('should_return_error_when_price_is_negative', async () => {
+    const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: 'Premium', price: '-5' , instructor_cut: '10' }))
+
+    expect(result.error).toBe('Price is required')
+  })
+
   it('should_return_error_when_name_is_blank', async () => {
     const result = await createTierAction('green-acres', { error: null }, makeFormData({ name: '', price: '75' , instructor_cut: '10' }))
 
