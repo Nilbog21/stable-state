@@ -152,19 +152,12 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
 
 export async function cancelLesson(lessonId: string, barnId: string, notes?: string | null, isLate = false): Promise<void> {
   const supabase = await createClient()
-  const updates: { cancelled_at: string; cancellation_notes: string | null; fee?: number; payment_type?: null } = {
-    cancelled_at: new Date().toISOString(),
-    cancellation_notes: notes ?? null,
-  }
-  if (!isLate) {
-    updates.fee = 0
-    updates.payment_type = null
-  }
-  const { error } = await supabase
-    .from('lessons')
-    .update(updates)
-    .eq('id', lessonId)
-    .eq('barn_id', barnId)
+  const { error } = await supabase.rpc('cancel_lesson_with_transactions', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+    p_notes: notes ?? null,
+    p_is_late: isLate,
+  })
 
   if (error) throw error
 }
