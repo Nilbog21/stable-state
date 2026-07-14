@@ -35,10 +35,10 @@ describe('LessonForm', () => {
     expect(screen.queryByLabelText(/instructor/i)).toBeNull()
   })
 
-  it('should_render_instructor_name_read_only_when_is_manager_is_false', () => {
+  it('should_hide_instructor_name_entirely_when_is_manager_is_false', () => {
     const instructors = [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' }]
     render(<LessonForm {...baseProps} isManager={false} instructors={instructors} />)
-    expect(screen.queryByText('Jane Doe')).not.toBeNull()
+    expect(screen.queryByText('Jane Doe')).toBeNull()
   })
 
   it('should_render_instructor_select_when_isManager_is_true', () => {

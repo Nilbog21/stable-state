@@ -120,7 +120,7 @@ export default async function HorseDetailPage({
                     <Th>Notes</Th>
                     <Th>Link</Th>
                     <Th>Reminder Date</Th>
-                    <Th align="right">Actions</Th>
+                    {role === 'manager' && <Th align="right">Actions</Th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -148,15 +148,15 @@ export default async function HorseDetailPage({
                           <ReminderDueBadge reminderDate={doc.reminder_date} />
                         </div>
                       </Td>
-                      <TableActions>
-                        {role === 'manager' && (
+                      {role === 'manager' && (
+                        <TableActions>
                           <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
                             <Button type="submit" variant="danger" size="sm">
                               Delete
                             </Button>
                           </form>
-                        )}
-                      </TableActions>
+                        </TableActions>
+                      )}
                     </tr>
                   ))}
                 </tbody>

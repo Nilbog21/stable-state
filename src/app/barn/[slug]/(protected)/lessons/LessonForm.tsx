@@ -351,13 +351,7 @@ export function LessonForm({
           </select>
         </div>
       ) : (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Instructor</span>
-          <input type="hidden" name="instructor_id" value={currentMembershipId} />
-          <span className="text-sm text-zinc-900 dark:text-zinc-50">
-            {instructors.find(i => i.membershipId === currentMembershipId)?.name ?? currentMembershipId}
-          </span>
-        </div>
+        <input type="hidden" name="instructor_id" value={currentMembershipId} />
       )}
 
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">

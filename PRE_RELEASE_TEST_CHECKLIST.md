@@ -231,12 +231,12 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Lessons list defaults to **My Lessons** (only Alex's, now reassigned to you); switch to **All** to see every barn lesson including Blake's — filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
-- [ ] Edit one of your own lessons — the instructor field is **read-only**
+- [ ] Edit one of your own lessons — the instructor field is **hidden entirely** (no label, no read-only text — just locked server-side)
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
 - [ ] Lesson 9 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
 - [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
-- [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no delete** button, **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
+- [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper/Indigo Test, whichever are still unclaimed) render as plain card links — name only, **no Unlinked badge, no Copy Invite or Revoke buttons**; the card still links to the member detail page
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **no Contact Info section**, and **no Documents section**; open Blake's (a rider's) detail page — no Contact Info and no Documents section either (#779 narrowed this from the prior read-only rider-document access)
