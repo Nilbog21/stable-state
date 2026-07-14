@@ -148,16 +148,17 @@ export function LessonForm({
     ? normalRiderId !== initialNormalRiderId
     : !setsEqual(checkedRiderIds, initialRiderIds)
   const fieldsDirty = mode === 'edit' && (feeDirty || horsesDirty || ridersDirty)
-  const shouldWarn = unpaidWarn || notesDirty || fieldsDirty || hasHorseIssue
+  const horseIssueWarn = mode === 'edit' && hasHorseIssue
+  const shouldWarn = unpaidWarn || notesDirty || fieldsDirty || horseIssueWarn
 
   useEffect(() => {
     setDirty(shouldWarn)
-    if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
+    if (horseIssueWarn) setMessage('This lesson has an unresolved horse issue. Leave without addressing it?')
+    else if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
     else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
     else if (fieldsDirty) setMessage('You have unsaved changes. Leave without saving?')
-    else if (hasHorseIssue) setMessage('This lesson has an unresolved horse issue. Leave without addressing it?')
     return () => setDirty(false)
-  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, hasHorseIssue, setDirty, setMessage])
+  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, horseIssueWarn, setDirty, setMessage])
 
   useEffect(() => {
     if (!shouldWarn) return

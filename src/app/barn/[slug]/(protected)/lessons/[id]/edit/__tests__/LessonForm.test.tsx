@@ -807,6 +807,16 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     fireEvent.change(screen.getByLabelText('Fee'), { target: { value: '999' } })
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
+
+  it('should_not_set_dirty_in_new_mode_when_hasHorseIssue_is_true', async () => {
+    render(
+      <NavigationBlockerProvider>
+        <DirtyDisplay />
+        <LessonForm {...baseProps} mode="new" initialLesson={undefined} hasHorseIssue />
+      </NavigationBlockerProvider>
+    )
+    await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
+  })
 })
 
 describe('LessonForm notes fields', () => {
