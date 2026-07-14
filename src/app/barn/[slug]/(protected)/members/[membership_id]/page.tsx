@@ -46,7 +46,7 @@ function ContactInfo({
           Contact Info
         </h2>
         {isOwnPage && (
-          <Button variant="ghost" size="sm" href={`/profile?barn=${slug}`}>
+          <Button variant="ghost" href={`/profile?barn=${slug}`}>
             Edit
           </Button>
         )}
