@@ -1,5 +1,4 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
@@ -12,6 +11,7 @@ import { getOutstandingCharges } from '@/lib/db/agreements'
 import type { DueDocument, LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
 import { UpcomingLessonsSections } from './UpcomingLessonsSections'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
+import { Button } from '@/components/ui/Button'
 
 export default async function BarnDashboardPage({
   params,
@@ -60,8 +60,6 @@ export default async function BarnDashboardPage({
   }
 
   const hasReminders = pendingCount > 0 || dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
-  const amberBadgeClass =
-    'inline-flex items-center gap-2 rounded-md border border-amber-300 bg-amber-50 px-4 py-2 text-sm font-medium text-amber-800 hover:bg-amber-100 dark:border-amber-800/40 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50'
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -76,23 +74,23 @@ export default async function BarnDashboardPage({
           <div className="space-y-2">
             {pendingCount > 0 && (
               <div>
-                <Link href={`/barn/${slug}/settings`} className={amberBadgeClass}>
+                <Button href={`/barn/${slug}/settings`} variant="warning">
                   {pendingCount} pending {pendingCount === 1 ? 'new member request' : 'new member requests'}
-                </Link>
+                </Button>
               </div>
             )}
             {unpaidLessonsCount > 0 && (
               <div>
-                <Link href={`/barn/${slug}/finances/outstanding`} className={amberBadgeClass}>
+                <Button href={`/barn/${slug}/finances/outstanding`} variant="warning">
                   {unpaidLessonsCount} unpaid lesson{unpaidLessonsCount !== 1 ? 's' : ''}
-                </Link>
+                </Button>
               </div>
             )}
             {unpaidChargesCount > 0 && (
               <div>
-                <Link href={`/barn/${slug}/finances/outstanding`} className={amberBadgeClass}>
+                <Button href={`/barn/${slug}/finances/outstanding`} variant="warning">
                   {unpaidChargesCount} unpaid lease{unpaidChargesCount !== 1 ? 's' : ''}/boarding
-                </Link>
+                </Button>
               </div>
             )}
           </div>
