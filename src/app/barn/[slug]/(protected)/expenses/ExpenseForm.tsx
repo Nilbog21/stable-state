@@ -39,6 +39,9 @@ export function ExpenseForm({
   onSave,
 }: ExpenseFormProps) {
   const [state, formAction] = useActionState(onSave, { error: null })
+  const [expenseDate, setExpenseDate] = useState(defaultDate ?? '')
+  const today = new Date().toISOString().slice(0, 10)
+  const isPastDate = expenseDate !== '' && expenseDate < today
   const [recipient, setRecipient] = useState(initial?.recipient ?? '')
   const [lastCheckedRecipient, setLastCheckedRecipient] = useState(initial?.recipient ?? '')
   const [expenseType, setExpenseType] = useState(initial?.expenseType ?? '')
@@ -115,23 +118,26 @@ export function ExpenseForm({
           name="expense_date"
           type="date"
           required
-          defaultValue={defaultDate}
+          value={expenseDate}
+          onChange={(e) => setExpenseDate(e.target.value)}
           className={inputClassName}
         />
       </div>
 
-      <div>
-        <label htmlFor="expense-time" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Time <span className="font-normal text-zinc-500">(optional — presence signals a planned visit)</span>
-        </label>
-        <input
-          id="expense-time"
-          name="expense_time"
-          type="time"
-          defaultValue={initial?.expenseTime ?? undefined}
-          className={inputClassName}
-        />
-      </div>
+      {!isPastDate && (
+        <div>
+          <label htmlFor="expense-time" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Time <span className="font-normal text-zinc-500">(optional — presence signals a planned visit)</span>
+          </label>
+          <input
+            id="expense-time"
+            name="expense_time"
+            type="time"
+            defaultValue={initial?.expenseTime ?? undefined}
+            className={inputClassName}
+          />
+        </div>
+      )}
 
       <div>
         <label htmlFor="expense-amount" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
