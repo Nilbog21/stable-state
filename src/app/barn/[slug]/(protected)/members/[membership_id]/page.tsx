@@ -158,9 +158,10 @@ export default async function MemberDetailPage({
   const callerRole = callerMembership.role
   const targetRole = targetMembership.role
 
-  // Documents is the section that narrows under #779, not page access — canViewDocuments's
-  // "manager or self" scope is that rule. #864: viewing and managing (upload/delete) diverge for
-  // a self-viewing rider, so they're two booleans now instead of one shared canUpload.
+  // Documents keeps a narrower "manager or self" gate (canViewDocuments) even though page access
+  // and Contact Info (#863) are both open to any active barn member. #864: viewing and managing
+  // (upload/delete) diverge for a self-viewing rider, so they're two booleans now instead of one
+  // shared canUpload.
   const canViewDocuments =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && isOwnPage) ||
