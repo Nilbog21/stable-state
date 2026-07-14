@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
-import { getUserMembership, resolveMemberNames } from './barn-memberships'
+import { getMembershipByIdForBarn, getUserMembership, resolveMemberNames } from './barn-memberships'
+import { getProfileById } from './profiles'
 import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
 
 export async function createLesson({
@@ -55,18 +56,17 @@ export async function getLessonsByBarn(
   return hydrateParticipants(supabase, lessons, barnId)
 }
 
-export async function getLessonById(lessonId: string, barnId: string, role: Role, userId?: string): Promise<LessonDetail | null> {
+export async function getLessonById(lessonId: string, barnId: string, role: Role, callerMembershipId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, cancellation_notes, cancelled_at, barn_memberships ( id, user_id )'
-    : 'rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( id, user_id )'
+    ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
+    : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
       *,
       lesson_horses ( horse_notes, exertion_level, horses ( id, name, is_active, is_available ) ),
-      lesson_riders ( ${riderSelect} ),
-      instructor_membership:barn_memberships!lessons_barn_id_instructor_id_fkey ( user_id )
+      lesson_riders ( ${riderSelect} )
     `)
     .eq('id', lessonId)
     .eq('barn_id', barnId)
@@ -76,32 +76,36 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   if (!data) return null
 
   type RawLessonRider = {
+    rider_id: string
     rider_notes: string | null
     private_notes?: string | null
     cancellation_notes: string | null
     cancelled_at: string | null
-    barn_memberships: { id: string; user_id: string | null } | null
+    barn_memberships: { user_id: string | null } | null
   }
 
-  const { instructor_membership, ...lessonData } = data as typeof data & {
-    instructor_membership: { user_id: string | null } | null
-  }
+  const lessonData = data
 
   const rawRiders = lessonData.lesson_riders as RawLessonRider[]
-  const riderMembershipIds = rawRiders
-    .map((lr) => lr.barn_memberships?.id)
-    .filter((id): id is string => id != null)
+  // rider_id is a plain lesson_riders column, unlike the nested barn_memberships embed —
+  // PostgREST enforces barn_memberships RLS on that embed independently, which returns null
+  // for a co-rider's row when the caller is a rider (only barn_memberships_read_own applies).
+  const riderMembershipIds = rawRiders.map((lr) => lr.rider_id)
 
-  // instructor_id is itself a barn_memberships.id, so it's resolved by the same batched call
+  // instructor_id is itself a barn_memberships.id. Same RLS gap as the rider embed above —
+  // resolved via getMembershipByIdForBarn's direct-query + RPC fallback instead of a nested
+  // instructor embed, in one shot that yields both user_id and profile_id — kept out of the
+  // resolveMemberNames batch below so a rider caller doesn't trigger the same
+  // get_active_barn_member_summaries RPC fallback twice for the same instructor.
   const instructorId = lessonData.instructor_id
-  const membershipMap = await resolveMemberNames(
-    instructorId ? [...riderMembershipIds, instructorId] : riderMembershipIds,
-    barnId,
-    supabase
-  )
+  const instructorMembership = instructorId ? await getMembershipByIdForBarn(instructorId, barnId, supabase) : null
+  const instructor_user_id = instructorMembership?.user_id ?? null
+  const instructorProfile = instructorMembership ? await getProfileById(instructorMembership.profile_id) : null
+  const instructor_name = instructorMembership
+    ? (instructorProfile ? `${instructorProfile.first_name} ${instructorProfile.last_name}` : instructorId)
+    : null
 
-  const instructor_name = instructorId ? membershipMap.get(instructorId) ?? null : null
-  const instructor_user_id = instructor_membership?.user_id ?? null
+  const membershipMap = await resolveMemberNames(riderMembershipIds, barnId, supabase)
 
   type NormalizedLr = {
     rider_notes: string | null
@@ -116,13 +120,11 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
     cancellation_notes: lr.cancellation_notes ?? null,
     cancelled_at: lr.cancelled_at ?? null,
-    barn_membership: lr.barn_memberships
-      ? {
-          id: lr.barn_memberships.id,
-          user_id: lr.barn_memberships.user_id,
-          name: membershipMap.get(lr.barn_memberships.id) ?? lr.barn_memberships.id,
-        }
-      : null,
+    barn_membership: {
+      id: lr.rider_id,
+      user_id: lr.barn_memberships?.user_id ?? null,
+      name: membershipMap.get(lr.rider_id) ?? lr.rider_id,
+    },
   })
 
   const base = {
@@ -138,7 +140,10 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
       lesson_riders: base.lesson_riders.map((lr: NormalizedLr) => ({
         ...lr,
         private_notes: null,
-        rider_notes: lr.barn_membership?.user_id === userId ? lr.rider_notes : null,
+        // Anchored to the caller's own membership ID (a plain, always-present column) rather
+        // than the RLS-gated barn_memberships embed's user_id, so masking doesn't depend on
+        // barn_memberships_read_own continuing to cover the caller's own row.
+        rider_notes: lr.barn_membership?.id === callerMembershipId ? lr.rider_notes : null,
       })),
     } as LessonDetail
   }

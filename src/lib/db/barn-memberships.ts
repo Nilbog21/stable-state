@@ -313,6 +313,29 @@ export async function resolveMemberNames(
     }
   }
 
+  // A co-rider (or any other non-instructor member) is still unresolved here — the RPC
+  // above only covers "caller can see them as a lesson instructor". Fall back to the
+  // broader any-active-member RPC (#779) for the remainder, same column-limiting rationale
+  // as get_instructor_membership_names (never exposes invite_token).
+  const stillUnresolvedIds = membershipIds.filter((id) => !nameMap.has(id))
+  if (stillUnresolvedIds.length) {
+    const { data: summaryRows, error } = await supabase.rpc('get_active_barn_member_summaries', {
+      p_barn_id: barnId,
+    })
+    if (error) throw error
+    const summaryById = new Map(((summaryRows ?? []) as ActiveMemberSummaryRow[]).map((r) => [r.id, r]))
+    const matched = stillUnresolvedIds
+      .map((id) => summaryById.get(id))
+      .filter((r): r is ActiveMemberSummaryRow => r != null)
+    if (matched.length) {
+      const profileMap = await fetchProfilesById(supabase, [...new Set(matched.map((r) => r.profile_id))])
+      for (const row of matched) {
+        const profile = profileMap.get(row.profile_id)
+        nameMap.set(row.id, profile ? `${profile.first_name} ${profile.last_name}` : row.id)
+      }
+    }
+  }
+
   return nameMap
 }
 
