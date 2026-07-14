@@ -1,5 +1,12 @@
 import { describe, it, expect } from 'vitest'
-import { mustSucceed, isSelfSelect, formatProfileLine, formatBarnLine, mergeMembersWithProfiles } from './change-user'
+import {
+  mustSucceed,
+  isSelfSelect,
+  formatProfileLine,
+  formatBarnLine,
+  mergeMembersWithProfiles,
+  resolveRevertUserId,
+} from './change-user'
 
 describe('mustSucceed', () => {
   it('should_throw_with_label_and_message_when_result_has_error', () => {
@@ -66,5 +73,15 @@ describe('mergeMembersWithProfiles', () => {
   it('should_drop_membership_whose_profile_is_missing', () => {
     const memberships = [{ profile_id: 'p1' }, { profile_id: 'missing' }]
     expect(mergeMembersWithProfiles(memberships, profiles)).toEqual([profiles[0]])
+  })
+})
+
+describe('resolveRevertUserId', () => {
+  it('should_return_null_when_current_row_is_devs_own_profile', () => {
+    expect(resolveRevertUserId('dev-profile', 'dev-profile', 'dev-user')).toBeNull()
+  })
+
+  it('should_return_owner_user_id_when_current_row_belongs_to_another_profile', () => {
+    expect(resolveRevertUserId('instructor-profile', 'dev-profile', 'instructor-user')).toBe('instructor-user')
   })
 })
