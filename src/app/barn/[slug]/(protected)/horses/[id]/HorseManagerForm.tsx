@@ -31,17 +31,30 @@ export function HorseManagerForm({
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
   const { show, flash } = useSaveFlash()
-  // React 19 resets the DOM's `checked` property on the "Use barn defaults" checkbox
-  // to its mount-time value after a successful form action, without re-syncing the
-  // controlled `checked` prop (#762 review) — remounting the input on every successful
-  // save forces React to reapply the real current value.
+  // React 19 resets the DOM's `checked`/`value` properties on uncontrolled form
+  // fields to their mount-time value after a successful form action, without
+  // re-syncing controlled props (#762 review) — remounting the inputs on every
+  // successful save forces React to reapply the real current value.
   const [saveCount, setSaveCount] = useState(0)
+  // Sourced from the submitted FormData, not the `horse` prop — Next.js's
+  // revalidatePath-driven prop refresh isn't guaranteed to land before this
+  // continuation runs, so reading post-save values off `horse` here would
+  // remount the inputs with the *previous* save's values (#759 testIssue).
+  const [thresholds, setThresholds] = useState({
+    moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
+    high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
+  })
 
   async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
     const result = await action(prevState, formData)
     if (!result.error) {
       flash()
       setSaveCount(c => c + 1)
+      setThresholds(
+        formData.get('use_barn_defaults') === 'true'
+          ? { moderate: barn.exhaustion_threshold_moderate, high: barn.exhaustion_threshold_high }
+          : { moderate: Number(formData.get('moderate')), high: Number(formData.get('high')) }
+      )
     }
     return result
   }
@@ -50,9 +63,6 @@ export function HorseManagerForm({
   const [useBarnDefaults, setUseBarnDefaults] = useState(
     horse.exhaustion_threshold_moderate === null && horse.exhaustion_threshold_high === null
   )
-
-  const defaultModerate = horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate
-  const defaultHigh = horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high
 
   return (
     <form action={formAction} onReset={(e) => e.preventDefault()} className="flex w-full flex-col gap-5">
@@ -163,7 +173,7 @@ export function HorseManagerForm({
               step="1"
               required
               disabled={useBarnDefaults}
-              defaultValue={defaultModerate}
+              defaultValue={thresholds.moderate}
               className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             />
           </div>
@@ -183,7 +193,7 @@ export function HorseManagerForm({
               step="1"
               required
               disabled={useBarnDefaults}
-              defaultValue={defaultHigh}
+              defaultValue={thresholds.high}
               className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
             />
           </div>

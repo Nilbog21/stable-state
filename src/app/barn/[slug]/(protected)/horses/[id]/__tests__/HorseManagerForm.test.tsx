@@ -323,4 +323,33 @@ describe('HorseManagerForm', () => {
 
     expect(checkbox.checked).toBe(false)
   })
+
+  it('should_display_submitted_custom_thresholds_after_save_instead_of_stale_horse_prop_values', async () => {
+    // `horse` here never updates across the save (simulating revalidatePath's
+    // prop refresh not having landed yet) — the displayed values must come
+    // from what was submitted, not from the stale prop.
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /use barn defaults/i }))
+    fireEvent.change(screen.getByLabelText(/moderate threshold/i), { target: { value: '3' } })
+    fireEvent.change(screen.getByLabelText(/high threshold/i), { target: { value: '8' } })
+
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+    })
+
+    expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).value).toBe('3')
+    expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('8')
+  })
+
+  it('should_display_barn_defaults_after_save_when_checked_instead_of_stale_horse_prop_values', async () => {
+    render(<HorseManagerForm horse={customThresholdsHorse} barn={mockBarn} action={mockAction} />)
+    fireEvent.click(screen.getByRole('checkbox', { name: /use barn defaults/i }))
+
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+    })
+
+    expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).value).toBe('5')
+    expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('11')
+  })
 })
