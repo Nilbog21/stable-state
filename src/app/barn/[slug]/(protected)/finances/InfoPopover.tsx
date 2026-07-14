@@ -5,6 +5,8 @@ export function InfoPopover({ text, align = 'right' }: { text: string; align?: '
   const [open, setOpen] = useState(false)
   return (
     <span className="relative inline-block">
+      {/* Raw Tailwind, not <Button>: icon-only unpadded info trigger — same
+          reasoning as NotificationBell's bell trigger. */}
       <button
         type="button"
         onClick={() => setOpen(o => !o)}

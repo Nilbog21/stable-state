@@ -20,6 +20,9 @@ export function OlderLessonsToggle({ lessons, slug, isManager, isTrainer, curren
 
   return (
     <>
+      {/* Raw Tailwind, not <Button>: bare underlined text-link control, no
+          background/border/padding — same reasoning as NotificationBell's
+          "Mark all read" control. */}
       <button
         type="button"
         onClick={() => setShow((v) => !v)}
