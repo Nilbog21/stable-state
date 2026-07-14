@@ -3,6 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
+import { canManage } from '@/lib/document-target'
 import { DocumentUploadForm } from './DocumentUploadForm'
 import { uploadDocumentAction, type DocumentEntity } from './actions'
 
@@ -43,11 +44,7 @@ export default async function NewDocumentPage({
   if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
 
   const isOwnPage = targetMembership.user_id === user.id
-  const canUpload =
-    callerMembership.role === 'manager' ||
-    (callerMembership.role === 'trainer' && isOwnPage) ||
-    (callerMembership.role === 'rider' && isOwnPage)
-  if (!canUpload) notFound()
+  if (!canManage(callerMembership.role, isOwnPage)) notFound()
 
   // Rendered form options must match the target's real role, not the caller-suppliable
   // `entity` query param (mirrors the server-side derivation in uploadDocumentAction).
