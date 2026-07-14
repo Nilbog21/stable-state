@@ -250,6 +250,14 @@ describe('HorseDetailPage', () => {
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
+  it('should_not_render_actions_column_header_for_trainer_when_document_exists', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Actions')).toBeNull()
+  })
+
   it('should_not_render_documents_section_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
