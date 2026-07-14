@@ -279,6 +279,24 @@ export async function getPaidCharges(
   }))
 }
 
+export async function getUnpaidAgreementIds(barnId: string, client?: SupabaseClient): Promise<Set<string>> {
+  const supabase = client ?? await createClient()
+  const now = new Date()
+  const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
+    .toISOString()
+    .slice(0, 10)
+
+  const { data, error } = await supabase
+    .from('agreement_charges')
+    .select('agreement_id')
+    .eq('barn_id', barnId)
+    .is('payment_type', null)
+    .lt('period', firstOfCurrentMonth)
+
+  if (error) throw error
+  return new Set((data ?? []).map((row) => row.agreement_id))
+}
+
 export async function getOutstandingCharges(
   barnId: string,
   userId?: string,

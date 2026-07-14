@@ -1,5 +1,5 @@
 import { requireMembership } from '@/lib/auth/guard'
-import { getAgreementsByBarn, getAgreementStatusLabel } from '@/lib/db/agreements'
+import { getAgreementsByBarn, getAgreementStatusLabel, getUnpaidAgreementIds } from '@/lib/db/agreements'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { Button } from '@/components/ui/Button'
@@ -28,7 +28,7 @@ export default async function AgreementsPage({
   const addHref = `/barn/${slug}/agreements/new?kind=${kind}`
 
   const agreements = await getAgreementsByBarn(barn.id, kind)
-  const [riderNames, horseNames] = await Promise.all([
+  const [riderNames, horseNames, unpaidAgreementIds] = await Promise.all([
     resolveMemberNames(
       agreements.map((a) => a.rider_id),
       barn.id
@@ -37,6 +37,7 @@ export default async function AgreementsPage({
       agreements.map((a) => a.horse_id),
       barn.id
     ),
+    getUnpaidAgreementIds(barn.id),
   ])
 
   return (
@@ -61,8 +62,11 @@ export default async function AgreementsPage({
               <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
                 {horseNames.get(a.horse_id) ?? '—'}
               </p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                {formatFee(a.fee)} · {getAgreementStatusLabel(a)}
+              <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+                <span>{formatFee(a.fee)} · {getAgreementStatusLabel(a)}</span>
+                {unpaidAgreementIds.has(a.id) && (
+                  <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
+                )}
               </p>
             </Card>
           ))}
