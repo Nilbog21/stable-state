@@ -47,8 +47,8 @@ function AccordionSection({
   children: React.ReactNode
 }) {
   return (
-    <div className="relative mb-6">
-      <details open={defaultOpen} className={cardBaseClass}>
+    <div className="mb-6">
+      <details open={defaultOpen} className={`relative ${cardBaseClass}`}>
         <summary
           className={`flex min-h-11 cursor-pointer items-center px-4 py-3 ${headerExtra ? 'pr-32' : ''}`}
         >
@@ -56,11 +56,11 @@ function AccordionSection({
             {title}
           </h2>
         </summary>
+        {headerExtra && (
+          <div className="absolute right-4 top-0 flex h-11 items-center">{headerExtra}</div>
+        )}
         <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">{children}</div>
       </details>
-      {headerExtra && (
-        <div className="absolute right-4 top-1/2 -translate-y-1/2">{headerExtra}</div>
-      )}
     </div>
   )
 }
