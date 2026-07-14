@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
-import { getMembershipByIdForBarn, getUserMembership, resolveMemberNames } from './barn-memberships'
+import { getMembershipByIdForBarn, getUserMembership } from './barn-memberships'
+import { resolveMemberNames } from './member-names'
 import { getProfileById } from './profiles'
 import type { Lesson, LessonDetail, LessonWithDetails, PaymentType, Role } from './types'
 

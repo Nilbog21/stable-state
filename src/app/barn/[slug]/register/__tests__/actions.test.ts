@@ -3,14 +3,14 @@ import { createMockUser } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
-vi.mock('@/lib/db/barn-memberships', () => ({ claimManagedMember: vi.fn() }))
+vi.mock('@/lib/db/member-invites', () => ({ claimManagedMember: vi.fn() }))
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
 }))
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
-import { claimManagedMember } from '@/lib/db/barn-memberships'
+import { claimManagedMember } from '@/lib/db/member-invites'
 import { acceptInvite } from '../actions'
 
 describe('acceptInvite', () => {

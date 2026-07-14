@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { resolveMemberNames } from './barn-memberships'
+import { resolveMemberNames } from './member-names'
 import { resolveHorseNames } from './horses'
 import {
   getLessonFeeRows,

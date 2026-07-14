@@ -7,12 +7,12 @@ vi.mock('@/lib/db/agreements', async () => {
   const actual = await vi.importActual<typeof import('@/lib/db/agreements')>('@/lib/db/agreements')
   return { ...actual, getAgreementsByBarn: vi.fn() }
 })
-vi.mock('@/lib/db/barn-memberships', () => ({ resolveMemberNames: vi.fn() }))
+vi.mock('@/lib/db/member-names', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ resolveHorseNames: vi.fn() }))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getAgreementsByBarn } from '@/lib/db/agreements'
-import { resolveMemberNames } from '@/lib/db/barn-memberships'
+import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
 import AgreementsPage from '../page'
 

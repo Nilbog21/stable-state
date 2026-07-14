@@ -117,7 +117,7 @@ export async function getMembershipById(id: string, client?: SupabaseClient): Pr
   return data
 }
 
-type ActiveMemberSummaryRow = {
+export type ActiveMemberSummaryRow = {
   id: string
   user_id: string | null
   profile_id: string
@@ -163,15 +163,15 @@ export async function getMembershipByIdForBarn(
 }
 
 
-type MembershipRow = { id: string; user_id: string | null; profile_id: string; invite_token: string | null }
-type ProfileRow = { id: string; first_name: string; last_name: string; is_managed: boolean }
-type MembershipProfileRow = MembershipRow & { profile: ProfileRow | null }
+export type MembershipRow = { id: string; user_id: string | null; profile_id: string; invite_token: string | null }
+export type ProfileRow = { id: string; first_name: string; last_name: string; is_managed: boolean }
+export type MembershipProfileRow = MembershipRow & { profile: ProfileRow | null }
 
 function baseMembershipQuery(supabase: SupabaseClient) {
   return supabase.from('barn_memberships').select('id, user_id, profile_id, invite_token')
 }
 
-async function fetchProfilesById(supabase: SupabaseClient, profileIds: string[]): Promise<Map<string, ProfileRow>> {
+export async function fetchProfilesById(supabase: SupabaseClient, profileIds: string[]): Promise<Map<string, ProfileRow>> {
   const { data: profiles, error } = profileIds.length
     ? await supabase.from('profiles').select('id, first_name, last_name, is_managed').in('id', profileIds)
     : { data: [] as ProfileRow[], error: null }
@@ -179,11 +179,11 @@ async function fetchProfilesById(supabase: SupabaseClient, profileIds: string[])
   return new Map((profiles ?? []).map((p) => [p.id, p]))
 }
 
-// Shared join for getInstructorsByBarn/getActiveMembersWithProfiles/resolveMemberNames/
-// resolveMemberNamesByUserId — callers each supply their own barn_memberships filter and
-// map the joined rows to their own return shape/fallback (array vs Map, 'Unknown Instructor'
-// vs 'Unknown Member' vs raw id).
-async function joinMembershipsWithProfiles(
+// Shared join for getInstructorsByBarn/getActiveMembersWithProfiles (here) and
+// resolveMemberNames (member-names.ts) — callers each supply their own barn_memberships
+// filter and map the joined rows to their own return shape/fallback (array vs Map,
+// 'Unknown Instructor' vs 'Unknown Member' vs raw id).
+export async function joinMembershipsWithProfiles(
   supabase: SupabaseClient,
   applyFilter: (
     query: ReturnType<typeof baseMembershipQuery>
@@ -282,63 +282,6 @@ export async function getActiveManagerUserIds(
   return (data ?? []).map((m) => m.user_id).filter((id): id is string => id !== null)
 }
 
-export async function resolveMemberNames(
-  membershipIds: string[],
-  barnId: string,
-  client?: SupabaseClient
-): Promise<Map<string, string>> {
-  if (!membershipIds.length) return new Map()
-
-  const supabase = client ?? await createClient()
-
-  const rows = await joinMembershipsWithProfiles(supabase, (query) =>
-    query.eq('barn_id', barnId).in('id', membershipIds)
-  )
-
-  const nameMap = new Map(rows.map((m) => [m.id, m.profile ? `${m.profile.first_name} ${m.profile.last_name}` : m.id]))
-
-  // Rows the caller isn't the instructor of (or enrolled under) never come back from the
-  // query above — barn_memberships RLS only covers own-row + trainer-reads-riders. Resolve
-  // those via a column-limited RPC instead of a broad row-level policy, so the fetch can't
-  // also expose invite_token (see get_instructor_membership_names, #739 follow-up).
-  const unresolvedIds = membershipIds.filter((id) => !nameMap.has(id))
-  if (unresolvedIds.length) {
-    const { data: instructorRows, error } = await supabase.rpc('get_instructor_membership_names', {
-      p_membership_ids: unresolvedIds,
-      p_barn_id: barnId,
-    })
-    if (error) throw error
-    for (const row of instructorRows ?? []) {
-      nameMap.set(row.id, `${row.first_name} ${row.last_name}`)
-    }
-  }
-
-  // A co-rider (or any other non-instructor member) is still unresolved here — the RPC
-  // above only covers "caller can see them as a lesson instructor". Fall back to the
-  // broader any-active-member RPC (#779) for the remainder, same column-limiting rationale
-  // as get_instructor_membership_names (never exposes invite_token).
-  const stillUnresolvedIds = membershipIds.filter((id) => !nameMap.has(id))
-  if (stillUnresolvedIds.length) {
-    const { data: summaryRows, error } = await supabase.rpc('get_active_barn_member_summaries', {
-      p_barn_id: barnId,
-    })
-    if (error) throw error
-    const summaryById = new Map(((summaryRows ?? []) as ActiveMemberSummaryRow[]).map((r) => [r.id, r]))
-    const matched = stillUnresolvedIds
-      .map((id) => summaryById.get(id))
-      .filter((r): r is ActiveMemberSummaryRow => r != null)
-    if (matched.length) {
-      const profileMap = await fetchProfilesById(supabase, [...new Set(matched.map((r) => r.profile_id))])
-      for (const row of matched) {
-        const profile = profileMap.get(row.profile_id)
-        nameMap.set(row.id, profile ? `${profile.first_name} ${profile.last_name}` : row.id)
-      }
-    }
-  }
-
-  return nameMap
-}
-
 export const getBarnMembershipsForUser = cache(async (
   userId: string
 ): Promise<{ barn: Barn; membership: BarnMembership }[]> => {
@@ -358,58 +301,6 @@ export const getBarnMembershipsForUser = cache(async (
       membership: membership as BarnMembership,
     }))
 })
-
-export async function createManagedMember(
-  barnId: string,
-  firstName: string,
-  lastName: string,
-  role: Role,
-  client?: SupabaseClient
-): Promise<{ membershipId: string }> {
-  const supabase = client ?? await createClient()
-  const { data, error } = await supabase.rpc('create_managed_member', {
-    p_barn_id: barnId,
-    p_first_name: firstName,
-    p_last_name: lastName,
-    p_role: role,
-  })
-  if (error) throw error
-  return { membershipId: data as string }
-}
-
-export async function claimManagedMember(
-  token: string,
-  userId: string,
-  email: string | null,
-  client?: SupabaseClient
-): Promise<void> {
-  const supabase = client ?? await createClient()
-  const { error } = await supabase.rpc('claim_managed_member', {
-    p_token: token,
-    p_user_id: userId,
-    p_email: email,
-  })
-  if (error) throw error
-}
-
-export async function revokeInviteToken(
-  membershipId: string,
-  barnId: string,
-  client?: SupabaseClient
-): Promise<string> {
-  const supabase = client ?? await createClient()
-  const newToken = crypto.randomUUID()
-  const { data, error } = await supabase
-    .from('barn_memberships')
-    .update({ invite_token: newToken })
-    .eq('id', membershipId)
-    .eq('barn_id', barnId)
-    .select('invite_token')
-    .single()
-
-  if (error) throw error
-  return data.invite_token
-}
 
 export async function setCanInstruct(
   membershipId: string,

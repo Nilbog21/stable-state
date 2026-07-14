@@ -2,7 +2,7 @@
 
 import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { claimManagedMember } from '@/lib/db/barn-memberships'
+import { claimManagedMember } from '@/lib/db/member-invites'
 
 // Manual auth check, not requireMembership: the caller has no barn
 // membership yet — claiming one is the whole point of this action.

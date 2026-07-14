@@ -1,6 +1,6 @@
 import { requireMembership } from '@/lib/auth/guard'
 import { getAgreementsByBarn, getAgreementStatusLabel } from '@/lib/db/agreements'
-import { resolveMemberNames } from '@/lib/db/barn-memberships'
+import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'

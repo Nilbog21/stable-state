@@ -13,6 +13,9 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
   getBarnMembershipsForUser: vi.fn(),
   getActiveMemberships: vi.fn(),
+}))
+
+vi.mock('@/lib/db/member-invites', () => ({
   claimManagedMember: vi.fn(),
 }))
 
@@ -46,7 +49,8 @@ vi.mock('next/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships, claimManagedMember } from '@/lib/db/barn-memberships'
+import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { claimManagedMember } from '@/lib/db/member-invites'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'

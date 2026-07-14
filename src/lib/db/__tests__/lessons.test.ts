@@ -12,8 +12,12 @@ vi.mock('../lesson-participants', async () => {
 
 vi.mock('../barn-memberships', async () => {
   const actual = await vi.importActual<typeof import('../barn-memberships')>('../barn-memberships')
-  return { ...actual, resolveMemberNames: vi.fn(), getMembershipByIdForBarn: vi.fn() }
+  return { ...actual, getMembershipByIdForBarn: vi.fn() }
 })
+
+vi.mock('../member-names', () => ({
+  resolveMemberNames: vi.fn(),
+}))
 
 vi.mock('../profiles', async () => {
   const actual = await vi.importActual<typeof import('../profiles')>('../profiles')
@@ -22,7 +26,8 @@ vi.mock('../profiles', async () => {
 
 import { createClient } from '@/lib/supabase/server'
 import { hydrateParticipants } from '../lesson-participants'
-import { resolveMemberNames, getMembershipByIdForBarn } from '../barn-memberships'
+import { getMembershipByIdForBarn } from '../barn-memberships'
+import { resolveMemberNames } from '../member-names'
 import { getProfileById } from '../profiles'
 import {
   createLesson,
