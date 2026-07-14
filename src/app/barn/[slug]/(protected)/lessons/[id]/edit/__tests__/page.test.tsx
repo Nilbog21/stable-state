@@ -375,4 +375,33 @@ describe('EditLessonPage', () => {
     render(jsx)
     expect(screen.getByTestId('stop-series-button')).toBeDefined()
   })
+
+  it('should_show_horse_status_banner_when_future_uncancelled_lesson_has_inactive_horse', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByText('Buttercup is inactive')).toBeDefined()
+  })
+
+  it('should_hide_horse_status_banner_when_lesson_is_in_the_past', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_at: '2020-01-01T10:00:00Z',
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.queryByText('Buttercup is inactive')).toBeNull()
+  })
+
+  it('should_hide_horse_status_banner_when_all_horses_active_and_available', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
 })

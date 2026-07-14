@@ -5,8 +5,9 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import type { LessonDetail } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
-import { canManageLesson, isLessonCancellationEligible } from '@/lib/lesson-authorization'
+import { canManageLesson, isLessonCancellationEligible, getHorseAttentionReasons } from '@/lib/lesson-authorization'
 import { DeleteLessonButton } from '../DeleteLessonButton'
+import { HorseStatusBanner } from '../HorseStatusBanner'
 import { deleteLessonAction } from '@/app/actions/lessons'
 
 function RiderStatusBadge({ cancelledAt }: { cancelledAt: string | null }) {
@@ -135,8 +136,11 @@ export default async function LessonDetailPage({
     myRiderEntry.cancelled_at === null &&
     lessonEligibleWindow
 
+  const attentionReasons = getHorseAttentionReasons(lesson)
+
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white p-8 dark:bg-black">
+      <HorseStatusBanner reasons={attentionReasons} />
       <div className="w-full max-w-2xl">
         <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-2">

@@ -649,6 +649,61 @@ describe('LessonDetailPage', () => {
     expect(screen.queryByText('Unavailable')).toBeNull()
   })
 
+  it('should_show_horse_status_banner_when_future_uncancelled_lesson_has_inactive_horse', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Buttercup is inactive')).toBeDefined()
+  })
+
+  it('should_show_horse_status_banner_with_unavailability_reason', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Rocky', is_active: true, is_available: false, unavailability_reason: 'lame — resting per vet' } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText('Rocky is unavailable: lame — resting per vet')).toBeDefined()
+  })
+
+  it('should_hide_horse_status_banner_when_lesson_is_in_the_past', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_at: '2020-01-01T10:00:00Z',
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Buttercup is inactive')).toBeNull()
+  })
+
+  it('should_hide_horse_status_banner_when_lesson_is_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_at: '2099-01-01T10:00:00Z',
+      cancelled_at: '2026-01-01T00:00:00Z',
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Buttercup is inactive')).toBeNull()
+  })
+
+  it('should_hide_horse_status_banner_when_all_horses_active_and_available', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      lesson_at: '2099-01-01T10:00:00Z',
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
   it('should_hide_horse_notes_label_when_horse_notes_is_null', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,

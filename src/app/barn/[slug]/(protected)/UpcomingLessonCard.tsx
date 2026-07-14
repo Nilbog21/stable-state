@@ -2,6 +2,7 @@
 import type { LessonWithDetails } from '@/lib/db/types'
 import { Card } from '@/components/ui/Card'
 import { isSameLocalDay } from '@/lib/local-day'
+import { isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
 
 export function formatLessonDate(iso: string, now: Date): string {
   const d = new Date(iso)
@@ -30,7 +31,7 @@ export function UpcomingLessonCard({
 
   const myRiderIndex = role === 'rider' && viewerMembershipId ? lesson.rider_ids.indexOf(viewerMembershipId) : -1
   const isOwnParticipationCancelled = myRiderIndex >= 0 && lesson.rider_cancelled_ats[myRiderIndex] !== null
-  const needsAttention = lesson.cancelled_at === null && lesson.needs_attention && new Date(lesson.lesson_at) > now
+  const needsAttention = lesson.needs_attention && isLessonEligibleForAttentionBadge(lesson)
 
   return (
     <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="p-4">
