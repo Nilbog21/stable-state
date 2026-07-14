@@ -125,7 +125,7 @@ Dashboard (`/barn/dev-barn`):
 Lessons (`/barn/dev-barn/lessons`):
 
 - [ ] Recent lessons (last 7 days) shown immediately; older lessons appear only after the older-lessons toggle
-- [ ] Each lesson renders as a full-card link (whole row is tappable to the detail page); the **Cancel** button sits beside the card, not inside it
+- [ ] Each lesson renders as a full-width, uniformly-sized card link (whole row is tappable to the detail page) — no **Cancel** button on the list
 - [ ] Filter pills show `My Lessons | All | By Instructor | By Rider | By Horse`, wrapping onto multiple lines at ~390px width instead of requiring horizontal scroll; **My Lessons** is active by default and shows only lessons you instruct
 - [ ] Picking **All** shows every barn lesson regardless of instructor
 - [ ] Picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
@@ -136,13 +136,13 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, save, verify the change on the detail page
 - [ ] Edit the group lesson (Lesson 4) → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
 - [ ] Delete one seeded lesson — it disappears from the list
-- [ ] On a lesson's detail page, click **Cancel** next to a rider's name → confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away; that rider shows a **Cancelled** badge and the rest of the lesson is unaffected
-- [ ] Open the per-rider or whole-lesson Cancel page as the manager on a lesson you also instruct (or as the instructing trainer) — the type radio defaults to **Cancelled by Instructor**; open it on a lesson someone else instructs — the radio defaults to **Cancelled by Rider**
+- [ ] Open a lesson's detail page → a single **Cancel** button appears in the header next to **Edit**/**Delete** (manager, or the instructing trainer); open a lesson someone else instructs as a non-instructing trainer — no **Cancel** button shown
+- [ ] Click **Cancel** on a **normal** lesson → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle, defaulting to **Cancelled by Instructor** when you instruct the lesson, else **Cancelled by Rider**; confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes**
 - [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
-- [ ] From the Lessons list, click **Cancel** on a **normal** lesson (whole-lesson cancel) → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle identical to the per-rider cancel page; confirm with notes → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes** on the detail page
-- [ ] Whole-lesson cancel on a **group** lesson → no toggle shown; confirmation text instead lists the count and names of enrolled riders who will be affected
-- [ ] On a **normal** lesson, per-rider-cancel the only rider (do not use the whole-lesson Cancel link) → the lesson itself now shows a **Cancelled** badge on the list, detail page, and Dashboard, even though you never used the whole-lesson cancel flow
-- [ ] On a **group** lesson, per-rider-cancel every enrolled rider one at a time → after the last one, the lesson shows a **Cancelled** badge everywhere; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
+- [ ] Click **Cancel** on a **group** lesson → the same toggle appears; choosing **Cancelled by Instructor** shows the count and names of enrolled riders who'll be affected and, on confirm, cancels the whole lesson (all riders, fee waived)
+- [ ] On that same group lesson's Cancel page, choose **Cancelled by Rider** instead → a rider picker reveals listing the still-active enrolled riders; select one and confirm → only that rider's row shows a **Cancelled** badge, the rest of the lesson (and other riders) is unaffected, and the standard 24-hour fee policy applies to that rider
+- [ ] On a **normal** lesson, cancel it (there's only one rider) → the lesson itself shows a **Cancelled** badge on the list, detail page, and Dashboard
+- [ ] On a **group** lesson, cancel riders one at a time via the picker → after the last active rider is cancelled, the lesson shows a **Cancelled** badge everywhere; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
 - [ ] On an already-cancelled lesson, open **Edit Lesson** (manager and, separately, the instructing trainer) → the Notes section shows a **Cancellation Notes** textarea (confirm it does *not* appear when editing a non-cancelled lesson) → edit it and Save → the detail page shows the updated text read-only under **Cancellation Notes** for every role, including the instructing trainer and a rider; clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
 - [ ] As manager, open a lesson's detail page and click **Delete** → confirm the browser prompt → lesson disappears entirely from the Lessons list and Finances (no **Cancelled** badge, no notification to instructor/riders); repeat on an already-cancelled lesson and a past/paid lesson to confirm Delete is reachable regardless of state; as trainer, confirm no **Delete** button is shown on any lesson
 
@@ -253,7 +253,7 @@ bash scripts/change-user.sh
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] Edit one of your own lessons — the instructor field is **hidden entirely** (no label, no read-only text — just locked server-side)
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
-- [ ] On one of your own lessons, cancel a rider's spot — works the same as manager; on Blake's lesson, the per-rider Cancel link is not shown
+- [ ] On one of your own lessons, click **Cancel** in the header and cancel a rider's spot (or the whole lesson) — works the same as manager; open Blake's lesson — no header **Cancel** button is shown
 - [ ] Lesson 9 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
 - [ ] Open Lesson 9's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
@@ -279,7 +279,7 @@ bash scripts/change-user.sh
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
-- [ ] Cancel your own spot in an enrolled lesson (from the Lessons list, Dashboard, or the lesson detail page) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
+- [ ] Cancel your own spot in an enrolled lesson via the **Cancel** button in the lesson detail page header (no Cancel button on the Lessons list or Dashboard) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
 - [ ] Dashboard: if Dana has unpaid lessons and/or unpaid leases/boarding, a "Reminders" section with "N unpaid lessons"/"N unpaid leases/boarding" cards appears, each linking to `/barn/dev-barn/finances/outstanding` — this is Dana's only nav path to that page (no Finances link in the nav)
