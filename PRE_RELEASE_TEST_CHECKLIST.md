@@ -209,6 +209,7 @@ Finances (`/barn/dev-barn/finances`):
 
 Manage Barn (`/barn/dev-barn/settings`):
 
+- [ ] Sections render as collapsible accordions, collapsed by default; Pending Requests auto-expands because Quinn Pending is present; clicking a section's heading toggles it open/closed independently of the others
 - [ ] **Approve** Quinn Pending under Pending Requests → Quinn moves to Active Members
 - [ ] **Remove** Quinn from Active Members (confirm the browser prompt)
 - [ ] **Default Instructor Cut** field shows the current value (default `25`)
