@@ -36,4 +36,5 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION update_agreement_charge_fee(uuid, uuid, numeric) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION update_agreement_charge_fee(uuid, uuid, numeric) TO authenticated;

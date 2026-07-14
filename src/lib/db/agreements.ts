@@ -243,9 +243,10 @@ export async function getPaidCharges(
   const supabase = client ?? await createClient()
   // `kind`/`membership_id`/`horse_id` are already denormalized onto the transaction row
   // (see the transactions table), so only `agreement_id` needs a join — one hop via the
-  // FK-hint embed, pinned to the exact composite constraint (verified against the live
-  // schema — see getPaidCharges history for why an unqualified `agreements!inner` embed
-  // is avoided, #407/#665).
+  // FK-hint embed, pinned to the exact composite constraint (`transactions_barn_id_agreement_charge_id_fkey`,
+  // Postgres's standard auto-generated name for the unnamed FK added in #826 — re-verified
+  // against the live stable-state-dev schema for this #828 change — see getPaidCharges
+  // history for why an unqualified `agreements!inner` embed is avoided, #407/#665).
   const { data, error } = await supabase
     .from('transactions')
     .select(

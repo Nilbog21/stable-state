@@ -37,4 +37,5 @@ BEGIN
 END;
 $$;
 
+REVOKE EXECUTE ON FUNCTION mark_agreement_charge_paid(uuid, uuid, payment_type_enum) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION mark_agreement_charge_paid(uuid, uuid, payment_type_enum) TO authenticated;
