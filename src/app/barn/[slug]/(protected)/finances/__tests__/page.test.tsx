@@ -866,7 +866,7 @@ describe('FinancesPage', () => {
 
   it('should_show_trainer_tab_content_when_tab_is_trainer', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
-      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300 },
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 300 },
     ])
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -957,7 +957,7 @@ describe('FinancesPage', () => {
 
   it('should_render_non_lesson_income_row_with_info_popover_on_trainer_tab', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
-      { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300 },
+      { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
     ])
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -970,7 +970,7 @@ describe('FinancesPage', () => {
 
   it('should_render_no_instructor_row_with_info_popover_on_trainer_tab', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
-      { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100 },
+      { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100, grossIncome: 100 },
     ])
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -1039,7 +1039,7 @@ describe('FinancesPage', () => {
 
   it('should_display_trainer_name', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
-      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300 },
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 300 },
     ])
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -1051,7 +1051,7 @@ describe('FinancesPage', () => {
 
   it('should_display_trainer_income_amount', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
-      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300 },
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
     ])
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),

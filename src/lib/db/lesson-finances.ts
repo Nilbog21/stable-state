@@ -394,7 +394,9 @@ export async function getTrainerIncomeSummary(
     trainerId: r.id,
     trainerName: r.name,
     totalIncome: r.totalIncome,
-    grossIncome: grossByTrainer.get(r.id) ?? null,
+    // grouped and grossByTrainer are both built from the same lessons array with the
+    // same instructor_id-or-fallback key, so every grouped key has a grossByTrainer entry.
+    grossIncome: grossByTrainer.get(r.id)!,
   }))
 
   const chargesFold = foldChargesCollected(charges)
