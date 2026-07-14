@@ -1,7 +1,14 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
 
-afterEach(cleanup)
+beforeEach(() => {
+  vi.useFakeTimers({ shouldAdvanceTime: true })
+  vi.setSystemTime(new Date('2026-07-04T12:00:00Z'))
+})
+afterEach(() => {
+  vi.useRealTimers()
+  cleanup()
+})
 
 vi.mock('@/app/actions/expenses', () => ({
   getMostCommonExpenseTypeAction: vi.fn(),
@@ -155,7 +162,6 @@ describe('ExpenseForm', () => {
   })
 
   it('should_clear_the_flash_after_the_timeout_elapses', async () => {
-    vi.useFakeTimers({ shouldAdvanceTime: true })
     vi.mocked(getMostCommonExpenseTypeAction).mockResolvedValue('Farrier')
     renderForm()
     const recipientInput = screen.getByLabelText(/recipient/i)
@@ -170,7 +176,6 @@ describe('ExpenseForm', () => {
       vi.advanceTimersByTime(600)
     })
     expect(screen.getByLabelText(/expense type/i).className).not.toContain('ring-2')
-    vi.useRealTimers()
   })
 
   it('should_not_call_lookup_again_when_recipient_is_unchanged_since_last_check', async () => {
@@ -283,5 +288,54 @@ describe('ExpenseForm', () => {
   it('should_leave_other_horses_unchecked_from_initial_horseIds', () => {
     renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: ['horse-2'] } })
     expect((screen.getByRole('checkbox', { name: 'Apple' }) as HTMLInputElement).checked).toBe(false)
+  })
+
+  it('should_show_time_field_when_date_is_today', () => {
+    renderForm({ defaultDate: '2026-07-04' })
+    expect(screen.getByLabelText(/time/i)).toBeDefined()
+  })
+
+  it('should_show_time_field_when_date_is_in_the_future', () => {
+    renderForm({ defaultDate: '2026-07-05' })
+    expect(screen.getByLabelText(/time/i)).toBeDefined()
+  })
+
+  it('should_hide_time_field_when_date_is_strictly_before_today', () => {
+    renderForm({ defaultDate: '2026-07-03' })
+    expect(screen.queryByLabelText(/time/i)).toBeNull()
+  })
+
+  it('should_hide_time_field_after_changing_date_to_the_past', () => {
+    renderForm({ defaultDate: '2026-07-04' })
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2026-07-03' } })
+    expect(screen.queryByLabelText(/time/i)).toBeNull()
+  })
+
+  it('should_show_time_field_again_after_changing_date_back_to_today', () => {
+    renderForm({ defaultDate: '2026-07-03' })
+    fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '2026-07-04' } })
+    expect(screen.getByLabelText(/time/i)).toBeDefined()
+  })
+
+  it('should_show_time_field_when_defaultDate_is_omitted', () => {
+    renderForm({ defaultDate: undefined })
+    expect(screen.getByLabelText(/time/i)).toBeDefined()
+  })
+
+  it('should_update_time_when_user_edits_it_manually', () => {
+    renderForm()
+    const timeInput = screen.getByLabelText(/time/i) as HTMLInputElement
+    fireEvent.change(timeInput, { target: { value: '09:15' } })
+    expect(timeInput.value).toBe('09:15')
+  })
+
+  it('should_preserve_existing_time_in_form_data_when_editing_a_past_dated_expense', () => {
+    const { container } = renderForm({
+      defaultDate: '2026-07-03',
+      initial: { recipient: '', expenseType: '', expenseTime: '14:30', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
+    })
+    const form = container.querySelector('form')!
+    const fd = new FormData(form)
+    expect(fd.get('expense_time')).toBe('14:30')
   })
 })

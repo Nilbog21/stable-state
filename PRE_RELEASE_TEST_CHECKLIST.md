@@ -144,6 +144,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] Seeded expenses render, split into recent and older (**Show older expenses** toggle), including at least one future-dated planned expense with no amount
 - [ ] Add a new expense (`/barn/dev-barn/expenses/new`): enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills and flashes; leave amount blank to save a planned expense, then re-open the form later and fill it in
 - [ ] Check **Entire Barn** on the new-expense form — horse checkboxes disable; save and verify the row shows "Entire Barn" instead of specific horses
+- [ ] On the new-expense form, set the date to yesterday — the Time field disappears; change it back to today or a future date — the Time field reappears
 - [ ] Edit a seeded expense (`/barn/dev-barn/expenses/[id]`) — form opens pre-filled including the correct Entire Barn / specific-horse checkbox state; change the recipient and amount, save, verify the row updates
 - [ ] Delete one seeded expense — it disappears from the list
 
