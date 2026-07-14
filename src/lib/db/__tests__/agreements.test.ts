@@ -10,6 +10,7 @@ vi.mock('../transactions')
 import { createClient } from '@/lib/supabase/server'
 import { resolveMemberNames } from '../member-names'
 import { getTransactionRows } from '../transactions'
+import type { TransactionRow } from '../transactions'
 import {
   createAgreement,
   getAgreementsByBarn,
@@ -572,7 +573,7 @@ describe('getPaidCharges', () => {
     return { from, mockSelect, mockEq, mockIn }
   }
 
-  function paidChargeRow(overrides: Record<string, unknown> = {}) {
+  function paidChargeRow(overrides: Partial<TransactionRow> = {}): TransactionRow {
     return {
       id: 'txn-1', kind: 'lease_charge', amount: 200, collected: true, paymentType: null,
       membershipId: 'rider-1', horseId: 'horse-1', lessonId: null, lessonRiderId: null,
@@ -583,9 +584,11 @@ describe('getPaidCharges', () => {
 
   it('should_delegate_to_getTransactionRows_with_charge_kinds_and_collected_true', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
+    const mockClient = { from: vi.fn() } as any
+    vi.mocked(createClient).mockResolvedValue(mockClient)
     await getPaidCharges('barn-1', startDate, endDate)
     expect(getTransactionRows).toHaveBeenCalledWith(
-      'barn-1', ['lease_charge', 'board_charge'], { startDate, endDate, collected: true }, expect.anything()
+      'barn-1', ['lease_charge', 'board_charge'], { startDate, endDate, collected: true }, mockClient
     )
   })
 

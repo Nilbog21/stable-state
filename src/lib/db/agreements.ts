@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
-import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, OutstandingCharge, PaymentType, Role } from './types'
+import { getTransactionRows } from './transactions'
+import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, OutstandingCharge, PaymentType, Role, TransactionKind } from './types'
 
 export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | 'is_active'>): string {
   if (!agreement.is_active) return 'Ended'
@@ -198,7 +199,7 @@ export interface ChargeSummaryRow {
   payment_type: PaymentType | null
 }
 
-const CHARGE_TRANSACTION_KINDS = ['lease_charge', 'board_charge'] as const
+const CHARGE_TRANSACTION_KINDS: TransactionKind[] = ['lease_charge', 'board_charge']
 
 export async function getChargesForSummary(
   barnId: string,
@@ -206,21 +207,11 @@ export async function getChargesForSummary(
   endDate: Date,
   client?: SupabaseClient
 ): Promise<ChargeSummaryRow[]> {
-  const supabase = client ?? await createClient()
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('occurred_at, amount, payment_type')
-    .eq('barn_id', barnId)
-    .in('kind', CHARGE_TRANSACTION_KINDS)
-    .gte('occurred_at', startDate.toISOString().slice(0, 10))
-    .lt('occurred_at', endDate.toISOString().slice(0, 10))
-
-  if (error) throw error
-  type ChargeTransactionRow = { occurred_at: string; amount: number; payment_type: PaymentType | null }
-  return ((data ?? []) as unknown as ChargeTransactionRow[]).map((row) => ({
-    period: row.occurred_at.slice(0, 10),
+  const rows = await getTransactionRows(barnId, CHARGE_TRANSACTION_KINDS, { startDate, endDate }, client)
+  return rows.map((row) => ({
+    period: row.occurredAt.slice(0, 10),
     fee: row.amount,
-    payment_type: row.payment_type,
+    payment_type: row.paymentType,
   }))
 }
 
@@ -241,42 +232,32 @@ export async function getPaidCharges(
   client?: SupabaseClient
 ): Promise<PaidCharge[]> {
   const supabase = client ?? await createClient()
-  // `kind`/`membership_id`/`horse_id` are already denormalized onto the transaction row
-  // (see the transactions table), so only `agreement_id` needs a join — one hop via the
-  // FK-hint embed, pinned to the exact composite constraint (`transactions_barn_id_agreement_charge_id_fkey`,
-  // Postgres's standard auto-generated name for the unnamed FK added in #826 — re-verified
-  // against the live stable-state-dev schema for this #828 change — see getPaidCharges
-  // history for why an unqualified `agreements!inner` embed is avoided, #407/#665).
-  const { data, error } = await supabase
-    .from('transactions')
-    .select(
-      'agreement_charge_id, occurred_at, amount, kind, membership_id, horse_id, agreement_charges!transactions_barn_id_agreement_charge_id_fkey!inner(agreement_id)'
-    )
-    .eq('barn_id', barnId)
-    .in('kind', CHARGE_TRANSACTION_KINDS)
-    .eq('collected', true)
-    .gte('occurred_at', startDate.toISOString().slice(0, 10))
-    .lt('occurred_at', endDate.toISOString().slice(0, 10))
+  const rows = await getTransactionRows(
+    barnId, CHARGE_TRANSACTION_KINDS, { startDate, endDate, collected: true }, supabase
+  )
+  if (!rows.length) return []
 
+  const chargeIds = [...new Set(rows.map((r) => r.agreementChargeId as string))]
+  const { data: chargeRows, error } = await supabase
+    .from('agreement_charges')
+    .select('id, agreement_id')
+    .eq('barn_id', barnId)
+    .in('id', chargeIds)
   if (error) throw error
-  type PaidChargeTransactionRow = {
-    agreement_charge_id: string
-    occurred_at: string
-    amount: number
-    kind: 'lease_charge' | 'board_charge'
-    membership_id: string
-    horse_id: string
-    agreement_charges: { agreement_id: string }
-  }
-  return ((data ?? []) as unknown as PaidChargeTransactionRow[]).map((row) => ({
-    chargeId: row.agreement_charge_id,
-    agreementId: row.agreement_charges.agreement_id,
-    period: row.occurred_at.slice(0, 10),
-    fee: row.amount,
-    kind: row.kind === 'lease_charge' ? 'lease' : 'board',
-    riderId: row.membership_id,
-    horseId: row.horse_id,
-  }))
+  const agreementIdByChargeId = new Map((chargeRows ?? []).map((c) => [c.id, c.agreement_id]))
+
+  return rows.map((row) => {
+    const chargeId = row.agreementChargeId as string
+    return {
+      chargeId,
+      agreementId: agreementIdByChargeId.get(chargeId) ?? chargeId,
+      period: row.occurredAt.slice(0, 10),
+      fee: row.amount,
+      kind: row.kind === 'lease_charge' ? 'lease' : 'board',
+      riderId: row.membershipId as string,
+      horseId: row.horseId as string,
+    }
+  })
 }
 
 // ponytail: barn-wide, no role/userId scoping (unlike getOutstandingCharges) — its only caller
