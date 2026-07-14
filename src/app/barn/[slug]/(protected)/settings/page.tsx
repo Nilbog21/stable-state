@@ -19,6 +19,7 @@ import {
   updateExhaustionThresholdsAction,
 } from './actions'
 import { Button } from '@/components/ui/Button'
+import { cardBaseClass } from '@/components/ui/Card'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
@@ -46,23 +47,21 @@ function AccordionSection({
   children: React.ReactNode
 }) {
   return (
-    <details open={defaultOpen} className="mb-6 rounded-lg border border-zinc-200 dark:border-zinc-700">
-      <summary className="cursor-pointer px-4 py-3">
-        {headerExtra ? (
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              {title}
-            </h2>
-            {headerExtra}
-          </div>
-        ) : (
+    <div className="relative mb-6">
+      <details open={defaultOpen} className={cardBaseClass}>
+        <summary
+          className={`flex min-h-11 cursor-pointer items-center px-4 py-3 ${headerExtra ? 'pr-32' : ''}`}
+        >
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             {title}
           </h2>
-        )}
-      </summary>
-      <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">{children}</div>
-    </details>
+        </summary>
+        <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">{children}</div>
+      </details>
+      {headerExtra && (
+        <div className="absolute right-4 top-1/2 -translate-y-1/2">{headerExtra}</div>
+      )}
+    </div>
   )
 }
 

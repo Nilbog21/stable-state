@@ -206,7 +206,7 @@ describe('SettingsPage', () => {
     expect(link.href).toContain('/barn/green-acres/settings/tiers/new')
   })
 
-  it('should_render_add_tier_link_in_header_row_with_heading', async () => {
+  it('should_not_render_add_tier_link_inside_summary', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({}),
@@ -215,7 +215,21 @@ describe('SettingsPage', () => {
 
     const heading = screen.getByRole('heading', { name: /lesson tiers/i })
     const [link] = screen.getAllByRole('link', { name: /add tier/i })
-    expect(link.parentElement).toBe(heading.parentElement)
+    const summary = heading.closest('summary') as HTMLElement
+    expect(summary.contains(link)).toBe(false)
+  })
+
+  it('should_render_add_tier_link_within_lesson_tiers_section', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /lesson tiers/i })
+    const [link] = screen.getAllByRole('link', { name: /add tier/i })
+    const sectionWrapper = heading.closest('details')!.parentElement as HTMLElement
+    expect(sectionWrapper.contains(link)).toBe(true)
   })
 
   it('should_render_pending_requests_heading_in_label_style', async () => {
