@@ -28,6 +28,7 @@ vi.mock('../actions', () => ({
   updateDocumentReminderDateAction: vi.fn(),
   updateContactInfoAction: vi.fn(),
   setCanInstructAction: vi.fn(),
+  revokeInviteTokenAction: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -47,7 +48,7 @@ import { getDocuments } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
 import { resolveHorseNames } from '@/lib/db/horses'
-import { deleteDocumentAction } from '../actions'
+import { deleteDocumentAction, revokeInviteTokenAction } from '../actions'
 import MemberDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -839,6 +840,72 @@ describe('MemberDetailPage', () => {
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
       render(jsx)
       expect(screen.queryByRole('heading', { name: /instructor access/i })).toBeNull()
+    })
+  })
+
+  describe('Manage member section', () => {
+    const unclaimedTargetMembership = createMockMembership({
+      id: 'mem-target-trn', user_id: null as any, barn_id: 'barn-1', role: 'trainer', invite_token: 'tok-abc',
+    })
+    const unclaimedTargetProfile = createMockProfile({ id: 'profile-2', first_name: 'Bob', last_name: 'Trainer', is_managed: true })
+
+    it('should_render_manage_member_notice_for_manager_viewing_unclaimed_member', async () => {
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(unclaimedTargetMembership)
+      vi.mocked(getProfileById).mockResolvedValue(unclaimedTargetProfile)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByText(/this is an unlinked member/i)).toBeDefined()
+    })
+
+    it('should_hide_manage_member_section_when_target_is_claimed', async () => {
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
+        createMockMembership({ id: 'mem-target-trn', user_id: 'user-target-trn', barn_id: 'barn-1', role: 'trainer', invite_token: null })
+      )
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-2', first_name: 'Bob', last_name: 'Trainer', is_managed: false }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByText(/this is an unlinked member/i)).toBeNull()
+    })
+
+    it('should_hide_manage_member_section_when_invite_token_is_null', async () => {
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
+        createMockMembership({ id: 'mem-target-trn', user_id: null as any, barn_id: 'barn-1', role: 'trainer', invite_token: null })
+      )
+      vi.mocked(getProfileById).mockResolvedValue(unclaimedTargetProfile)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByText(/this is an unlinked member/i)).toBeNull()
+    })
+
+    it('should_hide_manage_member_section_for_trainer_viewing_unclaimed_rider', async () => {
+      setupAuth({ id: 'user-trn', email: 'trn@example.com' })
+      vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
+        createMockMembership({ id: 'mem-target-rdr', user_id: null as any, barn_id: 'barn-1', role: 'rider', invite_token: 'tok-rdr' })
+      )
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-3', first_name: 'Carol', last_name: 'Rider', is_managed: true }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+      render(jsx)
+      expect(screen.queryByText(/this is an unlinked member/i)).toBeNull()
+    })
+
+    it('should_render_manage_member_section_immediately_after_heading', async () => {
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(unclaimedTargetMembership)
+      vi.mocked(getProfileById).mockResolvedValue(unclaimedTargetProfile)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      const heading = screen.getByRole('heading', { name: /bob trainer/i })
+      expect(heading.nextElementSibling?.textContent).toMatch(/unlinked member/i)
+    })
+
+    it('should_call_revokeInviteTokenAction_when_revoke_form_submits', async () => {
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(unclaimedTargetMembership)
+      vi.mocked(getProfileById).mockResolvedValue(unclaimedTargetProfile)
+      vi.mocked(revokeInviteTokenAction).mockResolvedValue(undefined)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }))
+      expect(revokeInviteTokenAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', expect.any(FormData))
     })
   })
 })

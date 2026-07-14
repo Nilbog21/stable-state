@@ -509,8 +509,7 @@ describe('MembersPage', () => {
     expect(screen.queryByText('Unlinked')).toBeNull()
   })
 
-  it('should_not_render_revoke_button_for_managed_rider_when_viewer_is_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
+  it('should_never_render_revoke_button_on_list_page', async () => {
     const managedRiders = [
       { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: 'tok-1' },
     ]
@@ -520,6 +519,7 @@ describe('MembersPage', () => {
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.queryByRole('button', { name: /revoke/i })).toBeNull()
+    expect(screen.queryByRole('button', { name: /copy invite/i })).toBeNull()
   })
 
   it('should_render_plain_card_link_for_managed_rider_when_viewer_is_trainer', async () => {
@@ -555,6 +555,18 @@ describe('MembersPage', () => {
     ]
     vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
       role === 'trainer' ? managedTrainers : []
+    )
+    const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Unlinked')).toBeDefined()
+  })
+
+  it('should_render_unlinked_badge_for_manager_even_when_invite_token_is_null', async () => {
+    const managedRiderNoToken = [
+      { membershipId: 'mem-m1', userId: null, name: 'Ghost Rider', isManaged: true, inviteToken: null },
+    ]
+    vi.mocked(getActiveMembersWithProfiles).mockImplementation(async (_, role) =>
+      role === 'rider' ? managedRiderNoToken : []
     )
     const jsx = await MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

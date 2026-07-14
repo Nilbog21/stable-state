@@ -10,11 +10,12 @@ import { resolveHorseNames } from '@/lib/db/horses'
 import { Card } from '@/components/ui/Card'
 import { ContactInfoForm } from './ContactInfoForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
+import { ManageMemberSection } from './ManageMemberSection'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
-import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction } from './actions'
+import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction } from './actions'
 import { Button } from '@/components/ui/Button'
 import type { TrainerDocument, RiderDocument, Agreement, Profile, BarnMembership } from '@/lib/db/types'
 
@@ -197,6 +198,9 @@ export default async function MemberDetailPage({
   const canManageInstructorAccess =
     callerRole === 'manager' && (targetRole === 'manager' || targetRole === 'trainer')
 
+  const canManageInvite =
+    callerRole === 'manager' && targetProfile?.is_managed === true && targetMembership.invite_token !== null
+
   type DocWithUrl = { doc: TrainerDocument | RiderDocument; signedUrl: string }
   let docsWithUrls: DocWithUrl[] = []
 
@@ -225,6 +229,14 @@ export default async function MemberDetailPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {displayName}
       </h1>
+
+      {canManageInvite && targetMembership.invite_token !== null && (
+        <ManageMemberSection
+          barnSlug={slug}
+          inviteToken={targetMembership.invite_token}
+          revokeAction={revokeInviteTokenAction.bind(null, slug, membership_id)}
+        />
+      )}
 
       {canViewAgreements && (
         <ActiveAgreements

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { createManagedMember, revokeInviteToken } from '@/lib/db/barn-memberships'
+import { createManagedMember } from '@/lib/db/barn-memberships'
 import type { Role } from '@/lib/db/types'
 
 export async function createManagedMemberAction(
@@ -19,14 +19,5 @@ export async function createManagedMemberAction(
 
   await createManagedMember(barn.id, firstName, lastName, role)
 
-  revalidatePath(`/barn/${barnSlug}/members`)
-}
-
-export async function revokeInviteTokenAction(
-  barnSlug: string,
-  membershipId: string
-): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-  await revokeInviteToken(membershipId, barn.id)
   revalidatePath(`/barn/${barnSlug}/members`)
 }
