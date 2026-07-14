@@ -1469,12 +1469,14 @@ describe('updateLessonAction', () => {
     vi.mocked(getActiveMembersWithProfiles).mockReset()
     vi.mocked(createHorse).mockReset()
     vi.mocked(redirect).mockReset()
+    vi.mocked(getLessonById).mockReset()
     guardAs(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([])
     vi.mocked(updateLessonWithParticipants).mockResolvedValue(mockLesson)
     vi.mocked(updateLessonHorseNotes).mockResolvedValue({} as any)
     vi.mocked(updateLessonRiderNotes).mockResolvedValue({} as any)
     vi.mocked(updateLesson).mockResolvedValue(mockLesson)
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ cancelled_at: '2026-05-01T00:00:00Z' }))
     vi.mocked(getHorsesByBarn).mockResolvedValue([
       createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ])
@@ -1858,6 +1860,22 @@ describe('updateLessonAction', () => {
 
   it('should_not_call_updateLesson_for_cancellation_notes_when_field_absent', async () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLesson).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_saving_cancellation_notes_on_a_lesson_that_is_not_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ cancelled_at: null }))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.set('cancellation_notes', 'weather')
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'lesson is not cancelled' })
+  })
+
+  it('should_not_call_updateLesson_for_cancellation_notes_when_lesson_is_not_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ cancelled_at: null }))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.set('cancellation_notes', 'weather')
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
     expect(updateLesson).not.toHaveBeenCalled()
   })

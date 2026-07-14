@@ -123,6 +123,12 @@ export async function updateLessonAction(
     const noteHorseIds = (formData.getAll('noteHorseId') as string[]).filter(id => horseIdSet.has(id))
     const noteRiderIds = (formData.getAll('noteRiderId') as string[]).filter(id => riderIdSet.has(id))
     const cancellationNotesRaw = formData.get('cancellation_notes') as string | null
+    if (cancellationNotesRaw !== null) {
+      const currentLesson = await getLessonById(lessonId, barnId, membership.role)
+      if (!currentLesson || currentLesson.cancelled_at === null) {
+        return { error: 'lesson is not cancelled' }
+      }
+    }
     await Promise.all([
       ...noteHorseIds.map(hId =>
         updateLessonHorseNotes(lessonId, hId, barnId, (formData.get(`horse_notes_${hId}`) as string) || null)

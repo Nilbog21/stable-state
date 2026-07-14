@@ -45,7 +45,8 @@ function RiderNotesBlock({
   canSeeNotes: boolean
 }) {
   if (!lr.barn_membership?.id) return null
-  if (!canSeeNotes && !lr.cancellation_notes) return null
+  const hasStaffNotes = canSeeNotes && (lr.rider_notes || lr.private_notes)
+  if (!hasStaffNotes && !lr.cancellation_notes) return null
   return (
     <div className="mt-1 flex flex-col gap-1">
       {canSeeNotes && lr.rider_notes && (
