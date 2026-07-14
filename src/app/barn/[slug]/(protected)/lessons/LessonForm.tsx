@@ -216,7 +216,7 @@ export function LessonForm({
 
   function horseSortBucket(h: Horse): number {
     if (checkedHorseIds.has(h.id)) return 0
-    return h.is_available === false ? 2 : 1
+    return h.is_available === false || h.is_active === false ? 2 : 1
   }
 
   function handleJumpingToggle(e: React.ChangeEvent<HTMLInputElement>) {
@@ -447,7 +447,7 @@ export function LessonForm({
               </>
             )}
           </div>
-          {exhaustion && !isUnavailable && h.is_active !== false && !isPastLesson && (
+          {exhaustion && !isPastLesson && (checkedHorseIds.has(h.id) || (!isUnavailable && h.is_active !== false)) && (
             <ExhaustionBar
               existingRows={exhaustion.existingRows}
               thresholds={exhaustion.thresholds}

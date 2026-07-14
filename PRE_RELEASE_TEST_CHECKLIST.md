@@ -104,6 +104,8 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] Lesson 9 shows a **Recurring** badge on the Lessons list row and on its Lesson Detail page
 - [ ] Open Lesson 9's edit page as manager — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; confirm the dialog, click Stop — button and indicator disappear on reload, the lesson itself is unchanged (still shows its Recurring badge on list/detail, since it's still that lesson's own occurrence of the series)
 - [ ] On the new-lesson form, pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar below its name (no bars before a date is picked); adjust a checked horse's exertion level and watch its ghost segment move live, while unchecked horses' bars stay solid (no ghost); change the date and confirm the bars refresh; open Lesson 3's edit page and confirm Clover's bar still renders (excluding Lesson 3 itself from its own window)
+- [ ] On the new-lesson form's horse picker, check one horse then confirm it jumps to the top of the list, ahead of unchecked available horses (which are ordered least-to-most worked), with Daisy (Unavailable) sorted last; set the lesson's date/hour to the past — no exhaustion bars render for any horse; set it back to the present/future — bars reappear
+- [ ] Open the edit page for a lesson whose horse was later marked Inactive (deactivated) on the Horses page — that horse still appears checked, sorted first, and still shows its exhaustion bar; uncheck it — it moves to the bottom of the list (grouped with Unavailable horses) and its bar disappears
 
 ## Phase 4 — Manager verification
 

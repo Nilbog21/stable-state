@@ -841,4 +841,28 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
       expect((checkboxes[0] as HTMLInputElement).value).toBe('horse-low')
     })
   })
+
+  it('should_sort_an_unchecked_inactive_horse_after_an_available_horse', async () => {
+    const availableHorse: Horse = { id: 'horse-avail', barn_id: 'barn-1', name: 'Zeal', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const inactiveHorse: Horse = { id: 'horse-inactive', barn_id: 'barn-1', name: 'Retired', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({})
+    const { container } = render(<LessonForm {...baseProps} horses={[inactiveHorse, availableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
+    await waitFor(() => {
+      const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
+      expect((checkboxes[checkboxes.length - 1] as HTMLInputElement).value).toBe('horse-inactive')
+    })
+  })
+
+  it('should_render_an_exhaustion_bar_for_an_inactive_horse_still_checked_on_this_lesson', async () => {
+    const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Retired (inactive)' } }] }
+    const getProjectedExhaustion = vi.fn().mockResolvedValue({
+      'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
+    })
+    render(<LessonForm {...baseProps} initialLesson={lesson} horses={[inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => {
+      expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
+    })
+  })
 })
