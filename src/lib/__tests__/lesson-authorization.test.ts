@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isLessonCancellationEligible, canManageLesson, isLateCancellation } from '@/lib/lesson-authorization'
+import { isLessonCancellationEligible, canManageLesson, isLateCancellation, isInstructorOfLesson } from '@/lib/lesson-authorization'
 
 describe('isLessonCancellationEligible', () => {
   it('should_return_true_when_lesson_at_is_future_and_paid', () => {
@@ -33,6 +33,16 @@ describe('canManageLesson', () => {
 
   it('should_return_false_for_rider', () => {
     expect(canManageLesson('rider', 'membership-1', { instructor_id: 'membership-1' })).toBe(false)
+  })
+})
+
+describe('isInstructorOfLesson', () => {
+  it('should_return_true_when_instructor_id_matches_membership_id', () => {
+    expect(isInstructorOfLesson('membership-1', { instructor_id: 'membership-1' })).toBe(true)
+  })
+
+  it('should_return_false_when_instructor_id_does_not_match', () => {
+    expect(isInstructorOfLesson('membership-1', { instructor_id: 'membership-2' })).toBe(false)
   })
 })
 

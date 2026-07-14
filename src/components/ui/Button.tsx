@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import type { ComponentProps } from 'react'
 
-type Variant = 'primary' | 'danger' | 'ghost'
+type Variant = 'primary' | 'danger' | 'ghost' | 'warning'
 type Size = 'sm' | 'md'
 
 const base = 'inline-flex items-center justify-center gap-2 font-medium disabled:opacity-50'
@@ -16,6 +16,8 @@ const variants: Record<Variant, string> = {
     'bg-red-600 text-white hover:bg-red-700 active:bg-red-800 dark:bg-red-700 dark:hover:bg-red-600 dark:active:bg-red-500',
   ghost:
     'border border-zinc-300 text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:active:bg-zinc-700',
+  warning:
+    'border border-amber-300 bg-amber-50 text-amber-800 hover:bg-amber-100 active:bg-amber-200 dark:border-amber-800/40 dark:bg-amber-900/30 dark:text-amber-400 dark:hover:bg-amber-900/50 dark:active:bg-amber-900/70',
 }
 
 export function Button({

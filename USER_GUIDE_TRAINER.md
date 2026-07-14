@@ -6,7 +6,7 @@ Stable State is a barn management app for scheduling lessons, tracking horses an
 
 ## Dashboard
 
-Go to **Dashboard** to see your upcoming lessons for the next 7 days.
+Go to **Dashboard** to see your upcoming lessons for the next 7 days. If any of your lessons are unpaid, a **Reminders** section appears above them with an "N unpaid lessons" card — tap it to open the full **Outstanding Payments** list. The section is hidden when you have nothing unpaid.
 
 ## Lessons
 
@@ -28,7 +28,7 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days.
 
 ## Outstanding payments
 
-If you have past lessons with unpaid balances, you will receive a notification. Tap the notification to open the **Outstanding Payments** page, which lists all your past unpaid lessons with their date, riders, and fee. Tap any row to open the lesson detail.
+If you have past lessons with unpaid balances, an "N unpaid lessons" card appears in the Dashboard's **Reminders** section — tap it to open the **Outstanding Payments** page, which lists all your past unpaid lessons with their date, riders, and fee. Tap any row to open the lesson detail.
 
 ## Notifications
 
