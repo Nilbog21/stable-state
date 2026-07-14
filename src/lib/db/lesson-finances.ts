@@ -383,7 +383,7 @@ export async function getTrainerIncomeSummary(
   // mirrors getFinancialSummary's cutByTier direct-sum pattern above.
   const grossByTrainer = new Map<string, number>()
   for (const l of lessons) {
-    const k = l.instructor_id ?? NO_INSTRUCTOR_LABEL
+    const k = l.instructor_id ? l.instructor_id : NO_INSTRUCTOR_LABEL
     grossByTrainer.set(k, (grossByTrainer.get(k) ?? 0) + l.fee)
   }
 

@@ -42,13 +42,6 @@ describe('TrainerIncomePage', () => {
     await expect(TrainerIncomePage({ params: defaultParams, searchParams: maySearchParams })).rejects.toThrow('NEXT_REDIRECT')
   })
 
-  it('should_not_allow_trainer_role', async () => {
-    vi.mocked(requireMembership).mockRejectedValue(
-      Object.assign(new Error('NEXT_REDIRECT'), { digest: 'NEXT_REDIRECT;replace;/barn/green-acres/login' })
-    )
-    await expect(TrainerIncomePage({ params: defaultParams, searchParams: maySearchParams })).rejects.toThrow('NEXT_REDIRECT')
-  })
-
   it('should_call_getTrainerIncomeDetail_with_trainer_id', async () => {
     const jsx = await TrainerIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)

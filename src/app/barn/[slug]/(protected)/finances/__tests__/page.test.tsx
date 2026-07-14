@@ -200,6 +200,18 @@ describe('FinancesPage', () => {
     render(jsx)
     const link = screen.getByRole('link', { name: 'Thunderbolt' })
     expect(link.className).toContain('underline')
+  })
+
+  it('should_not_style_horse_name_link_as_hover_only_underline', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 150 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Thunderbolt' })
     expect(link.className).not.toContain('hover:underline')
   })
 
@@ -291,6 +303,18 @@ describe('FinancesPage', () => {
     render(jsx)
     const link = screen.getByRole('link', { name: 'Alice' })
     expect(link.className).toContain('underline')
+  })
+
+  it('should_not_style_rider_name_link_as_hover_only_underline', async () => {
+    vi.mocked(getRiderIncomeSummary).mockResolvedValue([
+      { riderId: 'rider-1', riderName: 'Alice', totalIncome: 75 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Alice' })
     expect(link.className).not.toContain('hover:underline')
   })
 
