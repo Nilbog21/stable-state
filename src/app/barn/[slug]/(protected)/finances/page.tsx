@@ -393,8 +393,9 @@ export default async function FinancesPage({
               <thead>
                 <tr>
                   <Th>Trainer</Th>
-                  <Th>Raw Fees</Th>
-                  <Th>Income</Th>
+                  <Th>Total Income</Th>
+                  <Th>Instructor Cut</Th>
+                  <Th>Net</Th>
                 </tr>
               </thead>
               <tbody>
@@ -418,6 +419,9 @@ export default async function FinancesPage({
                     </Td>
                     <Td>
                       {row.grossIncome != null ? formatCurrency(row.grossIncome) : '—'}
+                    </Td>
+                    <Td>
+                      {row.grossIncome != null ? formatCurrency(row.grossIncome - row.totalIncome, { forceParens: true }) : '—'}
                     </Td>
                     <Td>
                       {formatCurrency(row.totalIncome)}

@@ -1073,7 +1073,7 @@ describe('FinancesPage', () => {
     expect(screen.getByText('Jane Smith')).toBeDefined()
   })
 
-  it('should_display_trainer_income_amount', async () => {
+  it('should_display_trainer_net_amount', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
       { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
     ])
@@ -1096,7 +1096,7 @@ describe('FinancesPage', () => {
     )
   })
 
-  it('should_render_by_instructor_table_raw_fees_header', async () => {
+  it('should_render_by_instructor_table_total_income_header', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
       { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
     ])
@@ -1105,10 +1105,34 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ tab: 'trainer' }),
     })
     render(jsx)
-    expect(screen.getByRole('columnheader', { name: 'Raw Fees' })).toBeDefined()
+    expect(screen.getByRole('columnheader', { name: 'Total Income' })).toBeDefined()
   })
 
-  it('should_display_trainer_raw_fees_amount', async () => {
+  it('should_render_by_instructor_table_instructor_cut_header', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByRole('columnheader', { name: 'Instructor Cut' })).toBeDefined()
+  })
+
+  it('should_render_by_instructor_table_net_header', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.getByRole('columnheader', { name: 'Net' })).toBeDefined()
+  })
+
+  it('should_display_trainer_total_income_amount', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
       { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
     ])
@@ -1121,7 +1145,20 @@ describe('FinancesPage', () => {
     expect(within(row).getByText('$350.00')).toBeDefined()
   })
 
-  it('should_display_dash_for_null_raw_fees', async () => {
+  it('should_display_trainer_instructor_cut_amount', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText('Jane Smith').closest('tr')!
+    expect(within(row).getByText('($50.00)')).toBeDefined()
+  })
+
+  it('should_display_dash_for_null_total_income', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
       { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
     ])
@@ -1133,6 +1170,20 @@ describe('FinancesPage', () => {
     const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')!
     const cells = within(row).getAllByRole('cell')
     expect(cells[1].textContent).toBe('—')
+  })
+
+  it('should_display_dash_for_null_instructor_cut', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')!
+    const cells = within(row).getAllByRole('cell')
+    expect(cells[2].textContent).toBe('—')
   })
 
   it('should_link_trainer_name_to_trainer_drilldown_with_month_param', async () => {
