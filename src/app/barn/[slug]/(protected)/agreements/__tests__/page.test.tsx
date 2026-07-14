@@ -5,13 +5,13 @@ import { createMockBarn, createMockMembership, createMockAgreement, createMockUs
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/agreements', async () => {
   const actual = await vi.importActual<typeof import('@/lib/db/agreements')>('@/lib/db/agreements')
-  return { ...actual, getAgreementsByBarn: vi.fn() }
+  return { ...actual, getAgreementsByBarn: vi.fn(), getUnpaidAgreementIds: vi.fn() }
 })
 vi.mock('@/lib/db/member-names', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ resolveHorseNames: vi.fn() }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getAgreementsByBarn } from '@/lib/db/agreements'
+import { getAgreementsByBarn, getUnpaidAgreementIds } from '@/lib/db/agreements'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
 import AgreementsPage from '../page'
@@ -31,6 +31,7 @@ describe('AgreementsPage', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getAgreementsByBarn).mockReset()
+    vi.mocked(getUnpaidAgreementIds).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(resolveHorseNames).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
@@ -39,6 +40,7 @@ describe('AgreementsPage', () => {
       membership: mockManagerMembership,
     })
     vi.mocked(getAgreementsByBarn).mockResolvedValue([])
+    vi.mocked(getUnpaidAgreementIds).mockResolvedValue(new Set())
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
   })
@@ -167,5 +169,21 @@ describe('AgreementsPage', () => {
     const links = screen.getAllByRole('link')
     const cardLink = links.find((l) => (l as HTMLAnchorElement).href.includes('agreement-9'))
     expect((cardLink as HTMLAnchorElement).href).toContain('?kind=board')
+  })
+
+  it('should_render_unpaid_pill_when_agreement_has_outstanding_charge', async () => {
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ id: 'agreement-9' })])
+    vi.mocked(getUnpaidAgreementIds).mockResolvedValue(new Set(['agreement-9']))
+    const jsx = await callPage('lease')
+    render(jsx)
+    expect(screen.getByText('Unpaid')).toBeDefined()
+  })
+
+  it('should_not_render_unpaid_pill_when_agreement_has_no_outstanding_charge', async () => {
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement({ id: 'agreement-9' })])
+    vi.mocked(getUnpaidAgreementIds).mockResolvedValue(new Set())
+    const jsx = await callPage('lease')
+    render(jsx)
+    expect(screen.queryByText('Unpaid')).toBeNull()
   })
 })

@@ -23,6 +23,7 @@ import {
   getChargesForSummary,
   getPaidCharges,
   getOutstandingCharges,
+  getUnpaidAgreementIds,
 } from '../agreements'
 
 const mockAgreement = createMockAgreement()
@@ -912,5 +913,83 @@ describe('getOutstandingCharges', () => {
       chargesError: new Error('charges error'),
     })
     await expect(getOutstandingCharges('barn-1', 'user-rider', 'rider')).rejects.toThrow('charges error')
+  })
+})
+
+describe('getUnpaidAgreementIds', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function makeChain(data: unknown[] | null, error: Error | null = null) {
+    const mockLt = vi.fn().mockResolvedValue({ data, error })
+    const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    const from = vi.fn().mockReturnValue({ select: mockSelect })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    return { from, select: mockSelect, mockEq, mockIs, mockLt }
+  }
+
+  it('should_select_agreement_id_from_agreement_charges', async () => {
+    const { from, select } = makeChain([])
+    await getUnpaidAgreementIds('barn-1')
+    expect(from).toHaveBeenCalledWith('agreement_charges')
+    expect(select).toHaveBeenCalledWith('agreement_id')
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { mockEq } = makeChain([])
+    await getUnpaidAgreementIds('barn-1')
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_by_unpaid_charges', async () => {
+    const { mockIs } = makeChain([])
+    await getUnpaidAgreementIds('barn-1')
+    expect(mockIs).toHaveBeenCalledWith('payment_type', null)
+  })
+
+  it('should_filter_by_period_before_first_of_current_month', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-15T12:00:00Z'))
+    const { mockLt } = makeChain([])
+    await getUnpaidAgreementIds('barn-1')
+    expect(mockLt).toHaveBeenCalledWith('period', '2026-07-01')
+  })
+
+  it('should_dedupe_duplicate_agreement_ids_into_a_set', async () => {
+    makeChain([{ agreement_id: 'agreement-1' }, { agreement_id: 'agreement-1' }, { agreement_id: 'agreement-2' }])
+    const result = await getUnpaidAgreementIds('barn-1')
+    expect(result).toEqual(new Set(['agreement-1', 'agreement-2']))
+  })
+
+  it('should_return_empty_set_when_data_is_null', async () => {
+    makeChain(null)
+    const result = await getUnpaidAgreementIds('barn-1')
+    expect(result).toEqual(new Set())
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    makeChain(null, new Error('db error'))
+    await expect(getUnpaidAgreementIds('barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockLt = vi.fn().mockResolvedValue({ data: [{ agreement_id: 'agreement-1' }], error: null })
+    const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    const from = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockClient = { from } as any
+
+    const result = await getUnpaidAgreementIds('barn-1', mockClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(result).toEqual(new Set(['agreement-1']))
   })
 })
