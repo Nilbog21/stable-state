@@ -2,6 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
 import { getUserMembership } from './barn-memberships'
+import { getTransactionRows, positiveAmount } from './transactions'
 import type { Lesson, Role } from './types'
 
 /**
@@ -51,39 +52,31 @@ export async function getLessonFeeRows(
   client?: SupabaseClient
 ): Promise<LessonFeeRow[]> {
   const supabase = client ?? await createClient()
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('id, lesson_id, kind, amount, collected, membership_id, occurred_at, lessons!transactions_barn_id_lesson_id_fkey(tier_name)')
-    .eq('barn_id', barnId)
-    .in('kind', ['lesson_fee', 'instructor_payout'])
-    .gte('occurred_at', startDate.toISOString())
-    .lt('occurred_at', endDate.toISOString())
-    .order('occurred_at', { ascending: true })
+  const rawRows = await getTransactionRows(barnId, ['lesson_fee', 'instructor_payout'], { startDate, endDate }, supabase)
 
-  if (error) throw error
-
-  type RawRow = {
-    id: string
-    lesson_id: string | null
-    kind: 'lesson_fee' | 'instructor_payout'
-    amount: number
-    collected: boolean
-    membership_id: string | null
-    occurred_at: string
-    lessons: { tier_name: string } | null
+  const lessonIds = [...new Set(rawRows.map((r) => r.lessonId).filter((id): id is string => id !== null))]
+  const tierNameByLessonId = new Map<string, string>()
+  if (lessonIds.length) {
+    const { data, error } = await supabase
+      .from('lessons')
+      .select('id, tier_name')
+      .eq('barn_id', barnId)
+      .in('id', lessonIds)
+    if (error) throw error
+    for (const lesson of data ?? []) tierNameByLessonId.set(lesson.id, lesson.tier_name)
   }
 
   const rows = new Map<string, LessonFeeRow>()
-  for (const raw of (data ?? []) as unknown as RawRow[]) {
-    const key = raw.lesson_id ?? raw.id
+  for (const raw of rawRows) {
+    const key = raw.lessonId ?? raw.id
     const existing = rows.get(key) ?? {
-      lessonId: raw.lesson_id,
+      lessonId: raw.lessonId,
       fee: 0,
       instructorCut: 0,
       collected: false,
       instructorId: null,
-      occurredAt: raw.occurred_at,
-      tierName: raw.lessons?.tier_name ?? DELETED_LESSON_LABEL,
+      occurredAt: raw.occurredAt,
+      tierName: (raw.lessonId && tierNameByLessonId.get(raw.lessonId)) ?? DELETED_LESSON_LABEL,
     }
     // `collected` is read off both kinds, not just lesson_fee: an orphaned
     // instructor_payout row (its paired lesson_fee nulled to a different key,
@@ -93,10 +86,10 @@ export async function getLessonFeeRows(
     existing.collected = raw.collected
     if (raw.kind === 'lesson_fee') {
       existing.fee = raw.amount
-      existing.occurredAt = raw.occurred_at
+      existing.occurredAt = raw.occurredAt
     } else {
-      existing.instructorCut = -raw.amount
-      existing.instructorId = raw.membership_id
+      existing.instructorCut = positiveAmount(raw.kind, raw.amount)
+      existing.instructorId = raw.membershipId
     }
     rows.set(key, existing)
   }

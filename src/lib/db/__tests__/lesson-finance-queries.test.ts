@@ -186,8 +186,10 @@ describe('getLessonFeeRows', () => {
 
   it('should_skip_lessons_lookup_query_when_all_rows_are_orphaned', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([txRow({ id: 'txn-1', lessonId: null, amount: 100 })])
+    const fromFn = vi.fn()
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
     await getLessonFeeRows('barn-1', startDate, endDate)
-    expect(createClient).not.toHaveBeenCalled()
+    expect(fromFn).not.toHaveBeenCalled()
   })
 
   it('should_dedupe_lesson_ids_before_the_lessons_lookup_query', async () => {
