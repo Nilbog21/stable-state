@@ -14,8 +14,8 @@ vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn(), stopLessonSeriesAction: vi.fn(), getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}) }))
 vi.mock('../../../LessonForm', () => ({
-  LessonForm: ({ horses, initialNotes }: { horses: Array<{ id: string; name: string }>, initialNotes?: object }) => (
-    <div data-testid="edit-lesson-form" data-has-notes={initialNotes ? 'true' : 'false'}>
+  LessonForm: ({ horses, initialNotes, hasHorseIssue }: { horses: Array<{ id: string; name: string }>, initialNotes?: object, hasHorseIssue?: boolean }) => (
+    <div data-testid="edit-lesson-form" data-has-notes={initialNotes ? 'true' : 'false'} data-has-horse-issue={hasHorseIssue ? 'true' : 'false'}>
       {horses?.map((h) => <span key={h.id}>{h.name}</span>)}
     </div>
   ),
@@ -403,5 +403,23 @@ describe('EditLessonPage', () => {
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_pass_has_horse_issue_true_when_lesson_needs_attention', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
+    })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form').dataset.hasHorseIssue).toBe('true')
+  })
+
+  it('should_pass_has_horse_issue_false_when_lesson_has_no_horse_issue', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' })
+    const jsx = await EditLessonPage({ params })
+    render(jsx)
+    expect(screen.getByTestId('edit-lesson-form').dataset.hasHorseIssue).toBe('false')
   })
 })
