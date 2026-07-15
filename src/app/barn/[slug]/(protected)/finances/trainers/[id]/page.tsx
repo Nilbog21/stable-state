@@ -3,16 +3,8 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getTrainerIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
+import { formatShortDate } from '@/lib/format-date'
 import { Th, Td } from '@/components/ui/Table'
-
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 export default async function TrainerIncomePage({
   params,
@@ -66,7 +58,7 @@ export default async function TrainerIncomePage({
                 <tr key={row.lessonId}>
                   <Td>
                     <Link href={`/barn/${slug}/lessons/${row.lessonId}`} className="underline">
-                      {formatDate(row.lessonAt)}
+                      {formatShortDate(row.lessonAt)}
                     </Link>
                   </Td>
                   <Td>Lesson</Td>
