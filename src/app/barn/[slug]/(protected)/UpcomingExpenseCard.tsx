@@ -1,13 +1,11 @@
 'use client'
 import { Card } from '@/components/ui/Card'
-import { formatExpenseHorses } from './expenses/ExpenseRow'
+import { formatExpenseHorses, formatExpenseTime } from '@/lib/format-expense'
 import type { ScheduledExpense } from '@/lib/db/types'
 import { localToday } from '@/lib/local-day'
 
 export function formatExpenseDateTime(expense: { expense_date: string; expense_time: string }, now: Date): string {
-  const time = new Intl.DateTimeFormat('en-US', { timeStyle: 'short', timeZone: 'UTC' }).format(
-    new Date(`1970-01-01T${expense.expense_time}Z`)
-  )
+  const time = formatExpenseTime(expense.expense_time)
   if (expense.expense_date === localToday(now)) return `Today · ${time}`
 
   const date = new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(

@@ -16,8 +16,8 @@ vi.mock('../UpcomingExpenseCard', () => ({
 }))
 
 import { UpcomingLessonsSections } from '../UpcomingLessonsSections'
-import { createMockLessonWithDetails, createMockExpenseWithHorses } from '@/test/fixtures'
-import type { LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
+import { createMockLessonWithDetails, makeExpense } from '@/test/fixtures'
+import type { LessonWithDetails } from '@/lib/db/types'
 
 function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
   return {
@@ -29,13 +29,6 @@ function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetai
     rider_count: 0,
     ...overrides,
   }
-}
-
-function makeExpense(overrides: Partial<ScheduledExpense> = {}): ScheduledExpense {
-  return {
-    ...createMockExpenseWithHorses({ expense_time: '10:00:00' }),
-    ...overrides,
-  } as ScheduledExpense
 }
 
 function localDateString(d: Date): string {

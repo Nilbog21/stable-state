@@ -8,15 +8,7 @@ vi.mock('next/link', () => ({
 }))
 
 import { UpcomingExpenseCard, formatExpenseDateTime } from '../UpcomingExpenseCard'
-import { createMockExpenseWithHorses } from '@/test/fixtures'
-import type { ScheduledExpense } from '@/lib/db/types'
-
-function makeExpense(overrides: Partial<ScheduledExpense> = {}): ScheduledExpense {
-  return {
-    ...createMockExpenseWithHorses({ expense_time: '10:00:00' }),
-    ...overrides,
-  } as ScheduledExpense
-}
+import { makeExpense } from '@/test/fixtures'
 
 describe('formatExpenseDateTime', () => {
   it('should_prefix_with_today_when_expense_is_today', () => {
