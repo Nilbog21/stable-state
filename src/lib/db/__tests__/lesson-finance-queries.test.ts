@@ -483,14 +483,14 @@ describe('getOutstandingLessonRows', () => {
     })
 
     it('should_exclude_zero_fee_lessons', async () => {
-      const lesson = createMockLesson({ fee: 0, payment_type: null })
+      const lesson = createMockLesson({ fee: 0 })
       makeDefaultChain([lesson])
       const result = await getOutstandingLessonRows('barn-1')
       expect(result).toHaveLength(0)
     })
 
     it('should_include_non_zero_fee_lessons', async () => {
-      const lesson = createMockLesson({ fee: 50, payment_type: null })
+      const lesson = createMockLesson({ fee: 50 })
       makeDefaultChain([lesson])
       const result = await getOutstandingLessonRows('barn-1')
       expect(result).toHaveLength(1)
@@ -531,7 +531,7 @@ describe('getOutstandingLessonRows', () => {
 
     it('should_exclude_zero_fee_lessons', async () => {
       vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
-      const lesson = createMockLesson({ fee: 0, payment_type: null })
+      const lesson = createMockLesson({ fee: 0 })
       makeTrainerChain([lesson])
       const result = await getOutstandingLessonRows('barn-1', 'user-trainer', 'trainer')
       expect(result).toHaveLength(0)
@@ -598,7 +598,7 @@ describe('getOutstandingLessonRows', () => {
 
     it('should_exclude_zero_fee_lessons', async () => {
       vi.mocked(getRiderEnrolledLessonIds).mockResolvedValue(['lesson-1'])
-      const lesson = createMockLesson({ id: 'lesson-1', fee: 0, payment_type: null })
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 0 })
       makeRiderChain([lesson])
       const result = await getOutstandingLessonRows('barn-1', 'user-rider', 'rider')
       expect(result).toHaveLength(0)
@@ -606,7 +606,7 @@ describe('getOutstandingLessonRows', () => {
 
     it('should_include_lessons_with_non_zero_fee', async () => {
       vi.mocked(getRiderEnrolledLessonIds).mockResolvedValue(['lesson-1'])
-      const lesson = createMockLesson({ id: 'lesson-1', fee: 50, payment_type: null })
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
       makeRiderChain([lesson])
       const result = await getOutstandingLessonRows('barn-1', 'user-rider', 'rider')
       expect(result).toHaveLength(1)

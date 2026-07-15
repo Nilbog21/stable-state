@@ -97,7 +97,6 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
     submitted_at: '2026-05-19T09:00:00Z',
     lesson_type: 'normal',
     jumping: false,
-    payment_type: null,
     tier_name: 'Custom',
     cancelled_at: null,
     cancellation_notes: null,
@@ -110,6 +109,7 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
 export function createMockLessonWithDetails(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
   return {
     ...createMockLesson(),
+    payment_type: null,
     instructor_name: 'Jane Smith',
     horse_names: ['Thunderbolt'],
     horse_ids: ['horse-1'],
@@ -126,6 +126,7 @@ export function createMockLessonWithDetails(overrides: Partial<LessonWithDetails
 export function createMockLessonDetail(overrides: Partial<LessonDetail> = {}): LessonDetail {
   return {
     ...createMockLesson(),
+    payment_type: null,
     instructor_name: 'Jane Smith',
     instructor_user_id: 'user-1',
     lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null } }],

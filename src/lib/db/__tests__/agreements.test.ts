@@ -330,9 +330,26 @@ describe('getChargesForAgreement', () => {
     return { select: mockSelect }
   }
 
+  function makeTxnChain(data: unknown[] | null, error: Error | null = null) {
+    const mockInCharge = vi.fn().mockResolvedValue({ data, error })
+    const mockInKind = vi.fn().mockReturnValue({ in: mockInCharge })
+    const mockEq = vi.fn().mockReturnValue({ in: mockInKind })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function mockFrom(chargesData: unknown[] | null, chargesError: Error | null = null, txnRows: unknown[] | null = []) {
+    const { select: chargesSelect } = makeChain(chargesData, chargesError)
+    const { select: txnSelect } = makeTxnChain(txnRows)
+    const from = vi.fn().mockImplementation((table: string) =>
+      table === 'transactions' ? { select: txnSelect } : { select: chargesSelect }
+    )
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    return { from }
+  }
+
   it('should_return_charges_for_agreement', async () => {
-    const { select } = makeChain([mockCharge])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+    mockFrom([mockCharge])
 
     const result = await getChargesForAgreement('agreement-1', 'barn-1')
 
@@ -340,8 +357,7 @@ describe('getChargesForAgreement', () => {
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {
-    const { select } = makeChain(null)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+    mockFrom(null)
 
     const result = await getChargesForAgreement('agreement-1', 'barn-1')
 
@@ -349,10 +365,35 @@ describe('getChargesForAgreement', () => {
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
-    const { select } = makeChain(null, new Error('db error'))
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+    mockFrom(null, new Error('db error'))
 
     await expect(getChargesForAgreement('agreement-1', 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_overlay_payment_type_from_transactions_not_agreement_charges', async () => {
+    const staleCharge = { ...mockCharge, id: 'charge-1', payment_type: null }
+    mockFrom([staleCharge], null, [{ agreement_charge_id: 'charge-1', payment_type: 'venmo' }])
+
+    const result = await getChargesForAgreement('agreement-1', 'barn-1')
+
+    expect(result[0].payment_type).toBe('venmo')
+  })
+
+  it('should_default_payment_type_to_null_when_no_matching_transaction', async () => {
+    const staleCharge = { ...mockCharge, id: 'charge-1', payment_type: 'zelle' }
+    mockFrom([staleCharge], null, [])
+
+    const result = await getChargesForAgreement('agreement-1', 'barn-1')
+
+    expect(result[0].payment_type).toBeNull()
+  })
+
+  it('should_not_query_transactions_when_there_are_no_charges', async () => {
+    const { from } = mockFrom([])
+
+    await getChargesForAgreement('agreement-1', 'barn-1')
+
+    expect(from).not.toHaveBeenCalledWith('transactions')
   })
 })
 

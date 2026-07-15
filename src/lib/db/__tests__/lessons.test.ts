@@ -42,6 +42,10 @@ import {
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
 
+function makePaymentInfoRpc(rows: { lesson_id: string; payment_type: string | null }[] = [], error: Error | null = null) {
+  return vi.fn().mockResolvedValue({ data: rows, error })
+}
+
 // hydrateParticipants is exercised directly in lesson-participants.test.ts;
 // here it's mocked as a single unit that passes lessons through unchanged by default.
 beforeEach(() => {
@@ -291,6 +295,7 @@ describe('getLessonsByBarn', () => {
     const { select } = makeLessonsChain([lesson])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
+      rpc: makePaymentInfoRpc(),
     } as any)
 
     await getLessonsByBarn('barn-1', 'user-1', 'manager')
@@ -303,13 +308,55 @@ describe('getLessonsByBarn', () => {
     const { select } = makeLessonsChain([lesson])
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({ select }),
+      rpc: makePaymentInfoRpc(),
     } as any)
     const hydrated = [createMockLessonWithDetails()]
     vi.mocked(hydrateParticipants).mockResolvedValueOnce(hydrated)
 
     const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
 
-    expect(result).toBe(hydrated)
+    expect(result).toEqual(hydrated)
+  })
+
+  it('should_overlay_payment_type_from_get_lesson_payment_info_rpc', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', instructor_id: null })
+    const { select } = makeLessonsChain([lesson])
+    const mockRpc = makePaymentInfoRpc([{ lesson_id: 'lesson-1', payment_type: 'venmo' }])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+      rpc: mockRpc,
+    } as any)
+
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+
+    expect(mockRpc).toHaveBeenCalledWith('get_lesson_payment_info', { p_lesson_ids: ['lesson-1'], p_barn_id: 'barn-1' })
+    expect(result[0].payment_type).toBe('venmo')
+  })
+
+  it('should_default_payment_type_to_null_when_rpc_has_no_matching_row', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', instructor_id: null })
+    const { select } = makeLessonsChain([lesson])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+      rpc: makePaymentInfoRpc([]),
+    } as any)
+
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+
+    expect(result[0].payment_type).toBeNull()
+  })
+
+  it('should_not_call_the_payment_info_rpc_when_there_are_no_lessons', async () => {
+    const { select } = makeLessonsChain([])
+    const mockRpc = makePaymentInfoRpc()
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+      rpc: mockRpc,
+    } as any)
+
+    await getLessonsByBarn('barn-1', 'user-1', 'manager')
+
+    expect(mockRpc).not.toHaveBeenCalled()
   })
 
   it('should_throw_when_supabase_returns_an_error_on_lessons_fetch', async () => {
@@ -390,7 +437,7 @@ describe('getLessonsByBarn', () => {
         if (table === 'lessons') return makeRiderLessonsInChain([lesson])
         return makeInChain([])
       })
-      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makePaymentInfoRpc() } as any)
 
       const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
 
@@ -410,7 +457,7 @@ describe('getLessonsByBarn', () => {
         if (table === 'lessons') return makeRiderLessonsInChain([lesson])
         return makeInChain([])
       })
-      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makePaymentInfoRpc() } as any)
 
       const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
 
@@ -519,7 +566,7 @@ describe('getLessonsByBarn', () => {
         if (table === 'lessons') return makeRiderLessonsInChain([lesson])
         return makeInChain([])
       })
-      vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+      vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makePaymentInfoRpc() } as any)
 
       const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
 
@@ -553,11 +600,16 @@ describe('getLessonById', () => {
     return { select: mockSelect, mockEq1, mockEq2, mockMaybeSingle }
   }
 
-  function mockLessonsFrom(data: unknown, error: Error | null = null) {
+  function mockLessonsFrom(
+    data: unknown,
+    error: Error | null = null,
+    paymentRows: { lesson_id: string; payment_type: string | null }[] = []
+  ) {
     const { select, mockEq1, mockEq2 } = makeLessonByIdChain(data, error)
     const from = vi.fn().mockReturnValue({ select })
-    vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, select, mockEq1, mockEq2 }
+    const rpc = makePaymentInfoRpc(paymentRows)
+    vi.mocked(createClient).mockResolvedValue({ from, rpc } as any)
+    return { from, select, mockEq1, mockEq2, rpc }
   }
 
   it('should_return_lesson_with_instructor_name', async () => {
@@ -962,6 +1014,31 @@ describe('getLessonById', () => {
     const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
 
     expect(result?.lesson_riders[0].barn_membership?.name).toBe('Alice Rider')
+  })
+
+  it('should_overlay_payment_type_from_get_lesson_payment_info_rpc', async () => {
+    const { rpc } = mockLessonsFrom(rawLessonData, null, [{ lesson_id: 'lesson-1', payment_type: 'zelle' }])
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(rpc).toHaveBeenCalledWith('get_lesson_payment_info', { p_lesson_ids: ['lesson-1'], p_barn_id: 'barn-1' })
+    expect(result?.payment_type).toBe('zelle')
+  })
+
+  it('should_default_payment_type_to_null_when_rpc_has_no_matching_row', async () => {
+    mockLessonsFrom(rawLessonData)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(result?.payment_type).toBeNull()
+  })
+
+  it('should_not_call_the_payment_info_rpc_when_lesson_is_not_found', async () => {
+    const { rpc } = mockLessonsFrom(null)
+
+    await getLessonById('nonexistent', 'barn-1', 'trainer')
+
+    expect(rpc).not.toHaveBeenCalled()
   })
 })
 

@@ -1986,7 +1986,6 @@ describe('updatePaymentTypeAction', () => {
     vi.mocked(updateLesson).mockReset()
     vi.mocked(collectLessonPayment).mockReset()
     guardAs(mockManagerMembership)
-    vi.mocked(updateLesson).mockResolvedValue(mockLesson)
     vi.mocked(collectLessonPayment).mockResolvedValue(undefined)
   })
 
@@ -2016,13 +2015,6 @@ describe('updatePaymentTypeAction', () => {
     expect(result).toEqual({ error: null })
   })
 
-  it('should_call_updateLesson_with_payment_type_when_trainer_is_instructor', async () => {
-    guardAs(mockTrainerMembership)
-    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: mockTrainerMembership.id }))
-    await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
-    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'venmo' })
-  })
-
   it('should_return_no_error_when_user_is_manager', async () => {
     const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
     expect(result).toEqual({ error: null })
@@ -2031,17 +2023,6 @@ describe('updatePaymentTypeAction', () => {
   it('should_not_call_getLessonById_when_user_is_manager', async () => {
     await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
     expect(getLessonById).not.toHaveBeenCalled()
-  })
-
-  it('should_call_updateLesson_with_payment_type_when_user_is_manager', async () => {
-    await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
-    expect(updateLesson).toHaveBeenCalledWith('lesson-1', 'barn-1', { payment_type: 'cash' })
-  })
-
-  it('should_return_error_when_update_throws', async () => {
-    vi.mocked(updateLesson).mockRejectedValue(new Error('db error'))
-    const result = await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
-    expect(result).toEqual({ error: 'Failed to update payment type' })
   })
 
   it('should_call_collectLessonPayment_with_lesson_barn_and_payment_type', async () => {
@@ -2060,9 +2041,10 @@ describe('updatePaymentTypeAction', () => {
     expect(result).toEqual({ error: 'Failed to update payment type' })
   })
 
-  it('should_not_call_updateLesson_when_collectLessonPayment_throws', async () => {
-    vi.mocked(collectLessonPayment).mockRejectedValue(new Error('rpc error'))
-    await updatePaymentTypeAction('lesson-1', 'barn-slug', 'cash')
+  it('should_never_call_updateLesson', async () => {
+    guardAs(mockTrainerMembership)
+    vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: mockTrainerMembership.id }))
+    await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
     expect(updateLesson).not.toHaveBeenCalled()
   })
 })
