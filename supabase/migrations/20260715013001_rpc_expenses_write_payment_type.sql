@@ -2,6 +2,11 @@
 -- mirroring mark_agreement_charge_paid's collected/payment_type formula. Adding a
 -- trailing parameter changes each function's signature, so the old forms are dropped
 -- and recreated (same approach as update_horse_details growing its threshold params).
+--
+-- This supersedes sync_expense_transaction's prior "collected is always true for an
+-- expense row" comment/behavior (20260714181707_rpc_expenses_write_transactions.sql) —
+-- expenses now have their own unpaid/planned-but-uncollected state, same as lessons and
+-- agreement charges, once a payment type can be chosen.
 
 DROP FUNCTION IF EXISTS public.sync_expense_transaction(uuid, uuid, numeric, timestamptz);
 

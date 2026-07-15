@@ -220,7 +220,7 @@ describe('createExpenseAction', () => {
   })
 
   it('should_pass_through_valid_payment_type', async () => {
-    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, payment_type: 'venmo' }))
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, amount: '50', payment_type: 'venmo' }))
     expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ paymentType: 'venmo' }))
   })
 
@@ -232,6 +232,11 @@ describe('createExpenseAction', () => {
   it('should_not_call_createExpense_when_payment_type_is_invalid', async () => {
     await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, payment_type: 'bitcoin' }))
     expect(createExpense).not.toHaveBeenCalled()
+  })
+
+  it('should_null_out_payment_type_when_amount_is_blank', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, payment_type: 'venmo' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ paymentType: null }))
   })
 })
 
@@ -300,8 +305,13 @@ describe('updateExpenseAction', () => {
   })
 
   it('should_pass_through_valid_payment_type', async () => {
-    await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, payment_type: 'check' }))
+    await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, amount: '50', payment_type: 'check' }))
     expect(updateExpense).toHaveBeenCalledWith('expense-1', 'barn-1', expect.objectContaining({ paymentType: 'check' }))
+  })
+
+  it('should_null_out_payment_type_when_amount_is_blank', async () => {
+    await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, payment_type: 'check' }))
+    expect(updateExpense).toHaveBeenCalledWith('expense-1', 'barn-1', expect.objectContaining({ paymentType: null }))
   })
 
   it('should_return_error_when_payment_type_is_invalid', async () => {

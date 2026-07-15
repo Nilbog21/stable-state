@@ -50,6 +50,7 @@ export function ExpenseForm({
   const [recipient, setRecipient] = useState(initial?.recipient ?? '')
   const [lastCheckedRecipient, setLastCheckedRecipient] = useState(initial?.recipient ?? '')
   const [expenseType, setExpenseType] = useState(initial?.expenseType ?? '')
+  const [amount, setAmount] = useState(initial?.amount != null ? String(initial.amount) : '')
   const [paymentType, setPaymentType] = useState(initial?.paymentType ?? '')
   const [appliesToAllHorses, setAppliesToAllHorses] = useState(initial?.appliesToAllHorses ?? false)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set(initial?.horseIds ?? []))
@@ -158,30 +159,33 @@ export function ExpenseForm({
           type="number"
           step="0.01"
           min="0"
-          defaultValue={initial?.amount ?? undefined}
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
           className={inputClassName}
         />
       </div>
 
-      <div>
-        <label htmlFor="expense-payment-type" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Payment Type
-        </label>
-        <select
-          id="expense-payment-type"
-          name="payment_type"
-          value={paymentType}
-          onChange={(e) => setPaymentType(e.target.value as PaymentType | '')}
-          className={inputClassName}
-        >
-          <option value="">Unpaid</option>
-          {PAYMENT_TYPES.map((pt) => (
-            <option key={pt} value={pt}>
-              {pt.charAt(0).toUpperCase() + pt.slice(1)}
-            </option>
-          ))}
-        </select>
-      </div>
+      {amount.trim() !== '' && (
+        <div>
+          <label htmlFor="expense-payment-type" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Payment Type
+          </label>
+          <select
+            id="expense-payment-type"
+            name="payment_type"
+            value={paymentType}
+            onChange={(e) => setPaymentType(e.target.value as PaymentType | '')}
+            className={inputClassName}
+          >
+            <option value="">Unpaid</option>
+            {PAYMENT_TYPES.map((pt) => (
+              <option key={pt} value={pt}>
+                {pt.charAt(0).toUpperCase() + pt.slice(1)}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       <div className="flex flex-col gap-2">
         <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">

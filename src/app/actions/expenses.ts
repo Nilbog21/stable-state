@@ -51,6 +51,10 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
   if (paymentTypeRaw !== null && !PAYMENT_TYPES.includes(paymentTypeRaw as PaymentType)) {
     return { error: 'invalid payment type' }
   }
+  // ponytail: a payment type only means anything once the amount is known — a still-planned
+  // expense (amount blank) can't have collected a payment yet, so drop any stray value here
+  // rather than trusting the client to keep the two fields in sync.
+  const paymentType = amount === null ? null : (paymentTypeRaw as PaymentType | null)
 
   return {
     data: {
@@ -62,7 +66,7 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
       notes,
       appliesToAllHorses,
       horseIds,
-      paymentType: paymentTypeRaw as PaymentType | null,
+      paymentType,
     },
   }
 }

@@ -8,6 +8,7 @@ import { createLessonSeries } from '@/lib/db/lesson-series'
 import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from '@/lib/db/agreements'
 import { createExpense } from '@/lib/db/expenses'
+import type { PaymentType } from '@/lib/db/types'
 import { mustSucceed, createServiceClient, teardownAllData, assertDevProject } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -159,6 +160,7 @@ export type ExpenseSeed = {
   expenseType: string
   appliesToAllHorses: boolean
   horseIndex?: number
+  paymentType?: string | null
 }
 
 export function expenseDateFor(now: Date, daysOffset: number): string {
@@ -178,7 +180,7 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
       86400000
   )
   const todayTime = upcoming.toISOString().slice(11, 19)
-  return [
+  const seeds: ExpenseSeed[] = [
     { daysOffset: -80, time: null, amount: 450, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
     { daysOffset: -75, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -60, time: null, amount: 250, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
@@ -194,6 +196,11 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
     { daysOffset: todayOffset, time: todayTime, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: 2, time: '14:00:00', amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
   ]
+  // #872: give priced expenses payment-type variety (cycling through PAYMENT_TYPES, same
+  // helper lessons/agreement charges already use) so the ledger's collected/uncollected
+  // split has manually-testable data — planned expenses (amount still null) stay unpaid.
+  let priced = 0
+  return seeds.map((seed) => (seed.amount === null ? seed : { ...seed, paymentType: getPaymentType(priced++, true) }))
 }
 
 async function run() {
@@ -530,6 +537,7 @@ async function run() {
       expenseType: seed.expenseType,
       appliesToAllHorses: seed.appliesToAllHorses,
       horseIds: seed.appliesToAllHorses ? undefined : [horseIds[seed.horseIndex!]],
+      paymentType: (seed.paymentType ?? null) as PaymentType | null,
     }, supabase)
   }
   const barnWideExpenseCount = expenseSeeds.filter((s) => s.appliesToAllHorses).length
