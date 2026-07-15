@@ -1,4 +1,4 @@
-import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, PaymentType, Profile } from '@/lib/db/types'
+import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, PaymentType, Profile, ScheduledExpense } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
   return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, default_instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, ...overrides }
@@ -219,6 +219,14 @@ export function createMockExpenseWithHorses(overrides: Partial<ExpenseWithHorses
     horse_names: ['Thunderbolt'],
     ...overrides,
   }
+}
+
+// Builds a ScheduledExpense (expense_time preset to 10:00) for the dashboard card/sections tests.
+export function makeExpense(overrides: Partial<ScheduledExpense> = {}): ScheduledExpense {
+  return {
+    ...createMockExpenseWithHorses({ expense_time: '10:00:00' }),
+    ...overrides,
+  } as ScheduledExpense
 }
 
 export function createMockLessonTier(overrides: Partial<LessonTier> = {}): LessonTier {
