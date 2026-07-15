@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getTransactionRows, positiveAmount } from '../transactions'
+import { getTransactionRows, positiveAmount, getOutstandingTransactionRows } from '../transactions'
 
 function calledWith(fn: ReturnType<typeof vi.fn>, ...args: unknown[]) {
   return fn.mock.calls.some((call) => JSON.stringify(call) === JSON.stringify(args))
@@ -161,6 +161,74 @@ describe('getTransactionRows', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(from).toHaveBeenCalledWith('transactions')
+  })
+})
+
+describe('getOutstandingTransactionRows', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeRpc(data: unknown[] | null, error: Error | null = null) {
+    const rpc = vi.fn().mockResolvedValue({ data, error })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+    return rpc
+  }
+
+  it('should_return_empty_array_without_calling_rpc_when_all_id_lists_are_empty', async () => {
+    const rpc = makeRpc([])
+    const result = await getOutstandingTransactionRows('barn-1', {})
+    expect(result).toEqual([])
+    expect(rpc).not.toHaveBeenCalled()
+  })
+
+  it('should_call_the_rpc_with_barn_id_and_id_lists', async () => {
+    const rpc = makeRpc([])
+    await getOutstandingTransactionRows('barn-1', { lessonIds: ['lesson-1'], chargeIds: ['charge-1'], lessonRiderIds: ['lr-1'] })
+    expect(rpc).toHaveBeenCalledWith('get_outstanding_transactions', {
+      p_barn_id: 'barn-1',
+      p_lesson_ids: ['lesson-1'],
+      p_charge_ids: ['charge-1'],
+      p_lesson_rider_ids: ['lr-1'],
+    })
+  })
+
+  it('should_default_missing_id_lists_to_empty_arrays', async () => {
+    const rpc = makeRpc([])
+    await getOutstandingTransactionRows('barn-1', { lessonIds: ['lesson-1'] })
+    expect(rpc).toHaveBeenCalledWith('get_outstanding_transactions', {
+      p_barn_id: 'barn-1',
+      p_lesson_ids: ['lesson-1'],
+      p_charge_ids: [],
+      p_lesson_rider_ids: [],
+    })
+  })
+
+  it('should_map_snake_case_row_fields_to_camel_case', async () => {
+    makeRpc([{ kind: 'lesson_fee', entity_id: 'lesson-1', amount: 100, collected: false, payment_type: null }])
+    const result = await getOutstandingTransactionRows('barn-1', { lessonIds: ['lesson-1'] })
+    expect(result).toEqual([{ kind: 'lesson_fee', entityId: 'lesson-1', amount: 100, collected: false, paymentType: null }])
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    makeRpc(null)
+    const result = await getOutstandingTransactionRows('barn-1', { lessonIds: ['lesson-1'] })
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    makeRpc(null, new Error('rpc error'))
+    await expect(getOutstandingTransactionRows('barn-1', { lessonIds: ['lesson-1'] })).rejects.toThrow('rpc error')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    const mockClient = { rpc } as any
+
+    await getOutstandingTransactionRows('barn-1', { lessonIds: ['lesson-1'] }, mockClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(rpc).toHaveBeenCalled()
   })
 })
 

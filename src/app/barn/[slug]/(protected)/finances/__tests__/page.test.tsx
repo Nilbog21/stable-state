@@ -14,6 +14,7 @@ vi.mock('@/lib/db/lesson-finances', async () => {
     ...actual,
     getFinancialSummary: vi.fn(),
     getOutstandingLessons: vi.fn(),
+    getOutstandingCancellationFees: vi.fn(),
     getHorseIncomeSummary: vi.fn(),
     getRiderIncomeSummary: vi.fn(),
     getTrainerIncomeSummary: vi.fn(),
@@ -31,7 +32,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getOutstandingCancellationFees, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary } from '@/lib/db/expenses'
 import FinancesPage from '../page'
@@ -49,6 +50,8 @@ describe('FinancesPage', () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([])
     vi.mocked(getOutstandingCharges).mockReset()
     vi.mocked(getOutstandingCharges).mockResolvedValue([])
+    vi.mocked(getOutstandingCancellationFees).mockReset()
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([])
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([])
     vi.mocked(getRiderIncomeSummary).mockResolvedValue([])
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([])
@@ -789,6 +792,25 @@ describe('FinancesPage', () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getAllByText('$500.00').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('should_show_outstanding_section_when_only_a_cancellation_fee_exists', async () => {
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([
+      { id: 'lr-1', lessonId: 'lesson-2', lessonAt: '2026-05-10T10:00:00Z', instructorName: null, riderName: 'Erin Rider', fee: 50 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Outstanding')).toBeDefined()
+    expect(screen.getByText('Cancellation Fee')).toBeDefined()
+  })
+
+  it('should_include_a_cancellation_fee_in_the_outstanding_total', async () => {
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([
+      { id: 'lr-1', lessonId: 'lesson-2', lessonAt: '2026-05-10T10:00:00Z', instructorName: null, riderName: 'Erin Rider', fee: 50 },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getAllByText('$50.00').length).toBeGreaterThanOrEqual(1)
   })
 
   it('should_render_info_button_on_pending_label', async () => {

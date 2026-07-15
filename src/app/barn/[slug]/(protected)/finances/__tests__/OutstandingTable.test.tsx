@@ -9,6 +9,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/actions/lessons', () => ({
   updatePaymentTypeAction: vi.fn(),
+  updateCancellationFeePaymentTypeAction: vi.fn(),
 }))
 
 vi.mock('../../agreements/actions', () => ({
@@ -16,7 +17,7 @@ vi.mock('../../agreements/actions', () => ({
 }))
 
 import { useRouter } from 'next/navigation'
-import { updatePaymentTypeAction } from '@/app/actions/lessons'
+import { updatePaymentTypeAction, updateCancellationFeePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../../agreements/actions'
 import { OutstandingTable } from '../OutstandingTable'
 
@@ -47,11 +48,23 @@ const leaseItem = {
   fee: 200,
 }
 
+const cancellationFeeItem = {
+  id: 'lesson-rider-1',
+  itemType: 'cancellation_fee' as const,
+  date: '2026-06-05T10:00:00Z',
+  instructorName: 'Jane Doe',
+  riderNames: ['Erin Rider'],
+  fee: 50,
+  linkId: 'lesson-2',
+}
+
 beforeEach(() => {
   vi.mocked(updatePaymentTypeAction).mockReset()
   vi.mocked(updatePaymentTypeAction).mockResolvedValue({ error: null })
   vi.mocked(updateChargePaymentTypeAction).mockReset()
   vi.mocked(updateChargePaymentTypeAction).mockResolvedValue({ error: null })
+  vi.mocked(updateCancellationFeePaymentTypeAction).mockReset()
+  vi.mocked(updateCancellationFeePaymentTypeAction).mockResolvedValue({ error: null })
   vi.mocked(useRouter).mockReset()
   vi.mocked(useRouter).mockReturnValue({ refresh: vi.fn() } as any)
 })
@@ -156,5 +169,45 @@ describe('OutstandingTable', () => {
       fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } })
     })
     expect(vi.mocked(updateChargePaymentTypeAction)).toHaveBeenCalledWith('green-acres', 'charge-1', null)
+  })
+
+  it('should_render_cancellation_fee_type_label', () => {
+    render(<OutstandingTable items={[cancellationFeeItem]} barnSlug="green-acres" />)
+    expect(screen.getByText('Cancellation Fee')).toBeDefined()
+  })
+
+  it('should_render_rider_name_for_a_cancellation_fee_row', () => {
+    render(<OutstandingTable items={[cancellationFeeItem]} barnSlug="green-acres" />)
+    expect(screen.getByText('Erin Rider')).toBeDefined()
+  })
+
+  it('should_render_instructor_name_for_a_cancellation_fee_row', () => {
+    render(<OutstandingTable items={[cancellationFeeItem]} barnSlug="green-acres" />)
+    expect(screen.getByText('Jane Doe')).toBeDefined()
+  })
+
+  it('should_call_updateCancellationFeePaymentTypeAction_on_payment_type_change', async () => {
+    render(<OutstandingTable items={[cancellationFeeItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(vi.mocked(updateCancellationFeePaymentTypeAction)).toHaveBeenCalledWith('green-acres', 'lesson-rider-1', 'venmo')
+  })
+
+  it('should_pass_null_to_cancellation_fee_action_when_empty_option_selected', async () => {
+    render(<OutstandingTable items={[cancellationFeeItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } })
+    })
+    expect(vi.mocked(updateCancellationFeePaymentTypeAction)).toHaveBeenCalledWith('green-acres', 'lesson-rider-1', null)
+  })
+
+  it('should_not_call_other_actions_for_a_cancellation_fee_row', async () => {
+    render(<OutstandingTable items={[cancellationFeeItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(vi.mocked(updatePaymentTypeAction)).not.toHaveBeenCalled()
+    expect(vi.mocked(updateChargePaymentTypeAction)).not.toHaveBeenCalled()
   })
 })

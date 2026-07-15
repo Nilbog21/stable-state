@@ -26,6 +26,7 @@ import {
   updateLessonHorseNotes,
   cancelRiderParticipation,
   hydrateParticipants,
+  updateCancellationFeePaymentType,
 } from '../lesson-participants'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
@@ -893,6 +894,45 @@ describe('cancelRiderParticipation', () => {
     const result = await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
 
     expect(result).toBe(false)
+  })
+})
+
+describe('updateCancellationFeePaymentType', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_snake_case_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateCancellationFeePaymentType('lesson-rider-1', 'barn-1', 'venmo')
+
+    expect(mockRpc).toHaveBeenCalledWith('collect_rider_cancellation_fee', {
+      p_lesson_rider_id: 'lesson-rider-1',
+      p_barn_id: 'barn-1',
+      p_payment_type: 'venmo',
+    })
+  })
+
+  it('should_pass_null_payment_type_through_to_revert_to_unpaid', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateCancellationFeePaymentType('lesson-rider-1', 'barn-1', null)
+
+    expect(mockRpc).toHaveBeenCalledWith('collect_rider_cancellation_fee',
+      expect.objectContaining({ p_payment_type: null })
+    )
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('rpc error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await expect(
+      updateCancellationFeePaymentType('lesson-rider-1', 'barn-1', 'venmo')
+    ).rejects.toThrow('rpc error')
   })
 })
 
