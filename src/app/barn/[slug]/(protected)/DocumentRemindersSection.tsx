@@ -1,6 +1,7 @@
 'use client'
 import type { DueDocument } from '@/lib/db/types'
 import { localToday } from '@/lib/local-day'
+import { formatShortDate } from '@/lib/format-date'
 import { Button } from '@/components/ui/Button'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
@@ -13,15 +14,6 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
   lease_agreement: 'Lease Agreement',
   boarding_contract: 'Boarding Contract',
   other: 'Other',
-}
-
-function formatDate(dateOnly: string): string {
-  return new Date(dateOnly).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
 }
 
 function dueDocumentHref(slug: string, doc: DueDocument): string {
@@ -40,7 +32,7 @@ export function DocumentRemindersSection({ slug, dueDocuments }: { slug: string;
       {due.map((doc) => (
         <div key={doc.id}>
           <Button href={dueDocumentHref(slug, doc)} variant="warning">
-            {doc.ownerName} — {RECORD_TYPE_LABELS[doc.recordType] ?? doc.recordType} — {formatDate(doc.reminderDate)}
+            {doc.ownerName} — {RECORD_TYPE_LABELS[doc.recordType] ?? doc.recordType} — {formatShortDate(doc.reminderDate)}
           </Button>
         </div>
       ))}

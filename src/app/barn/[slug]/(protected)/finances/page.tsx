@@ -5,6 +5,7 @@ import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary, getPastDueExpenses } from '@/lib/db/expenses'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
+import { formatShortDateOnly } from '@/lib/format-date'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
 import { Th, Td } from '@/components/ui/Table'
@@ -14,15 +15,6 @@ import { EmptyState } from '@/components/EmptyState'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer'] as const
 type Tab = typeof VALID_TABS[number]
-
-function formatExpenseDate(isoDate: string): string {
-  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 export default async function FinancesPage({
   params,
@@ -105,7 +97,7 @@ export default async function FinancesPage({
                   href={`/barn/${slug}/expenses/${expense.id}`}
                   className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
                 >
-                  {formatExpenseDate(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
+                  {formatShortDateOnly(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
                 </Link>
               </li>
             ))}

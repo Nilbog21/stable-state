@@ -3,6 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import type { OutstandingItem, Role } from '@/lib/db/types'
+import { formatShortDate } from '@/lib/format-date'
 import { Th, Td } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 
@@ -11,15 +12,6 @@ const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lease: 'Lease',
   board: 'Boarding',
   cancellation_fee: 'Cancellation Fee',
-}
-
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
 }
 
 export default async function OutstandingPage({
@@ -82,10 +74,10 @@ export default async function OutstandingPage({
                       href={`/barn/${slug}/lessons/${lessonId}`}
                       className="underline"
                     >
-                      {formatDate(item.date)}
+                      {formatShortDate(item.date)}
                     </Link>
                   ) : (
-                    formatDate(item.date)
+                    formatShortDate(item.date)
                   )}
                 </Td>
                 <Td>{TYPE_LABELS[item.itemType]}</Td>

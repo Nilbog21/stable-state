@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation'
 import { updatePaymentTypeAction, updateCancellationFeePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../agreements/actions'
 import type { OutstandingItem } from '@/lib/db/types'
+import { formatShortDate } from '@/lib/format-date'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 
 const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
@@ -13,15 +14,6 @@ const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lease: 'Lease',
   board: 'Boarding',
   cancellation_fee: 'Cancellation Fee',
-}
-
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
 }
 
 export function OutstandingTable({
@@ -62,7 +54,7 @@ export function OutstandingTable({
         <tbody>
           {items.map((item) => (
             <tr key={item.id}>
-              <Td>{formatDate(item.date)}</Td>
+              <Td>{formatShortDate(item.date)}</Td>
               <Td>{TYPE_LABELS[item.itemType]}</Td>
               <Td>{item.riderNames.join(', ') || '—'}</Td>
               <Td>{item.instructorName ?? '—'}</Td>
