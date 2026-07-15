@@ -3,8 +3,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
-import { getDocuments } from '@/lib/db/documents'
-import { getSignedUrl } from '@/lib/db/document-storage'
+import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { HorseManagerForm } from './HorseManagerForm'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
@@ -40,12 +39,7 @@ export default async function HorseDetailPage({
 
   const canSeeDocuments = role === 'manager' || role === 'trainer'
 
-  const docsWithUrls = canSeeDocuments
-    ? await (async () => {
-        const docs = await getDocuments('horse', horse.id, barn.id)
-        return Promise.all(docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) })))
-      })()
-    : []
+  const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
 
   const boundUpdateAction = updateHorseAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
