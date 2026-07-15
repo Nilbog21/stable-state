@@ -46,7 +46,7 @@ Three roles: `manager`, `trainer`, `rider`.
 
 All tables are in the `public` schema with RLS enabled.
 
-Migration history through v2.0.2 was squashed (#657) into a 3-file baseline (`supabase/migrations/20260629004610_baseline_schema.sql`, `..._baseline_functions.sql`, `..._baseline_rls.sql`); the original files are kept for reference at `supabase/migrations_archive/`.
+Migration history through v2.0.2 was squashed (#657) into a 3-file baseline (`supabase/migrations/20260629004610_baseline_schema.sql`, `..._baseline_functions.sql`, `..._baseline_rls.sql`); the original files are kept for reference at `supabase/migrations_archive/`. `release/release-3`'s own accumulated migrations were likewise squashed (#658) into a 4-file set (`supabase/migrations/20260715075708_release3_schema.sql`, `..._release3_backfills.sql`, `..._release3_functions.sql`, `..._release3_rls.sql`) — a delta on top of the untouched #657 baseline rather than a from-scratch snapshot, since these tables carry real pre-existing data; the originals are likewise archived, not deleted.
 
 | Table | Key columns | Notes |
 |---|---|---|

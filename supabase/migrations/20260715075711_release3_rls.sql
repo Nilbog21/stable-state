@@ -264,6 +264,8 @@ CREATE POLICY trainer_own_documents_select ON storage.objects FOR SELECT TO auth
 );
 
 -- agreements / agreement_charges
+ALTER TABLE public.agreements ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "manager_all_agreements" ON agreements
   FOR ALL TO authenticated
   USING (auth_is_barn_manager(barn_id))
@@ -279,6 +281,8 @@ CREATE POLICY "rider_select_own_agreements" ON agreements
         AND bm.status = 'active'
     )
   );
+
+ALTER TABLE public.agreement_charges ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "manager_all_agreement_charges" ON agreement_charges
   FOR ALL TO authenticated
@@ -298,10 +302,14 @@ CREATE POLICY "rider_select_own_agreement_charges" ON agreement_charges
   );
 
 -- horse_expenses / expense_horses
+ALTER TABLE public.horse_expenses ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "manager_all_horse_expenses" ON horse_expenses
   FOR ALL TO authenticated
   USING (auth_is_barn_manager(barn_id))
   WITH CHECK (auth_is_barn_manager(barn_id));
+
+ALTER TABLE public.expense_horses ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "manager_all_expense_horses" ON expense_horses
   FOR ALL TO authenticated
@@ -309,6 +317,8 @@ CREATE POLICY "manager_all_expense_horses" ON expense_horses
   WITH CHECK (auth_is_barn_manager(barn_id));
 
 -- lesson_series
+ALTER TABLE public.lesson_series ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "manager_all_lesson_series" ON lesson_series
   FOR ALL TO authenticated
   USING (auth_is_barn_manager(barn_id))
@@ -364,6 +374,8 @@ CREATE POLICY "lesson_series_update_trainer" ON lesson_series
   );
 
 -- transactions: manager-only SELECT; every write goes through SECURITY DEFINER RPCs
+ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
+
 CREATE POLICY "manager_select_transactions" ON public.transactions
   FOR SELECT TO authenticated
   USING (auth_is_barn_manager(barn_id));

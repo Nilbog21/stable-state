@@ -86,8 +86,6 @@ CREATE TRIGGER agreements_set_updated_at
   BEFORE UPDATE ON public.agreements
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
-ALTER TABLE public.agreements ENABLE ROW LEVEL SECURITY;
-
 CREATE TABLE public.agreement_charges (
   id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   barn_id      UUID NOT NULL REFERENCES public.barns(id) ON DELETE CASCADE,
@@ -99,8 +97,6 @@ CREATE TABLE public.agreement_charges (
   UNIQUE (agreement_id, period),
   FOREIGN KEY (barn_id, agreement_id) REFERENCES public.agreements (barn_id, id) ON DELETE CASCADE
 );
-
-ALTER TABLE public.agreement_charges ENABLE ROW LEVEL SECURITY;
 
 -- horse_expenses / expense_horses (new tables; horse_expenses.payment_type is
 -- part of this table's final shape from the start, since the table itself is new)
@@ -124,8 +120,6 @@ CREATE TRIGGER horse_expenses_set_updated_at
   BEFORE UPDATE ON public.horse_expenses
   FOR EACH ROW EXECUTE FUNCTION public.set_updated_at();
 
-ALTER TABLE public.horse_expenses ENABLE ROW LEVEL SECURITY;
-
 CREATE TABLE public.expense_horses (
   id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   barn_id    UUID NOT NULL REFERENCES public.barns(id) ON DELETE CASCADE,
@@ -135,8 +129,6 @@ CREATE TABLE public.expense_horses (
   FOREIGN KEY (barn_id, expense_id) REFERENCES public.horse_expenses (barn_id, id) ON DELETE CASCADE,
   FOREIGN KEY (barn_id, horse_id) REFERENCES public.horses (barn_id, id) ON DELETE CASCADE
 );
-
-ALTER TABLE public.expense_horses ENABLE ROW LEVEL SECURITY;
 
 -- lesson_series (new table; instructor_id/barn_id use their final composite-FK
 -- shape directly — two later release-3 migrations only existed to repoint an
@@ -160,8 +152,6 @@ CREATE TABLE public.lesson_series (
   FOREIGN KEY (barn_id, instructor_id) REFERENCES public.barn_memberships (barn_id, id) ON DELETE SET NULL (instructor_id)
 );
 
-ALTER TABLE public.lesson_series ENABLE ROW LEVEL SECURITY;
-
 -- lessons (pre-existing baseline table)
 ALTER TABLE public.lessons ADD COLUMN cancelled_at TIMESTAMPTZ;
 ALTER TABLE public.lessons ADD COLUMN cancellation_notes TEXT;
@@ -170,7 +160,7 @@ ALTER TABLE public.lessons ADD CONSTRAINT lessons_series_id_fkey FOREIGN KEY (ba
 ALTER TABLE public.lessons ADD CONSTRAINT lessons_series_id_lesson_at_key UNIQUE (series_id, lesson_at);
 ALTER TABLE public.lessons ADD COLUMN instructor_cut NUMERIC NOT NULL DEFAULT 0 CHECK (instructor_cut >= 0);
 -- payment_type is NOT dropped here — see release3_backfills.sql, which reads this
--- column (and agreement_charges.payment_type) before dropping both at the end.
+-- column before dropping it at the end.
 ALTER TABLE public.lessons ALTER COLUMN fee SET NOT NULL;
 
 -- lesson_riders (pre-existing baseline table)
@@ -241,8 +231,6 @@ CREATE UNIQUE INDEX transactions_instructor_payout_key
   ON public.transactions (lesson_id) WHERE kind = 'instructor_payout';
 CREATE UNIQUE INDEX transactions_expense_key
   ON public.transactions (expense_id) WHERE kind = 'expense';
-
-ALTER TABLE public.transactions ENABLE ROW LEVEL SECURITY;
 
 -- seeded_accounts: dead code after #499 (managed-stub invite tokens replaced
 -- the seed-account flow). Dropping the table also drops its RLS policies.
