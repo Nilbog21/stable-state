@@ -794,16 +794,16 @@ describe('FinancesPage', () => {
     expect(screen.getAllByText('$500.00').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('should_show_outstanding_section_when_only_past_due_expenses_exist', async () => {
+  it('should_show_needs_an_amount_section_when_past_due_expenses_exist', async () => {
     vi.mocked(getPastDueExpenses).mockResolvedValue([
       { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Outstanding')).toBeDefined()
+    expect(screen.getByText('Needs an amount')).toBeDefined()
   })
 
-  it('should_render_the_recipient_when_only_past_due_expenses_exist', async () => {
+  it('should_render_the_recipient_for_a_past_due_expense', async () => {
     vi.mocked(getPastDueExpenses).mockResolvedValue([
       { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
     ])
@@ -812,14 +812,22 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/Dr\. Smith/)).toBeDefined()
   })
 
-  it('should_not_count_unresolved_past_due_expenses_in_outstanding_total', async () => {
+  it('should_link_a_past_due_expense_to_its_edit_page', async () => {
     vi.mocked(getPastDueExpenses).mockResolvedValue([
       { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText('Outstanding').closest('section')!
-    expect(within(container).getByText('$0.00')).toBeDefined()
+    expect(screen.getByRole('link', { name: /Dr\. Smith/ })).toHaveProperty('href', expect.stringContaining('/barn/green-acres/expenses/expense-1'))
+  })
+
+  it('should_not_show_outstanding_section_when_only_past_due_expenses_exist', async () => {
+    vi.mocked(getPastDueExpenses).mockResolvedValue([
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByText('Outstanding')).toBeNull()
   })
 
   it('should_render_info_button_on_pending_label', async () => {

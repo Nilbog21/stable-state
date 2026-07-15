@@ -20,7 +20,7 @@ vi.mock('next/navigation', () => ({
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpenseById, deleteExpense, createExpense, updateExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
 import { redirect } from 'next/navigation'
-import { deleteExpenseAction, createExpenseAction, updateExpenseAction, getMostCommonExpenseTypeAction, resolvePastDueExpenseAction } from '../expenses'
+import { deleteExpenseAction, createExpenseAction, updateExpenseAction, getMostCommonExpenseTypeAction } from '../expenses'
 import { createMockHorseExpense } from '@/test/fixtures'
 
 const mockBarn = createMockBarn()
@@ -317,96 +317,6 @@ describe('updateExpenseAction', () => {
   it('should_return_error_when_payment_type_is_invalid', async () => {
     const result = await updateExpenseAction('barn-slug', 'expense-1', noError, makeFormData({ ...baseFields, payment_type: 'bitcoin' }))
     expect(result.error).toBe('invalid payment type')
-  })
-})
-
-describe('resolvePastDueExpenseAction', () => {
-  const existingExpense = createMockExpenseWithHorses({
-    id: 'expense-1',
-    recipient: 'Dr. Hoof Farrier',
-    expense_type: 'Farrier',
-    expense_date: '2026-07-01',
-    expense_time: '09:00',
-    amount: null,
-    notes: 'note',
-    applies_to_all_horses: false,
-    horse_ids: ['horse-1'],
-  })
-
-  beforeEach(() => {
-    vi.mocked(requireMembership).mockReset()
-    vi.mocked(getExpenseById).mockReset()
-    vi.mocked(updateExpense).mockReset()
-    guardAs(mockManagerMembership)
-    vi.mocked(getExpenseById).mockResolvedValue(existingExpense)
-    vi.mocked(updateExpense).mockResolvedValue(createMockHorseExpense({ amount: 125 }))
-  })
-
-  it('should_call_requireMembership_with_manager_role', async () => {
-    await resolvePastDueExpenseAction('barn-slug', 'expense-1', '125', null)
-    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
-  })
-
-  it('should_return_error_when_amount_is_blank', async () => {
-    const result = await resolvePastDueExpenseAction('barn-slug', 'expense-1', '', null)
-    expect(result.error).toBe('a non-zero amount is required')
-  })
-
-  it('should_return_error_when_amount_is_zero', async () => {
-    const result = await resolvePastDueExpenseAction('barn-slug', 'expense-1', '0', null)
-    expect(result.error).toBe('a non-zero amount is required')
-  })
-
-  it('should_return_error_when_amount_is_negative', async () => {
-    const result = await resolvePastDueExpenseAction('barn-slug', 'expense-1', '-5', null)
-    expect(result.error).toBe('a non-zero amount is required')
-  })
-
-  it('should_not_call_updateExpense_when_amount_is_invalid', async () => {
-    await resolvePastDueExpenseAction('barn-slug', 'expense-1', '0', null)
-    expect(updateExpense).not.toHaveBeenCalled()
-  })
-
-  it('should_return_error_when_payment_type_is_invalid', async () => {
-    const result = await resolvePastDueExpenseAction('barn-slug', 'expense-1', '125', 'bitcoin')
-    expect(result.error).toBe('invalid payment type')
-  })
-
-  it('should_return_error_when_expense_not_found', async () => {
-    vi.mocked(getExpenseById).mockResolvedValue(null)
-    const result = await resolvePastDueExpenseAction('barn-slug', 'expense-1', '125', null)
-    expect(result.error).toBe('expense not found')
-  })
-
-  it('should_call_updateExpense_with_the_new_amount_and_the_existing_fields', async () => {
-    await resolvePastDueExpenseAction('barn-slug', 'expense-1', '125', 'venmo')
-    expect(updateExpense).toHaveBeenCalledWith('expense-1', 'barn-1', {
-      expenseDate: '2026-07-01',
-      expenseTime: '09:00',
-      amount: 125,
-      recipient: 'Dr. Hoof Farrier',
-      expenseType: 'Farrier',
-      notes: 'note',
-      appliesToAllHorses: false,
-      horseIds: ['horse-1'],
-      paymentType: 'venmo',
-    })
-  })
-
-  it('should_allow_a_null_payment_type', async () => {
-    await resolvePastDueExpenseAction('barn-slug', 'expense-1', '125', null)
-    expect(updateExpense).toHaveBeenCalledWith('expense-1', 'barn-1', expect.objectContaining({ paymentType: null }))
-  })
-
-  it('should_return_no_error_on_success', async () => {
-    const result = await resolvePastDueExpenseAction('barn-slug', 'expense-1', '125', 'venmo')
-    expect(result.error).toBeNull()
-  })
-
-  it('should_return_generic_error_when_updateExpense_throws', async () => {
-    vi.mocked(updateExpense).mockRejectedValue(new Error('db error'))
-    const result = await resolvePastDueExpenseAction('barn-slug', 'expense-1', '125', 'venmo')
-    expect(result.error).toBe('Failed to resolve expense')
   })
 })
 

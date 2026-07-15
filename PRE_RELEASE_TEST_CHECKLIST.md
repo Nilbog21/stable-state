@@ -199,9 +199,9 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 Finances (`/barn/dev-barn/finances`):
 
 - [ ] **Outstanding** section lists past unpaid lessons; set a payment type on one row via the inline dropdown → it leaves the outstanding list
-- [ ] **Outstanding** section also lists the seeded past-due planned expense (recipient · expense type, date, no fee shown yet); enter an amount (leave Payment Type unset) and tap **Save** → the row disappears from Outstanding; confirm it now shows up under Total Expenses/By Horse for its month
-- [ ] Try tapping **Save** on a past-due expense row with the amount left blank, and again with `0` entered — both are rejected with an inline error and the row stays in Outstanding
-- [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, each row linking to its lesson — confirm past-due expenses do **not** appear on this page
+- [ ] **Needs an amount** section lists the seeded past-due planned expense as a single line (date — recipient — expense type) — confirm it does **not** appear inside the Outstanding table itself
+- [ ] Tap the past-due expense's line → lands on its edit page; enter an amount (leave Payment Type unset) and save → back on Finances, it no longer appears under Needs an amount, and now shows up under Total Expenses/By Horse for its month
+- [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, each row linking to its lesson — confirm past-due expenses do **not** appear on this page (no Needs an amount equivalent there)
 - [ ] Month navigation `←`/`→` works and updates `?month=YYYY-MM`; navigate to the previous month and see Lessons 1–2 reflected
 - [ ] Summary rows appear in order **Collected income → Total Expenses → Net → Pending income**, none with a month/year suffix (the month picker above already shows it); Net equals Collected income minus Total Expenses
 - [ ] **By Horse** is the default tab on page load (no `?tab=` needed)

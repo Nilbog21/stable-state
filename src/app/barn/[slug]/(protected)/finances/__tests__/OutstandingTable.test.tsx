@@ -15,16 +15,10 @@ vi.mock('../../agreements/actions', () => ({
   updateChargePaymentTypeAction: vi.fn(),
 }))
 
-vi.mock('@/app/actions/expenses', () => ({
-  resolvePastDueExpenseAction: vi.fn(),
-}))
-
 import { useRouter } from 'next/navigation'
 import { updatePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../../agreements/actions'
-import { resolvePastDueExpenseAction } from '@/app/actions/expenses'
 import { OutstandingTable } from '../OutstandingTable'
-import { createMockHorseExpense } from '@/test/fixtures'
 
 const lessonItem = {
   id: 'lesson-1',
@@ -58,8 +52,6 @@ beforeEach(() => {
   vi.mocked(updatePaymentTypeAction).mockResolvedValue({ error: null })
   vi.mocked(updateChargePaymentTypeAction).mockReset()
   vi.mocked(updateChargePaymentTypeAction).mockResolvedValue({ error: null })
-  vi.mocked(resolvePastDueExpenseAction).mockReset()
-  vi.mocked(resolvePastDueExpenseAction).mockResolvedValue({ error: null })
   vi.mocked(useRouter).mockReset()
   vi.mocked(useRouter).mockReturnValue({ refresh: vi.fn() } as any)
 })
@@ -164,68 +156,5 @@ describe('OutstandingTable', () => {
       fireEvent.change(screen.getByRole('combobox'), { target: { value: '' } })
     })
     expect(vi.mocked(updateChargePaymentTypeAction)).toHaveBeenCalledWith('green-acres', 'charge-1', null)
-  })
-
-  describe('past-due expense rows', () => {
-    const expense = createMockHorseExpense({
-      id: 'expense-1',
-      recipient: 'Dr. Hoof Farrier',
-      expense_type: 'Farrier',
-      expense_date: '2026-06-01',
-      amount: null,
-    })
-
-    it('should_render_expense_rows_even_when_items_is_empty', () => {
-      render(<OutstandingTable items={[]} pastDueExpenses={[expense]} barnSlug="green-acres" />)
-      expect(screen.getByText(/Dr\. Hoof Farrier/)).toBeDefined()
-    })
-
-    it('should_render_expense_type_label', () => {
-      render(<OutstandingTable items={[]} pastDueExpenses={[expense]} barnSlug="green-acres" />)
-      expect(screen.getByText('Expense')).toBeDefined()
-    })
-
-    it('should_render_recipient_and_expense_type_combined', () => {
-      render(<OutstandingTable items={[]} pastDueExpenses={[expense]} barnSlug="green-acres" />)
-      expect(screen.getByText('Dr. Hoof Farrier · Farrier')).toBeDefined()
-    })
-
-    it('should_render_dash_for_fee_until_resolved', () => {
-      render(<OutstandingTable items={[]} pastDueExpenses={[expense]} barnSlug="green-acres" />)
-      expect(screen.getAllByText('—').length).toBeGreaterThanOrEqual(1)
-    })
-
-    it('should_call_resolvePastDueExpenseAction_with_amount_and_payment_type_on_save', async () => {
-      render(<OutstandingTable items={[]} pastDueExpenses={[expense]} barnSlug="green-acres" />)
-      fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '125' } })
-      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /save/i }))
-      })
-      expect(resolvePastDueExpenseAction).toHaveBeenCalledWith('green-acres', 'expense-1', '125', 'venmo')
-    })
-
-    it('should_refresh_after_successful_save', async () => {
-      const mockRefresh = vi.fn()
-      vi.mocked(useRouter).mockReturnValue({ refresh: mockRefresh } as any)
-      render(<OutstandingTable items={[]} pastDueExpenses={[expense]} barnSlug="green-acres" />)
-      fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '125' } })
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /save/i }))
-      })
-      expect(mockRefresh).toHaveBeenCalled()
-    })
-
-    it('should_show_error_and_not_refresh_when_action_returns_error', async () => {
-      vi.mocked(resolvePastDueExpenseAction).mockResolvedValue({ error: 'a non-zero amount is required' })
-      const mockRefresh = vi.fn()
-      vi.mocked(useRouter).mockReturnValue({ refresh: mockRefresh } as any)
-      render(<OutstandingTable items={[]} pastDueExpenses={[expense]} barnSlug="green-acres" />)
-      await act(async () => {
-        fireEvent.click(screen.getByRole('button', { name: /save/i }))
-      })
-      expect(screen.getByText('a non-zero amount is required')).toBeDefined()
-      expect(mockRefresh).not.toHaveBeenCalled()
-    })
   })
 })
