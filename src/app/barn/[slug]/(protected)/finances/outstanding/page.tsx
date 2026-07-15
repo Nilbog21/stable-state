@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/outstanding'
-import { getOutstandingCharges } from '@/lib/db/agreements'
+import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import type { OutstandingItem, Role } from '@/lib/db/types'
 import { formatShortDate } from '@/lib/format-date'
 import { Th, Td } from '@/components/ui/Table'

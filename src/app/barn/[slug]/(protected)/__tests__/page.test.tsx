@@ -44,7 +44,7 @@ vi.mock('@/lib/db/outstanding', () => ({
   getOutstandingLessons: vi.fn(),
 }))
 
-vi.mock('@/lib/db/agreements', () => ({
+vi.mock('@/lib/db/agreement-finances', () => ({
   getOutstandingCharges: vi.fn(),
 }))
 
@@ -66,7 +66,7 @@ import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { getDueDocuments } from '@/lib/db/documents'
 import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
 import { getOutstandingLessons } from '@/lib/db/outstanding'
-import { getOutstandingCharges } from '@/lib/db/agreements'
+import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarn, createMockMembership } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
 

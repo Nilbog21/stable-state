@@ -30,7 +30,7 @@ const DELETED_LESSON_LABEL = 'Deleted Lesson'
  * Every lesson_fee/instructor_payout/rider_cancellation_fee transaction (#827, #830)
  * in a barn-scoped occurred_at range, merged one row per lesson. tier_name is the
  * only lesson attribute not itself on `transactions`, resolved via a follow-up
- * `.in('id', ids)` lookup (same idiom as agreements.ts:getPaidCharges); instructor_id
+ * `.in('id', ids)` lookup (same idiom as agreement-finances.ts:getPaidCharges); instructor_id
  * comes from the instructor_payout row's own membership_id (present only once
  * collected) rather than a second join, since lesson_fee/rider_cancellation_fee never
  * carry a membership_id.

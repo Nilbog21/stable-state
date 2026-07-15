@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getOutstandingLessons } from '@/lib/db/outstanding'
-import { getOutstandingCharges } from '@/lib/db/agreements'
+import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { deleteNotificationByType, upsertNotificationsForRecipients } from '@/lib/db/notifications'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { mustSucceed, runCronJob } from './script-utils'
