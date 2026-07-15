@@ -338,4 +338,34 @@ describe('ExpenseForm', () => {
     const fd = new FormData(form)
     expect(fd.get('expense_time')).toBe('14:30')
   })
+
+  it('should_render_payment_type_select', () => {
+    renderForm()
+    expect(screen.getByLabelText(/payment type/i)).toBeDefined()
+  })
+
+  it('should_render_payment_type_options', () => {
+    renderForm()
+    const select = screen.getByLabelText(/payment type/i) as HTMLSelectElement
+    const values = Array.from(select.options).map((o) => o.value)
+    expect(values).toEqual(['', 'venmo', 'zelle', 'cash', 'check', 'freshbooks'])
+  })
+
+  it('should_default_payment_type_to_unpaid_when_no_initial', () => {
+    renderForm()
+    expect((screen.getByLabelText(/payment type/i) as HTMLSelectElement).value).toBe('')
+  })
+
+  it('should_prefill_payment_type_from_initial', () => {
+    renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [], paymentType: 'venmo' } })
+    expect((screen.getByLabelText(/payment type/i) as HTMLSelectElement).value).toBe('venmo')
+  })
+
+  it('should_include_selected_payment_type_in_form_data', () => {
+    const { container } = renderForm()
+    fireEvent.change(screen.getByLabelText(/payment type/i), { target: { value: 'cash' } })
+    const form = container.querySelector('form')!
+    const fd = new FormData(form)
+    expect(fd.get('payment_type')).toBe('cash')
+  })
 })
