@@ -185,37 +185,8 @@ export async function deleteExpense(expenseId: string, barnId: string, client?: 
   if (error) throw error
 }
 
-export async function getUpcomingExpenses(barnId: string, from: string, to: string): Promise<HorseExpense[]> {
-  const supabase = await createClient()
-  const fromDate = from.slice(0, 10)
-  const toDate = to.slice(0, 10)
-
-  const { data, error } = await supabase
-    .from('horse_expenses')
-    .select('*')
-    .eq('barn_id', barnId)
-    .is('amount', null)
-    .gte('expense_date', fromDate)
-    .lte('expense_date', toDate)
-  if (error) throw error
-
-  const fromTime = new Date(from).getTime()
-  const toTime = new Date(to).getTime()
-
-  return (data ?? [])
-    .map((expense) => ({
-      expense,
-      // no explicit time means "sometime that day" — treat as due by end of day, not midnight,
-      // so a date-only planned expense stays upcoming for its whole due day
-      combined: new Date(`${expense.expense_date}T${expense.expense_time ?? '23:59:59.999'}Z`).getTime(),
-    }))
-    .filter(({ combined }) => combined >= fromTime && combined < toTime)
-    .sort((a, b) => a.combined - b.combined)
-    .map(({ expense }) => expense)
-}
-
-// Barn Schedule dashboard widget: unlike getUpcomingExpenses, a null expense_time is
-// excluded rather than defaulted to end-of-day — a date-only expense is treated as a
+// Barn Schedule dashboard widget: planned expenses (amount IS NULL) due within the
+// window. A null expense_time is excluded — a date-only expense is treated as a
 // completed/spontaneous entry, not something on the schedule. Horse names are resolved
 // for display, mirroring getExpensesByBarn.
 export async function getUpcomingScheduledExpenses(barnId: string, from: string, to: string): Promise<ScheduledExpense[]> {
@@ -252,8 +223,8 @@ export async function getUpcomingScheduledExpenses(barnId: string, from: string,
 }
 
 // Finances dashboard Outstanding section: planned expenses (amount IS NULL) whose
-// due datetime (expense_date + expense_time, or end-of-day when time is null — same
-// convention as getUpcomingExpenses) has already passed.
+// due datetime (expense_date + expense_time, or end-of-day when time is null) has
+// already passed.
 export async function getPastDueExpenses(barnId: string, client?: SupabaseClient): Promise<HorseExpense[]> {
   const supabase = client ?? await createClient()
   const { data, error } = await supabase

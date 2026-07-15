@@ -24,7 +24,7 @@ export interface LessonFeeRow {
 
 /** tier_name shown for a collected transaction whose lesson was deleted (kept via the
  * lesson_id `ON DELETE SET NULL` FK) — there's no lessons row left to read a real one from. */
-export const DELETED_LESSON_LABEL = 'Deleted Lesson'
+const DELETED_LESSON_LABEL = 'Deleted Lesson'
 
 /**
  * Every lesson_fee/instructor_payout/rider_cancellation_fee transaction (#827, #830)
