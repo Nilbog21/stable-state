@@ -16,8 +16,8 @@
 # SAFETY: `supabase db reset --linked` wipes the ENTIRE schema and all data
 # of whatever project the CLI is currently linked to (supabase/.temp/project-ref).
 # This script refuses to run unless that linked ref matches the dev project
-# ref derived from DEV_SUPABASE_URL in .env.local — see #494, where the CLI
-# was once left linked to prod by accident after a forgotten re-link.
+# ref derived from DEV_SUPABASE_URL in .env.local — see #684, where
+# .env.local was once left pointed at prod by accident.
 #
 # Run from an up-to-date main checkout — this replays whatever migration
 # files are on disk right now, so a stale branch means a stale replay.
@@ -46,7 +46,7 @@ if [ ! -f ".env.local" ]; then
   exit 1
 fi
 
-DEV_SUPABASE_URL="$(grep -m1 '^DEV_SUPABASE_URL=' .env.local | cut -d= -f2- | sed 's/[[:space:]]*#.*$//;s/^"//;s/"$//')"
+DEV_SUPABASE_URL="$( { grep -m1 '^DEV_SUPABASE_URL=' .env.local || true; } | cut -d= -f2- | sed 's/[[:space:]]*#.*$//;s/^"//;s/"$//')"
 if [ -z "$DEV_SUPABASE_URL" ]; then
   echo "Error: DEV_SUPABASE_URL is not set in .env.local" >&2
   exit 1
@@ -83,6 +83,8 @@ run() {
 }
 
 echo "Resetting $LINKED_REF to the current supabase/migrations/ set (schema only, no reseed)..."
+# --yes here skips the Supabase CLI's own confirmation prompt — the typed-ref
+# confirmation above is the only human checkpoint left once this runs for real.
 run npx supabase db reset --linked --no-seed --yes
 
 if $DRY_RUN; then
