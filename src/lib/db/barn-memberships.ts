@@ -217,9 +217,9 @@ export async function getActiveMembersWithProfiles(
 
   // A caller-supplied client is always a service-role script (reset-db.ts/seed-test-barn.ts)
   // — service-role already bypasses barn_memberships' RLS on the direct query above, so
-  // there are no narrow-RLS gap rows to backfill, and the RPC below is authenticated-only
-  // (get_active_barn_member_summaries), so calling it with a service-role JWT would fail
-  // outright with a permission error.
+  // there are no narrow-RLS gap rows to backfill; the RPC below is simply never reached
+  // in that case (#930 added a service_role grant to get_active_barn_member_summaries, but
+  // that's for other callers — this early return still skips it here regardless).
   if (client) return direct
 
   // Rows not returned above fall outside barn_memberships' narrow SELECT policies (e.g. a
