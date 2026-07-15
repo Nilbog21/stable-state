@@ -11,19 +11,12 @@ import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
 import { EmptyState } from '@/components/EmptyState'
+import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 import {
   updateHorseAction,
   deleteHorseDocumentAction,
   updateHorseDocumentReminderDateAction,
 } from './actions'
-
-const RECORD_TYPE_LABELS: Record<string, string> = {
-  insurance_binder: 'Insurance Binder',
-  coggins: 'Coggins',
-  shot_record: 'Shot Record',
-  contract: 'Contract',
-  other: 'Other',
-}
 
 export default async function HorseDetailPage({
   params,

@@ -20,14 +20,7 @@ import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactIn
 import { Button } from '@/components/ui/Button'
 import type { TrainerDocument, RiderDocument, Agreement, Profile, BarnMembership } from '@/lib/db/types'
 import { formatFee } from '@/lib/format-currency'
-
-const RECORD_TYPE_LABELS: Record<string, string> = {
-  instructor_contract: 'Instructor Contract',
-  liability_waiver: 'Liability Waiver',
-  lease_agreement: 'Lease Agreement',
-  boarding_contract: 'Boarding Contract',
-  other: 'Other',
-}
+import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 
 function ContactInfo({
   profile,

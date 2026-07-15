@@ -5,7 +5,8 @@ import { getMembershipById } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
 import { canManage } from '@/lib/document-target'
 import { DocumentUploadForm } from './DocumentUploadForm'
-import { uploadDocumentAction, type DocumentEntity } from './actions'
+import { uploadDocumentAction } from './actions'
+import type { DocumentEntity } from '@/lib/document-record-types'
 
 export default async function NewDocumentPage({
   params,
