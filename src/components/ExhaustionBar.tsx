@@ -1,5 +1,5 @@
 'use client'
-import { useEffect, useRef, useState } from 'react'
+import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { getExhaustionBand, type ExhaustionBand } from '@/lib/exhaustion-band'
 import { Button } from '@/components/ui/Button'
 
@@ -25,20 +25,7 @@ const GHOST_STRIPE = {
 }
 
 export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    function close(e: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('touchstart', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('touchstart', close)
-    }
-  }, [])
+  const { open, setOpen, ref } = useOutsideDismiss()
 
   const existingTotal = existingRows.reduce((sum, row) => sum + row.exertionLevel, 0)
   const hasGhost = ghostValue != null && ghostValue > 0

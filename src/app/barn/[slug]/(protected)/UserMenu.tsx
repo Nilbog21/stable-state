@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, useEffect } from 'react'
+import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { signOut } from '@/app/actions/auth'
 import { useNavigationBlocker } from './NavigationBlocker'
 import Link from 'next/link'
@@ -13,21 +13,8 @@ interface Props {
 }
 
 export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }: Props) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const { open, setOpen, ref } = useOutsideDismiss()
   const { dirty, setPendingNav } = useNavigationBlocker()
-
-  useEffect(() => {
-    function close(e: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('touchstart', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('touchstart', close)
-    }
-  }, [])
 
   return (
     <div ref={ref} className="relative">
