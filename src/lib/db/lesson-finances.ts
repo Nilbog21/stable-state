@@ -318,8 +318,10 @@ export async function getHorseIncomeSummary(
   }
 
   for (const charge of charges) {
-    const existing = grouped.get(charge.horseId) ?? { total: 0, count: 0 }
-    grouped.set(charge.horseId, { total: existing.total + charge.fee, count: existing.count + 1 })
+    // horseId is null when the charge's horse relation was cleared (ON DELETE SET NULL)
+    const horseId = charge.horseId ?? NO_HORSE_LABEL
+    const existing = grouped.get(horseId) ?? { total: 0, count: 0 }
+    grouped.set(horseId, { total: existing.total + charge.fee, count: existing.count + 1 })
   }
 
   if (!grouped.size) return []
@@ -361,8 +363,10 @@ export async function getRiderIncomeSummary(
   }
 
   for (const charge of charges) {
-    const existing = grouped.get(charge.riderId) ?? { total: 0, count: 0 }
-    grouped.set(charge.riderId, { total: existing.total + charge.fee, count: existing.count + 1 })
+    // riderId is null when the charge's rider membership was removed (ON DELETE SET NULL)
+    const riderId = charge.riderId ?? NO_RIDER_LABEL
+    const existing = grouped.get(riderId) ?? { total: 0, count: 0 }
+    grouped.set(riderId, { total: existing.total + charge.fee, count: existing.count + 1 })
   }
 
   if (!grouped.size) return []

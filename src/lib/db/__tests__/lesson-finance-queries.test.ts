@@ -43,6 +43,22 @@ describe('getLessonFeeRows', () => {
     return { from, mockSelect, mockEq, mockIn }
   }
 
+  // Table-aware chain: `lesson_riders` and `lessons` follow-up queries need
+  // independent canned responses within the same test.
+  function makeMultiTableChain(responses: Record<string, { data: unknown[] | null; error?: Error | null }>) {
+    const froms: Record<string, ReturnType<typeof vi.fn>> = {}
+    const from = vi.fn((table: string) => {
+      const resp = responses[table] ?? { data: [], error: null }
+      const mockIn = vi.fn().mockResolvedValue({ data: resp.data, error: resp.error ?? null })
+      const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+      const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+      froms[table] = mockIn
+      return { select: mockSelect }
+    })
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    return { from, froms }
+  }
+
   function txRow(overrides: Partial<TransactionRow> = {}): TransactionRow {
     return {
       id: 'txn-1',
@@ -65,7 +81,7 @@ describe('getLessonFeeRows', () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
     await getLessonFeeRows('barn-1', startDate, endDate)
     expect(getTransactionRows).toHaveBeenCalledWith(
-      'barn-1', ['lesson_fee', 'instructor_payout'], { startDate, endDate }, undefined
+      'barn-1', ['lesson_fee', 'instructor_payout', 'rider_cancellation_fee'], { startDate, endDate }, undefined
     )
   })
 
@@ -230,8 +246,91 @@ describe('getLessonFeeRows', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(getTransactionRows).toHaveBeenCalledWith(
-      'barn-1', ['lesson_fee', 'instructor_payout'], { startDate, endDate }, mockClient
+      'barn-1', ['lesson_fee', 'instructor_payout', 'rider_cancellation_fee'], { startDate, endDate }, mockClient
     )
+  })
+
+  describe('rider_cancellation_fee handling', () => {
+    it('should_resolve_a_rider_cancellation_fee_row_to_its_lesson_via_lesson_riders_and_merge_with_the_payout_row', async () => {
+      vi.mocked(getTransactionRows).mockResolvedValue([
+        txRow({
+          id: 'txn-fee', kind: 'rider_cancellation_fee', amount: 80, collected: false,
+          paymentType: null, lessonId: null, lessonRiderId: 'lr-1', occurredAt: '2026-05-10T10:00:00Z',
+        }),
+        txRow({
+          id: 'txn-payout', kind: 'instructor_payout', amount: -20, collected: false,
+          paymentType: null, lessonId: 'lesson-1', membershipId: 'mem-1',
+        }),
+      ])
+      const { froms } = makeMultiTableChain({
+        lesson_riders: { data: [{ id: 'lr-1', lesson_id: 'lesson-1' }] },
+        lessons: { data: [{ id: 'lesson-1', tier_name: 'Standard' }] },
+      })
+      const result = await getLessonFeeRows('barn-1', startDate, endDate)
+      expect(result).toEqual([
+        {
+          lessonId: 'lesson-1',
+          fee: 80,
+          instructorCut: 20,
+          collected: false,
+          instructorId: 'mem-1',
+          occurredAt: '2026-05-10T10:00:00Z',
+          tierName: 'Standard',
+        },
+      ])
+      expect(froms.lesson_riders).toHaveBeenCalledWith('id', ['lr-1'])
+    })
+
+    it('should_skip_the_lesson_riders_lookup_when_no_rider_cancellation_fee_rows_are_present', async () => {
+      vi.mocked(getTransactionRows).mockResolvedValue([txRow({ kind: 'lesson_fee', amount: 50 })])
+      const { from } = makeMultiTableChain({ lessons: { data: [{ id: 'lesson-1', tier_name: 'Standard' }] } })
+      await getLessonFeeRows('barn-1', startDate, endDate)
+      expect(from).not.toHaveBeenCalledWith('lesson_riders')
+    })
+
+    it('should_treat_a_rider_cancellation_fee_row_as_orphaned_when_its_lesson_rider_id_has_no_match', async () => {
+      vi.mocked(getTransactionRows).mockResolvedValue([
+        txRow({ id: 'txn-fee', kind: 'rider_cancellation_fee', amount: 80, lessonId: null, lessonRiderId: 'lr-missing' }),
+      ])
+      makeMultiTableChain({ lesson_riders: { data: [] } })
+      const result = await getLessonFeeRows('barn-1', startDate, endDate)
+      expect(result).toEqual([
+        expect.objectContaining({ lessonId: null, fee: 80, tierName: 'Deleted Lesson' }),
+      ])
+    })
+
+    it('should_treat_null_lesson_riders_lookup_data_as_empty', async () => {
+      vi.mocked(getTransactionRows).mockResolvedValue([
+        txRow({ id: 'txn-fee', kind: 'rider_cancellation_fee', amount: 80, lessonId: null, lessonRiderId: 'lr-1' }),
+      ])
+      makeMultiTableChain({ lesson_riders: { data: null } })
+      const result = await getLessonFeeRows('barn-1', startDate, endDate)
+      expect(result).toEqual([
+        expect.objectContaining({ lessonId: null, fee: 80 }),
+      ])
+    })
+
+    it('should_treat_a_rider_cancellation_fee_row_with_no_lesson_rider_id_as_orphaned', async () => {
+      // Defensive-only: sync_rider_cancellation_fee always sets lesson_rider_id, but the
+      // column is nullable on the table, so this guards the same way lessonId does above.
+      vi.mocked(getTransactionRows).mockResolvedValue([
+        txRow({ id: 'txn-fee', kind: 'rider_cancellation_fee', amount: 80, lessonId: null, lessonRiderId: null }),
+      ])
+      const { from } = makeMultiTableChain({})
+      const result = await getLessonFeeRows('barn-1', startDate, endDate)
+      expect(result).toEqual([
+        expect.objectContaining({ lessonId: null, fee: 80, tierName: 'Deleted Lesson' }),
+      ])
+      expect(from).not.toHaveBeenCalledWith('lesson_riders')
+    })
+
+    it('should_throw_when_lesson_riders_lookup_query_errors', async () => {
+      vi.mocked(getTransactionRows).mockResolvedValue([
+        txRow({ id: 'txn-fee', kind: 'rider_cancellation_fee', amount: 80, lessonId: null, lessonRiderId: 'lr-1' }),
+      ])
+      makeMultiTableChain({ lesson_riders: { data: null, error: new Error('lesson_riders error') } })
+      await expect(getLessonFeeRows('barn-1', startDate, endDate)).rejects.toThrow('lesson_riders error')
+    })
   })
 })
 

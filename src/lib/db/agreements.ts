@@ -221,8 +221,8 @@ export interface PaidCharge {
   period: string
   fee: number
   kind: AgreementKind
-  riderId: string
-  horseId: string
+  riderId: string | null
+  horseId: string | null
 }
 
 export async function getPaidCharges(
@@ -237,25 +237,33 @@ export async function getPaidCharges(
   )
   if (!rows.length) return []
 
-  const chargeIds = [...new Set(rows.map((r) => r.agreementChargeId as string))]
-  const { data: chargeRows, error } = await supabase
-    .from('agreement_charges')
-    .select('id, agreement_id')
-    .eq('barn_id', barnId)
-    .in('id', chargeIds)
-  if (error) throw error
-  const agreementIdByChargeId = new Map((chargeRows ?? []).map((c) => [c.id, c.agreement_id]))
+  const chargeIds = [...new Set(rows.map((r) => r.agreementChargeId).filter((id): id is string => id !== null))]
+  const agreementIdByChargeId = new Map<string, string>()
+  if (chargeIds.length) {
+    const { data: chargeRows, error } = await supabase
+      .from('agreement_charges')
+      .select('id, agreement_id')
+      .eq('barn_id', barnId)
+      .in('id', chargeIds)
+    if (error) throw error
+    for (const c of chargeRows ?? []) agreementIdByChargeId.set(c.id, c.agreement_id)
+  }
 
+  // agreementChargeId/membershipId/horseId are nullable via ON DELETE SET NULL — no
+  // code path currently hard-deletes an agreement_charges row, but a rider's
+  // membership can be removed after their charge is collected, so riderId/horseId
+  // fall back to null rather than an unchecked cast (mirrors getLessonFeeRows'
+  // orphaned-lessonId handling); callers apply their own NO_HORSE_LABEL/NO_RIDER_LABEL.
   return rows.map((row) => {
-    const chargeId = row.agreementChargeId as string
+    const chargeId = row.agreementChargeId ?? row.id
     return {
       chargeId,
-      agreementId: agreementIdByChargeId.get(chargeId) ?? chargeId,
+      agreementId: (row.agreementChargeId && agreementIdByChargeId.get(row.agreementChargeId)) ?? chargeId,
       period: row.occurredAt.slice(0, 10),
       fee: row.amount,
       kind: row.kind === 'lease_charge' ? 'lease' : 'board',
-      riderId: row.membershipId as string,
-      horseId: row.horseId as string,
+      riderId: row.membershipId,
+      horseId: row.horseId,
     }
   })
 }
@@ -318,8 +326,13 @@ export async function getOutstandingCharges(
     if (!riderAgreementIds.length) return []
   }
 
-  // FK-hint embed pinned to the exact composite constraint — see getPaidCharges above for
-  // why (not an unqualified `agreements!inner`); same table pair, same verified FK (#665).
+  // FK-hint embed pinned to the exact composite constraint (not an unqualified
+  // `agreements!inner`) — #665 verified against live dev schema that pinning avoids a
+  // PGRST200/PGRST201 "relationship not found"/"more than one relationship" error;
+  // getPaidCharges above no longer uses an embed at all (#865, replaced with a follow-up
+  // `.in('id', ids)` lookup) but getOutstandingCharges is excluded from that migration
+  // (transactions SELECT is manager-only RLS; a rider/trainer-facing Outstanding read
+  // needs the SECURITY DEFINER RPC #831 adds first), so this embed stays as-is.
   let query = supabase
     .from('agreement_charges')
     .select('id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')

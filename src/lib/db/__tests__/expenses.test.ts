@@ -1152,6 +1152,25 @@ describe('getExpenseFinancialSummary', () => {
     await expect(getExpenseFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('expenses error')
   })
 
+  it('should_count_an_orphaned_expense_transaction_toward_total_but_exclude_it_from_the_breakdown', async () => {
+    // expenseId is null when the source horse_expenses row was hard-deleted
+    // (deleteExpense has no transactions cleanup) after the expense was collected.
+    const orphanedRow = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false }), expenseId: null }
+    vi.mocked(getTransactionRows).mockResolvedValue([orphanedRow])
+    const horseExpensesFn = vi.fn()
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horse_expenses') { horseExpensesFn(); return makeHorseExpensesLookupChain([]) }
+      if (table === 'horses') return makeHorsesChain([])
+      return makeJunctionChain([])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
+    expect(horseExpensesFn).not.toHaveBeenCalled()
+  })
+
   it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100 })
     vi.mocked(getTransactionRows).mockResolvedValue([row])

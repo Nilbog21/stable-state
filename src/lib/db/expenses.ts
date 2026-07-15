@@ -35,22 +35,31 @@ async function fetchExpenseTransactionsInRange(
   const rows = await getTransactionRows(barnId, ['expense'], { startDate, endDate }, supabase)
   if (!rows.length) return []
 
-  const expenseIds = rows.map((r) => r.expenseId as string)
-  const { data, error } = await supabase
-    .from('horse_expenses')
-    .select('id, applies_to_all_horses')
-    .eq('barn_id', barnId)
-    .in('id', expenseIds)
-  if (error) throw error
-  const appliesToAllByExpenseId = new Map((data ?? []).map((e) => [e.id, e.applies_to_all_horses]))
+  const expenseIds = [...new Set(rows.map((r) => r.expenseId).filter((id): id is string => id !== null))]
+  const appliesToAllByExpenseId = new Map<string, boolean>()
+  if (expenseIds.length) {
+    const { data, error } = await supabase
+      .from('horse_expenses')
+      .select('id, applies_to_all_horses')
+      .eq('barn_id', barnId)
+      .in('id', expenseIds)
+    if (error) throw error
+    for (const e of data ?? []) appliesToAllByExpenseId.set(e.id, e.applies_to_all_horses)
+  }
 
+  // expenseId is null for a transaction whose source horse_expenses row was hard-deleted
+  // (deleteExpense has no transactions cleanup; expense_id is ON DELETE SET NULL) — kept
+  // (not filtered out) so its amount still counts toward totalExpenses, mirroring
+  // lesson-finance-queries.ts's orphaned-lessonId precedent. Falls back to the
+  // transaction's own id, which never matches a real horse_expenses/expense_horses row,
+  // so it naturally drops out of every per-horse breakdown below instead of corrupting one.
   return rows.map((row) => {
-    const expenseId = row.expenseId as string
+    const expenseId = row.expenseId ?? row.id
     return {
       id: expenseId,
       expense_date: row.occurredAt.slice(0, 10),
       amount: positiveAmount(row.kind, row.amount),
-      applies_to_all_horses: appliesToAllByExpenseId.get(expenseId) ?? false,
+      applies_to_all_horses: row.expenseId ? (appliesToAllByExpenseId.get(row.expenseId) ?? false) : false,
     }
   })
 }

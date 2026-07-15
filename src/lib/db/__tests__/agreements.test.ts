@@ -668,6 +668,50 @@ describe('getPaidCharges', () => {
     vi.mocked(getTransactionRows).mockRejectedValue(new Error('db error'))
     await expect(getPaidCharges('barn-1', startDate, endDate)).rejects.toThrow('db error')
   })
+
+  it('should_return_null_riderId_when_the_riders_membership_was_removed', async () => {
+    // membership_id is nulled via ON DELETE SET NULL when a manager removes a rider's
+    // barn_memberships row after their charge was already collected.
+    vi.mocked(getTransactionRows).mockResolvedValue([paidChargeRow({ membershipId: null })])
+    makeAgreementChargesChain([{ id: 'charge-1', agreement_id: 'agreement-1' }])
+    const result = await getPaidCharges('barn-1', startDate, endDate)
+    expect(result[0].riderId).toBeNull()
+  })
+
+  it('should_return_null_horseId_when_horseId_is_null', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([paidChargeRow({ horseId: null })])
+    makeAgreementChargesChain([{ id: 'charge-1', agreement_id: 'agreement-1' }])
+    const result = await getPaidCharges('barn-1', startDate, endDate)
+    expect(result[0].horseId).toBeNull()
+  })
+
+  it('should_filter_null_charge_ids_before_the_followup_query', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([
+      paidChargeRow({ id: 'txn-1', agreementChargeId: null }),
+      paidChargeRow({ id: 'txn-2', agreementChargeId: 'charge-2' }),
+    ])
+    const { mockIn } = makeAgreementChargesChain([{ id: 'charge-2', agreement_id: 'agreement-2' }])
+    await getPaidCharges('barn-1', startDate, endDate)
+    expect(mockIn).toHaveBeenCalledWith('id', ['charge-2'])
+  })
+
+  it('should_fall_back_to_the_transactions_own_id_as_chargeId_when_agreementChargeId_is_null', async () => {
+    // No code path currently hard-deletes an agreement_charges row, but the FK is
+    // ON DELETE SET NULL, so this is guarded defensively the same as lessonId/expenseId.
+    vi.mocked(getTransactionRows).mockResolvedValue([paidChargeRow({ id: 'txn-orphan', agreementChargeId: null })])
+    const { from } = makeAgreementChargesChain([])
+    const result = await getPaidCharges('barn-1', startDate, endDate)
+    expect(result[0].chargeId).toBe('txn-orphan')
+    expect(result[0].agreementId).toBe('txn-orphan')
+    expect(from).not.toHaveBeenCalled()
+  })
+
+  it('should_skip_followup_query_when_every_charge_id_is_null', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([paidChargeRow({ agreementChargeId: null })])
+    const { from } = makeAgreementChargesChain([])
+    await getPaidCharges('barn-1', startDate, endDate)
+    expect(from).not.toHaveBeenCalled()
+  })
 })
 
 describe('getOutstandingCharges', () => {
