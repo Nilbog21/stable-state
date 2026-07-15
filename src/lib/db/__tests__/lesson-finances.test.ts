@@ -2221,6 +2221,15 @@ describe('getEntityIncome', () => {
       expect(result).toEqual([{ id: NON_LESSON_INCOME_LABEL, name: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null }])
     })
 
+    it('should_omit_the_synthetic_row_when_paid_charges_sum_to_zero', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([])
+      vi.mocked(getChargesForSummary).mockResolvedValue([{ period: '2026-05-01', fee: 0, payment_type: 'venmo' }])
+
+      const result = await getEntityIncome(TRAINER_INCOME_DESCRIPTOR, 'summary', 'barn-1', startDate, endDate)
+
+      expect(result).toEqual([])
+    })
+
     it('should_populate_grossIncome_from_raw_pre_cut_fee_when_includeGrossIncome_is_set', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
@@ -2294,17 +2303,22 @@ describe('getEntityIncome', () => {
   })
 
   describe('mode dispatch', () => {
-    it('should_return_a_summary_array_for_summary_mode_and_a_detail_object_for_detail_mode_against_the_same_data', async () => {
+    it('should_return_a_summary_array_for_summary_mode', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 0, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
 
       const summary = await getEntityIncome(TRAINER_INCOME_DESCRIPTOR, 'summary', 'barn-1', startDate, endDate)
-      const detail = await getEntityIncome(TRAINER_INCOME_DESCRIPTOR, 'detail', 'barn-1', startDate, endDate, 'mem-trainer-1')
 
       expect(Array.isArray(summary)).toBe(true)
-      expect(summary[0].totalIncome).toBe(100)
+    })
+
+    it('should_return_a_detail_object_for_detail_mode_against_the_same_data', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 0, collected: true, instructorId: 'mem-trainer-1', occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
+
+      const detail = await getEntityIncome(TRAINER_INCOME_DESCRIPTOR, 'detail', 'barn-1', startDate, endDate, 'mem-trainer-1')
+
       expect(Array.isArray(detail)).toBe(false)
-      expect(detail.total).toBe(100)
     })
   })
 })

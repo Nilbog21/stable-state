@@ -116,7 +116,7 @@ function hasLesson(row: LessonFeeRow): row is LessonFeeRow & { lessonId: string 
   return row.lessonId !== null
 }
 
-/** Shared body for getHorseIncomeDetail/getRiderIncomeDetail — per-lesson rows for a single target participant. */
+/** Shared per-lesson-row body for getEntityIncomeDetail's horse/rider/trainer paths — per-lesson rows for a single target participant. */
 function computeDetailRows<P>(
   lessons: { lessonId: string; fee: number; occurredAt: string; instructorCut: number }[],
   participantsByLessonId: (lessonId: string) => P[],
@@ -427,7 +427,7 @@ async function getEntityIncomeSummary(
   } else {
     const charges = await getChargesForSummary(barnId, startDate, endDate, supabase)
     const fold = foldChargesCollected(charges)
-    if (fold.count > 0) nonLessonRow = fold
+    if (fold.total > 0) nonLessonRow = fold
   }
 
   const ids = [...grouped.keys()].filter((id) => id !== descriptor.fallbackLabel)
