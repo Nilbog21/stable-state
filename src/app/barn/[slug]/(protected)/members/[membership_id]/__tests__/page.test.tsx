@@ -689,25 +689,46 @@ describe('MemberDetailPage', () => {
       expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
     })
 
-    it('should_not_show_contact_info_when_rider_views_other_member', async () => {
+    it('should_show_contact_info_when_rider_views_other_trainer', async () => {
       setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
       vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
       vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetTrainerMembership)
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
-      expect(screen.queryByRole('heading', { name: /contact info/i })).toBeNull()
+      expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
     })
 
-    it('should_not_show_contact_info_when_trainer_views_other_trainer', async () => {
+    it('should_show_contact_info_when_rider_views_other_rider', async () => {
+      setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
+      vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
+    })
+
+    it('should_show_contact_info_when_rider_views_manager', async () => {
+      setupAuth({ id: 'user-rdr', email: 'rdr@example.com' })
+      vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
+        createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
+      )
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
+    })
+
+    it('should_show_contact_info_when_trainer_views_other_trainer', async () => {
       setupAuth({ id: 'user-trn', email: 'trn@example.com' })
       vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
       vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetTrainerMembership)
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
-      expect(screen.queryByRole('heading', { name: /contact info/i })).toBeNull()
+      expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
     })
 
-    it('should_not_show_contact_info_when_trainer_views_manager', async () => {
+    it('should_show_contact_info_when_trainer_views_manager', async () => {
       setupAuth({ id: 'user-trn', email: 'trn@example.com' })
       vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
       vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
@@ -715,7 +736,7 @@ describe('MemberDetailPage', () => {
       )
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
       render(jsx)
-      expect(screen.queryByRole('heading', { name: /contact info/i })).toBeNull()
+      expect(screen.getByRole('heading', { name: /contact info/i })).toBeDefined()
     })
 
     it('should_show_edit_link_when_self_viewing_own_page', async () => {

@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'url'
-import { upsertProfile } from '@/lib/db/profiles'
+import { upsertProfile, updateContactInfo } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
 
 import { createHorse } from '@/lib/db/horses'
@@ -233,6 +233,15 @@ async function run() {
     'insert manager2 membership'
   )
 
+  // #863: a few pre-filled contact info rows so Contact Info visibility can be
+  // manually verified without hand-entering data; the rest stay blank ("—")
+  // to also exercise the missing-field case.
+  await updateContactInfo(
+    m2Profile.id,
+    { phone: '555-0101', emergency_contact_name: 'Riley Manager', emergency_contact_phone: '555-0102' },
+    supabase
+  )
+
   const tier1 = await createTier(DEV_BARN_ID, DEV_TIER_NAME, DEV_TIER_PRICE, true, 3, false, DEV_INSTRUCTOR_CUT, supabase)
   const tier2 = await createTier(DEV_BARN_ID, DEV_TIER_2_NAME, DEV_TIER_2_PRICE, false, null, null, DEV_INSTRUCTOR_CUT, supabase)
 
@@ -261,6 +270,17 @@ async function run() {
     const p = await upsertProfile(riderIds[i], DEV_RIDERS[i].email, DEV_RIDERS[i].firstName, DEV_RIDERS[i].lastName, supabase)
     riderProfileIds.push(p.id)
   }
+
+  await updateContactInfo(
+    trainerProfileIds[0],
+    { phone: '555-0201', emergency_contact_name: 'Sam Trainer', emergency_contact_phone: '555-0202' },
+    supabase
+  )
+  await updateContactInfo(
+    riderProfileIds[0],
+    { phone: '555-0301', emergency_contact_name: 'Jamie Rider', emergency_contact_phone: '555-0302' },
+    supabase
+  )
 
   mustSucceed(
     await supabase.from('barn_memberships').insert(
