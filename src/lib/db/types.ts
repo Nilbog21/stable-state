@@ -93,7 +93,6 @@ export interface Lesson {
   submitted_at: string
   lesson_type: LessonType
   jumping: boolean
-  payment_type: PaymentType | null
   tier_name: string
   cancelled_at: string | null
   cancellation_notes: string | null
@@ -118,6 +117,7 @@ export interface LessonSeries {
 }
 
 export interface LessonWithDetails extends Lesson {
+  payment_type: PaymentType | null
   instructor_name: string | null
   horse_names: string[]
   horse_ids: string[]
@@ -130,6 +130,7 @@ export interface LessonWithDetails extends Lesson {
 }
 
 export interface LessonDetail extends Lesson {
+  payment_type: PaymentType | null
   instructor_name: string | null
   instructor_user_id: string | null
   lesson_horses: { exertion_level: number; horse_notes: string | null; horses: { id: string; name: string; is_active?: boolean; is_available?: boolean; unavailability_reason?: string | null } | null }[]

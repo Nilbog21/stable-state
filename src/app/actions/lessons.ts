@@ -345,7 +345,6 @@ export async function updatePaymentTypeAction(
 
   try {
     await collectLessonPayment(lessonId, barn.id, paymentType as PaymentType | null)
-    await updateLesson(lessonId, barn.id, { payment_type: paymentType as PaymentType | null })
   } catch {
     return { error: 'Failed to update payment type' }
   }

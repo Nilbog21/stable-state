@@ -62,6 +62,10 @@ export async function hydrateParticipants(
     const needsAttention = horseParticipants.some((p) => (p.status ? !p.status.is_active || !p.status.is_available : false))
     return {
       ...lesson,
+      // #885: lessons.payment_type is no longer trustworthy — getLessonsByBarn overlays the
+      // real value from get_lesson_payment_info after this returns. getUpcomingLessons (the
+      // other caller) doesn't render payment_type at all, so the default is never seen there.
+      payment_type: null,
       instructor_name: instructorName,
       horse_names: horseNames,
       horse_ids: horseIdsForLesson,

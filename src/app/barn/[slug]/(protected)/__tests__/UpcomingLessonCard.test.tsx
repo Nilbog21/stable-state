@@ -14,6 +14,7 @@ import type { LessonWithDetails } from '@/lib/db/types'
 function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
   return {
     ...createMockLesson(),
+    payment_type: null,
     instructor_name: 'Jane Smith',
     horse_names: ['Thunderbolt'],
     horse_ids: ['horse-1'],

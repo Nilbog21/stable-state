@@ -128,7 +128,22 @@ export async function getChargesForAgreement(
     .order('period', { ascending: false })
 
   if (error) throw error
-  return data ?? []
+  const charges = data ?? []
+  if (!charges.length) return charges
+
+  // #885: agreement_charges.payment_type is no longer written by mark_agreement_charge_paid —
+  // the transactions ledger (kind IN lease_charge/board_charge) is the source of truth.
+  const { data: txns, error: txnError } = await supabase
+    .from('transactions')
+    .select('agreement_charge_id, payment_type')
+    .eq('barn_id', barnId)
+    .in('kind', CHARGE_TRANSACTION_KINDS)
+    .in('agreement_charge_id', charges.map((c) => c.id))
+  if (txnError) throw txnError
+
+  type ChargePaymentRow = { agreement_charge_id: string; payment_type: PaymentType | null }
+  const paymentMap = new Map(((txns ?? []) as unknown as ChargePaymentRow[]).map((t) => [t.agreement_charge_id, t.payment_type]))
+  return charges.map((c) => ({ ...c, payment_type: paymentMap.get(c.id) ?? null }))
 }
 
 export async function updateCharge(
