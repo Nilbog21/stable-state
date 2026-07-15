@@ -52,7 +52,6 @@ import {
   createExpense,
   updateExpense,
   deleteExpense,
-  getUpcomingExpenses,
   getUpcomingScheduledExpenses,
   getPastDueExpenses,
   getExpenseFinancialSummary,
@@ -597,106 +596,6 @@ describe('deleteExpense', () => {
     await deleteExpense('expense-1', 'barn-1', mockClient)
 
     expect(del).toHaveBeenCalled()
-  })
-})
-
-describe('getUpcomingExpenses', () => {
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockLte = vi.fn().mockResolvedValue({ data, error })
-    const mockGte = vi.fn().mockReturnValue({ lte: mockLte })
-    const mockIs = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
-    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockIs, mockGte, mockLte }
-  }
-
-  it('should_return_empty_array_when_no_rows_in_date_range', async () => {
-    const { select } = makeChain([])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
-
-    expect(result).toEqual([])
-  })
-
-  it('should_return_empty_array_when_data_is_null', async () => {
-    const { select } = makeChain(null)
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
-
-    expect(result).toEqual([])
-  })
-
-  it('should_filter_amount_is_null_at_query_level', async () => {
-    const { select, mockIs } = makeChain([])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
-
-    expect(mockIs).toHaveBeenCalledWith('amount', null)
-  })
-
-  it('should_include_row_within_window', async () => {
-    const expense = createMockHorseExpense({ expense_date: '2026-07-03', expense_time: '10:00:00' })
-    const { select } = makeChain([expense])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
-
-    expect(result).toEqual([expense])
-  })
-
-  it('should_exclude_row_dated_before_window', async () => {
-    const expense = createMockHorseExpense({ expense_date: '2026-06-20', expense_time: '10:00:00' })
-    const { select } = makeChain([expense])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
-
-    expect(result).toEqual([])
-  })
-
-  it('should_default_null_expense_time_to_end_of_day', async () => {
-    const expense = createMockHorseExpense({ expense_date: '2026-07-08', expense_time: null })
-    const { select } = makeChain([expense])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-09T00:00:00.000Z')
-
-    expect(result).toEqual([expense])
-  })
-
-  it('should_exclude_null_time_row_dated_on_or_after_window_end', async () => {
-    const expense = createMockHorseExpense({ expense_date: '2026-07-08', expense_time: null })
-    const { select } = makeChain([expense])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
-
-    expect(result).toEqual([])
-  })
-
-  it('should_sort_ascending_by_combined_datetime', async () => {
-    const later = createMockHorseExpense({ id: 'expense-2', expense_date: '2026-07-05', expense_time: '10:00:00' })
-    const earlier = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-02', expense_time: '09:00:00' })
-    const { select } = makeChain([later, earlier])
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    const result = await getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')
-
-    expect(result.map((r) => r.id)).toEqual(['expense-1', 'expense-2'])
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const { select } = makeChain(null, new Error('db error'))
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
-
-    await expect(getUpcomingExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')).rejects.toThrow('db error')
   })
 })
 

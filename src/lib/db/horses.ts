@@ -28,33 +28,6 @@ export async function createHorse(barnId: string, name: string, client?: Supabas
   return data
 }
 
-export async function updateHorse(horseId: string, barnId: string, name: string): Promise<Horse> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('horses')
-    .update({ name })
-    .eq('id', horseId)
-    .eq('barn_id', barnId)
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-export async function setHorseActive(horseId: string, barnId: string, isActive: boolean): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('horses')
-    .update({ is_active: isActive })
-    .eq('id', horseId)
-    .eq('barn_id', barnId)
-    .select()
-    .single()
-
-  if (error) throw error
-}
-
 export async function getHorseExertionSummary(
   barnId: string,
   since: Date
@@ -122,22 +95,6 @@ export async function resolveHorseNames(
     .in('id', horseIds)
   if (error) throw error
   return new Map((data ?? []).map((h: { id: string; name: string }) => [h.id, h.name]))
-}
-
-export async function setHorseAvailability(
-  horseId: string,
-  barnId: string,
-  isAvailable: boolean,
-  reason: string | null
-): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('horses')
-    .update({ is_available: isAvailable, unavailability_reason: reason })
-    .eq('id', horseId)
-    .eq('barn_id', barnId)
-
-  if (error) throw error
 }
 
 export async function updateHorseDetails(
