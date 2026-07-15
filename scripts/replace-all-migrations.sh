@@ -22,6 +22,15 @@
 # Run from an up-to-date main checkout — this replays whatever migration
 # files are on disk right now, so a stale branch means a stale replay.
 #
+# Note on #930: its service-role auth-gap fix (originally its own migration,
+# 20260715133018_fix_relay_rpc_service_role_gap.sql) was rolled into the
+# release-3 squash's release3_functions.sql/release3_rls.sql instead of
+# staying a standalone file (see #658). stable-state-dev's *current* remote
+# migration history still has that 20260715133018 entry from before the
+# squash — after this script runs, `migration list` will show it gone. That's
+# expected: the fix is baked into the 4-file squash, not lost. Don't take its
+# disappearance from the post-reset list as a regression.
+#
 # Dry-run by default; pass --yes to actually execute.
 
 set -euo pipefail
