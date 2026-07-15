@@ -1,7 +1,8 @@
 /**
  * Short-date rendering ("Jul 15, 2026", en-US, UTC) shared by the finances
- * pages, `OutstandingTable`, and `DocumentRemindersSection` — consolidated
- * from previously per-module private copies.
+ * pages, `OutstandingTable`, `DocumentRemindersSection`, and the settings
+ * page's member roster — consolidated from previously per-module private
+ * copies.
  */
 
 export function formatShortDate(isoString: string): string {
