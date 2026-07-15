@@ -147,6 +147,17 @@ describe('OutstandingPage', () => {
     expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1')
   })
 
+  it('should_not_link_a_charge_row_for_a_rider', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getOutstandingCharges).mockResolvedValue([
+      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+    ])
+    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /May 1, 2026/i })).toBeNull()
+    expect(screen.getByText('May 1, 2026')).toBeDefined()
+  })
+
   it('should_sort_the_earlier_charge_row_before_a_later_lesson_row', async () => {
     vi.mocked(getOutstandingLessons).mockResolvedValue([{
       id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-20T10:00:00Z',
