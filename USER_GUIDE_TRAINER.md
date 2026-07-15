@@ -26,7 +26,7 @@ Go to **Dashboard** to see your upcoming lessons for the next 7 days. If any of 
 
 ## Outstanding payments
 
-If you have past lessons with unpaid balances, an "N unpaid lessons" card appears in the Dashboard's **Reminders** section — tap it to open the **Outstanding Payments** page, which lists all your past unpaid lessons with their date, riders, and fee. Tap any row to open the lesson detail.
+If you have past lessons with unpaid balances, an "N unpaid lessons" card appears in the Dashboard's **Reminders** section — tap it to open the **Outstanding Payments** page, which lists all your past unpaid lessons with their date, riders, and fee, plus any uncollected late-cancellation fees for lessons you instruct. Tap any row to open the lesson detail.
 
 ## Notifications
 
