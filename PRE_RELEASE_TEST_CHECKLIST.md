@@ -308,17 +308,11 @@ bash scripts/seed-test-barn.sh test-barn-checklist
 
 - [ ] As `DEV_EMAIL`, open `/barn/test-barn-checklist/register` with no `?token=` → shows an "Invite invalid" message, not a self-registration form
 
-`DEV_EMAIL` already has a claimed profile from Phase 1, so it can't claim a fresh managed-member stub in this second barn — the claim would try to point `profiles.user_id` at `DEV_EMAIL`'s auth id, which already belongs to that Phase-1 profile, violating `profiles.user_id`'s UNIQUE constraint. A private/incognito second-manager sign-in isn't exercisable on Vercel preview either (one signed-in Google session per environment). Instead, give the existing profile a pending membership directly and activate it via `change-user.sh`'s activate-on-switch prompt:
+`DEV_EMAIL` already has a claimed profile from Phase 1 (`#887` — before that fix, claiming a second-barn invite as an already-claimed user threw an unhandled unique-violation on `profiles.user_id`; the merge fix now re-points the invite's membership onto the existing profile instead):
 
-- [ ] Insert a pending membership for `DEV_EMAIL`'s existing profile into `test-barn-checklist` (Supabase SQL editor or `psql`) — `change-user.sh`'s self-select branch always activates your own membership as `manager` regardless of the role inserted here, so use `'manager'`:
-  ```sql
-  insert into barn_memberships (barn_id, profile_id, user_id, role, status)
-  select b.id, p.id, p.user_id, 'manager', 'pending'
-  from barns b, profiles p
-  where b.slug = 'test-barn-checklist' and p.email = '<DEV_EMAIL>';
-  ```
-- [ ] Run `change-user.sh` → pick **test-barn-checklist** → pick your own name → prompted to activate the pending membership (y/N) → answer **y** → you're now manager of **both** barns
-- [ ] Run `change-user.sh` again → pick **Dev Barn** → pick your own name → restores your manager role in Dev Barn (undoing the Phase 5/6 role swaps)
+- [ ] Run `bash scripts/seed-account.sh`, accepting the default first/last name, and enter `test-barn-checklist` as the barn slug — creates a fresh managed-manager stub invite in that barn and prints `Invite path: /barn/test-barn-checklist/login?token=<uuid>`
+- [ ] Open that invite path and click **Sign in with Google** as `DEV_EMAIL` (already signed in elsewhere in this browser, so the Google redirect returns immediately) → claim succeeds and you land in **test-barn-checklist** as manager — no `?error=invite_claim_failed` redirect
+- [ ] Run `change-user.sh` → pick **Dev Barn** → pick your own name → restores your manager role in Dev Barn (undoing the Phase 5/6 role swaps)
 - [ ] Back as `DEV_EMAIL`: the nav barn name now has a caret — the **BarnSwitcher** dropdown lists both barns, current one checkmarked; clicking the other navigates to its dashboard
 - [ ] At a mobile viewport (~390px wide, or your browser's device toolbar), the BarnSwitcher caret is still tappable (≥44px target) and the dropdown behaves the same as desktop
 - [ ] Visit `/barns` — one card per membership, both showing **Manager**, each linking to its barn
