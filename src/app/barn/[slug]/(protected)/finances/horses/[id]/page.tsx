@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorseIncomeDetail } from '@/lib/db/lesson-finances'
-import { getHorseExpenseDetail } from '@/lib/db/expenses'
+import { getHorseExpenseDetail } from '@/lib/db/expense-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDate } from '@/lib/format-date'
