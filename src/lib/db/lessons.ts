@@ -5,6 +5,23 @@ import { resolveMemberNames } from './member-names'
 import { getProfileById } from './profiles'
 import type { Lesson, LessonDetail, LessonWithDetails, PaymentType, Role } from './types'
 
+// #885: lessons.payment_type is no longer written by any RPC — the transactions
+// ledger (kind='lesson_fee') is the source of truth. get_lesson_payment_info relays
+// it back scoped to whatever lessons the caller can already see.
+async function fetchPaymentTypes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lessonIds: string[],
+  barnId: string
+): Promise<Map<string, PaymentType | null>> {
+  if (!lessonIds.length) return new Map()
+  const { data, error } = await supabase.rpc('get_lesson_payment_info', {
+    p_lesson_ids: lessonIds,
+    p_barn_id: barnId,
+  })
+  if (error) throw error
+  return new Map((data ?? []).map((row: { lesson_id: string; payment_type: PaymentType | null }) => [row.lesson_id, row.payment_type]))
+}
+
 export async function createLesson({
   barnId,
   instructorId,
@@ -27,6 +44,15 @@ export async function createLesson({
   return data
 }
 
+async function overlayPaymentTypes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lessons: LessonWithDetails[],
+  barnId: string
+): Promise<LessonWithDetails[]> {
+  const paymentMap = await fetchPaymentTypes(supabase, lessons.map((l) => l.id), barnId)
+  return lessons.map((l) => ({ ...l, payment_type: paymentMap.get(l.id) ?? null }))
+}
+
 export async function getLessonsByBarn(
   barnId: string,
   userId: string,
@@ -45,7 +71,8 @@ export async function getLessonsByBarn(
       .eq('barn_id', barnId)
       .order('lesson_at', { ascending: false })
     if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons ?? [], barnId)
+    const withDetails = await hydrateParticipants(supabase, lessons ?? [], barnId)
+    return overlayPaymentTypes(supabase, withDetails, barnId)
   }
 
   const { data: lessons, error: lessonsError } = await supabase
@@ -54,7 +81,8 @@ export async function getLessonsByBarn(
     .eq('barn_id', barnId)
     .order('lesson_at', { ascending: false })
   if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons, barnId)
+  const withDetails = await hydrateParticipants(supabase, lessons, barnId)
+  return overlayPaymentTypes(supabase, withDetails, barnId)
 }
 
 export async function getLessonById(lessonId: string, barnId: string, role: Role, callerMembershipId?: string): Promise<LessonDetail | null> {
@@ -128,8 +156,11 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     },
   })
 
+  const paymentMap = await fetchPaymentTypes(supabase, [lessonId], barnId)
+
   const base = {
     ...lessonData,
+    payment_type: paymentMap.get(lessonId) ?? null,
     instructor_name,
     instructor_user_id,
     lesson_riders: rawRiders.map(normalizeLr) as NormalizedLr[],
@@ -188,7 +219,7 @@ export async function collectLessonPayment(lessonId: string, barnId: string, pay
 export async function updateLesson(
   lessonId: string,
   barnId: string,
-  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'payment_type' | 'tier_name' | 'cancellation_notes'>>
+  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'tier_name' | 'cancellation_notes'>>
 ): Promise<Lesson> {
   const supabase = await createClient()
   const { data, error } = await supabase

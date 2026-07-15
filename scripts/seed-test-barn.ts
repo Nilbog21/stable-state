@@ -150,9 +150,17 @@ async function run() {
     lessonType: 'normal', jumping: true, tierName: tier2.name,
   }, supabase)
 
+  const pastLessons = mustSucceed(
+    await supabase.from('lessons').select('id').eq('barn_id', barnId).lt('lesson_at', past(2)),
+    'fetch past lessons'
+  )
   mustSucceed(
-    await supabase.from('lessons').update({ payment_type: 'venmo' })
-      .eq('barn_id', barnId).lt('lesson_at', past(2)),
+    await supabase
+      .from('transactions')
+      .update({ collected: true, payment_type: 'venmo' })
+      .eq('barn_id', barnId)
+      .in('lesson_id', pastLessons.map((l: { id: string }) => l.id))
+      .in('kind', ['lesson_fee', 'instructor_payout']),
     'mark past lessons paid'
   )
 

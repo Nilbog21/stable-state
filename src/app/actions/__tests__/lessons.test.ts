@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn, createMockHorse, createMockLesson, createMockLessonDetail, createMockLessonSeries, createMockMembership } from '@/test/fixtures'
+import type { PaymentType } from '@/lib/db/types'
 import { makeFormData } from '@/test/utils/forms'
 
 vi.mock('@/lib/auth/guard', () => ({
@@ -786,12 +787,14 @@ describe('submitLesson', () => {
 })
 
 function makeLessonDetail(
-  overrides: Partial<ReturnType<typeof createMockLesson>> = {},
+  overrides: Partial<ReturnType<typeof createMockLesson>> & { payment_type?: PaymentType | null } = {},
   riderUserIds: (string | null)[] = [],
   instructorUserId: string | null = null
 ) {
+  const { payment_type = null, ...lessonOverrides } = overrides
   return {
-    ...createMockLesson(overrides),
+    ...createMockLesson(lessonOverrides),
+    payment_type,
     instructor_name: null,
     instructor_user_id: instructorUserId,
     lesson_horses: [],
@@ -1152,12 +1155,14 @@ describe('deleteLessonAction', () => {
 })
 
 function makeLessonDetailWithRiders(
-  overrides: Partial<ReturnType<typeof createMockLesson>> = {},
+  overrides: Partial<ReturnType<typeof createMockLesson>> & { payment_type?: PaymentType | null } = {},
   riders: { id: string; user_id: string | null; cancelled_at?: string | null }[] = [],
   instructorUserId: string | null = null
 ) {
+  const { payment_type = null, ...lessonOverrides } = overrides
   return {
-    ...createMockLesson(overrides),
+    ...createMockLesson(lessonOverrides),
+    payment_type,
     instructor_name: null,
     instructor_user_id: instructorUserId,
     lesson_horses: [],

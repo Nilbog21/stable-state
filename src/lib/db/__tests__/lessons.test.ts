@@ -359,6 +359,30 @@ describe('getLessonsByBarn', () => {
     expect(mockRpc).not.toHaveBeenCalled()
   })
 
+  it('should_throw_when_the_payment_info_rpc_returns_an_error', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', instructor_id: null })
+    const { select } = makeLessonsChain([lesson])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+      rpc: makePaymentInfoRpc([], new Error('rpc error')),
+    } as any)
+
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('rpc error')
+  })
+
+  it('should_default_payment_type_to_null_when_rpc_data_is_null', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1', instructor_id: null })
+    const { select } = makeLessonsChain([lesson])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ select }),
+      rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
+    } as any)
+
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+
+    expect(result[0].payment_type).toBeNull()
+  })
+
   it('should_throw_when_supabase_returns_an_error_on_lessons_fetch', async () => {
     const { select } = makeLessonsChain([], new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({
