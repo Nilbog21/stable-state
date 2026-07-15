@@ -27,7 +27,7 @@ ON CONFLICT (lesson_id) WHERE kind = 'instructor_payout' DO NOTHING;
 INSERT INTO transactions (barn_id, kind, amount, collected, payment_type, membership_id, horse_id, occurred_at, agreement_charge_id)
 SELECT
   ac.barn_id,
-  CASE WHEN a.kind = 'lease' THEN 'lease_charge' ELSE 'board_charge' END,
+  (CASE WHEN a.kind = 'lease' THEN 'lease_charge' ELSE 'board_charge' END)::transaction_kind,
   ac.fee,
   (ac.payment_type IS NOT NULL),
   ac.payment_type,
