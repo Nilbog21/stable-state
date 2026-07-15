@@ -137,16 +137,6 @@ export async function resolveCancellationRecipients(params: CancellationRecipien
   return riderRecipients
 }
 
-export async function markNotificationRead(id: string): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('notifications')
-    .update({ read_at: new Date().toISOString() })
-    .eq('id', id)
-
-  if (error) throw error
-}
-
 export async function getNotifications(
   userId: string,
   barnId: string,

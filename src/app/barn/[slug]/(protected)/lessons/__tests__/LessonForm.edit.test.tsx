@@ -2,8 +2,8 @@ import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
 import type { LessonDetail, Horse } from '@/lib/db/types'
 import { createMockHorse, createMockLessonDetail, createMockLessonTier } from '@/test/fixtures'
-import { LessonForm } from '../../../LessonForm'
-import { NavigationBlockerProvider, useNavigationBlocker } from '../../../../NavigationBlocker'
+import { LessonForm } from '../LessonForm'
+import { NavigationBlockerProvider, useNavigationBlocker } from '../../NavigationBlocker'
 
 afterEach(cleanup)
 
