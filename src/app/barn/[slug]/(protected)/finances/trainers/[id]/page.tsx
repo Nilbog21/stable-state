@@ -1,17 +1,9 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getTrainerIncomeDetail } from '@/lib/db/lesson-finances'
-import { resolveFinancesMonth } from '../../page'
+import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { Th, Td } from '@/components/ui/Table'
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function pad4(n: number): string {
-  return String(n).padStart(4, '0')
-}
 
 function formatDate(isoString: string): string {
   return new Date(isoString).toLocaleDateString('en-US', {
@@ -39,7 +31,7 @@ export default async function TrainerIncomePage({
 
   const sortedRows = [...rows].sort((a, b) => new Date(a.lessonAt).getTime() - new Date(b.lessonAt).getTime())
 
-  const monthQ = `month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
+  const monthQ = `month=${formatMonthParam(startDate)}`
   const backHref = `/barn/${slug}/finances?tab=trainer&${monthQ}`
 
   return (
