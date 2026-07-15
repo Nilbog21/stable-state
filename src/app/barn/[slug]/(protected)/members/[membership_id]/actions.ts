@@ -9,7 +9,7 @@ import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
 import { removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
-import { isValidPhone } from '@/lib/phone'
+import { parseContactFields } from '@/lib/contact-info'
 import { resolveManageableTarget } from '@/lib/document-target'
 
 export async function deleteDocumentAction(
@@ -53,20 +53,9 @@ export async function updateContactInfoAction(
   const targetProfile = await getProfileById(targetMembership.profile_id)
   if (!targetProfile || !targetProfile.is_managed) return { error: 'Forbidden' }
 
-  const phone = (formData.get('phone') as string | null)?.trim() || null
-  const emergencyContactName = (formData.get('emergency_contact_name') as string | null)?.trim() || null
-  const emergencyContactPhone = (formData.get('emergency_contact_phone') as string | null)?.trim() || null
-
-  if (phone && phone !== targetProfile.phone && !isValidPhone(phone)) {
-    return { error: 'Phone number must contain 7–15 digits' }
-  }
-  if (
-    emergencyContactPhone &&
-    emergencyContactPhone !== targetProfile.emergency_contact_phone &&
-    !isValidPhone(emergencyContactPhone)
-  ) {
-    return { error: 'Emergency contact phone must contain 7–15 digits' }
-  }
+  const parsed = parseContactFields(formData, targetProfile)
+  if ('error' in parsed) return parsed
+  const { phone, emergencyContactName, emergencyContactPhone } = parsed.data
 
   try {
     await updateContactInfo(targetMembership.profile_id, {
