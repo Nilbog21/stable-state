@@ -75,9 +75,10 @@ export async function updateContactInfo(
     phone?: string | null
     emergency_contact_name?: string | null
     emergency_contact_phone?: string | null
-  }
+  },
+  client?: SupabaseClient
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   const { error } = await supabase
     .from('profiles')
     .update(fields)

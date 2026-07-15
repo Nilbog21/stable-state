@@ -410,4 +410,15 @@ describe('updateContactInfo', () => {
 
     await expect(updateContactInfo('profile-1', { phone: '555-0000' })).rejects.toThrow('update failed')
   })
+
+  it('should_use_injected_client_without_calling_createClient', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+    const injectedClient = { from: vi.fn().mockReturnValue({ update: mockUpdate }) } as any
+
+    await updateContactInfo('profile-1', { phone: '555-1234' }, injectedClient)
+
+    expect(mockUpdate).toHaveBeenCalledWith({ phone: '555-1234' })
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
 })
