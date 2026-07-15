@@ -781,7 +781,7 @@ describe('FinancesPage', () => {
 
   it('should_show_outstanding_section_when_only_outstanding_charges_exist', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -790,7 +790,7 @@ describe('FinancesPage', () => {
 
   it('should_render_the_outstanding_charges_rider_name_when_only_outstanding_charges_exist', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -799,7 +799,7 @@ describe('FinancesPage', () => {
 
   it('should_include_outstanding_charges_in_outstanding_total', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([
-      { id: 'charge-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
