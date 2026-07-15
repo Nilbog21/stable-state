@@ -504,6 +504,12 @@ async function run() {
   )
   const emeryBoardLastMonthCharge = await generateChargeForMonth(emeryBoardAgreement.id, DEV_BARN_ID, lastMonth, supabase)
 
+  // Two-months-ago charges left unpaid so the Outstanding page/section always has a
+  // past-due board and lease charge to manually verify without hand-seeding (#865 testing).
+  const twoMonthsAgo = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 2, 1))
+  await generateChargeForMonth(boardAgreement.id, DEV_BARN_ID, twoMonthsAgo, supabase)
+  await generateChargeForMonth(leaseAgreement.id, DEV_BARN_ID, twoMonthsAgo, supabase)
+
   // mark_agreement_charge_paid has no service-role escape hatch (interactive-only RPC,
   // see ARCHITECTURE.md) so this seed script can't call it — raw updates to both tables
   // instead, mirroring what the RPC itself would write.
@@ -546,7 +552,7 @@ async function run() {
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming), plus ${DEV_UNAVAILABLE_HORSE} (unavailable: "${DEV_UNAVAILABLE_REASON}")`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
-  console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month`)
+  console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month; the board and lease agreements also have an unpaid charge from 2 months ago (past due, for Outstanding testing)`)
   console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet)`)
 }
 
