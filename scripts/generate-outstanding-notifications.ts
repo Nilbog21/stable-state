@@ -51,20 +51,19 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
             console.error(`Failed to clear outstanding notification for ${userId} in barn ${barn.id}:`, (err as Error).message)
           }
         }
-        continue
+      } else {
+        const recipients = new Map(
+          managerUserIds.map((userId) => [`${userId}:${barn.id}`, { userId, barnId: barn.id, payload: { count, total } }])
+        )
+        const errorCount = await upsertNotificationsForRecipients(
+          supabase,
+          recipients,
+          ({ count, total }) => formatOutstandingNotification(count, total),
+          'outstanding_payment',
+          () => `/barn/${barn.slug}/finances/outstanding`
+        )
+        if (errorCount > 0) hadErrors = true
       }
-
-      const recipients = new Map(
-        managerUserIds.map((userId) => [`${userId}:${barn.id}`, { userId, barnId: barn.id, payload: { count, total } }])
-      )
-      const errorCount = await upsertNotificationsForRecipients(
-        supabase,
-        recipients,
-        ({ count, total }) => formatOutstandingNotification(count, total),
-        'outstanding_payment',
-        () => `/barn/${barn.slug}/finances/outstanding`
-      )
-      if (errorCount > 0) hadErrors = true
 
       const pastDueExpenses = await getPastDueExpenses(barn.id, supabase)
       if (pastDueExpenses.length === 0) {
