@@ -2,27 +2,7 @@
 
 import { useActionState, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
-import type { DocumentEntity } from './actions'
-
-const TYPE_OPTIONS: Record<DocumentEntity, { value: string; label: string }[]> = {
-  horse: [
-    { value: 'insurance_binder', label: 'Insurance Binder' },
-    { value: 'coggins', label: 'Coggins' },
-    { value: 'shot_record', label: 'Shot Record' },
-    { value: 'contract', label: 'Contract' },
-    { value: 'other', label: 'Other' },
-  ],
-  trainer: [
-    { value: 'instructor_contract', label: 'Instructor Contract' },
-    { value: 'other', label: 'Other' },
-  ],
-  rider: [
-    { value: 'liability_waiver', label: 'Liability Waiver' },
-    { value: 'lease_agreement', label: 'Lease Agreement' },
-    { value: 'boarding_contract', label: 'Boarding Contract' },
-    { value: 'other', label: 'Other' },
-  ],
-}
+import { RECORD_TYPE_OPTIONS, type DocumentEntity } from '@/lib/document-record-types'
 
 // Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
 const MAX_FILE_SIZE = 4500000
@@ -35,7 +15,7 @@ interface Props {
 
 export function DocumentUploadForm({ entity, action, cancelHref }: Props) {
   const [state, formAction, pending] = useActionState(action, { error: null })
-  const types = TYPE_OPTIONS[entity]
+  const types = RECORD_TYPE_OPTIONS[entity]
   const [selectedType, setSelectedType] = useState(types[0].value)
   const [fileError, setFileError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)

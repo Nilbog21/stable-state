@@ -7,14 +7,7 @@ import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { resolveManageableTarget } from '@/lib/document-target'
 import type { HorseDocumentType, TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
-
-export type DocumentEntity = 'horse' | 'trainer' | 'rider'
-
-const RECORD_TYPES: Record<DocumentEntity, Set<string>> = {
-  horse: new Set(['insurance_binder', 'coggins', 'shot_record', 'contract', 'other']),
-  trainer: new Set(['instructor_contract', 'other']),
-  rider: new Set(['liability_waiver', 'lease_agreement', 'boarding_contract', 'other']),
-}
+import { RECORD_TYPE_VALUES, type DocumentEntity } from '@/lib/document-record-types'
 
 export async function uploadDocumentAction(
   barnSlug: string,
@@ -67,7 +60,7 @@ export async function uploadDocumentAction(
   }
 
   const recordType = formData.get('record_type') as string
-  if (!RECORD_TYPES[documentEntity].has(recordType)) return { error: 'Invalid record type' }
+  if (!RECORD_TYPE_VALUES[documentEntity].has(recordType)) return { error: 'Invalid record type' }
 
   const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
   const reminderDate = ((formData.get('reminder_date') as string | null) ?? '').trim() || null

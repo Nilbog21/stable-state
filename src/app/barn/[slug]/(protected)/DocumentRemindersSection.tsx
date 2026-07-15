@@ -2,19 +2,8 @@
 import type { DueDocument } from '@/lib/db/types'
 import { localToday } from '@/lib/local-day'
 import { formatShortDate } from '@/lib/format-date'
+import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 import { Button } from '@/components/ui/Button'
-
-const RECORD_TYPE_LABELS: Record<string, string> = {
-  insurance_binder: 'Insurance Binder',
-  coggins: 'Coggins',
-  shot_record: 'Shot Record',
-  contract: 'Contract',
-  instructor_contract: 'Instructor Contract',
-  liability_waiver: 'Liability Waiver',
-  lease_agreement: 'Lease Agreement',
-  boarding_contract: 'Boarding Contract',
-  other: 'Other',
-}
 
 function dueDocumentHref(slug: string, doc: DueDocument): string {
   return doc.entity === 'horse' ? `/barn/${slug}/horses/${doc.ownerId}` : `/barn/${slug}/members/${doc.ownerId}`
