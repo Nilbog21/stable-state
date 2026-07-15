@@ -22,10 +22,7 @@ AS $$
     AND t.lesson_id = ANY(p_lesson_ids)
     AND (
       public.auth_is_barn_manager(p_barn_id)
-      OR EXISTS (
-        SELECT 1 FROM public.barn_memberships
-        WHERE user_id = auth.uid() AND barn_id = p_barn_id AND status = 'active' AND role = 'trainer'
-      )
+      OR public.auth_is_barn_trainer(p_barn_id)
       OR public.auth_is_enrolled_rider(t.lesson_id, p_barn_id)
     );
 $$;

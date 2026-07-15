@@ -323,6 +323,10 @@ BEGIN
   SET collected = (p_payment_type IS NOT NULL), payment_type = p_payment_type
   WHERE agreement_charge_id = p_charge_id AND barn_id = p_barn_id;
 
+  IF NOT FOUND THEN
+    RAISE EXCEPTION 'charge_transaction_not_found';
+  END IF;
+
   v_charge.payment_type := p_payment_type;
   RETURN v_charge;
 END;
