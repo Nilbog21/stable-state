@@ -163,5 +163,3 @@ export function resolveExhaustionThresholds(
   const moderate = horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate
   return { high, moderate: Math.min(moderate, high - 1) }
 }
-
-export { getExhaustionBand, type ExhaustionBand } from '@/lib/exhaustion-band'

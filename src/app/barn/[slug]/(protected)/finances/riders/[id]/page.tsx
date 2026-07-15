@@ -3,16 +3,8 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getRiderIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
+import { formatShortDate } from '@/lib/format-date'
 import { Th, Td } from '@/components/ui/Table'
-
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 type CombinedRow =
   | { kind: 'lesson'; key: string; date: string; href: string; amount: number; riderCount: number; split: number }
@@ -95,7 +87,7 @@ export default async function RiderIncomePage({
                 <tr key={row.key}>
                   <Td>
                     <Link href={row.href} className="underline">
-                      {formatDate(row.date)}
+                      {formatShortDate(row.date)}
                     </Link>
                   </Td>
                   <Td>{TYPE_LABELS[row.kind]}</Td>
