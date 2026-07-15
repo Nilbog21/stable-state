@@ -8,6 +8,7 @@ import { createNotification, deleteNotificationByType } from '@/lib/db/notificat
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { REMEMBER_ME_MAX_AGE } from '@/lib/supabase/cookie-options'
+import { isProfileIncomplete } from '@/lib/contact-info'
 import type { Barn, BarnMembership, Profile } from '@/lib/db/types'
 
 async function generateLoginNotifications(
@@ -15,7 +16,7 @@ async function generateLoginNotifications(
   activeMemberships: Array<{ barn: Barn; membership: BarnMembership }>,
   profile: Profile | null
 ): Promise<void> {
-  const profileIncomplete = !profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone
+  const profileIncomplete = isProfileIncomplete(profile)
 
   await Promise.all(activeMemberships.map(async ({ barn, membership }) => {
     if (profileIncomplete) {
@@ -37,9 +38,7 @@ async function generateLoginNotifications(
       let hasIncomplete = false
       if (otherIds.length > 0) {
         const memberProfiles = await getProfilesByUserIds(otherIds)
-        hasIncomplete = memberProfiles.some(
-          p => !p.phone || !p.emergency_contact_name || !p.emergency_contact_phone
-        )
+        hasIncomplete = memberProfiles.some(p => isProfileIncomplete(p))
       }
       if (hasIncomplete) {
         await createNotification({
@@ -119,7 +118,7 @@ export async function GET(request: NextRequest) {
           try {
             const profile = await getProfileByUserId(user.id)
             await generateLoginNotifications(user.id, [{ barn, membership }], profile).catch(() => {})
-            if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
+            if (isProfileIncomplete(profile)) {
               const response = redirect(`${origin}/profile/complete?barn=${barnSlug}`)
               setBarnSession(response, barnSlug, user.id)
               return response
@@ -145,7 +144,7 @@ export async function GET(request: NextRequest) {
         try {
           const profile = await getProfileByUserId(user.id)
           await generateLoginNotifications(user.id, active, profile).catch(() => {})
-          if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
+          if (isProfileIncomplete(profile)) {
             const barnParam = active.length === 1 ? `?barn=${active[0].barn.slug}` : ''
             const response = redirect(`${origin}/profile/complete${barnParam}`)
             for (const { barn } of active) {
