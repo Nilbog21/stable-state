@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { getSignedUrl } from './document-storage'
 import { resolveHorseNames } from './horses'
 import { resolveMemberNames } from './member-names'
 import type {
@@ -19,10 +20,7 @@ const CONFIG: Record<Entity, { table: string; idColumn: string }> = {
   trainer: { table: 'staff_documents', idColumn: 'trainer_id' },
 }
 
-export async function getDocuments(entity: 'horse', entityId: string, barnId: string): Promise<HorseDocument[]>
-export async function getDocuments(entity: 'rider', entityId: string, barnId: string): Promise<RiderDocument[]>
-export async function getDocuments(entity: 'trainer', entityId: string, barnId: string): Promise<TrainerDocument[]>
-export async function getDocuments(entity: Entity, entityId: string, barnId: string) {
+async function getDocuments(entity: Entity, entityId: string, barnId: string) {
   const { table, idColumn } = CONFIG[entity]
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -33,6 +31,35 @@ export async function getDocuments(entity: Entity, entityId: string, barnId: str
     .order('created_at', { ascending: false })
   if (error) throw error
   return data ?? []
+}
+
+/**
+ * Documents for display, each paired with a 300s signed URL — consolidated from the
+ * horse/member detail pages' previously hand-rolled fetch-then-sign copies.
+ */
+export async function getDocumentsWithUrls(
+  entity: 'horse',
+  entityId: string,
+  barnId: string
+): Promise<Array<{ doc: HorseDocument; signedUrl: string }>>
+export async function getDocumentsWithUrls(
+  entity: 'rider',
+  entityId: string,
+  barnId: string
+): Promise<Array<{ doc: RiderDocument; signedUrl: string }>>
+export async function getDocumentsWithUrls(
+  entity: 'trainer',
+  entityId: string,
+  barnId: string
+): Promise<Array<{ doc: TrainerDocument; signedUrl: string }>>
+export async function getDocumentsWithUrls(entity: Entity, entityId: string, barnId: string) {
+  const docs = await getDocuments(entity, entityId, barnId)
+  return Promise.all(
+    docs.map(async (doc) => ({
+      doc,
+      signedUrl: await getSignedUrl(doc.storage_path),
+    }))
+  )
 }
 
 export async function createDocument(
