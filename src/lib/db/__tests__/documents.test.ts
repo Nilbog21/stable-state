@@ -9,9 +9,20 @@ vi.mock('../member-names', () => ({
   resolveMemberNames: vi.fn(),
 }))
 
+vi.mock('../document-storage', () => ({
+  getSignedUrl: vi.fn(),
+}))
+
 import { createClient } from '@/lib/supabase/server'
 import { resolveMemberNames } from '../member-names'
-import { getDocuments, createDocument, deleteDocument, updateDocumentReminderDate, getDueDocuments } from '../documents'
+import { getSignedUrl } from '../document-storage'
+import {
+  getDocumentsWithUrls,
+  createDocument,
+  deleteDocument,
+  updateDocumentReminderDate,
+  getDueDocuments,
+} from '../documents'
 
 type EntityCase = {
   entity: 'horse' | 'rider' | 'trainer'
@@ -81,9 +92,11 @@ const CASES: EntityCase[] = [
   },
 ]
 
-describe.each(CASES)('getDocuments($entity)', ({ entity, entityId, mockDoc }) => {
+describe.each(CASES)('getDocumentsWithUrls($entity)', ({ entity, entityId, mockDoc }) => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
+    vi.mocked(getSignedUrl).mockReset()
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-dal')
   })
 
   it('should_return_empty_array_when_no_documents', async () => {
@@ -99,7 +112,7 @@ describe.each(CASES)('getDocuments($entity)', ({ entity, entityId, mockDoc }) =>
       }),
     } as any)
 
-    const result = await getDocuments(entity as any, entityId, 'barn-1')
+    const result = await getDocumentsWithUrls(entity as any, entityId, 'barn-1')
 
     expect(result).toEqual([])
   })
@@ -117,9 +130,9 @@ describe.each(CASES)('getDocuments($entity)', ({ entity, entityId, mockDoc }) =>
       }),
     } as any)
 
-    const result = await getDocuments(entity as any, entityId, 'barn-1')
+    const result = await getDocumentsWithUrls(entity as any, entityId, 'barn-1')
 
-    expect(result).toEqual([mockDoc])
+    expect(result).toEqual([{ doc: mockDoc, signedUrl: 'https://example.com/signed-dal' }])
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {
@@ -135,7 +148,7 @@ describe.each(CASES)('getDocuments($entity)', ({ entity, entityId, mockDoc }) =>
       }),
     } as any)
 
-    const result = await getDocuments(entity as any, entityId, 'barn-1')
+    const result = await getDocumentsWithUrls(entity as any, entityId, 'barn-1')
 
     expect(result).toEqual([])
   })
@@ -153,7 +166,7 @@ describe.each(CASES)('getDocuments($entity)', ({ entity, entityId, mockDoc }) =>
       }),
     } as any)
 
-    await expect(getDocuments(entity as any, entityId, 'barn-1')).rejects.toThrow('db error')
+    await expect(getDocumentsWithUrls(entity as any, entityId, 'barn-1')).rejects.toThrow('db error')
   })
 })
 

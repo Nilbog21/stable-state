@@ -8,10 +8,7 @@ vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getUserMembership: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
 vi.mock('@/lib/db/documents', () => ({
-  getDocuments: vi.fn(),
-}))
-vi.mock('@/lib/db/document-storage', () => ({
-  getSignedUrl: vi.fn(),
+  getDocumentsWithUrls: vi.fn(),
 }))
 vi.mock('../actions', () => ({
   updateHorseAction: vi.fn(),
@@ -28,8 +25,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, useRouter: () => ({ 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getHorseById } from '@/lib/db/horses'
-import { getDocuments } from '@/lib/db/documents'
-import { getSignedUrl } from '@/lib/db/document-storage'
+import { getDocumentsWithUrls } from '@/lib/db/documents'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -61,8 +57,7 @@ describe('HorseDetailPage', () => {
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getHorseById).mockResolvedValue(availableHorse)
-    vi.mocked(getDocuments).mockResolvedValue([])
-    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -193,7 +188,7 @@ describe('HorseDetailPage', () => {
   })
 
   it('should_render_documents_list_for_manager_when_documents_exist', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('coggins.pdf')).toBeDefined()
@@ -206,7 +201,7 @@ describe('HorseDetailPage', () => {
   })
 
   it('should_render_delete_button_for_manager_when_document_exists', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
@@ -214,7 +209,7 @@ describe('HorseDetailPage', () => {
 
   it('should_not_render_delete_button_for_trainer_when_document_exists', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
-    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
@@ -222,7 +217,7 @@ describe('HorseDetailPage', () => {
 
   it('should_not_render_actions_column_header_for_trainer_when_document_exists', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
-    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText('Actions')).toBeNull()
@@ -236,42 +231,42 @@ describe('HorseDetailPage', () => {
   })
 
   it('should_render_documents_table_for_manager_when_documents_exist', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByRole('table')).toBeDefined()
   })
 
   it('should_render_type_column_header_when_documents_exist', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('Type')).toBeDefined()
   })
 
   it('should_render_notes_em_dash_when_notes_is_null', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('—')).toBeDefined()
   })
 
   it('should_render_notes_text_when_present', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([{ ...mockDoc, notes: 'check annually' }] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockDoc, notes: 'check annually' }, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('check annually')).toBeDefined()
   })
 
   it('should_render_reminder_due_badge_when_document_reminder_date_is_past', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([{ ...mockDoc, reminder_date: '2020-01-01' }] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockDoc, reminder_date: '2020-01-01' }, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText(/reminder due/i)).toBeDefined()
   })
 
   it('should_not_render_reminder_due_badge_when_document_has_no_reminder_date', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([{ ...mockDoc, reminder_date: null }] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockDoc, reminder_date: null }, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText(/reminder due/i)).toBeNull()

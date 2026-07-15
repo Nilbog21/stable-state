@@ -3,8 +3,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
-import { getDocuments } from '@/lib/db/documents'
-import { getSignedUrl } from '@/lib/db/document-storage'
+import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { canManage } from '@/lib/document-target'
@@ -191,15 +190,9 @@ export default async function MemberDetailPage({
 
   if (canViewDocuments) {
     if (targetRole === 'rider') {
-      const docs = await getDocuments('rider', targetMembership.id, barn.id)
-      docsWithUrls = await Promise.all(
-        docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
-      )
+      docsWithUrls = await getDocumentsWithUrls('rider', targetMembership.id, barn.id)
     } else {
-      const docs = await getDocuments('trainer', targetMembership.id, barn.id)
-      docsWithUrls = await Promise.all(
-        docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
-      )
+      docsWithUrls = await getDocumentsWithUrls('trainer', targetMembership.id, barn.id)
     }
   }
 

@@ -12,10 +12,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 }))
 vi.mock('@/lib/db/profiles', () => ({ getProfileById: vi.fn() }))
 vi.mock('@/lib/db/documents', () => ({
-  getDocuments: vi.fn(),
-}))
-vi.mock('@/lib/db/document-storage', () => ({
-  getSignedUrl: vi.fn(),
+  getDocumentsWithUrls: vi.fn(),
 }))
 vi.mock('@/lib/db/agreements', () => ({
   getActiveAgreementsForRider: vi.fn(),
@@ -44,8 +41,7 @@ vi.mock('next/navigation', () => ({
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
-import { getDocuments } from '@/lib/db/documents'
-import { getSignedUrl } from '@/lib/db/document-storage'
+import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { deleteDocumentAction, revokeInviteTokenAction } from '../actions'
@@ -87,8 +83,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetTrainerMembership)
     vi.mocked(getProfileById).mockResolvedValue(targetProfile)
-    vi.mocked(getDocuments).mockResolvedValue([])
-    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed')
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([])
     vi.mocked(getActiveAgreementsForRider).mockReset()
     vi.mocked(getActiveAgreementsForRider).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockReset()
@@ -150,7 +145,7 @@ describe('MemberDetailPage', () => {
   })
 
   it('should_show_trainer_documents_for_manager_viewing_trainer', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByText('contract.pdf')).toBeDefined()
@@ -159,7 +154,7 @@ describe('MemberDetailPage', () => {
   it('should_show_rider_documents_for_manager_viewing_rider', async () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
-    vi.mocked(getDocuments).mockResolvedValue([mockRiderDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockRiderDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
     expect(screen.getByText('waiver.pdf')).toBeDefined()
@@ -169,7 +164,7 @@ describe('MemberDetailPage', () => {
     setupAuth({ id: 'user-trn', email: 'trn@example.com' })
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(trainerMembership)
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-trn') })
     render(jsx)
     expect(screen.getByText('contract.pdf')).toBeDefined()
@@ -180,7 +175,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
-    vi.mocked(getDocuments).mockResolvedValue([mockRiderDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockRiderDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
     expect(screen.queryByText('waiver.pdf')).toBeNull()
@@ -191,7 +186,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(trainerMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
-    vi.mocked(getDocuments).mockResolvedValue([mockRiderDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockRiderDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
     render(jsx)
     expect(screen.queryByRole('heading', { name: /^documents$/i })).toBeNull()
@@ -231,7 +226,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(riderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
-    vi.mocked(getDocuments).mockResolvedValue([mockRiderDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockRiderDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
     render(jsx)
     expect(screen.getByText('waiver.pdf')).toBeDefined()
@@ -316,7 +311,7 @@ describe('MemberDetailPage', () => {
     )
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-nouser') })
     render(jsx)
-    expect(getDocuments).toHaveBeenCalledWith('trainer', 'mem-nouser', 'barn-1')
+    expect(getDocumentsWithUrls).toHaveBeenCalledWith('trainer', 'mem-nouser', 'barn-1')
   })
 
   it('should_show_heading_and_name_for_stub_member_with_no_user_id', async () => {
@@ -349,7 +344,7 @@ describe('MemberDetailPage', () => {
   })
 
   it('should_show_delete_button_next_to_document_when_can_upload', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
@@ -359,7 +354,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
       createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
     )
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
     render(jsx)
     expect(screen.getByText('contract.pdf')).toBeDefined()
@@ -378,7 +373,7 @@ describe('MemberDetailPage', () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
       createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
     )
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
     render(jsx)
     expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
@@ -409,49 +404,49 @@ describe('MemberDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(riderMembership)
     vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-rdr', first_name: 'Dave', last_name: 'Rider' }))
-    vi.mocked(getDocuments).mockResolvedValue([mockRiderDoc] as any)
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockRiderDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-rdr') })
     render(jsx)
     expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
   })
 
   it('should_render_documents_table_when_documents_exist', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByRole('table')).toBeDefined()
   })
 
   it('should_render_type_column_header_when_documents_exist', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByText('Type')).toBeDefined()
   })
 
   it('should_render_notes_em_dash_when_notes_is_null', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
   it('should_render_notes_text_when_present', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([{ ...mockTrainerDoc, notes: 'signed 2026' }])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, notes: 'signed 2026' }, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByText('signed 2026')).toBeDefined()
   })
 
   it('should_render_reminder_due_badge_when_document_reminder_date_is_past', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([{ ...mockTrainerDoc, reminder_date: '2020-01-01' }])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, reminder_date: '2020-01-01' }, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.getByText(/reminder due/i)).toBeDefined()
   })
 
   it('should_not_render_reminder_due_badge_when_document_has_no_reminder_date', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([{ ...mockTrainerDoc, reminder_date: null }])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, reminder_date: null }, signedUrl: 'https://example.com/signed' }])
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
     expect(screen.queryByText(/reminder due/i)).toBeNull()
@@ -608,7 +603,7 @@ describe('MemberDetailPage', () => {
   })
 
   it('should_call_deleteDocumentAction_when_delete_form_submits', async () => {
-    vi.mocked(getDocuments).mockResolvedValue([mockTrainerDoc])
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockTrainerDoc, signedUrl: 'https://example.com/signed' }])
     vi.mocked(deleteDocumentAction).mockResolvedValue({ error: null })
     const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
     render(jsx)
