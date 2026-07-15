@@ -307,7 +307,7 @@ describe('getOutstandingCharges', () => {
     const { charges } = makeManagerChain([])
     await getOutstandingCharges('barn-1')
     expect(charges.select).toHaveBeenCalledWith(
-      'id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)'
+      'id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)'
     )
   })
 
@@ -324,14 +324,14 @@ describe('getOutstandingCharges', () => {
   })
 
   it('should_query_the_outstanding_transactions_rpc_with_candidate_charge_ids', async () => {
-    makeManagerChain([{ id: 'charge-1', period: '2026-06-01', fee: 200, agreements: { kind: 'lease', rider_id: 'rider-1' } }])
+    makeManagerChain([{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200, agreements: { kind: 'lease', rider_id: 'rider-1' } }])
     vi.mocked(getOutstandingTransactionRows).mockResolvedValue(unpaidCharge('charge-1'))
     await getOutstandingCharges('barn-1')
     expect(getOutstandingTransactionRows).toHaveBeenCalledWith('barn-1', { chargeIds: ['charge-1'] }, expect.anything())
   })
 
   it('should_exclude_a_candidate_charge_whose_ledger_transaction_is_already_collected', async () => {
-    makeManagerChain([{ id: 'charge-1', period: '2026-06-01', fee: 200, agreements: { kind: 'lease', rider_id: 'rider-1' } }])
+    makeManagerChain([{ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200, agreements: { kind: 'lease', rider_id: 'rider-1' } }])
     vi.mocked(getOutstandingTransactionRows).mockResolvedValue([
       { kind: 'lease_charge', entityId: 'charge-1', amount: 200, collected: true, paymentType: 'venmo' },
     ])
@@ -361,18 +361,18 @@ describe('getOutstandingCharges', () => {
 
   it('should_map_and_resolve_rider_names_for_manager_role', async () => {
     makeManagerChain([{
-      id: 'charge-1', period: '2026-06-01', fee: 200,
+      id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200,
       agreements: { kind: 'lease', rider_id: 'rider-1' },
     }])
     vi.mocked(getOutstandingTransactionRows).mockResolvedValue(unpaidCharge('charge-1'))
     const result = await getOutstandingCharges('barn-1')
-    expect(result).toEqual([{ id: 'charge-1', period: '2026-06-01', kind: 'lease', riderName: 'Alice Rider', fee: 200 }])
+    expect(result).toEqual([{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'lease', riderName: 'Alice Rider', fee: 200 }])
   })
 
   it('should_fall_back_to_rider_id_when_name_not_resolved', async () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     makeManagerChain([{
-      id: 'charge-1', period: '2026-06-01', fee: 200,
+      id: 'charge-1', agreement_id: 'agreement-1', period: '2026-06-01', fee: 200,
       agreements: { kind: 'board', rider_id: 'rider-9' },
     }])
     vi.mocked(getOutstandingTransactionRows).mockResolvedValue(unpaidCharge('charge-1'))

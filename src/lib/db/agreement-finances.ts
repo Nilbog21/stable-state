@@ -130,7 +130,7 @@ export async function getOutstandingCharges(
   // alongside the candidate fetch, so it stays as-is.
   let query = supabase
     .from('agreement_charges')
-    .select('id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')
+    .select('id, agreement_id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')
     .eq('barn_id', barnId)
     .lt('period', firstOfCurrentMonth)
 
@@ -143,6 +143,7 @@ export async function getOutstandingCharges(
 
   type OutstandingChargeRow = {
     id: string
+    agreement_id: string
     period: string
     fee: number
     agreements: { kind: AgreementKind; rider_id: string }
@@ -165,6 +166,7 @@ export async function getOutstandingCharges(
 
   return rows.map((row) => ({
     id: row.id,
+    agreementId: row.agreement_id,
     period: row.period,
     kind: row.agreements.kind,
     riderName: nameMap.get(row.agreements.rider_id) ?? row.agreements.rider_id,

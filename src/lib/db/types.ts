@@ -207,6 +207,7 @@ export interface RiderIncomeSummary {
 
 export interface OutstandingCharge {
   id: string
+  agreementId: string
   period: string
   kind: AgreementKind
   riderName: string
@@ -229,7 +230,7 @@ export interface OutstandingItem {
   instructorName: string | null
   riderNames: string[]
   fee: number
-  linkId?: string // lesson id to link to, when different from `id` (cancellation_fee only)
+  linkId?: string // id to link to, when different from `id` — lesson id for cancellation_fee, agreement id for lease/board
 }
 
 export interface HorseChargeDetailRow {
