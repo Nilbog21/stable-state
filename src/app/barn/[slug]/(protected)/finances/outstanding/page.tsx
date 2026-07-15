@@ -65,20 +65,17 @@ export default async function OutstandingPage({
           </thead>
           <tbody>
             {items.map((item) => {
-              const lessonId = item.itemType === 'lesson' ? item.id : item.itemType === 'cancellation_fee' ? item.linkId : undefined
+              const href = item.itemType === 'lesson'
+                ? `/barn/${slug}/lessons/${item.id}`
+                : item.itemType === 'cancellation_fee'
+                ? `/barn/${slug}/lessons/${item.linkId}`
+                : `/barn/${slug}/agreements/${item.linkId}`
               return (
               <tr key={item.id}>
                 <Td>
-                  {lessonId ? (
-                    <Link
-                      href={`/barn/${slug}/lessons/${lessonId}`}
-                      className="underline"
-                    >
-                      {formatShortDate(item.date)}
-                    </Link>
-                  ) : (
-                    formatShortDate(item.date)
-                  )}
+                  <Link href={href} className="underline">
+                    {formatShortDate(item.date)}
+                  </Link>
                 </Td>
                 <Td>{TYPE_LABELS[item.itemType]}</Td>
                 <Td>{item.instructorName ?? '—'}</Td>

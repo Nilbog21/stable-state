@@ -31,6 +31,7 @@ export function mergeOutstandingItems(
     instructorName: null,
     riderNames: [c.riderName],
     fee: c.fee,
+    linkId: c.agreementId,
   }))
   const cancellationFeeItems: OutstandingItem[] = cancellationFees.map((c) => ({
     id: c.id,

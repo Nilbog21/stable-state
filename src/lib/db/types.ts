@@ -207,6 +207,7 @@ export interface RiderIncomeSummary {
 
 export interface OutstandingCharge {
   id: string
+  agreementId: string
   period: string
   kind: AgreementKind
   riderName: string
