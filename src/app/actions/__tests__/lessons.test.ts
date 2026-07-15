@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockHorse, createMockLesson, createMockLessonDetail, createMockLessonSeries, createMockMembership } from '@/test/fixtures'
-import type { PaymentType } from '@/lib/db/types'
+import { createMockBarn, createMockHorse, createMockLesson, createMockLessonDetail, createMockLessonSeries, createMockMembership, makeLessonDetail } from '@/test/fixtures'
 import { makeFormData } from '@/test/utils/forms'
+import { guardAs } from '@/test/mocks/guard'
 
 vi.mock('@/lib/auth/guard', () => ({
   requireMembership: vi.fn(),
@@ -70,14 +70,6 @@ const mockBarn = createMockBarn()
 const mockLesson = createMockLesson({ fee: 100, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
 const mockTrainerMembership = createMockMembership({ role: 'trainer', created_at: '2026-01-01T00:00:00Z' })
 const mockManagerMembership = createMockMembership({ role: 'manager', created_at: '2026-01-01T00:00:00Z' })
-
-function guardAs(membership: ReturnType<typeof createMockMembership>) {
-  vi.mocked(requireMembership).mockResolvedValue({
-    user: { id: 'user-1' } as any,
-    barn: mockBarn,
-    membership,
-  })
-}
 
 describe('submitLesson', () => {
   beforeEach(() => {
@@ -618,28 +610,6 @@ describe('submitLesson', () => {
     )
   })
 })
-
-function makeLessonDetail(
-  overrides: Partial<ReturnType<typeof createMockLesson>> & { payment_type?: PaymentType | null } = {},
-  riderUserIds: (string | null)[] = [],
-  instructorUserId: string | null = null
-) {
-  const { payment_type = null, ...lessonOverrides } = overrides
-  return {
-    ...createMockLesson(lessonOverrides),
-    payment_type,
-    instructor_name: null,
-    instructor_user_id: instructorUserId,
-    lesson_horses: [],
-    lesson_riders: riderUserIds.map((userId) => ({
-      rider_notes: null,
-      private_notes: null,
-      cancellation_notes: null,
-      cancelled_at: null,
-      barn_membership: { id: 'mem', user_id: userId, name: 'Rider' },
-    })),
-  }
-}
 
 const futureIso = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
 const pastIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()

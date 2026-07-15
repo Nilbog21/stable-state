@@ -1,5 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockMembership, createMockExpenseWithHorses } from '@/test/fixtures'
+import { createMockMembership, createMockExpenseWithHorses } from '@/test/fixtures'
+import { makeFormData } from '@/test/utils/forms'
+import { guardAs } from '@/test/mocks/guard'
 
 vi.mock('@/lib/auth/guard', () => ({
   requireMembership: vi.fn(),
@@ -23,29 +25,8 @@ import { redirect } from 'next/navigation'
 import { deleteExpenseAction, createExpenseAction, updateExpenseAction, getMostCommonExpenseTypeAction } from '../expenses'
 import { createMockHorseExpense } from '@/test/fixtures'
 
-const mockBarn = createMockBarn()
 const mockManagerMembership = createMockMembership({ role: 'manager' })
 const mockExpense = createMockExpenseWithHorses()
-
-function makeFormData(fields: Record<string, string | string[]>): FormData {
-  const fd = new FormData()
-  for (const [k, v] of Object.entries(fields)) {
-    if (Array.isArray(v)) {
-      for (const item of v) fd.append(k, item)
-    } else {
-      fd.append(k, v)
-    }
-  }
-  return fd
-}
-
-function guardAs(membership: ReturnType<typeof createMockMembership>) {
-  vi.mocked(requireMembership).mockResolvedValue({
-    user: { id: 'user-1' } as any,
-    barn: mockBarn,
-    membership,
-  })
-}
 
 describe('deleteExpenseAction', () => {
   beforeEach(() => {
