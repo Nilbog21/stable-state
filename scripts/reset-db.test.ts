@@ -305,6 +305,23 @@ describe('buildExpenseSeeds', () => {
     const upcoming = seeds.find((s) => s.time === '01:30:00')
     expect(upcoming?.daysOffset).toBe(1)
   })
+
+  it('should_include_a_past_due_planned_expense_for_outstanding_testing', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.some((s) => s.daysOffset < 0 && s.time !== null && s.amount === null)).toBe(true)
+  })
+
+  it('should_leave_payment_type_null_for_planned_expenses', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.filter((s) => s.amount === null).every((s) => s.paymentType == null)).toBe(true)
+  })
+
+  it('should_give_priced_expenses_payment_type_variety', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    const priced = seeds.filter((s) => s.amount !== null)
+    const seen = new Set(priced.map((s) => s.paymentType).filter((pt): pt is string => pt !== null && pt !== undefined))
+    expect([...seen].sort()).toEqual([...PAYMENT_TYPES].sort())
+  })
 })
 
 describe('expenseDateFor', () => {

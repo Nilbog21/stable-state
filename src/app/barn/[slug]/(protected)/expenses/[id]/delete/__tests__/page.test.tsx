@@ -31,6 +31,7 @@ const mockExpense = {
   expense_type: 'Veterinary',
   notes: null,
   applies_to_all_horses: false,
+  payment_type: null,
   created_at: '',
   updated_at: '',
   horse_ids: ['horse-1'],

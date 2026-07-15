@@ -181,6 +181,7 @@ export function createMockHorseExpense(overrides: Partial<HorseExpense> = {}): H
     expense_type: 'Veterinary',
     notes: null,
     applies_to_all_horses: false,
+    payment_type: null,
     created_at: '',
     updated_at: '',
     ...overrides,

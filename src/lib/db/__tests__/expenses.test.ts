@@ -54,6 +54,7 @@ import {
   deleteExpense,
   getUpcomingExpenses,
   getUpcomingScheduledExpenses,
+  getPastDueExpenses,
   getExpenseFinancialSummary,
   getHorseExpenseDetail,
   getRecentRecipients,
@@ -326,6 +327,7 @@ describe('createExpense', () => {
     expect(mockRpc).toHaveBeenCalledWith('create_expense_with_horses', {
       p_barn_id: 'barn-1', p_expense_date: '2026-07-01', p_recipient: 'Dr. Smith', p_applies_to_all_horses: false,
       p_expense_time: '14:00', p_amount: 100, p_expense_type: 'Farrier', p_notes: 'note', p_horse_ids: ['horse-1'],
+      p_payment_type: null,
     })
   })
 
@@ -411,6 +413,26 @@ describe('createExpense', () => {
 
     expect(result).toEqual(expense)
   })
+
+  it('should_forward_payment_type_to_rpc', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, paymentType: 'venmo' })
+
+    expect(mockRpc.mock.calls[0][1].p_payment_type).toBe('venmo')
+  })
+
+  it('should_default_payment_type_to_null_when_omitted', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+
+    expect(mockRpc.mock.calls[0][1].p_payment_type).toBeNull()
+  })
 })
 
 describe('updateExpense', () => {
@@ -431,7 +453,7 @@ describe('updateExpense', () => {
     expect(mockRpc).toHaveBeenCalledWith('update_expense_with_horses', {
       p_expense_id: 'expense-1', p_barn_id: 'barn-1', p_expense_date: '2026-07-01', p_recipient: 'New Vet',
       p_applies_to_all_horses: false, p_expense_time: '14:00', p_amount: 100, p_expense_type: 'Farrier',
-      p_notes: 'note', p_horse_ids: ['horse-1'],
+      p_notes: 'note', p_horse_ids: ['horse-1'], p_payment_type: null,
     })
   })
 
@@ -517,6 +539,26 @@ describe('updateExpense', () => {
     )
 
     expect(result).toEqual(expense)
+  })
+
+  it('should_forward_payment_type_to_rpc', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false, paymentType: 'cash' })
+
+    expect(mockRpc.mock.calls[0][1].p_payment_type).toBe('cash')
+  })
+
+  it('should_default_payment_type_to_null_when_omitted', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+
+    expect(mockRpc.mock.calls[0][1].p_payment_type).toBeNull()
   })
 })
 
@@ -868,6 +910,119 @@ describe('getUpcomingScheduledExpenses', () => {
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     await expect(getUpcomingScheduledExpenses('barn-1', '2026-07-01T00:00:00.000Z', '2026-07-08T00:00:00.000Z')).rejects.toThrow('junction error')
+  })
+})
+
+describe('getPastDueExpenses', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-07-10T12:00:00.000Z'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+  })
+
+  function makeChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIs = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockEq, mockIs }
+  }
+
+  it('should_return_empty_array_when_no_rows', async () => {
+    const { select } = makeChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getPastDueExpenses('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_empty_array_when_data_is_null', async () => {
+    const { select } = makeChain(null)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getPastDueExpenses('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_filter_amount_is_null_at_query_level', async () => {
+    const { select, mockIs } = makeChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getPastDueExpenses('barn-1')
+
+    expect(mockIs).toHaveBeenCalledWith('amount', null)
+  })
+
+  it('should_scope_query_to_barn_id', async () => {
+    const { select, mockEq } = makeChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getPastDueExpenses('barn-1')
+
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_include_row_whose_combined_datetime_is_before_now', async () => {
+    const expense = createMockHorseExpense({ expense_date: '2026-07-09', expense_time: '10:00:00' })
+    const { select } = makeChain([expense])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getPastDueExpenses('barn-1')
+
+    expect(result).toEqual([expense])
+  })
+
+  it('should_exclude_row_whose_combined_datetime_is_after_now', async () => {
+    const expense = createMockHorseExpense({ expense_date: '2026-07-11', expense_time: '10:00:00' })
+    const { select } = makeChain([expense])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getPastDueExpenses('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_default_null_expense_time_to_end_of_day_when_checking_past_due', async () => {
+    const expense = createMockHorseExpense({ expense_date: '2026-07-10', expense_time: null })
+    const { select } = makeChain([expense])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getPastDueExpenses('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_include_null_time_row_once_its_day_has_fully_passed', async () => {
+    const expense = createMockHorseExpense({ expense_date: '2026-07-09', expense_time: null })
+    const { select } = makeChain([expense])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getPastDueExpenses('barn-1')
+
+    expect(result).toEqual([expense])
+  })
+
+  it('should_sort_ascending_by_combined_datetime', async () => {
+    const later = createMockHorseExpense({ id: 'expense-2', expense_date: '2026-07-08', expense_time: '10:00:00' })
+    const earlier = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-02', expense_time: '09:00:00' })
+    const { select } = makeChain([later, earlier])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getPastDueExpenses('barn-1')
+
+    expect(result.map((r) => r.id)).toEqual(['expense-1', 'expense-2'])
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const { select } = makeChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await expect(getPastDueExpenses('barn-1')).rejects.toThrow('db error')
   })
 })
 

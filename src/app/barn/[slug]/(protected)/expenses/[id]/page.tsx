@@ -54,6 +54,7 @@ export default async function EditExpensePage({
           notes: expense.notes,
           appliesToAllHorses: expense.applies_to_all_horses,
           horseIds: expense.horse_ids,
+          paymentType: expense.payment_type,
         }}
         submitLabel="Save Changes"
         onSave={save}
