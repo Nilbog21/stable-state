@@ -19,6 +19,15 @@
 # ref derived from DEV_SUPABASE_URL in .env.local — see #684, where
 # .env.local was once left pointed at prod by accident.
 #
+# CAVEAT: "wipes the ENTIRE schema and all data" is true for user-created
+# entities (per Supabase's own docs: reset "identif[ies] and drop[s] all user
+# created entities"), but NOT for pre-existing rows in platform-managed
+# tables like storage.buckets — those aren't dropped, just left in place.
+# baseline_schema.sql's `INSERT INTO storage.buckets ... ('documents', ...)`
+# then collides with the still-existing 'documents' bucket row on replay
+# (duplicate key on buckets_pkey). This script pre-clears that bucket (and
+# its objects) before resetting, so the replay's INSERT succeeds fresh.
+#
 # Run from an up-to-date main checkout — this replays whatever migration
 # files are on disk right now, so a stale branch means a stale replay.
 #
@@ -90,6 +99,10 @@ run() {
     "$@"
   fi
 }
+
+echo "Clearing the 'documents' storage bucket (not touched by db reset --linked)..."
+run npx supabase db query --linked \
+  "delete from storage.objects where bucket_id = 'documents'; delete from storage.buckets where id = 'documents';"
 
 echo "Resetting $LINKED_REF to the current supabase/migrations/ set (schema only, no reseed)..."
 # --yes here skips the Supabase CLI's own confirmation prompt — the typed-ref
