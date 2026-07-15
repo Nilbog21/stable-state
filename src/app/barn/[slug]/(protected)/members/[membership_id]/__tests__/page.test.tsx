@@ -26,12 +26,8 @@ vi.mock('../actions', () => ({
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
-const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
-  throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
-}))
 vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
-  redirect: mockRedirect,
   useRouter: () => ({ refresh: vi.fn() }),
 }))
 
