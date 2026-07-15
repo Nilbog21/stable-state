@@ -379,6 +379,20 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Bob Smith')).toBeDefined()
   })
 
+  it('should_render_joined_date_anchored_to_utc_not_local_timezone', async () => {
+    const activeMember = createMockMembership({ id: 'mem-a', user_id: 'user-3', created_at: '2026-01-02T02:00:00Z' })
+    vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-a', 'Bob Smith']]))
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('Jan 2, 2026')).toBeDefined()
+  })
+
   it('should_render_membership_id_for_active_member_when_name_unresolved', async () => {
     const activeMember = createMockMembership({ id: 'mem-b', user_id: 'user-4', created_at: '2026-01-01T00:00:00Z' })
     vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])

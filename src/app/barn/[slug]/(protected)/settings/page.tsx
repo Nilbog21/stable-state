@@ -8,6 +8,7 @@ import {
   getActiveMemberships,
 } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
+import { formatShortDate } from '@/lib/format-date'
 import {
   approveMembershipAction,
   rejectMembershipAction,
@@ -26,14 +27,6 @@ import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { RemoveMemberButton } from './RemoveMemberButton'
 import type { BarnMembership } from '@/lib/db/types'
-
-function formatDate(iso: string) {
-  return new Date(iso).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-  })
-}
 
 function AccordionSection({
   title,
@@ -80,7 +73,7 @@ function MemberRow({
       <Td tone="secondary" className="capitalize">
         {membership.role}
       </Td>
-      <Td tone="secondary">{formatDate(membership.created_at)}</Td>
+      <Td tone="secondary">{formatShortDate(membership.created_at)}</Td>
       <TableActions>{actionSlot}</TableActions>
     </tr>
   )
