@@ -1,4 +1,4 @@
-import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, Profile } from '@/lib/db/types'
+import type { Agreement, AgreementCharge, Barn, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, PaymentType, Profile } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
   return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, default_instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, ...overrides }
@@ -132,6 +132,30 @@ export function createMockLessonDetail(overrides: Partial<LessonDetail> = {}): L
     lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null } }],
     lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
     ...overrides,
+  }
+}
+
+// Unlike createMockLessonDetail (fully-populated), this defaults to no horses/no riders and builds
+// lesson_riders from raw user ids — the shape the lesson action tests need.
+export function makeLessonDetail(
+  overrides: Partial<ReturnType<typeof createMockLesson>> & { payment_type?: PaymentType | null } = {},
+  riderUserIds: (string | null)[] = [],
+  instructorUserId: string | null = null
+) {
+  const { payment_type = null, ...lessonOverrides } = overrides
+  return {
+    ...createMockLesson(lessonOverrides),
+    payment_type,
+    instructor_name: null,
+    instructor_user_id: instructorUserId,
+    lesson_horses: [],
+    lesson_riders: riderUserIds.map((userId) => ({
+      rider_notes: null,
+      private_notes: null,
+      cancellation_notes: null,
+      cancelled_at: null,
+      barn_membership: { id: 'mem', user_id: userId, name: 'Rider' },
+    })),
   }
 }
 

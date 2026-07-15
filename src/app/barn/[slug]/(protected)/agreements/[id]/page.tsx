@@ -5,10 +5,7 @@ import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
 import { Button } from '@/components/ui/Button'
 import { ChargesTable } from './ChargesTable'
-
-function formatFee(fee: number): string {
-  return fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
+import { formatFee } from '@/lib/format-currency'
 
 export default async function AgreementDetailPage({
   params,

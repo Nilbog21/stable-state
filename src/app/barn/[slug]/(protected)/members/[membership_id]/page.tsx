@@ -19,6 +19,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction } from './actions'
 import { Button } from '@/components/ui/Button'
 import type { TrainerDocument, RiderDocument, Agreement, Profile, BarnMembership } from '@/lib/db/types'
+import { formatFee } from '@/lib/format-currency'
 
 const RECORD_TYPE_LABELS: Record<string, string> = {
   instructor_contract: 'Instructor Contract',
@@ -26,10 +27,6 @@ const RECORD_TYPE_LABELS: Record<string, string> = {
   lease_agreement: 'Lease Agreement',
   boarding_contract: 'Boarding Contract',
   other: 'Other',
-}
-
-function formatFee(fee: number): string {
-  return fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
 }
 
 function ContactInfo({

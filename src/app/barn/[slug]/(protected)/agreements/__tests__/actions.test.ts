@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockBarn, createMockMembership, createMockAgreement, createMockUser } from '@/test/fixtures'
+import { makeFormData } from '@/test/utils/forms'
 
 vi.mock('@/lib/auth/guard', () => ({
   requireMembership: vi.fn(),
@@ -46,12 +47,6 @@ const mockBarn = createMockBarn()
 const mockUser = createMockUser()
 const mockManagerMembership = createMockMembership({ role: 'manager', status: 'active' })
 const noError = { error: null }
-
-function makeFormData(fields: Record<string, string>): FormData {
-  const fd = new FormData()
-  for (const [k, v] of Object.entries(fields)) fd.append(k, v)
-  return fd
-}
 
 describe('createAgreementAction', () => {
   beforeEach(() => {

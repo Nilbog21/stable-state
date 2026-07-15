@@ -6,11 +6,7 @@ import { updateHorseDetails } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
-
-function parseNonNegativeInt(raw: string | null): number | null {
-  if (raw === null || !/^\d+$/.test(raw.trim())) return null
-  return parseInt(raw, 10)
-}
+import { parseNonNegativeInt } from '@/lib/parse-amount'
 
 export async function updateHorseAction(
   barnSlug: string,

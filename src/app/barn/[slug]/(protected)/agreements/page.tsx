@@ -6,10 +6,7 @@ import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
 import type { AgreementKind } from '@/lib/db/types'
-
-function formatFee(fee: number): string {
-  return fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-}
+import { formatFee } from '@/lib/format-currency'
 
 export default async function AgreementsPage({
   params,

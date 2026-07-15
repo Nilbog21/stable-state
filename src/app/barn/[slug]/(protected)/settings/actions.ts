@@ -12,7 +12,7 @@ import {
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
 import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds } from '@/lib/db/barns'
-import { parseNonNegativeAmount } from '@/lib/parse-amount'
+import { parseNonNegativeAmount, parseNonNegativeInt } from '@/lib/parse-amount'
 
 function parseBoolean(raw: string | null): boolean | null {
   if (raw === 'true') return true
@@ -132,11 +132,6 @@ export async function updateInstructorCutAction(barnSlug: string, formData: Form
 
   await setInstructorCut(barn.id, value)
   redirect(`/barn/${barnSlug}/settings`)
-}
-
-function parseNonNegativeInt(raw: string | null): number | null {
-  if (raw === null || !/^\d+$/.test(raw.trim())) return null
-  return parseInt(raw, 10)
 }
 
 export async function updateExhaustionThresholdsAction(
