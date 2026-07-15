@@ -159,6 +159,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] Check **Entire Barn** on the new-expense form — horse checkboxes disable; save and verify the row shows "Entire Barn" instead of specific horses
 - [ ] On the new-expense form, set the date to yesterday — the Time field disappears; change it back to today or a future date — the Time field reappears
 - [ ] Edit a seeded expense (`/barn/dev-barn/expenses/[id]`) — form opens pre-filled including the correct Entire Barn / specific-horse checkbox state; change the recipient and amount, save, verify the row updates
+- [ ] On the new- and edit-expense forms, set a **Payment Type**, save, and confirm it persists on reload
 - [ ] Delete one seeded expense — it disappears from the list
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
@@ -199,7 +200,9 @@ Finances (`/barn/dev-barn/finances`):
 
 - [ ] **Outstanding** section lists past unpaid lessons; set a payment type on one row via the inline dropdown → it leaves the outstanding list
 - [ ] Late-cancel a normal lesson that was already marked paid (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding** with a **Type** of "Cancellation Fee"; mark it paid via the inline dropdown → it leaves the outstanding list
-- [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, leases/boarding charges, and cancellation fees, each lesson/cancellation-fee row linking to its lesson
+- [ ] **Needs an amount** section lists the seeded past-due planned expense as a single line (date — recipient — expense type) — confirm it does **not** appear inside the Outstanding table itself
+- [ ] Tap the past-due expense's line → lands on its edit page; enter an amount (leave Payment Type unset) and save → back on Finances, it no longer appears under Needs an amount, and now shows up under Total Expenses/By Horse for its month
+- [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, leases/boarding charges, and cancellation fees, each lesson/cancellation-fee row linking to its lesson — confirm past-due expenses do **not** appear on this page (no Needs an amount equivalent there)
 - [ ] Month navigation `←`/`→` works and updates `?month=YYYY-MM`; navigate to the previous month and see Lessons 1–2 reflected
 - [ ] Summary rows appear in order **Collected income → Total Expenses → Net → Pending income**, none with a month/year suffix (the month picker above already shows it); Net equals Collected income minus Total Expenses
 - [ ] **By Horse** is the default tab on page load (no `?tab=` needed)

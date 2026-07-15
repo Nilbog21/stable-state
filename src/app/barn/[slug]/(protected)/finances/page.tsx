@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getFinancialSummary, getOutstandingLessons, getOutstandingCancellationFees, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
-import { getExpenseFinancialSummary } from '@/lib/db/expenses'
+import { getExpenseFinancialSummary, getPastDueExpenses } from '@/lib/db/expenses'
 import { formatCurrency } from '@/lib/format-currency'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
@@ -13,6 +13,15 @@ import { EmptyState } from '@/components/EmptyState'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer'] as const
 type Tab = typeof VALID_TABS[number]
+
+function formatExpenseDate(isoDate: string): string {
+  return new Date(`${isoDate}T00:00:00Z`).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+}
 
 function pad2(n: number): string {
   return String(n).padStart(2, '0')
@@ -116,7 +125,7 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, pastDueExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
@@ -125,6 +134,7 @@ export default async function FinancesPage({
     getOutstandingCharges(barn.id),
     getOutstandingCancellationFees(barn.id),
     getExpenseFinancialSummary(barn.id, startDate, endDate),
+    getPastDueExpenses(barn.id),
   ])
 
   const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
@@ -165,6 +175,26 @@ export default async function FinancesPage({
               View all outstanding →
             </Link>
           </div>
+        </section>
+      )}
+
+      {pastDueExpenses.length > 0 && (
+        <section className="mb-10">
+          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Needs an amount
+          </p>
+          <ul className="mt-2 space-y-1">
+            {pastDueExpenses.map((expense) => (
+              <li key={expense.id}>
+                <Link
+                  href={`/barn/${slug}/expenses/${expense.id}`}
+                  className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
+                >
+                  {formatExpenseDate(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

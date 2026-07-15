@@ -382,6 +382,7 @@ export interface HorseExpense {
   expense_type: string
   notes: string | null
   applies_to_all_horses: boolean
+  payment_type: PaymentType | null
   created_at: string
   updated_at: string
 }
@@ -404,6 +405,7 @@ export interface ExpenseInput {
   notes?: string | null
   appliesToAllHorses: boolean
   horseIds?: string[]
+  paymentType?: PaymentType | null
 }
 
 export interface HorseExpenseSummary {

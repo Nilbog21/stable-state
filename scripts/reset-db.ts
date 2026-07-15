@@ -8,6 +8,7 @@ import { createLessonSeries } from '@/lib/db/lesson-series'
 import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from '@/lib/db/agreements'
 import { createExpense } from '@/lib/db/expenses'
+import type { PaymentType } from '@/lib/db/types'
 import { mustSucceed, createServiceClient, teardownAllData, assertDevProject } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
@@ -159,6 +160,7 @@ export type ExpenseSeed = {
   expenseType: string
   appliesToAllHorses: boolean
   horseIndex?: number
+  paymentType?: string | null
 }
 
 export function expenseDateFor(now: Date, daysOffset: number): string {
@@ -178,7 +180,7 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
       86400000
   )
   const todayTime = upcoming.toISOString().slice(11, 19)
-  return [
+  const seeds: ExpenseSeed[] = [
     { daysOffset: -80, time: null, amount: 450, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
     { daysOffset: -75, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -60, time: null, amount: 250, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
@@ -189,9 +191,16 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
     { daysOffset: -10, time: null, amount: 275, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
     { daysOffset: -5, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -3, time: null, amount: 65, recipient: 'Saddle Up Supply', expenseType: 'Tack', appliesToAllHorses: false, horseIndex: 2 },
+    // #872: past due (date+time already passed, amount still null) for Outstanding-resolve testing
+    { daysOffset: -2, time: '09:00:00', amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
     { daysOffset: todayOffset, time: todayTime, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: 2, time: '14:00:00', amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
   ]
+  // #872: give priced expenses payment-type variety (cycling through PAYMENT_TYPES, same
+  // helper lessons/agreement charges already use) so the ledger's collected/uncollected
+  // split has manually-testable data — planned expenses (amount still null) stay unpaid.
+  let priced = 0
+  return seeds.map((seed) => (seed.amount === null ? seed : { ...seed, paymentType: getPaymentType(priced++, true) }))
 }
 
 async function run() {
@@ -528,6 +537,7 @@ async function run() {
       expenseType: seed.expenseType,
       appliesToAllHorses: seed.appliesToAllHorses,
       horseIds: seed.appliesToAllHorses ? undefined : [horseIds[seed.horseIndex!]],
+      paymentType: (seed.paymentType ?? null) as PaymentType | null,
     }, supabase)
   }
   const barnWideExpenseCount = expenseSeeds.filter((s) => s.appliesToAllHorses).length
@@ -543,7 +553,7 @@ async function run() {
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month; the board and lease agreements also have an unpaid charge from 2 months ago (past due, for Outstanding testing)`)
-  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet)`)
+  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet, including 1 past due for Outstanding testing)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
