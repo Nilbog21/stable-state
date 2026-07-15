@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, useEffect } from 'react'
+import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { markAllNotificationsReadAction } from '@/app/actions/notifications'
@@ -12,23 +12,10 @@ interface Props {
 }
 
 export function NotificationBell({ notifications, barnSlug }: Props) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const { open, setOpen, ref } = useOutsideDismiss()
   const router = useRouter()
   const { dirty, setPendingNav } = useNavigationBlocker()
   const unreadCount = notifications.filter((n) => !n.read_at).length
-
-  useEffect(() => {
-    function close(e: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('touchstart', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('touchstart', close)
-    }
-  }, [])
 
   async function handleMarkAllRead() {
     const result = await markAllNotificationsReadAction(barnSlug)
