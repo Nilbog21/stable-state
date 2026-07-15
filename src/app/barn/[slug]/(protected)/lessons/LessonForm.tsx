@@ -2,7 +2,7 @@
 
 import { useActionState, useState, useEffect } from 'react'
 import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types'
-import { DateHourPicker } from './new/DateHourPicker'
+import { DateHourPicker } from './DateHourPicker'
 import { useNavigationBlocker } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { Button } from '@/components/ui/Button'
