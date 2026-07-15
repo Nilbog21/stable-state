@@ -1,6 +1,6 @@
 import { fileURLToPath } from 'url'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { getOutstandingLessons } from '@/lib/db/lesson-finances'
+import { getOutstandingLessons } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { deleteNotificationByType, upsertNotificationsForRecipients } from '@/lib/db/notifications'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'

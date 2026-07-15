@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
-vi.mock('@/lib/db/lesson-finances', async () => {
-  const actual = await vi.importActual<typeof import('@/lib/db/lesson-finances')>('@/lib/db/lesson-finances')
+vi.mock('@/lib/db/outstanding', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/outstanding')>('@/lib/db/outstanding')
   return { ...actual, getOutstandingLessons: vi.fn(), getOutstandingCancellationFees: vi.fn() }
 })
 vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
@@ -15,7 +15,7 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/lesson-finances'
+import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import OutstandingPage from '../page'
 
