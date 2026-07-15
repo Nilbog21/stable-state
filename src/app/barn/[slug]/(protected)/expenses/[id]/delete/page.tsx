@@ -3,7 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getExpenseById } from '@/lib/db/expenses'
 import { deleteExpenseAction } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
-import { formatExpenseDate, formatExpenseAmount } from '../../ExpenseRow'
+import { formatExpenseDate, formatExpenseAmount } from '@/lib/format-expense'
 
 export default async function DeleteExpensePage({
   params,
