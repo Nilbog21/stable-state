@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatOutstandingNotification } from './generate-outstanding-notifications'
+import { formatOutstandingNotification, formatPastDueExpensesNotification } from './generate-outstanding-notifications'
 
 describe('formatOutstandingNotification', () => {
   it('should_use_singular_payment_in_title_when_count_is_one', () => {
@@ -20,5 +20,17 @@ describe('formatOutstandingNotification', () => {
   it('should_format_multi_digit_totals_with_thousands_separator', () => {
     const { body } = formatOutstandingNotification(12, 12345.6)
     expect(body).toBe('$12,345.60 total')
+  })
+})
+
+describe('formatPastDueExpensesNotification', () => {
+  it('should_use_singular_expense_in_title_when_count_is_one', () => {
+    const { title } = formatPastDueExpensesNotification(1)
+    expect(title).toBe('1 past-due expense')
+  })
+
+  it('should_use_plural_expenses_in_title_when_count_is_greater_than_one', () => {
+    const { title } = formatPastDueExpensesNotification(3)
+    expect(title).toBe('3 past-due expenses')
   })
 })

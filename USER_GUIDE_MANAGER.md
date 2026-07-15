@@ -129,6 +129,7 @@ You will receive notifications for situations that need attention. Tap the bell 
 - **Some barn members have incomplete profiles** — one or more barn members are missing contact information. This notification clears automatically the next time you sign in once all members have completed their profiles.
 - **Outstanding payment** — the barn has past-due unpaid lessons or lease/boarding charges. Tap the notification to go to the full outstanding list. This is checked and updated once nightly, so it may take up to a day to clear after you mark everything paid.
 - **Recurring series stopped** — a weekly recurring lesson series stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review the barn's lessons.
+- **Past-due expenses** — one or more planned expenses are past their scheduled date but still need an amount entered. Tap the notification to go to Finances. This is checked and updated once nightly, so it may take up to a day to clear after you fill in the amount.
 
 ## If something goes wrong
 

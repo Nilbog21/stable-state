@@ -8,6 +8,7 @@ export type NotificationType =
   | 'member_incomplete_profile'
   | 'recurring_series_stopped'
   | 'recurring_lesson_horse_unavailable'
+  | 'expense_past_due'
 export type MembershipStatus = 'active' | 'pending'
 
 export interface Profile {
