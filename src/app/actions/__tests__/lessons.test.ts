@@ -21,6 +21,7 @@ vi.mock('@/lib/db/lesson-participants', () => ({
   updateLessonHorseNotes: vi.fn(),
   updateLessonRiderNotes: vi.fn(),
   cancelRiderParticipation: vi.fn(),
+  updateCancellationFeePaymentType: vi.fn(),
 }))
 
 vi.mock('@/lib/db/lesson-series', () => ({
@@ -58,14 +59,14 @@ vi.mock('next/navigation', () => ({
 
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
-import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
+import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation, updateCancellationFeePaymentType } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { createNotification } from '@/lib/db/notifications'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { createClient } from '@/lib/supabase/server'
 import { redirect } from 'next/navigation'
-import { submitLesson, cancelLessonAction, deleteLessonAction, updateLessonAction, updatePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
+import { submitLesson, cancelLessonAction, deleteLessonAction, updateLessonAction, updatePaymentTypeAction, updateCancellationFeePaymentTypeAction, cancelRiderParticipationAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
 import { parseLessonFormData } from '../lesson-form-parsing'
 
 const mockBarn = createMockBarn()
@@ -2051,6 +2052,41 @@ describe('updatePaymentTypeAction', () => {
     vi.mocked(getLessonById).mockResolvedValue(createMockLessonDetail({ instructor_id: mockTrainerMembership.id }))
     await updatePaymentTypeAction('lesson-1', 'barn-slug', 'venmo')
     expect(updateLesson).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateCancellationFeePaymentTypeAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateCancellationFeePaymentType).mockReset()
+    guardAs(mockManagerMembership)
+    vi.mocked(updateCancellationFeePaymentType).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await updateCancellationFeePaymentTypeAction('barn-slug', 'lesson-rider-1', 'cash')
+    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
+  })
+
+  it('should_call_updateCancellationFeePaymentType_with_lesson_rider_id_barn_and_payment_type', async () => {
+    await updateCancellationFeePaymentTypeAction('barn-slug', 'lesson-rider-1', 'cash')
+    expect(updateCancellationFeePaymentType).toHaveBeenCalledWith('lesson-rider-1', 'barn-1', 'cash')
+  })
+
+  it('should_call_updateCancellationFeePaymentType_with_null_payment_type', async () => {
+    await updateCancellationFeePaymentTypeAction('barn-slug', 'lesson-rider-1', null)
+    expect(updateCancellationFeePaymentType).toHaveBeenCalledWith('lesson-rider-1', 'barn-1', null)
+  })
+
+  it('should_return_no_error_on_success', async () => {
+    const result = await updateCancellationFeePaymentTypeAction('barn-slug', 'lesson-rider-1', 'cash')
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_updateCancellationFeePaymentType_throws', async () => {
+    vi.mocked(updateCancellationFeePaymentType).mockRejectedValue(new Error('rpc error'))
+    const result = await updateCancellationFeePaymentTypeAction('barn-slug', 'lesson-rider-1', 'cash')
+    expect(result).toEqual({ error: 'Failed to update payment type' })
   })
 })
 

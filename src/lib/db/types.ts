@@ -212,13 +212,23 @@ export interface OutstandingCharge {
   fee: number
 }
 
+export interface OutstandingCancellationFee {
+  id: string // lesson_rider_id — used for the mark-paid action
+  lessonId: string // parent lesson id — used for the Outstanding table's link
+  lessonAt: string
+  instructorName: string | null
+  riderName: string
+  fee: number
+}
+
 export interface OutstandingItem {
   id: string
-  itemType: 'lesson' | 'lease' | 'board'
+  itemType: 'lesson' | 'lease' | 'board' | 'cancellation_fee'
   date: string
   instructorName: string | null
   riderNames: string[]
   fee: number
+  linkId?: string // lesson id to link to, when different from `id` (cancellation_fee only)
 }
 
 export interface HorseChargeDetailRow {

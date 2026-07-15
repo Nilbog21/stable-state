@@ -91,3 +91,61 @@ export async function getTransactionRows(
     occurredAt: row.occurred_at,
   }))
 }
+
+/**
+ * Relay for Outstanding (#831): transactions SELECT is manager-only RLS, so a
+ * trainer/rider-facing unpaid check needs the get_outstanding_transactions
+ * SECURITY DEFINER RPC instead of a direct table read. Callers already resolve
+ * their candidate lesson/charge/lesson_rider IDs via plain RLS-scoped queries
+ * (lessons/agreement_charges/lesson_riders) — this just relays collected/
+ * payment_type/amount for exactly those IDs, re-checked per row server-side.
+ */
+export interface OutstandingTransactionRow {
+  kind: TransactionKind
+  entityId: string
+  amount: number
+  collected: boolean
+  paymentType: PaymentType | null
+}
+
+export interface OutstandingTransactionFilters {
+  lessonIds?: string[]
+  chargeIds?: string[]
+  lessonRiderIds?: string[]
+}
+
+type RawOutstandingRow = {
+  kind: TransactionKind
+  entity_id: string
+  amount: number
+  collected: boolean
+  payment_type: PaymentType | null
+}
+
+export async function getOutstandingTransactionRows(
+  barnId: string,
+  filters: OutstandingTransactionFilters,
+  client?: SupabaseClient
+): Promise<OutstandingTransactionRow[]> {
+  const lessonIds = filters.lessonIds ?? []
+  const chargeIds = filters.chargeIds ?? []
+  const lessonRiderIds = filters.lessonRiderIds ?? []
+  if (!lessonIds.length && !chargeIds.length && !lessonRiderIds.length) return []
+
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase.rpc('get_outstanding_transactions', {
+    p_barn_id: barnId,
+    p_lesson_ids: lessonIds,
+    p_charge_ids: chargeIds,
+    p_lesson_rider_ids: lessonRiderIds,
+  })
+  if (error) throw error
+
+  return ((data ?? []) as RawOutstandingRow[]).map((row) => ({
+    kind: row.kind,
+    entityId: row.entity_id,
+    amount: row.amount,
+    collected: row.collected,
+    paymentType: row.payment_type,
+  }))
+}

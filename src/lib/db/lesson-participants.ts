@@ -243,6 +243,23 @@ export async function cancelRiderParticipation(
   return data === true
 }
 
+// #831: not tied to a lessons.id the existing collect_lesson_payment could reuse —
+// a rider_cancellation_fee transaction is keyed on lesson_rider_id (see
+// sync_rider_cancellation_fee), so this is its own manager-only mark-paid RPC.
+export async function updateCancellationFeePaymentType(
+  lessonRiderId: string,
+  barnId: string,
+  paymentType: PaymentType | null
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('collect_rider_cancellation_fee', {
+    p_lesson_rider_id: lessonRiderId,
+    p_barn_id: barnId,
+    p_payment_type: paymentType,
+  })
+  if (error) throw error
+}
+
 export async function getRiderEnrolledLessonIds(barnId: string, userId: string, client?: SupabaseClient): Promise<string[]> {
   const supabase = client ?? await createClient()
   const { data: rider, error: riderError } = await supabase

@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getRiderEnrolledLessonIds } from './lesson-participants'
 import { getUserMembership } from './barn-memberships'
-import { getTransactionRows, positiveAmount } from './transactions'
+import { getTransactionRows, getOutstandingTransactionRows, positiveAmount } from './transactions'
 import type { TransactionRow } from './transactions'
 import type { Lesson, Role } from './types'
 
@@ -154,6 +154,15 @@ export async function getTierPricesByNames(
 
 export type OutstandingLessonRow = Pick<Lesson, 'id' | 'barn_id' | 'lesson_at' | 'instructor_id' | 'fee'>
 
+/**
+ * #831: lessons.payment_type is no longer a column — a candidate lesson (past,
+ * non-zero fee, role-scoped exactly as before) is only "outstanding" once its
+ * lesson_fee transaction is confirmed uncollected via get_outstanding_transactions
+ * (transactions SELECT is manager-only RLS, so trainer/rider callers need that
+ * relay). A late-cancelled lesson's lesson_fee row no longer exists at all (see
+ * sync_rider_cancellation_fee) — it naturally drops out here and surfaces instead
+ * via getOutstandingCancellationFeeRows below.
+ */
 export async function getOutstandingLessonRows(
   barnId: string,
   userId?: string,
@@ -162,6 +171,8 @@ export async function getOutstandingLessonRows(
 ): Promise<OutstandingLessonRow[]> {
   const supabase = client ?? await createClient()
   const now = new Date()
+
+  let candidates: OutstandingLessonRow[]
 
   if (role === 'rider' && userId) {
     const lessonIds = await getRiderEnrolledLessonIds(barnId, userId, supabase)
@@ -172,30 +183,116 @@ export async function getOutstandingLessonRows(
       .select('*')
       .in('id', lessonIds)
       .eq('barn_id', barnId)
-      .is('payment_type', null)
       .lt('lesson_at', now.toISOString())
       .order('lesson_at', { ascending: true })
 
     if (error) throw error
-    return ((data ?? []) as OutstandingLessonRow[]).filter((l) => l.fee !== 0)
+    candidates = ((data ?? []) as OutstandingLessonRow[]).filter((l) => l.fee !== 0)
+  } else {
+    let query = supabase
+      .from('lessons')
+      .select('*')
+      .eq('barn_id', barnId)
+      .lt('lesson_at', now.toISOString())
+
+    if (role === 'trainer' && userId) {
+      const callerMembership = await getUserMembership(userId, barnId)
+      if (!callerMembership) return []
+      query = query.eq('instructor_id', callerMembership.id)
+    }
+
+    const { data, error } = await query.order('lesson_at', { ascending: true })
+    if (error) throw error
+    candidates = ((data ?? []) as OutstandingLessonRow[]).filter((l) => l.fee !== 0)
   }
 
-  let query = supabase
-    .from('lessons')
-    .select('*')
-    .eq('barn_id', barnId)
-    .is('payment_type', null)
-    .lt('lesson_at', now.toISOString())
+  if (!candidates.length) return []
 
+  const outstandingRows = await getOutstandingTransactionRows(
+    barnId, { lessonIds: candidates.map((l) => l.id) }, supabase
+  )
+  const unpaidLessonIds = new Set(outstandingRows.filter((r) => !r.collected).map((r) => r.entityId))
+  return candidates.filter((l) => unpaidLessonIds.has(l.id))
+}
+
+export interface OutstandingCancellationFeeRow {
+  id: string // lesson_rider_id — used for the mark-paid action
+  lessonId: string
+  lessonAt: string
+  instructorId: string | null
+  riderId: string
+  fee: number
+}
+
+/**
+ * #831/#830: a late-cancelled normal lesson's fee lives as a rider_cancellation_fee
+ * transaction keyed on lesson_rider_id (not lesson_id), so it never appears in
+ * getOutstandingLessonRows above. Candidate cancelled lesson_riders rows come from
+ * a plain RLS-scoped query — manager/trainer both currently see barn-wide via
+ * lesson_riders_select_staff, so trainer still needs the explicit own-instructor
+ * filter below (mirroring getOutstandingLessonRows' trainer scoping); a rider's
+ * own RLS (auth_is_enrolled_rider) already limits them to their own cancelled
+ * participation, since a normal lesson has exactly one rider.
+ */
+export async function getOutstandingCancellationFeeRows(
+  barnId: string,
+  userId?: string,
+  role?: Role,
+  client?: SupabaseClient
+): Promise<OutstandingCancellationFeeRow[]> {
+  const supabase = client ?? await createClient()
+
+  const { data, error } = await supabase
+    .from('lesson_riders')
+    .select('id, lesson_id, rider_id')
+    .eq('barn_id', barnId)
+    .not('cancelled_at', 'is', null)
+  if (error) throw error
+
+  const cancelledRows = (data ?? []) as { id: string; lesson_id: string; rider_id: string }[]
+  if (!cancelledRows.length) return []
+
+  const lessonIds = [...new Set(cancelledRows.map((r) => r.lesson_id))]
+  const { data: lessonData, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('id, lesson_at, instructor_id')
+    .eq('barn_id', barnId)
+    .in('id', lessonIds)
+  if (lessonsError) throw lessonsError
+
+  const lessonById = new Map(
+    ((lessonData ?? []) as { id: string; lesson_at: string; instructor_id: string | null }[]).map((l) => [l.id, l])
+  )
+
+  let scopedRows = cancelledRows
   if (role === 'trainer' && userId) {
     const callerMembership = await getUserMembership(userId, barnId)
     if (!callerMembership) return []
-    query = query.eq('instructor_id', callerMembership.id)
+    scopedRows = scopedRows.filter((r) => lessonById.get(r.lesson_id)?.instructor_id === callerMembership.id)
   }
+  if (!scopedRows.length) return []
 
-  const { data, error } = await query.order('lesson_at', { ascending: true })
-  if (error) throw error
-  return ((data ?? []) as OutstandingLessonRow[]).filter((l) => l.fee !== 0)
+  const outstandingRows = await getOutstandingTransactionRows(
+    barnId, { lessonRiderIds: scopedRows.map((r) => r.id) }, supabase
+  )
+  const feeByLessonRiderId = new Map(outstandingRows.filter((r) => !r.collected).map((r) => [r.entityId, r.amount]))
+  if (!feeByLessonRiderId.size) return []
+
+  return scopedRows
+    .filter((r) => feeByLessonRiderId.has(r.id))
+    .map((r) => {
+      // lesson_riders.lesson_id cascades from lessons (ON DELETE CASCADE), so a
+      // cancelled row's own lesson is always still present in the same barn.
+      const lesson = lessonById.get(r.lesson_id)!
+      return {
+        id: r.id,
+        lessonId: r.lesson_id,
+        lessonAt: lesson.lesson_at,
+        instructorId: lesson.instructor_id,
+        riderId: r.rider_id,
+        fee: feeByLessonRiderId.get(r.id)!,
+      }
+    })
 }
 
 /**

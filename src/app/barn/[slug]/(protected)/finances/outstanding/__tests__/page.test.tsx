@@ -5,7 +5,7 @@ import { createMockBarn, createMockMembership, createMockUser } from '@/test/fix
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/lesson-finances', async () => {
   const actual = await vi.importActual<typeof import('@/lib/db/lesson-finances')>('@/lib/db/lesson-finances')
-  return { ...actual, getOutstandingLessons: vi.fn() }
+  return { ...actual, getOutstandingLessons: vi.fn(), getOutstandingCancellationFees: vi.fn() }
 })
 vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
 
@@ -15,7 +15,7 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getOutstandingLessons } from '@/lib/db/lesson-finances'
+import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import OutstandingPage from '../page'
 
@@ -30,9 +30,11 @@ describe('OutstandingPage', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getOutstandingLessons).mockReset()
     vi.mocked(getOutstandingCharges).mockReset()
+    vi.mocked(getOutstandingCancellationFees).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: managerMembership })
     vi.mocked(getOutstandingLessons).mockResolvedValue([])
     vi.mocked(getOutstandingCharges).mockResolvedValue([])
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([])
   })
 
   it('should_render_heading', async () => {
@@ -161,5 +163,30 @@ describe('OutstandingPage', () => {
     render(jsx)
     const rows = screen.getAllByRole('row').slice(1)
     expect(rows[1].textContent).toContain('75')
+  })
+
+  it('should_call_getOutstandingCancellationFees_with_user_id_and_role', async () => {
+    await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    expect(getOutstandingCancellationFees).toHaveBeenCalledWith(mockBarn.id, mockUser.id, 'manager')
+  })
+
+  it('should_render_a_cancellation_fee_row_with_its_type_label', async () => {
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([
+      { id: 'lesson-rider-1', lessonId: 'lesson-2', lessonAt: '2026-05-10T10:00:00Z', instructorName: 'Jane Doe', riderName: 'Erin Rider', fee: 50 },
+    ])
+    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Cancellation Fee')).toBeDefined()
+    expect(screen.getByText('Erin Rider')).toBeDefined()
+  })
+
+  it('should_link_a_cancellation_fee_row_to_its_parent_lesson', async () => {
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([
+      { id: 'lesson-rider-1', lessonId: 'lesson-2', lessonAt: '2026-05-10T10:00:00Z', instructorName: null, riderName: 'Erin Rider', fee: 50 },
+    ])
+    const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /May 10, 2026/i })
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-2')
   })
 })

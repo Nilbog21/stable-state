@@ -6,6 +6,7 @@ import {
   getLessonFeeRows,
   getTierPricesByNames,
   getOutstandingLessonRows,
+  getOutstandingCancellationFeeRows,
   getLessonJunctionRows,
   type LessonFeeRow,
 } from './lesson-finance-queries'
@@ -19,6 +20,7 @@ import type {
   HorseIncomeDetailRow,
   HorseIncomeSummary,
   HorseNetIncomeRow,
+  OutstandingCancellationFee,
   OutstandingCharge,
   OutstandingItem,
   OutstandingLesson,
@@ -159,7 +161,11 @@ export function computeHorseNetIncome(
     .sort((a, b) => b.income - a.income || a.horseName.localeCompare(b.horseName))
 }
 
-export function mergeOutstandingItems(lessons: OutstandingLesson[], charges: OutstandingCharge[]): OutstandingItem[] {
+export function mergeOutstandingItems(
+  lessons: OutstandingLesson[],
+  charges: OutstandingCharge[],
+  cancellationFees: OutstandingCancellationFee[] = []
+): OutstandingItem[] {
   const lessonItems: OutstandingItem[] = lessons.map((l) => ({
     id: l.id,
     itemType: 'lesson',
@@ -176,7 +182,16 @@ export function mergeOutstandingItems(lessons: OutstandingLesson[], charges: Out
     riderNames: [c.riderName],
     fee: c.fee,
   }))
-  return [...lessonItems, ...chargeItems].sort((a, b) => a.date.localeCompare(b.date))
+  const cancellationFeeItems: OutstandingItem[] = cancellationFees.map((c) => ({
+    id: c.id,
+    itemType: 'cancellation_fee',
+    date: c.lessonAt,
+    instructorName: c.instructorName,
+    riderNames: [c.riderName],
+    fee: c.fee,
+    linkId: c.lessonId,
+  }))
+  return [...lessonItems, ...chargeItems, ...cancellationFeeItems].sort((a, b) => a.date.localeCompare(b.date))
 }
 
 export async function getFinancialSummary(
@@ -289,6 +304,31 @@ export async function getOutstandingLessons(
       fee: lesson.fee,
     }
   })
+}
+
+export async function getOutstandingCancellationFees(
+  barnId: string,
+  userId?: string,
+  role?: Role,
+  client?: SupabaseClient
+): Promise<OutstandingCancellationFee[]> {
+  const supabase = client ?? await createClient()
+
+  const rows = await getOutstandingCancellationFeeRows(barnId, userId, role, supabase)
+  if (!rows.length) return []
+
+  const instructorIds = [...new Set(rows.map((r) => r.instructorId).filter((id): id is string => id !== null))]
+  const riderIds = [...new Set(rows.map((r) => r.riderId))]
+  const nameMap = await resolveMemberNames([...riderIds, ...instructorIds], barnId, supabase)
+
+  return rows.map((row) => ({
+    id: row.id,
+    lessonId: row.lessonId,
+    lessonAt: row.lessonAt,
+    instructorName: row.instructorId ? nameMap.get(row.instructorId) ?? null : null,
+    riderName: nameMap.get(row.riderId) ?? row.riderId,
+    fee: row.fee,
+  }))
 }
 
 /**

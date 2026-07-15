@@ -6,22 +6,24 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 vi.mock('../lesson-participants')
 vi.mock('../barn-memberships')
-// partial mock: getTransactionRows is stubbed per-test, but positiveAmount is real
-// business logic used inside lesson-finance-queries.ts and must not be auto-mocked away
+// partial mock: getTransactionRows/getOutstandingTransactionRows are stubbed per-test,
+// but positiveAmount is real business logic used inside lesson-finance-queries.ts and
+// must not be auto-mocked away
 vi.mock('../transactions', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../transactions')>()
-  return { ...actual, getTransactionRows: vi.fn() }
+  return { ...actual, getTransactionRows: vi.fn(), getOutstandingTransactionRows: vi.fn() }
 })
 
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds } from '../lesson-participants'
 import { getUserMembership } from '../barn-memberships'
-import { getTransactionRows } from '../transactions'
+import { getTransactionRows, getOutstandingTransactionRows } from '../transactions'
 import type { TransactionRow } from '../transactions'
 import {
   getLessonFeeRows,
   getTierPricesByNames,
   getOutstandingLessonRows,
+  getOutstandingCancellationFeeRows,
   getLessonJunctionRows,
 } from '../lesson-finance-queries'
 
@@ -408,29 +410,34 @@ describe('getOutstandingLessonRows', () => {
     vi.mocked(createClient).mockReset()
     vi.mocked(getRiderEnrolledLessonIds).mockReset()
     vi.mocked(getUserMembership).mockReset()
+    vi.mocked(getOutstandingTransactionRows).mockReset().mockResolvedValue([])
   })
 
   afterEach(() => {
     vi.useRealTimers()
   })
 
+  // an "unpaid" row for a given lesson id, matching what get_outstanding_transactions
+  // would relay for a lesson_fee transaction that hasn't been collected yet
+  function unpaid(lessonId: string) {
+    return [{ kind: 'lesson_fee' as const, entityId: lessonId, amount: 50, collected: false, paymentType: null }]
+  }
+
   function makeDefaultChain(data: unknown[] | null, error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
+    const mockEq = vi.fn().mockReturnValue({ lt: mockLt })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
-    return { from, mockEq, mockIs, mockLt, mockOrder }
+    return { from, mockEq, mockLt, mockOrder }
   }
 
   function makeTrainerChain(data: unknown[] | null, error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
     const mockEqInstructor = vi.fn().mockReturnValue({ order: mockOrder })
     const mockLt = vi.fn().mockReturnValue({ eq: mockEqInstructor })
-    const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEqBarn = vi.fn().mockReturnValue({ is: mockIs })
+    const mockEqBarn = vi.fn().mockReturnValue({ lt: mockLt })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEqBarn })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     vi.mocked(createClient).mockResolvedValue({ from } as any)
@@ -440,8 +447,7 @@ describe('getOutstandingLessonRows', () => {
   function makeRiderChain(data: unknown[] | null, error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEqBarn = vi.fn().mockReturnValue({ is: mockIs })
+    const mockEqBarn = vi.fn().mockReturnValue({ lt: mockLt })
     const mockIn = vi.fn().mockReturnValue({ eq: mockEqBarn })
     const mockSelect = vi.fn().mockReturnValue({ in: mockIn })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
@@ -456,14 +462,6 @@ describe('getOutstandingLessonRows', () => {
       const { mockEq } = makeDefaultChain([])
       await getOutstandingLessonRows('barn-1')
       expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-    })
-
-    it('should_filter_by_null_payment_type', async () => {
-      vi.useFakeTimers()
-      vi.setSystemTime(new Date('2026-06-15T12:00:00Z'))
-      const { mockIs } = makeDefaultChain([])
-      await getOutstandingLessonRows('barn-1')
-      expect(mockIs).toHaveBeenCalledWith('payment_type', null)
     })
 
     it('should_filter_lessons_before_now', async () => {
@@ -489,11 +487,45 @@ describe('getOutstandingLessonRows', () => {
       expect(result).toHaveLength(0)
     })
 
-    it('should_include_non_zero_fee_lessons', async () => {
-      const lesson = createMockLesson({ fee: 50 })
+    it('should_not_call_the_outstanding_transactions_rpc_when_there_are_no_fee_bearing_candidates', async () => {
+      const lesson = createMockLesson({ fee: 0 })
       makeDefaultChain([lesson])
+      await getOutstandingLessonRows('barn-1')
+      expect(getOutstandingTransactionRows).not.toHaveBeenCalled()
+    })
+
+    it('should_query_the_outstanding_transactions_rpc_with_candidate_lesson_ids', async () => {
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
+      makeDefaultChain([lesson])
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue(unpaid('lesson-1'))
+      await getOutstandingLessonRows('barn-1')
+      expect(getOutstandingTransactionRows).toHaveBeenCalledWith('barn-1', { lessonIds: ['lesson-1'] }, expect.anything())
+    })
+
+    it('should_include_a_non_zero_fee_lesson_whose_ledger_transaction_is_uncollected', async () => {
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
+      makeDefaultChain([lesson])
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue(unpaid('lesson-1'))
       const result = await getOutstandingLessonRows('barn-1')
       expect(result).toHaveLength(1)
+    })
+
+    it('should_exclude_a_non_zero_fee_lesson_whose_ledger_transaction_is_already_collected', async () => {
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
+      makeDefaultChain([lesson])
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue([
+        { kind: 'lesson_fee', entityId: 'lesson-1', amount: 50, collected: true, paymentType: 'venmo' },
+      ])
+      const result = await getOutstandingLessonRows('barn-1')
+      expect(result).toHaveLength(0)
+    })
+
+    it('should_exclude_a_lesson_with_no_matching_ledger_transaction', async () => {
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
+      makeDefaultChain([lesson])
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue([])
+      const result = await getOutstandingLessonRows('barn-1')
+      expect(result).toHaveLength(0)
     })
 
     it('should_return_empty_array_when_data_is_null', async () => {
@@ -511,6 +543,13 @@ describe('getOutstandingLessonRows', () => {
     it('should_throw_when_supabase_returns_an_error', async () => {
       makeDefaultChain(null, new Error('db error'))
       await expect(getOutstandingLessonRows('barn-1')).rejects.toThrow('db error')
+    })
+
+    it('should_throw_when_the_outstanding_transactions_rpc_errors', async () => {
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
+      makeDefaultChain([lesson])
+      vi.mocked(getOutstandingTransactionRows).mockRejectedValue(new Error('rpc error'))
+      await expect(getOutstandingLessonRows('barn-1')).rejects.toThrow('rpc error')
     })
   })
 
@@ -535,6 +574,15 @@ describe('getOutstandingLessonRows', () => {
       makeTrainerChain([lesson])
       const result = await getOutstandingLessonRows('barn-1', 'user-trainer', 'trainer')
       expect(result).toHaveLength(0)
+    })
+
+    it('should_include_an_unpaid_non_zero_fee_lesson', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
+      const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
+      makeTrainerChain([lesson])
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue(unpaid('lesson-1'))
+      const result = await getOutstandingLessonRows('barn-1', 'user-trainer', 'trainer')
+      expect(result).toHaveLength(1)
     })
 
     it('should_throw_when_supabase_returns_an_error', async () => {
@@ -604,10 +652,11 @@ describe('getOutstandingLessonRows', () => {
       expect(result).toHaveLength(0)
     })
 
-    it('should_include_lessons_with_non_zero_fee', async () => {
+    it('should_include_an_unpaid_lesson_with_non_zero_fee', async () => {
       vi.mocked(getRiderEnrolledLessonIds).mockResolvedValue(['lesson-1'])
       const lesson = createMockLesson({ id: 'lesson-1', fee: 50 })
       makeRiderChain([lesson])
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue(unpaid('lesson-1'))
       const result = await getOutstandingLessonRows('barn-1', 'user-rider', 'rider')
       expect(result).toHaveLength(1)
     })
@@ -642,8 +691,7 @@ describe('getOutstandingLessonRows', () => {
     vi.mocked(getRiderEnrolledLessonIds).mockResolvedValue([])
     const mockOrder = vi.fn().mockResolvedValue({ data: [], error: null })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
-    const mockIs = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
+    const mockEq = vi.fn().mockReturnValue({ lt: mockLt })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
     const from = vi.fn().mockReturnValue({ select: mockSelect })
     const mockClient = { from } as any
@@ -652,6 +700,169 @@ describe('getOutstandingLessonRows', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(from).toHaveBeenCalledWith('lessons')
+  })
+})
+
+describe('getOutstandingCancellationFeeRows', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.mocked(getUserMembership).mockReset()
+    vi.mocked(getOutstandingTransactionRows).mockReset().mockResolvedValue([])
+  })
+
+  function makeChain(cancelledRows: unknown[] | null, lessonRows: unknown[] | null = [], errors: { cancelled?: Error; lessons?: Error } = {}) {
+    const cancelledNotIs = vi.fn().mockResolvedValue({ data: cancelledRows, error: errors.cancelled ?? null })
+    const cancelledEq = vi.fn().mockReturnValue({ not: cancelledNotIs })
+    const cancelledSelect = vi.fn().mockReturnValue({ eq: cancelledEq })
+
+    const lessonsIn = vi.fn().mockResolvedValue({ data: lessonRows, error: errors.lessons ?? null })
+    const lessonsEq = vi.fn().mockReturnValue({ in: lessonsIn })
+    const lessonsSelect = vi.fn().mockReturnValue({ eq: lessonsEq })
+
+    const from = vi.fn((table: string) => (table === 'lesson_riders' ? { select: cancelledSelect } : { select: lessonsSelect }))
+    vi.mocked(createClient).mockResolvedValue({ from } as any)
+    return { from, cancelledSelect, cancelledEq, cancelledNotIs, lessonsSelect, lessonsEq, lessonsIn }
+  }
+
+  it('should_query_lesson_riders_for_cancelled_rows_in_the_barn', async () => {
+    const { cancelledEq, cancelledNotIs } = makeChain([])
+    await getOutstandingCancellationFeeRows('barn-1')
+    expect(cancelledEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(cancelledNotIs).toHaveBeenCalledWith('cancelled_at', 'is', null)
+  })
+
+  it('should_return_empty_array_when_no_rows_are_cancelled', async () => {
+    makeChain([])
+    const result = await getOutstandingCancellationFeeRows('barn-1')
+    expect(result).toEqual([])
+  })
+
+  it('should_return_empty_array_when_cancelled_rows_is_null', async () => {
+    makeChain(null)
+    const result = await getOutstandingCancellationFeeRows('barn-1')
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_the_lesson_riders_query_errors', async () => {
+    makeChain(null, [], { cancelled: new Error('lesson_riders error') })
+    await expect(getOutstandingCancellationFeeRows('barn-1')).rejects.toThrow('lesson_riders error')
+  })
+
+  it('should_not_call_the_outstanding_transactions_rpc_when_nothing_is_cancelled', async () => {
+    makeChain([])
+    await getOutstandingCancellationFeeRows('barn-1')
+    expect(getOutstandingTransactionRows).not.toHaveBeenCalled()
+  })
+
+  it('should_query_the_outstanding_transactions_rpc_with_cancelled_lesson_rider_ids', async () => {
+    makeChain([{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }])
+    await getOutstandingCancellationFeeRows('barn-1')
+    expect(getOutstandingTransactionRows).toHaveBeenCalledWith('barn-1', { lessonRiderIds: ['lr-1'] }, expect.anything())
+  })
+
+  it('should_return_empty_array_when_no_cancellation_fees_are_outstanding', async () => {
+    makeChain([{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }])
+    vi.mocked(getOutstandingTransactionRows).mockResolvedValue([])
+    const result = await getOutstandingCancellationFeeRows('barn-1')
+    expect(result).toEqual([])
+  })
+
+  it('should_exclude_a_lesson_rider_whose_cancellation_fee_is_already_collected', async () => {
+    makeChain([{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }])
+    vi.mocked(getOutstandingTransactionRows).mockResolvedValue([
+      { kind: 'rider_cancellation_fee', entityId: 'lr-1', amount: 50, collected: true, paymentType: 'venmo' },
+    ])
+    const result = await getOutstandingCancellationFeeRows('barn-1')
+    expect(result).toEqual([])
+  })
+
+  it('should_resolve_lesson_at_and_instructor_id_for_an_uncollected_cancellation_fee', async () => {
+    makeChain(
+      [{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }],
+      [{ id: 'lesson-1', lesson_at: '2026-06-01T10:00:00Z', instructor_id: 'mem-trainer-1' }]
+    )
+    vi.mocked(getOutstandingTransactionRows).mockResolvedValue([
+      { kind: 'rider_cancellation_fee', entityId: 'lr-1', amount: 75, collected: false, paymentType: null },
+    ])
+    const result = await getOutstandingCancellationFeeRows('barn-1')
+    expect(result).toEqual([{
+      id: 'lr-1',
+      lessonId: 'lesson-1',
+      lessonAt: '2026-06-01T10:00:00Z',
+      instructorId: 'mem-trainer-1',
+      riderId: 'rider-1',
+      fee: 75,
+    }])
+  })
+
+  it('should_throw_when_the_lessons_lookup_errors', async () => {
+    makeChain([{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }], null, { lessons: new Error('lessons error') })
+    vi.mocked(getOutstandingTransactionRows).mockResolvedValue([
+      { kind: 'rider_cancellation_fee', entityId: 'lr-1', amount: 75, collected: false, paymentType: null },
+    ])
+    await expect(getOutstandingCancellationFeeRows('barn-1')).rejects.toThrow('lessons error')
+  })
+
+  it('should_treat_a_null_lessons_lookup_response_as_empty', async () => {
+    makeChain([{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }], null)
+    vi.mocked(getOutstandingTransactionRows).mockResolvedValue([])
+    const result = await getOutstandingCancellationFeeRows('barn-1')
+    expect(result).toEqual([])
+  })
+
+  describe('trainer scoping', () => {
+    it('should_resolve_the_callers_membership_id', async () => {
+      makeChain([{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }])
+      vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
+      await getOutstandingCancellationFeeRows('barn-1', 'user-trainer', 'trainer')
+      expect(getUserMembership).toHaveBeenCalledWith('user-trainer', 'barn-1')
+    })
+
+    it('should_return_empty_array_when_the_caller_has_no_membership', async () => {
+      makeChain([{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }])
+      vi.mocked(getUserMembership).mockResolvedValue(null)
+      const result = await getOutstandingCancellationFeeRows('barn-1', 'user-trainer', 'trainer')
+      expect(result).toEqual([])
+    })
+
+    it('should_exclude_a_cancellation_fee_for_a_lesson_the_caller_does_not_instruct', async () => {
+      makeChain(
+        [{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }],
+        [{ id: 'lesson-1', lesson_at: '2026-06-01T10:00:00Z', instructor_id: 'mem-other-trainer' }]
+      )
+      vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue([
+        { kind: 'rider_cancellation_fee', entityId: 'lr-1', amount: 75, collected: false, paymentType: null },
+      ])
+      const result = await getOutstandingCancellationFeeRows('barn-1', 'user-trainer', 'trainer')
+      expect(result).toEqual([])
+    })
+
+    it('should_include_a_cancellation_fee_for_a_lesson_the_caller_instructs', async () => {
+      makeChain(
+        [{ id: 'lr-1', lesson_id: 'lesson-1', rider_id: 'rider-1' }],
+        [{ id: 'lesson-1', lesson_at: '2026-06-01T10:00:00Z', instructor_id: 'mem-trainer-1' }]
+      )
+      vi.mocked(getUserMembership).mockResolvedValue({ id: 'mem-trainer-1' } as any)
+      vi.mocked(getOutstandingTransactionRows).mockResolvedValue([
+        { kind: 'rider_cancellation_fee', entityId: 'lr-1', amount: 75, collected: false, paymentType: null },
+      ])
+      const result = await getOutstandingCancellationFeeRows('barn-1', 'user-trainer', 'trainer')
+      expect(result).toHaveLength(1)
+    })
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const notIs = vi.fn().mockResolvedValue({ data: [], error: null })
+    const eq = vi.fn().mockReturnValue({ not: notIs })
+    const select = vi.fn().mockReturnValue({ eq })
+    const from = vi.fn().mockReturnValue({ select })
+    const mockClient = { from } as any
+
+    await getOutstandingCancellationFeeRows('barn-1', undefined, undefined, mockClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(from).toHaveBeenCalledWith('lesson_riders')
   })
 })
 

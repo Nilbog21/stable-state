@@ -199,9 +199,10 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 Finances (`/barn/dev-barn/finances`):
 
 - [ ] **Outstanding** section lists past unpaid lessons; set a payment type on one row via the inline dropdown → it leaves the outstanding list
+- [ ] Late-cancel a normal lesson that was already marked paid (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding** with a **Type** of "Cancellation Fee"; mark it paid via the inline dropdown → it leaves the outstanding list
 - [ ] **Needs an amount** section lists the seeded past-due planned expense as a single line (date — recipient — expense type) — confirm it does **not** appear inside the Outstanding table itself
 - [ ] Tap the past-due expense's line → lands on its edit page; enter an amount (leave Payment Type unset) and save → back on Finances, it no longer appears under Needs an amount, and now shows up under Total Expenses/By Horse for its month
-- [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, each row linking to its lesson — confirm past-due expenses do **not** appear on this page (no Needs an amount equivalent there)
+- [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, leases/boarding charges, and cancellation fees, each lesson/cancellation-fee row linking to its lesson — confirm past-due expenses do **not** appear on this page (no Needs an amount equivalent there)
 - [ ] Month navigation `←`/`→` works and updates `?month=YYYY-MM`; navigate to the previous month and see Lessons 1–2 reflected
 - [ ] Summary rows appear in order **Collected income → Total Expenses → Net → Pending income**, none with a month/year suffix (the month picker above already shows it); Net equals Collected income minus Total Expenses
 - [ ] **By Horse** is the default tab on page load (no `?tab=` needed)
@@ -270,7 +271,7 @@ bash scripts/change-user.sh
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper/Indigo Test, whichever are still unclaimed) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage member section, which a trainer viewing that page won't see either)
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **no Contact Info section**, and **no Documents section**; open Blake's (a rider's) detail page — no Contact Info and no Documents section either (#779 narrowed this from the prior read-only rider-document access)
-- [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons
+- [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons, plus any uncollected cancellation fees for lessons you instruct
 - [ ] Dashboard: if any of your instructed lessons are unpaid, a "Reminders" section with an "N unpaid lessons" card appears, linking to `/barn/dev-barn/finances/outstanding` — this is your only nav path to that page (no Finances link in the nav)
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
@@ -292,7 +293,7 @@ bash scripts/change-user.sh
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson via the **Cancel** button in the lesson detail page header (no Cancel button on the Lessons list or Dashboard) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected; the instructor receives a "Lesson participation cancelled" notification
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
-- [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) with a Type column — no such column entries for other riders' agreements
+- [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) and her own uncollected late-cancellation fees, with a Type column — no such column entries for other riders' agreements
 - [ ] Dashboard: if Dana has unpaid lessons and/or unpaid leases/boarding, a "Reminders" section with "N unpaid lessons"/"N unpaid leases/boarding" cards appears, each linking to `/barn/dev-barn/finances/outstanding` — this is Dana's only nav path to that page (no Finances link in the nav)
 - [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms, and no Unlinked badge on any managed/unclaimed row (rider never sees it, unlike a manager)
 - [ ] Open your own member detail page's Documents section — the document a manager uploaded on your behalf (Phase 4) is listed and its link opens, but there is **no Add Document button** and **no Delete action** in the Actions column (#864 — rider self-service is read-only)

@@ -14,6 +14,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   getFinancialSummary,
   getOutstandingLessons,
+  getOutstandingCancellationFees,
   getHorseIncomeSummary,
   getRiderIncomeSummary,
   getTrainerIncomeSummary,
@@ -36,6 +37,7 @@ import {
   getLessonFeeRows,
   getTierPricesByNames,
   getOutstandingLessonRows,
+  getOutstandingCancellationFeeRows,
   getLessonJunctionRows,
 } from '../lesson-finance-queries'
 import { resolveMemberNames } from '../member-names'
@@ -763,6 +765,144 @@ describe('getOutstandingLessons', () => {
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
     await expect(getOutstandingLessons('barn-1')).rejects.toThrow('resolve error')
+  })
+})
+
+describe('getOutstandingCancellationFees', () => {
+  beforeEach(() => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
+    vi.mocked(createClient).mockClear()
+  })
+
+  function feeRow(overrides: Partial<{ id: string; lessonId: string; lessonAt: string; instructorId: string | null; riderId: string; fee: number }> = {}) {
+    return {
+      id: 'lr-1', lessonId: 'lesson-1', lessonAt: '2026-06-10T10:00:00Z',
+      instructorId: 'mem-instructor', riderId: 'mem-rider', fee: 75,
+      ...overrides,
+    }
+  }
+
+  it('should_use_injected_client_when_provided', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([])
+    const injectedClient = {} as any
+
+    await getOutstandingCancellationFees('barn-1', undefined, undefined, injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+    expect(getOutstandingCancellationFeeRows).toHaveBeenCalledWith('barn-1', undefined, undefined, injectedClient)
+  })
+
+  it('should_forward_userId_and_role', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([])
+
+    await getOutstandingCancellationFees('barn-1', 'user-trainer', 'trainer')
+
+    expect(getOutstandingCancellationFeeRows).toHaveBeenCalledWith('barn-1', 'user-trainer', 'trainer', expect.anything())
+  })
+
+  it('should_return_empty_array_when_no_rows', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([])
+
+    const result = await getOutstandingCancellationFees('barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_not_resolve_names_when_no_rows', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([])
+
+    await getOutstandingCancellationFees('barn-1')
+
+    expect(resolveMemberNames).not.toHaveBeenCalled()
+  })
+
+  it('should_resolve_rider_and_instructor_ids_together', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow()])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    await getOutstandingCancellationFees('barn-1')
+
+    expect(resolveMemberNames).toHaveBeenCalledWith(['mem-rider', 'mem-instructor'], 'barn-1', expect.anything())
+  })
+
+  it('should_dedupe_instructor_ids_before_resolving_names', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([
+      feeRow({ id: 'lr-1', riderId: 'mem-rider-1' }),
+      feeRow({ id: 'lr-2', riderId: 'mem-rider-2' }),
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    await getOutstandingCancellationFees('barn-1')
+
+    expect(resolveMemberNames).toHaveBeenCalledWith(['mem-rider-1', 'mem-rider-2', 'mem-instructor'], 'barn-1', expect.anything())
+  })
+
+  it('should_map_id_lessonId_lessonAt_and_fee_through', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow()])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getOutstandingCancellationFees('barn-1')
+
+    expect(result[0]).toMatchObject({ id: 'lr-1', lessonId: 'lesson-1', lessonAt: '2026-06-10T10:00:00Z', fee: 75 })
+  })
+
+  it('should_include_resolved_rider_name', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow()])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-rider', 'Alice Rider']]))
+
+    const result = await getOutstandingCancellationFees('barn-1')
+
+    expect(result[0].riderName).toBe('Alice Rider')
+  })
+
+  it('should_fall_back_to_rider_id_when_name_not_resolved', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow()])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getOutstandingCancellationFees('barn-1')
+
+    expect(result[0].riderName).toBe('mem-rider')
+  })
+
+  it('should_include_resolved_instructor_name', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow()])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-instructor', 'Jane Doe']]))
+
+    const result = await getOutstandingCancellationFees('barn-1')
+
+    expect(result[0].instructorName).toBe('Jane Doe')
+  })
+
+  it('should_return_null_instructor_name_when_instructorId_is_null', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow({ instructorId: null })])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getOutstandingCancellationFees('barn-1')
+
+    expect(result[0].instructorName).toBeNull()
+  })
+
+  it('should_return_null_instructor_name_when_not_found_in_membership_map', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow()])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const result = await getOutstandingCancellationFees('barn-1')
+
+    expect(result[0].instructorName).toBeNull()
+  })
+
+  it('should_throw_when_getOutstandingCancellationFeeRows_rejects', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockRejectedValue(new Error('rows error'))
+
+    await expect(getOutstandingCancellationFees('barn-1')).rejects.toThrow('rows error')
+  })
+
+  it('should_throw_when_resolveMemberNames_rejects', async () => {
+    vi.mocked(getOutstandingCancellationFeeRows).mockResolvedValue([feeRow()])
+    vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
+
+    await expect(getOutstandingCancellationFees('barn-1')).rejects.toThrow('resolve error')
   })
 })
 
@@ -2387,6 +2527,31 @@ describe('mergeOutstandingItems', () => {
   })
 
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
+    expect(mergeOutstandingItems([], [])).toEqual([])
+  })
+
+  it('should_map_a_cancellation_fee_row_to_an_outstanding_item', () => {
+    const result = mergeOutstandingItems(
+      [], [],
+      [{ id: 'lr-1', lessonId: 'lesson-1', lessonAt: '2026-06-05T10:00:00Z', instructorName: 'Jane Doe', riderName: 'Alice Rider', fee: 50 }]
+    )
+
+    expect(result).toEqual([
+      { id: 'lr-1', itemType: 'cancellation_fee', date: '2026-06-05T10:00:00Z', instructorName: 'Jane Doe', riderNames: ['Alice Rider'], fee: 50, linkId: 'lesson-1' },
+    ])
+  })
+
+  it('should_sort_cancellation_fee_items_alongside_lessons_and_charges', () => {
+    const result = mergeOutstandingItems(
+      [{ id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-06-20T10:00:00Z', instructor_name: null, rider_names: [], fee: 75 }],
+      [{ id: 'charge-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }],
+      [{ id: 'lr-1', lessonId: 'lesson-2', lessonAt: '2026-06-10T10:00:00Z', instructorName: null, riderName: 'Bob Rider', fee: 50 }]
+    )
+
+    expect(result.map((r) => r.id)).toEqual(['charge-1', 'lr-1', 'lesson-1'])
+  })
+
+  it('should_default_cancellation_fees_to_empty_array_when_omitted', () => {
     expect(mergeOutstandingItems([], [])).toEqual([])
   })
 })
