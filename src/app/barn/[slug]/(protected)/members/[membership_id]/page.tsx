@@ -1,7 +1,6 @@
-import { notFound, redirect } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
+import { notFound } from 'next/navigation'
+import { requireMembership } from '@/lib/auth/guard'
+import { getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
 import { getProfileById } from '@/lib/db/profiles'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
@@ -131,14 +130,11 @@ export default async function MemberDetailPage({
 }) {
   const { slug, membership_id } = await params
 
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
-
-  const user = await getAuthenticatedUser()
-  if (!user) redirect(`/barn/${slug}/login`)
-
-  const callerMembership = await getUserMembership(user.id, barn.id)
-  if (!callerMembership || callerMembership.status !== 'active') redirect(`/barn/${slug}/login`)
+  const { user, barn, membership: callerMembership } = await requireMembership(slug, [
+    'manager',
+    'trainer',
+    'rider',
+  ])
 
   const targetMembership = await getMembershipByIdForBarn(membership_id, barn.id)
   if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()

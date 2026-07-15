@@ -1,7 +1,5 @@
 import { notFound } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { HorseManagerForm } from './HorseManagerForm'
@@ -23,14 +21,7 @@ export default async function HorseDetailPage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
-
-  const user = await getAuthenticatedUser()
-  if (!user) notFound()
-
-  const membership = await getUserMembership(user.id, barn.id)
-  if (!membership || membership.status !== 'active') notFound()
+  const { barn, membership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
 
   const horse = await getHorseById(id, barn.id)
   if (!horse) notFound()
