@@ -150,6 +150,7 @@ export async function createExpense(barnId: string, data: ExpenseInput, client?:
     p_expense_type: data.expenseType ?? 'Unspecified',
     p_notes: data.notes ?? null,
     p_horse_ids: data.horseIds ?? null,
+    p_payment_type: data.paymentType ?? null,
   })
   if (error) throw error
   return expense as HorseExpense
@@ -168,6 +169,7 @@ export async function updateExpense(expenseId: string, barnId: string, updates: 
     p_expense_type: updates.expenseType ?? 'Unspecified',
     p_notes: updates.notes ?? null,
     p_horse_ids: updates.horseIds ?? null,
+    p_payment_type: updates.paymentType ?? null,
   })
   if (error) throw error
   return expense as HorseExpense
@@ -247,6 +249,30 @@ export async function getUpcomingScheduledExpenses(barnId: string, from: string,
   if (!expenses.length) return []
 
   return await attachHorseNames(supabase, barnId, expenses)
+}
+
+// Finances dashboard Outstanding section: planned expenses (amount IS NULL) whose
+// due datetime (expense_date + expense_time, or end-of-day when time is null — same
+// convention as getUpcomingExpenses) has already passed.
+export async function getPastDueExpenses(barnId: string, client?: SupabaseClient): Promise<HorseExpense[]> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('horse_expenses')
+    .select('*')
+    .eq('barn_id', barnId)
+    .is('amount', null)
+  if (error) throw error
+
+  const now = Date.now()
+
+  return ((data ?? []) as HorseExpense[])
+    .map((expense) => ({
+      expense,
+      combined: new Date(`${expense.expense_date}T${expense.expense_time ?? '23:59:59.999'}Z`).getTime(),
+    }))
+    .filter(({ combined }) => combined < now)
+    .sort((a, b) => a.combined - b.combined)
+    .map(({ expense }) => expense)
 }
 
 export async function getExpenseFinancialSummary(

@@ -3,8 +3,10 @@
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpenseById, deleteExpense, createExpense, updateExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'
-import type { ExpenseInput } from '@/lib/db/types'
+import type { ExpenseInput, PaymentType } from '@/lib/db/types'
 import { parseNonNegativeAmount } from '@/lib/parse-amount'
+
+const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
 
 export async function deleteExpenseAction(
   barnId: string,
@@ -45,6 +47,11 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
   const appliesToAllHorses = formData.get('applies_to_all_horses') === 'true'
   const horseIds = appliesToAllHorses ? undefined : (formData.getAll('horse_id') as string[])
 
+  const paymentTypeRaw = (formData.get('payment_type') as string | null)?.trim() || null
+  if (paymentTypeRaw !== null && !PAYMENT_TYPES.includes(paymentTypeRaw as PaymentType)) {
+    return { error: 'invalid payment type' }
+  }
+
   return {
     data: {
       expenseDate,
@@ -55,6 +62,7 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
       notes,
       appliesToAllHorses,
       horseIds,
+      paymentType: paymentTypeRaw as PaymentType | null,
     },
   }
 }
@@ -100,4 +108,47 @@ export async function getMostCommonExpenseTypeAction(
   if (!trimmed) return null
 
   return getMostCommonTypeForRecipient(barn.id, trimmed)
+}
+
+// Resolves an overdue planned expense (past-due, amount still unknown) from the Finances
+// dashboard's Outstanding section — reuses the full-replace updateExpense/update_expense_with_horses
+// path (same one the edit form uses) rather than a dedicated RPC, since every other field on
+// the row is unchanged.
+export async function resolvePastDueExpenseAction(
+  barnSlug: string,
+  expenseId: string,
+  amountRaw: string,
+  paymentTypeRaw: string | null
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const amount = parseNonNegativeAmount(amountRaw)
+  if (amount === null || amount === 0) {
+    return { error: 'a non-zero amount is required' }
+  }
+
+  if (paymentTypeRaw !== null && !PAYMENT_TYPES.includes(paymentTypeRaw as PaymentType)) {
+    return { error: 'invalid payment type' }
+  }
+
+  const expense = await getExpenseById(expenseId, barn.id)
+  if (!expense) return { error: 'expense not found' }
+
+  try {
+    await updateExpense(expenseId, barn.id, {
+      expenseDate: expense.expense_date,
+      expenseTime: expense.expense_time,
+      amount,
+      recipient: expense.recipient,
+      expenseType: expense.expense_type,
+      notes: expense.notes,
+      appliesToAllHorses: expense.applies_to_all_horses,
+      horseIds: expense.horse_ids,
+      paymentType: paymentTypeRaw as PaymentType | null,
+    })
+  } catch {
+    return { error: 'Failed to resolve expense' }
+  }
+
+  return { error: null }
 }
