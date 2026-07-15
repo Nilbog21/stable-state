@@ -53,7 +53,7 @@ AS $$
   JOIN public.profiles p ON p.id = bm.profile_id
   WHERE bm.id = ANY(p_membership_ids)
     AND bm.barn_id = p_barn_id
-    AND public.auth_can_read_instructor_membership(bm.id, bm.barn_id);
+    AND (auth.uid() IS NULL OR public.auth_can_read_instructor_membership(bm.id, bm.barn_id));
 $$;
 
 CREATE FUNCTION public.auth_is_active_barn_member(p_barn_id uuid) RETURNS boolean
@@ -80,7 +80,7 @@ SECURITY DEFINER
 SET search_path TO 'public'
 AS $$
 BEGIN
-  IF NOT auth_is_active_barn_member(p_barn_id) THEN
+  IF auth.uid() IS NOT NULL AND NOT auth_is_active_barn_member(p_barn_id) THEN
     RAISE EXCEPTION 'not_authorized';
   END IF;
 
@@ -976,7 +976,8 @@ AS $$
     AND t.barn_id = p_barn_id
     AND t.lesson_id = ANY(p_lesson_ids)
     AND (
-      public.auth_is_barn_manager(p_barn_id)
+      auth.uid() IS NULL
+      OR public.auth_is_barn_manager(p_barn_id)
       OR public.auth_is_barn_trainer(p_barn_id)
       OR public.auth_is_enrolled_rider(t.lesson_id, p_barn_id)
     );
@@ -1183,7 +1184,8 @@ AS $$
     AND t.barn_id = p_barn_id
     AND t.lesson_id = ANY(p_lesson_ids)
     AND (
-      public.auth_is_barn_manager(p_barn_id)
+      auth.uid() IS NULL
+      OR public.auth_is_barn_manager(p_barn_id)
       OR public.auth_is_barn_trainer(p_barn_id)
       OR public.auth_is_enrolled_rider(t.lesson_id, p_barn_id)
     )
@@ -1198,7 +1200,8 @@ AS $$
     AND t.barn_id = p_barn_id
     AND t.agreement_charge_id = ANY(p_charge_ids)
     AND (
-      public.auth_is_barn_manager(p_barn_id)
+      auth.uid() IS NULL
+      OR public.auth_is_barn_manager(p_barn_id)
       OR EXISTS (
         SELECT 1 FROM public.agreement_charges ac
         JOIN public.agreements a ON a.id = ac.agreement_id AND a.barn_id = ac.barn_id
@@ -1218,7 +1221,8 @@ AS $$
     AND t.barn_id = p_barn_id
     AND t.lesson_rider_id = ANY(p_lesson_rider_ids)
     AND (
-      public.auth_is_barn_manager(p_barn_id)
+      auth.uid() IS NULL
+      OR public.auth_is_barn_manager(p_barn_id)
       OR EXISTS (
         SELECT 1 FROM public.lesson_riders lr
         JOIN public.lessons l ON l.id = lr.lesson_id AND l.barn_id = lr.barn_id

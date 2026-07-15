@@ -397,12 +397,14 @@ GRANT EXECUTE ON FUNCTION public.auth_can_read_instructor_membership(uuid, uuid)
 
 REVOKE ALL ON FUNCTION public.get_instructor_membership_names(uuid[], uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_instructor_membership_names(uuid[], uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_instructor_membership_names(uuid[], uuid) TO service_role;
 
 REVOKE ALL ON FUNCTION public.auth_is_active_barn_member(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.auth_is_active_barn_member(uuid) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.get_active_barn_member_summaries(uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_active_barn_member_summaries(uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_active_barn_member_summaries(uuid) TO service_role;
 
 GRANT EXECUTE ON FUNCTION public.assert_lesson_participant_counts(lesson_type, integer, integer) TO authenticated;
 
@@ -429,6 +431,7 @@ GRANT EXECUTE ON FUNCTION public.delete_lesson_with_transactions(uuid, uuid, boo
 
 REVOKE ALL ON FUNCTION public.get_lesson_payment_info(uuid[], uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_lesson_payment_info(uuid[], uuid) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_lesson_payment_info(uuid[], uuid) TO service_role;
 
 REVOKE EXECUTE ON FUNCTION cancel_rider_participation(UUID, UUID, UUID, TEXT, BOOLEAN) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION cancel_rider_participation(UUID, UUID, UUID, TEXT, BOOLEAN) TO authenticated;
@@ -441,6 +444,7 @@ GRANT EXECUTE ON FUNCTION public.sync_rider_cancellation_fee(uuid, uuid, lesson_
 
 REVOKE ALL ON FUNCTION public.get_outstanding_transactions(uuid, uuid[], uuid[], uuid[]) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_outstanding_transactions(uuid, uuid[], uuid[], uuid[]) TO authenticated;
+GRANT EXECUTE ON FUNCTION public.get_outstanding_transactions(uuid, uuid[], uuid[], uuid[]) TO service_role;
 
 REVOKE ALL ON FUNCTION public.collect_rider_cancellation_fee(uuid, uuid, payment_type_enum) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.collect_rider_cancellation_fee(uuid, uuid, payment_type_enum) TO authenticated;
