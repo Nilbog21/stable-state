@@ -1,7 +1,8 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
-import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, OutstandingCharge, PaymentType, Role } from './types'
+import { getTransactionRows } from './transactions'
+import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, OutstandingCharge, PaymentType, Role, TransactionKind } from './types'
 
 export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | 'is_active'>): string {
   if (!agreement.is_active) return 'Ended'
@@ -198,7 +199,7 @@ export interface ChargeSummaryRow {
   payment_type: PaymentType | null
 }
 
-const CHARGE_TRANSACTION_KINDS = ['lease_charge', 'board_charge'] as const
+const CHARGE_TRANSACTION_KINDS: TransactionKind[] = ['lease_charge', 'board_charge']
 
 export async function getChargesForSummary(
   barnId: string,
@@ -206,21 +207,11 @@ export async function getChargesForSummary(
   endDate: Date,
   client?: SupabaseClient
 ): Promise<ChargeSummaryRow[]> {
-  const supabase = client ?? await createClient()
-  const { data, error } = await supabase
-    .from('transactions')
-    .select('occurred_at, amount, payment_type')
-    .eq('barn_id', barnId)
-    .in('kind', CHARGE_TRANSACTION_KINDS)
-    .gte('occurred_at', startDate.toISOString().slice(0, 10))
-    .lt('occurred_at', endDate.toISOString().slice(0, 10))
-
-  if (error) throw error
-  type ChargeTransactionRow = { occurred_at: string; amount: number; payment_type: PaymentType | null }
-  return ((data ?? []) as unknown as ChargeTransactionRow[]).map((row) => ({
-    period: row.occurred_at.slice(0, 10),
+  const rows = await getTransactionRows(barnId, CHARGE_TRANSACTION_KINDS, { startDate, endDate }, client)
+  return rows.map((row) => ({
+    period: row.occurredAt.slice(0, 10),
     fee: row.amount,
-    payment_type: row.payment_type,
+    payment_type: row.paymentType,
   }))
 }
 
@@ -230,8 +221,8 @@ export interface PaidCharge {
   period: string
   fee: number
   kind: AgreementKind
-  riderId: string
-  horseId: string
+  riderId: string | null
+  horseId: string | null
 }
 
 export async function getPaidCharges(
@@ -241,42 +232,40 @@ export async function getPaidCharges(
   client?: SupabaseClient
 ): Promise<PaidCharge[]> {
   const supabase = client ?? await createClient()
-  // `kind`/`membership_id`/`horse_id` are already denormalized onto the transaction row
-  // (see the transactions table), so only `agreement_id` needs a join — one hop via the
-  // FK-hint embed, pinned to the exact composite constraint (`transactions_barn_id_agreement_charge_id_fkey`,
-  // Postgres's standard auto-generated name for the unnamed FK added in #826 — re-verified
-  // against the live stable-state-dev schema for this #828 change — see getPaidCharges
-  // history for why an unqualified `agreements!inner` embed is avoided, #407/#665).
-  const { data, error } = await supabase
-    .from('transactions')
-    .select(
-      'agreement_charge_id, occurred_at, amount, kind, membership_id, horse_id, agreement_charges!transactions_barn_id_agreement_charge_id_fkey!inner(agreement_id)'
-    )
-    .eq('barn_id', barnId)
-    .in('kind', CHARGE_TRANSACTION_KINDS)
-    .eq('collected', true)
-    .gte('occurred_at', startDate.toISOString().slice(0, 10))
-    .lt('occurred_at', endDate.toISOString().slice(0, 10))
+  const rows = await getTransactionRows(
+    barnId, CHARGE_TRANSACTION_KINDS, { startDate, endDate, collected: true }, supabase
+  )
+  if (!rows.length) return []
 
-  if (error) throw error
-  type PaidChargeTransactionRow = {
-    agreement_charge_id: string
-    occurred_at: string
-    amount: number
-    kind: 'lease_charge' | 'board_charge'
-    membership_id: string
-    horse_id: string
-    agreement_charges: { agreement_id: string }
+  const chargeIds = [...new Set(rows.map((r) => r.agreementChargeId).filter((id): id is string => id !== null))]
+  const agreementIdByChargeId = new Map<string, string>()
+  if (chargeIds.length) {
+    const { data: chargeRows, error } = await supabase
+      .from('agreement_charges')
+      .select('id, agreement_id')
+      .eq('barn_id', barnId)
+      .in('id', chargeIds)
+    if (error) throw error
+    for (const c of chargeRows ?? []) agreementIdByChargeId.set(c.id, c.agreement_id)
   }
-  return ((data ?? []) as unknown as PaidChargeTransactionRow[]).map((row) => ({
-    chargeId: row.agreement_charge_id,
-    agreementId: row.agreement_charges.agreement_id,
-    period: row.occurred_at.slice(0, 10),
-    fee: row.amount,
-    kind: row.kind === 'lease_charge' ? 'lease' : 'board',
-    riderId: row.membership_id,
-    horseId: row.horse_id,
-  }))
+
+  // agreementChargeId/membershipId/horseId are nullable via ON DELETE SET NULL — no
+  // code path currently hard-deletes an agreement_charges row, but a rider's
+  // membership can be removed after their charge is collected, so riderId/horseId
+  // fall back to null rather than an unchecked cast (mirrors getLessonFeeRows'
+  // orphaned-lessonId handling); callers apply their own NO_HORSE_LABEL/NO_RIDER_LABEL.
+  return rows.map((row) => {
+    const chargeId = row.agreementChargeId ?? row.id
+    return {
+      chargeId,
+      agreementId: (row.agreementChargeId && agreementIdByChargeId.get(row.agreementChargeId)) ?? chargeId,
+      period: row.occurredAt.slice(0, 10),
+      fee: row.amount,
+      kind: row.kind === 'lease_charge' ? 'lease' : 'board',
+      riderId: row.membershipId,
+      horseId: row.horseId,
+    }
+  })
 }
 
 // ponytail: barn-wide, no role/userId scoping (unlike getOutstandingCharges) — its only caller
@@ -337,8 +326,13 @@ export async function getOutstandingCharges(
     if (!riderAgreementIds.length) return []
   }
 
-  // FK-hint embed pinned to the exact composite constraint — see getPaidCharges above for
-  // why (not an unqualified `agreements!inner`); same table pair, same verified FK (#665).
+  // FK-hint embed pinned to the exact composite constraint (not an unqualified
+  // `agreements!inner`) — #665 verified against live dev schema that pinning avoids a
+  // PGRST200/PGRST201 "relationship not found"/"more than one relationship" error;
+  // getPaidCharges above no longer uses an embed at all (#865, replaced with a follow-up
+  // `.in('id', ids)` lookup) but getOutstandingCharges is excluded from that migration
+  // (transactions SELECT is manager-only RLS; a rider/trainer-facing Outstanding read
+  // needs the SECURITY DEFINER RPC #831 adds first), so this embed stays as-is.
   let query = supabase
     .from('agreement_charges')
     .select('id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')

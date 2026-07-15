@@ -306,7 +306,7 @@ export interface EntityIncomeDescriptor {
   /** true: fold getPaidCharges in per-entity, unsplit (horse/rider). false: getChargesForSummary
    *  folds into one synthetic NON_LESSON_INCOME_LABEL row instead (trainer — agreements have no instructor). */
   chargesApply: boolean
-  getChargeEntityId?: (charge: PaidCharge) => string
+  getChargeEntityId?: (charge: PaidCharge) => string | null
   resolveNames: (ids: string[], barnId: string, client: SupabaseClient) => Promise<Map<string, string>>
   /** trainer only — raw pre-cut fee sum per entity, for the summary's grossIncome column. */
   includeGrossIncome?: boolean
@@ -419,7 +419,10 @@ async function getEntityIncomeSummary(
   if (descriptor.chargesApply) {
     const charges = await getPaidCharges(barnId, startDate, endDate, supabase)
     for (const charge of charges) {
-      const id = descriptor.getChargeEntityId!(charge)
+      // getChargeEntityId can return null (e.g. a charge's rider/horse relation was
+      // cleared by ON DELETE SET NULL) — folds into the same fallback bucket a lesson
+      // with no junction rows already falls into, instead of a literal `null` key.
+      const id = descriptor.getChargeEntityId!(charge) ?? descriptor.fallbackLabel
       const existing = grouped.get(id) ?? { total: 0, count: 0 }
       grouped.set(id, { total: existing.total + charge.fee, count: existing.count + 1 })
     }

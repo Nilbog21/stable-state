@@ -76,6 +76,13 @@ export interface Horse {
 
 export type LessonType = 'normal' | 'group'
 export type PaymentType = 'venmo' | 'zelle' | 'cash' | 'check' | 'freshbooks'
+export type TransactionKind =
+  | 'lesson_fee'
+  | 'rider_cancellation_fee'
+  | 'instructor_payout'
+  | 'lease_charge'
+  | 'board_charge'
+  | 'expense'
 
 export interface Lesson {
   id: string

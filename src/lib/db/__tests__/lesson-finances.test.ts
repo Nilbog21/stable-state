@@ -981,6 +981,17 @@ describe('getHorseIncomeSummary', () => {
       expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 600 }])
     })
 
+    it('should_fold_a_charge_with_a_null_horseId_into_the_no_horse_bucket', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([])
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: null },
+      ])
+
+      const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result).toEqual([{ horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 500 }])
+    })
+
     it('should_throw_when_getPaidCharges_rejects', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([])
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
@@ -1245,6 +1256,17 @@ describe('getRiderIncomeSummary', () => {
       const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
       expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 600 }])
+    })
+
+    it('should_fold_a_charge_with_a_null_riderId_into_the_no_rider_bucket', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([])
+      vi.mocked(getPaidCharges).mockResolvedValue([
+        { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: null, horseId: 'horse-1' },
+      ])
+
+      const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
+
+      expect(result).toEqual([{ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 500 }])
     })
 
     it('should_throw_when_getPaidCharges_rejects', async () => {
