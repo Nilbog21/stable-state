@@ -65,17 +65,25 @@ export default async function OutstandingPage({
           </thead>
           <tbody>
             {items.map((item) => {
+              // /barn/[slug]/agreements/[id] is manager-only, so a lease/board row is only
+              // linkable for a manager viewer — a trainer/rider would otherwise hit notFound().
               const href = item.itemType === 'lesson'
                 ? `/barn/${slug}/lessons/${item.id}`
                 : item.itemType === 'cancellation_fee'
                 ? `/barn/${slug}/lessons/${item.linkId}`
-                : `/barn/${slug}/agreements/${item.linkId}`
+                : role === 'manager'
+                ? `/barn/${slug}/agreements/${item.linkId}`
+                : undefined
               return (
               <tr key={item.id}>
                 <Td>
-                  <Link href={href} className="underline">
-                    {formatShortDate(item.date)}
-                  </Link>
+                  {href ? (
+                    <Link href={href} className="underline">
+                      {formatShortDate(item.date)}
+                    </Link>
+                  ) : (
+                    formatShortDate(item.date)
+                  )}
                 </Td>
                 <Td>{TYPE_LABELS[item.itemType]}</Td>
                 <Td>{item.instructorName ?? '—'}</Td>
