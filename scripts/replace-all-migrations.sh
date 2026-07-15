@@ -27,6 +27,17 @@
 # then collides with the still-existing 'documents' bucket row on replay
 # (duplicate key on buckets_pkey). This script pre-clears that bucket (and
 # its objects) before resetting, so the replay's INSERT succeeds fresh.
+# storage.objects/buckets also reject direct SQL DELETE (storage.protect_delete()
+# trigger — "Use the Storage API instead"), so the pre-clear goes through the
+# Storage REST API with the service role key, not `supabase db query`.
+#
+# NOTE: this script is dev-only by design (see above) — prod never gets a
+# wholesale reset. When release-3 merges, prod gets a plain forward
+# `supabase db push`: none of release3_*.sql has ever touched prod (release-3
+# hasn't merged yet), so there's nothing to reconcile — it's a normal
+# not-yet-applied-migration push, same as any feature branch's migrations.
+# repair-migration-history.sh isn't needed for this; that script is for when
+# a migration's *content* already ran on prod under a different filename.
 #
 # Run from an up-to-date main checkout — this replays whatever migration
 # files are on disk right now, so a stale branch means a stale replay.
@@ -70,6 +81,12 @@ if [ -z "$DEV_SUPABASE_URL" ]; then
   exit 1
 fi
 
+SERVICE_ROLE_KEY="$( { grep -m1 '^SUPABASE_SERVICE_ROLE_KEY=' .env.local || true; } | cut -d= -f2- | sed 's/[[:space:]]*#.*$//;s/^"//;s/"$//')"
+if [ -z "$SERVICE_ROLE_KEY" ]; then
+  echo "Error: SUPABASE_SERVICE_ROLE_KEY is not set in .env.local" >&2
+  exit 1
+fi
+
 # https://<ref>.supabase.co -> <ref>
 DEV_REF="$(echo "$DEV_SUPABASE_URL" | sed -E 's#^https?://([^.]+)\.supabase\.co/?$#\1#')"
 if [ -z "$DEV_REF" ] || [ "$DEV_REF" = "$DEV_SUPABASE_URL" ]; then
@@ -101,8 +118,13 @@ run() {
 }
 
 echo "Clearing the 'documents' storage bucket (not touched by db reset --linked)..."
-run npx supabase db query --linked \
-  "delete from storage.objects where bucket_id = 'documents'; delete from storage.buckets where id = 'documents';"
+# storage.objects/buckets reject direct SQL DELETE (protect_delete trigger) —
+# must go through the Storage REST API. 404s (bucket already gone/empty) are
+# expected and harmless, hence `|| true`.
+run curl -sf -X POST "$DEV_SUPABASE_URL/storage/v1/bucket/documents/empty" \
+  -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "apikey: $SERVICE_ROLE_KEY" -o /dev/null || true
+run curl -sf -X DELETE "$DEV_SUPABASE_URL/storage/v1/bucket/documents" \
+  -H "Authorization: Bearer $SERVICE_ROLE_KEY" -H "apikey: $SERVICE_ROLE_KEY" -o /dev/null || true
 
 echo "Resetting $LINKED_REF to the current supabase/migrations/ set (schema only, no reseed)..."
 # --yes here skips the Supabase CLI's own confirmation prompt — the typed-ref
