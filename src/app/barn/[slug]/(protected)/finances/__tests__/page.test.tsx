@@ -20,8 +20,9 @@ vi.mock('@/lib/db/lesson-finances', async () => {
   }
 })
 vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
-vi.mock('@/lib/db/expenses', () => ({ getExpenseFinancialSummary: vi.fn() }))
+vi.mock('@/lib/db/expenses', () => ({ getExpenseFinancialSummary: vi.fn(), getPastDueExpenses: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
+vi.mock('@/app/actions/expenses', () => ({ resolvePastDueExpenseAction: vi.fn() }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
@@ -33,7 +34,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
-import { getExpenseFinancialSummary } from '@/lib/db/expenses'
+import { getExpenseFinancialSummary, getPastDueExpenses } from '@/lib/db/expenses'
 import FinancesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -54,6 +55,8 @@ describe('FinancesPage', () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([])
     vi.mocked(getExpenseFinancialSummary).mockReset()
     vi.mocked(getExpenseFinancialSummary).mockResolvedValue({ totalExpenses: 0, breakdown: [] })
+    vi.mocked(getPastDueExpenses).mockReset()
+    vi.mocked(getPastDueExpenses).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -789,6 +792,34 @@ describe('FinancesPage', () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getAllByText('$500.00').length).toBeGreaterThanOrEqual(1)
+  })
+
+  it('should_show_outstanding_section_when_only_past_due_expenses_exist', async () => {
+    vi.mocked(getPastDueExpenses).mockResolvedValue([
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Outstanding')).toBeDefined()
+  })
+
+  it('should_render_the_recipient_when_only_past_due_expenses_exist', async () => {
+    vi.mocked(getPastDueExpenses).mockResolvedValue([
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText(/Dr\. Smith/)).toBeDefined()
+  })
+
+  it('should_not_count_unresolved_past_due_expenses_in_outstanding_total', async () => {
+    vi.mocked(getPastDueExpenses).mockResolvedValue([
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const container = screen.getByText('Outstanding').closest('section')!
+    expect(within(container).getByText('$0.00')).toBeDefined()
   })
 
   it('should_render_info_button_on_pending_label', async () => {

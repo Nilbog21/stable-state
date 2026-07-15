@@ -2,7 +2,7 @@ import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
 import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
-import { getExpenseFinancialSummary } from '@/lib/db/expenses'
+import { getExpenseFinancialSummary, getPastDueExpenses } from '@/lib/db/expenses'
 import { formatCurrency } from '@/lib/format-currency'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
@@ -116,7 +116,7 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, expenseSummary] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, expenseSummary, pastDueExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
@@ -124,6 +124,7 @@ export default async function FinancesPage({
     getOutstandingLessons(barn.id),
     getOutstandingCharges(barn.id),
     getExpenseFinancialSummary(barn.id, startDate, endDate),
+    getPastDueExpenses(barn.id),
   ])
 
   const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges)
@@ -144,7 +145,7 @@ export default async function FinancesPage({
         Finances
       </h1>
 
-      {outstandingItems.length > 0 && (
+      {(outstandingItems.length > 0 || pastDueExpenses.length > 0) && (
         <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
           <p className="text-sm font-medium uppercase tracking-wide">
             Outstanding
@@ -154,7 +155,7 @@ export default async function FinancesPage({
             {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
           </p>
           <div className="mt-4">
-            <OutstandingTable items={outstandingItems} barnSlug={slug} />
+            <OutstandingTable items={outstandingItems} pastDueExpenses={pastDueExpenses} barnSlug={slug} />
           </div>
           <div className="mt-3">
             <Link
