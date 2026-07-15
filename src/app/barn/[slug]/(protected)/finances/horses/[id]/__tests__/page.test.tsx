@@ -4,7 +4,7 @@ import { createMockBarn, createMockMembership, createMockUser } from '@/test/fix
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/lesson-finances', () => ({ getHorseIncomeDetail: vi.fn() }))
-vi.mock('@/lib/db/expenses', () => ({ getHorseExpenseDetail: vi.fn() }))
+vi.mock('@/lib/db/expense-finances', () => ({ getHorseExpenseDetail: vi.fn() }))
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorseIncomeDetail } from '@/lib/db/lesson-finances'
-import { getHorseExpenseDetail } from '@/lib/db/expenses'
+import { getHorseExpenseDetail } from '@/lib/db/expense-finances'
 import HorseIncomePage from '../page'
 
 const mockBarn = createMockBarn({ created_at: '2026-01-01T00:00:00Z' })
