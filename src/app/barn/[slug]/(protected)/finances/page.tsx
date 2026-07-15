@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getOutstandingLessons, getOutstandingCancellationFees, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary } from '@/lib/db/expenses'
 import { formatCurrency } from '@/lib/format-currency'
@@ -116,17 +116,18 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, expenseSummary] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
     getTrainerIncomeSummary(barn.id, startDate, endDate),
     getOutstandingLessons(barn.id),
     getOutstandingCharges(barn.id),
+    getOutstandingCancellationFees(barn.id),
     getExpenseFinancialSummary(barn.id, startDate, endDate),
   ])
 
-  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges)
+  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
   const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
 
   const netIncome = collectedIncome - expenseSummary.totalExpenses

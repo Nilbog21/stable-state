@@ -1,7 +1,7 @@
 'use client'
 
 import { useRouter } from 'next/navigation'
-import { updatePaymentTypeAction } from '@/app/actions/lessons'
+import { updatePaymentTypeAction, updateCancellationFeePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../agreements/actions'
 import type { OutstandingItem } from '@/lib/db/types'
 import { Th, Td, TableActions } from '@/components/ui/Table'
@@ -12,6 +12,7 @@ const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lesson: 'Lesson',
   lease: 'Lease',
   board: 'Boarding',
+  cancellation_fee: 'Cancellation Fee',
 }
 
 function formatDate(isoString: string): string {
@@ -37,6 +38,8 @@ export function OutstandingTable({
   async function handleChange(item: OutstandingItem, value: string) {
     if (item.itemType === 'lesson') {
       await updatePaymentTypeAction(item.id, barnSlug, value || null)
+    } else if (item.itemType === 'cancellation_fee') {
+      await updateCancellationFeePaymentTypeAction(barnSlug, item.id, value || null)
     } else {
       await updateChargePaymentTypeAction(barnSlug, item.id, value || null)
     }

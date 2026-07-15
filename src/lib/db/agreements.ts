@@ -1,7 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
-import { getTransactionRows } from './transactions'
+import { getTransactionRows, getOutstandingTransactionRows } from './transactions'
 import type { Agreement, AgreementCadence, AgreementCharge, AgreementKind, OutstandingCharge, PaymentType, Role, TransactionKind } from './types'
 
 export function getAgreementStatusLabel(agreement: Pick<Agreement, 'cadence' | 'is_active'>): string {
@@ -286,19 +286,28 @@ export async function getPaidCharges(
 // ponytail: barn-wide, no role/userId scoping (unlike getOutstandingCharges) — its only caller
 // is the manager-only /barn/[slug]/agreements page. Add role-based scoping (mirroring
 // getOutstandingCharges) before reusing this from a trainer- or rider-facing surface.
+//
+// #831: agreement_charges.payment_type is gone — this reads transactions directly
+// instead (no relay RPC needed, unlike getOutstandingCharges below, since this
+// caller is already manager-only and passes transactions' own RLS).
 export async function getUnpaidAgreementIds(barnId: string, client?: SupabaseClient): Promise<Set<string>> {
   const supabase = client ?? await createClient()
   const now = new Date()
   const firstOfCurrentMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
-    .toISOString()
-    .slice(0, 10)
+
+  const rows = await getTransactionRows(
+    barnId, CHARGE_TRANSACTION_KINDS, { endDate: firstOfCurrentMonth, collected: false }, supabase
+  )
+  if (!rows.length) return new Set()
+
+  const chargeIds = [...new Set(rows.map((r) => r.agreementChargeId).filter((id): id is string => id !== null))]
+  if (!chargeIds.length) return new Set()
 
   const { data, error } = await supabase
     .from('agreement_charges')
-    .select('agreement_id')
+    .select('id, agreement_id')
     .eq('barn_id', barnId)
-    .is('payment_type', null)
-    .lt('period', firstOfCurrentMonth)
+    .in('id', chargeIds)
 
   if (error) throw error
   return new Set((data ?? []).map((row) => row.agreement_id))
@@ -345,14 +354,12 @@ export async function getOutstandingCharges(
   // `agreements!inner`) — #665 verified against live dev schema that pinning avoids a
   // PGRST200/PGRST201 "relationship not found"/"more than one relationship" error;
   // getPaidCharges above no longer uses an embed at all (#865, replaced with a follow-up
-  // `.in('id', ids)` lookup) but getOutstandingCharges is excluded from that migration
-  // (transactions SELECT is manager-only RLS; a rider/trainer-facing Outstanding read
-  // needs the SECURITY DEFINER RPC #831 adds first), so this embed stays as-is.
+  // `.in('id', ids)` lookup), but this one only needs kind/rider_id, both cheap to embed
+  // alongside the candidate fetch, so it stays as-is.
   let query = supabase
     .from('agreement_charges')
     .select('id, period, fee, agreements!agreement_charges_barn_id_agreement_id_fkey!inner(kind, rider_id)')
     .eq('barn_id', barnId)
-    .is('payment_type', null)
     .lt('period', firstOfCurrentMonth)
 
   if (riderAgreementIds) {
@@ -368,7 +375,17 @@ export async function getOutstandingCharges(
     fee: number
     agreements: { kind: AgreementKind; rider_id: string }
   }
-  const rows = (data ?? []) as unknown as OutstandingChargeRow[]
+  const candidateRows = (data ?? []) as unknown as OutstandingChargeRow[]
+  if (!candidateRows.length) return []
+
+  // #831: agreement_charges.payment_type is gone — a candidate charge is only
+  // "outstanding" once relayed as uncollected via get_outstanding_transactions
+  // (transactions SELECT is manager-only RLS, so trainer/rider callers need the relay).
+  const outstandingRows = await getOutstandingTransactionRows(
+    barnId, { chargeIds: candidateRows.map((r) => r.id) }, supabase
+  )
+  const unpaidChargeIds = new Set(outstandingRows.filter((r) => !r.collected).map((r) => r.entityId))
+  const rows = candidateRows.filter((r) => unpaidChargeIds.has(r.id))
   if (!rows.length) return []
 
   const riderIds = [...new Set(rows.map((r) => r.agreements.rider_id))]

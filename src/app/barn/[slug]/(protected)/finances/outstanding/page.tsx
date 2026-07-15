@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
-import { getOutstandingLessons, mergeOutstandingItems } from '@/lib/db/lesson-finances'
+import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/lesson-finances'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import type { OutstandingItem, Role } from '@/lib/db/types'
 import { Th, Td } from '@/components/ui/Table'
@@ -10,6 +10,7 @@ const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lesson: 'Lesson',
   lease: 'Lease',
   board: 'Boarding',
+  cancellation_fee: 'Cancellation Fee',
 }
 
 function formatDate(isoString: string): string {
@@ -30,11 +31,12 @@ export default async function OutstandingPage({
   const { user, barn, membership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
 
   const role = membership.role as Role
-  const [lessons, charges] = await Promise.all([
+  const [lessons, charges, cancellationFees] = await Promise.all([
     getOutstandingLessons(barn.id, user.id, role),
     getOutstandingCharges(barn.id, user.id, role),
+    getOutstandingCancellationFees(barn.id, user.id, role),
   ])
-  const items = mergeOutstandingItems(lessons, charges)
+  const items = mergeOutstandingItems(lessons, charges, cancellationFees)
 
   const backHref = membership.role === 'manager' ? `/barn/${slug}/finances` : `/barn/${slug}`
 
@@ -70,12 +72,14 @@ export default async function OutstandingPage({
             </tr>
           </thead>
           <tbody>
-            {items.map((item) => (
+            {items.map((item) => {
+              const lessonId = item.itemType === 'lesson' ? item.id : item.itemType === 'cancellation_fee' ? item.linkId : undefined
+              return (
               <tr key={item.id}>
                 <Td>
-                  {item.itemType === 'lesson' ? (
+                  {lessonId ? (
                     <Link
-                      href={`/barn/${slug}/lessons/${item.id}`}
+                      href={`/barn/${slug}/lessons/${lessonId}`}
                       className="underline"
                     >
                       {formatDate(item.date)}
@@ -91,7 +95,8 @@ export default async function OutstandingPage({
                   {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
                 </Td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         </div>

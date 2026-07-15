@@ -2,7 +2,7 @@
 
 import { requireMembership } from '@/lib/auth/guard'
 import { cancelLesson, collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
-import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation } from '@/lib/db/lesson-participants'
+import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, cancelRiderParticipation, updateCancellationFeePaymentType } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import type { NotificationType, PaymentType } from '@/lib/db/types'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
@@ -345,6 +345,25 @@ export async function updatePaymentTypeAction(
 
   try {
     await collectLessonPayment(lessonId, barn.id, paymentType as PaymentType | null)
+  } catch {
+    return { error: 'Failed to update payment type' }
+  }
+
+  return { error: null }
+}
+
+// collect_rider_cancellation_fee (#831) is manager-only — a cancellation fee is
+// surfaced on Outstanding for visibility to trainer/rider, but marking it paid is
+// restricted the same way mark_agreement_charge_paid is.
+export async function updateCancellationFeePaymentTypeAction(
+  barnSlug: string,
+  lessonRiderId: string,
+  paymentType: string | null
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  try {
+    await updateCancellationFeePaymentType(lessonRiderId, barn.id, paymentType as PaymentType | null)
   } catch {
     return { error: 'Failed to update payment type' }
   }
