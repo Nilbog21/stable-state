@@ -189,6 +189,8 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
     { daysOffset: -10, time: null, amount: 275, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
     { daysOffset: -5, time: null, amount: 90, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -3, time: null, amount: 65, recipient: 'Saddle Up Supply', expenseType: 'Tack', appliesToAllHorses: false, horseIndex: 2 },
+    // #872: past due (date+time already passed, amount still null) for Outstanding-resolve testing
+    { daysOffset: -2, time: '09:00:00', amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
     { daysOffset: todayOffset, time: todayTime, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: 2, time: '14:00:00', amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
   ]
@@ -543,7 +545,7 @@ async function run() {
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
   console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month; the board and lease agreements also have an unpaid charge from 2 months ago (past due, for Outstanding testing)`)
-  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet)`)
+  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet, including 1 past due for Outstanding testing)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

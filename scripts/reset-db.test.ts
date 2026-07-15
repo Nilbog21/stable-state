@@ -305,6 +305,11 @@ describe('buildExpenseSeeds', () => {
     const upcoming = seeds.find((s) => s.time === '01:30:00')
     expect(upcoming?.daysOffset).toBe(1)
   })
+
+  it('should_include_a_past_due_planned_expense_for_outstanding_testing', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.some((s) => s.daysOffset < 0 && s.time !== null && s.amount === null)).toBe(true)
+  })
 })
 
 describe('expenseDateFor', () => {
