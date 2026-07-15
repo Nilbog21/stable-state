@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
-import { getFinancialSummary, getOutstandingLessons, getOutstandingCancellationFees, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, mergeOutstandingItems, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary, getPastDueExpenses } from '@/lib/db/expenses'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'

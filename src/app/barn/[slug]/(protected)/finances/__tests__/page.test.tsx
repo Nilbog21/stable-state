@@ -13,11 +13,17 @@ vi.mock('@/lib/db/lesson-finances', async () => {
   return {
     ...actual,
     getFinancialSummary: vi.fn(),
-    getOutstandingLessons: vi.fn(),
-    getOutstandingCancellationFees: vi.fn(),
     getHorseIncomeSummary: vi.fn(),
     getRiderIncomeSummary: vi.fn(),
     getTrainerIncomeSummary: vi.fn(),
+  }
+})
+vi.mock('@/lib/db/outstanding', async () => {
+  const actual = await vi.importActual<typeof import('@/lib/db/outstanding')>('@/lib/db/outstanding')
+  return {
+    ...actual,
+    getOutstandingLessons: vi.fn(),
+    getOutstandingCancellationFees: vi.fn(),
   }
 })
 vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
@@ -33,7 +39,8 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, redirect: mockRedire
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getOutstandingCancellationFees, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreements'
 import { getExpenseFinancialSummary, getPastDueExpenses } from '@/lib/db/expenses'
 import FinancesPage from '../page'
