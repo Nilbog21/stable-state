@@ -26,7 +26,7 @@ vi.mock('@/lib/db/outstanding', async () => {
     getOutstandingCancellationFees: vi.fn(),
   }
 })
-vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
+vi.mock('@/lib/db/agreement-finances', () => ({ getOutstandingCharges: vi.fn() }))
 vi.mock('@/lib/db/expenses', () => ({ getPastDueExpenses: vi.fn() }))
 vi.mock('@/lib/db/expense-finances', () => ({ getExpenseFinancialSummary: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
@@ -42,7 +42,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
-import { getOutstandingCharges } from '@/lib/db/agreements'
+import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { getPastDueExpenses } from '@/lib/db/expenses'
 import { getExpenseFinancialSummary } from '@/lib/db/expense-finances'
 import FinancesPage from '../page'

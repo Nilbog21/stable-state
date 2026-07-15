@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 vi.mock('../lesson-finance-queries')
 vi.mock('../member-names')
 vi.mock('../horses')
-vi.mock('../agreements')
+vi.mock('../agreement-finances')
 vi.mock('../lesson-tiers')
 
 import {
@@ -35,7 +35,7 @@ import {
 } from '../lesson-finance-queries'
 import { resolveMemberNames } from '../member-names'
 import { resolveHorseNames } from '../horses'
-import { getChargesForSummary, getPaidCharges } from '../agreements'
+import { getChargesForSummary, getPaidCharges } from '../agreement-finances'
 import { getTiersByBarn } from '../lesson-tiers'
 
 describe('splitNetFee', () => {

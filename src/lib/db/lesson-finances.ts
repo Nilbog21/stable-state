@@ -8,8 +8,8 @@ import {
   getLessonJunctionRows,
   type LessonFeeRow,
 } from './lesson-finance-queries'
-import { getChargesForSummary, getPaidCharges } from './agreements'
-import type { PaidCharge } from './agreements'
+import { getChargesForSummary, getPaidCharges } from './agreement-finances'
+import type { PaidCharge } from './agreement-finances'
 import { getTiersByBarn } from './lesson-tiers'
 import type {
   FinancialSummary,
@@ -24,7 +24,7 @@ import type {
   TrainerIncomeDetailRow,
   TrainerIncomeSummary,
 } from './types'
-import type { ChargeSummaryRow } from './agreements'
+import type { ChargeSummaryRow } from './agreement-finances'
 
 export function splitNetFee(
   fee: number,

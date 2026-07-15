@@ -1,7 +1,7 @@
 /**
  * Outstanding collections read layer — past unpaid lessons, uncollected rider
  * late-cancellation fees, and the pure merge that assembles them (plus
- * `agreements.ts:getOutstandingCharges`) into the `OutstandingItem` list; split
+ * `agreement-finances.ts:getOutstandingCharges`) into the `OutstandingItem` list; split
  * out of `lesson-finances.ts`, whose income functions apply the instructor cut
  * while Outstanding never does.
  */

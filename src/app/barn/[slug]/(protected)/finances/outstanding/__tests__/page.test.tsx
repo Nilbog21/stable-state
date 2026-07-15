@@ -7,7 +7,7 @@ vi.mock('@/lib/db/outstanding', async () => {
   const actual = await vi.importActual<typeof import('@/lib/db/outstanding')>('@/lib/db/outstanding')
   return { ...actual, getOutstandingLessons: vi.fn(), getOutstandingCancellationFees: vi.fn() }
 })
-vi.mock('@/lib/db/agreements', () => ({ getOutstandingCharges: vi.fn() }))
+vi.mock('@/lib/db/agreement-finances', () => ({ getOutstandingCharges: vi.fn() }))
 
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
@@ -16,7 +16,7 @@ vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
-import { getOutstandingCharges } from '@/lib/db/agreements'
+import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import OutstandingPage from '../page'
 
 const mockBarn = createMockBarn()
