@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients } from '../notifications'
+import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients } from '../notifications'
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -304,49 +304,6 @@ describe('deleteNotificationByType', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(mockFrom).toHaveBeenCalledWith('notifications')
-  })
-})
-
-describe('markNotificationRead', () => {
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  it('should_update_read_at_for_notification', async () => {
-    const mockEq = vi.fn().mockResolvedValue({ error: null })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
-
-    await markNotificationRead('notif-1')
-
-    expect(mockUpdate).toHaveBeenCalledWith({ read_at: expect.any(String) })
-  })
-
-  it('should_filter_by_notification_id', async () => {
-    const mockEq = vi.fn().mockResolvedValue({ error: null })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
-
-    await markNotificationRead('notif-99')
-
-    expect(mockEq).toHaveBeenCalledWith('id', 'notif-99')
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('update failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: dbError }),
-        }),
-      }),
-    } as any)
-
-    await expect(markNotificationRead('notif-1')).rejects.toThrow('update failed')
   })
 })
 

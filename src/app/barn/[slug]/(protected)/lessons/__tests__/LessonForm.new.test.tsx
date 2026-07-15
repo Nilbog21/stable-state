@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
 import { createMockLessonTier, createMockHorse } from '@/test/fixtures'
-import { LessonForm, computeUnpaidWarn } from '../../LessonForm'
+import { LessonForm, computeUnpaidWarn } from '../LessonForm'
 
 afterEach(cleanup)
 
