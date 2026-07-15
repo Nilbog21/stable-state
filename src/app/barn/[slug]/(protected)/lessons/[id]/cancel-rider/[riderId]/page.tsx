@@ -3,7 +3,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { cancelRiderParticipationAction } from '@/app/actions/lessons'
+import { cancelRiderParticipationAction } from '@/app/actions/lesson-cancellation'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible, isInstructorOfLesson } from '@/lib/lesson-authorization'
 
