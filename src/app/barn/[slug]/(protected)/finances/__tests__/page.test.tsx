@@ -833,8 +833,7 @@ describe('FinancesPage', () => {
   it('should_render_info_button_on_net_income_label', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const netSection = screen.getByText('Net Income').closest('section')
-    expect(netSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /Net Income/ })).toBeDefined()
   })
 
   it('should_display_net_as_collected_minus_total_expenses', async () => {
@@ -992,15 +991,19 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 50, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const pendingSection = screen.getByText(/pending income/i).closest('section')
-    expect(pendingSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /pending income/i })).toBeDefined()
   })
 
   it('should_render_info_button_on_gross_income_label', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const collectedSection = screen.getByText('Gross Income').closest('section')
-    expect(collectedSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /Gross Income/ })).toBeDefined()
+  })
+
+  it('should_render_info_button_on_total_expenses_label', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /Total Expenses/ })).toBeDefined()
   })
 
   it('should_render_separator_before_tab_bar', async () => {

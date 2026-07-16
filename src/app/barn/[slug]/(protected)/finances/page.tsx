@@ -16,8 +16,8 @@ import { ByRiderTable } from './ByRiderTable'
 import { ByInstructorTable } from './ByInstructorTable'
 import { Th, Td } from '@/components/ui/Table'
 import { Pill } from '@/components/ui/Pill'
-import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
+import { SummaryStatCard } from './SummaryStatCard'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
 type Tab = typeof VALID_TABS[number]
@@ -142,53 +142,30 @@ export default async function FinancesPage({
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="p-4">
-          <section>
-            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Gross Income
-              <InfoPopover text="Lessons and agreement charges collected this month, net of the per-lesson instructor cut" />
-            </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {formatCurrency(collectedIncome)}
-            </p>
-          </section>
-        </Card>
+        <SummaryStatCard
+          label="Gross Income"
+          value={formatCurrency(collectedIncome)}
+          infoText="Lessons and agreement charges collected this month, net of the per-lesson instructor cut"
+        />
 
-        <Card className="p-4">
-          <section>
-            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Total Expenses
-            </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {formatCurrency(expenseSummary.totalExpenses)}
-            </p>
-          </section>
-        </Card>
+        <SummaryStatCard
+          label="Total Expenses"
+          value={formatCurrency(expenseSummary.totalExpenses)}
+          infoText="Expenses and Instructor fees"
+        />
 
-        <Card className="p-4">
-          <section>
-            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Net Income
-              <InfoPopover text="Gross Income minus Total Expenses" />
-            </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {formatCurrency(netIncome)}
-            </p>
-          </section>
-        </Card>
+        <SummaryStatCard
+          label="Net Income"
+          value={formatCurrency(netIncome)}
+          infoText="Gross Income minus Total Expenses"
+        />
 
         {isCurrentMonth && (
-          <Card className="p-4">
-            <section>
-              <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Pending income
-                <InfoPopover text="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut" />
-              </p>
-              <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                {formatCurrency(pendingIncome)}
-              </p>
-            </section>
-          </Card>
+          <SummaryStatCard
+            label="Pending income"
+            value={formatCurrency(pendingIncome)}
+            infoText="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut"
+          />
         )}
       </div>
 
