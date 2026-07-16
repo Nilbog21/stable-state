@@ -14,9 +14,9 @@ export function formatOutstandingNotification(count: number, total: number): { t
   }
 }
 
-export function formatPastDueExpensesNotification(count: number): { title: string; body: string } {
+export function formatOutstandingExpensesNotification(count: number): { title: string; body: string } {
   return {
-    title: `${count} past-due expense${count === 1 ? '' : 's'}`,
+    title: `${count} outstanding expense${count === 1 ? '' : 's'}`,
     body: '',
   }
 }
@@ -72,7 +72,7 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
             await deleteNotificationByType(userId, barn.id, 'expense_past_due', supabase)
           } catch (err) {
             hadErrors = true
-            console.error(`Failed to clear past-due expense notification for ${userId} in barn ${barn.id}:`, (err as Error).message)
+            console.error(`Failed to clear outstanding expense notification for ${userId} in barn ${barn.id}:`, (err as Error).message)
           }
         }
       } else {
@@ -82,7 +82,7 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
         const expenseErrorCount = await upsertNotificationsForRecipients(
           supabase,
           expenseRecipients,
-          ({ count }) => formatPastDueExpensesNotification(count),
+          ({ count }) => formatOutstandingExpensesNotification(count),
           'expense_past_due',
           () => `/barn/${barn.slug}/finances`
         )

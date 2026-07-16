@@ -194,7 +194,9 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] The **Outstanding Expenses** section (renamed from "Needs an amount", below Outstanding Income) shows a bold total above the list, summing only the expenses in it that have a known amount
 - [ ] **Outstanding Expenses** lists the seeded past-due planned expense as a single line (date — recipient — expense type) — confirm it does **not** appear inside the Outstanding Income table itself
 - [ ] Tap the ⓘ info icon on **Outstanding Expenses** → shows explanatory text that an entry is listed for a missing amount, a missing payment type, or both
-- [ ] Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page; enter an amount (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses** (now contributing its amount to the bold total instead of $0) and also shows up under Total Expenses/By Horse for its month
+- [ ] Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page
+- [ ] Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**, now contributing its amount to the bold total instead of $0
+- [ ] That same expense also shows up under Total Expenses/By Horse for its month
 - [ ] Now set a Payment Type on that same expense and save → it disappears from **Outstanding Expenses** entirely
 - [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, leases/boarding charges, and cancellation fees, each lesson/cancellation-fee row linking to its lesson — confirm outstanding expenses do **not** appear on this page (no Outstanding Expenses equivalent there)
 - [ ] Month navigation `←`/`→` works and updates `?month=YYYY-MM`; navigate to the previous month and see the past lesson from Phase 3 (and seeded past-month data) reflected
