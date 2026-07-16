@@ -86,4 +86,23 @@ describe('ByInstructorTable', () => {
     const { container } = renderTable()
     expect(container.querySelectorAll('tbody tr')).toHaveLength(2)
   })
+
+  it('should_render_a_dash_for_gross_and_expenses_when_grossincome_is_null', () => {
+    renderTable({ rows: [{ trainerId: 't-3', trainerName: 'Nil', totalIncome: 40, grossIncome: null }] })
+    const row = screen.getByText('Nil').closest('tr')!
+    const cells = Array.from(row.querySelectorAll('td')).map((td) => td.textContent)
+    expect(cells).toEqual(['Nil', '—', '—', '$40.00'])
+  })
+
+  it('should_sort_a_null_grossincome_row_before_real_gross_rows_when_gross_header_clicked', () => {
+    const { container } = renderTable({ rows: [...rows, { trainerId: 't-3', trainerName: 'Nil', totalIncome: 40, grossIncome: null }] })
+    fireEvent.click(screen.getByRole('columnheader', { name: /^Gross/ }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Nil', 'Amy', 'Zane'])
+  })
+
+  it('should_sort_a_null_grossincome_row_before_real_rows_when_expenses_header_clicked', () => {
+    const { container } = renderTable({ rows: [...rows, { trainerId: 't-3', trainerName: 'Nil', totalIncome: 40, grossIncome: null }] })
+    fireEvent.click(screen.getByRole('columnheader', { name: /^Expenses/ }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Nil', 'Amy', 'Zane'])
+  })
 })

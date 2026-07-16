@@ -70,6 +70,13 @@ describe('ByTierTable', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
+  it('should_sort_a_null_price_tier_before_priced_tiers_when_price_header_clicked', () => {
+    const withCustom = [...rows, { tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100, instructorCut: 25 }]
+    const { container } = render(<ByTierTable rows={withCustom} gross={gross} expenses={expenses} net={net} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: /^Price/ }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Custom', 'Standard', 'Premium'])
+  })
+
   it('should_not_render_a_non_lesson_income_row_in_the_body', () => {
     renderTable()
     expect(screen.queryByText('Non-lesson income')).toBeNull()
