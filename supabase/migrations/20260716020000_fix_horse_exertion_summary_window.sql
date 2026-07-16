@@ -4,9 +4,13 @@
 -- the two numbers measured different things, so the Available section's sort
 -- order looked scrambled against the bar it sits next to. Realigns this
 -- function's window to the exact same BETWEEN clause get_horse_projected_exhaustion
--- already uses, so the two can't drift apart again. Same (uuid, timestamptz)
--- signature, so CREATE OR REPLACE keeps the existing grants intact.
-CREATE OR REPLACE FUNCTION get_horse_exertion_summary(p_barn_id uuid, p_target_date timestamptz)
+-- already uses, so the two can't drift apart again. The p_since -> p_target_date
+-- rename requires DROP + CREATE (Postgres rejects a parameter rename via CREATE
+-- OR REPLACE), so grants are re-applied below, mirroring the same DROP+CREATE
+-- pattern release3_functions.sql/release3_rls.sql already used for this function.
+DROP FUNCTION public.get_horse_exertion_summary(uuid, timestamptz);
+
+CREATE FUNCTION get_horse_exertion_summary(p_barn_id uuid, p_target_date timestamptz)
 RETURNS TABLE (
   id                            uuid,
   name                          text,
@@ -57,3 +61,6 @@ BEGIN
   ORDER BY h.name;
 END;
 $$;
+
+REVOKE ALL ON FUNCTION get_horse_exertion_summary(uuid, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_horse_exertion_summary(uuid, timestamptz) TO authenticated;
