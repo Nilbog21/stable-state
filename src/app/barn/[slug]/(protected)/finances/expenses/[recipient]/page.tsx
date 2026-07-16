@@ -13,7 +13,8 @@ export default async function RecipientExpensePage({
   params: Promise<{ slug: string; recipient: string }>
   searchParams?: Promise<{ month?: string }>
 }) {
-  const { slug, recipient } = await params
+  const { slug, recipient: rawRecipient } = await params
+  const recipient = decodeURIComponent(rawRecipient)
   const { barn } = await requireMembership(slug, ['manager'])
 
   const { month: monthParam } = await searchParams

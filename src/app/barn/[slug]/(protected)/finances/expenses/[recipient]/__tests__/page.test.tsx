@@ -136,6 +136,14 @@ describe('RecipientExpensePage', () => {
     expect(screen.getByRole('link', { name: /back/i }).getAttribute('href')).toContain('tab=recipient')
   })
 
+  it('should_decode_url_encoded_recipient_param', async () => {
+    const encodedParams = Promise.resolve({ slug: 'green-acres', recipient: encodeURIComponent('Dr. Smith & Sons') })
+    const jsx = await RecipientExpensePage({ params: encodedParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(getRecipientExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'Dr. Smith & Sons', expect.any(Date), expect.any(Date))
+    expect(screen.getByRole('heading', { name: 'Dr. Smith & Sons' })).toBeDefined()
+  })
+
   it('should_render_rows_in_date_ascending_order', async () => {
     vi.mocked(getRecipientExpenseDetail).mockResolvedValue({
       rows: [
