@@ -284,7 +284,7 @@ describe('createExpense', () => {
     expect(mockRpc).toHaveBeenCalledWith('create_expense_with_horses', {
       p_barn_id: 'barn-1', p_expense_date: '2026-07-01', p_recipient: 'Dr. Smith', p_applies_to_all_horses: false,
       p_expense_time: '14:00', p_amount: 100, p_expense_type: 'Farrier', p_notes: 'note', p_horse_ids: ['horse-1'],
-      p_payment_type: null,
+      p_payment_type: null, p_occurred_at: null,
     })
   })
 
@@ -390,6 +390,29 @@ describe('createExpense', () => {
 
     expect(mockRpc.mock.calls[0][1].p_payment_type).toBeNull()
   })
+
+  it('should_forward_occurred_at_to_rpc', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createExpense('barn-1', {
+      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false,
+      occurredAt: '2026-07-01T18:00:00.000Z',
+    })
+
+    expect(mockRpc.mock.calls[0][1].p_occurred_at).toBe('2026-07-01T18:00:00.000Z')
+  })
+
+  it('should_default_occurred_at_to_null_when_omitted', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createExpense('barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+
+    expect(mockRpc.mock.calls[0][1].p_occurred_at).toBeNull()
+  })
 })
 
 describe('updateExpense', () => {
@@ -410,7 +433,7 @@ describe('updateExpense', () => {
     expect(mockRpc).toHaveBeenCalledWith('update_expense_with_horses', {
       p_expense_id: 'expense-1', p_barn_id: 'barn-1', p_expense_date: '2026-07-01', p_recipient: 'New Vet',
       p_applies_to_all_horses: false, p_expense_time: '14:00', p_amount: 100, p_expense_type: 'Farrier',
-      p_notes: 'note', p_horse_ids: ['horse-1'], p_payment_type: null,
+      p_notes: 'note', p_horse_ids: ['horse-1'], p_payment_type: null, p_occurred_at: null,
     })
   })
 
@@ -516,6 +539,29 @@ describe('updateExpense', () => {
     await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
 
     expect(mockRpc.mock.calls[0][1].p_payment_type).toBeNull()
+  })
+
+  it('should_forward_occurred_at_to_rpc', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateExpense('expense-1', 'barn-1', {
+      expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false,
+      occurredAt: '2026-07-01T18:00:00.000Z',
+    })
+
+    expect(mockRpc.mock.calls[0][1].p_occurred_at).toBe('2026-07-01T18:00:00.000Z')
+  })
+
+  it('should_default_occurred_at_to_null_when_omitted', async () => {
+    const expense = createMockHorseExpense()
+    const mockRpc = vi.fn().mockResolvedValue({ data: expense, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateExpense('expense-1', 'barn-1', { expenseDate: '2026-07-01', recipient: 'Dr. Smith', appliesToAllHorses: false })
+
+    expect(mockRpc.mock.calls[0][1].p_occurred_at).toBeNull()
   })
 })
 
