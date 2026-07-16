@@ -1,7 +1,7 @@
-// Ledger-backed expense financial reporting (per-horse splits for the Finances page and
-// horse drill-down), reading expense-kind transactions rows — split out of expenses.ts,
-// which keeps the horse_expenses record CRUD, mirroring the lessons.ts/lesson-finances.ts
-// seam.
+// Ledger-backed expense financial reporting (per-horse splits and per-recipient/"By Paid
+// To" breakdowns for the Finances page and their drill-downs), reading expense-kind
+// transactions rows — split out of expenses.ts, which keeps the horse_expenses record
+// CRUD, mirroring the lessons.ts/lesson-finances.ts seam.
 
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
@@ -181,8 +181,8 @@ export async function getHorseExpenseDetail(
 }
 
 // #949: recipient is free text on horse_expenses (no FK/id), so this breakdown groups by
-// the raw recipient string itself rather than a resolved entity id, unlike the horse/rider/
-// trainer breakdowns above.
+// the raw recipient string itself rather than a resolved entity id, unlike the horse
+// breakdown above or the rider/trainer breakdowns in lesson-finances.ts.
 export async function getRecipientExpenseSummary(
   barnId: string,
   startDate: Date,
@@ -211,9 +211,10 @@ export async function getRecipientExpenseDetail(
   const supabase = await createClient()
   const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
 
-  // recipient and expense_type are resolved together from the same horse_expenses lookup
-  // row (see fetchExpenseTransactionsInRange), so a non-null recipient match guarantees a
-  // non-null expense_type too.
+  // recipient and expense_type are both NOT NULL columns on horse_expenses and are always
+  // resolved together from the same lookup row (see fetchExpenseTransactionsInRange's
+  // detailsByExpenseId), so a non-null recipient match structurally guarantees a non-null
+  // expense_type too — this isn't a coincidental invariant that could drift independently.
   const rows: RecipientExpenseDetailRow[] = expenses
     .filter((e) => e.recipient === recipient)
     .map((e) => ({ expenseId: e.id, expenseDate: e.expense_date, expenseType: e.expense_type as string, amount: e.amount }))

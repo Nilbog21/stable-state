@@ -392,6 +392,18 @@ describe('FinancesPage', () => {
     render(jsx)
     const link = screen.getByRole('link', { name: 'Dr. Smith' })
     expect(link.className).toContain('underline')
+  })
+
+  it('should_not_style_recipient_name_link_as_hover_only_underline', async () => {
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([
+      { recipient: 'Dr. Smith', totalExpenses: 120 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Dr. Smith' })
     expect(link.className).not.toContain('hover:underline')
   })
 
