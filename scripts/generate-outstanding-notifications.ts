@@ -2,7 +2,7 @@ import { fileURLToPath } from 'url'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getOutstandingLessons } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
-import { getPastDueExpenses } from '@/lib/db/expenses'
+import { getOutstandingExpenses } from '@/lib/db/expenses'
 import { deleteNotificationByType, upsertNotificationsForRecipients } from '@/lib/db/notifications'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { mustSucceed, runCronJob } from './script-utils'
@@ -65,8 +65,8 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
         if (errorCount > 0) hadErrors = true
       }
 
-      const pastDueExpenses = await getPastDueExpenses(barn.id, supabase)
-      if (pastDueExpenses.length === 0) {
+      const outstandingExpenses = await getOutstandingExpenses(barn.id, supabase)
+      if (outstandingExpenses.length === 0) {
         for (const userId of managerUserIds) {
           try {
             await deleteNotificationByType(userId, barn.id, 'expense_past_due', supabase)
@@ -77,7 +77,7 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
         }
       } else {
         const expenseRecipients = new Map(
-          managerUserIds.map((userId) => [`${userId}:${barn.id}`, { userId, barnId: barn.id, payload: { count: pastDueExpenses.length } }])
+          managerUserIds.map((userId) => [`${userId}:${barn.id}`, { userId, barnId: barn.id, payload: { count: outstandingExpenses.length } }])
         )
         const expenseErrorCount = await upsertNotificationsForRecipients(
           supabase,
