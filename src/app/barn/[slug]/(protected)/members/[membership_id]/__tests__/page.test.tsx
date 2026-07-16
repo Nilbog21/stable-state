@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockProfile, createMockAgreement, createMockUser } from '@/test/fixtures'
 import type { TrainerDocument, RiderDocument } from '@/lib/db/types'
@@ -23,6 +23,7 @@ vi.mock('../actions', () => ({
   updateContactInfoAction: vi.fn(),
   setCanInstructAction: vi.fn(),
   revokeInviteTokenAction: vi.fn(),
+  removeMemberAction: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -37,7 +38,7 @@ import { getProfileById } from '@/lib/db/profiles'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
 import { resolveHorseNames } from '@/lib/db/horses'
-import { deleteDocumentAction, revokeInviteTokenAction } from '../actions'
+import { deleteDocumentAction, revokeInviteTokenAction, removeMemberAction } from '../actions'
 import MemberDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -806,6 +807,60 @@ describe('MemberDetailPage', () => {
     })
   })
 
+  describe('Remove member button', () => {
+    afterEach(() => {
+      vi.restoreAllMocks()
+    })
+
+    it('should_show_remove_button_for_manager_viewing_other_member', async () => {
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByRole('button', { name: /^remove$/i })).toBeDefined()
+    })
+
+    it('should_not_show_remove_button_for_manager_viewing_own_page', async () => {
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(managerMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-mgr', first_name: 'Meg', last_name: 'Manager' }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr') })
+      render(jsx)
+      expect(screen.queryByRole('button', { name: /^remove$/i })).toBeNull()
+    })
+
+    it('should_not_show_remove_button_for_trainer_viewing_other_member', async () => {
+      mockRequireMembershipAs(trainerMembership)
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-target-rdr', first_name: 'Carol', last_name: 'Rider' }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-rdr') })
+      render(jsx)
+      expect(screen.queryByRole('button', { name: /^remove$/i })).toBeNull()
+    })
+
+    it('should_not_show_remove_button_for_rider_viewing_other_member', async () => {
+      mockRequireMembershipAs(riderMembership)
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetTrainerMembership)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByRole('button', { name: /^remove$/i })).toBeNull()
+    })
+
+    it('should_call_removeMemberAction_when_remove_confirmed', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(true)
+      vi.mocked(removeMemberAction).mockResolvedValue(undefined)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      fireEvent.click(screen.getByRole('button', { name: /^remove$/i }))
+      expect(removeMemberAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', expect.any(FormData))
+    })
+
+    it('should_not_call_removeMemberAction_when_remove_cancelled', async () => {
+      vi.spyOn(window, 'confirm').mockReturnValue(false)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      fireEvent.click(screen.getByRole('button', { name: /^remove$/i }))
+      expect(removeMemberAction).not.toHaveBeenCalled()
+    })
+  })
+
   describe('Manage member section', () => {
     const unclaimedTargetMembership = createMockMembership({
       id: 'mem-target-trn', user_id: null as any, barn_id: 'barn-1', role: 'trainer', invite_token: 'tok-abc',
@@ -851,13 +906,14 @@ describe('MemberDetailPage', () => {
       expect(screen.queryByText(/this is an unlinked member/i)).toBeNull()
     })
 
-    it('should_render_manage_member_section_immediately_after_heading', async () => {
+    it('should_render_manage_member_section_immediately_after_header_row', async () => {
       vi.mocked(getMembershipByIdForBarn).mockResolvedValue(unclaimedTargetMembership)
       vi.mocked(getProfileById).mockResolvedValue(unclaimedTargetProfile)
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
       const heading = screen.getByRole('heading', { name: /bob trainer/i })
-      expect(heading.nextElementSibling?.textContent).toMatch(/unlinked member/i)
+      const headerRow = heading.parentElement as HTMLElement
+      expect(headerRow.nextElementSibling?.textContent).toMatch(/unlinked member/i)
     })
 
     it('should_call_revokeInviteTokenAction_when_revoke_form_submits', async () => {
