@@ -1,17 +1,21 @@
--- Consolidated release-3 schema squash (#658): enums, tables, columns,
--- constraints, and indexes added on `release/release-3` since it branched off
--- `main` post-#657's baseline. Replaces the 90 files now archived at
--- supabase/migrations_archive/ (history kept there, not deleted). Content was
--- derived by replaying the full archived history on a throwaway Postgres
--- instance and diffing the result against these 4 consolidated files with
--- migra until the diff was empty — see supabase/migrations_archive/README.md.
+-- Consolidated release-3 schema squash, round 2 (#972): enums, tables,
+-- columns, constraints, and indexes added on `release/release-3` since it
+-- branched off `main` post-#657's baseline. Supersedes the first squash
+-- (#658, `20260715075708-711_release3_*.sql`, deleted outright — they only
+-- lived one day) plus 6 further fix migrations that landed on top of it
+-- while resolving manual-QA test failures: #935, #936, #937, #941, #955,
+-- #969 (now archived at supabase/migrations_archive/). Content was derived
+-- by replaying the full prior history (baseline + #658 delta + the 6 fixes)
+-- on a throwaway Postgres instance and diffing the result against these 4
+-- consolidated files with migra until the diff was empty — see
+-- supabase/migrations_archive/README.md.
 --
 -- This is a DELTA on top of the (untouched, out-of-scope) v2.0.2 baseline, not
 -- a from-scratch snapshot: several columns/constraints below replace ones the
 -- baseline already created on tables that carry real historical data (prod
 -- hasn't run any release-3 migration yet). Two backfills that must run against
 -- that pre-existing data — before columns they still depend on are dropped —
--- live in the companion 20260715075709_release3_backfills.sql, sequenced
+-- live in the companion 20260716005942_release3_backfills.sql, sequenced
 -- immediately after this file.
 
 -- barn_memberships: replace the baseline's plain UNIQUE(user_id, barn_id) (which used
@@ -47,6 +51,10 @@ ALTER TABLE public.barns ADD COLUMN default_instructor_cut NUMERIC NOT NULL DEFA
 ALTER TABLE public.barns ADD COLUMN exhaustion_threshold_high INT NOT NULL DEFAULT 11 CHECK (exhaustion_threshold_high >= 0);
 ALTER TABLE public.barns ADD COLUMN exhaustion_threshold_moderate INT NOT NULL DEFAULT 5 CHECK (exhaustion_threshold_moderate >= 0);
 ALTER TABLE public.barns ADD CONSTRAINT barns_exhaustion_threshold_order CHECK (exhaustion_threshold_moderate < exhaustion_threshold_high);
+-- #955: lets server-side comparisons with no request/viewer context (cron jobs,
+-- dashboard SSR) resolve against the barn's own timezone instead of guessing.
+-- Display of real instants (lesson_at) is unaffected — that stays viewer-local.
+ALTER TABLE public.barns ADD COLUMN timezone TEXT NOT NULL DEFAULT 'America/New_York';
 
 -- horses
 ALTER TABLE public.horses ADD COLUMN deactivated_at TIMESTAMPTZ;

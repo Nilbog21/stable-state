@@ -1,7 +1,12 @@
--- Consolidated release-3 functions squash (#658): final body only for every
--- function/RPC added or changed since branching off `main` post-#657. No GRANT/
--- REVOKE statements here — those live in the companion release3_rls.sql, matching
--- the baseline's own schema/functions/rls split convention. Three functions
+-- Consolidated release-3 functions squash, round 2 (#972): final body only for
+-- every function/RPC added or changed since branching off `main` post-#657,
+-- folding in 6 further fix migrations on top of the first squash (#658):
+-- #935 (create_expense_with_horses/update_expense_with_horses gain
+-- p_occurred_at), #936 (get_horse_exertion_summary's window realigned to
+-- ±3 days), #937 (new get_lesson_horse_exertion_levels), #941 (new
+-- delete_expense_with_transactions). No GRANT/REVOKE statements here — those
+-- live in the companion release3_rls.sql, matching the baseline's own
+-- schema/functions/rls split convention. Three functions
 -- (create_lesson_with_participants, update_lesson_with_participants,
 -- get_horse_exertion_summary) already existed in the baseline with a different
 -- signature/return type, so those are explicitly DROPped first; create_managed_member
@@ -255,7 +260,11 @@ $$;
 
 DROP FUNCTION public.get_horse_exertion_summary(uuid, timestamptz);
 
-CREATE FUNCTION get_horse_exertion_summary(p_barn_id uuid, p_since timestamptz)
+-- #936: window realigned to the exact ±3-day BETWEEN clause
+-- get_horse_projected_exhaustion already uses (previously an unbounded
+-- forward `lesson_at >= p_since`), so the horses page's Available-section
+-- sort order can't drift from what its ExhaustionBar displays.
+CREATE FUNCTION get_horse_exertion_summary(p_barn_id uuid, p_target_date timestamptz)
 RETURNS TABLE (
   id                            uuid,
   name                          text,
@@ -297,7 +306,7 @@ BEGIN
     FROM lesson_horses lh
     JOIN lessons l ON l.id = lh.lesson_id
                    AND l.barn_id = p_barn_id
-                   AND l.lesson_at >= p_since
+                   AND l.lesson_at BETWEEN p_target_date - INTERVAL '3 days' AND p_target_date + INTERVAL '3 days'
                    AND l.cancelled_at IS NULL
     WHERE lh.barn_id = p_barn_id
     GROUP BY lh.horse_id
@@ -789,7 +798,12 @@ CREATE FUNCTION create_expense_with_horses(
   p_expense_type          text    DEFAULT 'Unspecified',
   p_notes                 text    DEFAULT NULL,
   p_horse_ids             uuid[]  DEFAULT NULL,
-  p_payment_type          payment_type_enum DEFAULT NULL
+  p_payment_type          payment_type_enum DEFAULT NULL,
+  -- #935: lets a caller pass a real local-aware instant instead of the naive
+  -- (p_expense_date + p_expense_time)::timestamptz cast below, which is
+  -- interpreted in the session's timezone (UTC) rather than the user's own.
+  -- Defaults to NULL, in which case that exact naive derivation is used.
+  p_occurred_at           timestamptz DEFAULT NULL
 )
 RETURNS horse_expenses
 LANGUAGE plpgsql
@@ -814,7 +828,7 @@ BEGIN
 
   PERFORM sync_expense_transaction(
     p_barn_id, v_expense.id, p_amount,
-    (p_expense_date + COALESCE(p_expense_time, '00:00:00'::time))::timestamptz,
+    COALESCE(p_occurred_at, (p_expense_date + COALESCE(p_expense_time, '00:00:00'::time))::timestamptz),
     p_payment_type
   );
 
@@ -833,7 +847,9 @@ CREATE FUNCTION update_expense_with_horses(
   p_expense_type          text    DEFAULT 'Unspecified',
   p_notes                 text    DEFAULT NULL,
   p_horse_ids             uuid[]  DEFAULT NULL,
-  p_payment_type          payment_type_enum DEFAULT NULL
+  p_payment_type          payment_type_enum DEFAULT NULL,
+  -- #935: see create_expense_with_horses above.
+  p_occurred_at           timestamptz DEFAULT NULL
 )
 RETURNS horse_expenses
 LANGUAGE plpgsql
@@ -872,11 +888,41 @@ BEGIN
 
   PERFORM sync_expense_transaction(
     p_barn_id, p_expense_id, p_amount,
-    (p_expense_date + COALESCE(p_expense_time, '00:00:00'::time))::timestamptz,
+    COALESCE(p_occurred_at, (p_expense_date + COALESCE(p_expense_time, '00:00:00'::time))::timestamptz),
     p_payment_type
   );
 
   RETURN v_expense;
+END;
+$$;
+
+-- #941: mirrors delete_lesson_with_transactions for the single 'expense'
+-- transaction kind (expenses have no instructor_payout-equivalent second
+-- row). An uncollected expense transaction row is always deleted outright
+-- first (closes the gap where ON DELETE SET NULL would otherwise leave a
+-- permanently-uncollected, untraceable orphan). A collected row is only
+-- deleted when p_delete_collected is true; the default keeps it, relying on
+-- the table's own ON DELETE SET NULL (expense_id) FK once the horse_expenses
+-- row is deleted below (expense_horses cascades via its own ON DELETE CASCADE).
+CREATE FUNCTION public.delete_expense_with_transactions(
+  p_expense_id uuid, p_barn_id uuid, p_delete_collected boolean DEFAULT false
+) RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NOT auth_is_barn_manager(p_barn_id) THEN
+    RAISE EXCEPTION 'not_authorized';
+  END IF;
+
+  DELETE FROM transactions
+  WHERE expense_id = p_expense_id AND barn_id = p_barn_id AND kind = 'expense' AND collected = false;
+
+  IF p_delete_collected THEN
+    DELETE FROM transactions
+    WHERE expense_id = p_expense_id AND barn_id = p_barn_id AND kind = 'expense';
+  END IF;
+
+  DELETE FROM horse_expenses WHERE id = p_expense_id AND barn_id = p_barn_id;
 END;
 $$;
 
@@ -981,6 +1027,29 @@ AS $$
       OR public.auth_is_barn_trainer(p_barn_id)
       OR public.auth_is_enrolled_rider(t.lesson_id, p_barn_id)
     );
+$$;
+
+-- #937 review follow-up: lesson_horses has a table-wide GRANT SELECT to
+-- authenticated and its rider RLS policy is row-level only (checks
+-- enrollment, not columns) — Postgres RLS can't restrict columns, so a
+-- rider's own session could read exertion_level directly via PostgREST even
+-- though the app never selects it for that role. The table-wide SELECT grant
+-- is narrowed to every column except exertion_level (see release3_rls.sql),
+-- making this the only way to read that column at all.
+CREATE FUNCTION get_lesson_horse_exertion_levels(p_lesson_id uuid, p_barn_id uuid)
+RETURNS TABLE (horse_id uuid, exertion_level smallint)
+LANGUAGE plpgsql STABLE SECURITY DEFINER SET search_path = public
+AS $$
+BEGIN
+  IF NOT (auth_is_barn_manager(p_barn_id) OR auth_is_barn_trainer(p_barn_id)) THEN
+    RAISE EXCEPTION 'not_authorized';
+  END IF;
+
+  RETURN QUERY
+  SELECT lh.horse_id, lh.exertion_level
+  FROM lesson_horses lh
+  WHERE lh.lesson_id = p_lesson_id AND lh.barn_id = p_barn_id;
+END;
 $$;
 
 -- Transactions ledger: rider/whole-lesson cancellation fees
