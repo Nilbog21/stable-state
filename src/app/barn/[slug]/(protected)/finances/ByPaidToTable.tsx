@@ -40,9 +40,9 @@ export function ByPaidToTable({
         <thead>
           <tr>
             <SortableTh sortKey="recipient" label="Recipient" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh label="Gross" />
-            <SortableTh sortKey="totalExpenses" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh label="Net" />
+            <SortableTh label="Gross" infoText="No lesson or agreement income is ever paid directly to a recipient" />
+            <SortableTh sortKey="totalExpenses" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This recipient's total paid expenses this month" />
+            <SortableTh label="Net" infoText="A recipient has no income to net against, so this is always blank" />
           </tr>
         </thead>
         <tbody>
