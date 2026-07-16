@@ -42,6 +42,10 @@ function buildTrainerOptions(lessons: LessonWithDetails[]): { id: string; name: 
   return [...map.entries()].map(([id, name]) => ({ id, name }))
 }
 
+function buildTierOptions(lessons: LessonWithDetails[]): string[] {
+  return [...new Set(lessons.map((l) => l.tier_name))]
+}
+
 export default async function LessonsPage({
   params,
   searchParams = Promise.resolve({}),
@@ -70,7 +74,7 @@ export default async function LessonsPage({
 
   const { filter: filterParam, id: filterId } = await searchParams
   const filter =
-    filterParam === 'mine' || filterParam === 'all' || filterParam === 'trainer' || filterParam === 'rider' || filterParam === 'horse'
+    filterParam === 'mine' || filterParam === 'all' || filterParam === 'trainer' || filterParam === 'rider' || filterParam === 'horse' || filterParam === 'tier'
       ? filterParam
       : null
 
@@ -88,6 +92,8 @@ export default async function LessonsPage({
     lessons = allLessons.filter((l) => l.rider_ids.includes(filterId))
   } else if (effectiveFilter === 'horse' && filterId) {
     lessons = allLessons.filter((l) => l.horse_ids.includes(filterId))
+  } else if (effectiveFilter === 'tier' && filterId) {
+    lessons = allLessons.filter((l) => l.tier_name === filterId)
   }
   const canCreateLesson = isManager || isTrainer
 
@@ -99,6 +105,7 @@ export default async function LessonsPage({
   const riderOptions = isManager || isTrainer ? buildRiderOptions(allLessons) : []
   const trainerOptions = buildTrainerOptions(allLessons)
   const horseOptions = buildHorseOptions(allLessons)
+  const tierOptions = buildTierOptions(allLessons)
   const barnHasLessons = allLessons.length > 0
 
   return (
@@ -124,6 +131,7 @@ export default async function LessonsPage({
               <Pill href="?filter=rider" active={effectiveFilter === 'rider'}>By Rider</Pill>
             )}
             <Pill href="?filter=horse" active={effectiveFilter === 'horse'}>By Horse</Pill>
+            <Pill href="?filter=tier" active={effectiveFilter === 'tier'}>By Tier</Pill>
           </div>
           {effectiveFilter === 'trainer' && (
             <div className="flex flex-wrap gap-2 pb-2">
@@ -151,6 +159,16 @@ export default async function LessonsPage({
               {horseOptions.map((h) => (
                 <Pill key={h.id} href={`?filter=horse&id=${h.id}`} active={filterId === h.id}>
                   {h.name}
+                </Pill>
+              ))}
+            </div>
+          )}
+          {effectiveFilter === 'tier' && (
+            <div className="flex flex-wrap gap-2 pb-2">
+              <Pill href="?filter=tier" active={!filterId}>All</Pill>
+              {tierOptions.map((name) => (
+                <Pill key={name} href={`?filter=tier&id=${encodeURIComponent(name)}`} active={filterId === name}>
+                  {name}
                 </Pill>
               ))}
             </div>
