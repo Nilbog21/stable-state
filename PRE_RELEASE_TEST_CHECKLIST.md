@@ -132,7 +132,8 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] Picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
 - [ ] **By Rider → Dana** filters correctly
 - [ ] **By Horse → Apple** filters correctly
-- [ ] **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly and the URL carries `?filter=tier&id=<tier name>`
+- [ ] **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
+- [ ] Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
 - [ ] Times display in 12-hour AM/PM format everywhere (no military time)
 - [ ] Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list and on the Dashboard's Barn Schedule (Willow is seeded inactive); it does not appear on Willow's past lessons or on any cancelled lesson
 - [ ] Open Willow's flagged lesson's detail page — a **Needs Attention** banner at the top reads "Willow is inactive"; open the same lesson's edit page — the same banner appears there too; the banner does not block editing or saving
