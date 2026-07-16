@@ -22,6 +22,26 @@ async function fetchPaymentTypes(
   return new Map((data ?? []).map((row: { lesson_id: string; payment_type: PaymentType | null }) => [row.lesson_id, row.payment_type]))
 }
 
+// exertion_level has no column-level GRANT restriction on lesson_horses for
+// authenticated (#937 review follow-up), so it can't be trimmed from the select
+// string per role the way private_notes is -- a rider's own session could still
+// read it directly via PostgREST. get_lesson_horse_exertion_levels is a
+// SECURITY DEFINER RPC (manager/trainer-only, same check as
+// get_horse_exertion_summary/get_horse_projected_exhaustion) that's the only
+// way to read it now, at both the app layer and via a direct call.
+async function fetchExertionLevels(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lessonId: string,
+  barnId: string
+): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc('get_lesson_horse_exertion_levels', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+  })
+  if (error) throw error
+  return new Map((data ?? []).map((row: { horse_id: string; exertion_level: number }) => [row.horse_id, row.exertion_level]))
+}
+
 export async function createLesson({
   barnId,
   instructorId,
@@ -90,11 +110,9 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   const riderSelect = role === 'rider'
     ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
     : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
-  // exertion_level is manager/trainer-only data (ARCHITECTURE.md), same restriction
-  // get_horse_exertion_summary/get_horse_projected_exhaustion enforce at the RPC layer.
-  const horseSelect = role === 'rider'
-    ? 'horse_notes, horses ( id, name, is_active, is_available, unavailability_reason )'
-    : 'horse_notes, exertion_level, horses ( id, name, is_active, is_available, unavailability_reason )'
+  // exertion_level is manager/trainer-only data (ARCHITECTURE.md) and is never selected
+  // here directly for any role -- see fetchExertionLevels above for why.
+  const horseSelect = 'horse_notes, horses ( id, name, is_active, is_available, unavailability_reason )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
@@ -109,6 +127,11 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   if (error) throw error
   if (!data) return null
 
+  type RawLessonHorse = {
+    horse_notes: string | null
+    horses: { id: string; name: string; is_active?: boolean; is_available?: boolean; unavailability_reason?: string | null } | null
+  }
+
   type RawLessonRider = {
     rider_id: string
     rider_notes: string | null
@@ -119,6 +142,13 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   }
 
   const lessonData = data
+
+  const rawHorses = lessonData.lesson_horses as RawLessonHorse[]
+  const exertionByHorseId = role === 'rider' ? new Map<string, number>() : await fetchExertionLevels(supabase, lessonId, barnId)
+  const lesson_horses = rawHorses.map((lh) => ({
+    ...lh,
+    exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
+  }))
 
   const rawRiders = lessonData.lesson_riders as RawLessonRider[]
   // rider_id is a plain lesson_riders column, unlike the nested barn_memberships embed —
@@ -165,6 +195,7 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
 
   const base = {
     ...lessonData,
+    lesson_horses,
     payment_type: paymentMap.get(lessonId) ?? null,
     instructor_name,
     instructor_user_id,
