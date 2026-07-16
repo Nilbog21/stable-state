@@ -478,11 +478,13 @@ async function run() {
   }, supabase)
 
   // #950: Morgan (manager2) also instructs — today and tomorrow so a manager-instructor
-  // shows up in "By Instructor" filtering same as a trainer would.
+  // shows up in "By Instructor" filtering same as a trainer would. now + 2h (not a fixed
+  // hour) matches buildLessonDates'/buildExpenseSeeds' own "today" lessons, so it's always
+  // still upcoming today regardless of when the script runs.
   await createLessonWithParticipants({
     barnId: DEV_BARN_ID,
     instructorId: m2Membership.id,
-    lessonAt: new Date(now.getTime() + 4 * 60 * 60 * 1000).toISOString(),
+    lessonAt: new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(),
     fee: tier1.price,
     horseIds: [horseIds[1]],
     exertionLevels: [3],
@@ -522,8 +524,10 @@ async function run() {
   }, supabase)
 
   // #950: horse/rider/private notes so notes-display (not just notes-hidden-when-empty) is
-  // verifiable against seed data. updateLessonHorseNotes/updateLessonRiderNotes don't accept a
-  // service-role client param, so this uses the raw-table escape hatch per scripts/CLAUDE.md.
+  // verifiable against seed data. updateLessonHorseNotes/updateLessonRiderNotes always call
+  // createClient() (no client param), which needs a request context this standalone script
+  // doesn't have — so this uses the raw-table escape hatch (no usable DAL equivalent, per
+  // scripts/CLAUDE.md's "no db layer equivalent exists" case).
   mustSucceed(
     await supabase
       .from('lesson_horses')
@@ -673,7 +677,7 @@ async function run() {
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming), plus ${DEV_UNAVAILABLE_HORSE} (unavailable: "${DEV_UNAVAILABLE_REASON}")`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
-  console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
+  console.log(`  Lessons:  ${lessonDates.length + 8} (${groupCount} group, ${lessonDates.length - groupCount + 5} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 12 older than 1 week, 11 within past week, 2 today, 6 next week — the +5 from #950's seed additions) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month; the board and lease agreements also have an unpaid charge from 2 months ago (past due, for Outstanding testing)`)
   console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet, including 1 past due for Outstanding testing and 1 date-only for tomorrow)`)
   console.log(`  Seed additions (#950): 1 Custom-tier lesson; ${DEV_TRAINER_4.email} (${DEV_TRAINER_4.firstName} ${DEV_TRAINER_4.lastName}, 4th trainer) with a single $0 comped/paid lesson; 3 Morgan-instructed lessons (today, tomorrow, 10 days ago — the 10-days-ago one also carries horse/rider/private notes)`)
