@@ -49,19 +49,19 @@ describe('ByTierTable', () => {
 
   it('should_sort_by_gross_column_when_clicked', () => {
     const { container } = renderTable()
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Gross' }).querySelector('button')!)
+    fireEvent.click(screen.getByRole('columnheader', { name: /^Gross/ }).querySelector('button')!)
     expect(rowNames(container)).toEqual(['Premium', 'Standard'])
   })
 
   it('should_sort_by_expenses_column_when_clicked', () => {
     const { container } = renderTable()
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Expenses' }).querySelector('button')!)
+    fireEvent.click(screen.getByRole('columnheader', { name: /^Expenses/ }).querySelector('button')!)
     expect(rowNames(container)).toEqual(['Premium', 'Standard'])
   })
 
   it('should_sort_by_net_column_when_clicked', () => {
     const { container } = renderTable()
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Net' }).querySelector('button')!)
+    fireEvent.click(screen.getByRole('columnheader', { name: /^Net/ }).querySelector('button')!)
     expect(rowNames(container)).toEqual(['Premium', 'Standard'])
   })
 

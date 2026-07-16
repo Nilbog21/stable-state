@@ -1,13 +1,14 @@
 'use client'
 import { Td } from '@/components/ui/Table'
-import { InfoPopover } from './InfoPopover'
 import { SortableTh } from './SortableTh'
+import { ReconciliationFoot } from './ReconciliationFoot'
 import { useSortableRows } from './useSortableRows'
 import { formatCurrency } from '@/lib/format-currency'
 import type { FinancialSummary } from '@/lib/db/types'
+import type { ReconciliationColumn } from '@/lib/finances-reconciliation'
 
 type TierRow = FinancialSummary['breakdown'][number]
-type SortKey = 'tierName' | 'price' | 'lessonCount' | 'gross' | 'instructorCut' | 'net'
+type SortKey = 'tierName' | 'price' | 'gross' | 'instructorCut' | 'net'
 
 function getValue(row: TierRow, key: SortKey): string | number {
   switch (key) {
@@ -15,8 +16,6 @@ function getValue(row: TierRow, key: SortKey): string | number {
       return row.tierName
     case 'price':
       return row.price ?? -Infinity
-    case 'lessonCount':
-      return row.lessonCount
     case 'gross':
       return row.subtotal + row.instructorCut
     case 'instructorCut':
@@ -26,7 +25,17 @@ function getValue(row: TierRow, key: SortKey): string | number {
   }
 }
 
-export function ByTierTable({ rows, nonLessonIncomeLabel }: { rows: TierRow[]; nonLessonIncomeLabel: string }) {
+export function ByTierTable({
+  rows,
+  gross,
+  expenses,
+  net,
+}: {
+  rows: TierRow[]
+  gross: ReconciliationColumn
+  expenses: ReconciliationColumn
+  net: ReconciliationColumn
+}) {
   const { sorted, sortKey, sortDir, toggleSort } = useSortableRows<TierRow, SortKey>(rows, getValue, 'tierName')
 
   return (
@@ -36,28 +45,30 @@ export function ByTierTable({ rows, nonLessonIncomeLabel }: { rows: TierRow[]; n
           <tr>
             <SortableTh sortKey="tierName" label="Tier" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             <SortableTh sortKey="price" label="Price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="lessonCount" label="Lessons" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="gross" label="Gross" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="instructorCut" label="Instructor Cut" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="net" label="Net" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+            <SortableTh sortKey="gross" label="Gross" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="Lesson fees collected this month, before the instructor's cut" />
+            <SortableTh sortKey="instructorCut" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This tier's own instructor cut" />
+            <SortableTh sortKey="net" label="Net" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="Gross minus this tier's own instructor cut" />
           </tr>
         </thead>
         <tbody>
-          {/* tierName === nonLessonIncomeLabel assumes no real tier is ever named "Non-lesson income" — same assumption ByHorseTable/ByRiderTable/ByInstructorTable make for their own NO_HORSE_LABEL/NO_RIDER_LABEL/NO_INSTRUCTOR_LABEL */}
           {sorted.map((tier) => (
             <tr key={tier.tierName}>
-              <Td>
-                {tier.tierName}
-                {tier.tierName === nonLessonIncomeLabel && <InfoPopover text="Includes leases and boarding" align="left" />}
-              </Td>
+              <Td>{tier.tierName}</Td>
               <Td>{tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}</Td>
-              <Td>{tier.tierName === nonLessonIncomeLabel ? '' : tier.lessonCount}</Td>
               <Td>{formatCurrency(tier.subtotal + tier.instructorCut)}</Td>
               <Td>{tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}</Td>
               <Td>{formatCurrency(tier.subtotal)}</Td>
             </tr>
           ))}
         </tbody>
+        <ReconciliationFoot
+          labelColSpan={2}
+          gross={gross}
+          expenses={expenses}
+          net={net}
+          outsideInfoText="Leases and boarding aren't tied to a lesson tier (Gross); horse expenses aren't tied to a lesson tier (Expenses)."
+          unattributedInfoText="An expense whose original record was deleted after being marked paid, with no tier to attribute it to."
+        />
       </table>
     </div>
   )
