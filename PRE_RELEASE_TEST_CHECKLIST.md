@@ -199,6 +199,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Open rider Gale Test's member detail page — no **Instructor Access** section is shown
 - [ ] Open Indigo Test's member detail page → a **Remove** button appears top-right of the header, next to the member's name → tap it and confirm the browser prompt → redirected to the Members list and Indigo Test no longer appears there
 - [ ] Open your own manager member detail page → no **Remove** button is shown
+- [ ] Open second manager Morgan Manager's member detail page → no **Remove** button is shown either (managers can't remove other managers)
 
 Finances (`/barn/dev-barn/finances`):
 
