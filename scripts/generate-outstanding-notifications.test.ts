@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { formatOutstandingNotification, formatPastDueExpensesNotification } from './generate-outstanding-notifications'
+import { formatOutstandingNotification, formatOutstandingExpensesNotification } from './generate-outstanding-notifications'
 
 describe('formatOutstandingNotification', () => {
   it('should_use_singular_payment_in_title_when_count_is_one', () => {
@@ -23,14 +23,14 @@ describe('formatOutstandingNotification', () => {
   })
 })
 
-describe('formatPastDueExpensesNotification', () => {
+describe('formatOutstandingExpensesNotification', () => {
   it('should_use_singular_expense_in_title_when_count_is_one', () => {
-    const { title } = formatPastDueExpensesNotification(1)
-    expect(title).toBe('1 past-due expense')
+    const { title } = formatOutstandingExpensesNotification(1)
+    expect(title).toBe('1 outstanding expense')
   })
 
   it('should_use_plural_expenses_in_title_when_count_is_greater_than_one', () => {
-    const { title } = formatPastDueExpensesNotification(3)
-    expect(title).toBe('3 past-due expenses')
+    const { title } = formatOutstandingExpensesNotification(3)
+    expect(title).toBe('3 outstanding expenses')
   })
 })

@@ -3,7 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
-import { getPastDueExpenses } from '@/lib/db/expenses'
+import { getOutstandingExpenses } from '@/lib/db/expenses'
 import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
@@ -34,7 +34,7 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, pastDueExpenses, recipientExpenses] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, outstandingExpenses, recipientExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
@@ -43,12 +43,13 @@ export default async function FinancesPage({
     getOutstandingCharges(barn.id),
     getOutstandingCancellationFees(barn.id),
     getExpenseFinancialSummary(barn.id, startDate, endDate),
-    getPastDueExpenses(barn.id),
+    getOutstandingExpenses(barn.id),
     getRecipientExpenseSummary(barn.id, startDate, endDate),
   ])
 
   const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
   const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
+  const outstandingExpensesTotal = outstandingExpenses.reduce((sum, e) => sum + (e.amount ?? 0), 0)
 
   const netIncome = collectedIncome - expenseSummary.totalExpenses
 
@@ -68,7 +69,7 @@ export default async function FinancesPage({
       {outstandingItems.length > 0 && (
         <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
           <p className="text-sm font-medium uppercase tracking-wide">
-            Outstanding
+            Outstanding Income
             <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
           </p>
           <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
@@ -88,13 +89,17 @@ export default async function FinancesPage({
         </section>
       )}
 
-      {pastDueExpenses.length > 0 && (
-        <section className="mb-10">
-          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Needs an amount
+      {outstandingExpenses.length > 0 && (
+        <section className="mb-10 text-amber-700 dark:text-amber-400">
+          <p className="text-sm font-medium uppercase tracking-wide">
+            Outstanding Expenses
+            <InfoPopover text="Shown here because the expense is missing an amount, missing a payment type, or both" />
           </p>
-          <ul className="mt-2 space-y-1">
-            {pastDueExpenses.map((expense) => (
+          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+            {formatCurrency(outstandingExpensesTotal)}
+          </p>
+          <ul className="mt-4 space-y-1">
+            {outstandingExpenses.map((expense) => (
               <li key={expense.id}>
                 <Link
                   href={`/barn/${slug}/expenses/${expense.id}`}

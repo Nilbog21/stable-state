@@ -151,16 +151,17 @@ export async function getUpcomingScheduledExpenses(barnId: string, from: string,
   return await attachHorseNames(supabase, barnId, expenses)
 }
 
-// Finances dashboard Outstanding section: planned expenses (amount IS NULL) whose
-// due datetime (expense_date + expense_time, or end-of-day when time is null) has
-// already passed.
-export async function getPastDueExpenses(barnId: string, client?: SupabaseClient): Promise<HorseExpense[]> {
+// Finances dashboard Outstanding Expenses section: expenses missing an amount
+// (still planned) or missing a payment type (amount known but never marked
+// paid), whose due datetime (expense_date + expense_time, or end-of-day when
+// time is null) has already passed.
+export async function getOutstandingExpenses(barnId: string, client?: SupabaseClient): Promise<HorseExpense[]> {
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('horse_expenses')
     .select('*')
     .eq('barn_id', barnId)
-    .is('amount', null)
+    .or('amount.is.null,payment_type.is.null')
   if (error) throw error
 
   const now = Date.now()
