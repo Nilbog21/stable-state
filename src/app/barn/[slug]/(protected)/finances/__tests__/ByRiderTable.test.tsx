@@ -72,7 +72,7 @@ describe('ByRiderTable', () => {
     renderTable()
     const totalRow = screen.getByText('Total').closest('tr')!
     const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
-    expect(cells).toEqual(['Total', '$150.00', '$60.00', '$90.00'])
+    expect(cells).toEqual(['Total', '$150.00', '($60.00)', '$90.00'])
   })
 
   it('should_exclude_the_footer_from_the_sortable_tbody', () => {

@@ -55,7 +55,25 @@ describe('ReconciliationFoot', () => {
     renderTable()
     const totalRow = screen.getByText('Total').closest('tr')!
     const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
-    expect(cells).toEqual(['Total', '$425.00', '$7,290.00', '($6,865.00)'])
+    expect(cells).toEqual(['Total', '$425.00', '($7,290.00)', '($6,865.00)'])
+  })
+
+  it('should_render_the_expenses_column_in_accounting_parens', () => {
+    renderTable()
+    const subtotalRow = screen.getByText('Subtotal').closest('tr')!
+    const cells = Array.from(subtotalRow.querySelectorAll('td')).map((td) => td.textContent)
+    expect(cells).toEqual(['Subtotal', '$425.00', '($425.00)', '$0.00'])
+  })
+
+  it('should_render_a_dash_for_zero_in_the_expenses_column_instead_of_dollar_zero', () => {
+    renderTable({
+      gross: { subtotal: 425, outside: 0, unattributed: 0, total: 425 },
+      expenses: { subtotal: 425, outside: 6775, unattributed: 0, total: 7200 },
+      net: { subtotal: 0, outside: -6775, unattributed: 0, total: -6775 },
+    })
+    const unattributedRow = screen.getByText('Unattributed').closest('tr')!
+    const cells = Array.from(unattributedRow.querySelectorAll('td')).map((td) => td.textContent)
+    expect(cells).toEqual(['Unattributed', '$0.00', '—', '$0.00'])
   })
 
   it('should_render_negative_values_in_accounting_parens', () => {

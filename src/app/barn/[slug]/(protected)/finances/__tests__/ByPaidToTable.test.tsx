@@ -31,7 +31,14 @@ describe('ByPaidToTable', () => {
     renderTable()
     const row = screen.getByText('Alice Farrier').closest('tr')!
     const cells = Array.from(row.querySelectorAll('td')).map((td) => td.textContent)
-    expect(cells).toEqual(['Alice Farrier', '—', '$50.00', '—'])
+    expect(cells).toEqual(['Alice Farrier', '—', '($50.00)', '—'])
+  })
+
+  it('should_render_a_dash_for_zero_expenses_instead_of_dollar_zero', () => {
+    render(<ByPaidToTable rows={[{ recipient: 'Nil Vet', totalExpenses: 0 }]} slug="green-acres" monthParam="2026-06" expenses={expenses} />)
+    const row = screen.getByText('Nil Vet').closest('tr')!
+    const expensesCell = row.querySelectorAll('td')[2]
+    expect(expensesCell.textContent).toBe('—')
   })
 
   it('should_default_sort_by_recipient_name_ascending', () => {
@@ -60,7 +67,7 @@ describe('ByPaidToTable', () => {
     renderTable()
     const totalRow = screen.getByText('Total').closest('tr')!
     const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
-    expect(cells).toEqual(['Total', '—', '$165.00', '—'])
+    expect(cells).toEqual(['Total', '—', '($165.00)', '—'])
   })
 
   it('should_exclude_the_footer_from_the_sortable_tbody', () => {

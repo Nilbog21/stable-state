@@ -1204,7 +1204,8 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     const row = screen.getByText('Biscuit').closest('tr')!
-    expect(within(row).getByText('($60.00)')).toBeDefined()
+    const netCell = row.querySelectorAll('td')[3]
+    expect(netCell.textContent).toBe('($60.00)')
   })
 
   // Reconciliation wiring (#971)
@@ -1239,23 +1240,23 @@ describe('FinancesPage', () => {
     }
 
     it('should_reconcile_gross_expenses_net_totals_on_the_tier_tab', async () => {
-      expect(await totalRowCells('tier')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+      expect(await totalRowCells('tier')).toEqual(['Total', '$1,950.00', '($7,290.00)', '($5,340.00)'])
     })
 
     it('should_reconcile_gross_expenses_net_totals_on_the_horse_tab', async () => {
-      expect(await totalRowCells('horse')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+      expect(await totalRowCells('horse')).toEqual(['Total', '$1,950.00', '($7,290.00)', '($5,340.00)'])
     })
 
     it('should_reconcile_gross_expenses_net_totals_on_the_rider_tab', async () => {
-      expect(await totalRowCells('rider')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+      expect(await totalRowCells('rider')).toEqual(['Total', '$1,950.00', '($7,290.00)', '($5,340.00)'])
     })
 
     it('should_reconcile_gross_expenses_net_totals_on_the_trainer_tab', async () => {
-      expect(await totalRowCells('trainer')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+      expect(await totalRowCells('trainer')).toEqual(['Total', '$1,950.00', '($7,290.00)', '($5,340.00)'])
     })
 
     it('should_reconcile_gross_expenses_net_totals_on_the_recipient_tab', async () => {
-      expect(await totalRowCells('recipient')).toEqual(['Total', '—', '$7,290.00', '—'])
+      expect(await totalRowCells('recipient')).toEqual(['Total', '—', '($7,290.00)', '—'])
     })
   })
 

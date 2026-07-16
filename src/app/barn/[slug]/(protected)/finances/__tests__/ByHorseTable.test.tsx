@@ -77,11 +77,24 @@ describe('ByHorseTable', () => {
     renderTable()
     const totalRow = screen.getByText('Total').closest('tr')!
     const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
-    expect(cells).toEqual(['Total', '$150.00', '$60.00', '$90.00'])
+    expect(cells).toEqual(['Total', '$150.00', '($60.00)', '$90.00'])
   })
 
   it('should_exclude_the_footer_from_the_sortable_tbody', () => {
     const { container } = renderTable()
     expect(container.querySelectorAll('tbody tr')).toHaveLength(2)
+  })
+
+  it('should_render_expenses_in_accounting_parens', () => {
+    renderTable()
+    const row = screen.getByText('Amber').closest('tr')!
+    expect(row.textContent).toContain('($10.00)')
+  })
+
+  it('should_render_a_dash_for_zero_expenses_instead_of_dollar_zero', () => {
+    render(<ByHorseTable rows={[{ horseId: 'h-3', horseName: 'Comet', gross: 40, expenses: 0, net: 40 }]} slug="green-acres" monthParam="2026-06" gross={gross} expenses={expenses} net={net} />)
+    const row = screen.getByText('Comet').closest('tr')!
+    const expensesCell = row.querySelectorAll('td')[2]
+    expect(expensesCell.textContent).toBe('—')
   })
 })
