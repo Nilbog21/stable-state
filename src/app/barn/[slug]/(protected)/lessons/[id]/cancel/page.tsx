@@ -5,7 +5,7 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { cancelLessonAction } from '@/app/actions/lesson-cancellation'
 import { Button } from '@/components/ui/Button'
-import { canManageLesson, isLessonCancellationEligible, isInstructorOfLesson, isLateCancellation } from '@/lib/lesson-authorization'
+import { canManageLesson, isLessonCancellationEligible, isInstructorOfLesson } from '@/lib/lesson-authorization'
 import { CancelLessonFields } from './CancelLessonFields'
 
 export default async function CancelLessonPage({
@@ -34,7 +34,6 @@ export default async function CancelLessonPage({
 
   const cancel = cancelLessonAction.bind(null, barn.id, slug, lesson.id)
   const cancelledByInstructorDefault = isInstructorOfLesson(membership.id, lesson)
-  const isLateCancellationWindow = isLateCancellation(lesson.lesson_at, false)
 
   const activeLessonRiders = lesson.lesson_riders.filter((lr) => lr.cancelled_at === null)
   const activeRiderNames = activeLessonRiders
@@ -62,7 +61,7 @@ export default async function CancelLessonPage({
             cancelledByInstructorDefault={cancelledByInstructorDefault}
             groupInstructorDescription={groupInstructorDescription}
             pickerRiders={pickerRiders}
-            isLateCancellationWindow={isLateCancellationWindow}
+            lessonAt={lesson.lesson_at}
           />
           <div className="flex flex-col gap-1">
             <label htmlFor="notes" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">

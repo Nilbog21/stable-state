@@ -1,6 +1,7 @@
 'use client'
 
 import { useState } from 'react'
+import { isWithinLateCancellationWindow } from '@/lib/lesson-authorization'
 
 interface Rider {
   id: string
@@ -12,18 +13,21 @@ export function CancelLessonFields({
   cancelledByInstructorDefault,
   groupInstructorDescription,
   pickerRiders,
-  isLateCancellationWindow = false,
+  lessonAt,
 }: {
   lessonType: 'normal' | 'group'
   cancelledByInstructorDefault: boolean
   groupInstructorDescription: string
   pickerRiders: Rider[]
-  isLateCancellationWindow?: boolean
+  lessonAt: string
 }) {
   const [cancelType, setCancelType] = useState<'instructor' | 'rider'>(
     cancelledByInstructorDefault ? 'instructor' : 'rider'
   )
   const showRiderPicker = lessonType === 'group' && cancelType === 'rider'
+  // Recomputed on every render (e.g. each radio click) instead of once at page load,
+  // so the warning can't go stale relative to the 24h cutoff while the form sits open.
+  const isLateCancellationWindow = isWithinLateCancellationWindow(lessonAt)
 
   return (
     <>

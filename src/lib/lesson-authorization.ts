@@ -12,9 +12,13 @@ export function isInstructorOfLesson(membershipId: string, lesson: { instructor_
   return lesson.instructor_id === membershipId
 }
 
+export function isWithinLateCancellationWindow(lessonAt: string): boolean {
+  return new Date(lessonAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000
+}
+
 export function isLateCancellation(lessonAt: string, cancelledByInstructor: boolean): boolean {
   if (cancelledByInstructor) return false
-  return new Date(lessonAt).getTime() - Date.now() <= 24 * 60 * 60 * 1000
+  return isWithinLateCancellationWindow(lessonAt)
 }
 
 // Shared by the #847 "Needs Attention" badge (LessonListItem, UpcomingLessonCard) and this

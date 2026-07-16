@@ -9,6 +9,9 @@ const pickerRiders = [
   { id: 'rider-2', name: 'Bob' },
 ]
 
+const farFutureIso = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+const withinWindowIso = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+
 describe('CancelLessonFields', () => {
   it('should_show_rider_radio_for_normal_lesson', () => {
     render(
@@ -17,6 +20,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription=""
         pickerRiders={[]}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.getByLabelText(/cancelled by rider/i)).toBeDefined()
@@ -29,6 +33,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription=""
         pickerRiders={[]}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.getByLabelText(/cancelled by instructor/i)).toBeDefined()
@@ -41,6 +46,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={true}
         groupInstructorDescription=""
         pickerRiders={[]}
+        lessonAt={farFutureIso}
       />
     )
     expect((screen.getByLabelText(/cancelled by instructor/i) as HTMLInputElement).checked).toBe(true)
@@ -53,6 +59,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription=""
         pickerRiders={[]}
+        lessonAt={farFutureIso}
       />
     )
     expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).checked).toBe(true)
@@ -65,6 +72,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription=""
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     fireEvent.click(screen.getByLabelText(/cancelled by rider/i))
@@ -78,6 +86,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={true}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.queryByRole('radio', { name: 'Alice' })).toBeNull()
@@ -90,6 +99,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.getByRole('radio', { name: 'Alice' })).toBeDefined()
@@ -102,6 +112,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.getByRole('radio', { name: 'Bob' })).toBeDefined()
@@ -114,6 +125,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={true}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     fireEvent.click(screen.getByLabelText(/cancelled by rider/i))
@@ -127,6 +139,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={true}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     fireEvent.click(screen.getByLabelText(/cancelled by rider/i))
@@ -141,6 +154,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect((screen.getByRole('radio', { name: 'Alice' }) as HTMLInputElement).required).toBe(true)
@@ -153,6 +167,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect((screen.getByRole('radio', { name: 'Alice' }) as HTMLInputElement).name).toBe('rider_id')
@@ -165,6 +180,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription=""
         pickerRiders={[]}
+        lessonAt={farFutureIso}
       />
     )
     expect((screen.getByLabelText(/cancelled by rider/i) as HTMLInputElement).name).toBe('cancel_type')
@@ -177,6 +193,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={true}
         groupInstructorDescription="This will cancel and zero out the fee for 2 enrolled riders: Alice, Bob."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.getByText(/2 enrolled riders/i)).toBeDefined()
@@ -189,6 +206,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel and zero out the fee for 2 enrolled riders: Alice, Bob."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.getByText(/select a rider/i)).toBeDefined()
@@ -201,6 +219,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel and zero out the fee for 2 enrolled riders: Alice, Bob."
         pickerRiders={pickerRiders}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.queryByText(/2 enrolled riders/i)).toBeNull()
@@ -213,6 +232,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="unused"
         pickerRiders={[]}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.queryByText('unused')).toBeNull()
@@ -225,6 +245,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="unused"
         pickerRiders={[]}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.queryByText(/select a rider/i)).toBeNull()
@@ -237,7 +258,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription=""
         pickerRiders={[]}
-        isLateCancellationWindow={true}
+        lessonAt={withinWindowIso}
       />
     )
     expect(screen.getByText(/due a late cancellation fee/i)).toBeDefined()
@@ -250,7 +271,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription=""
         pickerRiders={[]}
-        isLateCancellationWindow={false}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.queryByText(/due a late cancellation fee/i)).toBeNull()
@@ -263,7 +284,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={true}
         groupInstructorDescription=""
         pickerRiders={[]}
-        isLateCancellationWindow={true}
+        lessonAt={withinWindowIso}
       />
     )
     expect(screen.queryByText(/due a late cancellation fee/i)).toBeNull()
@@ -276,7 +297,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
-        isLateCancellationWindow={true}
+        lessonAt={withinWindowIso}
       />
     )
     expect(screen.getByText(/no late cancellation fees are currently leveraged/i)).toBeDefined()
@@ -289,7 +310,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={false}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
-        isLateCancellationWindow={false}
+        lessonAt={farFutureIso}
       />
     )
     expect(screen.queryByText(/no late cancellation fees are currently leveraged/i)).toBeNull()
@@ -302,7 +323,7 @@ describe('CancelLessonFields', () => {
         cancelledByInstructorDefault={true}
         groupInstructorDescription="This will cancel the whole lesson."
         pickerRiders={pickerRiders}
-        isLateCancellationWindow={true}
+        lessonAt={withinWindowIso}
       />
     )
     expect(screen.queryByText(/no late cancellation fees are currently leveraged/i)).toBeNull()
