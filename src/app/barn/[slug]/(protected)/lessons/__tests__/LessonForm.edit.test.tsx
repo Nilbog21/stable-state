@@ -916,7 +916,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   it('should_fetch_projected_exhaustion_using_the_prefilled_lesson_date_on_mount', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00', ['horse-1']))
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1']))
   })
 
   it('should_render_exhaustion_bar_for_the_pre_checked_horse', async () => {
@@ -933,7 +933,9 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00', ['horse-1', 'horse-2']))
+    // Round-tripping initialLesson.lesson_at through the (local-aware) date/hour
+    // picker and back into a UTC instant reproduces the same instant exactly.
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1', 'horse-2']))
   })
 
   it('should_not_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {
@@ -1020,5 +1022,34 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
+  })
+})
+
+describe('LessonForm (edit mode) — timezone-aware date/hour prefill', () => {
+  let originalTz: string | undefined
+
+  beforeEach(() => {
+    originalTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+  })
+
+  afterEach(() => {
+    process.env.TZ = originalTz
+  })
+
+  // 02:00 UTC on 2026-05-17 is 22:00 EDT (UTC-4) on the *previous* local day —
+  // the case naive string-slicing gets wrong.
+  const lessonNearUtcMidnight: LessonDetail = { ...normalLesson, lesson_at: '2026-05-17T02:00:00Z' }
+
+  it('should_prefill_the_date_picker_with_the_local_calendar_date_not_the_utc_date', () => {
+    const { container } = render(<LessonForm {...baseProps} initialLesson={lessonNearUtcMidnight} />)
+    const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
+    expect(dateInput.value).toBe('2026-05-16')
+  })
+
+  it('should_prefill_the_hour_selector_with_the_local_hour_not_the_utc_hour', () => {
+    render(<LessonForm {...baseProps} initialLesson={lessonNearUtcMidnight} />)
+    const select = screen.getByLabelText('Hour') as HTMLSelectElement
+    expect(select.value).toBe('22')
   })
 })

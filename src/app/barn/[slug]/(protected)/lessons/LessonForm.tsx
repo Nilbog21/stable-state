@@ -12,11 +12,14 @@ type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; th
 const CUSTOM_ID = '__custom__'
 
 function parseInitialDate(lessonAt: string): string {
-  return lessonAt.slice(0, 10)
+  const d = new Date(lessonAt)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${month}-${day}`
 }
 
 function parseInitialHour(lessonAt: string): number {
-  return parseInt(lessonAt.slice(11, 13), 10)
+  return new Date(lessonAt).getHours()
 }
 
 export function computeUnpaidWarn(unpaidPastDue: boolean, paymentType: string, fee: string): boolean {

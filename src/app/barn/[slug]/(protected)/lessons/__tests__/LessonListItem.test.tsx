@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { LessonListItem } from '../LessonListItem'
 import { createMockLessonWithDetails } from '@/test/fixtures'
@@ -372,5 +372,32 @@ describe('LessonListItem', () => {
       />
     )
     expect(screen.getAllByRole('link')).toHaveLength(1)
+  })
+
+  describe('timezone-aware date/time display', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+    })
+
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    it('should_display_the_lesson_time_in_the_viewers_local_timezone_not_utc', () => {
+      // 2026-05-17T10:00:00Z is 6:00 AM EDT (UTC-4) — a naive UTC-timeZone
+      // formatter would show 10:00 AM instead.
+      render(
+        <LessonListItem
+          lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z' }}
+          slug="green-acres"
+          isManager={false}
+          isTrainer={false}
+        />
+      )
+      expect(screen.getByText('May 17, 2026, 6:00 AM')).toBeDefined()
+    })
   })
 })
