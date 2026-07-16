@@ -416,7 +416,8 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ tab: 'recipient' }),
     })
     render(jsx)
-    expect(screen.getByText('$120.00')).toBeDefined()
+    const row = screen.getByText('Dr. Smith').closest('tr')!
+    expect(within(row).getByText('$120.00')).toBeDefined()
   })
 
   it('should_link_recipient_name_to_encoded_drill_down_with_month_param', async () => {
@@ -1045,7 +1046,8 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ tab: 'trainer' }),
     })
     render(jsx)
-    expect(screen.getByText('$300.00')).toBeDefined()
+    const row = screen.getByText('Jane Smith').closest('tr')!
+    expect(within(row).getByText('$300.00')).toBeDefined()
   })
 
   it('should_call_getTrainerIncomeSummary', async () => {
@@ -1249,7 +1251,10 @@ describe('FinancesPage', () => {
   })
 
   it('should_surface_the_same_orphaned_expense_as_unattributed_on_the_recipient_tab', async () => {
-    vi.mocked(getExpenseFinancialSummary).mockResolvedValue({ totalExpenses: 6865, breakdown: [] })
+    vi.mocked(getExpenseFinancialSummary).mockResolvedValue({
+      totalExpenses: 6865,
+      breakdown: [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 6775 }],
+    })
     vi.mocked(getRecipientExpenseSummary).mockResolvedValue([{ recipient: 'Riverside Vet Clinic', totalExpenses: 6775 }])
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),

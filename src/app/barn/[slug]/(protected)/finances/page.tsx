@@ -8,6 +8,7 @@ import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
+import { buildReconciliationColumn, deriveNetColumn } from '@/lib/finances-reconciliation'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
 import { ByTierTable } from './ByTierTable'
@@ -17,7 +18,6 @@ import { ByInstructorTable } from './ByInstructorTable'
 import { ByPaidToTable } from './ByPaidToTable'
 import { Pill } from '@/components/ui/Pill'
 import { EmptyState } from '@/components/EmptyState'
-import { SummaryStatCard } from './SummaryStatCard'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
 type Tab = typeof VALID_TABS[number]
@@ -38,7 +38,7 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthQueryParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, outstandingExpenses, recipientExpenses] = await Promise.all([
+  const [{ pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, outstandingExpenses, recipientExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
@@ -55,9 +55,53 @@ export default async function FinancesPage({
   const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
   const outstandingExpensesTotal = outstandingExpenses.reduce((sum, e) => sum + (e.amount ?? 0), 0)
 
-  const netIncome = collectedIncome - expenseSummary.totalExpenses
+  // #971: reconciliation — every breakdown table's Gross/Expenses/Net columns
+  // independently sum to the same barn-wide totals, derived from data already fetched
+  // above (no extra queries). See src/lib/finances-reconciliation.ts.
+  const totalGross = breakdown.reduce((sum, t) => sum + t.subtotal + t.instructorCut, 0)
+  const totalCut = breakdown.reduce((sum, t) => sum + t.instructorCut, 0)
+  const totalExpenses = totalCut + expenseSummary.totalExpenses
+  const attributableHorseExpenses = expenseSummary.breakdown.reduce((sum, h) => sum + h.totalExpenses, 0)
+  // An expense whose horse_expenses record was deleted but whose collected transaction
+  // survives (deleteExpense's default) — counted in totalExpenses but absent from every
+  // per-horse/per-recipient breakdown. Surfaced as "Unattributed" everywhere instead of
+  // silently dropped.
+  const unattributedExpenses = expenseSummary.totalExpenses - attributableHorseExpenses
 
-  const horseRows = computeHorseNetIncome(horseIncome, expenseSummary.breakdown)
+  const tierRows = breakdown.filter((t) => t.tierName !== NON_LESSON_INCOME_LABEL)
+  const tierGross = buildReconciliationColumn(totalGross, tierRows.reduce((sum, t) => sum + t.subtotal + t.instructorCut, 0), 0)
+  const tierExpenses = buildReconciliationColumn(totalExpenses, tierRows.reduce((sum, t) => sum + t.instructorCut, 0), unattributedExpenses)
+  const tierNet = deriveNetColumn(tierGross, tierExpenses)
+
+  const realHorseIncome = horseIncome.filter((h) => h.horseId !== NO_HORSE_LABEL)
+  const noHorseIncome = horseIncome.find((h) => h.horseId === NO_HORSE_LABEL)?.totalIncome ?? 0
+  const horseRows = computeHorseNetIncome(realHorseIncome, expenseSummary.breakdown)
+  const horseGross = buildReconciliationColumn(totalGross, realHorseIncome.reduce((sum, h) => sum + h.totalIncome, 0), noHorseIncome)
+  const horseExpenses = buildReconciliationColumn(totalExpenses, attributableHorseExpenses, unattributedExpenses)
+  const horseNet = deriveNetColumn(horseGross, horseExpenses)
+
+  const realRiderIncome = riderIncome.filter((r) => r.riderId !== NO_RIDER_LABEL)
+  const noRiderIncome = riderIncome.find((r) => r.riderId === NO_RIDER_LABEL)?.totalIncome ?? 0
+  const riderGross = buildReconciliationColumn(totalGross, realRiderIncome.reduce((sum, r) => sum + r.totalIncome, 0), noRiderIncome)
+  const riderExpenses = buildReconciliationColumn(totalExpenses, 0, unattributedExpenses)
+  const riderNet = deriveNetColumn(riderGross, riderExpenses)
+
+  const realTrainerIncome = trainerIncome.filter((t) => t.trainerId !== NON_LESSON_INCOME_LABEL && t.trainerId !== NO_INSTRUCTOR_LABEL)
+  const noInstructorRow = trainerIncome.find((t) => t.trainerId === NO_INSTRUCTOR_LABEL)
+  // grossIncome is only ever null on the synthetic NON_LESSON_INCOME_LABEL row (see
+  // lesson-finances.ts), already excluded from realTrainerIncome/noInstructorRow — every
+  // real per-trainer row (including "No instructor") has a numeric grossIncome.
+  const noInstructorGross = noInstructorRow?.grossIncome ?? 0
+  const noInstructorCut = noInstructorRow ? noInstructorRow.grossIncome! - noInstructorRow.totalIncome : 0
+  const instructorGross = buildReconciliationColumn(totalGross, realTrainerIncome.reduce((sum, t) => sum + t.grossIncome!, 0), noInstructorGross)
+  const instructorExpenses = buildReconciliationColumn(
+    totalExpenses,
+    realTrainerIncome.reduce((sum, t) => sum + (t.grossIncome! - t.totalIncome), 0),
+    unattributedExpenses + noInstructorCut
+  )
+  const instructorNet = deriveNetColumn(instructorGross, instructorExpenses)
+
+  const recipientExpensesColumn = buildReconciliationColumn(totalExpenses, recipientExpenses.reduce((sum, r) => sum + r.totalExpenses, 0), unattributedExpenses)
 
   const monthParam = formatMonthParam(startDate)
   const monthQ = isCurrentMonth ? '' : `&month=${monthParam}`
@@ -141,33 +185,15 @@ export default async function FinancesPage({
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
-        <SummaryStatCard
-          label="Gross Income"
-          value={formatCurrency(collectedIncome)}
-          infoText="Lessons and agreement charges collected this month, net of the per-lesson instructor cut"
-        />
-
-        <SummaryStatCard
-          label="Total Expenses"
-          value={formatCurrency(expenseSummary.totalExpenses)}
-          infoText="Expenses and Instructor fees"
-        />
-
-        <SummaryStatCard
-          label="Net Income"
-          value={formatCurrency(netIncome)}
-          infoText="Gross Income minus Total Expenses"
-        />
-
-        {isCurrentMonth && (
-          <SummaryStatCard
-            label="Pending income"
-            value={formatCurrency(pendingIncome)}
-            infoText="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut"
-          />
-        )}
-      </div>
+      {isCurrentMonth && (
+        <div className="mb-6 flex items-baseline gap-2">
+          <span className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Pending income
+            <InfoPopover text="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut" />
+          </span>
+          <span className="font-semibold text-zinc-900 dark:text-zinc-50">{formatCurrency(pendingIncome)}</span>
+        </div>
+      )}
 
       <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
 
@@ -193,7 +219,7 @@ export default async function FinancesPage({
 
       {tab === 'tier' && (
         breakdown.length > 0 ? (
-          <ByTierTable rows={breakdown} nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} />
+          <ByTierTable rows={tierRows} gross={tierGross} expenses={tierExpenses} net={tierNet} />
         ) : (
           <EmptyState
             heading={`No lessons in ${monthLabel}.`}
@@ -204,7 +230,7 @@ export default async function FinancesPage({
 
       {tab === 'horse' && (
         horseRows.length > 0 ? (
-          <ByHorseTable rows={horseRows} slug={slug} monthParam={monthParam} noHorseLabel={NO_HORSE_LABEL} />
+          <ByHorseTable rows={horseRows} slug={slug} monthParam={monthParam} gross={horseGross} expenses={horseExpenses} net={horseNet} />
         ) : (
           <EmptyState
             heading={`No horse activity in ${monthLabel}.`}
@@ -214,8 +240,8 @@ export default async function FinancesPage({
       )}
 
       {tab === 'rider' && (
-        riderIncome.length > 0 ? (
-          <ByRiderTable rows={riderIncome} slug={slug} monthParam={monthParam} noRiderLabel={NO_RIDER_LABEL} />
+        realRiderIncome.length > 0 ? (
+          <ByRiderTable rows={realRiderIncome} slug={slug} monthParam={monthParam} gross={riderGross} expenses={riderExpenses} net={riderNet} />
         ) : (
           <EmptyState
             heading={`No rider income in ${monthLabel}.`}
@@ -225,13 +251,14 @@ export default async function FinancesPage({
       )}
 
       {tab === 'trainer' && (
-        trainerIncome.length > 0 ? (
+        realTrainerIncome.length > 0 ? (
           <ByInstructorTable
-            rows={trainerIncome}
+            rows={realTrainerIncome}
             slug={slug}
             monthParam={monthParam}
-            nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL}
-            noInstructorLabel={NO_INSTRUCTOR_LABEL}
+            gross={instructorGross}
+            expenses={instructorExpenses}
+            net={instructorNet}
           />
         ) : (
           <EmptyState
@@ -243,7 +270,7 @@ export default async function FinancesPage({
 
       {tab === 'recipient' && (
         recipientExpenses.length > 0 ? (
-          <ByPaidToTable rows={recipientExpenses} slug={slug} monthParam={monthParam} />
+          <ByPaidToTable rows={recipientExpenses} slug={slug} monthParam={monthParam} expenses={recipientExpensesColumn} />
         ) : (
           <EmptyState
             heading={`No expenses in ${monthLabel}.`}
