@@ -68,6 +68,7 @@ Placement rules:
 - Feature PRs target the release branch
 - Release merges to `main` via **merge commit only** — never squash or rebase; the release branch is deleted after merge, so squashing would destroy history
 - After integration-bug fixes land and before the release ceremony (tag + branch cleanup + cut next release branch): **migration refactor** — squash whatever migrations the release branch has accumulated since the last squash into a clean consolidated set (mirrors #657/#658), so they merge to `main` already clean instead of carrying iterative "add → fix → fix again" history forward indefinitely
+- `CHANGELOG.md`'s new-version entry and the full documentation review (`ARCHITECTURE.md`/`docs/architecture/*.md`/`README.md`/`USER_GUIDE_*.md`/`PRE_RELEASE_TEST_CHECKLIST.md` cross-checked against the release's closed issues) both land on the release branch **before** the merge-to-main step, as their own PRs — not as separate post-merge follow-ups. Both then ride into `main` on the release's own merge commit (mirrors #978/#979 for release-3)
 - `vN.0.0` tag is created at the merge commit on `main`
 - Release branch is deleted after the tag is confirmed
 - `release/release-(N+1)` is cut from the new `main` HEAD immediately after merge
