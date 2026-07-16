@@ -63,7 +63,7 @@ export function ByTierTable({
           expenses={expenses}
           net={net}
           outsideInfoText="Leases and boarding aren't tied to a lesson tier (Gross); horse expenses aren't tied to a lesson tier (Expenses)."
-          unattributedInfoText="An expense whose original record was deleted after being marked paid, with no tier to attribute it to."
+          unattributedInfoText="An expense record whose original entry was deleted after being marked paid — every other expense counts under Outside this view instead, since a tier has no expense concept of its own."
         />
       </table>
     </div>

@@ -71,7 +71,7 @@ export function ByHorseTable({
           expenses={expenses}
           net={net}
           outsideInfoText="Instructor pay isn't tied to a specific horse."
-          unattributedInfoText="Paid lessons with no horse recorded, and expense records whose original entry was deleted."
+          unattributedInfoText="A paid lesson with no horse recorded, or an expense record whose original entry was deleted after being marked paid — never a barn-wide expense split across horses, which appears in each horse's own row instead."
         />
       </table>
     </div>

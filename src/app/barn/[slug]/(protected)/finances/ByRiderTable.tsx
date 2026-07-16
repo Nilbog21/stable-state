@@ -74,7 +74,7 @@ export function ByRiderTable({
           expenses={expenses}
           net={net}
           outsideInfoText="Instructor pay and horse expenses aren't tied to a specific rider."
-          unattributedInfoText="Paid lessons with no rider recorded, and expense records whose original entry was deleted."
+          unattributedInfoText="A paid lesson with no rider recorded, or an expense record whose original entry was deleted after being marked paid."
         />
       </table>
     </div>
