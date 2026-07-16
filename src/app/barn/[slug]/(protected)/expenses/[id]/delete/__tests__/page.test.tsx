@@ -79,4 +79,18 @@ describe('DeleteExpensePage', () => {
     render(jsx)
     expect(screen.getByRole('button', { name: /confirm delete/i })).toBeDefined()
   })
+
+  it('should_render_the_checkbox_unchecked_by_default_when_expense_has_an_amount', async () => {
+    const jsx = await DeleteExpensePage({ params })
+    render(jsx)
+    const checkbox = screen.getByRole('checkbox') as HTMLInputElement
+    expect(checkbox.checked).toBe(false)
+  })
+
+  it('should_not_render_the_checkbox_when_expense_has_no_amount', async () => {
+    vi.mocked(getExpenseById).mockResolvedValue({ ...mockExpense, amount: null })
+    const jsx = await DeleteExpensePage({ params })
+    render(jsx)
+    expect(screen.queryByRole('checkbox')).toBeNull()
+  })
 })
