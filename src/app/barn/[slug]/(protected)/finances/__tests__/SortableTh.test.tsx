@@ -63,3 +63,49 @@ describe('SortableTh info popover', () => {
     expect(screen.getByText('Gross minus Expenses')).toBeDefined()
   })
 })
+
+describe('SortableTh non-sortable mode', () => {
+  function renderPlain(infoText?: string) {
+    return render(
+      <table>
+        <thead>
+          <tr>
+            <SortableTh label="Expenses" infoText={infoText} />
+          </tr>
+        </thead>
+      </table>
+    )
+  }
+
+  it('should_render_the_label_with_no_sort_button_when_onSort_is_omitted', () => {
+    renderPlain()
+    expect(screen.getByText('Expenses')).toBeDefined()
+    expect(screen.queryByRole('button', { name: /Expenses/ })).toBeNull()
+  })
+
+  it('should_not_set_aria_sort_when_onSort_is_omitted', () => {
+    renderPlain()
+    expect(screen.getByRole('columnheader').getAttribute('aria-sort')).toBeNull()
+  })
+
+  it('should_still_render_info_trigger_as_a_sibling_when_non_sortable', () => {
+    renderPlain('No expense is tracked per rider')
+    const infoButton = screen.getByRole('button', { name: 'Info' })
+    const header = screen.getByRole('columnheader')
+    expect(header.contains(infoButton)).toBe(true)
+  })
+
+  it('should_show_the_info_text_when_non_sortable_info_trigger_is_clicked', () => {
+    renderPlain('No expense is tracked per rider')
+    fireEvent.click(screen.getByRole('button', { name: 'Info' }))
+    expect(screen.getByText('No expense is tracked per rider')).toBeDefined()
+  })
+
+  it('should_place_the_label_and_info_trigger_in_the_same_inline_flex_row', () => {
+    const { container } = renderPlain('No expense is tracked per rider')
+    const row = container.querySelector('th > div')
+    expect(row?.className).toContain('inline-flex')
+    expect(row?.contains(screen.getByText('Expenses'))).toBe(true)
+    expect(row?.contains(screen.getByRole('button', { name: 'Info' }))).toBe(true)
+  })
+})
