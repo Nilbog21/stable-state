@@ -10,6 +10,19 @@ const defaultProps = {
   revokeAction: vi.fn() as unknown as () => Promise<void>,
 }
 
+function deferredRevoke() {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  const revokeAction = vi.fn(() => promise) as unknown as () => Promise<void>
+  return { revokeAction, resolve }
+}
+
+function isDisabled(name: RegExp) {
+  return (screen.getByRole('button', { name }) as HTMLButtonElement).disabled
+}
+
 describe('ManageMemberSection', () => {
   beforeEach(() => {
     Object.defineProperty(navigator, 'clipboard', {
@@ -106,10 +119,92 @@ describe('ManageMemberSection', () => {
     vi.useRealTimers()
   })
 
-  it('should_call_revoke_action_on_revoke_submit', () => {
+  it('should_call_revoke_action_on_revoke_submit', async () => {
     const revokeAction = vi.fn() as unknown as () => Promise<void>
     render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
-    fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
     expect(revokeAction).toHaveBeenCalledOnce()
+  })
+
+  it('should_disable_copy_invite_button_while_revoke_is_pending', async () => {
+    const { revokeAction, resolve } = deferredRevoke()
+    render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    expect(isDisabled(/copy invite/i)).toBe(true)
+    // Settle the action so it doesn't linger as a dangling pending transition for later tests
+    await act(async () => {
+      resolve()
+      await Promise.resolve()
+    })
+  })
+
+  it('should_show_loading_state_on_revoke_button_while_pending', async () => {
+    const { revokeAction, resolve } = deferredRevoke()
+    render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    expect(isDisabled(/revoke/i)).toBe(true)
+    // Settle the action so it doesn't linger as a dangling pending transition for later tests
+    await act(async () => {
+      resolve()
+      await Promise.resolve()
+    })
+  })
+
+  it('should_keep_copy_invite_disabled_after_settle_before_token_prop_changes', async () => {
+    const revokeAction = vi.fn().mockResolvedValue(undefined) as unknown as () => Promise<void>
+    const { rerender } = render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    // Action settled, but the token prop hasn't caught up yet
+    rerender(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    expect(isDisabled(/copy invite/i)).toBe(true)
+  })
+
+  it('should_keep_revoke_disabled_after_settle_before_token_prop_changes', async () => {
+    // Regression test: a second Revoke click in this same window used to be allowed,
+    // which re-pinned tokenBeforeRevoke to the still-stale token and let Copy Invite
+    // re-enable on a token a second, still-in-flight revoke was about to supersede.
+    const revokeAction = vi.fn().mockResolvedValue(undefined) as unknown as () => Promise<void>
+    const { rerender } = render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    // Action settled, but the token prop hasn't caught up yet
+    rerender(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    expect(isDisabled(/revoke/i)).toBe(true)
+  })
+
+  it('should_enable_copy_invite_once_token_prop_changes', async () => {
+    const revokeAction = vi.fn().mockResolvedValue(undefined) as unknown as () => Promise<void>
+    const { rerender } = render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    rerender(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} inviteToken="tok-new" />)
+    expect(isDisabled(/copy invite/i)).toBe(false)
+  })
+
+  it('should_enable_revoke_once_token_prop_changes', async () => {
+    const revokeAction = vi.fn().mockResolvedValue(undefined) as unknown as () => Promise<void>
+    const { rerender } = render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    rerender(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} inviteToken="tok-new" />)
+    expect(isDisabled(/revoke/i)).toBe(false)
   })
 })
