@@ -20,7 +20,12 @@
 
 ## Architecture Docs
 
-Update `ARCHITECTURE.md` whenever a migration or role change is committed.
+Update the architecture docs whenever a migration or role change is committed:
+- Schema change (new/changed table, column, constraint) → `docs/architecture/schema.md`, plus its one-line index entry in `ARCHITECTURE.md`'s DB schema section if a table was added/removed
+- RPC change (new/changed function, grants, `SECURITY DEFINER`/`INVOKER`) → `docs/architecture/rpc.md`, plus its index entry in `ARCHITECTURE.md`'s Supabase RPC section if a function was added/removed
+- Route change (new/changed page, role gating) → `docs/architecture/routes.md`, plus its index entry in `ARCHITECTURE.md`'s Routes section if a route was added/removed
+- DAL change (new/changed function in `src/lib/db/`) → `docs/architecture/dal.md`, plus its index entry in `ARCHITECTURE.md`'s Data access layer section if a module was added/removed
+- Role change (new role, permissions matrix, RLS convention) → stays in `ARCHITECTURE.md`'s Role system / RLS conventions sections
 
 ## User Guides
 
