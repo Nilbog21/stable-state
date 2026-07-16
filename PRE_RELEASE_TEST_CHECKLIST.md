@@ -249,6 +249,8 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] **By Instructor** tab also shows the same **Non-lesson income** row
 - [ ] On that trainer's member detail page, tap **Remove** and confirm the browser prompt after they've instructed a paid lesson → you're redirected to the Members list and the removed trainer no longer appears there; back on Finances, **By Instructor** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Gross Income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
 - [ ] **By Paid To** tab: **Recipient | Expense Amount** columns, recipient name is an underlined link (not just underlined on hover)
+- [ ] On page load, By Paid To rows are sorted by **Recipient** name ascending, with a ▲ next to the Recipient header
+- [ ] Tap the **Expense Amount** header on By Paid To → rows re-sort by that column ascending, with the ▲ moving off Recipient; tap again → order reverses and the indicator flips to ▼
 - [ ] Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
 - [ ] Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month (Date, Type, Amount columns), date links to the expense's edit page, bottom **Total** matches the By Paid To summary
 - [ ] A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL

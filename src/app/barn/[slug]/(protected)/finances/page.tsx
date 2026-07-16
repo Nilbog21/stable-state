@@ -14,6 +14,7 @@ import { ByTierTable } from './ByTierTable'
 import { ByHorseTable } from './ByHorseTable'
 import { ByRiderTable } from './ByRiderTable'
 import { ByInstructorTable } from './ByInstructorTable'
+import { ByPaidToTable } from './ByPaidToTable'
 import { Th, Td } from '@/components/ui/Table'
 import { Pill } from '@/components/ui/Pill'
 import { EmptyState } from '@/components/EmptyState'
@@ -243,31 +244,7 @@ export default async function FinancesPage({
 
       {tab === 'recipient' && (
         recipientExpenses.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Recipient</Th>
-                  <Th>Expense Amount</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {recipientExpenses.map((row) => (
-                  <tr key={row.recipient}>
-                    <Td>
-                      <Link
-                        href={`/barn/${slug}/finances/expenses/${encodeURIComponent(row.recipient)}?month=${monthParam}`}
-                        className="underline"
-                      >
-                        {row.recipient}
-                      </Link>
-                    </Td>
-                    <Td>{formatCurrency(row.totalExpenses)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ByPaidToTable rows={recipientExpenses} slug={slug} monthParam={monthParam} />
         ) : (
           <EmptyState
             heading={`No expenses in ${monthLabel}.`}
