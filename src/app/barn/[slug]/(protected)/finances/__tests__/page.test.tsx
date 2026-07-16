@@ -987,6 +987,26 @@ describe('FinancesPage', () => {
     expect(screen.getByText('No lessons in June 2026.')).toBeDefined()
   })
 
+  it('should_show_tier_table_not_empty_state_when_only_charge_income_exists', async () => {
+    // A boarding/lease-only month has zero real tier rows (no lessons at all, not even
+    // #771's zero-backfill — no active tiers were mocked here), but real charge income
+    // still exists via the NON_LESSON_INCOME_LABEL synthetic row. The gate must count
+    // this as activity so the table (and its Outside-this-view reconciliation) renders.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 300,
+      pendingIncome: 0,
+      breakdown: [{ tierName: NON_LESSON_INCOME_LABEL, price: null, lessonCount: 1, subtotal: 300, instructorCut: 0 }],
+    })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.queryByText('No lessons in June 2026.')).toBeNull()
+  })
+
   it('should_show_empty_state_on_horse_tab_when_no_horse_activity', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))

@@ -108,7 +108,7 @@ export default async function FinancesPage({
   // rather than a real per-entity row — so the reconciliation footer never silently
   // disappears just because every real row got filtered out (e.g. a boarding-only month
   // has zero real trainer rows, but the tab must still show that income as reconciled).
-  const tierHasActivity = tierRows.some((t) => t.subtotal !== 0 || t.instructorCut !== 0)
+  const tierHasActivity = tierRows.some((t) => t.subtotal !== 0 || t.instructorCut !== 0) || tierGross.outside !== 0
   const horseHasActivity = horseRows.length > 0 || noHorseIncome !== 0 || unattributedExpenses > 0
   const riderHasActivity = riderIncome.length > 0
   const trainerHasActivity = trainerIncome.length > 0

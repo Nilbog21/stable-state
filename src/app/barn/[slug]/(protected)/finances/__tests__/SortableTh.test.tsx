@@ -77,9 +77,13 @@ describe('SortableTh non-sortable mode', () => {
     )
   }
 
-  it('should_render_the_label_with_no_sort_button_when_onSort_is_omitted', () => {
+  it('should_render_the_label_when_onSort_is_omitted', () => {
     renderPlain()
     expect(screen.getByText('Expenses')).toBeDefined()
+  })
+
+  it('should_render_no_sort_button_when_onSort_is_omitted', () => {
+    renderPlain()
     expect(screen.queryByRole('button', { name: /Expenses/ })).toBeNull()
   })
 
@@ -101,11 +105,21 @@ describe('SortableTh non-sortable mode', () => {
     expect(screen.getByText('No expense is tracked per rider')).toBeDefined()
   })
 
-  it('should_place_the_label_and_info_trigger_in_the_same_inline_flex_row', () => {
+  it('should_place_the_label_and_info_trigger_in_an_inline_flex_row', () => {
     const { container } = renderPlain('No expense is tracked per rider')
     const row = container.querySelector('th > div')
     expect(row?.className).toContain('inline-flex')
+  })
+
+  it('should_place_the_label_inside_the_inline_flex_row', () => {
+    const { container } = renderPlain('No expense is tracked per rider')
+    const row = container.querySelector('th > div')
     expect(row?.contains(screen.getByText('Expenses'))).toBe(true)
+  })
+
+  it('should_place_the_info_trigger_inside_the_inline_flex_row', () => {
+    const { container } = renderPlain('No expense is tracked per rider')
+    const row = container.querySelector('th > div')
     expect(row?.contains(screen.getByRole('button', { name: 'Info' }))).toBe(true)
   })
 })

@@ -90,6 +90,13 @@ describe('ByInstructorTable', () => {
     expect(container.querySelectorAll('tbody tr')).toHaveLength(2)
   })
 
+  it('should_render_a_dash_for_zero_expenses_instead_of_dollar_zero', () => {
+    renderTable({ rows: [{ trainerId: 't-3', trainerName: 'Zero', totalIncome: 60, grossIncome: 60 }] })
+    const row = screen.getByText('Zero').closest('tr')!
+    const expensesCell = row.querySelectorAll('td')[2]
+    expect(expensesCell.textContent).toBe('—')
+  })
+
   it('should_render_a_dash_for_gross_and_expenses_when_grossincome_is_null', () => {
     renderTable({ rows: [{ trainerId: 't-3', trainerName: 'Nil', totalIncome: 40, grossIncome: null }] })
     const row = screen.getByText('Nil').closest('tr')!

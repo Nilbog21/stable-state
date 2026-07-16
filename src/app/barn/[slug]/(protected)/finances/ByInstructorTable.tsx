@@ -60,7 +60,13 @@ export function ByInstructorTable({
                 </Link>
               </Td>
               <Td>{row.grossIncome != null ? formatCurrency(row.grossIncome) : '—'}</Td>
-              <Td>{row.grossIncome != null ? formatCurrency(row.grossIncome - row.totalIncome, { forceParens: true }) : '—'}</Td>
+              <Td>
+                {row.grossIncome != null
+                  ? row.grossIncome - row.totalIncome === 0
+                    ? '—'
+                    : formatCurrency(row.grossIncome - row.totalIncome, { forceParens: true })
+                  : '—'}
+              </Td>
               <Td>{formatCurrency(row.totalIncome)}</Td>
             </tr>
           ))}
