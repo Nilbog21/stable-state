@@ -31,14 +31,3 @@ export async function rejectMembershipAction(
   await deleteMembership(membershipId)
   revalidatePath(`/barn/${barnSlug}/settings`)
 }
-
-export async function removeMembershipAction(
-  barnSlug: string,
-  membershipId: string
-): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-  const target = await getMembershipById(membershipId)
-  if (!target || target.barn_id !== barn.id) return
-  await deleteMembership(membershipId)
-  revalidatePath(`/barn/${barnSlug}/settings`)
-}

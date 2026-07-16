@@ -10,13 +10,15 @@ import { Card } from '@/components/ui/Card'
 import { ContactInfoForm } from './ContactInfoForm'
 import { DeleteDocumentButton } from './DeleteDocumentButton'
 import { ManageMemberSection } from './ManageMemberSection'
+import { InstructorAccess } from './InstructorAccess'
+import { RemoveMemberButton } from './RemoveMemberButton'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
-import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction } from './actions'
+import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction, removeMemberAction } from './actions'
 import { Button } from '@/components/ui/Button'
-import type { TrainerDocument, RiderDocument, Agreement, Profile, BarnMembership } from '@/lib/db/types'
+import type { TrainerDocument, RiderDocument, Agreement, Profile } from '@/lib/db/types'
 import { formatFee } from '@/lib/format-currency'
 import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 
@@ -55,26 +57,6 @@ function ContactInfo({
           <dd className="inline">{profile?.emergency_contact_phone ?? '—'}</dd>
         </div>
       </dl>
-    </section>
-  )
-}
-
-function InstructorAccess({ slug, targetMembership }: { slug: string; targetMembership: BarnMembership }) {
-  return (
-    <section className="mb-8">
-      <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        Instructor Access
-      </h2>
-      <form action={setCanInstructAction.bind(null, slug, targetMembership.id, !targetMembership.can_instruct)}>
-        <p className="mb-2 text-sm text-zinc-700 dark:text-zinc-300">
-          {targetMembership.can_instruct
-            ? 'Can be assigned as an instructor.'
-            : 'Cannot be assigned as an instructor.'}
-        </p>
-        <Button type="submit" variant={targetMembership.can_instruct ? 'danger' : 'primary'}>
-          {targetMembership.can_instruct ? 'Revoke Instructor Access' : 'Grant Instructor Access'}
-        </Button>
-      </form>
     </section>
   )
 }
@@ -178,6 +160,8 @@ export default async function MemberDetailPage({
   const canManageInstructorAccess =
     callerRole === 'manager' && (targetRole === 'manager' || targetRole === 'trainer')
 
+  const canRemoveMember = callerRole === 'manager' && targetMembership.user_id !== user.id
+
   const canManageInvite =
     callerRole === 'manager' && targetProfile?.is_managed === true && targetMembership.invite_token !== null
 
@@ -200,9 +184,14 @@ export default async function MemberDetailPage({
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {displayName}
-      </h1>
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {displayName}
+        </h1>
+        {canRemoveMember && (
+          <RemoveMemberButton action={removeMemberAction.bind(null, slug, membership_id)} name={displayName} />
+        )}
+      </div>
 
       {canManageInvite && targetMembership.invite_token !== null && (
         <ManageMemberSection
@@ -228,7 +217,13 @@ export default async function MemberDetailPage({
         <ContactInfo profile={targetProfile} slug={slug} isOwnPage={isOwnPage} />
       )}
 
-      {canManageInstructorAccess && <InstructorAccess slug={slug} targetMembership={targetMembership} />}
+      {canManageInstructorAccess && (
+        <InstructorAccess
+          name={displayName}
+          canInstruct={targetMembership.can_instruct}
+          action={setCanInstructAction.bind(null, slug, targetMembership.id, !targetMembership.can_instruct)}
+        />
+      )}
 
       {canViewDocuments && (
       <section className="mb-10">

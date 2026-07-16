@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
+import { getMembershipById, setCanInstruct, deleteMembership } from '@/lib/db/barn-memberships'
 import { revokeInviteToken } from '@/lib/db/member-invites'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
@@ -117,6 +117,22 @@ export async function setCanInstructAction(
 
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
   redirect(`/barn/${barnSlug}/members/${membershipId}`)
+}
+
+export async function removeMemberAction(
+  barnSlug: string,
+  membershipId: string
+): Promise<void> {
+  const { user, barn } = await requireMembership(barnSlug, ['manager'])
+
+  const target = await getMembershipById(membershipId)
+  if (!target || target.barn_id !== barn.id) notFound()
+  if (target.user_id === user.id) notFound()
+
+  await deleteMembership(membershipId)
+
+  revalidatePath(`/barn/${barnSlug}/members`)
+  redirect(`/barn/${barnSlug}/members`)
 }
 
 export async function revokeInviteTokenAction(
