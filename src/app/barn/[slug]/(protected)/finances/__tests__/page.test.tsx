@@ -965,6 +965,28 @@ describe('FinancesPage', () => {
     expect(screen.getByText('No lessons in June 2026.')).toBeDefined()
   })
 
+  it('should_show_empty_state_on_tier_tab_when_every_tier_row_is_the_771_zero_backfill', async () => {
+    // #971 review fix: #771 backfills a $0 row for every active barn tier regardless of
+    // lesson activity, so `breakdown.length > 0` is true even with zero real collected
+    // income that month — the gate must check for non-zero subtotal/instructorCut instead.
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 0,
+      pendingIncome: 0,
+      breakdown: [
+        { tierName: 'Standard', price: 50, lessonCount: 0, subtotal: 0, instructorCut: 0 },
+        { tierName: 'Premium', price: 75, lessonCount: 0, subtotal: 0, instructorCut: 0 },
+      ],
+    })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.getByText('No lessons in June 2026.')).toBeDefined()
+  })
+
   it('should_show_empty_state_on_horse_tab_when_no_horse_activity', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
