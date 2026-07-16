@@ -23,10 +23,10 @@ function renderTable(props: Partial<React.ComponentProps<typeof ByTierTable>> = 
 }
 
 describe('ByTierTable', () => {
-  it('should_render_uniform_gross_expenses_net_headers_with_no_lessons_column', () => {
+  it('should_render_uniform_gross_expenses_net_headers_with_no_price_or_lessons_column', () => {
     renderTable()
     const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼ⓘ]/g, '').trim())
-    expect(headers).toEqual(['Tier', 'Price', 'Gross', 'Expenses', 'Net'])
+    expect(headers).toEqual(['Tier', 'Gross', 'Expenses', 'Net'])
   })
 
   it('should_compute_gross_as_net_plus_instructor_cut', () => {
@@ -63,18 +63,6 @@ describe('ByTierTable', () => {
     const { container } = renderTable()
     fireEvent.click(screen.getByRole('columnheader', { name: /^Net/ }).querySelector('button')!)
     expect(rowNames(container)).toEqual(['Premium', 'Standard'])
-  })
-
-  it('should_show_dash_for_null_price', () => {
-    render(<ByTierTable rows={[{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100, instructorCut: 25 }]} gross={gross} expenses={expenses} net={net} />)
-    expect(screen.getAllByText('—').length).toBeGreaterThan(0)
-  })
-
-  it('should_sort_a_null_price_tier_before_priced_tiers_when_price_header_clicked', () => {
-    const withCustom = [...rows, { tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100, instructorCut: 25 }]
-    const { container } = render(<ByTierTable rows={withCustom} gross={gross} expenses={expenses} net={net} />)
-    fireEvent.click(screen.getByRole('columnheader', { name: /^Price/ }).querySelector('button')!)
-    expect(rowNames(container)).toEqual(['Custom', 'Standard', 'Premium'])
   })
 
   it('should_not_render_a_non_lesson_income_row_in_the_body', () => {
