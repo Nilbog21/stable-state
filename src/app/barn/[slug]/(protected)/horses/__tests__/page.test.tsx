@@ -25,16 +25,19 @@ vi.mock('../HorseCard', () => ({
     horse,
     variant,
     exhaustion,
+    linkable,
   }: {
     horse: { name: string; id: string }
     variant: string
     exhaustion?: { existingRows: unknown[]; thresholds: { high: number; moderate: number } }
+    linkable?: boolean
   }) => (
     <a
       href={`#${horse.id}`}
       data-variant={variant}
       data-thresholds={exhaustion ? JSON.stringify(exhaustion.thresholds) : undefined}
       data-row-count={exhaustion ? exhaustion.existingRows.length : undefined}
+      data-linkable={String(linkable)}
     >
       {horse.name}
     </a>
@@ -379,5 +382,28 @@ describe('HorsesPage', () => {
       render(jsx)
       expect(screen.getByText('No horses yet')).toBeDefined()
     })
+
+    it('should_render_available_horse_card_as_not_linkable_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('Thunderbolt').getAttribute('data-linkable')).toBe('false')
+    })
+
+    it('should_render_unavailable_horse_card_as_not_linkable_for_rider', async () => {
+      vi.mocked(getHorsesByBarn).mockResolvedValue([
+        createMockHorse({ id: 'horse-2', name: 'Hobbled', is_available: false, unavailability_reason: 'Injury' }),
+      ])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('Hobbled').getAttribute('data-linkable')).toBe('false')
+    })
+  })
+
+  it('should_render_available_horse_card_as_linkable_for_manager', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('Thunderbolt').getAttribute('data-linkable')).toBe('true')
   })
 })
