@@ -62,7 +62,7 @@ describe('ExpensesPage', () => {
     ])
     const jsx = await ExpensesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Recent Vet')).toBeDefined()
+    expect(screen.getByText(/Recent Vet/)).toBeDefined()
   })
 
   it('should_not_show_older_expense_by_default', async () => {

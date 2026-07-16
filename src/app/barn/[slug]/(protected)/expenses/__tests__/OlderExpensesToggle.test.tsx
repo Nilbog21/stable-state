@@ -26,7 +26,7 @@ describe('OlderExpensesToggle', () => {
   it('should_show_older_expenses_after_clicking_button', () => {
     render(<OlderExpensesToggle expenses={[mockExpense]} slug="green-acres" />)
     fireEvent.click(screen.getByRole('button', { name: /show older expenses/i }))
-    expect(screen.getByText('Farrier Co')).toBeDefined()
+    expect(screen.getByText(/Farrier Co/)).toBeDefined()
   })
 
   it('should_show_hide_older_expenses_button_label_after_expanding', () => {

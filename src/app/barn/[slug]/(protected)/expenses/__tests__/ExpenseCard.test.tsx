@@ -27,12 +27,17 @@ describe('ExpenseCard', () => {
 
   it('should_render_recipient', () => {
     renderCard({ recipient: 'Dr. Smith' })
-    expect(screen.getByText('Dr. Smith')).toBeDefined()
+    expect(screen.getByText(/Dr\. Smith/)).toBeDefined()
   })
 
   it('should_render_expense_type', () => {
     renderCard({ expense_type: 'Veterinary' })
-    expect(screen.getByText('Veterinary')).toBeDefined()
+    expect(screen.getByText(/Veterinary/)).toBeDefined()
+  })
+
+  it('should_render_recipient_and_expense_type_combined_on_one_line', () => {
+    renderCard({ recipient: 'Dr. Smith', expense_type: 'Veterinary' })
+    expect(screen.getByText('Dr. Smith · Veterinary')).toBeDefined()
   })
 
   it('should_render_entire_barn_when_applies_to_all_horses', () => {
