@@ -13,7 +13,7 @@ import {
   updateExpense,
   deleteExpense,
   getUpcomingScheduledExpenses,
-  getPastDueExpenses,
+  getOutstandingExpenses,
   getRecentRecipients,
   getRecentExpenseTypes,
   getMostCommonTypeForRecipient,
@@ -787,7 +787,7 @@ describe('getUpcomingScheduledExpenses', () => {
   })
 })
 
-describe('getPastDueExpenses', () => {
+describe('getOutstandingExpenses', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
     vi.useFakeTimers()
@@ -799,17 +799,17 @@ describe('getPastDueExpenses', () => {
   })
 
   function makeChain(data: unknown[] | null, error: Error | null = null) {
-    const mockIs = vi.fn().mockResolvedValue({ data, error })
-    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
+    const mockOr = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ or: mockOr })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
-    return { select: mockSelect, mockEq, mockIs }
+    return { select: mockSelect, mockEq, mockOr }
   }
 
   it('should_return_empty_array_when_no_rows', async () => {
     const { select } = makeChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getPastDueExpenses('barn-1')
+    const result = await getOutstandingExpenses('barn-1')
 
     expect(result).toEqual([])
   })
@@ -818,25 +818,25 @@ describe('getPastDueExpenses', () => {
     const { select } = makeChain(null)
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getPastDueExpenses('barn-1')
+    const result = await getOutstandingExpenses('barn-1')
 
     expect(result).toEqual([])
   })
 
-  it('should_filter_amount_is_null_at_query_level', async () => {
-    const { select, mockIs } = makeChain([])
+  it('should_filter_amount_null_or_payment_type_null_at_query_level', async () => {
+    const { select, mockOr } = makeChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await getPastDueExpenses('barn-1')
+    await getOutstandingExpenses('barn-1')
 
-    expect(mockIs).toHaveBeenCalledWith('amount', null)
+    expect(mockOr).toHaveBeenCalledWith('amount.is.null,payment_type.is.null')
   })
 
   it('should_scope_query_to_barn_id', async () => {
     const { select, mockEq } = makeChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await getPastDueExpenses('barn-1')
+    await getOutstandingExpenses('barn-1')
 
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
@@ -846,7 +846,7 @@ describe('getPastDueExpenses', () => {
     const { select } = makeChain([expense])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getPastDueExpenses('barn-1')
+    const result = await getOutstandingExpenses('barn-1')
 
     expect(result).toEqual([expense])
   })
@@ -856,7 +856,7 @@ describe('getPastDueExpenses', () => {
     const { select } = makeChain([expense])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getPastDueExpenses('barn-1')
+    const result = await getOutstandingExpenses('barn-1')
 
     expect(result).toEqual([])
   })
@@ -866,7 +866,7 @@ describe('getPastDueExpenses', () => {
     const { select } = makeChain([expense])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getPastDueExpenses('barn-1')
+    const result = await getOutstandingExpenses('barn-1')
 
     expect(result).toEqual([])
   })
@@ -876,7 +876,17 @@ describe('getPastDueExpenses', () => {
     const { select } = makeChain([expense])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getPastDueExpenses('barn-1')
+    const result = await getOutstandingExpenses('barn-1')
+
+    expect(result).toEqual([expense])
+  })
+
+  it('should_include_amount_set_row_that_is_past_due_and_unpaid', async () => {
+    const expense = createMockHorseExpense({ expense_date: '2026-07-09', expense_time: '10:00:00', amount: 150, payment_type: null })
+    const { select } = makeChain([expense])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getOutstandingExpenses('barn-1')
 
     expect(result).toEqual([expense])
   })
@@ -887,7 +897,7 @@ describe('getPastDueExpenses', () => {
     const { select } = makeChain([later, earlier])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getPastDueExpenses('barn-1')
+    const result = await getOutstandingExpenses('barn-1')
 
     expect(result.map((r) => r.id)).toEqual(['expense-1', 'expense-2'])
   })
@@ -896,7 +906,7 @@ describe('getPastDueExpenses', () => {
     const { select } = makeChain(null, new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await expect(getPastDueExpenses('barn-1')).rejects.toThrow('db error')
+    await expect(getOutstandingExpenses('barn-1')).rejects.toThrow('db error')
   })
 })
 
