@@ -109,7 +109,6 @@ export default async function LessonDetailPage({
   const formattedDate = new Intl.DateTimeFormat('en-US', {
     dateStyle: 'medium',
     timeStyle: 'short',
-    timeZone: 'UTC',
   }).format(new Date(lesson.lesson_at))
 
   const canSeeNotes = role === 'trainer' || role === 'manager'
