@@ -146,7 +146,7 @@ export default async function FinancesPage({
           <section>
             <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Gross Income
-              <InfoPopover text="Lessons and agreement charges collected this month" />
+              <InfoPopover text="Lessons and agreement charges collected this month, net of the per-lesson instructor cut" />
             </p>
             <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
               {formatCurrency(collectedIncome)}

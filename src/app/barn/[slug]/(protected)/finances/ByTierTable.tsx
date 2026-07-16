@@ -43,7 +43,7 @@ export function ByTierTable({ rows, nonLessonIncomeLabel }: { rows: TierRow[]; n
           </tr>
         </thead>
         <tbody>
-          {/* ponytail: tierName === nonLessonIncomeLabel assumes no real tier is ever named "Non-lesson income" — mirrors the same assumption in page.tsx for NO_HORSE_LABEL/NO_RIDER_LABEL/NO_INSTRUCTOR_LABEL */}
+          {/* tierName === nonLessonIncomeLabel assumes no real tier is ever named "Non-lesson income" — same assumption ByHorseTable/ByRiderTable/ByInstructorTable make for their own NO_HORSE_LABEL/NO_RIDER_LABEL/NO_INSTRUCTOR_LABEL */}
           {sorted.map((tier) => (
             <tr key={tier.tierName}>
               <Td>
