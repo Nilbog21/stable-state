@@ -409,6 +409,7 @@ export interface ExpenseInput {
   appliesToAllHorses: boolean
   horseIds?: string[]
   paymentType?: PaymentType | null
+  occurredAt?: string
 }
 
 export interface HorseExpenseSummary {

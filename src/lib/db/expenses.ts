@@ -75,6 +75,7 @@ export async function createExpense(barnId: string, data: ExpenseInput, client?:
     p_notes: data.notes ?? null,
     p_horse_ids: data.horseIds ?? null,
     p_payment_type: data.paymentType ?? null,
+    p_occurred_at: data.occurredAt ?? null,
   })
   if (error) throw error
   return expense as HorseExpense
@@ -94,6 +95,7 @@ export async function updateExpense(expenseId: string, barnId: string, updates: 
     p_notes: updates.notes ?? null,
     p_horse_ids: updates.horseIds ?? null,
     p_payment_type: updates.paymentType ?? null,
+    p_occurred_at: updates.occurredAt ?? null,
   })
   if (error) throw error
   return expense as HorseExpense

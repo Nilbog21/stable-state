@@ -58,6 +58,8 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
   // rather than trusting the client to keep the two fields in sync.
   const paymentType = amount === null ? null : (paymentTypeRaw as PaymentType | null)
 
+  const occurredAt = (formData.get('occurred_at') as string | null)?.trim() || undefined
+
   return {
     data: {
       expenseDate,
@@ -69,6 +71,7 @@ function parseExpenseFormData(formData: FormData): { error: string } | { data: E
       appliesToAllHorses,
       horseIds,
       paymentType,
+      occurredAt,
     },
   }
 }

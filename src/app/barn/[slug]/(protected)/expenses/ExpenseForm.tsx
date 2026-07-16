@@ -33,6 +33,17 @@ type ExpenseFormProps = {
 const inputClassName =
   'mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50'
 
+// Mirrors DateHourPicker's fix: constructing via Date's local (year, month, day, hour,
+// minute) numeric components, then reading the true UTC instant back out via
+// toISOString(), uses the entering user's actual browser timezone — unlike a naive
+// server-side (date + time)::timestamptz cast, which #935's audit found interprets in
+// the session's timezone instead. Time defaults to midnight when blank.
+function computeOccurredAt(expenseDate: string, expenseTime: string): string {
+  const [year, month, day] = expenseDate.split('-').map(Number)
+  const [hour, minute] = expenseTime ? expenseTime.split(':').map(Number) : [0, 0]
+  return new Date(year, month - 1, day, hour, minute).toISOString()
+}
+
 export function ExpenseForm({
   barnSlug,
   horses,
@@ -130,6 +141,10 @@ export function ExpenseForm({
           className={inputClassName}
         />
       </div>
+
+      {expenseDate && (
+        <input type="hidden" name="occurred_at" value={computeOccurredAt(expenseDate, expenseTime)} />
+      )}
 
       {isPastDate ? (
         <input type="hidden" name="expense_time" value={expenseTime} />
