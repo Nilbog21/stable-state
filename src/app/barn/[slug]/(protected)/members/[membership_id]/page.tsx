@@ -160,7 +160,8 @@ export default async function MemberDetailPage({
   const canManageInstructorAccess =
     callerRole === 'manager' && (targetRole === 'manager' || targetRole === 'trainer')
 
-  const canRemoveMember = callerRole === 'manager' && targetMembership.user_id !== user.id
+  const canRemoveMember =
+    callerRole === 'manager' && targetMembership.user_id !== user.id && targetRole !== 'manager'
 
   const canManageInvite =
     callerRole === 'manager' && targetProfile?.is_managed === true && targetMembership.invite_token !== null
