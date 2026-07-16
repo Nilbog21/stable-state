@@ -130,38 +130,45 @@ describe('ManageMemberSection', () => {
   })
 
   it('should_disable_copy_invite_button_while_revoke_is_pending', async () => {
-    const { revokeAction } = deferredRevoke()
+    const { revokeAction, resolve } = deferredRevoke()
     render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
       await Promise.resolve()
     })
     expect(isDisabled(/copy invite/i)).toBe(true)
+    // Settle the action so it doesn't linger as a dangling pending transition for later tests
+    await act(async () => {
+      resolve()
+      await Promise.resolve()
+    })
   })
 
   it('should_show_loading_state_on_revoke_button_while_pending', async () => {
-    const { revokeAction } = deferredRevoke()
+    const { revokeAction, resolve } = deferredRevoke()
     render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
       await Promise.resolve()
     })
     expect(isDisabled(/revoke/i)).toBe(true)
+    // Settle the action so it doesn't linger as a dangling pending transition for later tests
+    await act(async () => {
+      resolve()
+      await Promise.resolve()
+    })
   })
 
   it('should_keep_copy_invite_disabled_until_token_prop_actually_changes', async () => {
-    const { revokeAction, resolve } = deferredRevoke()
+    const revokeAction = vi.fn().mockResolvedValue(undefined) as unknown as () => Promise<void>
     const { rerender } = render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
       await Promise.resolve()
     })
-    await act(async () => {
-      resolve()
-      await Promise.resolve()
-    })
-
-    // Action settled, but the prop hasn't been re-fetched with the new token yet
+    // Action settled (Revoke button no longer in its loading state)...
+    expect(isDisabled(/revoke/i)).toBe(false)
+    // ...but Copy Invite stays disabled as long as the token prop hasn't changed yet
     rerender(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
     expect(isDisabled(/copy invite/i)).toBe(true)
 

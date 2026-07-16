@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useActionState, useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/Button'
 
 interface Props {
@@ -12,6 +12,18 @@ interface Props {
 export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Props) {
   const [copied, setCopied] = useState(false)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  // Revoke regenerates the invite token server-side; Copy Invite must never read the
+  // stale prop mid-flight. `pending` alone isn't enough (Next resolves the action's
+  // own promise before it finishes applying the revalidated props), so Copy Invite also
+  // stays disabled until inviteToken actually differs from what it was pre-revoke.
+  const [tokenBeforeRevoke, setTokenBeforeRevoke] = useState<string | null>(null)
+  const [, formAction, pending] = useActionState(async () => {
+    setTokenBeforeRevoke(inviteToken)
+    await revokeAction()
+    return null
+  }, null)
+  const copyDisabled = pending || (tokenBeforeRevoke !== null && inviteToken === tokenBeforeRevoke)
 
   useEffect(() => {
     return () => {
@@ -40,11 +52,11 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
         This is an unlinked member. Use the following controls to invite this person to the barn.
       </p>
       <div className="flex items-center gap-2">
-        <Button type="button" variant="ghost" onClick={handleCopy}>
+        <Button type="button" variant="ghost" onClick={handleCopy} disabled={copyDisabled}>
           {copied ? 'Copied!' : 'Copy Invite'}
         </Button>
-        <form action={revokeAction}>
-          <Button type="submit" variant="danger">
+        <form action={formAction}>
+          <Button type="submit" variant="danger" loading={pending}>
             Revoke
           </Button>
         </form>

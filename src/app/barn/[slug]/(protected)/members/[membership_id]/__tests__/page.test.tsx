@@ -867,7 +867,7 @@ describe('MemberDetailPage', () => {
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
       fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }))
-      expect(revokeInviteTokenAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn', expect.any(FormData))
+      expect(revokeInviteTokenAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn')
     })
   })
 })
