@@ -7,7 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveHorseNames } from './horses'
 import { getTransactionRows, positiveAmount } from './transactions'
-import type { ExpenseFinancialSummary, HorseExpenseDetailRow } from './types'
+import type { ExpenseFinancialSummary, HorseExpenseDetailRow, RecipientExpenseSummary, RecipientExpenseDetailRow } from './types'
 
 function applicableHorseIdsForExpense(
   expense: { id: string; expense_date: string; applies_to_all_horses: boolean },
@@ -36,20 +36,20 @@ async function fetchExpenseTransactionsInRange(
   barnId: string,
   startDate: Date,
   endDate: Date
-): Promise<{ id: string; expense_date: string; amount: number; applies_to_all_horses: boolean }[]> {
+): Promise<{ id: string; expense_date: string; amount: number; applies_to_all_horses: boolean; recipient: string | null; expense_type: string | null }[]> {
   const rows = await getTransactionRows(barnId, ['expense'], { startDate, endDate }, supabase)
   if (!rows.length) return []
 
   const expenseIds = [...new Set(rows.map((r) => r.expenseId).filter((id): id is string => id !== null))]
-  const appliesToAllByExpenseId = new Map<string, boolean>()
+  const detailsByExpenseId = new Map<string, { applies_to_all_horses: boolean; recipient: string; expense_type: string }>()
   if (expenseIds.length) {
     const { data, error } = await supabase
       .from('horse_expenses')
-      .select('id, applies_to_all_horses')
+      .select('id, applies_to_all_horses, recipient, expense_type')
       .eq('barn_id', barnId)
       .in('id', expenseIds)
     if (error) throw error
-    for (const e of data ?? []) appliesToAllByExpenseId.set(e.id, e.applies_to_all_horses)
+    for (const e of data ?? []) detailsByExpenseId.set(e.id, e)
   }
 
   // expenseId is null for a transaction whose source horse_expenses row was hard-deleted
@@ -58,14 +58,18 @@ async function fetchExpenseTransactionsInRange(
   // totalExpenses, mirroring
   // lesson-finance-queries.ts's orphaned-lessonId precedent. Falls back to the
   // transaction's own id, which never matches a real horse_expenses/expense_horses row,
-  // so it naturally drops out of every per-horse breakdown below instead of corrupting one.
+  // so it naturally drops out of every per-horse/per-recipient breakdown below instead of
+  // corrupting one.
   return rows.map((row) => {
     const expenseId = row.expenseId ?? row.id
+    const details = row.expenseId ? detailsByExpenseId.get(row.expenseId) : undefined
     return {
       id: expenseId,
       expense_date: row.occurredAt.slice(0, 10),
       amount: positiveAmount(row.kind, row.amount),
-      applies_to_all_horses: row.expenseId ? (appliesToAllByExpenseId.get(row.expenseId) ?? false) : false,
+      applies_to_all_horses: details?.applies_to_all_horses ?? false,
+      recipient: details?.recipient ?? null,
+      expense_type: details?.expense_type ?? null,
     }
   })
 }
@@ -174,4 +178,46 @@ export async function getHorseExpenseDetail(
 
   const total = rows.reduce((sum, r) => sum + r.splitAmount, 0)
   return { horseName: horse.name, rows, total }
+}
+
+// #949: recipient is free text on horse_expenses (no FK/id), so this breakdown groups by
+// the raw recipient string itself rather than a resolved entity id, unlike the horse/rider/
+// trainer breakdowns above.
+export async function getRecipientExpenseSummary(
+  barnId: string,
+  startDate: Date,
+  endDate: Date
+): Promise<RecipientExpenseSummary[]> {
+  const supabase = await createClient()
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
+
+  const breakdownMap = new Map<string, number>()
+  for (const expense of expenses) {
+    if (!expense.recipient) continue
+    breakdownMap.set(expense.recipient, (breakdownMap.get(expense.recipient) ?? 0) + expense.amount)
+  }
+
+  return Array.from(breakdownMap.entries())
+    .map(([recipient, totalExpenses]) => ({ recipient, totalExpenses }))
+    .sort((a, b) => b.totalExpenses - a.totalExpenses)
+}
+
+export async function getRecipientExpenseDetail(
+  barnId: string,
+  recipient: string,
+  startDate: Date,
+  endDate: Date
+): Promise<{ rows: RecipientExpenseDetailRow[]; total: number }> {
+  const supabase = await createClient()
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
+
+  // recipient and expense_type are resolved together from the same horse_expenses lookup
+  // row (see fetchExpenseTransactionsInRange), so a non-null recipient match guarantees a
+  // non-null expense_type too.
+  const rows: RecipientExpenseDetailRow[] = expenses
+    .filter((e) => e.recipient === recipient)
+    .map((e) => ({ expenseId: e.id, expenseDate: e.expense_date, expenseType: e.expense_type as string, amount: e.amount }))
+
+  const total = rows.reduce((sum, r) => sum + r.amount, 0)
+  return { rows, total }
 }
