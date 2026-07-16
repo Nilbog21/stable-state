@@ -63,9 +63,13 @@ describe('ByInstructorTable', () => {
     expect(screen.getByRole('link', { name: 'Amy' }).getAttribute('href')).toBe('/barn/green-acres/finances/trainers/t-1?month=2026-06')
   })
 
-  it('should_not_render_a_non_lesson_income_or_no_instructor_row_in_the_body', () => {
+  it('should_not_render_a_non_lesson_income_row_in_the_body', () => {
     renderTable()
     expect(screen.queryByText('Non-lesson income')).toBeNull()
+  })
+
+  it('should_not_render_a_no_instructor_row_in_the_body', () => {
+    renderTable()
     expect(screen.queryByText('No instructor')).toBeNull()
   })
 
@@ -77,9 +81,8 @@ describe('ByInstructorTable', () => {
   it('should_render_the_footer_total_row_matching_the_gross_expenses_net_totals', () => {
     renderTable()
     const totalRow = screen.getByText('Total').closest('tr')!
-    expect(totalRow.textContent).toContain('$180.00')
-    expect(totalRow.textContent).toContain('$135.00')
-    expect(totalRow.textContent).toContain('$45.00')
+    const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
+    expect(cells).toEqual(['Total', '$180.00', '$135.00', '$45.00'])
   })
 
   it('should_exclude_the_footer_from_the_sortable_tbody', () => {

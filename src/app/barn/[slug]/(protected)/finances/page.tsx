@@ -103,6 +103,16 @@ export default async function FinancesPage({
 
   const recipientExpensesColumn = buildReconciliationColumn(totalExpenses, recipientExpenses.reduce((sum, r) => sum + r.totalExpenses, 0), unattributedExpenses)
 
+  // #971 review fix: gate each tab on whether there's ANY barn-wide money attributable
+  // to its dimension — including money that falls into "Outside this view"/"Unattributed"
+  // rather than a real per-entity row — so the reconciliation footer never silently
+  // disappears just because every real row got filtered out (e.g. a boarding-only month
+  // has zero real trainer rows, but the tab must still show that income as reconciled).
+  const horseHasActivity = horseRows.length > 0 || noHorseIncome !== 0 || unattributedExpenses > 0
+  const riderHasActivity = riderIncome.length > 0
+  const trainerHasActivity = trainerIncome.length > 0
+  const recipientHasActivity = recipientExpenses.length > 0 || unattributedExpenses > 0
+
   const monthParam = formatMonthParam(startDate)
   const monthQ = isCurrentMonth ? '' : `&month=${monthParam}`
   const tabQ = tab !== 'horse' ? `&tab=${tab}` : ''
@@ -229,7 +239,7 @@ export default async function FinancesPage({
       )}
 
       {tab === 'horse' && (
-        horseRows.length > 0 ? (
+        horseHasActivity ? (
           <ByHorseTable rows={horseRows} slug={slug} monthParam={monthParam} gross={horseGross} expenses={horseExpenses} net={horseNet} />
         ) : (
           <EmptyState
@@ -240,7 +250,7 @@ export default async function FinancesPage({
       )}
 
       {tab === 'rider' && (
-        realRiderIncome.length > 0 ? (
+        riderHasActivity ? (
           <ByRiderTable rows={realRiderIncome} slug={slug} monthParam={monthParam} gross={riderGross} expenses={riderExpenses} net={riderNet} />
         ) : (
           <EmptyState
@@ -251,7 +261,7 @@ export default async function FinancesPage({
       )}
 
       {tab === 'trainer' && (
-        realTrainerIncome.length > 0 ? (
+        trainerHasActivity ? (
           <ByInstructorTable
             rows={realTrainerIncome}
             slug={slug}
@@ -269,7 +279,7 @@ export default async function FinancesPage({
       )}
 
       {tab === 'recipient' && (
-        recipientExpenses.length > 0 ? (
+        recipientHasActivity ? (
           <ByPaidToTable rows={recipientExpenses} slug={slug} monthParam={monthParam} expenses={recipientExpensesColumn} />
         ) : (
           <EmptyState

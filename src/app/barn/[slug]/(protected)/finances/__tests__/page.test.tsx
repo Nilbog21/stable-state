@@ -1013,6 +1013,21 @@ describe('FinancesPage', () => {
     expect(screen.queryByText(NON_LESSON_INCOME_LABEL)).toBeNull()
   })
 
+  it('should_render_the_reconciliation_footer_on_the_trainer_tab_when_only_non_lesson_income_exists', async () => {
+    // #971 review fix: a month with charge income but zero paid lessons used to fall
+    // through to the "No trainer income" EmptyState instead of showing that income
+    // reconciled under "Outside this view" — the tab's Total must never disappear.
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    const { container } = render(jsx)
+    expect(container.querySelector('tfoot')).not.toBeNull()
+  })
+
   it('should_not_render_a_no_instructor_row_in_the_trainer_tab_body', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
       { trainerId: NO_INSTRUCTOR_LABEL, trainerName: NO_INSTRUCTOR_LABEL, totalIncome: 100, grossIncome: 100 },
@@ -1194,43 +1209,54 @@ describe('FinancesPage', () => {
 
   // Reconciliation wiring (#971)
 
-  it('should_reconcile_gross_expenses_net_totals_identically_across_all_five_tables', async () => {
+  describe('reconciliation totals identical across all five tables', () => {
     // Mirrors the real dev-barn numbers verified via SQL: $1,950 gross lesson income,
     // $425 instructor cut, $6,865 horse expenses ($6,775 attributable + $90 orphaned).
-    vi.mocked(getFinancialSummary).mockResolvedValue({
-      collectedIncome: 1525,
-      pendingIncome: 0,
-      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 1525, instructorCut: 425 }],
+    beforeEach(() => {
+      vi.mocked(getFinancialSummary).mockResolvedValue({
+        collectedIncome: 1525,
+        pendingIncome: 0,
+        breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 1525, instructorCut: 425 }],
+      })
+      vi.mocked(getExpenseFinancialSummary).mockResolvedValue({
+        totalExpenses: 6865,
+        breakdown: [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 6775 }],
+      })
+      vi.mocked(getHorseIncomeSummary).mockResolvedValue([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 1950 }])
+      vi.mocked(getRiderIncomeSummary).mockResolvedValue([{ riderId: 'rider-1', riderName: 'Alice', totalIncome: 1950 }])
+      vi.mocked(getTrainerIncomeSummary).mockResolvedValue([{ trainerId: 'trainer-1', trainerName: 'Jane', totalIncome: 1525, grossIncome: 1950 }])
+      vi.mocked(getRecipientExpenseSummary).mockResolvedValue([{ recipient: 'Riverside Vet Clinic', totalExpenses: 6775 }])
     })
-    vi.mocked(getExpenseFinancialSummary).mockResolvedValue({
-      totalExpenses: 6865,
-      breakdown: [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 6775 }],
-    })
-    vi.mocked(getHorseIncomeSummary).mockResolvedValue([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 1950 }])
-    vi.mocked(getRiderIncomeSummary).mockResolvedValue([{ riderId: 'rider-1', riderName: 'Alice', totalIncome: 1950 }])
-    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([{ trainerId: 'trainer-1', trainerName: 'Jane', totalIncome: 1525, grossIncome: 1950 }])
-    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([{ recipient: 'Riverside Vet Clinic', totalExpenses: 6775 }])
 
-    const totalGross = '$1,950.00'
-    const totalExpenses = '$7,290.00'
-    const totalNet = '($5,340.00)'
-
-    for (const tab of ['tier', 'horse', 'rider', 'trainer', 'recipient']) {
+    async function totalRowCells(tab: string) {
       const jsx = await FinancesPage({
         params: Promise.resolve({ slug: 'green-acres' }),
         searchParams: Promise.resolve({ tab }),
       })
-      const { unmount, container } = render(jsx)
+      render(jsx)
       const totalRow = screen.getByText('Total').closest('tr')!
-      const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
-      expect(cells, `tab=${tab}`).toContain(totalExpenses)
-      if (tab !== 'recipient') {
-        expect(cells, `tab=${tab}`).toContain(totalGross)
-        expect(cells, `tab=${tab}`).toContain(totalNet)
-      }
-      unmount()
-      container.remove()
+      return Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
     }
+
+    it('should_reconcile_gross_expenses_net_totals_on_the_tier_tab', async () => {
+      expect(await totalRowCells('tier')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+    })
+
+    it('should_reconcile_gross_expenses_net_totals_on_the_horse_tab', async () => {
+      expect(await totalRowCells('horse')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+    })
+
+    it('should_reconcile_gross_expenses_net_totals_on_the_rider_tab', async () => {
+      expect(await totalRowCells('rider')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+    })
+
+    it('should_reconcile_gross_expenses_net_totals_on_the_trainer_tab', async () => {
+      expect(await totalRowCells('trainer')).toEqual(['Total', '$1,950.00', '$7,290.00', '($5,340.00)'])
+    })
+
+    it('should_reconcile_gross_expenses_net_totals_on_the_recipient_tab', async () => {
+      expect(await totalRowCells('recipient')).toEqual(['Total', '—', '$7,290.00', '—'])
+    })
   })
 
   it('should_surface_an_orphaned_expense_as_unattributed_on_the_horse_tab_instead_of_dropping_it', async () => {
@@ -1256,6 +1282,22 @@ describe('FinancesPage', () => {
       breakdown: [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 6775 }],
     })
     vi.mocked(getRecipientExpenseSummary).mockResolvedValue([{ recipient: 'Riverside Vet Clinic', totalExpenses: 6775 }])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    const unattributedRow = screen.getByText('Unattributed').closest('tr')!
+    expect(unattributedRow.textContent).toContain('$90.00')
+  })
+
+  it('should_render_the_reconciliation_footer_on_the_recipient_tab_when_every_expense_that_month_is_orphaned', async () => {
+    // #971 review fix: a month where the only expense activity is a fully orphaned
+    // (deleted horse_expenses, collected transaction kept) record has zero real
+    // recipient rows — the tab's Unattributed total must still surface, not vanish
+    // behind the "No expenses" EmptyState.
+    vi.mocked(getExpenseFinancialSummary).mockResolvedValue({ totalExpenses: 90, breakdown: [] })
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([])
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({ tab: 'recipient' }),

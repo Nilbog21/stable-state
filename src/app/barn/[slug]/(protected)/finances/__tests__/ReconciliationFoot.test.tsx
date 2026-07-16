@@ -31,20 +31,31 @@ function renderTable(props: Partial<React.ComponentProps<typeof ReconciliationFo
 }
 
 describe('ReconciliationFoot', () => {
-  it('should_render_all_four_reconciliation_rows', () => {
+  it('should_render_the_subtotal_row', () => {
     renderTable()
     expect(screen.getByText('Subtotal')).toBeDefined()
+  })
+
+  it('should_render_the_outside_this_view_row', () => {
+    renderTable()
     expect(screen.getByText('Outside this view')).toBeDefined()
+  })
+
+  it('should_render_the_unattributed_row', () => {
+    renderTable()
     expect(screen.getByText('Unattributed')).toBeDefined()
+  })
+
+  it('should_render_the_total_row', () => {
+    renderTable()
     expect(screen.getByText('Total')).toBeDefined()
   })
 
   it('should_render_the_total_row_values', () => {
-    const { container } = renderTable()
+    renderTable()
     const totalRow = screen.getByText('Total').closest('tr')!
     const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
     expect(cells).toEqual(['Total', '$425.00', '$7,290.00', '($6,865.00)'])
-    expect(container).toBeDefined()
   })
 
   it('should_render_negative_values_in_accounting_parens', () => {

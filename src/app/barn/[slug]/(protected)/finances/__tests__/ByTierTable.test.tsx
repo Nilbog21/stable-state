@@ -90,9 +90,8 @@ describe('ByTierTable', () => {
   it('should_render_the_footer_total_row_matching_the_gross_expenses_net_totals', () => {
     renderTable()
     const totalRow = screen.getByText('Total').closest('tr')!
-    expect(totalRow.textContent).toContain('$200.00')
-    expect(totalRow.textContent).toContain('$130.00')
-    expect(totalRow.textContent).toContain('$70.00')
+    const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
+    expect(cells).toEqual(['Total', '$200.00', '$130.00', '$70.00'])
   })
 
   it('should_exclude_the_footer_from_the_sortable_tbody', () => {
