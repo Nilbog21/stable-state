@@ -417,7 +417,7 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     const row = screen.getByText('Dr. Smith').closest('tr')!
-    expect(within(row).getByText('$120.00')).toBeDefined()
+    expect(within(row).getByText('($120.00)')).toBeDefined()
   })
 
   it('should_link_recipient_name_to_encoded_drill_down_with_month_param', async () => {
@@ -1150,7 +1150,7 @@ describe('FinancesPage', () => {
     expect(pills[0].textContent).toBe('By Horse')
   })
 
-  it('should_display_zero_expenses_for_horse_with_no_expenses', async () => {
+  it('should_display_dash_for_horse_with_no_expenses', async () => {
     vi.mocked(getHorseIncomeSummary).mockResolvedValue([
       { horseId: 'h-1', horseName: 'Copper', totalIncome: 100 },
     ])
@@ -1161,7 +1161,8 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     const row = screen.getByText('Copper').closest('tr')!
-    expect(within(row).getByText('$0.00')).toBeDefined()
+    const expensesCell = row.querySelectorAll('td')[2]
+    expect(expensesCell.textContent).toBe('—')
   })
 
   it('should_display_expense_only_horse_with_zero_income', async () => {

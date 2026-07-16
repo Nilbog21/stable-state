@@ -54,7 +54,7 @@ export function ByPaidToTable({
                 </Link>
               </Td>
               <Td>—</Td>
-              <Td>{formatCurrency(row.totalExpenses)}</Td>
+              <Td>{row.totalExpenses === 0 ? '—' : formatCurrency(row.totalExpenses, { forceParens: true })}</Td>
               <Td>—</Td>
             </tr>
           ))}

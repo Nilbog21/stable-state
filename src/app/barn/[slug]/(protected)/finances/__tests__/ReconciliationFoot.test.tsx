@@ -73,7 +73,7 @@ describe('ReconciliationFoot', () => {
     })
     const unattributedRow = screen.getByText('Unattributed').closest('tr')!
     const cells = Array.from(unattributedRow.querySelectorAll('td')).map((td) => td.textContent)
-    expect(cells).toEqual(['Unattributed', '$0.00', '—', '$0.00'])
+    expect(cells).toEqual(['Unattributedⓘ', '$0.00', '—', '$0.00'])
   })
 
   it('should_render_negative_values_in_accounting_parens', () => {
@@ -86,7 +86,7 @@ describe('ReconciliationFoot', () => {
     renderTable({ gross: null, net: null })
     const totalRow = screen.getByText('Total').closest('tr')!
     const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
-    expect(cells).toEqual(['Total', '—', '$7,290.00', '—'])
+    expect(cells).toEqual(['Total', '—', '($7,290.00)', '—'])
   })
 
   it('should_show_an_info_popover_on_the_outside_this_view_row', () => {

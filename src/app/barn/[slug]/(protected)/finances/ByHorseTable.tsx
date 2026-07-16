@@ -60,7 +60,7 @@ export function ByHorseTable({
                 </Link>
               </Td>
               <Td>{formatCurrency(row.gross)}</Td>
-              <Td>{formatCurrency(row.expenses)}</Td>
+              <Td>{row.expenses === 0 ? '—' : formatCurrency(row.expenses, { forceParens: true })}</Td>
               <Td>{formatCurrency(row.net)}</Td>
             </tr>
           ))}

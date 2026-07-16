@@ -3,8 +3,19 @@ import { InfoPopover } from './InfoPopover'
 import { formatCurrency } from '@/lib/format-currency'
 import type { ReconciliationColumn } from '@/lib/finances-reconciliation'
 
-function ValueCell({ column, bucket }: { column: ReconciliationColumn | null; bucket: keyof ReconciliationColumn }) {
-  return <Td>{column ? formatCurrency(column[bucket]) : '—'}</Td>
+function ValueCell({
+  column,
+  bucket,
+  forceParens,
+}: {
+  column: ReconciliationColumn | null
+  bucket: keyof ReconciliationColumn
+  forceParens?: boolean
+}) {
+  if (!column) return <Td>—</Td>
+  const value = column[bucket]
+  if (forceParens && value === 0) return <Td>—</Td>
+  return <Td>{formatCurrency(value, { forceParens })}</Td>
 }
 
 /**
@@ -33,7 +44,7 @@ export function ReconciliationFoot({
       <tr>
         <Td colSpan={labelColSpan} tone="secondary">Subtotal</Td>
         <ValueCell column={gross} bucket="subtotal" />
-        <ValueCell column={expenses} bucket="subtotal" />
+        <ValueCell column={expenses} bucket="subtotal" forceParens />
         <ValueCell column={net} bucket="subtotal" />
       </tr>
       <tr className="text-zinc-500 dark:text-zinc-400">
@@ -42,7 +53,7 @@ export function ReconciliationFoot({
           <InfoPopover text={outsideInfoText} align="left" />
         </Td>
         <ValueCell column={gross} bucket="outside" />
-        <ValueCell column={expenses} bucket="outside" />
+        <ValueCell column={expenses} bucket="outside" forceParens />
         <ValueCell column={net} bucket="outside" />
       </tr>
       <tr className="text-amber-700 dark:text-amber-400">
@@ -51,13 +62,13 @@ export function ReconciliationFoot({
           <InfoPopover text={unattributedInfoText} align="left" />
         </Td>
         <ValueCell column={gross} bucket="unattributed" />
-        <ValueCell column={expenses} bucket="unattributed" />
+        <ValueCell column={expenses} bucket="unattributed" forceParens />
         <ValueCell column={net} bucket="unattributed" />
       </tr>
       <tr className="font-semibold">
         <Td colSpan={labelColSpan} className="font-semibold">Total</Td>
         <ValueCell column={gross} bucket="total" />
-        <ValueCell column={expenses} bucket="total" />
+        <ValueCell column={expenses} bucket="total" forceParens />
         <ValueCell column={net} bucket="total" />
       </tr>
     </tfoot>
