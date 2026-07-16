@@ -34,7 +34,7 @@ export function SortableTh<K extends string = string>({
           <button
             type="button"
             onClick={() => onSort!(sortKey!)}
-            className="inline-flex min-h-11 items-center gap-1 py-2 hover:text-zinc-900 dark:hover:text-zinc-100"
+            className="inline-flex min-h-11 items-center gap-1 py-2 uppercase hover:text-zinc-900 dark:hover:text-zinc-100"
           >
             {label}
             {active && (dir === 'desc' ? ' ▼' : ' ▲')}
