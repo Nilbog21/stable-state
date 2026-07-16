@@ -42,6 +42,7 @@ vi.mock('@/lib/db/expenses', () => ({
 
 vi.mock('@/lib/db/outstanding', () => ({
   getOutstandingLessons: vi.fn(),
+  getOutstandingCancellationFees: vi.fn(),
 }))
 
 vi.mock('@/lib/db/agreement-finances', () => ({
@@ -65,7 +66,7 @@ import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { getDueDocuments } from '@/lib/db/documents'
 import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
-import { getOutstandingLessons } from '@/lib/db/outstanding'
+import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarn, createMockMembership } from '@/test/fixtures'
 import BarnDashboardPage from '../page'
@@ -118,6 +119,8 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getUpcomingScheduledExpenses).mockResolvedValue([])
     vi.mocked(getOutstandingLessons).mockReset()
     vi.mocked(getOutstandingLessons).mockResolvedValue([])
+    vi.mocked(getOutstandingCancellationFees).mockReset()
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([])
     vi.mocked(getOutstandingCharges).mockReset()
     vi.mocked(getOutstandingCharges).mockResolvedValue([])
   })
@@ -441,6 +444,44 @@ describe('BarnDashboardPage', () => {
     expect(link.href).toContain('/barn/green-acres/finances/outstanding')
   })
 
+  it('should_render_unpaid_lessons_card_when_only_cancellation_fee_outstanding', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([])
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([{ id: 'f1' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('1 unpaid lesson')).toBeDefined()
+  })
+
+  it('should_sum_lesson_and_cancellation_fee_counts_in_unpaid_lessons_card', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([{ id: 'l1' }] as any)
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([{ id: 'f1' }, { id: 'f2' }] as any)
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.getByText('3 unpaid lessons')).toBeDefined()
+  })
+
+  it('should_not_render_unpaid_lessons_card_when_both_lessons_and_cancellation_fees_are_empty', async () => {
+    vi.mocked(getOutstandingLessons).mockResolvedValue([])
+    vi.mocked(getOutstandingCancellationFees).mockResolvedValue([])
+
+    const jsx = await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+
+    expect(screen.queryByText(/unpaid lesson/i)).toBeNull()
+  })
+
+  it('should_call_getOutstandingCancellationFees_with_user_id_and_role_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getOutstandingCancellationFees).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockRiderMembership.role)
+  })
+
   it('should_render_unpaid_leases_boarding_card_with_singular_text_when_count_is_one', async () => {
     vi.mocked(getOutstandingCharges).mockResolvedValue([{ id: 'c1' }] as any)
 
@@ -508,5 +549,13 @@ describe('BarnDashboardPage', () => {
     await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
     expect(getOutstandingCharges).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockTrainerMembership.role)
+  })
+
+  it('should_call_getOutstandingCancellationFees_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+
+    await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+
+    expect(getOutstandingCancellationFees).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockTrainerMembership.role)
   })
 })
