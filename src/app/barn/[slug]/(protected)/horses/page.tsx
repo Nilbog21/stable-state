@@ -43,9 +43,8 @@ export default async function HorsesPage({
     available = horses.filter((h) => h.is_available)
     unavailable = horses.filter((h) => !h.is_available)
   } else {
-    const sevenDaysAgo = new Date()
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-    const horses = await getHorseExertionSummary(barn.id, sevenDaysAgo)
+    const today = new Date()
+    const horses = await getHorseExertionSummary(barn.id, today)
 
     const availableFull = horses
       .filter((h) => h.is_active && h.is_available)
@@ -56,7 +55,6 @@ export default async function HorsesPage({
     inactive = horses.filter((h) => !h.is_active)
 
     const activeHorses = [...availableFull, ...unavailableFull]
-    const today = new Date()
     exhaustionByHorseId = new Map(
       await Promise.all(
         activeHorses.map(async (h) => {
