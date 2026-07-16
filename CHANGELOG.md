@@ -24,6 +24,11 @@ All notable changes to Stable State are documented here. Written for barn manage
 - **24-hour fee policy.** Cancelling a private lesson within 24 hours keeps the fee unless the instructor waives it — an amber warning explains this before you confirm.
 - **Cancellation reasons are visible** on the lesson page to everyone involved.
 
+### Lessons
+
+- **Trainers now see the whole barn's lessons**, not just their own, matching the manager's Lessons page.
+- **"By Tier" filter** added to the Lessons list alongside By Instructor, By Rider, and By Horse.
+
 ### Horse Exhaustion Tracking
 
 - **Exhaustion bars on the Horses page** show each horse's recent lesson load at a glance, so you can see which horses need rest.
