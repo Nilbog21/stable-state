@@ -43,6 +43,18 @@ describe('ByHorseTable', () => {
     expect(rowNames(container)).toEqual(['Amber', 'Zephyr'])
   })
 
+  it('should_sort_by_expenses_column_when_clicked', () => {
+    const { container } = render(<ByHorseTable rows={rows} slug="green-acres" monthParam="2026-06" noHorseLabel={NO_HORSE_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Expenses' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Amber', 'Zephyr'])
+  })
+
+  it('should_sort_by_net_column_when_clicked', () => {
+    const { container } = render(<ByHorseTable rows={rows} slug="green-acres" monthParam="2026-06" noHorseLabel={NO_HORSE_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Net' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Amber', 'Zephyr'])
+  })
+
   it('should_link_horse_name_to_drilldown_with_month_param', () => {
     render(<ByHorseTable rows={rows} slug="green-acres" monthParam="2026-06" noHorseLabel={NO_HORSE_LABEL} />)
     expect(screen.getByRole('link', { name: 'Amber' }).getAttribute('href')).toBe('/barn/green-acres/finances/horses/h-1?month=2026-06')

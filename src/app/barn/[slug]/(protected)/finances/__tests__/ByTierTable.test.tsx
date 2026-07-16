@@ -57,6 +57,44 @@ describe('ByTierTable', () => {
     expect(rowNames(container)).toEqual(['Standard', 'Premium'])
   })
 
+  it('should_sort_a_null_price_before_a_set_price_when_ascending', () => {
+    const { container } = render(
+      <ByTierTable
+        rows={[
+          { tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100, instructorCut: 25 },
+          { tierName: 'Standard', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 25 },
+        ]}
+        nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL}
+      />
+    )
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Price' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Custom', 'Standard'])
+  })
+
+  it('should_sort_by_lessons_column_when_clicked', () => {
+    const { container } = render(<ByTierTable rows={rows} nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Lessons' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Premium', 'Standard'])
+  })
+
+  it('should_sort_by_gross_column_when_clicked', () => {
+    const { container } = render(<ByTierTable rows={rows} nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Gross' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Premium', 'Standard'])
+  })
+
+  it('should_sort_by_instructor_cut_column_when_clicked', () => {
+    const { container } = render(<ByTierTable rows={rows} nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Instructor Cut' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Premium', 'Standard'])
+  })
+
+  it('should_sort_by_net_column_when_clicked', () => {
+    const { container } = render(<ByTierTable rows={rows} nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Net' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Premium', 'Standard'])
+  })
+
   it('should_show_dash_for_null_price', () => {
     render(<ByTierTable rows={[{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 100, instructorCut: 25 }]} nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} />)
     expect(screen.getByText('—')).toBeDefined()

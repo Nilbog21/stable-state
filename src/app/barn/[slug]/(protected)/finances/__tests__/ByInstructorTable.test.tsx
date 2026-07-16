@@ -44,6 +44,52 @@ describe('ByInstructorTable', () => {
     expect(rowNames(container)).toEqual(['Amy', 'Zane'])
   })
 
+  it('should_sort_a_null_gross_before_a_set_gross_when_ascending', () => {
+    const { container } = render(
+      <ByInstructorTable
+        rows={[
+          { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
+          ...rows,
+        ]}
+        slug="green-acres"
+        monthParam="2026-06"
+        nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL}
+        noInstructorLabel={NO_INSTRUCTOR_LABEL}
+      />
+    )
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Gross' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual([`${NON_LESSON_INCOME_LABEL}ⓘ`, 'Amy', 'Zane'])
+  })
+
+  it('should_sort_by_instructor_cut_column_when_clicked', () => {
+    const { container } = render(<ByInstructorTable rows={rows} slug="green-acres" monthParam="2026-06" nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} noInstructorLabel={NO_INSTRUCTOR_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Instructor Cut' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Amy', 'Zane'])
+  })
+
+  it('should_sort_a_null_instructor_cut_before_a_set_instructor_cut_when_ascending', () => {
+    const { container } = render(
+      <ByInstructorTable
+        rows={[
+          { trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null },
+          ...rows,
+        ]}
+        slug="green-acres"
+        monthParam="2026-06"
+        nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL}
+        noInstructorLabel={NO_INSTRUCTOR_LABEL}
+      />
+    )
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Instructor Cut' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual([`${NON_LESSON_INCOME_LABEL}ⓘ`, 'Amy', 'Zane'])
+  })
+
+  it('should_sort_by_net_column_when_clicked', () => {
+    const { container } = render(<ByInstructorTable rows={rows} slug="green-acres" monthParam="2026-06" nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} noInstructorLabel={NO_INSTRUCTOR_LABEL} />)
+    fireEvent.click(screen.getByRole('columnheader', { name: 'Net' }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Amy', 'Zane'])
+  })
+
   it('should_show_dash_for_null_gross', () => {
     render(<ByInstructorTable rows={[{ trainerId: NON_LESSON_INCOME_LABEL, trainerName: NON_LESSON_INCOME_LABEL, totalIncome: 300, grossIncome: null }]} slug="green-acres" monthParam="2026-06" nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} noInstructorLabel={NO_INSTRUCTOR_LABEL} />)
     const row = screen.getByText(NON_LESSON_INCOME_LABEL).closest('tr')!

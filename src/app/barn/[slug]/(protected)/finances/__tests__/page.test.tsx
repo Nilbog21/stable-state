@@ -138,7 +138,7 @@ describe('FinancesPage', () => {
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const section = screen.getByText('Collected income').closest('section')!
+    const section = screen.getByText('Gross Income').closest('section')!
     expect(within(section).getByText('$225.00')).toBeDefined()
   })
 
@@ -156,11 +156,11 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/Premium/)).toBeDefined()
   })
 
-  it('should_display_breakdown_subtotal', async () => {
+  it('should_display_breakdown_net', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 0,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 125, instructorCut: 0 }],
+      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 125, instructorCut: 25 }],
     })
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -242,12 +242,12 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/no horse activity/i)).toBeDefined()
   })
 
-  it('should_display_collected_income_label_without_month_suffix', async () => {
+  it('should_display_gross_income_label_without_month_suffix', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Collected income')).toBeDefined()
+    expect(screen.getByText('Gross Income')).toBeDefined()
   })
 
   it('should_call_getFinancialSummary_with_first_day_of_current_month_as_start_date', async () => {
