@@ -8,14 +8,12 @@ import type { FinancialSummary } from '@/lib/db/types'
 import type { ReconciliationColumn } from '@/lib/finances-reconciliation'
 
 type TierRow = FinancialSummary['breakdown'][number]
-type SortKey = 'tierName' | 'price' | 'gross' | 'instructorCut' | 'net'
+type SortKey = 'tierName' | 'gross' | 'instructorCut' | 'net'
 
 function getValue(row: TierRow, key: SortKey): string | number {
   switch (key) {
     case 'tierName':
       return row.tierName
-    case 'price':
-      return row.price ?? -Infinity
     case 'gross':
       return row.subtotal + row.instructorCut
     case 'instructorCut':
@@ -44,7 +42,6 @@ export function ByTierTable({
         <thead>
           <tr>
             <SortableTh sortKey="tierName" label="Tier" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="price" label="Price" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             <SortableTh sortKey="gross" label="Gross" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="Lesson fees collected this month, before the instructor's cut" />
             <SortableTh sortKey="instructorCut" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This tier's own instructor cut" />
             <SortableTh sortKey="net" label="Net" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="Gross minus this tier's own instructor cut" />
@@ -54,7 +51,6 @@ export function ByTierTable({
           {sorted.map((tier) => (
             <tr key={tier.tierName}>
               <Td>{tier.tierName}</Td>
-              <Td>{tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}</Td>
               <Td>{formatCurrency(tier.subtotal + tier.instructorCut)}</Td>
               <Td>{tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}</Td>
               <Td>{formatCurrency(tier.subtotal)}</Td>
@@ -62,7 +58,7 @@ export function ByTierTable({
           ))}
         </tbody>
         <ReconciliationFoot
-          labelColSpan={2}
+          labelColSpan={1}
           gross={gross}
           expenses={expenses}
           net={net}
