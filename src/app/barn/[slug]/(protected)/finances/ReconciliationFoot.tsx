@@ -42,13 +42,13 @@ export function ReconciliationFoot({
   return (
     <tfoot>
       <tr>
-        <Td colSpan={labelColSpan} tone="secondary">Subtotal</Td>
+        <Td colSpan={labelColSpan} tone="secondary" className="uppercase tracking-wide">Subtotal</Td>
         <ValueCell column={gross} bucket="subtotal" />
         <ValueCell column={expenses} bucket="subtotal" forceParens />
         <ValueCell column={net} bucket="subtotal" />
       </tr>
       <tr className="text-amber-700 dark:text-amber-400">
-        <Td colSpan={labelColSpan} className="text-amber-700 dark:text-amber-400">
+        <Td colSpan={labelColSpan} className="uppercase tracking-wide text-amber-700 dark:text-amber-400">
           Unattributed
           <InfoPopover text={unattributedInfoText} align="left" />
         </Td>
@@ -57,7 +57,7 @@ export function ReconciliationFoot({
         <ValueCell column={net} bucket="unattributed" />
       </tr>
       <tr className="text-zinc-500 dark:text-zinc-400">
-        <Td colSpan={labelColSpan} tone="secondary">
+        <Td colSpan={labelColSpan} tone="secondary" className="uppercase tracking-wide">
           Outside this view
           <InfoPopover text={outsideInfoText} align="left" />
         </Td>
@@ -66,7 +66,7 @@ export function ReconciliationFoot({
         <ValueCell column={net} bucket="outside" />
       </tr>
       <tr className="font-semibold">
-        <Td colSpan={labelColSpan} className="font-semibold">Total</Td>
+        <Td colSpan={labelColSpan} className="uppercase tracking-wide font-semibold">Total</Td>
         <ValueCell column={gross} bucket="total" />
         <ValueCell column={expenses} bucket="total" forceParens />
         <ValueCell column={net} bucket="total" />
