@@ -30,12 +30,12 @@ export async function createHorse(barnId: string, name: string, client?: Supabas
 
 export async function getHorseExertionSummary(
   barnId: string,
-  since: Date
+  targetDate: Date
 ): Promise<HorseExertionSummary[]> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('get_horse_exertion_summary', {
     p_barn_id: barnId,
-    p_since: since.toISOString(),
+    p_target_date: targetDate.toISOString(),
   })
   if (error) throw error
   return (data ?? []).map((row: { id: string; name: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null; exhaustion_threshold_high: number | null; exhaustion_threshold_moderate: number | null; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({

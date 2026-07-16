@@ -12,7 +12,7 @@ Go to **Dashboard** to see your **Barn Schedule** — upcoming lessons (where yo
 
 Use **Horses** in the nav to see horses grouped into three sections:
 
-- **Available** — horses in active rotation, sorted by total exertion (7d) ascending so the most-rested horses appear first. Each card shows the name and an exhaustion bar reflecting exertion from lessons within 3 days of today; tap the bar to see the individual lessons behind it.
+- **Available** — horses in active rotation, sorted by total exertion (within 3 days of today) ascending so the most-rested horses appear first. Each card shows the name and an exhaustion bar reflecting exertion from lessons within 3 days of today; tap the bar to see the individual lessons behind it.
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name, the reason entered when marking them unavailable, and the same exhaustion bar.
 - **Inactive** — soft-deleted horses (visible to managers only); each card shows the horse name.
 
