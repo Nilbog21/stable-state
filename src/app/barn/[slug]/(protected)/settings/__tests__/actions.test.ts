@@ -863,6 +863,12 @@ describe('updateBarnTimezoneAction', () => {
     expect(updateBarnTimezone).not.toHaveBeenCalled()
   })
 
+  it('should_return_early_when_timezone_field_is_absent', async () => {
+    await updateBarnTimezoneAction('green-acres', makeFormData({}))
+
+    expect(updateBarnTimezone).not.toHaveBeenCalled()
+  })
+
   it('should_return_early_when_timezone_is_not_in_the_allowed_list', async () => {
     await updateBarnTimezoneAction('green-acres', makeFormData({ timezone: 'Europe/London' }))
 
