@@ -1,5 +1,10 @@
--- Consolidated release-3 RLS squash (#658): final policies plus every function/
--- table GRANT/REVOKE touched since branching off `main` post-#657. Several
+-- Consolidated release-3 RLS squash, round 2 (#972): final policies plus every
+-- function/table GRANT/REVOKE touched since branching off `main` post-#657,
+-- folding in 6 further fix migrations on top of the first squash (#658):
+-- #935 (create_expense_with_horses/update_expense_with_horses grants gain the
+-- p_occurred_at param), #937 (lesson_horses column-grant narrowing +
+-- get_lesson_horse_exertion_levels grant), #941 (delete_expense_with_transactions
+-- grant), #969 (barn_memberships_manager_delete narrowed). Several
 -- baseline-defined policies are replaced or dropped outright below (release-3
 -- either rewrote their logic or removed them entirely) — each DROP targets the
 -- baseline's original policy name; some tables were also renamed in the
@@ -18,6 +23,14 @@ CREATE POLICY "barn_memberships_manager_insert_managed" ON public.barn_membershi
     AND role IN ('rider', 'trainer', 'manager')
     AND auth_is_barn_manager(barn_memberships.barn_id)
   );
+
+-- #969: a manager could delete any barn_memberships row in their barn,
+-- including another manager's row or (bypassing the app's own check) their
+-- own via a direct call. Narrow the policy to exclude manager-role rows
+-- entirely — manager removal now requires direct DB access.
+DROP POLICY barn_memberships_manager_delete ON public.barn_memberships;
+
+CREATE POLICY barn_memberships_manager_delete ON public.barn_memberships FOR DELETE TO authenticated USING (public.auth_is_barn_manager(barn_id) AND role <> 'manager'::text);
 
 -- barns
 CREATE POLICY "manager_update_barns" ON barns
@@ -154,6 +167,17 @@ CREATE POLICY "lesson_horses_select_staff" ON public.lesson_horses
 CREATE POLICY "lesson_horses_select_rider" ON public.lesson_horses
   FOR SELECT TO authenticated
   USING (public.auth_is_enrolled_rider(lesson_horses.lesson_id, lesson_horses.barn_id));
+
+-- #937 review follow-up: RLS filters rows, not columns, so the row-level
+-- rider SELECT policy above can't keep a rider from reading exertion_level
+-- directly via PostgREST under the table-wide SELECT grant baseline_rls.sql
+-- gave `authenticated`. Postgres has no "all columns except this one" grant,
+-- so the table-wide grant is revoked and re-granted for every column except
+-- exertion_level; that column is readable only via
+-- get_lesson_horse_exertion_levels (release3_functions.sql), gated the same
+-- way get_horse_exertion_summary/get_horse_projected_exhaustion already are.
+REVOKE SELECT ON TABLE public.lesson_horses FROM authenticated;
+GRANT SELECT (id, barn_id, lesson_id, horse_id, horse_notes) ON TABLE public.lesson_horses TO authenticated;
 
 DROP POLICY "lesson_riders_select" ON public.lesson_riders;
 CREATE POLICY "lesson_riders_select_staff" ON public.lesson_riders
@@ -433,6 +457,9 @@ REVOKE ALL ON FUNCTION public.get_lesson_payment_info(uuid[], uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.get_lesson_payment_info(uuid[], uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.get_lesson_payment_info(uuid[], uuid) TO service_role;
 
+REVOKE ALL ON FUNCTION get_lesson_horse_exertion_levels(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION get_lesson_horse_exertion_levels(uuid, uuid) TO authenticated;
+
 REVOKE EXECUTE ON FUNCTION cancel_rider_participation(UUID, UUID, UUID, TEXT, BOOLEAN) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION cancel_rider_participation(UUID, UUID, UUID, TEXT, BOOLEAN) TO authenticated;
 
@@ -466,11 +493,14 @@ GRANT EXECUTE ON FUNCTION update_agreement_charge_fee(uuid, uuid, numeric) TO au
 REVOKE EXECUTE ON FUNCTION public.sync_expense_transaction(uuid, uuid, numeric, timestamptz, payment_type_enum) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.sync_expense_transaction(uuid, uuid, numeric, timestamptz, payment_type_enum) TO authenticated;
 
-REVOKE EXECUTE ON FUNCTION create_expense_with_horses(uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION create_expense_with_horses(uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION create_expense_with_horses(uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION create_expense_with_horses(uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz) TO authenticated, service_role;
 
-REVOKE EXECUTE ON FUNCTION update_expense_with_horses(uuid, uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum) FROM PUBLIC;
-GRANT EXECUTE ON FUNCTION update_expense_with_horses(uuid, uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum) TO authenticated, service_role;
+REVOKE EXECUTE ON FUNCTION update_expense_with_horses(uuid, uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION update_expense_with_horses(uuid, uuid, date, text, boolean, time, numeric, text, text, uuid[], payment_type_enum, timestamptz) TO authenticated, service_role;
+
+REVOKE EXECUTE ON FUNCTION public.delete_expense_with_transactions(uuid, uuid, boolean) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.delete_expense_with_transactions(uuid, uuid, boolean) TO authenticated;
 
 REVOKE EXECUTE ON FUNCTION create_or_update_notification(UUID, UUID, TEXT, TEXT, TEXT, TEXT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION create_or_update_notification(UUID, UUID, TEXT, TEXT, TEXT, TEXT) TO authenticated;

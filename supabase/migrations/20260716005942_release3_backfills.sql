@@ -1,4 +1,6 @@
--- Consolidated release-3 backfills (#658). These four one-time data migrations
+-- Consolidated release-3 backfills, round 2 (#972, unchanged since #658 —
+-- none of the 6 fix migrations folded into this squash touched a backfill).
+-- These four one-time data migrations
 -- must be preserved as real ALTER+backfill DML, not flattened into the fresh
 -- CREATE TABLE shapes in the companion schema file — they migrate values on
 -- PRE-EXISTING baseline tables (lessons, lesson_tiers, rider_documents,
