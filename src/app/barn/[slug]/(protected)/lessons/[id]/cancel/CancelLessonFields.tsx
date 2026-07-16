@@ -12,11 +12,13 @@ export function CancelLessonFields({
   cancelledByInstructorDefault,
   groupInstructorDescription,
   pickerRiders,
+  isLateCancellationWindow = false,
 }: {
   lessonType: 'normal' | 'group'
   cancelledByInstructorDefault: boolean
   groupInstructorDescription: string
   pickerRiders: Rider[]
+  isLateCancellationWindow?: boolean
 }) {
   const [cancelType, setCancelType] = useState<'instructor' | 'rider'>(
     cancelledByInstructorDefault ? 'instructor' : 'rider'
@@ -55,6 +57,13 @@ export function CancelLessonFields({
           Cancelled by Rider
         </label>
       </fieldset>
+      {cancelType === 'rider' && isLateCancellationWindow && (
+        <p className="text-sm text-amber-600 dark:text-amber-400">
+          {lessonType === 'normal'
+            ? 'The rider will be due a late cancellation fee.'
+            : 'Warning: No late cancellation fees are currently leveraged for group lessons.'}
+        </p>
+      )}
       {showRiderPicker && (
         <fieldset className="flex flex-col gap-2">
           <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Rider</legend>
