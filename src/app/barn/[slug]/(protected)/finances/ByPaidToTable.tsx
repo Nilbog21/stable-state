@@ -1,6 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { Td, Th } from '@/components/ui/Table'
+import { Td } from '@/components/ui/Table'
 import { SortableTh } from './SortableTh'
 import { ReconciliationFoot } from './ReconciliationFoot'
 import { useSortableRows } from './useSortableRows'
@@ -40,9 +40,9 @@ export function ByPaidToTable({
         <thead>
           <tr>
             <SortableTh sortKey="recipient" label="Recipient" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <Th>Gross</Th>
+            <SortableTh label="Gross" />
             <SortableTh sortKey="totalExpenses" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <Th>Net</Th>
+            <SortableTh label="Net" />
           </tr>
         </thead>
         <tbody>

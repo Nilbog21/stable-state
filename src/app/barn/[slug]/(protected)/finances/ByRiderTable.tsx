@@ -1,7 +1,6 @@
 'use client'
 import Link from 'next/link'
-import { Td, Th } from '@/components/ui/Table'
-import { InfoPopover } from './InfoPopover'
+import { Td } from '@/components/ui/Table'
 import { SortableTh } from './SortableTh'
 import { ReconciliationFoot } from './ReconciliationFoot'
 import { useSortableRows } from './useSortableRows'
@@ -48,10 +47,7 @@ export function ByRiderTable({
           <tr>
             <SortableTh sortKey="riderName" label="Rider" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
             <SortableTh sortKey="totalIncome" label="Gross" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This rider's lesson and agreement income, before the instructor's cut" />
-            <Th>
-              Expenses
-              <InfoPopover text="No expense is tracked per rider" />
-            </Th>
+            <SortableTh label="Expenses" infoText="No expense is tracked per rider" />
             {/* "Net" reuses the same totalIncome sortKey as "Gross" (they're always equal for
                 this table, since no expense is ever rider-attributable) so clicking either
                 sorts the same way, rather than introducing a third meaningless sort key. */}
