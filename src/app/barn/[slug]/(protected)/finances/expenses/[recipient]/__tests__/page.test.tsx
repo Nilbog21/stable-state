@@ -45,7 +45,7 @@ describe('RecipientExpensePage', () => {
   it('should_call_getRecipientExpenseDetail_with_recipient', async () => {
     const jsx = await RecipientExpensePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(getRecipientExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'Dr. Smith', expect.any(Date), expect.any(Date))
+    expect(getRecipientExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'Dr. Smith', expect.any(Date), expect.any(Date), mockBarn.timezone)
   })
 
   it('should_render_recipient_name_as_heading', async () => {
@@ -140,7 +140,7 @@ describe('RecipientExpensePage', () => {
     const encodedParams = Promise.resolve({ slug: 'green-acres', recipient: encodeURIComponent('Dr. Smith & Sons') })
     const jsx = await RecipientExpensePage({ params: encodedParams, searchParams: maySearchParams })
     render(jsx)
-    expect(getRecipientExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'Dr. Smith & Sons', expect.any(Date), expect.any(Date))
+    expect(getRecipientExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'Dr. Smith & Sons', expect.any(Date), expect.any(Date), mockBarn.timezone)
     expect(screen.getByRole('heading', { name: 'Dr. Smith & Sons' })).toBeDefined()
   })
 

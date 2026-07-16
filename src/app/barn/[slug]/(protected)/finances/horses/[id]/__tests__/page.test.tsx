@@ -62,7 +62,7 @@ describe('HorseIncomePage', () => {
   it('should_call_getHorseExpenseDetail_with_horse_id', async () => {
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(getHorseExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'horse-1', expect.any(Date), expect.any(Date))
+    expect(getHorseExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'horse-1', expect.any(Date), expect.any(Date), mockBarn.timezone)
   })
 
   it('should_render_horse_name_as_heading', async () => {
