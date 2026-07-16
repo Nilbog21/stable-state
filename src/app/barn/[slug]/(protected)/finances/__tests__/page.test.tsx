@@ -27,7 +27,7 @@ vi.mock('@/lib/db/outstanding', async () => {
   }
 })
 vi.mock('@/lib/db/agreement-finances', () => ({ getOutstandingCharges: vi.fn() }))
-vi.mock('@/lib/db/expenses', () => ({ getPastDueExpenses: vi.fn() }))
+vi.mock('@/lib/db/expenses', () => ({ getOutstandingExpenses: vi.fn() }))
 vi.mock('@/lib/db/expense-finances', () => ({ getExpenseFinancialSummary: vi.fn(), getRecipientExpenseSummary: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
 vi.mock('@/app/actions/expenses', () => ({ resolvePastDueExpenseAction: vi.fn() }))
@@ -43,7 +43,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
-import { getPastDueExpenses } from '@/lib/db/expenses'
+import { getOutstandingExpenses } from '@/lib/db/expenses'
 import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
 import FinancesPage from '../page'
 
@@ -69,8 +69,8 @@ describe('FinancesPage', () => {
     vi.mocked(getExpenseFinancialSummary).mockResolvedValue({ totalExpenses: 0, breakdown: [] })
     vi.mocked(getRecipientExpenseSummary).mockReset()
     vi.mocked(getRecipientExpenseSummary).mockResolvedValue([])
-    vi.mocked(getPastDueExpenses).mockReset()
-    vi.mocked(getPastDueExpenses).mockResolvedValue([])
+    vi.mocked(getOutstandingExpenses).mockReset()
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([])
   })
 
   afterEach(() => {
@@ -740,7 +740,7 @@ describe('FinancesPage', () => {
   it('should_not_show_outstanding_section_when_no_outstanding_lessons', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText('Outstanding')).toBeNull()
+    expect(screen.queryByText('Outstanding Income')).toBeNull()
   })
 
   it('should_show_outstanding_section_when_outstanding_lessons_exist', async () => {
@@ -749,7 +749,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Outstanding')).toBeDefined()
+    expect(screen.getByText('Outstanding Income')).toBeDefined()
   })
 
   it('should_highlight_outstanding_section_when_total_is_greater_than_zero', async () => {
@@ -758,7 +758,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText('Outstanding').closest('section')
+    const container = screen.getByText('Outstanding Income').closest('section')
     expect(container?.className).toMatch(/amber/)
   })
 
@@ -768,7 +768,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const container = screen.getByText('Outstanding').closest('section')
+    const container = screen.getByText('Outstanding Income').closest('section')
     expect(container?.className).not.toMatch(/amber/)
   })
 
@@ -852,7 +852,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const outstandingSection = screen.getByText('Outstanding').closest('section')
+    const outstandingSection = screen.getByText('Outstanding Income').closest('section')
     expect(outstandingSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
@@ -872,7 +872,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Outstanding')).toBeDefined()
+    expect(screen.getByText('Outstanding Income')).toBeDefined()
   })
 
   it('should_render_the_outstanding_charges_rider_name_when_only_outstanding_charges_exist', async () => {
@@ -899,7 +899,7 @@ describe('FinancesPage', () => {
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Outstanding')).toBeDefined()
+    expect(screen.getByText('Outstanding Income')).toBeDefined()
     expect(screen.getByText('Cancellation Fee')).toBeDefined()
   })
 
@@ -912,17 +912,17 @@ describe('FinancesPage', () => {
     expect(screen.getAllByText('$50.00').length).toBeGreaterThanOrEqual(1)
   })
 
-  it('should_show_needs_an_amount_section_when_past_due_expenses_exist', async () => {
-    vi.mocked(getPastDueExpenses).mockResolvedValue([
+  it('should_show_outstanding_expenses_section_when_outstanding_expenses_exist', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([
       { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Needs an amount')).toBeDefined()
+    expect(screen.getByText('Outstanding Expenses')).toBeDefined()
   })
 
-  it('should_render_the_recipient_for_a_past_due_expense', async () => {
-    vi.mocked(getPastDueExpenses).mockResolvedValue([
+  it('should_render_the_recipient_for_an_outstanding_expense', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([
       { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -930,8 +930,8 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/Dr\. Smith/)).toBeDefined()
   })
 
-  it('should_link_a_past_due_expense_to_its_edit_page', async () => {
-    vi.mocked(getPastDueExpenses).mockResolvedValue([
+  it('should_link_an_outstanding_expense_to_its_edit_page', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([
       { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
@@ -939,13 +939,44 @@ describe('FinancesPage', () => {
     expect(screen.getByRole('link', { name: /Dr\. Smith/ })).toHaveProperty('href', expect.stringContaining('/barn/green-acres/expenses/expense-1'))
   })
 
-  it('should_not_show_outstanding_section_when_only_past_due_expenses_exist', async () => {
-    vi.mocked(getPastDueExpenses).mockResolvedValue([
+  it('should_not_show_outstanding_income_section_when_only_outstanding_expenses_exist', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([
       { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
     ])
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByText('Outstanding')).toBeNull()
+    expect(screen.queryByText('Outstanding Income')).toBeNull()
+  })
+
+  it('should_sum_only_known_amounts_in_the_outstanding_expenses_total', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+      { id: 'expense-2', barn_id: 'barn-1', expense_date: '2026-05-02', expense_time: null, amount: 120, recipient: 'Feed Co', expense_type: 'Feed', notes: null, applies_to_all_horses: true, payment_type: null, created_at: '', updated_at: '' },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const section = screen.getByText('Outstanding Expenses').closest('section')!
+    expect(within(section).getByText('$120.00')).toBeDefined()
+  })
+
+  it('should_render_info_button_on_outstanding_expenses_label', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const section = screen.getByText('Outstanding Expenses').closest('section')
+    expect(section?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  })
+
+  it('should_always_style_outstanding_expenses_section_amber', async () => {
+    vi.mocked(getOutstandingExpenses).mockResolvedValue([
+      { id: 'expense-1', barn_id: 'barn-1', expense_date: '2026-05-01', expense_time: null, amount: null, recipient: 'Dr. Smith', expense_type: 'Farrier', notes: null, applies_to_all_horses: false, payment_type: null, created_at: '', updated_at: '' },
+    ])
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    const section = screen.getByText('Outstanding Expenses').closest('section')
+    expect(section?.className).toMatch(/amber/)
   })
 
   it('should_render_info_button_on_pending_label', async () => {
