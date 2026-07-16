@@ -254,9 +254,26 @@ describe('buildExpenseSeeds', () => {
     expect(seeds.some((s) => s.amount === null && s.daysOffset > 0)).toBe(true)
   })
 
-  it('should_include_exactly_one_future_dated_expense', () => {
+  it('should_include_exactly_one_future_dated_timed_expense', () => {
     const seeds = buildExpenseSeeds(NOW)
-    expect(seeds.filter((s) => s.daysOffset > 0)).toHaveLength(1)
+    expect(seeds.filter((s) => s.daysOffset > 0 && s.time !== null)).toHaveLength(1)
+  })
+
+  it('should_include_exactly_one_future_dated_date_only_expense', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(seeds.filter((s) => s.daysOffset > 0 && s.time === null)).toHaveLength(1)
+  })
+
+  it('should_set_the_future_date_only_expense_to_tomorrow', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    const dateOnly = seeds.find((s) => s.daysOffset > 0 && s.time === null)
+    expect(dateOnly?.daysOffset).toBe(1)
+  })
+
+  it('should_leave_the_future_date_only_expense_unpriced', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    const dateOnly = seeds.find((s) => s.daysOffset > 0 && s.time === null)
+    expect(dateOnly?.amount).toBeNull()
   })
 
   it('should_include_a_recurring_farrier_recipient_with_a_consistent_expense_type', () => {

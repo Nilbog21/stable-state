@@ -37,6 +37,9 @@ const DEV_UNAVAILABLE_REASON = 'Recovering from minor injury'
 
 export const DEV_PENDING_RIDER = { email: 'pending1@dev.local', firstName: 'Quinn', lastName: 'Pending' }
 export const DEV_MANAGER_2 = { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' }
+// #950: kept out of DEV_TRAINERS so the existing i % trainerRowIds.length round-robin
+// assigning the main seed lessons is untouched — this trainer gets exactly one lesson.
+export const DEV_TRAINER_4 = { email: 'trainer4@dev.local', firstName: 'Drew', lastName: 'Trainer' }
 
 export const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
 
@@ -195,6 +198,9 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
     { daysOffset: -2, time: '09:00:00', amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 1 },
     { daysOffset: todayOffset, time: todayTime, amount: null, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: 2, time: '14:00:00', amount: null, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 1 },
+    // #950: tomorrow, date-only (no time) and still unpriced — verifies a date-only planned
+    // expense correctly stays off the dashboard's timed Barn Schedule widget
+    { daysOffset: 1, time: null, amount: null, recipient: 'Big Sky Feed Co.', expenseType: 'Feed', appliesToAllHorses: true },
   ]
   // #872: give priced expenses payment-type variety (cycling through PAYMENT_TYPES, same
   // helper lessons/agreement charges already use) so the ledger's collected/uncollected
@@ -230,7 +236,7 @@ async function run() {
   })
   if (m2Err) throw new Error(`create manager2: ${m2Err.message}`)
   const m2Profile = await upsertProfile(m2Data.user.id, DEV_MANAGER_2.email, DEV_MANAGER_2.firstName, DEV_MANAGER_2.lastName, supabase)
-  mustSucceed(
+  const m2Membership = mustSucceed<{ id: string }>(
     await supabase.from('barn_memberships').insert({
       user_id: m2Data.user.id,
       profile_id: m2Profile.id,
@@ -238,7 +244,7 @@ async function run() {
       role: 'manager',
       status: 'active',
       can_instruct: true,
-    }),
+    }).select('id').single(),
     'insert manager2 membership'
   )
 
@@ -303,6 +309,23 @@ async function run() {
       riderIds.map((id, i) => ({ user_id: id, profile_id: riderProfileIds[i], barn_id: DEV_BARN_ID, role: 'rider', status: 'active' }))
     ),
     'insert rider memberships'
+  )
+
+  // #950: 4th trainer, created outside DEV_TRAINERS/trainerRowIds so it doesn't disturb the
+  // existing round-robin instructor assignment — gets exactly one ($0 comped) lesson below.
+  const { data: t4Data, error: t4Err } = await supabase.auth.admin.createUser({ email: DEV_TRAINER_4.email, email_confirm: true })
+  if (t4Err) throw new Error(`create trainer4: ${t4Err.message}`)
+  const t4Profile = await upsertProfile(t4Data.user.id, DEV_TRAINER_4.email, DEV_TRAINER_4.firstName, DEV_TRAINER_4.lastName, supabase)
+  const t4Membership = mustSucceed<{ id: string }>(
+    await supabase.from('barn_memberships').insert({
+      user_id: t4Data.user.id,
+      profile_id: t4Profile.id,
+      barn_id: DEV_BARN_ID,
+      role: 'trainer',
+      status: 'active',
+      can_instruct: true,
+    }).select('id').single(),
+    'insert trainer4 membership'
   )
 
   const { data: pendingData, error: pendingErr } = await supabase.auth.admin.createUser({
@@ -420,6 +443,109 @@ async function run() {
       deactivated_at: new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000).toISOString(),
     }).eq('id', retiredHorse.id),
     'retire seed horse'
+  )
+
+  // #950: at least one Custom-tier lesson (no tier selected) — #934's Phase 3 walkthrough
+  // references this seeded lesson directly instead of having the tester create one. Fee
+  // deliberately avoids DEV_TIER_PRICE/DEV_TIER_2_PRICE so the tier-name backfill queries
+  // below don't reclassify it away from 'Custom'.
+  await createLessonWithParticipants({
+    barnId: DEV_BARN_ID,
+    instructorId: trainerRowIds[0],
+    lessonAt: dayOffset(now, -6, 13).toISOString(),
+    fee: 90,
+    horseIds: [horseIds[0]],
+    exertionLevels: [3],
+    riderIds: [riderRowIds[0]],
+    lessonType: 'normal',
+    jumping: false,
+  }, supabase)
+
+  // #950: 4th trainer's single $0 comped lesson — sync_lesson_transactions auto-collects any
+  // fee=0 lesson regardless of payment_type, so no separate "mark paid" step is needed. The
+  // membership stays intact; removing it is the manual "-> No instructor row" test step itself.
+  await createLessonWithParticipants({
+    barnId: DEV_BARN_ID,
+    instructorId: t4Membership.id,
+    lessonAt: dayOffset(now, -8, 9).toISOString(),
+    fee: 0,
+    horseIds: [horseIds[1]],
+    exertionLevels: [2],
+    riderIds: [riderRowIds[1]],
+    lessonType: 'normal',
+    jumping: false,
+    tierName: tier1.name,
+  }, supabase)
+
+  // #950: Morgan (manager2) also instructs — today and tomorrow so a manager-instructor
+  // shows up in "By Instructor" filtering same as a trainer would. now + 2h (not a fixed
+  // hour) matches buildLessonDates'/buildExpenseSeeds' own "today" lessons, so it's always
+  // still upcoming today regardless of when the script runs.
+  await createLessonWithParticipants({
+    barnId: DEV_BARN_ID,
+    instructorId: m2Membership.id,
+    lessonAt: new Date(now.getTime() + 2 * 60 * 60 * 1000).toISOString(),
+    fee: tier1.price,
+    horseIds: [horseIds[1]],
+    exertionLevels: [3],
+    riderIds: [riderRowIds[1]],
+    lessonType: 'normal',
+    jumping: false,
+    tierName: tier1.name,
+  }, supabase)
+
+  await createLessonWithParticipants({
+    barnId: DEV_BARN_ID,
+    instructorId: m2Membership.id,
+    lessonAt: dayOffset(now, 1, 10).toISOString(),
+    fee: tier1.price,
+    horseIds: [horseIds[2]],
+    exertionLevels: [3],
+    riderIds: [riderRowIds[2]],
+    lessonType: 'normal',
+    jumping: false,
+    tierName: tier1.name,
+  }, supabase)
+
+  // #950: a 3rd Morgan lesson, older than 7 days, so the Lessons list's recent/older split is
+  // verifiable even when filtered down to a single (manager-)instructor. Also doubles as the
+  // notes-display fixture below rather than seeding a separate lesson for that.
+  const morganOlderLesson = await createLessonWithParticipants({
+    barnId: DEV_BARN_ID,
+    instructorId: m2Membership.id,
+    lessonAt: dayOffset(now, -10, 9).toISOString(),
+    fee: tier1.price,
+    horseIds: [horseIds[0]],
+    exertionLevels: [3],
+    riderIds: [riderRowIds[0]],
+    lessonType: 'normal',
+    jumping: false,
+    tierName: tier1.name,
+  }, supabase)
+
+  // #950: horse/rider/private notes so notes-display (not just notes-hidden-when-empty) is
+  // verifiable against seed data. updateLessonHorseNotes/updateLessonRiderNotes always call
+  // createClient() (no client param), which needs a request context this standalone script
+  // doesn't have — so this uses the raw-table escape hatch (no usable DAL equivalent, per
+  // scripts/CLAUDE.md's "no db layer equivalent exists" case).
+  mustSucceed(
+    await supabase
+      .from('lesson_horses')
+      .update({ horse_notes: 'Favored the left lead through changes.' })
+      .eq('lesson_id', morganOlderLesson.id)
+      .eq('horse_id', horseIds[0]),
+    'seed lesson horse notes'
+  )
+  mustSucceed(
+    await supabase
+      .from('lesson_riders')
+      .update({
+        rider_notes: 'Worked on posting trot diagonals.',
+        private_notes: 'Consider moving up to a livelier horse next month.',
+      })
+      .eq('lesson_id', morganOlderLesson.id)
+      .eq('rider_id', riderRowIds[0]),
+    'seed lesson rider notes'
   )
 
   mustSucceed(
@@ -551,9 +677,10 @@ async function run() {
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming), plus ${DEV_UNAVAILABLE_HORSE} (unavailable: "${DEV_UNAVAILABLE_REASON}")`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
-  console.log(`  Lessons:  ${lessonDates.length + 3} (${groupCount} group, ${lessonDates.length - groupCount} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 10 older than 1 week, 10 within past week, 1 today, 5 next week) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
+  console.log(`  Lessons:  ${lessonDates.length + 8} (${groupCount} group, ${lessonDates.length - groupCount + 5} normal, plus 1 exhaustion top-up for Clover and 2 for ${DEV_RETIRED_HORSE}; 9 across prior 3 months, 12 older than 1 week, 11 within past week, 2 today, 6 next week — the +5 from #950's seed additions) — alternating tiers, jumping, exertion 1–5; ~${paidCount} of ${pastLessons.length} past lessons marked paid; 1 cancelled, 1 with a cancelled rider participation`)
   console.log(`  Agreements: 2 board ($${defaultBoardFee} each), 1 lease ($200) — Emery has 2 simultaneously-active agreements (board + lease); each with a paid charge last month and an unpaid charge this month; the board and lease agreements also have an unpaid charge from 2 months ago (past due, for Outstanding testing)`)
-  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet, including 1 past due for Outstanding testing)`)
+  console.log(`  Expenses: ${expenseSeeds.length} spanning ~80 days back to 10 days ahead (${barnWideExpenseCount} barn-wide, ${expenseSeeds.length - barnWideExpenseCount} per-horse; recurring Farrier and Veterinary recipients; ${plannedExpenseCount} planned with no amount yet, including 1 past due for Outstanding testing and 1 date-only for tomorrow)`)
+  console.log(`  Seed additions (#950): 1 Custom-tier lesson; ${DEV_TRAINER_4.email} (${DEV_TRAINER_4.firstName} ${DEV_TRAINER_4.lastName}, 4th trainer) with a single $0 comped/paid lesson; 3 Morgan-instructed lessons (today, tomorrow, 10 days ago — the 10-days-ago one also carries horse/rider/private notes)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
