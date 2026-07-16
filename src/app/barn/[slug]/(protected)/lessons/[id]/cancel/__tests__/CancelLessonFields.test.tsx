@@ -229,4 +229,82 @@ describe('CancelLessonFields', () => {
     )
     expect(screen.queryByText(/select a rider/i)).toBeNull()
   })
+
+  it('should_show_late_fee_warning_for_normal_lesson_when_rider_selected_within_window', () => {
+    render(
+      <CancelLessonFields
+        lessonType="normal"
+        cancelledByInstructorDefault={false}
+        groupInstructorDescription=""
+        pickerRiders={[]}
+        isLateCancellationWindow={true}
+      />
+    )
+    expect(screen.getByText(/due a late cancellation fee/i)).toBeDefined()
+  })
+
+  it('should_hide_late_fee_warning_for_normal_lesson_when_outside_window', () => {
+    render(
+      <CancelLessonFields
+        lessonType="normal"
+        cancelledByInstructorDefault={false}
+        groupInstructorDescription=""
+        pickerRiders={[]}
+        isLateCancellationWindow={false}
+      />
+    )
+    expect(screen.queryByText(/due a late cancellation fee/i)).toBeNull()
+  })
+
+  it('should_hide_late_fee_warning_for_normal_lesson_when_instructor_selected_within_window', () => {
+    render(
+      <CancelLessonFields
+        lessonType="normal"
+        cancelledByInstructorDefault={true}
+        groupInstructorDescription=""
+        pickerRiders={[]}
+        isLateCancellationWindow={true}
+      />
+    )
+    expect(screen.queryByText(/due a late cancellation fee/i)).toBeNull()
+  })
+
+  it('should_show_group_late_fee_gap_warning_when_rider_selected_within_window', () => {
+    render(
+      <CancelLessonFields
+        lessonType="group"
+        cancelledByInstructorDefault={false}
+        groupInstructorDescription="This will cancel the whole lesson."
+        pickerRiders={pickerRiders}
+        isLateCancellationWindow={true}
+      />
+    )
+    expect(screen.getByText(/no late cancellation fees are currently leveraged/i)).toBeDefined()
+  })
+
+  it('should_hide_group_late_fee_gap_warning_when_outside_window', () => {
+    render(
+      <CancelLessonFields
+        lessonType="group"
+        cancelledByInstructorDefault={false}
+        groupInstructorDescription="This will cancel the whole lesson."
+        pickerRiders={pickerRiders}
+        isLateCancellationWindow={false}
+      />
+    )
+    expect(screen.queryByText(/no late cancellation fees are currently leveraged/i)).toBeNull()
+  })
+
+  it('should_hide_group_late_fee_gap_warning_when_instructor_selected_within_window', () => {
+    render(
+      <CancelLessonFields
+        lessonType="group"
+        cancelledByInstructorDefault={true}
+        groupInstructorDescription="This will cancel the whole lesson."
+        pickerRiders={pickerRiders}
+        isLateCancellationWindow={true}
+      />
+    )
+    expect(screen.queryByText(/no late cancellation fees are currently leveraged/i)).toBeNull()
+  })
 })
