@@ -123,4 +123,10 @@ describe('ReconciliationFoot', () => {
     const { container } = renderTable()
     expect(container.querySelector('tfoot')).not.toBeNull()
   })
+
+  it('should_render_rows_in_subtotal_unattributed_outside_this_view_total_order', () => {
+    const { container } = renderTable()
+    const rowLabels = Array.from(container.querySelectorAll('tfoot > tr')).map((tr) => tr.querySelector('td')?.textContent)
+    expect(rowLabels).toEqual(['Subtotal', 'Unattributedⓘ', 'Outside this viewⓘ', 'Total'])
+  })
 })
