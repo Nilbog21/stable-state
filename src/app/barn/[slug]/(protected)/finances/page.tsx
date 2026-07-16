@@ -10,10 +10,14 @@ import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
-import { Th, Td } from '@/components/ui/Table'
+import { ByTierTable } from './ByTierTable'
+import { ByHorseTable } from './ByHorseTable'
+import { ByRiderTable } from './ByRiderTable'
+import { ByInstructorTable } from './ByInstructorTable'
+import { ByPaidToTable } from './ByPaidToTable'
 import { Pill } from '@/components/ui/Pill'
-import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
+import { SummaryStatCard } from './SummaryStatCard'
 
 const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
 type Tab = typeof VALID_TABS[number]
@@ -28,11 +32,11 @@ export default async function FinancesPage({
   const { slug } = await params
   const { barn } = await requireMembership(slug, ['manager'])
 
-  const { month: monthParam, tab: tabParam } = await searchParams
+  const { month: monthQueryParam, tab: tabParam } = await searchParams
   const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'horse'
 
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
-    resolveFinancesMonth(monthParam, barn.created_at, new Date())
+    resolveFinancesMonth(monthQueryParam, barn.created_at, new Date())
 
   const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, outstandingExpenses, recipientExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
@@ -55,7 +59,8 @@ export default async function FinancesPage({
 
   const horseRows = computeHorseNetIncome(horseIncome, expenseSummary.breakdown)
 
-  const monthQ = isCurrentMonth ? '' : `&month=${formatMonthParam(startDate)}`
+  const monthParam = formatMonthParam(startDate)
+  const monthQ = isCurrentMonth ? '' : `&month=${monthParam}`
   const tabQ = tab !== 'horse' ? `&tab=${tab}` : ''
   const prevUrl = prevMonthUrl ? prevMonthUrl + tabQ : null
   const nextUrl = nextMonthUrl ? nextMonthUrl + tabQ : null
@@ -136,53 +141,31 @@ export default async function FinancesPage({
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Card className="p-4">
-          <section>
-            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Collected income
-              <InfoPopover text="Lessons paid this month, net of the per-lesson instructor cut" />
-            </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {formatCurrency(collectedIncome)}
-            </p>
-          </section>
-        </Card>
+      <div className="mb-6 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
+        <SummaryStatCard
+          label="Gross Income"
+          value={formatCurrency(collectedIncome)}
+          infoText="Lessons and agreement charges collected this month, net of the per-lesson instructor cut"
+        />
 
-        <Card className="p-4">
-          <section>
-            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Total Expenses
-            </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {formatCurrency(expenseSummary.totalExpenses)}
-            </p>
-          </section>
-        </Card>
+        <SummaryStatCard
+          label="Total Expenses"
+          value={formatCurrency(expenseSummary.totalExpenses)}
+          infoText="Expenses and Instructor fees"
+        />
 
-        <Card className="p-4">
-          <section>
-            <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Net
-            </p>
-            <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-              {formatCurrency(netIncome)}
-            </p>
-          </section>
-        </Card>
+        <SummaryStatCard
+          label="Net Income"
+          value={formatCurrency(netIncome)}
+          infoText="Gross Income minus Total Expenses"
+        />
 
         {isCurrentMonth && (
-          <Card className="p-4">
-            <section>
-              <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-                Pending income
-                <InfoPopover text="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut" />
-              </p>
-              <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-                {formatCurrency(pendingIncome)}
-              </p>
-            </section>
-          </Card>
+          <SummaryStatCard
+            label="Pending income"
+            value={formatCurrency(pendingIncome)}
+            infoText="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut"
+          />
         )}
       </div>
 
@@ -210,38 +193,7 @@ export default async function FinancesPage({
 
       {tab === 'tier' && (
         breakdown.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Tier</Th>
-                  <Th>Price</Th>
-                  <Th>Lessons</Th>
-                  <Th>Instructor Cut</Th>
-                  <Th>Subtotal</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {/* ponytail: tierName === NON_LESSON_INCOME_LABEL assumes no real tier is ever named "Non-lesson income" (same assumption elsewhere in this file for NO_HORSE_LABEL/NO_RIDER_LABEL/NO_INSTRUCTOR_LABEL); switch synthetic rows to a discriminated shape if that collision risk ever becomes real */}
-                {breakdown.map((tier) => (
-                  <tr key={tier.tierName}>
-                    <Td>
-                      {tier.tierName}
-                      {tier.tierName === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
-                    </Td>
-                    <Td>
-                      {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
-                    </Td>
-                    <Td>{tier.tierName === NON_LESSON_INCOME_LABEL ? '' : tier.lessonCount}</Td>
-                    <Td>
-                      {tier.instructorCut === 0 ? '—' : formatCurrency(tier.instructorCut, { forceParens: true })}
-                    </Td>
-                    <Td>{formatCurrency(tier.subtotal)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ByTierTable rows={breakdown} nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL} />
         ) : (
           <EmptyState
             heading={`No lessons in ${monthLabel}.`}
@@ -252,42 +204,7 @@ export default async function FinancesPage({
 
       {tab === 'horse' && (
         horseRows.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Horse</Th>
-                  <Th>Income</Th>
-                  <Th>Expenses</Th>
-                  <Th>Net</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {horseRows.map((row) => (
-                  <tr key={row.horseId}>
-                    <Td>
-                      {row.horseId === NO_HORSE_LABEL ? (
-                        <>
-                          {row.horseName}
-                          <InfoPopover text="Paid lessons with no horse recorded" align="left" />
-                        </>
-                      ) : (
-                        <Link
-                          href={`/barn/${slug}/finances/horses/${row.horseId}?month=${formatMonthParam(startDate)}`}
-                          className="underline"
-                        >
-                          {row.horseName}
-                        </Link>
-                      )}
-                    </Td>
-                    <Td>{formatCurrency(row.income)}</Td>
-                    <Td>{formatCurrency(row.expenses)}</Td>
-                    <Td>{formatCurrency(row.net)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ByHorseTable rows={horseRows} slug={slug} monthParam={monthParam} noHorseLabel={NO_HORSE_LABEL} />
         ) : (
           <EmptyState
             heading={`No horse activity in ${monthLabel}.`}
@@ -298,40 +215,7 @@ export default async function FinancesPage({
 
       {tab === 'rider' && (
         riderIncome.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Rider</Th>
-                  <Th>Income</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {riderIncome.map((row) => (
-                  <tr key={row.riderId}>
-                    <Td>
-                      {row.riderId === NO_RIDER_LABEL ? (
-                        <>
-                          {row.riderName}
-                          <InfoPopover text="Paid lessons with no rider recorded" align="left" />
-                        </>
-                      ) : (
-                        <Link
-                          href={`/barn/${slug}/finances/riders/${row.riderId}?month=${formatMonthParam(startDate)}`}
-                          className="underline"
-                        >
-                          {row.riderName}
-                        </Link>
-                      )}
-                    </Td>
-                    <Td>
-                      {formatCurrency(row.totalIncome)}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ByRiderTable rows={riderIncome} slug={slug} monthParam={monthParam} noRiderLabel={NO_RIDER_LABEL} />
         ) : (
           <EmptyState
             heading={`No rider income in ${monthLabel}.`}
@@ -342,49 +226,13 @@ export default async function FinancesPage({
 
       {tab === 'trainer' && (
         trainerIncome.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Trainer</Th>
-                  <Th>Total Income</Th>
-                  <Th>Instructor Cut</Th>
-                  <Th>Net</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {trainerIncome.map((row) => (
-                  <tr key={row.trainerId}>
-                    <Td>
-                      {row.trainerId === NON_LESSON_INCOME_LABEL || row.trainerId === NO_INSTRUCTOR_LABEL ? (
-                        <>
-                          {row.trainerName}
-                          {row.trainerId === NON_LESSON_INCOME_LABEL && <InfoPopover text="Includes leases and boarding" align="left" />}
-                          {row.trainerId === NO_INSTRUCTOR_LABEL && <InfoPopover text="Lessons whose instructor was removed from the barn" align="left" />}
-                        </>
-                      ) : (
-                        <Link
-                          href={`/barn/${slug}/finances/trainers/${row.trainerId}?month=${formatMonthParam(startDate)}`}
-                          className="underline"
-                        >
-                          {row.trainerName}
-                        </Link>
-                      )}
-                    </Td>
-                    <Td>
-                      {row.grossIncome != null ? formatCurrency(row.grossIncome) : '—'}
-                    </Td>
-                    <Td>
-                      {row.grossIncome != null ? formatCurrency(row.grossIncome - row.totalIncome, { forceParens: true }) : '—'}
-                    </Td>
-                    <Td>
-                      {formatCurrency(row.totalIncome)}
-                    </Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ByInstructorTable
+            rows={trainerIncome}
+            slug={slug}
+            monthParam={monthParam}
+            nonLessonIncomeLabel={NON_LESSON_INCOME_LABEL}
+            noInstructorLabel={NO_INSTRUCTOR_LABEL}
+          />
         ) : (
           <EmptyState
             heading={`No trainer income in ${monthLabel}.`}
@@ -395,31 +243,7 @@ export default async function FinancesPage({
 
       {tab === 'recipient' && (
         recipientExpenses.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Recipient</Th>
-                  <Th>Amount</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {recipientExpenses.map((row) => (
-                  <tr key={row.recipient}>
-                    <Td>
-                      <Link
-                        href={`/barn/${slug}/finances/expenses/${encodeURIComponent(row.recipient)}?month=${formatMonthParam(startDate)}`}
-                        className="underline"
-                      >
-                        {row.recipient}
-                      </Link>
-                    </Td>
-                    <Td>{formatCurrency(row.totalExpenses)}</Td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <ByPaidToTable rows={recipientExpenses} slug={slug} monthParam={monthParam} />
         ) : (
           <EmptyState
             heading={`No expenses in ${monthLabel}.`}
