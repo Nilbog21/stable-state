@@ -305,6 +305,7 @@ bash scripts/change-user.sh
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
+- [ ] Same lesson detail page — no exertion rating shown next to any horse name
 - [ ] Open an enrolled **group** lesson's detail page — every co-rider's real name is shown, not a blank or raw ID
 - [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson via the **Cancel** button in the lesson detail page header (no Cancel button on the Lessons list or Dashboard) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected; the instructor receives a "Lesson participation cancelled" notification

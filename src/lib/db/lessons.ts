@@ -90,11 +90,16 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   const riderSelect = role === 'rider'
     ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
     : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
+  // exertion_level is manager/trainer-only data (ARCHITECTURE.md), same restriction
+  // get_horse_exertion_summary/get_horse_projected_exhaustion enforce at the RPC layer.
+  const horseSelect = role === 'rider'
+    ? 'horse_notes, horses ( id, name, is_active, is_available, unavailability_reason )'
+    : 'horse_notes, exertion_level, horses ( id, name, is_active, is_available, unavailability_reason )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
       *,
-      lesson_horses ( horse_notes, exertion_level, horses ( id, name, is_active, is_available, unavailability_reason ) ),
+      lesson_horses ( ${horseSelect} ),
       lesson_riders ( ${riderSelect} )
     `)
     .eq('id', lessonId)
