@@ -28,6 +28,7 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 - **Trainers now see the whole barn's lessons**, not just their own, matching the manager's Lessons page.
 - **"By Tier" filter** added to the Lessons list alongside By Instructor, By Rider, and By Horse.
+- **Managers can hard-delete a lesson entered by mistake.** Removes it entirely — no cancellation fee, no notifications, no record left behind — with a confirmation prompt first since it can't be undone.
 
 ### Horse Exhaustion Tracking
 
@@ -84,6 +85,13 @@ All notable changes to Stable State are documented here. Written for barn manage
 - A page layout bug could cause content to appear off-center on desktop (#590)
 - Notifications meant for another person (e.g. a cancellation alert) sometimes failed to deliver (#591)
 - Joining a second barn with an invite link could fail if you already had an account (#887)
+- A lesson's fee couldn't be edited unless it was switched off its fee tier first (#740)
+- A read notification could flip back to unread the next time you logged in (#742)
+- Saving a blank lesson tier name silently failed with no error shown (#743)
+- Riders couldn't cancel their own spot in a group lesson (#747)
+- Phone number fields accepted any input, with no format check (#755)
+- A horse's exertion bar and its position in the Horses list sort could disagree (#936)
+- Lease/boarding rows on the Outstanding page weren't clickable through to the agreement (#931)
 
 ---
 
