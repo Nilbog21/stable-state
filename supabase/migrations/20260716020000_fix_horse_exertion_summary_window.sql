@@ -8,7 +8,7 @@
 -- rename requires DROP + CREATE (Postgres rejects a parameter rename via CREATE
 -- OR REPLACE), so grants are re-applied below, mirroring the same DROP+CREATE
 -- pattern release3_functions.sql/release3_rls.sql already used for this function.
-DROP FUNCTION public.get_horse_exertion_summary(uuid, timestamptz);
+DROP FUNCTION IF EXISTS public.get_horse_exertion_summary(uuid, timestamptz);
 
 CREATE FUNCTION get_horse_exertion_summary(p_barn_id uuid, p_target_date timestamptz)
 RETURNS TABLE (

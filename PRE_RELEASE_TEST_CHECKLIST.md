@@ -167,7 +167,7 @@ Expenses (`/barn/dev-barn/expenses`):
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
-- [ ] Available section sorted by total exertion ascending (7d); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
+- [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked; re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`); try Moderate ≥ High while unchecked → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
 - [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page
 - [ ] Open the document via its link (signed URL)
