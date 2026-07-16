@@ -248,7 +248,7 @@ export default async function FinancesPage({
               <thead>
                 <tr>
                   <Th>Recipient</Th>
-                  <Th>Amount</Th>
+                  <Th>Expense Amount</Th>
                 </tr>
               </thead>
               <tbody>
