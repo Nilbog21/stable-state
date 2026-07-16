@@ -80,6 +80,16 @@ describe('HorseCard', () => {
       render(<HorseCard horse={availableHorse} barnSlug="green-acres" variant="available" />)
       expect(screen.queryByRole('button', { name: /exhaustion/i })).toBeNull()
     })
+
+    it('should_not_render_as_link_when_not_linkable', () => {
+      render(<HorseCard horse={availableHorse} barnSlug="green-acres" variant="available" linkable={false} />)
+      expect(screen.queryByRole('link')).toBeNull()
+    })
+
+    it('should_still_render_horse_name_when_not_linkable', () => {
+      render(<HorseCard horse={availableHorse} barnSlug="green-acres" variant="available" linkable={false} />)
+      expect(screen.getByText('Thunderbolt')).toBeDefined()
+    })
   })
 
   describe('unavailable variant', () => {
@@ -111,6 +121,16 @@ describe('HorseCard', () => {
     it('should_not_render_exertion_stats', () => {
       render(<HorseCard horse={unavailableHorse} barnSlug="green-acres" variant="unavailable" exhaustion={exhaustion} />)
       expect(screen.queryByText(/Exertion:/i)).toBeNull()
+    })
+
+    it('should_not_render_as_link_when_not_linkable', () => {
+      render(<HorseCard horse={unavailableHorse} barnSlug="green-acres" variant="unavailable" linkable={false} />)
+      expect(screen.queryByRole('link')).toBeNull()
+    })
+
+    it('should_still_render_unavailability_reason_when_not_linkable', () => {
+      render(<HorseCard horse={unavailableHorse} barnSlug="green-acres" variant="unavailable" linkable={false} />)
+      expect(screen.getByText(/Recovering from injury/)).toBeDefined()
     })
   })
 
