@@ -7,6 +7,7 @@ vi.mock('@/lib/auth/guard', () => ({
 vi.mock('@/lib/db/barn-memberships', () => ({
   getMembershipById: vi.fn(),
   setCanInstruct: vi.fn(),
+  deleteMembership: vi.fn(),
 }))
 vi.mock('@/lib/db/member-invites', () => ({
   revokeInviteToken: vi.fn(),
@@ -42,7 +43,7 @@ vi.mock('next/navigation', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getMembershipById, setCanInstruct } from '@/lib/db/barn-memberships'
+import { getMembershipById, setCanInstruct, deleteMembership } from '@/lib/db/barn-memberships'
 import { revokeInviteToken } from '@/lib/db/member-invites'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
@@ -54,6 +55,7 @@ import {
   updateContactInfoAction,
   setCanInstructAction,
   revokeInviteTokenAction,
+  removeMemberAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -577,5 +579,73 @@ describe('revokeInviteTokenAction', () => {
   it('should_revalidate_member_detail_path_after_revoke', async () => {
     await revokeInviteTokenAction('green-acres', 'mem-target-trn')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
+  })
+})
+
+describe('removeMemberAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getMembershipById).mockReset()
+    vi.mocked(deleteMembership).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
+    mockNotFound.mockClear()
+
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(deleteMembership).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(removeMemberAction('green-acres', 'mem-target-trn')).rejects.toThrow('NEXT_REDIRECT')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_404_when_target_not_found', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    await expect(removeMemberAction('green-acres', 'mem-gone')).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_404_when_target_in_different_barn', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-other-barn', barn_id: 'barn-other', role: 'trainer' })
+    )
+
+    await expect(removeMemberAction('green-acres', 'mem-other-barn')).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+  })
+
+  it('should_404_when_target_is_callers_own_membership', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(
+      createMockMembership({ id: 'mem-mgr', user_id: 'user-mgr', barn_id: 'barn-1', role: 'manager' })
+    )
+
+    await expect(removeMemberAction('green-acres', 'mem-mgr')).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+    expect(deleteMembership).not.toHaveBeenCalled()
+  })
+
+  it('should_call_deleteMembership_with_target_id', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(removeMemberAction('green-acres', 'mem-target-trn')).rejects.toThrow('NEXT_REDIRECT')
+    expect(deleteMembership).toHaveBeenCalledWith('mem-target-trn')
+  })
+
+  it('should_revalidate_members_list_path', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(removeMemberAction('green-acres', 'mem-target-trn')).rejects.toThrow('NEXT_REDIRECT')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members')
+  })
+
+  it('should_redirect_to_members_list_after_removal', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
+
+    await expect(removeMemberAction('green-acres', 'mem-target-trn')).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/members')
   })
 })

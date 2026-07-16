@@ -3,17 +3,10 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
-import {
-  getPendingMemberships,
-  getActiveMemberships,
-} from '@/lib/db/barn-memberships'
+import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
-import {
-  approveMembershipAction,
-  rejectMembershipAction,
-  removeMembershipAction,
-} from '../approvals/actions'
+import { approveMembershipAction, rejectMembershipAction } from '../approvals/actions'
 import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
@@ -27,7 +20,6 @@ import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
-import { RemoveMemberButton } from './RemoveMemberButton'
 import type { BarnMembership } from '@/lib/db/types'
 
 function AccordionSection({
@@ -107,16 +99,12 @@ export default async function SettingsPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const [tiers, pending, active] = await Promise.all([
+  const [tiers, pending] = await Promise.all([
     getAllTiersByBarn(barn.id),
     getPendingMemberships(barn.id),
-    getActiveMemberships(barn.id),
   ])
 
-  const removable = active.filter((m) => m.user_id !== user!.id)
-
-  const allMembershipIds = [...pending, ...active].map((m) => m.id)
-  const nameMap = await resolveMemberNames(allMembershipIds, barn.id)
+  const nameMap = await resolveMemberNames(pending.map((m) => m.id), barn.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -163,43 +151,6 @@ export default async function SettingsPage({
                     }
                   />
                 ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </AccordionSection>
-
-      <AccordionSection title="Active Members">
-        {removable.length === 0 ? (
-          <EmptyState heading="No active members" subtext="Approved barn members will appear here." />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Name</Th>
-                  <Th>Role</Th>
-                  <Th>Since</Th>
-                  <Th align="right">Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {removable.map((m) => {
-                  const name = nameMap.get(m.id) ?? m.id
-                  return (
-                    <MemberRow
-                      key={m.id}
-                      membership={m}
-                      name={name}
-                      actionSlot={
-                        <RemoveMemberButton
-                          action={removeMembershipAction.bind(null, slug, m.id)}
-                          name={name}
-                        />
-                      }
-                    />
-                  )
-                })}
               </tbody>
             </table>
           </div>

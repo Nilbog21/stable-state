@@ -48,7 +48,9 @@ Go to **Members** to browse the barn roster. You will see a **Managers** section
 
 **Adding a rider without an account** — At the top of the Riders section, enter a first and last name and tap **Add Rider**. This creates a record immediately so you can enter their lessons right away, even if they have not signed in yet.
 
-Tap any member card to open their detail page. For an unlinked member, a **Manage member** section appears right after their name with an amber notice and two controls:
+Tap any member card to open their detail page. Next to their name, a **Remove** button lets you take them off the barn's roster entirely (deleting any documents they have on file) — confirm the browser prompt to proceed; this cannot be undone. It's hidden on your own detail page, since you can't remove yourself.
+
+For an unlinked member, a **Manage member** section appears right after their name with an amber notice and two controls:
 - **Copy Invite** — copies a personal invite link to the clipboard (a brief "Copied!" confirms it) and shows it. Share this with them; when they tap the link, sign in with Google, and confirm, their account is automatically linked to the existing record and lesson history. This is the only way new members join a barn — there is no general "request access" flow.
 - **Revoke** — invalidates the current invite link and generates a new one. Use this if a link is shared with the wrong person. The previous link stops working immediately.
 
@@ -58,7 +60,7 @@ A **Contact Info** section shows their phone number and emergency contact (blank
 
 A rider's detail page also shows an **Active Agreements** section: one card per active lease or boarding agreement they have, each showing the kind, horse, and fee, linked to that agreement's detail page. If they have none, it shows "No active agreements". This works even for a rider who hasn't claimed their invite yet.
 
-A manager's or trainer's detail page also shows an **Instructor Access** section with a **Grant Instructor Access** / **Revoke Instructor Access** button — use this to let a manager teach lessons, or to remove a trainer/manager from the instructor list. This works even for a member who hasn't claimed their invite yet.
+A manager's or trainer's detail page also shows an **Instructor Access** section with a **Grant Instructor Access** / **Revoke Instructor Access** button — use this to let a manager teach lessons, or to remove a trainer/manager from the instructor list. Revoking asks you to confirm first, since the trainer immediately becomes unassignable to future lessons; granting takes effect right away with no confirmation. This works even for a member who hasn't claimed their invite yet.
 
 ## Lessons
 
