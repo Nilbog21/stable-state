@@ -91,7 +91,14 @@ export default async function HorsesPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Available</h2>
           <div className="flex flex-col gap-2">
             {available.map((horse) => (
-              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="available" exhaustion={exhaustionByHorseId.get(horse.id)} />
+              <HorseCard
+                key={horse.id}
+                horse={horse}
+                barnSlug={slug}
+                variant="available"
+                exhaustion={exhaustionByHorseId.get(horse.id)}
+                linkable={!isRider}
+              />
             ))}
           </div>
         </section>
@@ -102,7 +109,14 @@ export default async function HorsesPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Unavailable</h2>
           <div className="flex flex-col gap-2">
             {unavailable.map((horse) => (
-              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="unavailable" exhaustion={exhaustionByHorseId.get(horse.id)} />
+              <HorseCard
+                key={horse.id}
+                horse={horse}
+                barnSlug={slug}
+                variant="unavailable"
+                exhaustion={exhaustionByHorseId.get(horse.id)}
+                linkable={!isRider}
+              />
             ))}
           </div>
         </section>
