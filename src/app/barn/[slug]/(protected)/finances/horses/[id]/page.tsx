@@ -5,7 +5,10 @@ import { getHorseExpenseDetail } from '@/lib/db/expense-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDate } from '@/lib/format-date'
+import { LocalDateTime } from '@/components/LocalDateTime'
 import { Th, Td } from '@/components/ui/Table'
+
+const DATE_ONLY_OPTIONS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
 
 type CombinedRow =
   | { kind: 'lesson'; key: string; date: string; href: string; amount: number; horseCount: number; split: number }
@@ -106,7 +109,11 @@ export default async function HorseIncomePage({
                   <tr key={row.key}>
                     <Td>
                       <Link href={row.href} className="underline">
-                        {formatShortDate(row.date)}
+                        {row.kind === 'lesson' ? (
+                          <LocalDateTime iso={row.date} options={DATE_ONLY_OPTIONS} />
+                        ) : (
+                          formatShortDate(row.date)
+                        )}
                       </Link>
                     </Td>
                     <Td>{TYPE_LABELS[row.kind]}</Td>
