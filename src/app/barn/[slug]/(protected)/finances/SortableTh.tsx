@@ -1,5 +1,6 @@
 'use client'
 import { Th } from '@/components/ui/Table'
+import { InfoPopover } from './InfoPopover'
 import type { SortDir } from './useSortableRows'
 
 export function SortableTh<K extends string,>({
@@ -9,6 +10,7 @@ export function SortableTh<K extends string,>({
   activeKey,
   dir,
   onSort,
+  infoText,
 }: {
   sortKey: K
   label: string
@@ -16,6 +18,7 @@ export function SortableTh<K extends string,>({
   activeKey: K
   dir: SortDir
   onSort: (key: K) => void
+  infoText?: string
 }) {
   const active = activeKey === sortKey
   return (
@@ -28,6 +31,7 @@ export function SortableTh<K extends string,>({
         {label}
         {active && (dir === 'desc' ? ' ▼' : ' ▲')}
       </button>
+      {infoText && <InfoPopover text={infoText} />}
     </Th>
   )
 }
