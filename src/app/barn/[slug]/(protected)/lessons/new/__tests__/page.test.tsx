@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { createMockBarn, createMockMembership, createMockLessonTier } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockLessonTier, createMockHorse } from '@/test/fixtures'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -29,6 +29,7 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('@/app/actions/lessons', () => ({
   submitLesson: vi.fn(),
+  getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}),
 }))
 
 vi.mock('@/lib/db/lesson-tiers', () => ({
@@ -40,20 +41,20 @@ import { getHorsesByBarn } from '@/lib/db/horses'
 import { getUserMembership, getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import LessonNewPage from '../page'
 
 const mockBarn = createMockBarn()
 const mockTier = createMockLessonTier({ is_default: true })
 
 const mockHorses = [
-  { id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' },
-  { id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' },
+  createMockHorse({ id: 'horse-1', barn_id: 'barn-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
+  createMockHorse({ id: 'horse-2', barn_id: 'barn-1', name: 'Shadow', created_at: '2026-01-02', updated_at: '2026-01-02' }),
 ]
 
 const mockRiders = [
-  { membershipId: 'mem-1', userId: 'user-1', name: 'Alice' },
-  { membershipId: 'mem-2', userId: 'user-2', name: 'Bob' },
+  { membershipId: 'mem-1', userId: 'user-1', name: 'Alice', isManaged: false, inviteToken: null },
+  { membershipId: 'mem-2', userId: 'user-2', name: 'Bob', isManaged: false, inviteToken: null },
 ]
 
 const mockTrainerMembership = createMockMembership({ id: 'mem-1', created_at: '2026-01-01T00:00:00Z' })
@@ -76,6 +77,13 @@ describe('LessonNewPage', () => {
   })
 
   it('should_render_form_when_barn_exists', async () => {
+    const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /submit/i })).toBeDefined()
+  })
+
+  it('should_render_form_when_user_has_no_membership_in_barn', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(null)
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByRole('button', { name: /submit/i })).toBeDefined()
@@ -128,21 +136,21 @@ describe('LessonNewPage', () => {
     expect(screen.queryByLabelText(/instructor/i)).toBeNull()
   })
 
-  it('should_display_trainer_full_name_when_profile_is_found', async () => {
+  it('should_not_display_trainer_full_name_when_profile_is_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'user-1', name: 'John Trainer' },
+      { membershipId: mockTrainerMembership.id, userId: 'user-1', name: 'John Trainer' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('John Trainer')).toBeDefined()
+    expect(screen.queryByText('John Trainer')).toBeNull()
   })
 
   it('should_render_instructor_select_when_user_is_a_manager', async () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'manager-1', name: 'Jane Doe' },
+      { membershipId: mockManagerMembership.id, userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -153,8 +161,8 @@ describe('LessonNewPage', () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'manager-1', name: 'Jane Doe' },
-      { userId: 'trainer-2', name: 'John Smith' },
+      { membershipId: mockManagerMembership.id, userId: 'manager-1', name: 'Jane Doe' },
+      { membershipId: mockTrainerBarnMembership.id, userId: 'trainer-2', name: 'John Smith' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
@@ -165,12 +173,12 @@ describe('LessonNewPage', () => {
     mockSupabaseUser('manager-1')
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([
-      { userId: 'manager-1', name: 'Jane Doe' },
+      { membershipId: mockManagerMembership.id, userId: 'manager-1', name: 'Jane Doe' },
     ])
     const jsx = await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const select = screen.getByLabelText(/instructor/i) as HTMLSelectElement
-    expect(select.value).toBe('manager-1')
+    expect(select.value).toBe(mockManagerMembership.id)
   })
 
   it('should_show_new_horse_input_when_user_is_manager', async () => {
@@ -248,6 +256,28 @@ describe('LessonNewPage', () => {
   it('should_call_getTiersByBarn_with_barn_id', async () => {
     await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     expect(vi.mocked(getTiersByBarn).mock.calls[0][0]).toBe('barn-1')
+  })
+
+  it('should_throw_when_rider_visits_new_lesson_page', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
+    vi.mocked(redirect).mockImplementation(() => {
+      throw new Error('NEXT_REDIRECT')
+    })
+
+    await expect(
+      LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    ).rejects.toThrow('NEXT_REDIRECT')
+  })
+
+  it('should_redirect_rider_to_lessons_page', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', created_at: '2026-01-01T00:00:00Z' }))
+    vi.mocked(redirect).mockImplementation(() => {
+      throw new Error('NEXT_REDIRECT')
+    })
+
+    await LessonNewPage({ params: Promise.resolve({ slug: 'green-acres' }) }).catch(() => {})
+
+    expect(redirect).toHaveBeenCalledWith('/barn/green-acres/lessons')
   })
 
   it('should_show_blocked_state_when_no_tiers_configured', async () => {

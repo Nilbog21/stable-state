@@ -12,6 +12,38 @@ export function createServiceClient(url: string, key: string): SupabaseClient {
   })
 }
 
+export async function runCronJob(
+  name: string,
+  fn: (supabase: SupabaseClient) => Promise<{ summary: string; hadErrors: boolean }>
+): Promise<void> {
+  try {
+    const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+    const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+    if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
+    if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
+
+    const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
+    const { summary, hadErrors } = await fn(supabase)
+    console.log(summary)
+    if (hadErrors) process.exit(1)
+  } catch (err) {
+    console.error(`${name} failed:`, (err as Error).message)
+    process.exit(1)
+  }
+}
+
+export function assertDevProject(supabaseUrl: string): void {
+  const devSupabaseUrl = process.env.DEV_SUPABASE_URL
+  if (!devSupabaseUrl) {
+    throw new Error('DEV_SUPABASE_URL is not set — refusing to run against an unverified Supabase project')
+  }
+  if (supabaseUrl !== devSupabaseUrl) {
+    throw new Error(
+      `NEXT_PUBLIC_SUPABASE_URL (${supabaseUrl}) does not match DEV_SUPABASE_URL (${devSupabaseUrl}) — refusing to run against a non-dev Supabase project`
+    )
+  }
+}
+
 async function removeDocumentStorage(
   table: string,
   query: { data: { storage_path: string }[] | null; error: unknown },
@@ -27,7 +59,7 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   mustSucceed(await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId }), 'teardown lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', barnId), 'delete lesson_tiers')
   mustSucceed(await supabase.from('notifications').delete().eq('barn_id', barnId), 'delete notifications')
-  for (const table of ['horse_documents', 'trainer_documents', 'rider_documents']) {
+  for (const table of ['horse_documents', 'staff_documents', 'rider_documents']) {
     await removeDocumentStorage(table, await supabase.from(table).select('storage_path').eq('barn_id', barnId), supabase)
     mustSucceed(await supabase.from(table).delete().eq('barn_id', barnId), `delete ${table}`)
   }
@@ -39,13 +71,12 @@ export async function teardownAllData(supabase: SupabaseClient): Promise<void> {
   mustSucceed(await supabase.rpc('teardown_all_lesson_data'), 'teardown all lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().not('id', 'is', null), 'delete lesson_tiers')
   mustSucceed(await supabase.from('notifications').delete().not('id', 'is', null), 'delete notifications')
-  for (const table of ['horse_documents', 'trainer_documents', 'rider_documents']) {
+  for (const table of ['horse_documents', 'staff_documents', 'rider_documents']) {
     await removeDocumentStorage(table, await supabase.from(table).select('storage_path').not('id', 'is', null), supabase)
     mustSucceed(await supabase.from(table).delete().not('id', 'is', null), `delete ${table}`)
   }
   mustSucceed(await supabase.from('horses').delete().not('id', 'is', null), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().not('id', 'is', null), 'delete barn_memberships')
-  mustSucceed(await supabase.from('seeded_accounts').delete().not('id', 'is', null), 'delete seeded_accounts')
   mustSucceed(await supabase.from('profiles').delete().not('id', 'is', null), 'delete profiles')
   mustSucceed(await supabase.from('barns').delete().not('id', 'is', null), 'delete barns')
   while (true) {

@@ -6,7 +6,8 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getHorsesByBarn, createHorse, updateHorse, setHorseActive, getHorseExertionSummary, getHorseById, setHorseAvailability, resolveHorseNames, updateHorseDetails } from '../horses'
+import { createMockBarn } from '@/test/fixtures'
+import { getHorsesByBarn, getHorsesByIds, createHorse, getHorseExertionSummary, getHorseById, resolveHorseNames, updateHorseDetails, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -168,7 +169,7 @@ describe('createHorse', () => {
 })
 
 describe('getHorseExertionSummary', () => {
-  const since = new Date('2026-05-26T00:00:00Z')
+  const targetDate = new Date('2026-05-26T00:00:00Z')
 
   function makeRpc(data: unknown[] | null, error: Error | null = null) {
     return vi.fn().mockResolvedValue({ data, error })
@@ -186,7 +187,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 2, totalExertion: 6, jumpingCount: 0 },
@@ -194,14 +195,14 @@ describe('getHorseExertionSummary', () => {
     ])
   })
 
-  it('should_return_zero_counts_for_horses_with_no_lessons_in_window', async () => {
+  it('should_return_zero_counts_for_horses_with_lessons_outside_the_plus_minus_three_day_window', async () => {
     vi.mocked(createClient).mockResolvedValue({
       rpc: makeRpc([
         { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, lesson_count: 0, total_exertion: 0, jumping_count: 0 },
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
@@ -216,7 +217,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 1, totalExertion: 5, jumpingCount: 0 },
@@ -229,7 +230,7 @@ describe('getHorseExertionSummary', () => {
       rpc: makeRpc([]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([])
   })
@@ -238,11 +239,11 @@ describe('getHorseExertionSummary', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await getHorseExertionSummary('barn-1', since)
+    await getHorseExertionSummary('barn-1', targetDate)
 
     expect(mockRpc).toHaveBeenCalledWith('get_horse_exertion_summary', {
       p_barn_id: 'barn-1',
-      p_since: since.toISOString(),
+      p_target_date: targetDate.toISOString(),
     })
   })
 
@@ -251,7 +252,7 @@ describe('getHorseExertionSummary', () => {
       rpc: makeRpc(null, new Error('rpc error')),
     } as any)
 
-    await expect(getHorseExertionSummary('barn-1', since)).rejects.toThrow('rpc error')
+    await expect(getHorseExertionSummary('barn-1', targetDate)).rejects.toThrow('rpc error')
   })
 
   it('should_return_empty_array_when_rpc_returns_null_data', async () => {
@@ -259,7 +260,7 @@ describe('getHorseExertionSummary', () => {
       rpc: makeRpc(null),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([])
   })
@@ -272,7 +273,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 2, totalExertion: 6, jumpingCount: 1 },
@@ -287,7 +288,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
@@ -301,7 +302,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result[0].is_available).toBe(false)
   })
@@ -313,81 +314,11 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result[0].is_available).toBe(true)
   })
 
-})
-
-describe('setHorseActive', () => {
-  function makeToggleChain(error: Error | null = null) {
-    const mockSingle = vi.fn().mockResolvedValue({ data: { id: 'horse-1' }, error })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarnId = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    return { update: vi.fn().mockReturnValue({ eq: mockEqId }) }
-  }
-
-  it('should_resolve_when_deactivating', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeToggleChain()),
-    } as any)
-
-    await expect(setHorseActive('horse-1', 'barn-1', false)).resolves.toBeUndefined()
-  })
-
-  it('should_resolve_when_activating', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeToggleChain()),
-    } as any)
-
-    await expect(setHorseActive('horse-1', 'barn-1', true)).resolves.toBeUndefined()
-  })
-
-  it('should_pass_is_active_false_to_update_when_deactivating', async () => {
-    const chain = makeToggleChain()
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(chain),
-    } as any)
-
-    await setHorseActive('horse-1', 'barn-1', false)
-
-    expect(chain.update).toHaveBeenCalledWith({ is_active: false })
-  })
-
-  it('should_pass_is_active_true_to_update_when_activating', async () => {
-    const chain = makeToggleChain()
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(chain),
-    } as any)
-
-    await setHorseActive('horse-1', 'barn-1', true)
-
-    expect(chain.update).toHaveBeenCalledWith({ is_active: true })
-  })
-
-  it('should_scope_update_to_barn_id', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({ data: null, error: null })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarnId = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
-    } as any)
-
-    await setHorseActive('horse-1', 'barn-1', false)
-
-    expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeToggleChain(new Error('db error'))),
-    } as any)
-
-    await expect(setHorseActive('horse-1', 'barn-1', false)).rejects.toThrow('db error')
-  })
 })
 
 describe('getHorseById', () => {
@@ -442,103 +373,68 @@ describe('getHorseById', () => {
   })
 })
 
-describe('setHorseAvailability', () => {
-  function makeUpdateChain(error: Error | null = null) {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    return { update: vi.fn().mockReturnValue({ eq: mockEqId }) }
+describe('getHorsesByIds', () => {
+  function makeSelectChain(data: unknown, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    return { select: vi.fn().mockReturnValue({ eq: mockEq }) }
   }
 
-  it('should_resolve_when_setting_unavailable', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeUpdateChain()),
-    } as any)
-
-    await expect(setHorseAvailability('horse-1', 'barn-1', false, 'on stall rest')).resolves.toBeUndefined()
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
   })
 
-  it('should_resolve_when_setting_available', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeUpdateChain()),
-    } as any)
+  it('should_return_empty_array_when_ids_is_empty', async () => {
+    const result = await getHorsesByIds([], 'barn-1')
 
-    await expect(setHorseAvailability('horse-1', 'barn-1', true, null)).resolves.toBeUndefined()
+    expect(result).toEqual([])
   })
 
-  it('should_pass_is_available_false_and_reason_to_update', async () => {
-    const chain = makeUpdateChain()
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(chain),
-    } as any)
+  it('should_not_call_create_client_when_ids_is_empty', async () => {
+    await getHorsesByIds([], 'barn-1')
 
-    await setHorseAvailability('horse-1', 'barn-1', false, 'on stall rest')
-
-    expect(chain.update).toHaveBeenCalledWith({ is_available: false, unavailability_reason: 'on stall rest' })
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 
-  it('should_pass_is_available_true_and_null_reason_to_update', async () => {
-    const chain = makeUpdateChain()
+  it('should_return_horses_matching_ids', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(chain),
+      from: vi.fn().mockReturnValue(makeSelectChain(mockHorses)),
     } as any)
 
-    await setHorseAvailability('horse-1', 'barn-1', true, null)
+    const result = await getHorsesByIds(['horse-1', 'horse-2'], 'barn-1')
 
-    expect(chain.update).toHaveBeenCalledWith({ is_available: true, unavailability_reason: null })
+    expect(result).toEqual(mockHorses)
   })
 
-  it('should_scope_update_to_barn_id', async () => {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error: null })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+  it('should_include_inactive_horses_when_their_id_is_requested', async () => {
+    const inactiveHorse = createMockHorse({ id: 'horse-3', name: 'Retired', is_active: false })
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
+      from: vi.fn().mockReturnValue(makeSelectChain([inactiveHorse])),
     } as any)
 
-    await setHorseAvailability('horse-1', 'barn-1', false, 'reason')
+    const result = await getHorsesByIds(['horse-3'], 'barn-1')
 
-    expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(result).toEqual([inactiveHorse])
   })
 
-  it('should_throw_when_supabase_returns_an_error', async () => {
+  it('should_scope_query_to_barn_id', async () => {
+    const mockIn = vi.fn().mockResolvedValue({ data: [], error: null })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeUpdateChain(new Error('db error'))),
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: mockEq }) }),
     } as any)
 
-    await expect(setHorseAvailability('horse-1', 'barn-1', false, 'reason')).rejects.toThrow('db error')
-  })
-})
+    await getHorsesByIds(['horse-1'], 'barn-1')
 
-describe('updateHorse', () => {
-  const updatedHorse = createMockHorse({ id: 'horse-1', name: 'Blaze Updated' })
-
-  it('should_return_updated_horse_on_success', async () => {
-    const selectChain = { single: vi.fn().mockResolvedValue({ data: updatedHorse, error: null }) }
-    const eq2 = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(selectChain) })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ eq: eq2 }),
-        }),
-      }),
-    } as any)
-
-    const result = await updateHorse('horse-1', 'barn-1', 'Blaze Updated')
-
-    expect(result).toEqual(updatedHorse)
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
   it('should_throw_when_supabase_returns_an_error', async () => {
-    const selectChain = { single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }) }
-    const eq2 = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue(selectChain) })
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ eq: eq2 }),
-        }),
-      }),
+      from: vi.fn().mockReturnValue(makeSelectChain(null, new Error('db error'))),
     } as any)
 
-    await expect(updateHorse('horse-1', 'barn-1', 'Blaze Updated')).rejects.toThrow('db error')
+    await expect(getHorsesByIds(['horse-1'], 'barn-1')).rejects.toThrow('db error')
   })
 })
 
@@ -621,6 +517,16 @@ describe('resolveHorseNames', () => {
     await expect(resolveHorseNames(['horse-1'], 'barn-1')).rejects.toThrow('db error')
   })
 
+  it('should_return_empty_map_when_data_is_null', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(makeSelectChain(null)),
+    } as any)
+
+    const result = await resolveHorseNames(['horse-1'], 'barn-1')
+
+    expect(result).toEqual(new Map())
+  })
+
   it('should_not_call_create_client_when_client_is_injected', async () => {
     const injectedClient = {
       from: vi.fn().mockReturnValue(makeSelectChain([{ id: 'horse-1', name: 'Thunderbolt' }])),
@@ -642,50 +548,147 @@ describe('resolveHorseNames', () => {
 })
 
 describe('updateHorseDetails', () => {
-  function makeUpdateChain(error: Error | null = null) {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    return { update: vi.fn().mockReturnValue({ eq: mockEqId }) }
-  }
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
 
   it('should_resolve_when_called_with_valid_updates', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeUpdateChain()),
-    } as any)
-    await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).resolves.toBeUndefined()
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null, exhaustion_thresholds: null })).resolves.toBeUndefined()
   })
 
-  it('should_pass_updates_object_to_supabase_update', async () => {
-    const chain = makeUpdateChain()
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
-    expect(chain.update).toHaveBeenCalledWith({ name: 'Blaze', is_active: true, is_available: false, unavailability_reason: 'stall rest' })
+  it('should_call_rpc_with_correct_arguments', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { name: 'Blaze', is_active: false, is_available: false, unavailability_reason: 'stall rest', exhaustion_thresholds: { moderate: 4, high: 10 } })
+    expect(mockRpc).toHaveBeenCalledWith('update_horse_details', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_name: 'Blaze',
+      p_is_active: false,
+      p_is_available: false,
+      p_unavailability_reason: 'stall rest',
+      p_exhaustion_threshold_moderate: 4,
+      p_exhaustion_threshold_high: 10,
+    })
   })
 
-  it('should_scope_update_to_horse_id', async () => {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error: null })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
-    } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
-    expect(mockEqId).toHaveBeenCalledWith('id', 'horse-1')
+  it('should_pass_null_name_when_name_is_omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null, exhaustion_thresholds: null })
+    expect(mockRpc.mock.calls[0][1]).toMatchObject({ p_name: null })
   })
 
-  it('should_scope_update_to_barn_id', async () => {
-    const mockEqBarnId = vi.fn().mockResolvedValue({ data: null, error: null })
-    const mockEqId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: vi.fn().mockReturnValue({ eq: mockEqId }) }),
-    } as any)
-    await updateHorseDetails('horse-1', 'barn-1', { is_active: false, is_available: false, unavailability_reason: null })
-    expect(mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
+  it('should_pass_null_thresholds_when_exhaustion_thresholds_is_null', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null, exhaustion_thresholds: null })
+    expect(mockRpc.mock.calls[0][1]).toMatchObject({ p_exhaustion_threshold_moderate: null, p_exhaustion_threshold_high: null })
   })
 
-  it('should_throw_when_supabase_returns_an_error', async () => {
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+    await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null, exhaustion_thresholds: null })).rejects.toThrow('db error')
+  })
+})
+
+describe('getHorseProjectedExhaustion', () => {
+  const targetDate = new Date('2026-07-10T00:00:00Z')
+
+  function makeRpc(data: unknown[] | null, error: Error | null = null) {
+    return vi.fn().mockResolvedValue({ data, error })
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_lesson_at_and_exertion_level_rows', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue(makeUpdateChain(new Error('db error'))),
+      rpc: makeRpc([
+        { lesson_at: '2026-07-09T10:00:00Z', exertion_level: 3 },
+        { lesson_at: '2026-07-11T10:00:00Z', exertion_level: 4 },
+      ]),
     } as any)
-    await expect(updateHorseDetails('horse-1', 'barn-1', { is_active: true, is_available: true, unavailability_reason: null })).rejects.toThrow('db error')
+
+    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+
+    expect(result).toEqual([
+      { lessonAt: '2026-07-09T10:00:00Z', exertionLevel: 3 },
+      { lessonAt: '2026-07-11T10:00:00Z', exertionLevel: 4 },
+    ])
+  })
+
+  it('should_return_empty_array_when_rpc_returns_null_data', async () => {
+    vi.mocked(createClient).mockResolvedValue({ rpc: makeRpc(null) } as any)
+
+    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({ rpc: makeRpc(null, new Error('rpc error')) } as any)
+
+    await expect(getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)).rejects.toThrow('rpc error')
+  })
+
+  it('should_call_rpc_with_null_exclude_lesson_id_when_omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+
+    expect(mockRpc).toHaveBeenCalledWith('get_horse_projected_exhaustion', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_target_date: targetDate.toISOString(),
+      p_exclude_lesson_id: null,
+    })
+  })
+
+  it('should_call_rpc_with_exclude_lesson_id_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'lesson-1')
+
+    expect(mockRpc).toHaveBeenCalledWith('get_horse_projected_exhaustion', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_target_date: targetDate.toISOString(),
+      p_exclude_lesson_id: 'lesson-1',
+    })
+  })
+})
+
+describe('resolveExhaustionThresholds', () => {
+  const barn = createMockBarn({ exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5 })
+
+  it('should_use_horse_overrides_when_both_set', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: 20, exhaustion_threshold_moderate: 8 })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 20, moderate: 8 })
+  })
+
+  it('should_fall_back_to_barn_defaults_when_horse_fields_are_null', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: null, exhaustion_threshold_moderate: null })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 11, moderate: 5 })
+  })
+
+  it('should_resolve_high_and_moderate_independently_when_only_one_is_overridden', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: 20, exhaustion_threshold_moderate: null })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 20, moderate: 5 })
+  })
+
+  it('should_clamp_moderate_below_high_when_a_single_override_would_invert_the_pair', () => {
+    const horse = createMockHorse({ exhaustion_threshold_high: null, exhaustion_threshold_moderate: 15 })
+
+    expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 11, moderate: 10 })
   })
 })

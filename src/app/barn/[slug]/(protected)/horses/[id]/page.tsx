@@ -1,21 +1,19 @@
 import { notFound } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
+import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
-import { getHorseDocuments } from '@/lib/db/horse-documents'
-import { getSignedUrl } from '@/lib/db/document-storage'
+import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { HorseManagerForm } from './HorseManagerForm'
-import { HorseDocumentUploadForm } from './HorseDocumentUploadForm'
-import { updateHorseDetailsAction, uploadHorseDocumentAction, deleteHorseDocumentAction } from './actions'
-
-const RECORD_TYPE_LABELS: Record<string, string> = {
-  insurance_binder: 'Insurance Binder',
-  coggins: 'Coggins',
-  shot_record: 'Shot Record',
-  contract: 'Contract',
-  other: 'Other',
-}
+import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
+import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
+import { Th, Td, TableActions } from '@/components/ui/Table'
+import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/EmptyState'
+import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
+import {
+  updateHorseAction,
+  deleteHorseDocumentAction,
+  updateHorseDocumentReminderDateAction,
+} from './actions'
 
 export default async function HorseDetailPage({
   params,
@@ -23,14 +21,7 @@ export default async function HorseDetailPage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
-
-  const user = await getAuthenticatedUser()
-  if (!user) notFound()
-
-  const membership = await getUserMembership(user.id, barn.id)
-  if (!membership || membership.status !== 'active') notFound()
+  const { barn, membership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
 
   const horse = await getHorseById(id, barn.id)
   if (!horse) notFound()
@@ -39,16 +30,11 @@ export default async function HorseDetailPage({
 
   const canSeeDocuments = role === 'manager' || role === 'trainer'
 
-  const docsWithUrls = canSeeDocuments
-    ? await (async () => {
-        const docs = await getHorseDocuments(horse.id, barn.id)
-        return Promise.all(docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) })))
-      })()
-    : []
+  const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
 
-  const boundUpdateAction = updateHorseDetailsAction.bind(null, slug, horse.id)
-  const boundUploadAction = uploadHorseDocumentAction.bind(null, slug, horse.id)
+  const boundUpdateAction = updateHorseAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
+  const boundReminderDateAction = updateHorseDocumentReminderDateAction.bind(null, slug, horse.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -59,7 +45,7 @@ export default async function HorseDetailPage({
       {role !== 'manager' && (
         <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">
-            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Status</dt>
+            <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Status</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
               {horse.is_available ? 'Available' : 'Unavailable'}
             </dd>
@@ -67,7 +53,7 @@ export default async function HorseDetailPage({
 
           {!horse.is_available && horse.unavailability_reason && (
             <div className="flex flex-col gap-1 py-4">
-              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">Reason</dt>
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Reason</dt>
               <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.unavailability_reason}</dd>
             </div>
           )}
@@ -76,66 +62,72 @@ export default async function HorseDetailPage({
 
       {role === 'manager' && (
         <section className="mt-6">
-          <HorseManagerForm horse={horse} action={boundUpdateAction} />
+          <HorseManagerForm horse={horse} barn={barn} action={boundUpdateAction} />
         </section>
       )}
 
       {canSeeDocuments && (
         <section className="mt-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Documents
-          </h2>
-          {docsWithUrls.length > 0 ? (
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                  <th className="pb-2 pr-6">Type</th>
-                  <th className="pb-2 pr-6">Notes</th>
-                  <th className="pb-2 pr-6">Link</th>
-                  <th className="pb-2">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {docsWithUrls.map(({ doc, signedUrl }) => (
-                  <tr key={doc.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                    <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{RECORD_TYPE_LABELS[doc.record_type]}</td>
-                    <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">{doc.notes ?? '—'}</td>
-                    <td className="py-3 pr-6 text-sm">
-                      <a
-                        href={signedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-                      >
-                        {doc.file_name}
-                      </a>
-                    </td>
-                    <td className="py-3 text-sm">
-                      {role === 'manager' && (
-                        <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
-                          <button
-                            type="submit"
-                            className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                          >
-                            Delete
-                          </button>
-                        </form>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No documents yet.</p>
-          )}
-
-          <section className="mt-6">
-            <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              Upload Document
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              Documents
             </h2>
-            <HorseDocumentUploadForm action={boundUploadAction} />
-          </section>
+            <Button href={`/barn/${slug}/documents/new?entity=horse&id=${horse.id}`}>Add Document</Button>
+          </div>
+          {docsWithUrls.length > 0 ? (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr>
+                    <Th>Type</Th>
+                    <Th>Notes</Th>
+                    <Th>Link</Th>
+                    <Th>Reminder Date</Th>
+                    {role === 'manager' && <Th align="right">Actions</Th>}
+                  </tr>
+                </thead>
+                <tbody>
+                  {docsWithUrls.map(({ doc, signedUrl }) => (
+                    <tr key={doc.id}>
+                      <Td>{RECORD_TYPE_LABELS[doc.record_type]}</Td>
+                      <Td tone="secondary">{doc.notes ?? '—'}</Td>
+                      <Td>
+                        <a
+                          href={signedUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+                        >
+                          {doc.file_name}
+                        </a>
+                      </Td>
+                      <Td tone="secondary">
+                        <div className="flex items-center gap-2">
+                          {role === 'manager' ? (
+                            <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDateAction} />
+                          ) : (
+                            doc.reminder_date ?? '—'
+                          )}
+                          <ReminderDueBadge reminderDate={doc.reminder_date} />
+                        </div>
+                      </Td>
+                      {role === 'manager' && (
+                        <TableActions>
+                          <form action={boundDeleteAction.bind(null, doc.id, doc.storage_path)}>
+                            <Button type="submit" variant="danger" size="sm">
+                              Delete
+                            </Button>
+                          </form>
+                        </TableActions>
+                      )}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
+          )}
         </section>
       )}
     </main>

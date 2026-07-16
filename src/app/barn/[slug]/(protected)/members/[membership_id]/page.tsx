@@ -1,21 +1,108 @@
-import { notFound, redirect } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getMembershipById } from '@/lib/db/barn-memberships'
-import { getProfileByUserId } from '@/lib/db/profiles'
-import { getTrainerDocuments } from '@/lib/db/trainer-documents'
-import { getRiderDocuments } from '@/lib/db/rider-documents'
-import { getSignedUrl } from '@/lib/db/document-storage'
-import { UploadForm } from './UploadForm'
-import { uploadDocumentAction, deleteDocumentAction } from './actions'
-import type { TrainerDocument, RiderDocument } from '@/lib/db/types'
+import { notFound } from 'next/navigation'
+import { requireMembership } from '@/lib/auth/guard'
+import { getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
+import { getProfileById } from '@/lib/db/profiles'
+import { getDocumentsWithUrls } from '@/lib/db/documents'
+import { getActiveAgreementsForRider } from '@/lib/db/agreements'
+import { resolveHorseNames } from '@/lib/db/horses'
+import { canManage } from '@/lib/document-target'
+import { Card } from '@/components/ui/Card'
+import { ContactInfoForm } from './ContactInfoForm'
+import { DeleteDocumentButton } from './DeleteDocumentButton'
+import { ManageMemberSection } from './ManageMemberSection'
+import { InstructorAccess } from './InstructorAccess'
+import { RemoveMemberButton } from './RemoveMemberButton'
+import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
+import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
+import { Th, Td, TableActions } from '@/components/ui/Table'
+import { EmptyState } from '@/components/EmptyState'
+import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction, removeMemberAction } from './actions'
+import { Button } from '@/components/ui/Button'
+import type { TrainerDocument, RiderDocument, Agreement, Profile } from '@/lib/db/types'
+import { formatFee } from '@/lib/format-currency'
+import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 
-const RECORD_TYPE_LABELS: Record<string, string> = {
-  instructor_contract: 'Instructor Contract',
-  liability_waiver: 'Liability Waiver',
-  lease_agreement: 'Lease Agreement',
-  boarding_contract: 'Boarding Contract',
-  other: 'Other',
+function ContactInfo({
+  profile,
+  slug,
+  isOwnPage,
+}: {
+  profile: Profile | null
+  slug: string
+  isOwnPage: boolean
+}) {
+  return (
+    <section className="mb-10">
+      <div className="mb-3 flex items-center justify-between">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Contact Info
+        </h2>
+        {isOwnPage && (
+          <Button variant="ghost" href={`/profile?barn=${slug}`}>
+            Edit
+          </Button>
+        )}
+      </div>
+      <dl className="space-y-1 text-sm text-zinc-700 dark:text-zinc-300">
+        <div>
+          <dt className="inline text-zinc-500 dark:text-zinc-400">Phone: </dt>
+          <dd className="inline">{profile?.phone ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="inline text-zinc-500 dark:text-zinc-400">Emergency Contact Name: </dt>
+          <dd className="inline">{profile?.emergency_contact_name ?? '—'}</dd>
+        </div>
+        <div>
+          <dt className="inline text-zinc-500 dark:text-zinc-400">Emergency Contact Phone: </dt>
+          <dd className="inline">{profile?.emergency_contact_phone ?? '—'}</dd>
+        </div>
+      </dl>
+    </section>
+  )
+}
+
+const AGREEMENT_KIND_LABELS: Record<Agreement['kind'], string> = {
+  lease: 'Lease',
+  board: 'Boarding',
+}
+
+function ActiveAgreements({
+  slug,
+  agreements,
+  horseNames,
+  linkable,
+}: {
+  slug: string
+  agreements: Agreement[]
+  horseNames: Map<string, string>
+  linkable: boolean
+}) {
+  return (
+    <section className="mb-8">
+      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        Active Agreements
+      </h2>
+      {agreements.length > 0 ? (
+        <div className="flex flex-col gap-2">
+          {agreements.map((agreement) => (
+            <Card
+              key={agreement.id}
+              href={linkable ? `/barn/${slug}/agreements/${agreement.id}` : undefined}
+              className="p-3"
+            >
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">
+                {AGREEMENT_KIND_LABELS[agreement.kind]} · {horseNames.get(agreement.horse_id) ?? '—'} ·{' '}
+                {formatFee(agreement.fee)}
+                {agreement.cadence === 'monthly' ? '/month' : ''}
+              </p>
+            </Card>
+          ))}
+        </div>
+      ) : (
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">No active agreements</p>
+      )}
+    </section>
+  )
 }
 
 export default async function MemberDetailPage({
@@ -25,128 +112,179 @@ export default async function MemberDetailPage({
 }) {
   const { slug, membership_id } = await params
 
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
+  const { user, barn, membership: callerMembership } = await requireMembership(slug, [
+    'manager',
+    'trainer',
+    'rider',
+  ])
 
-  const user = await getAuthenticatedUser()
-  if (!user) redirect(`/barn/${slug}/login`)
-
-  const callerMembership = await getUserMembership(user.id, barn.id)
-  if (!callerMembership || callerMembership.status !== 'active') redirect(`/barn/${slug}/login`)
-
-  const targetMembership = await getMembershipById(membership_id)
+  const targetMembership = await getMembershipByIdForBarn(membership_id, barn.id)
   if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
 
   const isOwnPage = targetMembership.user_id === user.id
   const callerRole = callerMembership.role
   const targetRole = targetMembership.role
 
-  const canAccess =
-    callerRole === 'manager' ||
-    (callerRole === 'trainer' && (isOwnPage || targetRole === 'rider')) ||
-    (callerRole === 'rider' && isOwnPage)
-
-  if (!canAccess) notFound()
-
-  const canUpload =
+  // Documents keeps a narrower "manager or self" gate (canViewDocuments) even though page access
+  // and Contact Info (#863) are both open to any active barn member. #864: viewing and managing
+  // (upload/delete) diverge for a self-viewing rider, so they're two booleans now instead of one
+  // shared canUpload.
+  const canViewDocuments =
     callerRole === 'manager' ||
     (callerRole === 'trainer' && isOwnPage) ||
     (callerRole === 'rider' && isOwnPage)
+  const canManageDocuments = canManage(callerRole, isOwnPage)
 
-  if (!targetMembership.user_id) {
-    return (
-      <main className="mx-auto max-w-3xl px-4 py-12">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No account linked — documents unavailable.</p>
-      </main>
+  // agreements RLS only grants SELECT to the barn manager and the rider themself —
+  // a trainer's query would be silently filtered to zero rows, showing a false "no agreements" status
+  const canViewAgreements = targetRole === 'rider' && (callerRole === 'manager' || isOwnPage)
+
+  let activeAgreements: Agreement[] = []
+  let agreementHorseNames = new Map<string, string>()
+  if (canViewAgreements) {
+    activeAgreements = await getActiveAgreementsForRider(barn.id, targetMembership.id)
+    agreementHorseNames = await resolveHorseNames(
+      activeAgreements.map((a) => a.horse_id),
+      barn.id
     )
   }
 
-  const targetProfile = await getProfileByUserId(targetMembership.user_id)
+  const targetProfile = await getProfileById(targetMembership.profile_id)
   const displayName = targetProfile
     ? `${targetProfile.first_name} ${targetProfile.last_name}`
-    : targetMembership.user_id
+    : targetMembership.id
+
+  const canEditContactInfo = callerRole === 'manager' && targetProfile?.is_managed === true
+  const boundUpdateContactInfo = updateContactInfoAction.bind(null, slug, membership_id)
+
+  const canManageInstructorAccess =
+    callerRole === 'manager' && (targetRole === 'manager' || targetRole === 'trainer')
+
+  const canRemoveMember =
+    callerRole === 'manager' && targetMembership.user_id !== user.id && targetRole !== 'manager'
+
+  const canManageInvite =
+    callerRole === 'manager' && targetProfile?.is_managed === true && targetMembership.invite_token !== null
 
   type DocWithUrl = { doc: TrainerDocument | RiderDocument; signedUrl: string }
   let docsWithUrls: DocWithUrl[] = []
 
-  if (targetRole === 'rider') {
-    const docs = await getRiderDocuments(targetMembership.user_id, barn.id)
-    docsWithUrls = await Promise.all(
-      docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
-    )
-  } else {
-    const docs = await getTrainerDocuments(targetMembership.user_id, barn.id)
-    docsWithUrls = await Promise.all(
-      docs.map(async (doc) => ({ doc, signedUrl: await getSignedUrl(doc.storage_path) }))
-    )
+  if (canViewDocuments) {
+    if (targetRole === 'rider') {
+      docsWithUrls = await getDocumentsWithUrls('rider', targetMembership.id, barn.id)
+    } else {
+      docsWithUrls = await getDocumentsWithUrls('trainer', targetMembership.id, barn.id)
+    }
   }
 
-  const boundUpload = uploadDocumentAction.bind(null, slug, membership_id)
   const boundDelete = deleteDocumentAction.bind(null, slug, membership_id)
+  const boundReminderDate = updateDocumentReminderDateAction.bind(null, slug, membership_id)
+  const canEditReminderDate = callerRole === 'manager'
+  const docEntity = targetRole === 'rider' ? 'rider' : 'trainer'
+  const addDocumentHref = `/barn/${slug}/documents/new?entity=${docEntity}&id=${membership_id}`
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
-      <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-        {displayName}
-      </h1>
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {displayName}
+        </h1>
+        {canRemoveMember && (
+          <RemoveMemberButton action={removeMemberAction.bind(null, slug, membership_id)} name={displayName} />
+        )}
+      </div>
 
+      {canManageInvite && targetMembership.invite_token !== null && (
+        <ManageMemberSection
+          barnSlug={slug}
+          inviteToken={targetMembership.invite_token}
+          revokeAction={revokeInviteTokenAction.bind(null, slug, membership_id)}
+        />
+      )}
+
+      {canViewAgreements && (
+        <ActiveAgreements
+          slug={slug}
+          agreements={activeAgreements}
+          horseNames={agreementHorseNames}
+          linkable={callerRole === 'manager'}
+        />
+      )}
+
+      {/* #863: any active barn member can view any other's Contact Info — page access above is already the gate */}
+      {canEditContactInfo && targetProfile ? (
+        <ContactInfoForm profile={targetProfile} action={boundUpdateContactInfo} />
+      ) : (
+        <ContactInfo profile={targetProfile} slug={slug} isOwnPage={isOwnPage} />
+      )}
+
+      {canManageInstructorAccess && (
+        <InstructorAccess
+          name={displayName}
+          canInstruct={targetMembership.can_instruct}
+          action={setCanInstructAction.bind(null, slug, targetMembership.id, !targetMembership.can_instruct)}
+        />
+      )}
+
+      {canViewDocuments && (
       <section className="mb-10">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          Documents
-        </h2>
+        <div className="mb-3 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Documents
+          </h2>
+          {canManageDocuments && <Button href={addDocumentHref}>Add Document</Button>}
+        </div>
         {docsWithUrls.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Type</th>
-                <th className="pb-2 pr-6">Notes</th>
-                <th className="pb-2 pr-6">Link</th>
-                <th className="pb-2">Action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {docsWithUrls.map(({ doc, signedUrl }) => (
-                <tr key={doc.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{RECORD_TYPE_LABELS[doc.record_type]}</td>
-                  <td className="py-3 pr-6 text-sm text-zinc-500 dark:text-zinc-400">{doc.notes ?? '—'}</td>
-                  <td className="py-3 pr-6 text-sm">
-                    <a
-                      href={signedUrl}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-                    >
-                      {doc.file_name}
-                    </a>
-                  </td>
-                  <td className="py-3 text-sm">
-                    {canUpload && (
-                      <form action={boundDelete.bind(null, doc.id, doc.storage_path)}>
-                        <button
-                          type="submit"
-                          className="rounded border border-red-300 px-3 py-1 text-xs font-medium text-red-700 hover:bg-red-50 dark:border-red-700 dark:text-red-400 dark:hover:bg-red-950"
-                        >
-                          Delete
-                        </button>
-                      </form>
-                    )}
-                  </td>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Type</Th>
+                  <Th>Notes</Th>
+                  <Th>Link</Th>
+                  <Th>Reminder Date</Th>
+                  <Th align="right">Actions</Th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {docsWithUrls.map(({ doc, signedUrl }) => (
+                  <tr key={doc.id}>
+                    <Td>{RECORD_TYPE_LABELS[doc.record_type]}</Td>
+                    <Td tone="secondary">{doc.notes ?? '—'}</Td>
+                    <Td>
+                      <a
+                        href={signedUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+                      >
+                        {doc.file_name}
+                      </a>
+                    </Td>
+                    <Td tone="secondary">
+                      <div className="flex items-center gap-2">
+                        {canEditReminderDate ? (
+                          <ReminderDateCell docId={doc.id} initialValue={doc.reminder_date} action={boundReminderDate} />
+                        ) : (
+                          doc.reminder_date ?? '—'
+                        )}
+                        <ReminderDueBadge reminderDate={doc.reminder_date} />
+                      </div>
+                    </Td>
+                    <TableActions>
+                      {canManageDocuments && (
+                        <DeleteDocumentButton docId={doc.id} storagePath={doc.storage_path} action={boundDelete} />
+                      )}
+                    </TableActions>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No documents yet.</p>
+          <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
         )}
       </section>
-
-      {canUpload && (
-        <section>
-          <h2 className="mb-4 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Upload Document
-          </h2>
-          <UploadForm memberRole={targetRole as 'trainer' | 'rider' | 'manager'} action={boundUpload} />
-        </section>
       )}
     </main>
   )

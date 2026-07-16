@@ -18,17 +18,18 @@ export async function getTiersByBarn(barnId: string): Promise<LessonTier[]> {
 export async function createTier(
   barnId: string,
   name: string,
-  price: number | null,
+  price: number,
   isDefault = false,
   defaultExertionLevel: number | null = null,
   defaultJumping: boolean | null = null,
+  instructorCut = 0,
   client?: SupabaseClient
 ): Promise<LessonTier> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('lesson_tiers')
-    .insert({ barn_id: barnId, name, price, is_default: isDefault, default_exertion_level: defaultExertionLevel, default_jumping: defaultJumping })
+    .insert({ barn_id: barnId, name, price, is_default: isDefault, default_exertion_level: defaultExertionLevel, default_jumping: defaultJumping, instructor_cut: instructorCut })
     .select()
     .single()
 
@@ -40,7 +41,7 @@ export async function createTier(
 export async function updateTier(
   tierId: string,
   barnId: string,
-  updates: { name?: string; price?: number | null; default_exertion_level?: number | null; default_jumping?: boolean | null }
+  updates: { name?: string; price?: number; default_exertion_level?: number | null; default_jumping?: boolean | null; instructor_cut?: number }
 ): Promise<LessonTier> {
   const supabase = await createClient()
   const { data, error } = await supabase

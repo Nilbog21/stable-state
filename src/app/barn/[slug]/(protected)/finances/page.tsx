@@ -1,104 +1,26 @@
 import Link from 'next/link'
-import { notFound, redirect } from 'next/navigation'
-import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getFinancialSummary, getOutstandingLessons, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary } from '@/lib/db/lesson-finances'
+import { requireMembership } from '@/lib/auth/guard'
+import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getTrainerIncomeSummary, computeHorseNetIncome, NON_LESSON_INCOME_LABEL, NO_INSTRUCTOR_LABEL, NO_HORSE_LABEL, NO_RIDER_LABEL } from '@/lib/db/lesson-finances'
+import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/outstanding'
+import { getOutstandingCharges } from '@/lib/db/agreement-finances'
+import { getOutstandingExpenses } from '@/lib/db/expenses'
+import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
+import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
+import { formatCurrency } from '@/lib/format-currency'
+import { formatShortDateOnly } from '@/lib/format-date'
+import { buildReconciliationColumn, deriveNetColumn } from '@/lib/finances-reconciliation'
 import { OutstandingTable } from './OutstandingTable'
 import { InfoPopover } from './InfoPopover'
+import { ByTierTable } from './ByTierTable'
+import { ByHorseTable } from './ByHorseTable'
+import { ByRiderTable } from './ByRiderTable'
+import { ByInstructorTable } from './ByInstructorTable'
+import { ByPaidToTable } from './ByPaidToTable'
+import { Pill } from '@/components/ui/Pill'
+import { EmptyState } from '@/components/EmptyState'
 
-const VALID_TABS = ['tier', 'horse', 'rider', 'trainer'] as const
+const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
 type Tab = typeof VALID_TABS[number]
-
-function pad2(n: number): string {
-  return String(n).padStart(2, '0')
-}
-
-function pad4(n: number): string {
-  return String(n).padStart(4, '0')
-}
-
-function toMonthIndex(year: number, month: number): number {
-  return year * 12 + month
-}
-
-export function resolveFinancesMonth(
-  monthParam: string | undefined,
-  barnCreatedAt: string,
-  now: Date
-): {
-  startDate: Date
-  endDate: Date
-  monthLabel: string
-  isCurrentMonth: boolean
-  prevMonthUrl: string | null
-  nextMonthUrl: string | null
-} {
-  const nowYear = now.getUTCFullYear()
-  const nowMonth = now.getUTCMonth()
-
-  let year = nowYear
-  let month = nowMonth
-
-  if (monthParam) {
-    const parts = monthParam.split('-')
-    const parsedYear = parseInt(parts[0], 10)
-    const parsedMonth = parseInt(parts[1], 10) - 1
-    if (
-      parts.length === 2 &&
-      !isNaN(parsedYear) &&
-      !isNaN(parsedMonth) &&
-      parsedMonth >= 0 &&
-      parsedMonth <= 11
-    ) {
-      year = parsedYear
-      month = parsedMonth
-    }
-  }
-
-  const barnDate = new Date(barnCreatedAt)
-  const barnYear = isNaN(barnDate.getTime()) ? 0 : barnDate.getUTCFullYear()
-  const barnMonth = isNaN(barnDate.getTime()) ? 0 : barnDate.getUTCMonth()
-
-  if (toMonthIndex(year, month) < toMonthIndex(barnYear, barnMonth)) {
-    year = barnYear
-    month = barnMonth
-  }
-  if (toMonthIndex(year, month) > toMonthIndex(nowYear, nowMonth)) {
-    year = nowYear
-    month = nowMonth
-  }
-
-  const startDate = new Date(Date.UTC(year, month, 1))
-  const isCurrentMonth = year === nowYear && month === nowMonth
-  const endDate = new Date(Date.UTC(year, month + 1, 1))
-
-  const monthLabel =
-    new Date(Date.UTC(year, month, 1)).toLocaleString('en-US', { month: 'long', timeZone: 'UTC' }) +
-    ' ' +
-    year
-
-  const atBarnFirst = toMonthIndex(year, month) === toMonthIndex(barnYear, barnMonth)
-  let prevMonthUrl: string | null = null
-  if (!atBarnFirst) {
-    const prevYear = month === 0 ? year - 1 : year
-    const prevMonth = month === 0 ? 11 : month - 1
-    prevMonthUrl = `?month=${pad4(prevYear)}-${pad2(prevMonth + 1)}`
-  }
-
-  let nextMonthUrl: string | null = null
-  if (!isCurrentMonth) {
-    const nextYear = month === 11 ? year + 1 : year
-    const nextMonth = month === 11 ? 0 : month + 1
-    nextMonthUrl = `?month=${pad4(nextYear)}-${pad2(nextMonth + 1)}`
-  }
-
-  return { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl }
-}
-
-const pillBase = 'rounded-full px-4 py-1.5 text-sm font-medium transition-colors'
-const pillActive = 'bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900'
-const pillInactive = 'border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
 
 export default async function FinancesPage({
   params,
@@ -108,40 +30,93 @@ export default async function FinancesPage({
   searchParams?: Promise<{ month?: string; tab?: string }>
 }) {
   const { slug } = await params
-  const barn = await getBarnBySlug(slug)
-  if (!barn) notFound()
+  const { barn } = await requireMembership(slug, ['manager'])
 
-  const user = await getAuthenticatedUser()
-  if (!user) redirect(`/barn/${slug}/login`)
-
-  const actorMembership = await getUserMembership(user.id, barn.id)
-
-  if (
-    !actorMembership ||
-    actorMembership.status !== 'active' ||
-    actorMembership.role !== 'manager'
-  ) {
-    redirect(`/barn/${slug}/login`)
-  }
-
-  const { month: monthParam, tab: tabParam } = await searchParams
-  const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'tier'
+  const { month: monthQueryParam, tab: tabParam } = await searchParams
+  const tab: Tab = VALID_TABS.includes(tabParam as Tab) ? (tabParam as Tab) : 'horse'
 
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
-    resolveFinancesMonth(monthParam, barn.created_at, new Date())
+    resolveFinancesMonth(monthQueryParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons] = await Promise.all([
+  const [{ pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, outstandingExpenses, recipientExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
     getTrainerIncomeSummary(barn.id, startDate, endDate),
     getOutstandingLessons(barn.id),
+    getOutstandingCharges(barn.id),
+    getOutstandingCancellationFees(barn.id),
+    getExpenseFinancialSummary(barn.id, startDate, endDate, barn.timezone),
+    getOutstandingExpenses(barn.id, barn.timezone),
+    getRecipientExpenseSummary(barn.id, startDate, endDate, barn.timezone),
   ])
 
-  const outstandingTotal = outstandingLessons.reduce((sum, l) => sum + (l.fee ?? 0), 0)
+  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
+  const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
+  const outstandingExpensesTotal = outstandingExpenses.reduce((sum, e) => sum + (e.amount ?? 0), 0)
 
-  const monthQ = isCurrentMonth ? '' : `&month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`
-  const tabQ = tab !== 'tier' ? `&tab=${tab}` : ''
+  // #971: reconciliation — every breakdown table's Gross/Expenses/Net columns
+  // independently sum to the same barn-wide totals, derived from data already fetched
+  // above (no extra queries). See src/lib/finances-reconciliation.ts.
+  const totalGross = breakdown.reduce((sum, t) => sum + t.subtotal + t.instructorCut, 0)
+  const totalCut = breakdown.reduce((sum, t) => sum + t.instructorCut, 0)
+  const totalExpenses = totalCut + expenseSummary.totalExpenses
+  const attributableHorseExpenses = expenseSummary.breakdown.reduce((sum, h) => sum + h.totalExpenses, 0)
+  // An expense whose horse_expenses record was deleted but whose collected transaction
+  // survives (deleteExpense's default) — counted in totalExpenses but absent from every
+  // per-horse/per-recipient breakdown. Surfaced as "Unattributed" everywhere instead of
+  // silently dropped.
+  const unattributedExpenses = expenseSummary.totalExpenses - attributableHorseExpenses
+
+  const tierRows = breakdown.filter((t) => t.tierName !== NON_LESSON_INCOME_LABEL)
+  const tierGross = buildReconciliationColumn(totalGross, tierRows.reduce((sum, t) => sum + t.subtotal + t.instructorCut, 0), 0)
+  const tierExpenses = buildReconciliationColumn(totalExpenses, tierRows.reduce((sum, t) => sum + t.instructorCut, 0), unattributedExpenses)
+  const tierNet = deriveNetColumn(tierGross, tierExpenses)
+
+  const realHorseIncome = horseIncome.filter((h) => h.horseId !== NO_HORSE_LABEL)
+  const noHorseIncome = horseIncome.find((h) => h.horseId === NO_HORSE_LABEL)?.totalIncome ?? 0
+  const horseRows = computeHorseNetIncome(realHorseIncome, expenseSummary.breakdown)
+  const horseGross = buildReconciliationColumn(totalGross, realHorseIncome.reduce((sum, h) => sum + h.totalIncome, 0), noHorseIncome)
+  const horseExpenses = buildReconciliationColumn(totalExpenses, attributableHorseExpenses, unattributedExpenses)
+  const horseNet = deriveNetColumn(horseGross, horseExpenses)
+
+  const realRiderIncome = riderIncome.filter((r) => r.riderId !== NO_RIDER_LABEL)
+  const noRiderIncome = riderIncome.find((r) => r.riderId === NO_RIDER_LABEL)?.totalIncome ?? 0
+  const riderGross = buildReconciliationColumn(totalGross, realRiderIncome.reduce((sum, r) => sum + r.totalIncome, 0), noRiderIncome)
+  const riderExpenses = buildReconciliationColumn(totalExpenses, 0, unattributedExpenses)
+  const riderNet = deriveNetColumn(riderGross, riderExpenses)
+
+  const realTrainerIncome = trainerIncome.filter((t) => t.trainerId !== NON_LESSON_INCOME_LABEL && t.trainerId !== NO_INSTRUCTOR_LABEL)
+  const noInstructorRow = trainerIncome.find((t) => t.trainerId === NO_INSTRUCTOR_LABEL)
+  // grossIncome is only ever null on the synthetic NON_LESSON_INCOME_LABEL row (see
+  // lesson-finances.ts), already excluded from realTrainerIncome/noInstructorRow — every
+  // real per-trainer row (including "No instructor") has a numeric grossIncome.
+  const noInstructorGross = noInstructorRow?.grossIncome ?? 0
+  const noInstructorCut = noInstructorRow ? noInstructorRow.grossIncome! - noInstructorRow.totalIncome : 0
+  const instructorGross = buildReconciliationColumn(totalGross, realTrainerIncome.reduce((sum, t) => sum + t.grossIncome!, 0), noInstructorGross)
+  const instructorExpenses = buildReconciliationColumn(
+    totalExpenses,
+    realTrainerIncome.reduce((sum, t) => sum + (t.grossIncome! - t.totalIncome), 0),
+    unattributedExpenses + noInstructorCut
+  )
+  const instructorNet = deriveNetColumn(instructorGross, instructorExpenses)
+
+  const recipientExpensesColumn = buildReconciliationColumn(totalExpenses, recipientExpenses.reduce((sum, r) => sum + r.totalExpenses, 0), unattributedExpenses)
+
+  // #971 review fix: gate each tab on whether there's ANY barn-wide money attributable
+  // to its dimension — including money that falls into "Outside this view"/"Unattributed"
+  // rather than a real per-entity row — so the reconciliation footer never silently
+  // disappears just because every real row got filtered out (e.g. a boarding-only month
+  // has zero real trainer rows, but the tab must still show that income as reconciled).
+  const tierHasActivity = tierRows.some((t) => t.subtotal !== 0 || t.instructorCut !== 0) || tierGross.outside !== 0
+  const horseHasActivity = horseRows.length > 0 || noHorseIncome !== 0 || unattributedExpenses > 0
+  const riderHasActivity = riderIncome.length > 0
+  const trainerHasActivity = trainerIncome.length > 0
+  const recipientHasActivity = recipientExpenses.length > 0 || unattributedExpenses > 0
+
+  const monthParam = formatMonthParam(startDate)
+  const monthQ = isCurrentMonth ? '' : `&month=${monthParam}`
+  const tabQ = tab !== 'horse' ? `&tab=${tab}` : ''
   const prevUrl = prevMonthUrl ? prevMonthUrl + tabQ : null
   const nextUrl = nextMonthUrl ? nextMonthUrl + tabQ : null
 
@@ -151,17 +126,17 @@ export default async function FinancesPage({
         Finances
       </h1>
 
-      {outstandingLessons.length > 0 && (
+      {outstandingItems.length > 0 && (
         <section className={`mb-10 ${outstandingTotal > 0 ? 'text-amber-700 dark:text-amber-400' : ''}`}>
           <p className="text-sm font-medium uppercase tracking-wide">
-            Outstanding
-            <InfoPopover text="All-time unpaid lessons with a fee set" />
+            Outstanding Income
+            <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
           </p>
           <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
             {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
           </p>
           <div className="mt-4">
-            <OutstandingTable outstandingLessons={outstandingLessons} barnSlug={slug} />
+            <OutstandingTable items={outstandingItems} barnSlug={slug} />
           </div>
           <div className="mt-3">
             <Link
@@ -174,180 +149,146 @@ export default async function FinancesPage({
         </section>
       )}
 
+      {outstandingExpenses.length > 0 && (
+        <section className="mb-10 text-amber-700 dark:text-amber-400">
+          <p className="text-sm font-medium uppercase tracking-wide">
+            Outstanding Expenses
+            <InfoPopover text="Shown here because the expense is missing an amount, missing a payment type, or both" />
+          </p>
+          <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+            {formatCurrency(outstandingExpensesTotal)}
+          </p>
+          <ul className="mt-4 space-y-1">
+            {outstandingExpenses.map((expense) => (
+              <li key={expense.id}>
+                <Link
+                  href={`/barn/${slug}/expenses/${expense.id}`}
+                  className="text-sm text-zinc-700 underline hover:text-zinc-900 dark:text-zinc-300 dark:hover:text-zinc-50"
+                >
+                  {formatShortDateOnly(expense.expense_date)} — {expense.recipient} — {expense.expense_type}
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
+
+      {/* Raw Tailwind, not <Button>/<Pill>: unpadded circular icon-arrow nav
+          control — no Button/Pill variant fits this shape. Deliberately reuses
+          Pill's pillInactive color tokens (border-zinc-300/text-zinc-600/hover
+          states) so it stays visually consistent with Pill if that palette
+          ever changes. */}
       <div className="mb-8 flex items-center gap-4">
         {prevUrl ? (
-          <Link href={prevUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+          <Link href={prevUrl} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
             &lt;
           </Link>
         ) : (
-          <span aria-hidden="true" className="invisible flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300">&lt;</span>
+          <span aria-hidden="true" className="invisible flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300">&lt;</span>
         )}
         <span className="font-medium text-zinc-900 dark:text-zinc-50">{monthLabel}</span>
         {nextUrl ? (
-          <Link href={nextUrl} className="flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
+          <Link href={nextUrl} className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50">
             &gt;
           </Link>
         ) : (
-          <span aria-hidden="true" className="invisible flex h-8 w-8 items-center justify-center rounded-full border border-zinc-300">&gt;</span>
+          <span aria-hidden="true" className="invisible flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full border border-zinc-300">&gt;</span>
         )}
       </div>
 
       {isCurrentMonth && (
-        <section className="mb-6">
+        <div className="mb-6">
           <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Pending income (from scheduled lessons)
-            <InfoPopover text="Lessons scheduled this month that haven't been paid yet" />
+            Pending income
+            <InfoPopover text="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut" />
           </p>
           <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
-            {pendingIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+            {formatCurrency(pendingIncome)}
           </p>
-        </section>
+        </div>
       )}
-
-      <section className="mb-4">
-        <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-          {`Collected income (${monthLabel})`}
-          <InfoPopover text="Lessons paid this month" />
-        </p>
-        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-zinc-50">
-          {collectedIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-        </p>
-      </section>
 
       <hr className="mb-6 border-zinc-200 dark:border-zinc-700" />
 
       <div className="mb-6 overflow-x-auto -mx-1">
         <div className="flex gap-2 whitespace-nowrap px-1 pb-2">
-          <Link href={`?tab=tier${monthQ}`} className={`${pillBase} ${tab === 'tier' ? pillActive : pillInactive}`}>
-            By Tier
-          </Link>
-          <Link href={`?tab=horse${monthQ}`} className={`${pillBase} ${tab === 'horse' ? pillActive : pillInactive}`}>
+          <Pill href={`?tab=horse${monthQ}`} active={tab === 'horse'}>
             By Horse
-          </Link>
-          <Link href={`?tab=rider${monthQ}`} className={`${pillBase} ${tab === 'rider' ? pillActive : pillInactive}`}>
+          </Pill>
+          <Pill href={`?tab=tier${monthQ}`} active={tab === 'tier'}>
+            By Tier
+          </Pill>
+          <Pill href={`?tab=rider${monthQ}`} active={tab === 'rider'}>
             By Rider
-          </Link>
-          <Link href={`?tab=trainer${monthQ}`} className={`${pillBase} ${tab === 'trainer' ? pillActive : pillInactive}`}>
-            By Trainer
-          </Link>
+          </Pill>
+          <Pill href={`?tab=trainer${monthQ}`} active={tab === 'trainer'}>
+            By Instructor
+          </Pill>
+          <Pill href={`?tab=recipient${monthQ}`} active={tab === 'recipient'}>
+            By Paid To
+          </Pill>
         </div>
       </div>
 
       {tab === 'tier' && (
-        breakdown.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Tier</th>
-                <th className="pb-2 pr-6">Price</th>
-                <th className="pb-2 pr-6">Lessons</th>
-                <th className="pb-2">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {breakdown.map((tier) => (
-                <tr key={tier.tierName} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.tierName}</td>
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                    {tier.price != null ? tier.price.toLocaleString('en-US', { style: 'currency', currency: 'USD' }) : '—'}
-                  </td>
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{tier.lessonCount}</td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">{tier.subtotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        tierHasActivity ? (
+          <ByTierTable rows={tierRows} gross={tierGross} expenses={tierExpenses} net={tierNet} />
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No lessons in ${monthLabel}.`}</p>
+          <EmptyState
+            heading={`No lessons in ${monthLabel}.`}
+            subtext="Lesson income will appear here once lessons are added."
+          />
         )
       )}
 
       {tab === 'horse' && (
-        horseIncome.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Horse</th>
-                <th className="pb-2">Income</th>
-              </tr>
-            </thead>
-            <tbody>
-              {horseIncome.map((row) => (
-                <tr key={row.horseId} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                    <Link
-                      href={`/barn/${slug}/finances/horses/${row.horseId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                      className="hover:underline"
-                    >
-                      {row.horseName}
-                    </Link>
-                  </td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                    {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        horseHasActivity ? (
+          <ByHorseTable rows={horseRows} slug={slug} monthParam={monthParam} gross={horseGross} expenses={horseExpenses} net={horseNet} />
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No horse income in ${monthLabel}.`}</p>
+          <EmptyState
+            heading={`No horse activity in ${monthLabel}.`}
+            subtext="Horse income and expenses will appear here once recorded."
+          />
         )
       )}
 
       {tab === 'rider' && (
-        riderIncome.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Rider</th>
-                <th className="pb-2">Income</th>
-              </tr>
-            </thead>
-            <tbody>
-              {riderIncome.map((row) => (
-                <tr key={row.riderId} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                    <Link
-                      href={`/barn/${slug}/finances/riders/${row.riderId}?month=${pad4(startDate.getUTCFullYear())}-${pad2(startDate.getUTCMonth() + 1)}`}
-                      className="hover:underline"
-                    >
-                      {row.riderName}
-                    </Link>
-                  </td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                    {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        riderHasActivity ? (
+          <ByRiderTable rows={realRiderIncome} slug={slug} monthParam={monthParam} gross={riderGross} expenses={riderExpenses} net={riderNet} />
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No rider income in ${monthLabel}.`}</p>
+          <EmptyState
+            heading={`No rider income in ${monthLabel}.`}
+            subtext="Rider income will appear here once lessons are paid."
+          />
         )
       )}
 
       {tab === 'trainer' && (
-        trainerIncome.length > 0 ? (
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-                <th className="pb-2 pr-6">Trainer</th>
-                <th className="pb-2">Income</th>
-              </tr>
-            </thead>
-            <tbody>
-              {trainerIncome.map((row) => (
-                <tr key={row.trainerId} className="border-b border-zinc-100 dark:border-zinc-800">
-                  <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">{row.trainerName}</td>
-                  <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                    {row.totalIncome.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        trainerHasActivity ? (
+          <ByInstructorTable
+            rows={realTrainerIncome}
+            slug={slug}
+            monthParam={monthParam}
+            gross={instructorGross}
+            expenses={instructorExpenses}
+            net={instructorNet}
+          />
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">{`No trainer income in ${monthLabel}.`}</p>
+          <EmptyState
+            heading={`No trainer income in ${monthLabel}.`}
+            subtext="Instructor income will appear here once lessons are paid."
+          />
+        )
+      )}
+
+      {tab === 'recipient' && (
+        recipientHasActivity ? (
+          <ByPaidToTable rows={recipientExpenses} slug={slug} monthParam={monthParam} expenses={recipientExpensesColumn} />
+        ) : (
+          <EmptyState
+            heading={`No expenses in ${monthLabel}.`}
+            subtext="Expense breakdown by recipient will appear here once expenses are recorded."
+          />
         )
       )}
     </main>

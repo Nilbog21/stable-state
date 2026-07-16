@@ -1,15 +1,19 @@
 import Link from 'next/link'
 import { requireMembership } from '@/lib/auth/guard'
-import { getOutstandingLessons } from '@/lib/db/lesson-finances'
-import type { Role } from '@/lib/db/types'
+import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/outstanding'
+import { getOutstandingCharges } from '@/lib/db/agreement-finances'
+import type { OutstandingItem, Role } from '@/lib/db/types'
+import { formatShortDate } from '@/lib/format-date'
+import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
+import { Th, Td } from '@/components/ui/Table'
+import { EmptyState } from '@/components/EmptyState'
 
-function formatDate(isoString: string): string {
-  return new Date(isoString).toLocaleDateString('en-US', {
-    month: 'short',
-    day: 'numeric',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
+
+const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
+  lesson: 'Lesson',
+  lease: 'Lease',
+  board: 'Boarding',
+  cancellation_fee: 'Cancellation Fee',
 }
 
 export default async function OutstandingPage({
@@ -20,7 +24,13 @@ export default async function OutstandingPage({
   const { slug } = await params
   const { user, barn, membership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
 
-  const lessons = await getOutstandingLessons(barn.id, user.id, membership.role as Role)
+  const role = membership.role as Role
+  const [lessons, charges, cancellationFees] = await Promise.all([
+    getOutstandingLessons(barn.id, user.id, role),
+    getOutstandingCharges(barn.id, user.id, role),
+    getOutstandingCancellationFees(barn.id, user.id, role),
+  ])
+  const items = mergeOutstandingItems(lessons, charges, cancellationFees)
 
   const backHref = membership.role === 'manager' ? `/barn/${slug}/finances` : `/barn/${slug}`
 
@@ -38,43 +48,58 @@ export default async function OutstandingPage({
         Outstanding Payments
       </h1>
 
-      {lessons.length === 0 ? (
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No outstanding lessons.</p>
+      {items.length === 0 ? (
+        <EmptyState
+          heading="No outstanding items."
+          subtext="Outstanding lessons, leases, and boarding charges will appear here."
+        />
       ) : (
         <div className="overflow-x-auto">
         <table className="w-full">
           <thead>
-            <tr className="border-b border-zinc-200 text-left text-xs font-medium uppercase tracking-wide text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
-              <th className="pb-2 pr-6">Date</th>
-              <th className="pb-2 pr-6">Instructor</th>
-              <th className="pb-2 pr-6">Rider(s)</th>
-              <th className="pb-2">Fee</th>
+            <tr>
+              <Th>Date</Th>
+              <Th>Type</Th>
+              <Th>Instructor</Th>
+              <Th>Rider(s)</Th>
+              <Th>Fee</Th>
             </tr>
           </thead>
           <tbody>
-            {lessons.map((lesson) => (
-              <tr key={lesson.id} className="border-b border-zinc-100 dark:border-zinc-800">
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  <Link
-                    href={`/barn/${slug}/lessons/${lesson.id}`}
-                    className="hover:underline"
-                  >
-                    {formatDate(lesson.lesson_at)}
-                  </Link>
-                </td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.instructor_name ?? '—'}
-                </td>
-                <td className="py-3 pr-6 text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.rider_names.join(', ') || '—'}
-                </td>
-                <td className="py-3 text-sm text-zinc-900 dark:text-zinc-50">
-                  {lesson.fee !== null
-                    ? lesson.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
-                    : '—'}
-                </td>
+            {items.map((item) => {
+              // /barn/[slug]/agreements/[id] is manager-only, so a lease/board row is only
+              // linkable for a manager viewer — a trainer/rider would otherwise hit notFound().
+              const href = item.itemType === 'lesson'
+                ? `/barn/${slug}/lessons/${item.id}`
+                : item.itemType === 'cancellation_fee'
+                ? `/barn/${slug}/lessons/${item.linkId}`
+                : role === 'manager'
+                ? `/barn/${slug}/agreements/${item.linkId}`
+                : undefined
+              const isInstant = item.itemType === 'lesson' || item.itemType === 'cancellation_fee'
+              const dateDisplay = isInstant
+                ? <LocalDateTime iso={item.date} options={DATE_ONLY_OPTIONS} />
+                : formatShortDate(item.date)
+              return (
+              <tr key={item.id}>
+                <Td>
+                  {href ? (
+                    <Link href={href} className="underline">
+                      {dateDisplay}
+                    </Link>
+                  ) : (
+                    dateDisplay
+                  )}
+                </Td>
+                <Td>{TYPE_LABELS[item.itemType]}</Td>
+                <Td>{item.instructorName ?? '—'}</Td>
+                <Td>{item.riderNames.join(', ') || '—'}</Td>
+                <Td>
+                  {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                </Td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
         </div>

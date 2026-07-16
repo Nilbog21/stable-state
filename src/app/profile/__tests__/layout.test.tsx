@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup, fireEvent } from '@testing-library/react'
-import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
 
 afterEach(cleanup)
 
@@ -42,10 +42,27 @@ const mockRedirect = vi.hoisted(() =>
 vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
   useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => '/profile',
+  useSearchParams: () => new URLSearchParams(''),
 }))
 
-vi.mock('@/app/barn/[slug]/(protected)/NavigationBlocker', () => ({
-  useNavigationBlocker: vi.fn(() => ({ dirty: false, setDirty: vi.fn(), pendingNav: null, setPendingNav: vi.fn() })),
+vi.mock('next/link', () => ({
+  default: ({ href, children, className, onNavigate, 'aria-current': ariaCurrent }: {
+    href: string
+    children: React.ReactNode
+    className?: string
+    onNavigate?: (e: { preventDefault: () => void }) => void
+    'aria-current'?: 'page'
+  }) => (
+    <a
+      href={href}
+      className={className}
+      aria-current={ariaCurrent}
+      onClick={(e) => onNavigate?.({ preventDefault: () => e.preventDefault() })}
+    >
+      {children}
+    </a>
+  ),
 }))
 
 import { getAuthenticatedUser } from '@/lib/db/auth'
@@ -60,7 +77,7 @@ const mockBarn = createMockBarn({ slug: 'green-acres', name: 'Green Acres' })
 const mockManagerMembership = createMockMembership({ status: 'active', role: 'manager' as const })
 const mockTrainerMembership = createMockMembership({ status: 'active', role: 'trainer' as const })
 const mockRiderMembership = createMockMembership({ status: 'active', role: 'rider' as const })
-const mockProfile = { id: 'p-1', user_id: 'user-1', email: 'user@example.com', first_name: 'Jane', last_name: 'Doe', phone: null, emergency_contact_name: null, emergency_contact_phone: null, created_at: '' }
+const mockProfile = createMockProfile({ id: 'p-1', user_id: 'user-1', email: 'user@example.com', first_name: 'Jane', last_name: 'Doe', phone: null, emergency_contact_name: null, emergency_contact_phone: null, created_at: '' })
 
 function makeHeaders(url: string) {
   return { get: (key: string) => key === 'x-url' ? url : null }
@@ -206,6 +223,12 @@ describe('ProfileLayout - barn nav (valid barn param + active membership)', () =
     expect((screen.getByRole('link', { name: 'Green Acres' }) as HTMLAnchorElement).href).toContain('/barn/green-acres')
   })
 
+  it('should_render_hamburger_menu_button_in_barn_nav', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('button', { name: /open navigation menu/i })).toBeDefined()
+  })
+
   it('should_not_render_back_link_in_barn_nav', async () => {
     const jsx = await ProfileLayout({ children: <span>child</span> })
     render(jsx as React.ReactElement)
@@ -238,11 +261,29 @@ describe('ProfileLayout - barn nav (valid barn param + active membership)', () =
     expect(screen.queryByRole('link', { name: /manage barn/i })).toBeNull()
   })
 
-  it('should_not_render_members_link_for_rider', async () => {
+  it('should_render_members_link_for_rider', async () => {
     setupBarnNav(mockRiderMembership)
     const jsx = await ProfileLayout({ children: <span>child</span> })
     render(jsx as React.ReactElement)
-    expect(screen.queryByRole('link', { name: /members/i })).toBeNull()
+    expect(screen.getByRole('link', { name: /members/i })).toBeDefined()
+  })
+
+  it('should_render_expenses_link_for_manager', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('link', { name: /expenses/i })).toBeDefined()
+  })
+
+  it('should_render_leases_link_for_manager', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('link', { name: /leases/i })).toBeDefined()
+  })
+
+  it('should_render_boarding_link_for_manager', async () => {
+    const jsx = await ProfileLayout({ children: <span>child</span> })
+    render(jsx as React.ReactElement)
+    expect(screen.getByRole('link', { name: /boarding/i })).toBeDefined()
   })
 
   it('should_render_user_menu_button', async () => {

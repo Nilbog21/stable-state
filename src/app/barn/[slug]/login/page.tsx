@@ -1,6 +1,8 @@
 import { notFound } from 'next/navigation'
+import { cookies } from 'next/headers'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { signInWithGoogleForBarn } from '@/app/actions/auth'
+import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton'
 
 export default async function BarnLoginPage({
   params,
@@ -18,6 +20,8 @@ export default async function BarnLoginPage({
   }
 
   const signIn = signInWithGoogleForBarn.bind(null, slug, token)
+  const rememberPref = (await cookies()).get('remember_me_pref')?.value
+  const rememberChecked = rememberPref !== '0'
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
@@ -27,14 +31,7 @@ export default async function BarnLoginPage({
       <p className="text-lg text-zinc-500 dark:text-zinc-400">
         Stable State
       </p>
-      <form action={signIn}>
-        <button
-          type="submit"
-          className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-        >
-          Sign in with Google
-        </button>
-      </form>
+      <GoogleSignInButton action={signIn} rememberChecked={rememberChecked} />
     </main>
   )
 }

@@ -1,10 +1,10 @@
-import { notFound } from 'next/navigation'
+import { notFound, redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getActiveMembersWithProfiles, getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
-import { submitLesson } from '@/app/actions/lessons'
+import { submitLesson, getProjectedExhaustionForBarn } from '@/app/actions/lessons'
 import { LessonForm } from '../LessonForm'
 
 export default async function LessonNewPage({
@@ -25,10 +25,15 @@ export default async function LessonNewPage({
     notFound()
   }
 
-  const [horses, riderMembers, membership, tiers, instructors] = await Promise.all([
+  const membership = await getUserMembership(user.id, barn.id)
+
+  if (membership?.role === 'rider') {
+    redirect(`/barn/${slug}/lessons`)
+  }
+
+  const [horses, riderMembers, tiers, instructors] = await Promise.all([
     getHorsesByBarn(barn.id),
     getActiveMembersWithProfiles(barn.id, 'rider'),
-    getUserMembership(user.id, barn.id),
     getTiersByBarn(barn.id),
     getInstructorsByBarn(barn.id),
   ])
@@ -37,6 +42,7 @@ export default async function LessonNewPage({
   const isManager = membership?.role === 'manager'
 
   const submit = submitLesson.bind(null, barn.id, barn.slug)
+  const getProjectedExhaustion = getProjectedExhaustionForBarn.bind(null, barn.slug, null)
 
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white pt-8 dark:bg-black">
@@ -50,8 +56,10 @@ export default async function LessonNewPage({
         action={submit}
         isManager={isManager}
         instructors={instructors}
-        currentUserId={user.id}
+        currentMembershipId={membership?.id ?? ''}
         tiers={tiers}
+        defaultInstructorCut={barn.default_instructor_cut}
+        getProjectedExhaustion={getProjectedExhaustion}
       />
     </main>
   )

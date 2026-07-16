@@ -1,0 +1,66 @@
+'use client'
+
+import { useEffect, useState } from 'react'
+import { localToday } from '@/lib/local-day'
+
+function hourLabel(h: number) {
+  const period = h < 12 ? 'AM' : 'PM'
+  const display = h === 0 ? 12 : h > 12 ? h - 12 : h
+  return `${display}:00 ${period}`
+}
+
+export function DateHourPicker({
+  initialDate,
+  initialHour,
+  onChange,
+  dateLabel = 'Date',
+}: {
+  initialDate?: string
+  initialHour?: number
+  onChange?: (lessonAt: string) => void
+  dateLabel?: string
+} = {}) {
+  const [date, setDate] = useState(initialDate ?? localToday)
+  const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
+
+  const [year, month, day] = date.split('-').map(Number)
+  const combinedValue = date ? new Date(year, month - 1, day, hour).toISOString() : ''
+
+  useEffect(() => {
+    onChange?.(date ? combinedValue : '')
+  }, [date, hour, combinedValue, onChange])
+
+  return (
+    <div className="flex gap-2">
+      <div className="flex flex-col gap-1 flex-1">
+        <label htmlFor="dh-date" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          {dateLabel}
+        </label>
+        <input
+          id="dh-date"
+          type="date"
+          value={date}
+          onChange={(e) => setDate(e.target.value)}
+          required
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </div>
+      <div className="flex flex-col gap-1">
+        <label htmlFor="dh-hour" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Hour
+        </label>
+        <select
+          id="dh-hour"
+          value={hour}
+          onChange={(e) => setHour(Number(e.target.value))}
+          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          {Array.from({ length: 24 }, (_, i) => (
+            <option key={i} value={i}>{hourLabel(i)}</option>
+          ))}
+        </select>
+      </div>
+      {date && <input type="hidden" name="lesson_at" value={combinedValue} />}
+    </div>
+  )
+}

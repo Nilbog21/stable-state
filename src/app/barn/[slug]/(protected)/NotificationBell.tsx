@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, useEffect } from 'react'
+import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { markAllNotificationsReadAction } from '@/app/actions/notifications'
@@ -8,41 +8,31 @@ import type { Notification } from '@/lib/db/types'
 
 interface Props {
   notifications: Notification[]
-  barnId: string
+  barnSlug: string
 }
 
-export function NotificationBell({ notifications, barnId }: Props) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+export function NotificationBell({ notifications, barnSlug }: Props) {
+  const { open, setOpen, ref } = useOutsideDismiss()
   const router = useRouter()
   const { dirty, setPendingNav } = useNavigationBlocker()
   const unreadCount = notifications.filter((n) => !n.read_at).length
 
-  useEffect(() => {
-    function close(e: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('touchstart', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('touchstart', close)
-    }
-  }, [])
-
   async function handleMarkAllRead() {
-    const result = await markAllNotificationsReadAction(barnId)
+    const result = await markAllNotificationsReadAction(barnSlug)
     if (result.error) return
     router.refresh()
   }
 
   return (
     <div ref={ref} className="relative">
+      {/* Raw Tailwind, not <Button>: icon-only circular nav control — none of
+          Button's variants target an unpadded round icon button, and this is
+          the only call site, so it's not worth adding one for. */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Notifications"
         aria-expanded={open}
-        className="relative flex h-8 w-8 items-center justify-center rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        className="relative flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
       >
         <svg
           xmlns="http://www.w3.org/2000/svg"
@@ -68,6 +58,9 @@ export function NotificationBell({ notifications, barnId }: Props) {
         <div className="absolute right-0 top-10 z-10 w-80 rounded-lg border border-zinc-200 bg-white shadow-md dark:border-zinc-700 dark:bg-zinc-900">
           <div className="flex items-center justify-between border-b border-zinc-100 px-4 py-2 dark:border-zinc-800">
             <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Notifications</span>
+            {/* Raw Tailwind, not <Button>: bare text-link control, no
+                background/border/padding — none of Button's variants fit a
+                plain inline text action, and this is the only call site. */}
             {unreadCount > 0 && (
               <button
                 onClick={handleMarkAllRead}

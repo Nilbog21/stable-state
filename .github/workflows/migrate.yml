@@ -1,4 +1,4 @@
-# SUPABASE_PROJECT_REF must be the production project ref (Supabase dashboard → Settings → General → Reference ID).
+# SUPABASE_PROD_PROJECT_REF must be the production project ref (Supabase dashboard → Settings → General → Reference ID).
 # SUPABASE_ACCESS_TOKEN is a personal access token from app.supabase.com/account/tokens.
 # Both secrets live in GitHub → Settings → Secrets and variables → Actions.
 name: Migrate
@@ -15,7 +15,7 @@ jobs:
       - uses: supabase/setup-cli@v1
         with:
           version: 2.103.0
-      - run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_REF }}
+      - run: supabase link --project-ref ${{ secrets.SUPABASE_PROD_PROJECT_REF }}
         env:
           SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
       - run: supabase db push

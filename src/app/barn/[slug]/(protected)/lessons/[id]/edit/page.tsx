@@ -5,8 +5,12 @@ import { getLessonById } from '@/lib/db/lessons'
 import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
-import { updateLessonAction } from '@/app/actions/lessons'
+import { getSeriesById } from '@/lib/db/lesson-series'
+import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '@/app/actions/lessons'
+import { getHorseAttentionReasons } from '@/lib/lesson-authorization'
 import { LessonForm } from '../../LessonForm'
+import { StopSeriesButton } from '../../StopSeriesButton'
+import { HorseStatusBanner } from '../../HorseStatusBanner'
 
 export default async function EditLessonPage({
   params,
@@ -37,11 +41,15 @@ export default async function EditLessonPage({
   ])
 
   if (!lesson) notFound()
-  if (membership.role === 'trainer' && lesson.instructor_id !== user.id) notFound()
+  if (membership.role === 'trainer' && lesson.instructor_id !== membership.id) notFound()
   const riders = riderMembers.map((m) => ({ id: m.membershipId, name: m.name }))
 
-  const instructors = lesson.instructor_id && instructorList.every((i) => i.userId !== lesson.instructor_id)
-    ? [{ userId: lesson.instructor_id, name: 'Former Instructor' }, ...instructorList]
+  const series = lesson.series_id ? await getSeriesById(lesson.series_id, barn.id) : null
+  const canStopSeries = membership.role === 'manager' || series?.instructor_id === membership.id
+  const stopSeries = series && canStopSeries ? stopLessonSeriesAction.bind(null, slug, lesson.id, series.id) : null
+
+  const instructors = lesson.instructor_id && instructorList.every((i) => i.membershipId !== lesson.instructor_id)
+    ? [{ membershipId: lesson.instructor_id, userId: null, name: 'Former Instructor' }, ...instructorList]
     : instructorList
 
   const activeHorseIds = new Set(horses.map((h) => h.id))
@@ -54,12 +62,16 @@ export default async function EditLessonPage({
       is_active: false,
       is_available: true,
       unavailability_reason: null,
+      deactivated_at: null,
+      exhaustion_threshold_high: null,
+      exhaustion_threshold_moderate: null,
       created_at: '',
       updated_at: '',
     }))
   const horsesForForm = [...horses, ...inactiveAssigned]
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
+  const getProjectedExhaustion = getProjectedExhaustionForBarn.bind(null, barn.slug, lesson.id)
 
   const initialNotes = {
     horses: lesson.lesson_horses
@@ -70,11 +82,20 @@ export default async function EditLessonPage({
       .map(lr => ({ membershipId: lr.barn_membership!.id, name: lr.barn_membership!.name, rider_notes: lr.rider_notes, private_notes: lr.private_notes })),
   }
 
+  const attentionReasons = getHorseAttentionReasons(lesson)
+
   return (
     <main className="flex min-h-screen flex-col items-center gap-6 bg-white pt-8 dark:bg-black">
       <h1 className="w-full max-w-sm text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Edit Lesson
       </h1>
+      <HorseStatusBanner reasons={attentionReasons} className="max-w-sm" />
+      {series?.is_active && stopSeries && (
+        <div className="flex w-full max-w-sm flex-col gap-3">
+          <p className="text-sm text-zinc-600 dark:text-zinc-400">This is part of a recurring series</p>
+          <StopSeriesButton action={stopSeries} />
+        </div>
+      )}
       <LessonForm
         mode="edit"
         initialLesson={lesson}
@@ -82,10 +103,13 @@ export default async function EditLessonPage({
         riders={riders}
         isManager={membership.role === 'manager'}
         instructors={instructors}
-        currentUserId={user.id}
+        currentMembershipId={membership.id}
         tiers={tiers}
+        defaultInstructorCut={barn.default_instructor_cut}
         action={update}
         initialNotes={initialNotes}
+        getProjectedExhaustion={getProjectedExhaustion}
+        hasHorseIssue={attentionReasons.length > 0}
       />
     </main>
   )

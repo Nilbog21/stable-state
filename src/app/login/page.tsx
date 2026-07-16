@@ -1,5 +1,8 @@
+import { cookies } from 'next/headers'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { signInWithGoogle, signOut } from '@/app/actions/auth'
+import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton'
+import { Button } from '@/components/ui/Button'
 
 export default async function LoginPage({
   searchParams,
@@ -10,6 +13,8 @@ export default async function LoginPage({
   const user = await getAuthenticatedUser()
   const showGuidance = no_barns === 'true' && user !== null
   const connected = !!process.env.NEXT_PUBLIC_SUPABASE_URL
+  const rememberPref = (await cookies()).get('remember_me_pref')?.value
+  const rememberChecked = rememberPref !== '0'
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">
@@ -33,23 +38,11 @@ export default async function LoginPage({
             You&apos;re not a member of any barn yet. Ask your barn manager for an invite link.
           </p>
           <form action={signOut}>
-            <button
-              type="submit"
-              className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-            >
-              Sign out
-            </button>
+            <Button type="submit">Sign out</Button>
           </form>
         </>
       ) : (
-        <form action={signInWithGoogle}>
-          <button
-            type="submit"
-            className="flex items-center gap-3 rounded-lg border border-zinc-200 bg-white px-6 py-3 text-sm font-medium text-zinc-900 shadow-sm hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 dark:hover:bg-zinc-800"
-          >
-            Sign in with Google
-          </button>
-        </form>
+        <GoogleSignInButton action={signInWithGoogle} rememberChecked={rememberChecked} />
       )}
     </main>
   )

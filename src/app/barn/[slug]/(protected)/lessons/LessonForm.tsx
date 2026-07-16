@@ -2,17 +2,42 @@
 
 import { useActionState, useState, useEffect } from 'react'
 import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types'
-import { DateHourPicker } from './new/DateHourPicker'
+import { DateHourPicker } from './DateHourPicker'
 import { useNavigationBlocker } from '../NavigationBlocker'
+import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
+import { Button } from '@/components/ui/Button'
+
+type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>
 
 const CUSTOM_ID = '__custom__'
 
 function parseInitialDate(lessonAt: string): string {
-  return lessonAt.slice(0, 10)
+  const d = new Date(lessonAt)
+  const month = String(d.getMonth() + 1).padStart(2, '0')
+  const day = String(d.getDate()).padStart(2, '0')
+  return `${d.getFullYear()}-${month}-${day}`
 }
 
 function parseInitialHour(lessonAt: string): number {
-  return parseInt(lessonAt.slice(11, 13), 10)
+  return new Date(lessonAt).getHours()
+}
+
+export function computeUnpaidWarn(unpaidPastDue: boolean, paymentType: string, fee: string): boolean {
+  const feeIsZero = fee !== '' && Number(fee) === 0
+  return unpaidPastDue && paymentType === '' && !feeIsZero
+}
+
+function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
+  if (a.size !== b.size) return false
+  for (const item of a) if (!b.has(item)) return false
+  return true
+}
+
+function isPastLessonAt(lessonAt: string): boolean {
+  if (!lessonAt) return false
+  const now = new Date()
+  now.setMinutes(0, 0, 0)
+  return new Date(lessonAt) < now
 }
 
 export function LessonForm({
@@ -22,24 +47,30 @@ export function LessonForm({
   isManager,
   action,
   instructors,
-  currentUserId,
+  currentMembershipId,
   tiers,
+  defaultInstructorCut,
   initialLesson,
   initialNotes,
+  getProjectedExhaustion,
+  hasHorseIssue = false,
 }: {
   mode: 'new' | 'edit'
   horses: Horse[]
   riders: { id: string; name: string }[]
   isManager: boolean
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
-  instructors: { userId: string; name: string }[]
-  currentUserId: string
+  instructors: { membershipId: string; userId: string | null; name: string }[]
+  currentMembershipId: string
   tiers: LessonTier[]
+  defaultInstructorCut: number
   initialLesson?: LessonDetail
   initialNotes?: {
     horses: Array<{ id: string; name: string; horse_notes: string | null }>
     riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
   }
+  getProjectedExhaustion?: (targetDateIso: string, horseIds: string[]) => Promise<ExhaustionByHorseId>
+  hasHorseIssue?: boolean
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
 
@@ -63,7 +94,9 @@ export function LessonForm({
   )
 
   const initialExertionMap = new Map(
-    (initialLesson?.lesson_horses ?? []).map(lh => [lh.horses?.id ?? '', lh.exertion_level])
+    // exertion_level is absent from LessonDetail only for the rider role — this form is
+    // manager/trainer-only, so it's always present here; the fallback just satisfies the type.
+    (initialLesson?.lesson_horses ?? []).map(lh => [lh.horses?.id ?? '', lh.exertion_level ?? 3])
   )
 
   const initialRiderIds = new Set(
@@ -74,6 +107,16 @@ export function LessonForm({
 
   const initialNormalRiderId =
     mode === 'edit' ? (initialLesson?.lesson_riders[0]?.barn_membership?.id ?? '') : ''
+
+  const initialSelectedTier = tiers.find(t => t.id === computedInitialSelectedId) ?? null
+  const initialFee =
+    mode === 'edit' && initialLesson
+      ? String(initialLesson.fee)
+      : (initialSelectedTier ? String(initialSelectedTier.price) : '')
+  const initialInstructorCut =
+    mode === 'edit' && initialLesson
+      ? String(initialLesson.instructor_cut)
+      : String(initialSelectedTier ? initialSelectedTier.instructor_cut : defaultInstructorCut)
 
   const [state, formAction, pending] = useActionState(action, { error: null })
   const [lessonType, setLessonType] = useState<LessonType>(initialLessonType)
@@ -88,24 +131,39 @@ export function LessonForm({
   const [newHorseExertionLevel, setNewHorseExertionLevel] = useState(initialJumping ? 4 : 3)
   const [showDowngradeWarning, setShowDowngradeWarning] = useState(false)
   const [paymentType, setPaymentType] = useState(initialLesson?.payment_type ?? '')
+  const [fee, setFee] = useState<string>(initialFee)
+  const [instructorCut, setInstructorCut] = useState<string>(initialInstructorCut)
+  const [isRecurring, setIsRecurring] = useState(false)
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
+  const [lessonAt, setLessonAt] = useState('')
+  const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
 
   const { setDirty, setMessage } = useNavigationBlocker()
+  const feeIsZero = fee !== '' && Number(fee) === 0
   const unpaidPastDue =
     mode === 'edit' &&
     (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
     new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
-    (initialLesson?.fee ?? 0) > 0
-  const unpaidWarn = unpaidPastDue && paymentType === ''
-  const shouldWarn = unpaidWarn || notesDirty
+    Number(initialLesson?.fee) > 0
+  const unpaidWarn = computeUnpaidWarn(unpaidPastDue, paymentType, fee)
+  const feeDirty = fee !== initialFee
+  const horsesDirty = !setsEqual(checkedHorseIds, initialHorseIds) || newHorseName.trim() !== ''
+  const ridersDirty = lessonType === 'normal'
+    ? normalRiderId !== initialNormalRiderId
+    : !setsEqual(checkedRiderIds, initialRiderIds)
+  const fieldsDirty = mode === 'edit' && (feeDirty || horsesDirty || ridersDirty)
+  const horseIssueWarn = mode === 'edit' && hasHorseIssue
+  const shouldWarn = unpaidWarn || notesDirty || fieldsDirty || horseIssueWarn
 
   useEffect(() => {
     setDirty(shouldWarn)
-    if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
+    if (horseIssueWarn) setMessage('This lesson has an unresolved horse issue. Leave without addressing it?')
+    else if (unpaidWarn) setMessage('This lesson has an unpaid balance. Are you sure you want to leave without recording payment?')
     else if (notesDirty) setMessage('You have unsaved notes. Leave without saving?')
+    else if (fieldsDirty) setMessage('You have unsaved changes. Leave without saving?')
     return () => setDirty(false)
-  }, [shouldWarn, unpaidWarn, notesDirty])
+  }, [shouldWarn, unpaidWarn, notesDirty, fieldsDirty, horseIssueWarn, setDirty, setMessage])
 
   useEffect(() => {
     if (!shouldWarn) return
@@ -113,6 +171,15 @@ export function LessonForm({
     window.addEventListener('beforeunload', handler)
     return () => window.removeEventListener('beforeunload', handler)
   }, [shouldWarn])
+
+  useEffect(() => {
+    if (!lessonAt || !getProjectedExhaustion) return
+    let cancelled = false
+    getProjectedExhaustion(lessonAt, horses.map(h => h.id)).then((result) => {
+      if (!cancelled) setExhaustionData({ lessonAt, data: result })
+    })
+    return () => { cancelled = true }
+  }, [lessonAt, getProjectedExhaustion, horses])
 
   function flash(keys: string[]) {
     if (keys.length === 0) return
@@ -124,18 +191,22 @@ export function LessonForm({
     if (id === CUSTOM_ID) {
       setSelectedId(id)
       setJumping(false)
+      setFee('')
+      setInstructorCut(String(defaultInstructorCut))
       setExertionMap(prev => {
         const next = new Map(prev)
         for (const key of next.keys()) next.set(key, 3)
         return next
       })
       setNewHorseExertionLevel(3)
-      flash([...(jumping ? ['jumping'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
+      flash([...(jumping ? ['jumping'] : []), ...(fee !== '' ? ['fee'] : []), ...Array.from(checkedHorseIds).map(hid => `exertion_${hid}`)])
     } else {
       const tier = tiers.find(t => t.id === id) ?? null
       if (!tier) return
       setSelectedId(id)
-      const affectedKeys: string[] = []
+      setFee(String(tier.price))
+      setInstructorCut(String(tier.instructor_cut))
+      const affectedKeys: string[] = ['fee']
       if (tier.default_jumping !== null) {
         setJumping(tier.default_jumping)
         affectedKeys.push('jumping')
@@ -164,6 +235,17 @@ export function LessonForm({
 
   const isCustom = selectedId === CUSTOM_ID
   const selectedTier = tiers.find(t => t.id === selectedId) ?? null
+  const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
+  const isPastLesson = isPastLessonAt(lessonAt)
+
+  function horseTotalExertion(h: Horse): number {
+    return (exhaustionByHorseId?.[h.id]?.existingRows ?? []).reduce((sum, row) => sum + row.exertionLevel, 0)
+  }
+
+  function horseSortBucket(h: Horse): number {
+    if (checkedHorseIds.has(h.id)) return 0
+    return h.is_available === false || h.is_active === false ? 2 : 1
+  }
 
   function handleJumpingToggle(e: React.ChangeEvent<HTMLInputElement>) {
     const checked = e.target.checked
@@ -256,15 +338,19 @@ export function LessonForm({
         >
           {tiers.map(t => (
             <option key={t.id} value={t.id}>
-              {t.price != null ? `${t.name} - $${t.price}` : t.name}
+              {t.name} - ${t.price}
             </option>
           ))}
           <option value={CUSTOM_ID}>Custom</option>
         </select>
         <input type="hidden" name="tier_name" value={isCustom ? 'Custom' : selectedTier!.name} />
+        <input type="hidden" name="instructor_cut" value={instructorCut} />
         {isCustom && <input type="hidden" name="is_custom" value="true" />}
       </div>
 
+      {/* Raw Tailwind, not <Button>: this is a joined-corner segmented toggle
+          (flex-1 halves, aria state via background color) rather than a standalone
+          variant button — forcing it into Button's model would break the layout. */}
       <div className="flex gap-2">
         <button
           type="button"
@@ -302,37 +388,32 @@ export function LessonForm({
             id="instructor_id"
             name="instructor_id"
             required
-            defaultValue={initialLesson?.instructor_id ?? currentUserId}
+            defaultValue={initialLesson?.instructor_id ?? currentMembershipId}
             className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
           >
             {instructors.map((i) => (
-              <option key={i.userId} value={i.userId}>{i.name}</option>
+              <option key={i.membershipId} value={i.membershipId}>{i.name}</option>
             ))}
           </select>
         </div>
       ) : (
-        <div className="flex flex-col gap-1">
-          <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Instructor</span>
-          <input type="hidden" name="instructor_id" value={currentUserId} />
-          <span className="text-sm text-zinc-900 dark:text-zinc-50">
-            {instructors.find(i => i.userId === currentUserId)?.name ?? currentUserId}
-          </span>
-        </div>
+        <input type="hidden" name="instructor_id" value={currentMembershipId} />
       )}
 
       <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
         <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Horse{' '}
-          <span className="font-normal text-zinc-500">(select at least one)</span>
+          {lessonType === 'group' ? (
+            <>Horses <span className="font-normal text-zinc-500">(select at least one)</span></>
+          ) : (
+            'Horse'
+          )}
         </legend>
-        {[...horses].sort((a, b) => {
-          const aAvail = a.is_available === false ? 1 : 0
-          const bAvail = b.is_available === false ? 1 : 0
-          return aAvail - bAvail
-        }).map((h) => {
+        {[...horses].sort((a, b) => horseSortBucket(a) - horseSortBucket(b) || horseTotalExertion(a) - horseTotalExertion(b)).map((h) => {
           const isUnavailable = h.is_available === false
+          const exhaustion = exhaustionByHorseId?.[h.id]
           return (
-          <div key={h.id} className="flex items-center gap-3">
+          <div key={h.id} className="flex flex-col gap-1">
+          <div className="flex items-center gap-3">
             <label className={`flex items-center gap-2 text-sm ${isUnavailable ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-50'}`}>
               {isUnavailable && checkedHorseIds.has(h.id) && (
                 <input type="hidden" name="horse_id" value={h.id} />
@@ -396,6 +477,14 @@ export function LessonForm({
                 />
               </>
             )}
+          </div>
+          {exhaustion && !isPastLesson && (checkedHorseIds.has(h.id) || (!isUnavailable && h.is_active !== false)) && (
+            <ExhaustionBar
+              existingRows={exhaustion.existingRows}
+              thresholds={exhaustion.thresholds}
+              ghostValue={checkedHorseIds.has(h.id) ? exertionMap.get(h.id) : undefined}
+            />
+          )}
           </div>
           )
         })}
@@ -480,54 +569,81 @@ export function LessonForm({
         )}
       </fieldset>
 
+      {mode === 'new' && (
+        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+          <input
+            type="checkbox"
+            aria-label="Recurring (weekly)"
+            checked={isRecurring}
+            onChange={e => setIsRecurring(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600"
+          />
+          Recurring (weekly)
+          <input type="hidden" name="is_recurring" value={isRecurring ? 'true' : 'false'} />
+        </label>
+      )}
+
       <DateHourPicker
         initialDate={mode === 'edit' && initialLesson ? parseInitialDate(initialLesson.lesson_at) : undefined}
         initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
+        onChange={setLessonAt}
+        dateLabel={isRecurring ? 'Starting Date' : 'Date'}
       />
 
-      {isCustom ? (
-        <div className="flex flex-col gap-1">
-          <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Fee{mode === 'edit' ? ' (optional)' : ''}
-          </label>
-          <input
-            id="fee"
-            name="fee"
-            type="number"
-            min="0"
-            step="0.01"
-            required={mode === 'new'}
-            defaultValue={initialLesson?.fee ?? ''}
-            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-          />
-        </div>
-      ) : (
-        <input type="hidden" name="fee" value={selectedTier?.price ?? ''} />
-      )}
-
       <div className="flex flex-col gap-1">
-        <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Payment type
+        <label htmlFor="fee" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+          Fee
         </label>
-        <select
-          id="payment_type"
-          name="payment_type"
-          value={paymentType}
-          onChange={e => setPaymentType(e.target.value)}
-          className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-        >
-          <option value="">Unpaid</option>
-          <option value="venmo">Venmo</option>
-          <option value="zelle">Zelle</option>
-          <option value="cash">Cash</option>
-          <option value="check">Check</option>
-          <option value="freshbooks">FreshBooks Invoice</option>
-        </select>
+        <input
+          id="fee"
+          name="fee"
+          type="number"
+          min="0"
+          step="0.01"
+          required
+          value={fee}
+          onChange={e => setFee(e.target.value)}
+          className={`rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50 transition ${flashingKeys.has('fee') ? 'ring-2 ring-blue-400' : ''}`}
+        />
       </div>
+
+      {!feeIsZero && (
+        <div className="flex flex-col gap-1">
+          <label htmlFor="payment_type" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Payment type
+          </label>
+          <select
+            id="payment_type"
+            name="payment_type"
+            value={paymentType}
+            onChange={e => setPaymentType(e.target.value)}
+            className="rounded-lg border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            <option value="">Unpaid</option>
+            <option value="venmo">Venmo</option>
+            <option value="zelle">Zelle</option>
+            <option value="cash">Cash</option>
+            <option value="check">Check</option>
+            <option value="freshbooks">FreshBooks Invoice</option>
+          </select>
+        </div>
+      )}
 
       {initialNotes && (
         <div className="flex flex-col gap-4 border-t border-zinc-200 pt-4 dark:border-zinc-700" onChange={() => setNotesDirty(true)}>
           <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Notes</p>
+          {mode === 'edit' && initialLesson?.cancelled_at != null && (
+            <div className="flex flex-col gap-1">
+              <label htmlFor="cancellation_notes" className="text-xs font-medium text-zinc-500">Cancellation Notes</label>
+              <textarea
+                id="cancellation_notes"
+                name="cancellation_notes"
+                defaultValue={initialLesson.cancellation_notes ?? ''}
+                rows={2}
+                className="w-full rounded-lg border border-zinc-200 p-2 text-sm dark:border-zinc-700 dark:bg-zinc-900"
+              />
+            </div>
+          )}
           {initialNotes.horses.map((h) => (
             <div key={h.id} className="flex flex-col gap-1">
               <input type="hidden" name="noteHorseId" value={h.id} />
@@ -568,15 +684,11 @@ export function LessonForm({
         </div>
       )}
 
-      <button
-        type="submit"
-        disabled={pending}
-        className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-50 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-      >
+      <Button type="submit" loading={pending}>
         {pending
           ? (mode === 'edit' ? 'Saving…' : 'Submitting…')
           : (mode === 'edit' ? 'Save' : 'Submit')}
-      </button>
+      </Button>
     </form>
   )
 }

@@ -1,108 +1,147 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getMembershipById } from '@/lib/db/barn-memberships'
-import { createTrainerDocument, deleteTrainerDocument } from '@/lib/db/trainer-documents'
-import { createRiderDocument, deleteRiderDocument } from '@/lib/db/rider-documents'
-import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
-import type { TrainerDocumentType, RiderDocumentType } from '@/lib/db/types'
-
-const TRAINER_RECORD_TYPES = new Set<TrainerDocumentType>(['instructor_contract', 'other'])
-const RIDER_RECORD_TYPES = new Set<RiderDocumentType>(['liability_waiver', 'lease_agreement', 'boarding_contract', 'other'])
-
-function canManage(callerRole: string, isOwnPage: boolean): boolean {
-  if (callerRole === 'manager') return true
-  if (callerRole === 'trainer' && isOwnPage) return true
-  if (callerRole === 'rider' && isOwnPage) return true
-  return false
-}
-
-export async function uploadDocumentAction(
-  barnSlug: string,
-  membershipId: string,
-  prevState: { error: string | null },
-  formData: FormData
-): Promise<{ error: string | null }> {
-  const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
-
-  try {
-    const targetMembership = await getMembershipById(membershipId)
-    if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
-
-    if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
-      throw new Error('Forbidden')
-    }
-
-    const isOwnPage = targetMembership.user_id === user.id
-    if (!canManage(callerMembership.role, isOwnPage)) {
-      throw new Error('Forbidden')
-    }
-
-    if (!targetMembership.user_id) throw new Error('Target member has no account linked')
-
-    const file = formData.get('file') as File | null
-    const ext = validateFile(file)
-
-    const recordType = formData.get('record_type') as string
-    const validTypes = targetMembership.role === 'rider' ? RIDER_RECORD_TYPES : TRAINER_RECORD_TYPES
-    if (!validTypes.has(recordType as TrainerDocumentType & RiderDocumentType)) throw new Error('Invalid record type')
-
-    const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
-
-    const folder =
-      targetMembership.role === 'trainer' ? 'trainers'
-      : targetMembership.role === 'manager' ? 'managers'
-      : 'riders'
-    const storagePath = `${barn.id}/${folder}/${targetMembership.user_id}/${Date.now()}.${ext}`
-
-    await uploadFile(storagePath, file!, file!.type)
-
-    try {
-      if (targetMembership.role === 'rider') {
-        await createRiderDocument(barn.id, targetMembership.user_id, recordType as RiderDocumentType, storagePath, file!.name, file!.size, notes)
-      } else {
-        await createTrainerDocument(barn.id, targetMembership.user_id, recordType as TrainerDocumentType, storagePath, file!.name, file!.size, notes)
-      }
-    } catch (dbError) {
-      await removeFile(storagePath).catch(() => {})
-      throw dbError
-    }
-
-    revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
-    return { error: null }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Upload failed' }
-  }
-}
+import { getMembershipById, setCanInstruct, deleteMembership } from '@/lib/db/barn-memberships'
+import { revokeInviteToken } from '@/lib/db/member-invites'
+import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
+import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
+import { removeFile } from '@/lib/db/document-storage'
+import { getErrorMessage } from '@/lib/get-error-message'
+import { parseContactFields } from '@/lib/contact-info'
+import { resolveManageableTarget } from '@/lib/document-target'
 
 export async function deleteDocumentAction(
   barnSlug: string,
   membershipId: string,
   docId: string,
   storagePath: string
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const targetMembership = await getMembershipById(membershipId)
-  if (!targetMembership || targetMembership.barn_id !== barn.id) throw new Error('Not found')
+  const resolved = await resolveManageableTarget(barn, callerMembership, membershipId, user.id)
+  if ('error' in resolved) return { error: resolved.error }
+  const { targetMembership, entity } = resolved
 
-  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
-    throw new Error('Forbidden')
-  }
-
-  const isOwnPage = targetMembership.user_id === user.id
-  if (!canManage(callerMembership.role, isOwnPage)) {
-    throw new Error('Forbidden')
-  }
-
-  if (targetMembership.role === 'rider') {
-    await deleteRiderDocument(docId, barn.id)
-  } else {
-    await deleteTrainerDocument(docId, barn.id)
+  try {
+    if (entity === 'rider') {
+      await deleteDocument('rider', docId, targetMembership.id, barn.id)
+    } else {
+      await deleteDocument('trainer', docId, targetMembership.id, barn.id)
+    }
+  } catch (dbError) {
+    return { error: getErrorMessage(dbError) }
   }
 
   await removeFile(storagePath).catch(() => {})
 
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  return { error: null }
+}
+
+export async function updateContactInfoAction(
+  barnSlug: string,
+  membershipId: string,
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const targetMembership = await getMembershipById(membershipId)
+  if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
+
+  const targetProfile = await getProfileById(targetMembership.profile_id)
+  if (!targetProfile || !targetProfile.is_managed) return { error: 'Forbidden' }
+
+  const parsed = parseContactFields(formData, targetProfile)
+  if ('error' in parsed) return parsed
+  const { phone, emergencyContactName, emergencyContactPhone } = parsed.data
+
+  try {
+    await updateContactInfo(targetMembership.profile_id, {
+      phone,
+      emergency_contact_name: emergencyContactName,
+      emergency_contact_phone: emergencyContactPhone,
+    })
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  return { error: null }
+}
+
+export async function updateDocumentReminderDateAction(
+  barnSlug: string,
+  membershipId: string,
+  docId: string,
+  reminderDate: string | null
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const targetMembership = await getMembershipById(membershipId)
+  if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
+
+  if (targetMembership.role !== 'trainer' && targetMembership.role !== 'rider' && targetMembership.role !== 'manager') {
+    return { error: 'Forbidden' }
+  }
+
+  try {
+    if (targetMembership.role === 'rider') {
+      await updateDocumentReminderDate('rider', docId, targetMembership.id, barn.id, reminderDate)
+    } else {
+      await updateDocumentReminderDate('trainer', docId, targetMembership.id, barn.id, reminderDate)
+    }
+  } catch (dbError) {
+    return { error: getErrorMessage(dbError) }
+  }
+
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  return { error: null }
+}
+
+export async function setCanInstructAction(
+  barnSlug: string,
+  membershipId: string,
+  nextValue: boolean
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const targetMembership = await getMembershipById(membershipId)
+  if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
+  if (targetMembership.role !== 'manager' && targetMembership.role !== 'trainer') {
+    notFound()
+  }
+
+  await setCanInstruct(membershipId, barn.id, nextValue)
+
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  redirect(`/barn/${barnSlug}/members/${membershipId}`)
+}
+
+export async function removeMemberAction(
+  barnSlug: string,
+  membershipId: string
+): Promise<void> {
+  const { user, barn } = await requireMembership(barnSlug, ['manager'])
+
+  const target = await getMembershipById(membershipId)
+  if (!target || target.barn_id !== barn.id) notFound()
+  if (target.user_id === user.id) notFound()
+  if (target.role === 'manager') notFound()
+
+  await deleteMembership(membershipId)
+
+  revalidatePath(`/barn/${barnSlug}/members`)
+  redirect(`/barn/${barnSlug}/members`)
+}
+
+export async function revokeInviteTokenAction(
+  barnSlug: string,
+  membershipId: string
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await revokeInviteToken(membershipId, barn.id)
+  revalidatePath(`/barn/${barnSlug}/members`)
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
 }

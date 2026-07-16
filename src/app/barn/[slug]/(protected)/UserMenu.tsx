@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, useEffect } from 'react'
+import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { signOut } from '@/app/actions/auth'
 import { useNavigationBlocker } from './NavigationBlocker'
 import Link from 'next/link'
@@ -13,29 +13,18 @@ interface Props {
 }
 
 export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }: Props) {
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
+  const { open, setOpen, ref } = useOutsideDismiss()
   const { dirty, setPendingNav } = useNavigationBlocker()
-
-  useEffect(() => {
-    function close(e: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('touchstart', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('touchstart', close)
-    }
-  }, [])
 
   return (
     <div ref={ref} className="relative">
+      {/* Raw Tailwind, not <Button>: fixed-content circular avatar/initials
+          trigger — no Button variant targets this shape. */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="User menu"
         aria-expanded={open}
-        className="flex h-8 w-8 items-center justify-center rounded-full bg-zinc-800 text-xs font-semibold text-white dark:bg-zinc-200 dark:text-zinc-900"
+        className="flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full bg-zinc-800 text-xs font-semibold text-white dark:bg-zinc-200 dark:text-zinc-900"
       >
         {initials}
       </button>
@@ -84,6 +73,9 @@ export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }
           >
             User Guide
           </Link>
+          {/* Raw Tailwind, not <Button>: styled identically to the sibling
+              Link menu rows above (Profile/Switch Barn/User Guide) — a
+              dropdown menu-item pattern, not a button pattern. */}
           <form action={signOut}>
             <button
               type="submit"

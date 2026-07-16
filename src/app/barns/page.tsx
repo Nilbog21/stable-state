@@ -1,7 +1,8 @@
-import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
+import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
 
 function capitalizeRole(role: string): string {
   return role.charAt(0).toUpperCase() + role.slice(1)
@@ -25,23 +26,20 @@ export default async function BarnsPage() {
           const href = isPending ? `/barn/${barn.slug}/pending` : `/barn/${barn.slug}`
           return (
             <li key={membership.id}>
-              <Link
-                href={href}
-                className="block rounded-lg border border-zinc-200 px-6 py-4 hover:bg-zinc-50 dark:border-zinc-700 dark:hover:bg-zinc-800"
-              >
+              <Card href={href} className="px-6 py-4">
                 <span className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
                   {barn.name}
                 </span>
                 {isPending ? (
-                  <span className="ml-3 rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200">
+                  <Badge tone="yellow" className="ml-3">
                     Pending Approval
-                  </span>
+                  </Badge>
                 ) : (
                   <span className="ml-3 text-sm text-zinc-500 dark:text-zinc-400">
                     {capitalizeRole(membership.role)}
                   </span>
                 )}
-              </Link>
+              </Card>
             </li>
           )
         })}

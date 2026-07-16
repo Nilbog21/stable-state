@@ -1,15 +1,21 @@
 'use client'
 
-export function DeleteLessonButton({ action }: { action: () => void }) {
+import { Button } from '@/components/ui/Button'
+
+export function DeleteLessonButton({ action }: { action: (formData: FormData) => Promise<void> }) {
   return (
-    <button
-      type="button"
-      onClick={() => {
-        if (confirm('Delete this lesson? This cannot be undone.')) action()
-      }}
-      className="rounded bg-red-600 px-3 py-1 text-sm font-medium text-white hover:bg-red-700"
-    >
-      Delete
-    </button>
+    <form action={action}>
+      <Button
+        type="submit"
+        variant="danger"
+        onClick={(e) => {
+          if (!window.confirm('Permanently delete this lesson? This cannot be undone, and unlike Cancel, no cancellation record, fee, or notification is created.')) {
+            e.preventDefault()
+          }
+        }}
+      >
+        Delete
+      </Button>
+    </form>
   )
 }

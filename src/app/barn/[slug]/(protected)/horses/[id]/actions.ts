@@ -3,21 +3,23 @@
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails } from '@/lib/db/horses'
-import { createHorseDocument, deleteHorseDocument } from '@/lib/db/horse-documents'
-import { validateFile, uploadFile, removeFile } from '@/lib/db/document-storage'
-import type { HorseDocumentType } from '@/lib/db/types'
+import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
+import { removeFile } from '@/lib/db/document-storage'
+import { getErrorMessage } from '@/lib/get-error-message'
+import { parseNonNegativeInt } from '@/lib/parse-amount'
 
-const HORSE_RECORD_TYPES = new Set<HorseDocumentType>(['insurance_binder', 'coggins', 'shot_record', 'contract', 'other'])
-
-export async function updateHorseDetailsAction(
+export async function updateHorseAction(
   barnSlug: string,
   horseId: string,
+  prevState: { error: string | null },
   formData: FormData
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
   const status = formData.get('status')
-  if (status !== 'active' && status !== 'unavailable' && status !== 'inactive') return
+  if (status !== 'active' && status !== 'unavailable' && status !== 'inactive') {
+    return { error: 'invalid status' }
+  }
 
   const name = (formData.get('name') as string | null)?.trim() || null
   const isActive = status !== 'inactive'
@@ -26,49 +28,30 @@ export async function updateHorseDetailsAction(
     ? ((formData.get('reason') as string | null)?.trim() || null)
     : null
 
-  await updateHorseDetails(horseId, barn.id, {
-    ...(name ? { name } : {}),
-    is_active: isActive,
-    is_available: isAvailable,
-    unavailability_reason: reason,
-  })
+  let thresholds: { moderate: number; high: number } | null = null
+  if (formData.get('use_barn_defaults') !== 'true') {
+    const moderate = parseNonNegativeInt(formData.get('moderate') as string | null)
+    const high = parseNonNegativeInt(formData.get('high') as string | null)
+    if (moderate === null || high === null) return { error: 'Thresholds must be numbers ≥ 0' }
+    if (moderate >= high) return { error: 'Moderate threshold must be less than high threshold' }
+    thresholds = { moderate, high }
+  }
+
+  try {
+    await updateHorseDetails(horseId, barn.id, {
+      ...(name ? { name } : {}),
+      is_active: isActive,
+      is_available: isAvailable,
+      unavailability_reason: reason,
+      exhaustion_thresholds: thresholds,
+    })
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
 
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-}
-
-export async function uploadHorseDocumentAction(
-  barnSlug: string,
-  horseId: string,
-  prevState: { error: string | null },
-  formData: FormData
-): Promise<{ error: string | null }> {
-  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
-
-  try {
-    const file = formData.get('file') as File | null
-    const ext = validateFile(file)
-
-    const recordType = formData.get('record_type') as string
-    if (!HORSE_RECORD_TYPES.has(recordType as HorseDocumentType)) throw new Error('Invalid record type')
-
-    const notes = ((formData.get('notes') as string | null) ?? '').trim() || null
-    const storagePath = `${barn.id}/horses/${horseId}/${Date.now()}.${ext}`
-
-    await uploadFile(storagePath, file!, file!.type)
-
-    try {
-      await createHorseDocument(barn.id, horseId, recordType as HorseDocumentType, storagePath, file!.name, file!.size, notes)
-    } catch (dbError) {
-      await removeFile(storagePath).catch(() => {})
-      throw dbError
-    }
-
-    revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-    return { error: null }
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : 'Upload failed' }
-  }
+  return { error: null }
 }
 
 export async function deleteHorseDocumentAction(
@@ -78,7 +61,25 @@ export async function deleteHorseDocumentAction(
   storagePath: string
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
-  await deleteHorseDocument(docId, horseId, barn.id)
+  await deleteDocument('horse', docId, horseId, barn.id)
   await removeFile(storagePath).catch(() => {})
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function updateHorseDocumentReminderDateAction(
+  barnSlug: string,
+  horseId: string,
+  docId: string,
+  reminderDate: string | null
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  try {
+    await updateDocumentReminderDate('horse', docId, horseId, barn.id, reminderDate)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  return { error: null }
 }

@@ -13,11 +13,10 @@ vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
   getBarnMembershipsForUser: vi.fn(),
   getActiveMemberships: vi.fn(),
-  claimManagedMember: vi.fn(),
 }))
 
-vi.mock('@/lib/db/seeded-accounts', () => ({
-  activateSeededAccount: vi.fn().mockResolvedValue(undefined),
+vi.mock('@/lib/db/member-invites', () => ({
+  claimManagedMember: vi.fn(),
 }))
 
 vi.mock('@/lib/db/profiles', () => ({
@@ -50,8 +49,8 @@ vi.mock('next/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships, claimManagedMember } from '@/lib/db/barn-memberships'
-import { activateSeededAccount } from '@/lib/db/seeded-accounts'
+import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { claimManagedMember } from '@/lib/db/member-invites'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
@@ -70,8 +69,6 @@ const completeProfile = createMockProfile({
 
 describe('GET /auth/callback', () => {
   beforeEach(() => {
-    vi.mocked(activateSeededAccount).mockReset()
-    vi.mocked(activateSeededAccount).mockResolvedValue(undefined)
     vi.mocked(getBarnMembershipsForUser).mockReset()
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
     vi.mocked(getProfileByUserId).mockReset()
@@ -93,44 +90,6 @@ describe('GET /auth/callback', () => {
       status: 302,
       cookies: { set: mockCookiesSet },
     }))
-  })
-
-  it('should_activate_seeded_account_after_successful_session_exchange', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
-    } as any)
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: 'manager@example.com' } as any)
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    await GET(request as any)
-
-    expect(activateSeededAccount).toHaveBeenCalledWith('user-1', 'manager@example.com')
-  })
-
-  it('should_proceed_with_login_when_activate_seeded_account_throws', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
-    } as any)
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: 'manager@example.com' } as any)
-    vi.mocked(activateSeededAccount).mockRejectedValue(new Error('db error'))
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    const response = await GET(request as any)
-
-    expect(response.url).toContain('/login?no_barns=true')
-  })
-
-  it('should_not_activate_seeded_account_when_user_has_no_email', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
-    } as any)
-    vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: null } as any)
-
-    const request = new Request('http://localhost:3000/auth/callback?code=test-code')
-    await GET(request as any)
-
-    expect(activateSeededAccount).not.toHaveBeenCalled()
   })
 
   it('should_exchange_code_for_session_when_code_is_present', async () => {
@@ -952,6 +911,111 @@ describe('GET /auth/callback', () => {
       await GET(request as any)
 
       expect(deleteNotificationByType).toHaveBeenCalledWith('user-1', 'barn-1', 'member_incomplete_profile')
+    })
+  })
+
+  describe('remember me cookie handling', () => {
+    function makeRequest(url: string, cookies: Record<string, string> = {}) {
+      return {
+        url,
+        cookies: {
+          get: (name: string) => (name in cookies ? { name, value: cookies[name] } : undefined),
+        },
+      } as any
+    }
+
+    beforeEach(() => {
+      vi.mocked(createClient).mockReset()
+      vi.mocked(createClient).mockResolvedValue({
+        auth: { exchangeCodeForSession: vi.fn().mockResolvedValue({ error: null }) },
+      } as any)
+      vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: 'user-1', email: 'user@barn.com' } as any)
+      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+        { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
+      ])
+    })
+
+    it('should_set_barn_session_cookie_with_max_age_when_remember_me_is_1', async () => {
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code', { remember_me: '1' })
+      await GET(request)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith(
+        'barn_session_green-acres',
+        'user-1',
+        expect.objectContaining({ maxAge: 2592000 })
+      )
+    })
+
+    it('should_set_barn_session_cookie_without_max_age_when_remember_me_is_0', async () => {
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code', { remember_me: '0' })
+      await GET(request)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith(
+        'barn_session_green-acres',
+        'user-1',
+        expect.not.objectContaining({ maxAge: expect.anything() })
+      )
+    })
+
+    it('should_set_barn_session_cookie_without_max_age_when_remember_me_is_absent', async () => {
+      const request = new Request('http://localhost:3000/auth/callback?code=code')
+      await GET(request as any)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith(
+        'barn_session_green-acres',
+        'user-1',
+        expect.not.objectContaining({ maxAge: expect.anything() })
+      )
+    })
+
+    it('should_clear_remember_me_cookie_when_present', async () => {
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code', { remember_me: '1' })
+      await GET(request)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith('remember_me', '', { maxAge: 0, path: '/' })
+    })
+
+    it('should_clear_remember_me_cookie_when_value_is_0', async () => {
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code', { remember_me: '0' })
+      await GET(request)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith('remember_me', '', { maxAge: 0, path: '/' })
+    })
+
+    it('should_not_clear_remember_me_cookie_when_absent', async () => {
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code')
+      await GET(request)
+
+      expect(mockCookiesSet).not.toHaveBeenCalledWith('remember_me', expect.anything(), expect.anything())
+    })
+
+    it('should_set_barn_session_cookie_with_max_age_when_remember_me_is_1_with_barn_param', async () => {
+      vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+      vi.mocked(getUserMembership).mockResolvedValue(mockMembership as any)
+
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code&barn=green-acres', { remember_me: '1' })
+      await GET(request)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith(
+        'barn_session_green-acres',
+        'user-1',
+        expect.objectContaining({ maxAge: 2592000 })
+      )
+    })
+
+    it('should_set_barn_session_cookie_with_max_age_when_remember_me_is_1_and_profile_incomplete', async () => {
+      vi.mocked(getProfileByUserId).mockResolvedValue(
+        createMockProfile({ phone: null, emergency_contact_name: 'Bob', emergency_contact_phone: '555-5678' })
+      )
+
+      const request = makeRequest('http://localhost:3000/auth/callback?code=code', { remember_me: '1' })
+      await GET(request)
+
+      expect(mockCookiesSet).toHaveBeenCalledWith(
+        'barn_session_green-acres',
+        'user-1',
+        expect.objectContaining({ maxAge: 2592000 })
+      )
     })
   })
 

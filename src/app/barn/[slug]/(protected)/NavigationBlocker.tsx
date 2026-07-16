@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/Button'
 
 export type PendingNav = { type: 'push'; href: string } | { type: 'back' } | null
 
@@ -72,20 +73,10 @@ export function NavigationConfirmDialog() {
       <div className="w-full max-w-sm rounded-lg bg-white p-6 shadow-lg dark:bg-zinc-900">
         <p className="mb-6 text-sm text-zinc-900 dark:text-zinc-50">{message}</p>
         <div className="flex justify-end gap-3">
-          <button
-            type="button"
-            onClick={() => setPendingNav(null)}
-            className="rounded-lg border border-zinc-200 px-4 py-2 text-sm font-medium text-zinc-700 hover:bg-zinc-50 active:bg-zinc-100 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:active:bg-zinc-700"
-          >
+          <Button variant="ghost" onClick={() => setPendingNav(null)}>
             Stay
-          </button>
-          <button
-            type="button"
-            onClick={handleLeave}
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 active:bg-zinc-600 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200 dark:active:bg-zinc-300"
-          >
-            Leave
-          </button>
+          </Button>
+          <Button onClick={handleLeave}>Leave</Button>
         </div>
       </div>
     </div>
@@ -97,11 +88,13 @@ export function BlockingLink({
   className,
   children,
   onClick,
+  'aria-current': ariaCurrent,
 }: {
   href: string
   className?: string
   children: React.ReactNode
   onClick?: () => void
+  'aria-current'?: 'page'
 }) {
   const { dirty, setPendingNav } = useNavigationBlocker()
   return (
@@ -109,6 +102,7 @@ export function BlockingLink({
       href={href}
       className={className}
       onClick={onClick}
+      aria-current={ariaCurrent}
       onNavigate={(e) => {
         if (dirty) {
           e.preventDefault()

@@ -9,12 +9,13 @@
 
 import { fileURLToPath } from 'url'
 import { upsertProfile } from '@/lib/db/profiles'
+import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createTier } from '@/lib/db/lesson-tiers'
 
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { teardown } from './teardown-test-barn'
-import { mustSucceed, createServiceClient } from './script-utils'
+import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
@@ -30,6 +31,7 @@ async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
+  assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
@@ -95,8 +97,13 @@ async function run() {
   const rider1MembershipId = riderMemberships!.find((m) => m.user_id === riderId)!.id
   const rider2MembershipId = riderMemberships!.find((m) => m.user_id === rider2Id)!.id
 
-  const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, supabase)
-  const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, supabase)
+  const trainerMembers = await getActiveMembersWithProfiles(barnId, 'trainer', supabase)
+  const trainerMembership = trainerMembers.find((m) => m.userId === trainerId)
+  if (!trainerMembership) throw new Error('active trainer membership not found')
+  const trainerMembershipId = trainerMembership.membershipId
+
+  const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, 25, supabase)
+  const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, 25, supabase)
 
   const horse1 = await createHorse(barnId, 'Apollo', supabase)
   const horse2 = await createHorse(barnId, 'Bella', supabase)
@@ -108,44 +115,52 @@ async function run() {
     new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000).toISOString()
 
   await createLessonWithParticipants({
-    barnId, instructorId: trainerId, lessonAt: past(5), fee: tier1.price,
+    barnId, instructorId: trainerMembershipId, lessonAt: past(5), fee: tier1.price,
     horseIds: [horse1.id], exertionLevels: [3], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: false, tierName: tier1.name,
   }, supabase)
 
   await createLessonWithParticipants({
-    barnId, instructorId: trainerId, lessonAt: past(3), fee: tier2.price,
+    barnId, instructorId: trainerMembershipId, lessonAt: past(3), fee: tier2.price,
     horseIds: [horse2.id], exertionLevels: [4], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: true, tierName: tier2.name,
   }, supabase)
 
   await createLessonWithParticipants({
-    barnId, instructorId: trainerId, lessonAt: past(1), fee: 80,
+    barnId, instructorId: trainerMembershipId, lessonAt: past(1), fee: 80,
     horseIds: [horse1.id, horse2.id], exertionLevels: [3, 2], riderIds: [rider1MembershipId, rider2MembershipId],
     lessonType: 'group', jumping: false, tierName: 'Custom',
   }, supabase)
 
   await createLessonWithParticipants({
-    barnId, instructorId: trainerId, lessonAt: past(10), fee: tier1.price,
+    barnId, instructorId: trainerMembershipId, lessonAt: past(10), fee: tier1.price,
     horseIds: [horse2.id], exertionLevels: [2], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: false, tierName: tier1.name,
   }, supabase)
 
   await createLessonWithParticipants({
-    barnId, instructorId: trainerId, lessonAt: future(2), fee: tier1.price,
+    barnId, instructorId: trainerMembershipId, lessonAt: future(2), fee: tier1.price,
     horseIds: [horse1.id], exertionLevels: [3], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: false, tierName: tier1.name,
   }, supabase)
 
   await createLessonWithParticipants({
-    barnId, instructorId: trainerId, lessonAt: future(5), fee: tier2.price,
+    barnId, instructorId: trainerMembershipId, lessonAt: future(5), fee: tier2.price,
     horseIds: [horse2.id], exertionLevels: [5], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: true, tierName: tier2.name,
   }, supabase)
 
+  const pastLessons = mustSucceed(
+    await supabase.from('lessons').select('id').eq('barn_id', barnId).lt('lesson_at', past(2)),
+    'fetch past lessons'
+  )
   mustSucceed(
-    await supabase.from('lessons').update({ payment_type: 'venmo' })
-      .eq('barn_id', barnId).lt('lesson_at', past(2)),
+    await supabase
+      .from('transactions')
+      .update({ collected: true, payment_type: 'venmo' })
+      .eq('barn_id', barnId)
+      .in('lesson_id', pastLessons.map((l: { id: string }) => l.id))
+      .in('kind', ['lesson_fee', 'instructor_payout']),
     'mark past lessons paid'
   )
 

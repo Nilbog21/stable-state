@@ -1,70 +1,45 @@
 import { createClient } from '@/lib/supabase/server'
-import { getRiderEnrolledLessonIds } from './lesson-participants'
-import { resolveMemberNames } from './barn-memberships'
-import { resolveHorseNames } from './horses'
-import type { Lesson, LessonDetail, LessonWithDetails, Role } from './types'
+import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
+import { getMembershipByIdForBarn, getUserMembership } from './barn-memberships'
+import { resolveMemberNames } from './member-names'
+import { getProfileById } from './profiles'
+import type { Lesson, LessonDetail, LessonWithDetails, PaymentType, Role } from './types'
 
-async function hydrateParticipants(
+// #885: lessons.payment_type is no longer written by any RPC — the transactions
+// ledger (kind='lesson_fee') is the source of truth. get_lesson_payment_info relays
+// it back scoped to whatever lessons the caller can already see.
+async function fetchPaymentTypes(
   supabase: Awaited<ReturnType<typeof createClient>>,
-  lessons: Lesson[],
+  lessonIds: string[],
   barnId: string
-): Promise<LessonWithDetails[]> {
-  if (!lessons.length) return []
-  const lessonIds = lessons.map((l) => l.id)
-  const instructorIds = [...new Set(lessons.map((l) => l.instructor_id).filter(Boolean))] as string[]
-
-  const [
-    { data: lessonHorses, error: lessonHorsesError },
-    { data: lessonRiders, error: lessonRidersError },
-  ] = await Promise.all([
-    supabase.from('lesson_horses').select('lesson_id, horse_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
-    supabase.from('lesson_riders').select('lesson_id, rider_id').eq('barn_id', barnId).in('lesson_id', lessonIds),
-  ])
-
-  if (lessonHorsesError) throw lessonHorsesError
-  if (lessonRidersError) throw lessonRidersError
-
-  const horseIds = [...new Set((lessonHorses ?? []).map((lh) => lh.horse_id))]
-  const riderIds = [...new Set((lessonRiders ?? []).map((lr) => lr.rider_id))]
-
-  const [horseNameMap, membershipMap] = await Promise.all([
-    resolveHorseNames(horseIds, barnId, supabase),
-    resolveMemberNames(riderIds, barnId, supabase),
-  ])
-
-  const { data: profiles, error: profilesError } = instructorIds.length
-    ? await supabase.from('profiles').select('user_id, first_name, last_name').in('user_id', instructorIds)
-    : { data: [] as { user_id: string; first_name: string; last_name: string }[], error: null }
-
-  if (profilesError) throw profilesError
-
-  const profileMap = new Map((profiles ?? []).map((p) => [p.user_id, p]))
-
-  return lessons.map((lesson) => {
-    const profile = lesson.instructor_id ? profileMap.get(lesson.instructor_id) : undefined
-    const horseJunctionRows = (lessonHorses ?? []).filter((lh) => lh.lesson_id === lesson.id)
-    const horseParticipants = horseJunctionRows
-      .map((lh) => ({ id: lh.horse_id, name: horseNameMap.get(lh.horse_id) }))
-      .filter((p): p is { id: string; name: string } => Boolean(p.name))
-    const horseNames = horseParticipants.map((p) => p.name)
-    const horseIds = horseParticipants.map((p) => p.id)
-    const riderJunctionRows = (lessonRiders ?? []).filter((lr) => lr.lesson_id === lesson.id)
-    const riderParticipants = riderJunctionRows
-      .map((lr) => ({ id: lr.rider_id, name: membershipMap.get(lr.rider_id) }))
-      .filter((p): p is { id: string; name: string } => Boolean(p.name))
-    const riderNames = riderParticipants.map((p) => p.name)
-    const riderIds = riderParticipants.map((p) => p.id)
-    return {
-      ...lesson,
-      instructor_name: profile ? `${profile.first_name} ${profile.last_name}` : null,
-      horse_names: horseNames,
-      horse_ids: horseIds,
-      horse_count: horseJunctionRows.length,
-      rider_names: riderNames,
-      rider_ids: riderIds,
-      rider_count: riderJunctionRows.length,
-    }
+): Promise<Map<string, PaymentType | null>> {
+  if (!lessonIds.length) return new Map()
+  const { data, error } = await supabase.rpc('get_lesson_payment_info', {
+    p_lesson_ids: lessonIds,
+    p_barn_id: barnId,
   })
+  if (error) throw error
+  return new Map((data ?? []).map((row: { lesson_id: string; payment_type: PaymentType | null }) => [row.lesson_id, row.payment_type]))
+}
+
+// exertion_level has no column-level GRANT restriction on lesson_horses for
+// authenticated (#937 review follow-up), so it can't be trimmed from the select
+// string per role the way private_notes is -- a rider's own session could still
+// read it directly via PostgREST. get_lesson_horse_exertion_levels is a
+// SECURITY DEFINER RPC (manager/trainer-only, same check as
+// get_horse_exertion_summary/get_horse_projected_exhaustion) that's the only
+// way to read it now, at both the app layer and via a direct call.
+async function fetchExertionLevels(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lessonId: string,
+  barnId: string
+): Promise<Map<string, number>> {
+  const { data, error } = await supabase.rpc('get_lesson_horse_exertion_levels', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+  })
+  if (error) throw error
+  return new Map((data ?? []).map((row: { horse_id: string; exertion_level: number }) => [row.horse_id, row.exertion_level]))
 }
 
 export async function createLesson({
@@ -75,7 +50,7 @@ export async function createLesson({
 }: {
   barnId: string
   instructorId: string | null
-  fee: number | null
+  fee: number
   lessonAt: string
 }): Promise<Lesson> {
   const supabase = await createClient()
@@ -87,6 +62,15 @@ export async function createLesson({
 
   if (error) throw error
   return data
+}
+
+async function overlayPaymentTypes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lessons: LessonWithDetails[],
+  barnId: string
+): Promise<LessonWithDetails[]> {
+  const paymentMap = await fetchPaymentTypes(supabase, lessons.map((l) => l.id), barnId)
+  return lessons.map((l) => ({ ...l, payment_type: paymentMap.get(l.id) ?? null }))
 }
 
 export async function getLessonsByBarn(
@@ -107,26 +91,33 @@ export async function getLessonsByBarn(
       .eq('barn_id', barnId)
       .order('lesson_at', { ascending: false })
     if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons ?? [], barnId)
+    const withDetails = await hydrateParticipants(supabase, lessons ?? [], barnId)
+    return overlayPaymentTypes(supabase, withDetails, barnId)
   }
 
-  let query = supabase.from('lessons').select('*').eq('barn_id', barnId)
-  if (role === 'trainer') query = query.eq('instructor_id', userId)
-  const { data: lessons, error: lessonsError } = await query.order('lesson_at', { ascending: false })
+  const { data: lessons, error: lessonsError } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .order('lesson_at', { ascending: false })
   if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons, barnId)
+  const withDetails = await hydrateParticipants(supabase, lessons, barnId)
+  return overlayPaymentTypes(supabase, withDetails, barnId)
 }
 
-export async function getLessonById(lessonId: string, barnId: string, role: Role, userId?: string): Promise<LessonDetail | null> {
+export async function getLessonById(lessonId: string, barnId: string, role: Role, callerMembershipId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'
-    ? 'rider_notes, barn_memberships ( id, user_id, profile_id )'
-    : 'rider_notes, private_notes, barn_memberships ( id, user_id, profile_id )'
+    ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
+    : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
+  // exertion_level is manager/trainer-only data (ARCHITECTURE.md) and is never selected
+  // here directly for any role -- see fetchExertionLevels above for why.
+  const horseSelect = 'horse_notes, horses ( id, name, is_active, is_available, unavailability_reason )'
   const { data, error } = await supabase
     .from('lessons')
     .select(`
       *,
-      lesson_horses ( horse_notes, exertion_level, horses ( id, name ) ),
+      lesson_horses ( ${horseSelect} ),
       lesson_riders ( ${riderSelect} )
     `)
     .eq('id', lessonId)
@@ -136,60 +127,79 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   if (error) throw error
   if (!data) return null
 
+  type RawLessonHorse = {
+    horse_notes: string | null
+    horses: { id: string; name: string; is_active?: boolean; is_available?: boolean; unavailability_reason?: string | null } | null
+  }
+
   type RawLessonRider = {
+    rider_id: string
     rider_notes: string | null
     private_notes?: string | null
-    barn_memberships: { id: string; user_id: string | null; profile_id: string } | null
+    cancellation_notes: string | null
+    cancelled_at: string | null
+    barn_memberships: { user_id: string | null } | null
   }
 
-  // Resolve rider names via profile_id so managed members (user_id = null) get their name
-  const riderProfileIds = [...new Set(
-    (data.lesson_riders as RawLessonRider[])
-      .map((lr) => lr.barn_memberships?.profile_id)
-      .filter((id): id is string => id != null)
-  )]
+  const lessonData = data
 
-  const { data: riderProfilesData, error: riderProfilesError } = riderProfileIds.length
-    ? await supabase.from('profiles').select('id, first_name, last_name').in('id', riderProfileIds)
-    : { data: [] as { id: string; first_name: string; last_name: string }[], error: null }
+  const rawHorses = lessonData.lesson_horses as RawLessonHorse[]
+  const exertionByHorseId = role === 'rider' ? new Map<string, number>() : await fetchExertionLevels(supabase, lessonId, barnId)
+  const lesson_horses = rawHorses.map((lh) => ({
+    ...lh,
+    exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
+  }))
 
-  if (riderProfilesError) throw riderProfilesError
+  const rawRiders = lessonData.lesson_riders as RawLessonRider[]
+  // rider_id is a plain lesson_riders column, unlike the nested barn_memberships embed —
+  // PostgREST enforces barn_memberships RLS on that embed independently, which returns null
+  // for a co-rider's row when the caller is a rider (only barn_memberships_read_own applies).
+  const riderMembershipIds = rawRiders.map((lr) => lr.rider_id)
 
-  const riderProfileMap = new Map((riderProfilesData ?? []).map((p) => [p.id, p]))
+  // instructor_id is itself a barn_memberships.id. Same RLS gap as the rider embed above —
+  // resolved via getMembershipByIdForBarn's direct-query + RPC fallback instead of a nested
+  // instructor embed, in one shot that yields both user_id and profile_id — kept out of the
+  // resolveMemberNames batch below so a rider caller doesn't trigger the same
+  // get_active_barn_member_summaries RPC fallback twice for the same instructor.
+  const instructorId = lessonData.instructor_id
+  const instructorMembership = instructorId ? await getMembershipByIdForBarn(instructorId, barnId, supabase) : null
+  const instructor_user_id = instructorMembership?.user_id ?? null
+  const instructorProfile = instructorMembership ? await getProfileById(instructorMembership.profile_id) : null
+  const instructor_name = instructorMembership
+    ? (instructorProfile ? `${instructorProfile.first_name} ${instructorProfile.last_name}` : instructorId)
+    : null
 
-  // Instructor always has a real auth account — look up by user_id
-  let instructor_name: string | null = null
-  if (data.instructor_id) {
-    const { data: ip, error: ipError } = await supabase
-      .from('profiles').select('first_name, last_name').eq('user_id', data.instructor_id).maybeSingle()
-    if (ipError) throw ipError
-    if (ip) instructor_name = `${ip.first_name} ${ip.last_name}`
-  }
+  const membershipMap = await resolveMemberNames(riderMembershipIds, barnId, supabase)
 
   type NormalizedLr = {
     rider_notes: string | null
     private_notes: string | null
+    cancellation_notes: string | null
+    cancelled_at: string | null
     barn_membership: { id: string; user_id: string | null; name: string } | null
   }
 
   const normalizeLr = (lr: RawLessonRider): NormalizedLr => ({
     rider_notes: lr.rider_notes,
     private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
-    barn_membership: lr.barn_memberships
-      ? {
-          id: lr.barn_memberships.id,
-          user_id: lr.barn_memberships.user_id,
-          name: lr.barn_memberships.profile_id && riderProfileMap.has(lr.barn_memberships.profile_id)
-            ? `${riderProfileMap.get(lr.barn_memberships.profile_id)!.first_name} ${riderProfileMap.get(lr.barn_memberships.profile_id)!.last_name}`
-            : lr.barn_memberships.id,
-        }
-      : null,
+    cancellation_notes: lr.cancellation_notes ?? null,
+    cancelled_at: lr.cancelled_at ?? null,
+    barn_membership: {
+      id: lr.rider_id,
+      user_id: lr.barn_memberships?.user_id ?? null,
+      name: membershipMap.get(lr.rider_id) ?? lr.rider_id,
+    },
   })
 
+  const paymentMap = await fetchPaymentTypes(supabase, [lessonId], barnId)
+
   const base = {
-    ...data,
+    ...lessonData,
+    lesson_horses,
+    payment_type: paymentMap.get(lessonId) ?? null,
     instructor_name,
-    lesson_riders: (data.lesson_riders as RawLessonRider[]).map(normalizeLr) as NormalizedLr[],
+    instructor_user_id,
+    lesson_riders: rawRiders.map(normalizeLr) as NormalizedLr[],
   }
 
   if (role === 'rider') {
@@ -198,20 +208,46 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
       lesson_riders: base.lesson_riders.map((lr: NormalizedLr) => ({
         ...lr,
         private_notes: null,
-        rider_notes: lr.barn_membership?.user_id === userId ? lr.rider_notes : null,
+        // Anchored to the caller's own membership ID (a plain, always-present column) rather
+        // than the RLS-gated barn_memberships embed's user_id, so masking doesn't depend on
+        // barn_memberships_read_own continuing to cover the caller's own row.
+        rider_notes: lr.barn_membership?.id === callerMembershipId ? lr.rider_notes : null,
       })),
     } as LessonDetail
   }
   return base as LessonDetail
 }
 
-export async function deleteLesson(lessonId: string, barnId: string): Promise<void> {
+export async function cancelLesson(lessonId: string, barnId: string, notes?: string | null, isLate = false): Promise<void> {
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('lessons')
-    .delete()
-    .eq('id', lessonId)
-    .eq('barn_id', barnId)
+  const { error } = await supabase.rpc('cancel_lesson_with_transactions', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+    p_notes: notes ?? null,
+    p_is_late: isLate,
+  })
+
+  if (error) throw error
+}
+
+export async function deleteLesson(lessonId: string, barnId: string, deleteCollectedTransactions = false): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('delete_lesson_with_transactions', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+    p_delete_collected: deleteCollectedTransactions,
+  })
+
+  if (error) throw error
+}
+
+export async function collectLessonPayment(lessonId: string, barnId: string, paymentType: PaymentType | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('collect_lesson_payment', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+    p_payment_type: paymentType,
+  })
 
   if (error) throw error
 }
@@ -219,7 +255,7 @@ export async function deleteLesson(lessonId: string, barnId: string): Promise<vo
 export async function updateLesson(
   lessonId: string,
   barnId: string,
-  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'payment_type' | 'tier_name'>>
+  updates: Partial<Pick<Lesson, 'fee' | 'lesson_at' | 'jumping' | 'lesson_type' | 'tier_name' | 'cancellation_notes'>>
 ): Promise<Lesson> {
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -259,11 +295,14 @@ export async function getUpcomingLessons(
     return hydrateParticipants(supabase, lessons ?? [], barnId)
   }
 
+  const callerMembership = await getUserMembership(userId, barnId)
+  if (!callerMembership) return []
+
   const { data: lessons, error: lessonsError } = await supabase
     .from('lessons')
     .select('*')
     .eq('barn_id', barnId)
-    .eq('instructor_id', userId)
+    .eq('instructor_id', callerMembership.id)
     .gte('lesson_at', from)
     .lt('lesson_at', to)
     .order('lesson_at', { ascending: true })

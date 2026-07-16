@@ -25,7 +25,6 @@ import { revalidatePath } from 'next/cache'
 import {
   approveMembershipAction,
   rejectMembershipAction,
-  removeMembershipAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -138,56 +137,6 @@ describe('rejectMembershipAction', () => {
 
   it('should_revalidate_settings_path_after_reject', async () => {
     await rejectMembershipAction('green-acres', 'mem-1')
-
-    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
-  })
-})
-
-describe('removeMembershipAction', () => {
-  beforeEach(() => {
-    vi.mocked(requireMembership).mockReset()
-    vi.mocked(deleteMembership).mockReset()
-    vi.mocked(getMembershipById).mockReset()
-    vi.mocked(revalidatePath).mockReset()
-    vi.mocked(requireMembership).mockResolvedValue({
-      user: { id: 'user-1' } as any,
-      barn: mockBarn,
-      membership: mockManagerMembership,
-    })
-    vi.mocked(getMembershipById).mockResolvedValue(createMockMembership({ barn_id: mockBarn.id }))
-    vi.mocked(deleteMembership).mockResolvedValue(undefined)
-  })
-
-  it('should_call_requireMembership_with_manager_role', async () => {
-    await removeMembershipAction('green-acres', 'mem-1')
-
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
-  })
-
-  it('should_call_delete_helper_when_membership_belongs_to_barn', async () => {
-    await removeMembershipAction('green-acres', 'mem-1')
-
-    expect(deleteMembership).toHaveBeenCalledWith('mem-1')
-  })
-
-  it('should_not_call_deleteMembership_when_membership_belongs_to_different_barn', async () => {
-    vi.mocked(getMembershipById).mockResolvedValue(createMockMembership({ barn_id: 'other-barn' }))
-
-    await removeMembershipAction('green-acres', 'mem-1')
-
-    expect(deleteMembership).not.toHaveBeenCalled()
-  })
-
-  it('should_not_call_deleteMembership_when_membership_not_found', async () => {
-    vi.mocked(getMembershipById).mockResolvedValue(null)
-
-    await removeMembershipAction('green-acres', 'mem-1')
-
-    expect(deleteMembership).not.toHaveBeenCalled()
-  })
-
-  it('should_revalidate_settings_path_after_remove', async () => {
-    await removeMembershipAction('green-acres', 'mem-1')
 
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/settings')
   })

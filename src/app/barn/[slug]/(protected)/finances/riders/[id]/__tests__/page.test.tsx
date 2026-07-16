@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 
@@ -26,7 +26,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getRiderIncomeDetail).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({ user: mockUser as any, barn: mockBarn, membership: managerMembership })
-    vi.mocked(getRiderIncomeDetail).mockResolvedValue({ riderName: 'Alice', rows: [], total: 0 })
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({ riderName: 'Alice', rows: [], chargeRows: [], total: 0 })
   })
 
   it('should_call_requireMembership_with_manager_only', async () => {
@@ -56,7 +56,7 @@ describe('RiderIncomePage', () => {
   })
 
   it('should_render_rider_name_as_heading', async () => {
-    vi.mocked(getRiderIncomeDetail).mockResolvedValue({ riderName: 'Alice', rows: [], total: 0 })
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({ riderName: 'Alice', rows: [], chargeRows: [], total: 0 })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     expect(screen.getByRole('heading', { name: 'Alice' })).toBeDefined()
@@ -65,14 +65,14 @@ describe('RiderIncomePage', () => {
   it('should_render_empty_state_when_no_rows', async () => {
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(screen.getByText(/no lessons/i)).toBeDefined()
+    expect(screen.getByText(/no activity/i)).toBeDefined()
   })
 
   it('should_render_lesson_date_in_table', async () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -83,7 +83,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -94,7 +94,7 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 2, splitAmount: 50 }],
-      total: 50,
+      chargeRows: [], total: 50,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -105,18 +105,29 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 2, splitAmount: 50 }],
-      total: 50,
+      chargeRows: [], total: 50,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     expect(screen.getAllByText('$50.00').length).toBeGreaterThan(0)
   })
 
+  it('should_render_lesson_type_label', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
+      chargeRows: [], total: 100,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getByText('Lesson')).toBeDefined()
+  })
+
   it('should_render_total_row', async () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
@@ -139,11 +150,123 @@ describe('RiderIncomePage', () => {
     vi.mocked(getRiderIncomeDetail).mockResolvedValue({
       riderName: 'Alice',
       rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
-      total: 100,
+      chargeRows: [], total: 100,
     })
     const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
     const link = screen.getByRole('link', { name: /May 10, 2026/i })
     expect(link.getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1')
+  })
+
+  it('should_render_a_charge_rows_kind', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      total: 500,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getByText('Boarding')).toBeDefined()
+  })
+
+  it('should_render_a_charge_rows_fee', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      total: 500,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getAllByText('$500.00').length).toBeGreaterThan(0)
+  })
+
+  it('should_link_charge_row_to_agreement_detail', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      total: 200,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /May 1, 2026/i })
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/agreements/agreement-1?kind=lease')
+  })
+
+  it('should_render_dash_for_riders_column_on_charge_row', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'lease', fee: 200 }],
+      total: 200,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getByText('—')).toBeDefined()
+  })
+
+  it('should_combine_lesson_and_charge_rows_in_total', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+      total: 600,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    render(jsx)
+    expect(screen.getAllByText('$600.00').length).toBeGreaterThan(0)
+  })
+
+  it('should_render_rows_in_date_ascending_order', async () => {
+    vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+      riderName: 'Alice',
+      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-20T10:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
+      chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-05', kind: 'board', fee: 40 }],
+      total: 140,
+    })
+    const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+    const { container } = render(jsx)
+    const text = container.textContent ?? ''
+    expect(text.indexOf('May 5, 2026')).toBeLessThan(text.indexOf('May 20, 2026'))
+  })
+
+  describe('timezone-aware date display', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+    })
+
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    // 2026-05-11T02:00:00Z is 10:00 PM EDT on May 10 — a naive UTC-anchored formatter
+    // would show May 11 instead.
+    it('should_display_a_lesson_rows_date_in_the_viewers_local_timezone_not_utc', async () => {
+      vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+        riderName: 'Alice',
+        rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-11T02:00:00Z', fee: 100, riderCount: 1, splitAmount: 100 }],
+        chargeRows: [], total: 100,
+      })
+      const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+      render(jsx)
+      expect(screen.getByText('May 10, 2026')).toBeDefined()
+    })
+
+    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_viewer_timezone', async () => {
+      vi.mocked(getRiderIncomeDetail).mockResolvedValue({
+        riderName: 'Alice',
+        rows: [],
+        chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+        total: 500,
+      })
+      const jsx = await RiderIncomePage({ params: defaultParams, searchParams: maySearchParams })
+      render(jsx)
+      expect(screen.getByText('May 1, 2026')).toBeDefined()
+    })
   })
 })

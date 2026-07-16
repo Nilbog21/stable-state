@@ -5,160 +5,29 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
+vi.mock('../horses', () => ({
+  resolveHorseNames: vi.fn(),
+}))
+
+vi.mock('../member-names', () => ({
+  resolveMemberNames: vi.fn(),
+}))
+
 import { createClient } from '@/lib/supabase/server'
+import { resolveHorseNames } from '../horses'
+import { resolveMemberNames } from '../member-names'
 import {
-  addHorseToLesson,
-  addRiderToLesson,
   createLessonWithParticipants,
   getRiderEnrolledLessonIds,
   updateLessonWithParticipants,
   updateLessonRiderNotes,
   updateLessonHorseNotes,
+  cancelRiderParticipation,
+  hydrateParticipants,
+  updateCancellationFeePaymentType,
 } from '../lesson-participants'
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
-
-const mockLessonHorse = {
-  id: 'lh-1',
-  barn_id: 'barn-1',
-  lesson_id: 'lesson-1',
-  horse_id: 'horse-1',
-  exertion_level: 3,
-}
-
-const mockLessonRider = {
-  id: 'lr-1',
-  barn_id: 'barn-1',
-  lesson_id: 'lesson-1',
-  rider_id: 'rider-1',
-}
-
-describe('addHorseToLesson', () => {
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  it('should_insert_lesson_horse_with_provided_exertion_level', async () => {
-    const mockInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: { ...mockLessonHorse, exertion_level: 5 }, error: null }),
-      }),
-    })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await addHorseToLesson('lesson-1', 'horse-1', 'barn-1', 5)
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ lesson_id: 'lesson-1', horse_id: 'horse-1', barn_id: 'barn-1', exertion_level: 5 })
-    )
-  })
-
-  it('should_default_exertion_level_to_3_when_not_provided', async () => {
-    const mockInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: mockLessonHorse, error: null }),
-      }),
-    })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await addHorseToLesson('lesson-1', 'horse-1', 'barn-1')
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ exertion_level: 3 })
-    )
-  })
-
-  it('should_return_the_created_lesson_horse', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: mockLessonHorse, error: null }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await addHorseToLesson('lesson-1', 'horse-1', 'barn-1', 3)
-
-    expect(result).toEqual(mockLessonHorse)
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
-          }),
-        }),
-      }),
-    } as any)
-
-    await expect(
-      addHorseToLesson('lesson-1', 'horse-1', 'barn-1')
-    ).rejects.toThrow('db error')
-  })
-})
-
-describe('addRiderToLesson', () => {
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
-
-  it('should_insert_lesson_rider_with_lesson_rider_and_barn_ids', async () => {
-    const mockInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: mockLessonRider, error: null }),
-      }),
-    })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await addRiderToLesson('lesson-1', 'rider-1', 'barn-1')
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ lesson_id: 'lesson-1', rider_id: 'rider-1', barn_id: 'barn-1' })
-    )
-  })
-
-  it('should_return_the_created_lesson_rider', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: mockLessonRider, error: null }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await addRiderToLesson('lesson-1', 'rider-1', 'barn-1')
-
-    expect(result).toEqual(mockLessonRider)
-  })
-
-  it('should_throw_when_supabase_returns_an_error', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }),
-          }),
-        }),
-      }),
-    } as any)
-
-    await expect(
-      addRiderToLesson('lesson-1', 'rider-1', 'barn-1')
-    ).rejects.toThrow('db error')
-  })
-})
 
 describe('createLessonWithParticipants', () => {
   beforeEach(() => {
@@ -192,7 +61,84 @@ describe('createLessonWithParticipants', () => {
       p_jumping: false,
       p_tier_name: 'Custom',
       p_payment_type: null,
+      p_instructor_cut: 0,
     })
+  })
+
+  it('should_store_a_utc_instant_that_decodes_back_to_the_intended_wall_clock_time_in_a_non_utc_timezone', async () => {
+    const originalTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+      vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+      // Mirrors DateHourPicker.tsx's own construction: a lesson entered for
+      // "4:00 PM" local time on 2026-05-16 (EDT, UTC-4).
+      const intendedLocalHour = 16
+      const lessonAt = new Date(2026, 4, 16, intendedLocalHour).toISOString()
+
+      await createLessonWithParticipants({
+        barnId: 'barn-1',
+        instructorId: 'user-1',
+        lessonAt,
+        fee: 75,
+        horseIds: ['horse-1'],
+        exertionLevels: [3],
+        riderIds: ['rider-1'],
+        lessonType: 'normal',
+      })
+
+      const [, rpcArgs] = mockRpc.mock.calls[0]
+      const storedLessonAt = rpcArgs.p_lesson_at as string
+
+      // The exact value the RPC receives is what lands in the lesson_at
+      // TIMESTAMPTZ column — decoding it back (mirroring LessonForm.tsx's
+      // parseInitialHour) must reproduce the wall-clock hour it was entered as.
+      expect(new Date(storedLessonAt).getHours()).toBe(intendedLocalHour)
+    } finally {
+      process.env.TZ = originalTz
+    }
+  })
+
+  it('should_pass_instructor_cut_to_rpc_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+      instructorCut: 30,
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
+      expect.objectContaining({ p_instructor_cut: 30 })
+    )
+  })
+
+  it('should_default_instructor_cut_to_zero_when_not_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
+      expect.objectContaining({ p_instructor_cut: 0 })
+    )
   })
 
   it('should_return_the_created_lesson', async () => {
@@ -224,7 +170,7 @@ describe('createLessonWithParticipants', () => {
         barnId: 'barn-1',
         instructorId: 'user-1',
         lessonAt: '2026-05-16T10:00:00Z',
-        fee: null,
+        fee: 50,
         horseIds: ['horse-1'],
         exertionLevels: [3],
         riderIds: ['rider-1'],
@@ -260,6 +206,7 @@ describe('createLessonWithParticipants', () => {
       p_jumping: false,
       p_tier_name: 'Custom',
       p_payment_type: null,
+      p_instructor_cut: 0,
     })
   })
 
@@ -394,6 +341,7 @@ describe('updateLessonWithParticipants', () => {
       horseIds: ['horse-1'],
       exertionLevels: [3],
       riderIds: ['rider-1'],
+      instructorCut: 30,
     })
 
     expect(mockRpc).toHaveBeenCalledWith('update_lesson_with_participants', {
@@ -409,6 +357,7 @@ describe('updateLessonWithParticipants', () => {
       p_horse_ids: ['horse-1'],
       p_exertion_levels: [3],
       p_rider_ids: ['rider-1'],
+      p_instructor_cut: 30,
     })
   })
 
@@ -422,7 +371,7 @@ describe('updateLessonWithParticipants', () => {
         barnId: 'barn-1',
         lessonAt: '2026-05-17T10:00:00Z',
         instructorId: 'user-1',
-        fee: null,
+        fee: 50,
         lessonType: 'normal',
         jumping: false,
         paymentType: null,
@@ -430,6 +379,7 @@ describe('updateLessonWithParticipants', () => {
         horseIds: ['horse-1'],
         exertionLevels: [3],
         riderIds: ['rider-1'],
+        instructorCut: 25,
       })
     ).rejects.toThrow('rpc failed')
   })
@@ -586,6 +536,35 @@ describe('getRiderEnrolledLessonIds', () => {
     expect(result).toEqual([])
   })
 
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const mockFrom = vi.fn()
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    })
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: [], error: null }),
+        }),
+      }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await getRiderEnrolledLessonIds('barn-1', 'user-1', injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
   it('should_return_empty_array_when_rider_has_no_enrollments', async () => {
     const mockFrom = vi.fn()
     mockFrom.mockReturnValueOnce({
@@ -647,6 +626,35 @@ describe('getRiderEnrolledLessonIds', () => {
     expect(result).toEqual(['lesson-1', 'lesson-2'])
   })
 
+  it('should_treat_null_enrollments_data_as_empty', async () => {
+    const mockFrom = vi.fn()
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              eq: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'membership-1' }, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    })
+    mockFrom.mockReturnValueOnce({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ data: null, error: null }),
+        }),
+      }),
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+
+    const result = await getRiderEnrolledLessonIds('barn-1', 'user-1')
+
+    expect(result).toEqual([])
+  })
+
   it('should_throw_when_barn_memberships_query_fails', async () => {
     vi.mocked(createClient).mockResolvedValue({
       from: vi.fn().mockReturnValue({
@@ -696,5 +704,451 @@ describe('getRiderEnrolledLessonIds', () => {
     await expect(
       getRiderEnrolledLessonIds('barn-1', 'user-1')
     ).rejects.toThrow('enrollment error')
+  })
+})
+
+describe('cancelRiderParticipation', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_snake_case_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', 'called in sick', true)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation', {
+      p_lesson_id: 'lesson-1',
+      p_barn_id: 'barn-1',
+      p_rider_id: 'rider-1',
+      p_notes: 'called in sick',
+      p_is_late: true,
+    })
+  })
+
+  it('should_default_notes_to_null_when_undefined', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', undefined, false)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation',
+      expect.objectContaining({ p_notes: null })
+    )
+  })
+
+  it('should_pass_is_late_true_through_to_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, true)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation',
+      expect.objectContaining({ p_is_late: true })
+    )
+  })
+
+  it('should_pass_is_late_false_through_to_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+
+    expect(mockRpc).toHaveBeenCalledWith('cancel_rider_participation',
+      expect.objectContaining({ p_is_late: false })
+    )
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('rpc error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await expect(
+      cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+    ).rejects.toThrow('rpc error')
+  })
+
+  it('should_return_true_when_rpc_reports_cascade', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: true, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+
+    expect(result).toBe(true)
+  })
+
+  it('should_return_false_when_rpc_reports_no_cascade', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: false, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    const result = await cancelRiderParticipation('lesson-1', 'barn-1', 'rider-1', null, false)
+
+    expect(result).toBe(false)
+  })
+})
+
+describe('updateCancellationFeePaymentType', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_snake_case_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateCancellationFeePaymentType('lesson-rider-1', 'barn-1', 'venmo')
+
+    expect(mockRpc).toHaveBeenCalledWith('collect_rider_cancellation_fee', {
+      p_lesson_rider_id: 'lesson-rider-1',
+      p_barn_id: 'barn-1',
+      p_payment_type: 'venmo',
+    })
+  })
+
+  it('should_pass_null_payment_type_through_to_revert_to_unpaid', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await updateCancellationFeePaymentType('lesson-rider-1', 'barn-1', null)
+
+    expect(mockRpc).toHaveBeenCalledWith('collect_rider_cancellation_fee',
+      expect.objectContaining({ p_payment_type: null })
+    )
+  })
+
+  it('should_throw_when_rpc_returns_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('rpc error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await expect(
+      updateCancellationFeePaymentType('lesson-rider-1', 'barn-1', 'venmo')
+    ).rejects.toThrow('rpc error')
+  })
+})
+
+describe('hydrateParticipants', () => {
+  beforeEach(() => {
+    vi.mocked(resolveHorseNames).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
+  })
+
+  function makeInChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect }
+  }
+
+  function makeSupabase(
+    lessonHorses: unknown[] | null,
+    lessonRiders: unknown[] | null,
+    lessonHorsesError: Error | null = null,
+    lessonRidersError: Error | null = null
+  ) {
+    const from = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lesson_horses') return makeInChain(lessonHorses, lessonHorsesError)
+      if (table === 'lesson_riders') return makeInChain(lessonRiders, lessonRidersError)
+      return makeInChain([])
+    })
+    return { from } as any
+  }
+
+  it('should_return_empty_array_when_no_lessons', async () => {
+    const result = await hydrateParticipants(makeSupabase([], []), [], 'barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_not_query_supabase_when_no_lessons', async () => {
+    const supabase = makeSupabase([], [])
+
+    await hydrateParticipants(supabase, [], 'barn-1')
+
+    expect(supabase.from).not.toHaveBeenCalled()
+  })
+
+  it('should_resolve_instructor_name_from_membership_map', async () => {
+    const lesson = createMockLesson({ instructor_id: 'mem-instructor-1' })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-instructor-1', 'John Doe']]))
+
+    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')
+
+    expect(result.instructor_name).toBe('John Doe')
+  })
+
+  it('should_return_null_instructor_name_when_instructor_id_is_null', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')
+
+    expect(result.instructor_name).toBeNull()
+  })
+
+  it('should_return_null_instructor_name_when_membership_map_has_no_entry', async () => {
+    const lesson = createMockLesson({ instructor_id: 'mem-instructor-1' })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')
+
+    expect(result.instructor_name).toBeNull()
+  })
+
+  it('should_resolve_horse_names_for_a_lesson', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.horse_names).toEqual(['Thunderbolt'])
+  })
+
+  it('should_return_horse_ids_alongside_horse_names', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.horse_ids).toEqual(['horse-1'])
+  })
+
+  it('should_filter_out_a_horse_when_the_name_map_has_no_entry_for_it', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.horse_names).toEqual([])
+  })
+
+  it('should_count_horse_junction_rows_even_when_a_horse_name_is_unresolved', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.horse_count).toBe(1)
+  })
+
+  it('should_treat_null_lesson_horses_data_as_empty', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(null, [])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.horse_names).toEqual([])
+  })
+
+  it('should_resolve_rider_names_for_a_lesson', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
+    const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.rider_names).toEqual(['Alice Rider'])
+  })
+
+  it('should_return_all_rider_names_for_a_group_lesson', async () => {
+    const lesson = createMockLesson({ instructor_id: null, lesson_type: 'group' })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([
+      ['mem-1', 'Alice Rider'],
+      ['mem-2', 'Bob Rider'],
+    ]))
+    const supabase = makeSupabase([], [
+      { lesson_id: lesson.id, rider_id: 'mem-1' },
+      { lesson_id: lesson.id, rider_id: 'mem-2' },
+    ])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.rider_names).toEqual(['Alice Rider', 'Bob Rider'])
+  })
+
+  it('should_filter_out_a_rider_when_the_name_map_has_no_entry_for_it', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.rider_names).toEqual([])
+  })
+
+  it('should_count_rider_junction_rows_even_when_a_rider_name_is_unresolved', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.rider_count).toBe(1)
+  })
+
+  it('should_treat_null_lesson_riders_data_as_empty', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([], null)
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.rider_names).toEqual([])
+  })
+
+  it('should_include_non_null_cancelled_at_for_a_cancelled_rider_participation', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
+    const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1', cancelled_at: '2026-06-01T00:00:00Z' }])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.rider_cancelled_ats).toEqual(['2026-06-01T00:00:00Z'])
+  })
+
+  it('should_default_cancelled_at_to_null_when_absent', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
+    const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.rider_cancelled_ats).toEqual([null])
+  })
+
+  it('should_not_attach_another_lessons_horse_to_the_first_lesson', async () => {
+    const lessonA = createMockLesson({ id: 'lesson-a', instructor_id: null })
+    const lessonB = createMockLesson({ id: 'lesson-b', instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([
+      { lesson_id: 'lesson-a', horse_id: 'horse-1' },
+      { lesson_id: 'lesson-b', horse_id: 'horse-2' },
+    ], [])
+
+    const [resultA] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1')
+
+    expect(resultA.horse_names).toEqual(['Thunderbolt'])
+  })
+
+  it('should_not_attach_the_first_lessons_horse_to_another_lesson', async () => {
+    const lessonA = createMockLesson({ id: 'lesson-a', instructor_id: null })
+    const lessonB = createMockLesson({ id: 'lesson-b', instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([
+      { lesson_id: 'lesson-a', horse_id: 'horse-1' },
+      { lesson_id: 'lesson-b', horse_id: 'horse-2' },
+    ], [])
+
+    const [, resultB] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1')
+
+    expect(resultB.horse_names).toEqual(['Shadow'])
+  })
+
+  it('should_throw_when_lesson_horses_fetch_returns_an_error', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    const supabase = makeSupabase([], [], new Error('horses error'))
+
+    await expect(hydrateParticipants(supabase, [lesson], 'barn-1')).rejects.toThrow('horses error')
+  })
+
+  it('should_throw_when_lesson_riders_fetch_returns_an_error', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    const supabase = makeSupabase([], [], null, new Error('riders error'))
+
+    await expect(hydrateParticipants(supabase, [lesson], 'barn-1')).rejects.toThrow('riders error')
+  })
+
+  it('should_propagate_errors_from_resolve_horse_names', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockRejectedValue(new Error('resolve horse names error'))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    await expect(hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')).rejects.toThrow('resolve horse names error')
+  })
+
+  it('should_propagate_errors_from_resolve_member_names', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve member names error'))
+
+    await expect(hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')).rejects.toThrow('resolve member names error')
+  })
+
+  it('should_set_needs_attention_true_when_assigned_horse_is_inactive', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: false, is_available: true } }],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(true)
+  })
+
+  it('should_set_needs_attention_true_when_assigned_horse_is_unavailable', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: false } }],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(true)
+  })
+
+  it('should_set_needs_attention_false_when_all_assigned_horses_active_and_available', async () => {
+    const lesson = createMockLesson({ instructor_id: null })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase(
+      [{ lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: true } }],
+      []
+    )
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(false)
+  })
+
+  it('should_set_needs_attention_true_for_group_lesson_when_any_one_horse_is_bad', async () => {
+    const lesson = createMockLesson({ instructor_id: null, lesson_type: 'group' })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt'], ['horse-2', 'Shadow']]))
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const supabase = makeSupabase([
+      { lesson_id: lesson.id, horse_id: 'horse-1', horses: { is_active: true, is_available: true } },
+      { lesson_id: lesson.id, horse_id: 'horse-2', horses: { is_active: false, is_available: true } },
+    ], [])
+
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+
+    expect(result.needs_attention).toBe(true)
   })
 })

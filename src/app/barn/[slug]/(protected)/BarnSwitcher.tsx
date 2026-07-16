@@ -1,5 +1,5 @@
 'use client'
-import { useRef, useState, useEffect } from 'react'
+import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { BlockingLink } from './NavigationBlocker'
 
 interface Props {
@@ -10,21 +10,7 @@ interface Props {
 
 export function BarnSwitcher({ barnName, barnSlug, activeBarnMemberships }: Props) {
   const showSwitchBarn = activeBarnMemberships.length > 1
-  const [open, setOpen] = useState(false)
-  const ref = useRef<HTMLDivElement>(null)
-
-  useEffect(() => {
-    if (!showSwitchBarn) return
-    function close(e: MouseEvent | TouchEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', close)
-    document.addEventListener('touchstart', close)
-    return () => {
-      document.removeEventListener('mousedown', close)
-      document.removeEventListener('touchstart', close)
-    }
-  }, [showSwitchBarn])
+  const { open, setOpen, ref } = useOutsideDismiss(showSwitchBarn)
 
   if (!showSwitchBarn) {
     return (
@@ -46,6 +32,8 @@ export function BarnSwitcher({ barnName, barnSlug, activeBarnMemberships }: Prop
       >
         {barnName}
       </BlockingLink>
+      {/* Raw Tailwind, not <Button>: icon-only unpadded caret trigger — same
+          reasoning as NotificationBell's bell trigger. */}
       <button
         onClick={() => setOpen((o) => !o)}
         aria-label="Switch barn"

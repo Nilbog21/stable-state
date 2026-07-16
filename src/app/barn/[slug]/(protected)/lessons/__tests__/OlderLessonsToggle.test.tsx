@@ -3,12 +3,6 @@ import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
-vi.mock('../DeleteLessonButton', () => ({
-  DeleteLessonButton: ({ action }: { action: () => void }) => (
-    <button type="button" onClick={action}>Delete</button>
-  ),
-}))
-
 import { OlderLessonsToggle } from '../OlderLessonsToggle'
 import type { LessonWithDetails } from '@/lib/db/types'
 
@@ -20,13 +14,23 @@ const mockLesson: LessonWithDetails = {
   fee: 50,
   lesson_at: '2026-01-01T10:00:00Z',
   submitted_at: '2026-01-01T10:05:00Z',
+  lesson_type: 'normal',
+  jumping: false,
+  payment_type: null,
+  tier_name: 'Custom',
+  cancelled_at: null,
+  cancellation_notes: null,
+  series_id: null,
+  instructor_cut: 0,
   horse_names: ['Comet'],
+  horse_ids: ['horse-1'],
   horse_count: 1,
   rider_names: ['Bob'],
+  rider_ids: ['rider-mem-1'],
   rider_count: 1,
+  rider_cancelled_ats: [null],
+  needs_attention: false,
 }
-
-const mockDeleteAction = vi.fn()
 
 describe('OlderLessonsToggle', () => {
   beforeEach(() => {
@@ -39,7 +43,7 @@ describe('OlderLessonsToggle', () => {
         lessons={[]}
         slug="green-acres"
         isManager={false}
-        deleteAction={mockDeleteAction}
+        isTrainer={false}
       />
     )
     expect(screen.queryByRole('button', { name: /show older lessons/i })).toBeNull()
@@ -51,7 +55,7 @@ describe('OlderLessonsToggle', () => {
         lessons={[mockLesson]}
         slug="green-acres"
         isManager={false}
-        deleteAction={mockDeleteAction}
+        isTrainer={false}
       />
     )
     expect(screen.getByRole('button', { name: /show older lessons/i })).toBeDefined()
@@ -63,7 +67,7 @@ describe('OlderLessonsToggle', () => {
         lessons={[mockLesson]}
         slug="green-acres"
         isManager={false}
-        deleteAction={mockDeleteAction}
+        isTrainer={false}
       />
     )
     expect(screen.queryByText('Comet')).toBeNull()
@@ -75,11 +79,39 @@ describe('OlderLessonsToggle', () => {
         lessons={[mockLesson]}
         slug="green-acres"
         isManager={false}
-        deleteAction={mockDeleteAction}
+        isTrainer={false}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.getByText('Comet')).toBeDefined()
+  })
+
+  it('should_use_spacing_between_older_lesson_rows', () => {
+    render(
+      <OlderLessonsToggle
+        lessons={[mockLesson]}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
+    const list = screen.getByRole('list')
+    expect(list.className).toContain('space-y-2')
+  })
+
+  it('should_not_use_divider_borders_between_older_lesson_rows', () => {
+    render(
+      <OlderLessonsToggle
+        lessons={[mockLesson]}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
+    const list = screen.getByRole('list')
+    expect(list.className).not.toContain('divide-y')
   })
 
   it('should_show_hide_older_lessons_button_label_after_expanding', () => {
@@ -88,7 +120,7 @@ describe('OlderLessonsToggle', () => {
         lessons={[mockLesson]}
         slug="green-acres"
         isManager={false}
-        deleteAction={mockDeleteAction}
+        isTrainer={false}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -101,7 +133,7 @@ describe('OlderLessonsToggle', () => {
         lessons={[mockLesson]}
         slug="green-acres"
         isManager={false}
-        deleteAction={mockDeleteAction}
+        isTrainer={false}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
@@ -109,42 +141,43 @@ describe('OlderLessonsToggle', () => {
     expect(screen.queryByText('Comet')).toBeNull()
   })
 
-  it('should_display_rider_name_in_older_lessons', () => {
+  it('should_display_rider_name_in_older_lessons_for_manager', () => {
     render(
       <OlderLessonsToggle
         lessons={[mockLesson]}
         slug="green-acres"
-        isManager={false}
-        deleteAction={mockDeleteAction}
+        isManager={true}
+        isTrainer={false}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
     expect(screen.getByText('Bob')).toBeDefined()
   })
 
-  it('should_not_show_delete_button_when_not_manager', () => {
+  it('should_never_show_cancel_link_regardless_of_role', () => {
     render(
       <OlderLessonsToggle
-        lessons={[mockLesson]}
-        slug="green-acres"
-        isManager={false}
-        deleteAction={mockDeleteAction}
-      />
-    )
-    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
-    expect(screen.queryByRole('button', { name: /delete/i })).toBeNull()
-  })
-
-  it('should_show_delete_button_for_manager', () => {
-    render(
-      <OlderLessonsToggle
-        lessons={[mockLesson]}
+        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' }]}
         slug="green-acres"
         isManager={true}
-        deleteAction={mockDeleteAction}
+        isTrainer={false}
       />
     )
     fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
-    expect(screen.getByRole('button', { name: /delete/i })).toBeDefined()
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
+  })
+
+  it('should_pass_viewer_membership_id_through_to_lesson_list_item', () => {
+    render(
+      <OlderLessonsToggle
+        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }]}
+        slug="green-acres"
+        isManager={false}
+        isTrainer={false}
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    fireEvent.click(screen.getByRole('button', { name: /show older lessons/i }))
+    expect(screen.getByText('Cancelled')).toBeDefined()
   })
 })

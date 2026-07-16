@@ -21,8 +21,14 @@ const mockRedirect = vi.hoisted(() =>
     })
   })
 )
+const mockNotFound = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND')
+  })
+)
 vi.mock('next/navigation', () => ({
   redirect: mockRedirect,
+  notFound: mockNotFound,
 }))
 
 import { getAuthenticatedUser } from '@/lib/db/auth'
@@ -38,6 +44,8 @@ describe('requireMembership', () => {
     vi.mocked(getAuthenticatedUser).mockReset()
     vi.mocked(getBarnBySlug).mockReset()
     vi.mocked(getUserMembership).mockReset()
+    mockRedirect.mockClear()
+    mockNotFound.mockClear()
     setupAuth(mockUser)
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'manager', status: 'active' }))
@@ -56,56 +64,56 @@ describe('requireMembership', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_redirect_when_barn_not_found', async () => {
+  it('should_call_notFound_when_barn_not_found', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
-    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_REDIRECT')
+    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_redirect_to_barn_login_url_when_barn_not_found', async () => {
+  it('should_not_redirect_when_barn_not_found', async () => {
     vi.mocked(getBarnBySlug).mockResolvedValue(null)
 
     await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow()
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(mockRedirect).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_when_membership_not_found', async () => {
+  it('should_call_notFound_when_membership_not_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
 
-    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_REDIRECT')
+    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_redirect_to_barn_login_url_when_membership_not_found', async () => {
+  it('should_not_redirect_when_membership_not_found', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(null)
 
     await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow()
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(mockRedirect).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_when_membership_is_inactive', async () => {
+  it('should_call_notFound_when_membership_is_inactive', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'pending' }))
 
-    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_REDIRECT')
+    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_redirect_to_barn_login_url_when_membership_is_inactive', async () => {
+  it('should_not_redirect_when_membership_is_inactive', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'pending' }))
 
     await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow()
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(mockRedirect).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_when_role_not_in_allowed_roles', async () => {
+  it('should_call_notFound_when_role_not_in_allowed_roles', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', status: 'active' }))
 
-    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_REDIRECT')
+    await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
-  it('should_redirect_to_barn_login_url_when_role_not_in_allowed_roles', async () => {
+  it('should_not_redirect_when_role_not_in_allowed_roles', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ role: 'rider', status: 'active' }))
 
     await expect(requireMembership('green-acres', ['manager'])).rejects.toThrow()
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
+    expect(mockRedirect).not.toHaveBeenCalled()
   })
 
   it('should_return_user_when_manager_allowed', async () => {

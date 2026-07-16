@@ -5,6 +5,7 @@ cd "$(git rev-parse --show-toplevel)"
 
 NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-}"
 SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
+DEV_SUPABASE_URL="${DEV_SUPABASE_URL:-}"
 
 SKIP_ENV_LOCAL=false
 if [ "${1:-}" = "--skip-env-local-check" ]; then
@@ -24,9 +25,10 @@ if [ "$SKIP_ENV_LOCAL" = false ]; then
 
   NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
   SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
+  DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
 fi
 
-for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY; do
+for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DEV_SUPABASE_URL; do
   if [ -z "${!var_name}" ]; then
     echo "Error: $var_name is not set" >&2
     exit 1
@@ -41,5 +43,6 @@ fi
 
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+  DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
   TEST_BARN_SLUG="$BARN_SLUG" \
   npx tsx scripts/teardown-test-barn.ts

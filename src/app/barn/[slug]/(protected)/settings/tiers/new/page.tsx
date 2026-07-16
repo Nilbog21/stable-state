@@ -29,7 +29,7 @@ export default async function TierNewPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         New Tier
       </h1>
-      <TierForm mode="new" onSave={save} />
+      <TierForm mode="new" action={save} defaultInstructorCut={barn.default_instructor_cut} />
     </main>
   )
 }

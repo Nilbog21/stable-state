@@ -1,0 +1,337 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { createMockLesson, createMockLessonSeries } from '@/test/fixtures'
+
+vi.mock('@/lib/supabase/server', () => ({
+  createClient: vi.fn(),
+}))
+
+import { createClient } from '@/lib/supabase/server'
+import { createLessonSeries, getSeriesById, stopLessonSeries, generateNextLessonForSeries } from '../lesson-series'
+
+const mockLesson = createMockLesson({ series_id: 'series-1' })
+const mockSeries = createMockLessonSeries()
+
+describe('createLessonSeries', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_correct_parameters', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonSeries({
+      barnId: 'barn-1',
+      instructorId: 'mem-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1', 'horse-2'],
+      exertionLevels: [3, 5],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_series_with_participants', {
+      p_barn_id: 'barn-1',
+      p_instructor_id: 'mem-1',
+      p_lesson_at: '2026-05-16T10:00:00Z',
+      p_fee: 75,
+      p_horse_ids: ['horse-1', 'horse-2'],
+      p_exertion_levels: [3, 5],
+      p_rider_ids: ['rider-1'],
+      p_lesson_type: 'normal',
+      p_jumping: false,
+      p_tier_name: 'Custom',
+      p_payment_type: null,
+      p_instructor_cut: 0,
+    })
+  })
+
+  it('should_pass_jumping_tier_name_and_payment_type_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonSeries({
+      barnId: 'barn-1',
+      instructorId: 'mem-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [5],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+      jumping: true,
+      tierName: 'Premium',
+      paymentType: 'venmo',
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_series_with_participants',
+      expect.objectContaining({ p_jumping: true, p_tier_name: 'Premium', p_payment_type: 'venmo' })
+    )
+  })
+
+  it('should_pass_instructor_cut_to_rpc_when_provided', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await createLessonSeries({
+      barnId: 'barn-1',
+      instructorId: 'mem-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+      instructorCut: 30,
+    })
+
+    expect(mockRpc).toHaveBeenCalledWith('create_lesson_series_with_participants',
+      expect.objectContaining({ p_instructor_cut: 30 })
+    )
+  })
+
+  it('should_return_the_created_lesson', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }),
+    } as any)
+
+    const result = await createLessonSeries({
+      barnId: 'barn-1',
+      instructorId: 'mem-1',
+      lessonAt: '2026-05-16T10:00:00Z',
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+    })
+
+    expect(result).toEqual(mockLesson)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: new Error('rpc error') }),
+    } as any)
+
+    await expect(
+      createLessonSeries({
+        barnId: 'barn-1',
+        instructorId: 'mem-1',
+        lessonAt: '2026-05-16T10:00:00Z',
+        fee: 50,
+        horseIds: ['horse-1'],
+        exertionLevels: [3],
+        riderIds: ['rider-1'],
+        lessonType: 'normal',
+      })
+    ).rejects.toThrow('rpc error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    vi.mocked(createClient).mockReset()
+    const injectedClient = { rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }) } as any
+
+    await createLessonSeries(
+      { barnId: 'barn-1', instructorId: 'mem-1', lessonAt: '2026-05-16T10:00:00Z', fee: 75, horseIds: ['horse-1'], exertionLevels: [3], riderIds: ['rider-1'], lessonType: 'normal' },
+      injectedClient
+    )
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    vi.mocked(createClient).mockReset()
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    const injectedClient = { rpc: mockRpc } as any
+
+    await createLessonSeries(
+      { barnId: 'barn-1', instructorId: 'mem-1', lessonAt: '2026-05-16T10:00:00Z', fee: 75, horseIds: ['horse-1'], exertionLevels: [3], riderIds: ['rider-1'], lessonType: 'normal' },
+      injectedClient
+    )
+
+    expect(mockRpc).toHaveBeenCalled()
+  })
+})
+
+describe('getSeriesById', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_the_series_when_found', async () => {
+    const mockMaybeSingle = vi.fn().mockResolvedValue({ data: mockSeries, error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getSeriesById('series-1', 'barn-1')
+
+    expect(result).toEqual(mockSeries)
+  })
+
+  it('should_return_null_when_not_found', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }) }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getSeriesById('series-missing', 'barn-1')
+
+    expect(result).toBeNull()
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null, error: new Error('db error') }) }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getSeriesById('series-1', 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_scope_lookup_by_series_id_and_barn_id', async () => {
+    const mockEq2 = vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: mockSeries, error: null }) })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: mockEq1 }),
+      }),
+    } as any)
+
+    await getSeriesById('series-1', 'barn-1')
+
+    expect(mockEq1).toHaveBeenCalledWith('id', 'series-1')
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+})
+
+describe('stopLessonSeries', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeChain(error: Error | null = null) {
+    const mockEq2 = vi.fn().mockResolvedValue({ error })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq1 })
+    return { update: mockUpdate, mockUpdate, mockEq1, mockEq2 }
+  }
+
+  it('should_set_is_active_false', async () => {
+    const { update, mockUpdate } = makeChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await stopLessonSeries('series-1', 'barn-1')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ is_active: false })
+  })
+
+  it('should_scope_update_by_series_id_and_barn_id', async () => {
+    const { update, mockEq1, mockEq2 } = makeChain()
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await stopLessonSeries('series-1', 'barn-1')
+
+    expect(mockEq1).toHaveBeenCalledWith('id', 'series-1')
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { update } = makeChain(new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await expect(stopLessonSeries('series-1', 'barn-1')).rejects.toThrow('db error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const { update } = makeChain()
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await stopLessonSeries('series-1', 'barn-1', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    const { update, mockUpdate } = makeChain()
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await stopLessonSeries('series-1', 'barn-1', injectedClient)
+
+    expect(mockUpdate).toHaveBeenCalled()
+  })
+})
+
+describe('generateNextLessonForSeries', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_rpc_with_correct_parameters', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z')
+
+    expect(mockRpc).toHaveBeenCalledWith('generate_lesson_for_series', {
+      p_series_id: 'series-1',
+      p_barn_id: 'barn-1',
+      p_lesson_at: '2026-05-23T10:00:00Z',
+    })
+  })
+
+  it('should_return_the_created_lesson', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }),
+    } as any)
+
+    const result = await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z')
+
+    expect(result).toEqual(mockLesson)
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: new Error('rpc error') }),
+    } as any)
+
+    await expect(
+      generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z')
+    ).rejects.toThrow('rpc error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const injectedClient = { rpc: vi.fn().mockResolvedValue({ data: mockLesson, error: null }) } as any
+
+    await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    const injectedClient = { rpc: mockRpc } as any
+
+    await generateNextLessonForSeries('series-1', 'barn-1', '2026-05-23T10:00:00Z', injectedClient)
+
+    expect(mockRpc).toHaveBeenCalled()
+  })
+})

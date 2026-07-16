@@ -41,18 +41,19 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import GuidePage from '../page'
+import { createMockBarn, createMockMembership } from '@/test/fixtures'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' })
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
-const mockManagerMembership = {
+const mockManagerMembership = createMockMembership({
   id: 'mem-mgr',
   user_id: 'user-1',
   barn_id: 'barn-1',
   role: 'manager' as const,
   status: 'active' as const,
   created_at: '',
-}
+})
 
 const mockTrainerMembership = {
   ...mockManagerMembership,

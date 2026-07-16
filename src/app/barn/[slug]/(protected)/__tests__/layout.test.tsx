@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { render, screen, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
@@ -21,6 +21,8 @@ vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
   redirect: mockRedirect,
   useRouter: () => ({ refresh: vi.fn() }),
+  usePathname: () => '/barn/test-barn',
+  useSearchParams: () => new URLSearchParams(''),
 }))
 
 vi.mock('@/lib/db/auth', () => ({
@@ -50,36 +52,37 @@ import { getUserMembership, getBarnMembershipsForUser } from '@/lib/db/barn-memb
 import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getNotifications } from '@/lib/db/notifications'
 import ProtectedBarnLayout, { generateMetadata } from '../layout'
+import { createMockBarn, createMockMembership, createMockProfile } from '@/test/fixtures'
 
-const mockBarn = { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '' }
+const mockBarn = createMockBarn({ id: 'barn-1', name: 'Green Acres', slug: 'green-acres', default_instructor_cut: 25, created_at: '' })
 const mockUser = { id: 'user-1', email: 'user@example.com' }
 
-const mockManagerMembership = {
+const mockManagerMembership = createMockMembership({
   id: 'mem-mgr',
   user_id: 'user-1',
   barn_id: 'barn-1',
   role: 'manager' as const,
   status: 'active' as const,
   created_at: '',
-}
+})
 
-const mockTrainerMembership = {
+const mockTrainerMembership = createMockMembership({
   id: 'mem-trn',
   user_id: 'user-1',
   barn_id: 'barn-1',
   role: 'trainer' as const,
   status: 'active' as const,
   created_at: '',
-}
+})
 
-const mockRiderMembership = {
+const mockRiderMembership = createMockMembership({
   id: 'mem-rdr',
   user_id: 'user-1',
   barn_id: 'barn-1',
   role: 'rider' as const,
   status: 'active' as const,
   created_at: '',
-}
+})
 
 function setupAuth(user: typeof mockUser | null = mockUser) {
   vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
@@ -88,16 +91,14 @@ function setupAuth(user: typeof mockUser | null = mockUser) {
 const children = <div data-testid="child">content</div>
 const params = Promise.resolve({ slug: 'green-acres' })
 
-const mockProfile = {
+const mockProfile = createMockProfile({
   id: 'profile-1',
   user_id: 'user-1',
   email: 'user@example.com',
   first_name: 'Jane',
   last_name: 'Doe',
-  barn_id: null,
-  role: null,
   created_at: '',
-}
+})
 
 const mockMembershipEntry = { barn: mockBarn, membership: mockManagerMembership }
 
@@ -242,6 +243,32 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.queryByRole('link', { name: 'Manage Horses' })).toBeNull()
   })
 
+  it('should_render_leases_link_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /leases/i })).toBeDefined()
+  })
+
+  it('should_render_leases_link_pointing_to_agreements_kind_lease_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /leases/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/agreements\?kind=lease$/)
+  })
+
+  it('should_render_boarding_link_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /boarding/i })).toBeDefined()
+  })
+
+  it('should_render_boarding_link_pointing_to_agreements_kind_board_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /boarding/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/agreements\?kind=board$/)
+  })
+
   it('should_render_members_link_for_manager', async () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
@@ -253,6 +280,27 @@ describe('ProtectedBarnLayout - nav links', () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
     expect(screen.getByRole('link', { name: /finances/i })).toBeDefined()
+  })
+
+  it('should_render_expenses_link_for_manager', async () => {
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Expenses' })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/expenses$/)
+  })
+
+  it('should_not_render_expenses_link_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: 'Expenses' })).toBeNull()
+  })
+
+  it('should_not_render_expenses_link_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: 'Expenses' })).toBeNull()
   })
 
   it('should_not_render_approvals_link_for_manager', async () => {
@@ -304,11 +352,12 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members$/)
   })
 
-  it('should_not_render_members_link_for_rider', async () => {
+  it('should_render_members_link_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
-    expect(screen.queryByRole('link', { name: /members/i })).toBeNull()
+    const link = screen.getByRole('link', { name: /members/i })
+    expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/members$/)
   })
 
   it('should_render_horses_overview_link_for_trainer', async () => {
@@ -330,6 +379,20 @@ describe('ProtectedBarnLayout - nav links', () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
     expect(screen.queryByRole('link', { name: 'Manage Horses' })).toBeNull()
+  })
+
+  it('should_not_render_leases_link_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /leases/i })).toBeNull()
+  })
+
+  it('should_not_render_boarding_link_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /boarding/i })).toBeNull()
   })
 
   it('should_not_render_finances_link_for_trainer', async () => {
@@ -381,6 +444,20 @@ describe('ProtectedBarnLayout - nav links', () => {
     expect(screen.queryByRole('link', { name: 'Manage Horses' })).toBeNull()
   })
 
+  it('should_not_render_leases_link_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /leases/i })).toBeNull()
+  })
+
+  it('should_not_render_boarding_link_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /boarding/i })).toBeNull()
+  })
+
   it('should_not_render_finances_link_for_rider', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
     const jsx = await ProtectedBarnLayout({ children, params })
@@ -430,7 +507,7 @@ describe('ProtectedBarnLayout - UserMenu', () => {
 
   it('should_show_barn_switcher_caret_when_user_has_multiple_active_memberships', async () => {
     const secondMembership = {
-      barn: { id: 'barn-2', name: 'Other Barn', slug: 'other-barn', created_at: '' },
+      barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', default_instructor_cut: 25, created_at: '' }),
       membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'active' as const },
     }
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, secondMembership])
@@ -448,7 +525,7 @@ describe('ProtectedBarnLayout - UserMenu', () => {
 
   it('should_not_show_barn_switcher_caret_when_second_membership_is_pending', async () => {
     const pendingMembership = {
-      barn: { id: 'barn-2', name: 'Other Barn', slug: 'other-barn', created_at: '' },
+      barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', default_instructor_cut: 25, created_at: '' }),
       membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'pending' as const },
     }
     vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, pendingMembership])

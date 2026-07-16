@@ -38,6 +38,18 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
   return data
 }
 
+export async function getProfileById(profileId: string): Promise<Profile | null> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('profiles')
+    .select('*')
+    .eq('id', profileId)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
 export async function updateProfile(
   profileId: string,
   fields: {
@@ -63,9 +75,10 @@ export async function updateContactInfo(
     phone?: string | null
     emergency_contact_name?: string | null
     emergency_contact_phone?: string | null
-  }
+  },
+  client?: SupabaseClient
 ): Promise<void> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   const { error } = await supabase
     .from('profiles')
     .update(fields)

@@ -1,0 +1,54 @@
+import { requireMembership } from '@/lib/auth/guard'
+import { getExpensesByBarn } from '@/lib/db/expenses'
+import { Button } from '@/components/ui/Button'
+import { EmptyState } from '@/components/EmptyState'
+import { ExpenseCard } from './ExpenseCard'
+import { OlderExpensesToggle } from './OlderExpensesToggle'
+
+const OLDER_EXPENSE_CUTOFF_DAYS = 7
+
+export default async function ExpensesPage({
+  params,
+}: {
+  params: Promise<{ slug: string }>
+}) {
+  const { slug } = await params
+  const { barn } = await requireMembership(slug, ['manager'])
+
+  const expenses = await getExpensesByBarn(barn.id)
+
+  const cutoff = new Date()
+  cutoff.setDate(cutoff.getDate() - OLDER_EXPENSE_CUTOFF_DAYS)
+  const recentExpenses = expenses.filter((e) => new Date(`${e.expense_date}T00:00:00Z`) >= cutoff)
+  const olderExpenses = expenses.filter((e) => new Date(`${e.expense_date}T00:00:00Z`) < cutoff)
+
+  return (
+    <main className="mx-auto max-w-3xl px-4 py-12">
+      <div className="mb-8 flex items-center justify-between">
+        <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          Expenses
+        </h1>
+        <Button href={`/barn/${slug}/expenses/new`}>Add Expense</Button>
+      </div>
+
+      {expenses.length === 0 ? (
+        <EmptyState
+          heading="No expenses yet"
+          subtext="Expenses you record will appear here."
+          cta={{ label: 'Add Expense', href: `/barn/${slug}/expenses/new` }}
+        />
+      ) : (
+        <>
+          {recentExpenses.length > 0 && (
+            <div className="mt-6 flex flex-col gap-2">
+              {recentExpenses.map((expense) => (
+                <ExpenseCard key={expense.id} expense={expense} slug={slug} />
+              ))}
+            </div>
+          )}
+          <OlderExpensesToggle expenses={olderExpenses} slug={slug} />
+        </>
+      )}
+    </main>
+  )
+}

@@ -1,11 +1,12 @@
 import { notFound, redirect } from 'next/navigation'
-import Link from 'next/link'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { EmptyState } from '@/components/EmptyState'
-import { ManagedRiderRow } from './ManagedRiderRow'
+import { Card } from '@/components/ui/Card'
+import { Button } from '@/components/ui/Button'
+import { Badge } from '@/components/ui/Badge'
 import { createManagedMemberAction } from './actions'
 
 export default async function MembersPage({
@@ -26,20 +27,14 @@ export default async function MembersPage({
   const profile = await getProfileByUserId(user.id)
   const youName = profile ? `${profile.first_name} ${profile.last_name}` : (user.email ?? 'You')
 
-  let managers: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
-  let trainers: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
-  let riders: { membershipId: string; userId: string | null; name: string; isManaged: boolean; inviteToken: string | null }[] = []
-
-  if (membership.role === 'manager') {
-    ;[managers, trainers, riders] = await Promise.all([
-      getActiveMembersWithProfiles(barn.id, 'manager'),
-      getActiveMembersWithProfiles(barn.id, 'trainer'),
-      getActiveMembersWithProfiles(barn.id, 'rider'),
-    ])
-    managers = managers.filter((m) => m.membershipId !== membership.id)
-  } else if (membership.role === 'trainer') {
-    riders = await getActiveMembersWithProfiles(barn.id, 'rider')
-  }
+  let [managers, trainers, riders] = await Promise.all([
+    getActiveMembersWithProfiles(barn.id, 'manager'),
+    getActiveMembersWithProfiles(barn.id, 'trainer'),
+    getActiveMembersWithProfiles(barn.id, 'rider'),
+  ])
+  managers = managers.filter((m) => m.membershipId !== membership.id)
+  trainers = trainers.filter((m) => m.membershipId !== membership.id)
+  riders = riders.filter((m) => m.membershipId !== membership.id)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -48,134 +43,131 @@ export default async function MembersPage({
       </h1>
 
       <section className="mb-10">
-        <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
           You
         </h2>
-        <Link
+        <Card
           href={`/barn/${slug}/members/${membership.id}`}
-          className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
+          className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
         >
           {youName}
-        </Link>
+        </Card>
       </section>
 
-      {membership.role === 'manager' && (
-        <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Managers
-          </h2>
-          {managers.length > 0 ? (
-            <ul className="space-y-2">
-              {managers.map((m) => (
-                <li key={m.membershipId}>
-                  <Link
-                    href={`/barn/${slug}/members/${m.membershipId}`}
-                    className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    {m.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState
-              heading="No managers yet"
-              subtext="Other managers will appear here once they join."
-            />
-          )}
-        </section>
-      )}
+      <section className="mb-10">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Managers
+        </h2>
+        {managers.length > 0 ? (
+          <ul className="space-y-2">
+            {managers.map((m) => (
+              <li key={m.membershipId}>
+                <Card
+                  href={`/barn/${slug}/members/${m.membershipId}`}
+                  className="px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
+                >
+                  {m.name}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            heading="No managers yet"
+            subtext="Other managers will appear here once they join."
+          />
+        )}
+      </section>
 
-      {membership.role === 'manager' && (
-        <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Trainers
-          </h2>
-          {trainers.length > 0 ? (
-            <ul className="space-y-2">
-              {trainers.map((t) => (
-                <li key={t.membershipId}>
-                  <Link
-                    href={`/barn/${slug}/members/${t.membershipId}`}
-                    className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    {t.name}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState
-              heading="No trainers yet"
-              subtext="Trainers can request access using the invite link in Manage Barn."
+      <section className="mb-10">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Trainers
+        </h2>
+        {membership.role === 'manager' && (
+          <form action={createManagedMemberAction.bind(null, slug, 'trainer')} className="mb-4 flex items-center gap-2">
+            <input
+              name="first_name"
+              required
+              placeholder="First name"
+              className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
-          )}
-        </section>
-      )}
+            <input
+              name="last_name"
+              required
+              placeholder="Last name"
+              className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+            <Button type="submit">Add Trainer</Button>
+          </form>
+        )}
+        {trainers.length > 0 ? (
+          <ul className="space-y-2">
+            {trainers.map((t) => (
+              <li key={t.membershipId}>
+                <Card
+                  href={`/barn/${slug}/members/${t.membershipId}`}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
+                >
+                  {t.name}
+                  {t.isManaged && membership.role === 'manager' && <Badge tone="amber">Unlinked</Badge>}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            heading="No trainers yet"
+            subtext="Add a trainer above, or share the invite link from Manage Barn."
+          />
+        )}
+      </section>
 
-      {(membership.role === 'manager' || membership.role === 'trainer') && (
-        <section className="mb-10">
-          <h2 className="mb-3 text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-            Riders
-          </h2>
-          {membership.role === 'manager' && (
-            <form action={createManagedMemberAction.bind(null, slug)} className="mb-4 flex items-center gap-2">
-              <input
-                name="first_name"
-                required
-                placeholder="First name"
-                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-              <input
-                name="last_name"
-                required
-                placeholder="Last name"
-                className="min-h-[44px] rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
-              />
-              <button
-                type="submit"
-                className="flex min-h-[44px] items-center rounded bg-zinc-900 px-3 text-sm font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-              >
-                Add Rider
-              </button>
-            </form>
-          )}
-          {riders.length > 0 ? (
-            <ul className="space-y-2">
-              {riders.map((r) =>
-                r.isManaged && r.inviteToken ? (
-                  <li key={r.membershipId}>
-                    <ManagedRiderRow
-                      name={r.name}
-                      barnSlug={slug}
-                      membershipId={r.membershipId}
-                      inviteToken={r.inviteToken}
-                    />
-                  </li>
-                ) : (
-                  <li key={r.membershipId}>
-                    <Link
-                      href={`/barn/${slug}/members/${r.membershipId}`}
-                      className="block rounded-lg border border-zinc-200 px-4 py-3 text-sm font-medium text-zinc-900 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-50 dark:hover:bg-zinc-800"
-                    >
-                      {r.name}
-                    </Link>
-                  </li>
-                )
-              )}
-            </ul>
-          ) : (
-            <EmptyState
-              heading="No riders yet"
-              subtext={
-                membership.role === 'manager'
-                  ? 'Add a rider above, or share the invite link from Manage Barn.'
-                  : 'Riders can request access using the invite link in Manage Barn.'
-              }
+      <section className="mb-10">
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Riders
+        </h2>
+        {membership.role === 'manager' && (
+          <form action={createManagedMemberAction.bind(null, slug, 'rider')} className="mb-4 flex items-center gap-2">
+            <input
+              name="first_name"
+              required
+              placeholder="First name"
+              className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
             />
-          )}
-        </section>
-      )}
+            <input
+              name="last_name"
+              required
+              placeholder="Last name"
+              className="min-h-11 rounded border border-zinc-200 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-50"
+            />
+            <Button type="submit">Add Rider</Button>
+          </form>
+        )}
+        {riders.length > 0 ? (
+          <ul className="space-y-2">
+            {riders.map((r) => (
+              <li key={r.membershipId}>
+                <Card
+                  href={`/barn/${slug}/members/${r.membershipId}`}
+                  className="flex items-center gap-2 px-4 py-3 text-sm font-medium text-zinc-900 dark:text-zinc-50"
+                >
+                  {r.name}
+                  {r.isManaged && membership.role === 'manager' && <Badge tone="amber">Unlinked</Badge>}
+                </Card>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <EmptyState
+            heading="No riders yet"
+            subtext={
+              membership.role === 'manager'
+                ? 'Add a rider above, or share the invite link from Manage Barn.'
+                : 'Riders can request access using the invite link in Manage Barn.'
+            }
+          />
+        )}
+      </section>
     </main>
   )
 }

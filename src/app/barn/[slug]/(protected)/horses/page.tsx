@@ -2,10 +2,14 @@ import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, resolveExhaustionThresholds } from '@/lib/db/horses'
+import type { HorseExertionSummary } from '@/lib/db/types'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
 import { EmptyState } from '@/components/EmptyState'
+import { Button } from '@/components/ui/Button'
+
+type HorseCardData = Pick<HorseExertionSummary, 'id' | 'name' | 'is_active' | 'is_available' | 'unavailability_reason'>
 
 export default async function HorsesPage({
   params,
@@ -23,16 +27,45 @@ export default async function HorsesPage({
   if (!membership || membership.status !== 'active') notFound()
 
   const isManager = membership.role === 'manager'
+  const isRider = membership.role === 'rider'
 
-  const sevenDaysAgo = new Date()
-  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
-  const horses = await getHorseExertionSummary(barn.id, sevenDaysAgo)
+  let available: HorseCardData[]
+  let unavailable: HorseCardData[]
+  let inactive: HorseExertionSummary[] = []
+  let exhaustionByHorseId = new Map<
+    string,
+    { existingRows: Awaited<ReturnType<typeof getHorseProjectedExhaustion>>; thresholds: ReturnType<typeof resolveExhaustionThresholds> }
+  >()
 
-  const available = horses
-    .filter((h) => h.is_active && h.is_available)
-    .sort((a, b) => a.totalExertion - b.totalExertion)
-  const unavailable = horses.filter((h) => h.is_active && !h.is_available)
-  const inactive = horses.filter((h) => !h.is_active)
+  if (isRider) {
+    // Riders never get exertion/exhaustion data, not even via the RPC — see #765.
+    const horses = await getHorsesByBarn(barn.id)
+    available = horses.filter((h) => h.is_available)
+    unavailable = horses.filter((h) => !h.is_available)
+  } else {
+    const today = new Date()
+    const horses = await getHorseExertionSummary(barn.id, today)
+
+    const availableFull = horses
+      .filter((h) => h.is_active && h.is_available)
+      .sort((a, b) => a.totalExertion - b.totalExertion)
+    const unavailableFull = horses.filter((h) => h.is_active && !h.is_available)
+    available = availableFull
+    unavailable = unavailableFull
+    inactive = horses.filter((h) => !h.is_active)
+
+    const activeHorses = [...availableFull, ...unavailableFull]
+    exhaustionByHorseId = new Map(
+      await Promise.all(
+        activeHorses.map(async (h) => {
+          const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, today)
+          const thresholds = resolveExhaustionThresholds(h, barn)
+          return [h.id, { existingRows, thresholds }] as const
+        })
+      )
+    )
+  }
+
   const allEmpty = available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
 
   return (
@@ -47,12 +80,7 @@ export default async function HorsesPage({
             required
             className="rounded border border-zinc-300 px-2 py-1 text-sm dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
           />
-          <button
-            type="submit"
-            className="rounded bg-zinc-900 px-3 py-1 text-xs font-medium text-white hover:bg-zinc-700 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
-          >
-            Add
-          </button>
+          <Button type="submit">Add</Button>
         </form>
       )}
 
@@ -61,7 +89,14 @@ export default async function HorsesPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Available</h2>
           <div className="flex flex-col gap-2">
             {available.map((horse) => (
-              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="available" />
+              <HorseCard
+                key={horse.id}
+                horse={horse}
+                barnSlug={slug}
+                variant="available"
+                exhaustion={exhaustionByHorseId.get(horse.id)}
+                linkable={!isRider}
+              />
             ))}
           </div>
         </section>
@@ -72,7 +107,14 @@ export default async function HorsesPage({
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Unavailable</h2>
           <div className="flex flex-col gap-2">
             {unavailable.map((horse) => (
-              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="unavailable" />
+              <HorseCard
+                key={horse.id}
+                horse={horse}
+                barnSlug={slug}
+                variant="unavailable"
+                exhaustion={exhaustionByHorseId.get(horse.id)}
+                linkable={!isRider}
+              />
             ))}
           </div>
         </section>

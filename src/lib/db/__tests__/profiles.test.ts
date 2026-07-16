@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { upsertProfile, getProfilesByUserIds, updateContactInfo, getProfileByUserId, updateProfile } from '../profiles'
+import { upsertProfile, getProfilesByUserIds, updateContactInfo, getProfileByUserId, getProfileById, updateProfile } from '../profiles'
 
 const mockProfile = createMockProfile()
 
@@ -245,6 +245,74 @@ describe('getProfileByUserId', () => {
   })
 })
 
+describe('getProfileById', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_profile_when_found', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getProfileById('profile-1')
+
+    expect(result).toEqual(mockProfile)
+  })
+
+  it('should_return_null_when_not_found', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const result = await getProfileById('profile-999')
+
+    expect(result).toBeNull()
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: null, error: dbError }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(getProfileById('profile-1')).rejects.toThrow('query failed')
+  })
+
+  it('should_query_by_id', async () => {
+    const mockEq = vi.fn().mockReturnValue({
+      maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+    })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({ eq: mockEq }),
+      }),
+    } as any)
+
+    await getProfileById('profile-42')
+
+    expect(mockEq).toHaveBeenCalledWith('id', 'profile-42')
+  })
+})
+
 describe('updateProfile', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
@@ -341,5 +409,16 @@ describe('updateContactInfo', () => {
     } as any)
 
     await expect(updateContactInfo('profile-1', { phone: '555-0000' })).rejects.toThrow('update failed')
+  })
+
+  it('should_use_injected_client_without_calling_createClient', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+    const injectedClient = { from: vi.fn().mockReturnValue({ update: mockUpdate }) } as any
+
+    await updateContactInfo('profile-1', { phone: '555-1234' }, injectedClient)
+
+    expect(mockUpdate).toHaveBeenCalledWith({ phone: '555-1234' })
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
   })
 })

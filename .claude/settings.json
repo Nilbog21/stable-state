@@ -12,11 +12,11 @@
   "hooks": {
     "PostToolUse": [
       {
-        "matcher": "",
+        "matcher": "Write|Edit",
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/test-on-save.sh"
+            "command": "bash \"${CLAUDE_PROJECT_DIR}/.claude/hooks/test-on-save.sh\""
           }
         ]
       }

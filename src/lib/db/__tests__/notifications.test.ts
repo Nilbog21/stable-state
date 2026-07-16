@@ -5,29 +5,25 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markNotificationRead, markAllNotificationsRead, getNotifications } from '../notifications'
+import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients } from '../notifications'
 
 describe('createNotification', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
   })
 
-  it('should_call_from_notifications_table', async () => {
-    const mockFrom = vi.fn().mockReturnValue({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-    })
-    vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
+  it('should_call_rpc_create_or_update_notification', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'outstanding_payment', title: 'You have an outstanding payment' })
 
-    expect(mockFrom).toHaveBeenCalledWith('notifications')
+    expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', expect.any(Object))
   })
 
-  it('should_upsert_with_correct_payload', async () => {
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ upsert: mockUpsert }),
-    } as any)
+  it('should_call_rpc_with_correct_payload', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createNotification({
       userId: 'user-1',
@@ -38,40 +34,32 @@ describe('createNotification', () => {
       link: '/barn/test/finances',
     })
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      {
-        user_id: 'user-1',
-        barn_id: 'barn-1',
-        type: 'outstanding_payment',
-        title: 'You have an outstanding payment',
-        body: 'Check finances',
-        link: '/barn/test/finances',
-        read_at: null,
-      },
-      { onConflict: 'user_id,barn_id,type', ignoreDuplicates: false }
-    )
+    expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', {
+      p_user_id: 'user-1',
+      p_barn_id: 'barn-1',
+      p_type: 'outstanding_payment',
+      p_title: 'You have an outstanding payment',
+      p_body: 'Check finances',
+      p_link: '/barn/test/finances',
+    })
   })
 
-  it('should_upsert_with_null_optional_fields_when_omitted', async () => {
-    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ upsert: mockUpsert }),
-    } as any)
+  it('should_call_rpc_with_null_optional_fields_when_omitted', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'Pending approval' })
 
-    expect(mockUpsert).toHaveBeenCalledWith(
-      expect.objectContaining({ body: null, link: null, read_at: null }),
-      expect.any(Object)
+    expect(mockRpc).toHaveBeenCalledWith(
+      'create_or_update_notification',
+      expect.objectContaining({ p_body: null, p_link: null })
     )
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
     const dbError = new Error('insert failed')
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        upsert: vi.fn().mockResolvedValue({ error: dbError }),
-      }),
+      rpc: vi.fn().mockResolvedValue({ error: dbError }),
     } as any)
 
     await expect(
@@ -80,15 +68,173 @@ describe('createNotification', () => {
   })
 
   it('should_use_injected_client_when_provided', async () => {
-    const mockFrom = vi.fn().mockReturnValue({
-      upsert: vi.fn().mockResolvedValue({ error: null }),
-    })
-    const injectedClient = { from: mockFrom } as any
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const injectedClient = { rpc: mockRpc } as any
 
     await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'New request' }, injectedClient)
 
     expect(createClient).not.toHaveBeenCalled()
-    expect(mockFrom).toHaveBeenCalledWith('notifications')
+    expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', expect.any(Object))
+  })
+})
+
+describe('resolveCancellationRecipients', () => {
+  describe('scope: lesson', () => {
+    it('should_include_managers_and_riders_when_trainer_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'trainer',
+        riderUserIds: ['rider-1', 'rider-2'],
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['manager-1', 'rider-1', 'rider-2'])
+    })
+
+    it('should_call_getManagerUserIds_when_trainer_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue([])
+
+      await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'trainer',
+        riderUserIds: [],
+        instructorUserId: null,
+        getManagerUserIds,
+      })
+
+      expect(getManagerUserIds).toHaveBeenCalledTimes(1)
+    })
+
+    it('should_include_instructor_and_riders_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'manager',
+        riderUserIds: ['rider-1'],
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['instructor-1', 'rider-1'])
+    })
+
+    it('should_not_call_getManagerUserIds_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'manager',
+        riderUserIds: [],
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(getManagerUserIds).not.toHaveBeenCalled()
+    })
+
+    it('should_omit_instructor_when_manager_cancels_and_instructor_is_null', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue([])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'lesson',
+        actorRole: 'manager',
+        riderUserIds: ['rider-1'],
+        instructorUserId: null,
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['rider-1'])
+    })
+  })
+
+  describe('scope: rider_participation', () => {
+    it('should_include_instructor_and_managers_when_rider_self_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'rider',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['instructor-1', 'manager-1'])
+    })
+
+    it('should_omit_instructor_when_rider_self_cancels_and_instructor_is_null', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'rider',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: null,
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['manager-1'])
+    })
+
+    it('should_include_affected_rider_and_managers_when_trainer_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'trainer',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['rider-1', 'manager-1'])
+    })
+
+    it('should_include_only_affected_rider_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'manager',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual(['rider-1'])
+    })
+
+    it('should_not_call_getManagerUserIds_when_manager_cancels', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue(['manager-1'])
+
+      await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'manager',
+        affectedRiderUserId: 'rider-1',
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(getManagerUserIds).not.toHaveBeenCalled()
+    })
+
+    it('should_return_empty_array_when_manager_cancels_and_affected_rider_is_null', async () => {
+      const getManagerUserIds = vi.fn().mockResolvedValue([])
+
+      const result = await resolveCancellationRecipients({
+        scope: 'rider_participation',
+        actorRole: 'manager',
+        affectedRiderUserId: null,
+        instructorUserId: 'instructor-1',
+        getManagerUserIds,
+      })
+
+      expect(result).toEqual([])
+    })
   })
 })
 
@@ -149,48 +295,15 @@ describe('deleteNotificationByType', () => {
 
     await expect(deleteNotificationByType('user-1', 'barn-1', 'incomplete_profile')).rejects.toThrow('delete failed')
   })
-})
 
-describe('markNotificationRead', () => {
-  beforeEach(() => {
-    vi.mocked(createClient).mockReset()
-  })
+  it('should_use_injected_client_when_provided', async () => {
+    const { mockFrom } = makeChain({ error: null })
+    const injectedClient = { from: mockFrom } as any
 
-  it('should_update_read_at_for_notification', async () => {
-    const mockEq = vi.fn().mockResolvedValue({ error: null })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
+    await deleteNotificationByType('user-1', 'barn-1', 'incomplete_profile', injectedClient)
 
-    await markNotificationRead('notif-1')
-
-    expect(mockUpdate).toHaveBeenCalledWith({ read_at: expect.any(String) })
-  })
-
-  it('should_filter_by_notification_id', async () => {
-    const mockEq = vi.fn().mockResolvedValue({ error: null })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
-
-    await markNotificationRead('notif-99')
-
-    expect(mockEq).toHaveBeenCalledWith('id', 'notif-99')
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('update failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: dbError }),
-        }),
-      }),
-    } as any)
-
-    await expect(markNotificationRead('notif-1')).rejects.toThrow('update failed')
+    expect(createClient).not.toHaveBeenCalled()
+    expect(mockFrom).toHaveBeenCalledWith('notifications')
   })
 })
 
@@ -270,6 +383,196 @@ describe('markAllNotificationsRead', () => {
     } as any)
 
     await expect(markAllNotificationsRead('user-1', 'barn-1')).rejects.toThrow('bulk update failed')
+  })
+})
+
+describe('upsertNotification', () => {
+  it('should_upsert_with_correct_payload_and_conflict_target', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+
+    await upsertNotification(client, {
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'outstanding_payment',
+      title: 'Overdue',
+      body: 'You have an outstanding payment',
+      link: '/barn/test/finances',
+    })
+
+    expect(client.from).toHaveBeenCalledWith('notifications')
+    expect(mockUpsert).toHaveBeenCalledWith(
+      {
+        user_id: 'user-1',
+        barn_id: 'barn-1',
+        type: 'outstanding_payment',
+        title: 'Overdue',
+        body: 'You have an outstanding payment',
+        link: '/barn/test/finances',
+        read_at: null,
+      },
+      { onConflict: 'user_id,barn_id,type' }
+    )
+  })
+
+  it('should_throw_when_upsert_returns_error', async () => {
+    const dbError = new Error('upsert failed')
+    const client = { from: vi.fn().mockReturnValue({ upsert: vi.fn().mockResolvedValue({ error: dbError }) }) } as any
+
+    await expect(
+      upsertNotification(client, {
+        userId: 'user-1',
+        barnId: 'barn-1',
+        type: 'outstanding_payment',
+        title: 'Overdue',
+        body: 'You have an outstanding payment',
+        link: '/barn/test/finances',
+      })
+    ).rejects.toThrow('upsert failed')
+  })
+})
+
+describe('upsertNotificationsForRecipients', () => {
+  it('should_upsert_once_per_recipient_in_map', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: 2 }],
+      ['user-2:barn-1', { userId: 'user-2', barnId: 'barn-1', payload: 1 }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client,
+      recipients,
+      (count: number) => ({ title: `${count} stopped`, body: `${count} series stopped` }),
+      'recurring_series_stopped',
+      () => '/barn/test/lessons'
+    )
+
+    expect(mockUpsert).toHaveBeenCalledTimes(2)
+  })
+
+  it('should_pass_formatter_output_as_title_and_body', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: { count: 3, total: 450 } }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client,
+      recipients,
+      ({ count, total }: { count: number; total: number }) => ({ title: `${count} outstanding`, body: `$${total} total` }),
+      'outstanding_payment',
+      () => '/barn/test/finances/outstanding'
+    )
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ title: '3 outstanding', body: '$450 total' }),
+      expect.any(Object)
+    )
+  })
+
+  it('should_generate_link_via_linkForBarn_callback', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-42', { userId: 'user-1', barnId: 'barn-42', payload: 1 }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client,
+      recipients,
+      () => ({ title: 't', body: 'b' }),
+      'recurring_series_stopped',
+      (barnId: string) => `/barn/${barnId}/lessons`
+    )
+
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ link: '/barn/barn-42/lessons' }),
+      expect.any(Object)
+    )
+  })
+
+  it('should_continue_processing_remaining_recipients_when_one_fails', async () => {
+    const mockUpsert = vi.fn()
+      .mockResolvedValueOnce({ error: new Error('boom') })
+      .mockResolvedValueOnce({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: 1 }],
+      ['user-2:barn-1', { userId: 'user-2', barnId: 'barn-1', payload: 1 }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'recurring_series_stopped', () => '/link'
+    )
+
+    expect(mockUpsert).toHaveBeenCalledTimes(2)
+  })
+
+  it('should_return_count_of_failed_upserts', async () => {
+    const mockUpsert = vi.fn()
+      .mockResolvedValueOnce({ error: new Error('boom') })
+      .mockResolvedValueOnce({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: 1 }],
+      ['user-2:barn-1', { userId: 'user-2', barnId: 'barn-1', payload: 1 }],
+    ])
+
+    const errorCount = await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'recurring_series_stopped', () => '/link'
+    )
+
+    expect(errorCount).toBe(1)
+  })
+
+  it('should_return_zero_when_map_is_empty', async () => {
+    const client = { from: vi.fn() } as any
+
+    const errorCount = await upsertNotificationsForRecipients(
+      client, new Map(), () => ({ title: 't', body: 'b' }), 'recurring_series_stopped', () => '/link'
+    )
+
+    expect(errorCount).toBe(0)
+  })
+
+  it('should_call_custom_send_function_with_recipient_params_when_provided', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const customSend = vi.fn().mockResolvedValue(undefined)
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: undefined }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'lesson_cancelled', () => '/link', customSend
+    )
+
+    expect(customSend).toHaveBeenCalledWith(client, {
+      userId: 'user-1',
+      barnId: 'barn-1',
+      type: 'lesson_cancelled',
+      title: 't',
+      body: 'b',
+      link: '/link',
+    })
+  })
+
+  it('should_not_call_default_upsert_when_custom_send_function_is_provided', async () => {
+    const mockUpsert = vi.fn().mockResolvedValue({ error: null })
+    const client = { from: vi.fn().mockReturnValue({ upsert: mockUpsert }) } as any
+    const customSend = vi.fn().mockResolvedValue(undefined)
+    const recipients = new Map([
+      ['user-1:barn-1', { userId: 'user-1', barnId: 'barn-1', payload: undefined }],
+    ])
+
+    await upsertNotificationsForRecipients(
+      client, recipients, () => ({ title: 't', body: 'b' }), 'lesson_cancelled', () => '/link', customSend
+    )
+
+    expect(mockUpsert).not.toHaveBeenCalled()
   })
 })
 

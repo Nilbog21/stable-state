@@ -1,12 +1,14 @@
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships, claimManagedMember } from '@/lib/db/barn-memberships'
-import { activateSeededAccount } from '@/lib/db/seeded-accounts'
+import { getUserMembership, getBarnMembershipsForUser, getActiveMemberships } from '@/lib/db/barn-memberships'
+import { claimManagedMember } from '@/lib/db/member-invites'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getProfileByUserId, getProfilesByUserIds } from '@/lib/db/profiles'
 import { createNotification, deleteNotificationByType } from '@/lib/db/notifications'
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { REMEMBER_ME_MAX_AGE } from '@/lib/supabase/cookie-options'
+import { isProfileIncomplete } from '@/lib/contact-info'
 import type { Barn, BarnMembership, Profile } from '@/lib/db/types'
 
 async function generateLoginNotifications(
@@ -14,7 +16,7 @@ async function generateLoginNotifications(
   activeMemberships: Array<{ barn: Barn; membership: BarnMembership }>,
   profile: Profile | null
 ): Promise<void> {
-  const profileIncomplete = !profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone
+  const profileIncomplete = isProfileIncomplete(profile)
 
   await Promise.all(activeMemberships.map(async ({ barn, membership }) => {
     if (profileIncomplete) {
@@ -36,9 +38,7 @@ async function generateLoginNotifications(
       let hasIncomplete = false
       if (otherIds.length > 0) {
         const memberProfiles = await getProfilesByUserIds(otherIds)
-        hasIncomplete = memberProfiles.some(
-          p => !p.phone || !p.emergency_contact_name || !p.emergency_contact_phone
-        )
+        hasIncomplete = memberProfiles.some(p => isProfileIncomplete(p))
       }
       if (hasIncomplete) {
         await createNotification({
@@ -59,6 +59,27 @@ export async function GET(request: NextRequest) {
   const code = searchParams.get('code')
   const barnSlug = searchParams.get('barn')
   const inviteToken = searchParams.get('token')
+  const remember = request.cookies?.get('remember_me')?.value
+
+  // remember_me is single-use: cleared on every normal return via redirect() below.
+  // An unhandled throw skips this, but the cookie's own 5-minute TTL covers that case.
+  const redirect = (url: string) => {
+    const response = NextResponse.redirect(url)
+    if (remember !== undefined) {
+      response.cookies.set('remember_me', '', { maxAge: 0, path: '/' })
+    }
+    return response
+  }
+
+  const setBarnSession = (response: NextResponse, slug: string, userId: string) => {
+    response.cookies.set(`barn_session_${slug}`, userId, {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: process.env.NODE_ENV === 'production',
+      path: `/barn/${slug}/`,
+      ...(remember === '1' ? { maxAge: REMEMBER_ME_MAX_AGE } : {}),
+    })
+  }
 
   if (code) {
     const supabase = await createClient()
@@ -71,22 +92,14 @@ export async function GET(request: NextRequest) {
           await claimManagedMember(inviteToken, user.id, user.email ?? null)
         } catch {
           const base = barnSlug ? `${origin}/barn/${barnSlug}/login` : `${origin}/login`
-          return NextResponse.redirect(`${base}?error=invite_claim_failed`)
-        }
-      }
-
-      if (user?.email) {
-        try {
-          await activateSeededAccount(user.id, user.email)
-        } catch {
-          // transient DB error — activation will retry on next sign-in
+          return redirect(`${base}?error=invite_claim_failed`)
         }
       }
 
       if (barnSlug) {
         const barn = await getBarnBySlug(barnSlug)
         if (!barn) {
-          return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
+          return redirect(`${origin}/login?error=auth_callback_failed`)
         }
 
         const membership = user
@@ -94,25 +107,20 @@ export async function GET(request: NextRequest) {
           : null
 
         if (!membership) {
-          return NextResponse.redirect(`${origin}/barn/${barnSlug}/register`)
+          return redirect(`${origin}/barn/${barnSlug}/register`)
         }
 
         if (membership.status === 'pending') {
-          return NextResponse.redirect(`${origin}/barn/${barnSlug}/pending`)
+          return redirect(`${origin}/barn/${barnSlug}/pending`)
         }
 
         if (user) {
           try {
             const profile = await getProfileByUserId(user.id)
             await generateLoginNotifications(user.id, [{ barn, membership }], profile).catch(() => {})
-            if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
-              const response = NextResponse.redirect(`${origin}/profile/complete?barn=${barnSlug}`)
-              response.cookies.set(`barn_session_${barnSlug}`, user.id, {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: process.env.NODE_ENV === 'production',
-                path: `/barn/${barnSlug}/`,
-              })
+            if (isProfileIncomplete(profile)) {
+              const response = redirect(`${origin}/profile/complete?barn=${barnSlug}`)
+              setBarnSession(response, barnSlug, user.id)
               return response
             }
           } catch {
@@ -120,13 +128,8 @@ export async function GET(request: NextRequest) {
           }
         }
 
-        const response = NextResponse.redirect(`${origin}/barn/${barnSlug}/`)
-        response.cookies.set(`barn_session_${barnSlug}`, user!.id, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          path: `/barn/${barnSlug}/`,
-        })
+        const response = redirect(`${origin}/barn/${barnSlug}/`)
+        setBarnSession(response, barnSlug, user!.id)
         return response
       }
 
@@ -141,16 +144,11 @@ export async function GET(request: NextRequest) {
         try {
           const profile = await getProfileByUserId(user.id)
           await generateLoginNotifications(user.id, active, profile).catch(() => {})
-          if (!profile?.phone || !profile?.emergency_contact_name || !profile?.emergency_contact_phone) {
+          if (isProfileIncomplete(profile)) {
             const barnParam = active.length === 1 ? `?barn=${active[0].barn.slug}` : ''
-            const response = NextResponse.redirect(`${origin}/profile/complete${barnParam}`)
+            const response = redirect(`${origin}/profile/complete${barnParam}`)
             for (const { barn } of active) {
-              response.cookies.set(`barn_session_${barn.slug}`, user.id, {
-                httpOnly: true,
-                sameSite: 'lax',
-                secure: process.env.NODE_ENV === 'production',
-                path: `/barn/${barn.slug}/`,
-              })
+              setBarnSession(response, barn.slug, user.id)
             }
             return response
           }
@@ -161,36 +159,26 @@ export async function GET(request: NextRequest) {
 
       if (active.length === 1) {
         const slug = active[0].barn.slug
-        const response = NextResponse.redirect(`${origin}/barn/${slug}`)
-        response.cookies.set(`barn_session_${slug}`, user!.id, {
-          httpOnly: true,
-          sameSite: 'lax',
-          secure: process.env.NODE_ENV === 'production',
-          path: `/barn/${slug}/`,
-        })
+        const response = redirect(`${origin}/barn/${slug}`)
+        setBarnSession(response, slug, user!.id)
         return response
       }
       if (active.length > 1) {
-        const response = NextResponse.redirect(`${origin}/barns`)
+        const response = redirect(`${origin}/barns`)
         for (const { barn } of active) {
-          response.cookies.set(`barn_session_${barn.slug}`, user!.id, {
-            httpOnly: true,
-            sameSite: 'lax',
-            secure: process.env.NODE_ENV === 'production',
-            path: `/barn/${barn.slug}/`,
-          })
+          setBarnSession(response, barn.slug, user!.id)
         }
         return response
       }
       if (pending.length === 1) {
-        return NextResponse.redirect(`${origin}/barn/${pending[0].barn.slug}/pending`)
+        return redirect(`${origin}/barn/${pending[0].barn.slug}/pending`)
       }
       if (pending.length > 1) {
-        return NextResponse.redirect(`${origin}/barns`)
+        return redirect(`${origin}/barns`)
       }
-      return NextResponse.redirect(`${origin}/login?no_barns=true`)
+      return redirect(`${origin}/login?no_barns=true`)
     }
   }
 
-  return NextResponse.redirect(`${origin}/login?error=auth_callback_failed`)
+  return redirect(`${origin}/login?error=auth_callback_failed`)
 }

@@ -14,11 +14,16 @@ import type { LessonWithDetails } from '@/lib/db/types'
 function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
   return {
     ...createMockLesson(),
+    payment_type: null,
     instructor_name: 'Jane Smith',
     horse_names: ['Thunderbolt'],
+    horse_ids: ['horse-1'],
     horse_count: 1,
     rider_names: ['Alice'],
+    rider_ids: ['rider-mem-1'],
     rider_count: 1,
+    rider_cancelled_ats: [null],
+    needs_attention: false,
     ...overrides,
   }
 }
@@ -83,5 +88,111 @@ describe('UpcomingLessonCard', () => {
     render(<UpcomingLessonCard lesson={makeLesson({ id: 'lesson-123' })} role="manager" slug="green-acres" />)
     const link = screen.getByRole('link') as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/lessons/lesson-123')
+  })
+
+  it('should_show_cancelled_badge_when_cancelled_at_is_set', () => {
+    render(<UpcomingLessonCard lesson={makeLesson({ cancelled_at: '2026-01-01T00:00:00Z' })} role="manager" slug="green-acres" />)
+    expect(screen.getByText('Cancelled')).toBeDefined()
+  })
+
+  it('should_not_show_cancelled_badge_when_cancelled_at_is_null', () => {
+    render(<UpcomingLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
+    expect(screen.queryByText('Cancelled')).toBeNull()
+  })
+
+  it('should_show_cancelled_badge_when_own_participation_cancelled_for_rider', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] })}
+        role="rider"
+        slug="green-acres"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.getByText('Cancelled')).toBeDefined()
+  })
+
+  it('should_not_show_participation_badge_for_manager_or_trainer_role', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] })}
+        role="manager"
+        slug="green-acres"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.queryByText('Cancelled')).toBeNull()
+  })
+
+  it('should_not_duplicate_badge_when_whole_lesson_already_cancelled', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({
+          cancelled_at: '2026-01-01T00:00:00Z',
+          rider_ids: ['viewer-mem-1'],
+          rider_cancelled_ats: ['2026-01-01T00:00:00Z'],
+        })}
+        role="rider"
+        slug="green-acres"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.getAllByText('Cancelled').length).toBe(1)
+  })
+
+  it('should_show_needs_attention_badge_when_future_uncancelled_lesson_needs_attention', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.getByText('Needs Attention')).toBeDefined()
+  })
+
+  it('should_not_show_needs_attention_badge_when_lesson_is_in_the_past', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2026-01-01T10:00:00Z', needs_attention: true })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_not_show_needs_attention_badge_when_lesson_is_cancelled', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_not_show_needs_attention_badge_when_needs_attention_is_false', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: false })}
+        role="manager"
+        slug="green-acres"
+      />
+    )
+    expect(screen.queryByText('Needs Attention')).toBeNull()
+  })
+
+  it('should_not_show_cancel_button_on_dashboard_card', () => {
+    render(
+      <UpcomingLessonCard
+        lesson={makeLesson({ rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] })}
+        role="rider"
+        slug="green-acres"
+        viewerMembershipId="viewer-mem-1"
+      />
+    )
+    expect(screen.queryByRole('link', { name: 'Cancel' })).toBeNull()
   })
 })

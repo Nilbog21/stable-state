@@ -8,6 +8,9 @@ import { getProfilesByUserIds } from '@/lib/db/profiles'
 import { getNotifications } from '@/lib/db/notifications'
 import { UserMenu } from '@/app/barn/[slug]/(protected)/UserMenu'
 import { NotificationBell } from '@/app/barn/[slug]/(protected)/NotificationBell'
+import { NavDrawer } from '@/app/barn/[slug]/(protected)/NavDrawer'
+import { DesktopNavLinks } from '@/app/barn/[slug]/(protected)/DesktopNavLinks'
+import { buildNavLinks } from '@/app/barn/[slug]/(protected)/nav-links'
 
 export default async function ProfileLayout({ children }: { children: React.ReactNode }) {
   const user = await getAuthenticatedUser()
@@ -36,49 +39,19 @@ export default async function ProfileLayout({ children }: { children: React.Reac
         const showSwitchBarn =
           allMemberships.filter((m) => m.membership.status === 'active').length > 1
 
-        let navLinks: { href: string; label: string }[]
-        if (membership.role === 'manager') {
-          navLinks = [
-            { href: `/barn/${barnSlug}/lessons`, label: 'Lessons' },
-            { href: `/barn/${barnSlug}/horses`, label: 'Horses' },
-            { href: `/barn/${barnSlug}/members`, label: 'Members' },
-            { href: `/barn/${barnSlug}/finances`, label: 'Finances' },
-            { href: `/barn/${barnSlug}/settings`, label: 'Manage Barn' },
-            { href: `/barn/${barnSlug}/guide`, label: 'Guide' },
-          ]
-        } else if (membership.role === 'trainer') {
-          navLinks = [
-            { href: `/barn/${barnSlug}/lessons`, label: 'Lessons' },
-            { href: `/barn/${barnSlug}/horses`, label: 'Horses' },
-            { href: `/barn/${barnSlug}/members`, label: 'Members' },
-            { href: `/barn/${barnSlug}/guide`, label: 'Guide' },
-          ]
-        } else {
-          navLinks = [
-            { href: `/barn/${barnSlug}/lessons`, label: 'Lessons' },
-            { href: `/barn/${barnSlug}/horses`, label: 'Horses' },
-            { href: `/barn/${barnSlug}/guide`, label: 'Guide' },
-          ]
-        }
+        const navLinks = buildNavLinks(barnSlug, membership.role)
 
         return (
           <>
             <nav className="flex items-center gap-4 border-b border-zinc-200 px-4 py-3 dark:border-zinc-800">
+              <NavDrawer navLinks={navLinks} />
               <Link
                 href={`/barn/${barnSlug}`}
                 className="text-sm font-semibold text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
               >
                 {barn.name}
               </Link>
-              {navLinks.map((link) => (
-                <Link
-                  key={link.href}
-                  href={link.href}
-                  className="text-sm font-medium text-zinc-900 underline hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-                >
-                  {link.label}
-                </Link>
-              ))}
+              <DesktopNavLinks navLinks={navLinks} />
               <div className="ml-auto flex items-center gap-2">
                 <UserMenu
                   initials={initials}
@@ -87,7 +60,7 @@ export default async function ProfileLayout({ children }: { children: React.Reac
                   showSwitchBarn={showSwitchBarn}
                   barnSlug={barnSlug}
                 />
-                <NotificationBell notifications={notifications} barnId={barn.id} />
+                <NotificationBell notifications={notifications} barnSlug={barnSlug} />
               </div>
             </nav>
             {children}
