@@ -8,7 +8,7 @@ const pillInactive = 'border border-zinc-300 text-zinc-600 hover:border-zinc-500
 
 export function Pill({ href, active, children }: { href: string; active: boolean; children: ReactNode }) {
   return (
-    <Link href={href} className={`${pillBase} ${active ? pillActive : pillInactive}`}>
+    <Link href={href} scroll={false} className={`${pillBase} ${active ? pillActive : pillInactive}`}>
       {children}
     </Link>
   )
