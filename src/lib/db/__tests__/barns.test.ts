@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getBarnBySlug, updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds } from '../barns'
+import { getBarnBySlug, updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '../barns'
 
 const mockBarn = createMockBarn()
 
@@ -199,6 +199,64 @@ describe('updateExhaustionThresholds', () => {
     const result = await updateExhaustionThresholds('barn-1', { moderate: 4, high: 10 }, mockClient)
 
     expect(result).toEqual(mockBarn)
+  })
+})
+
+describe('updateBarnTimezone', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeChain(data: unknown | null, error: Error | null = null) {
+    const mockSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+    return { update: mockUpdate, mockUpdate, mockEq }
+  }
+
+  it('should_update_timezone_and_return_updated_barn', async () => {
+    const { update } = makeChain({ ...mockBarn, timezone: 'America/Los_Angeles' })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    const result = await updateBarnTimezone('barn-1', 'America/Los_Angeles')
+
+    expect(result).toEqual({ ...mockBarn, timezone: 'America/Los_Angeles' })
+  })
+
+  it('should_pass_timezone_to_update', async () => {
+    const { update, mockUpdate } = makeChain(mockBarn)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await updateBarnTimezone('barn-1', 'America/Los_Angeles')
+
+    expect(mockUpdate).toHaveBeenCalledWith({ timezone: 'America/Los_Angeles' })
+  })
+
+  it('should_scope_update_by_barn_id', async () => {
+    const { update, mockEq } = makeChain(mockBarn)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await updateBarnTimezone('barn-1', 'America/Los_Angeles')
+
+    expect(mockEq).toHaveBeenCalledWith('id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const { update } = makeChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await expect(updateBarnTimezone('barn-1', 'America/Los_Angeles')).rejects.toThrow('db error')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const { update } = makeChain(mockBarn)
+    const mockClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    const result = await updateBarnTimezone('barn-1', 'America/Los_Angeles', mockClient)
+
+    expect(result).toEqual(mockBarn)
+    expect(createClient).not.toHaveBeenCalled()
   })
 })
 

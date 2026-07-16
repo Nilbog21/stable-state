@@ -5,7 +5,9 @@ import { updatePaymentTypeAction, updateCancellationFeePaymentTypeAction } from 
 import { updateChargePaymentTypeAction } from '../agreements/actions'
 import type { OutstandingItem } from '@/lib/db/types'
 import { formatShortDate } from '@/lib/format-date'
+import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
 import { Th, Td, TableActions } from '@/components/ui/Table'
+
 
 const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
 
@@ -54,7 +56,13 @@ export function OutstandingTable({
         <tbody>
           {items.map((item) => (
             <tr key={item.id}>
-              <Td>{formatShortDate(item.date)}</Td>
+              <Td>
+                {item.itemType === 'lesson' || item.itemType === 'cancellation_fee' ? (
+                  <LocalDateTime iso={item.date} options={DATE_ONLY_OPTIONS} />
+                ) : (
+                  formatShortDate(item.date)
+                )}
+              </Td>
               <Td>{TYPE_LABELS[item.itemType]}</Td>
               <Td>{item.riderNames.join(', ') || '—'}</Td>
               <Td>{item.instructorName ?? '—'}</Td>

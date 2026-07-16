@@ -385,4 +385,64 @@ describe('ExpenseForm', () => {
     fireEvent.change(screen.getByLabelText(/amount/i), { target: { value: '' } })
     expect(screen.queryByLabelText(/payment type/i)).toBeNull()
   })
+
+  describe('occurred_at wiring', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+    })
+
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    it('should_include_a_hidden_occurred_at_field_computed_from_date_and_time_as_a_utc_instant', () => {
+      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '14:30' } })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // 2026-07-05 14:30 America/New_York (EDT, UTC-4) => 18:30 UTC
+      expect(fd.get('occurred_at')).toBe('2026-07-05T18:30:00.000Z')
+    })
+
+    it('should_default_occurred_at_to_midnight_local_when_time_is_blank', () => {
+      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // midnight America/New_York (EDT, UTC-4) => 04:00 UTC
+      expect(fd.get('occurred_at')).toBe('2026-07-05T04:00:00.000Z')
+    })
+
+    it('should_use_midnight_local_occurred_at_for_a_past_dated_expense_with_no_visible_time_field', () => {
+      const { container } = renderForm({
+        defaultDate: '2026-07-03',
+        initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
+      })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // midnight America/New_York (EDT, UTC-4) => 04:00 UTC
+      expect(fd.get('occurred_at')).toBe('2026-07-03T04:00:00.000Z')
+    })
+
+    it('should_account_for_standard_time_offset_distinct_from_daylight_saving_offset', () => {
+      // Jan 15 is EST (UTC-5, standard time) in America/New_York, unlike the DST
+      // (UTC-4) dates used elsewhere in this test — catches a hardcoded offset.
+      // It's also before the fake "now" (2026-07-04), so no time field is shown —
+      // occurred_at falls back to midnight local, same as the blank-time case.
+      const { container } = renderForm({ defaultDate: '2026-01-15' })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      expect(fd.get('occurred_at')).toBe('2026-01-15T05:00:00.000Z')
+    })
+
+    it('should_omit_the_occurred_at_field_when_date_is_cleared', () => {
+      const { container } = renderForm({ defaultDate: '2026-07-05' })
+      fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '' } })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      expect(fd.get('occurred_at')).toBeNull()
+    })
+  })
 })

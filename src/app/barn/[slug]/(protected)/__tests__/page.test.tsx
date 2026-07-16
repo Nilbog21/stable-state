@@ -377,7 +377,7 @@ describe('BarnDashboardPage', () => {
   it('should_call_getUpcomingScheduledExpenses_with_barn_id_for_manager', async () => {
     await BarnDashboardPage({ params: Promise.resolve({ slug: 'green-acres' }) })
 
-    expect(getUpcomingScheduledExpenses).toHaveBeenCalledWith(mockBarn.id, expect.any(String), expect.any(String))
+    expect(getUpcomingScheduledExpenses).toHaveBeenCalledWith(mockBarn.id, expect.any(String), expect.any(String), mockBarn.timezone)
   })
 
   it('should_not_render_reminders_heading_when_nothing_to_show', async () => {

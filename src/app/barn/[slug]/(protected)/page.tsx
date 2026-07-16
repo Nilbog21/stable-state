@@ -45,7 +45,7 @@ export default async function BarnDashboardPage({
         membership.role === 'manager' ? getPendingMemberships(barn.id) : Promise.resolve([]),
         membership.role === 'manager' ? getDueDocuments(barn.id, now.toISOString().slice(0, 10)) : Promise.resolve([]),
         membership.role === 'manager'
-          ? getUpcomingScheduledExpenses(barn.id, now.toISOString(), weekOut.toISOString())
+          ? getUpcomingScheduledExpenses(barn.id, now.toISOString(), weekOut.toISOString(), barn.timezone)
           : Promise.resolve([]),
         getOutstandingLessons(barn.id, user.id, membership.role),
         getOutstandingCancellationFees(barn.id, user.id, membership.role),

@@ -22,7 +22,7 @@ export function formatOutstandingExpensesNotification(count: number): { title: s
 }
 
 async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErrors: boolean }> {
-  const barns = mustSucceed<{ id: string; slug: string }[]>(await supabase.from('barns').select('id, slug'), 'select barns')
+  const barns = mustSucceed<{ id: string; slug: string; timezone: string }[]>(await supabase.from('barns').select('id, slug, timezone'), 'select barns')
 
   let hadErrors = false
   let totalManagers = 0
@@ -65,7 +65,7 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
         if (errorCount > 0) hadErrors = true
       }
 
-      const outstandingExpenses = await getOutstandingExpenses(barn.id, supabase)
+      const outstandingExpenses = await getOutstandingExpenses(barn.id, barn.timezone, supabase)
       if (outstandingExpenses.length === 0) {
         for (const userId of managerUserIds) {
           try {

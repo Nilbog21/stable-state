@@ -1,6 +1,11 @@
+'use client'
+
 import { Card } from '@/components/ui/Card'
+import { LocalDateTime } from '@/components/LocalDateTime'
 import type { LessonWithDetails } from '@/lib/db/types'
 import { isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
+
+const LESSON_AT_OPTIONS: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
 
 interface Props {
   lesson: LessonWithDetails
@@ -22,7 +27,7 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembe
     <li>
       <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 p-4">
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-          {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lesson.lesson_at))}
+          <LocalDateTime iso={lesson.lesson_at} options={LESSON_AT_OPTIONS} />
         </span>
         {lesson.instructor_name && (
           <span className="text-sm text-zinc-700 dark:text-zinc-300">{lesson.instructor_name}</span>

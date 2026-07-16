@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 
@@ -62,7 +62,7 @@ describe('HorseIncomePage', () => {
   it('should_call_getHorseExpenseDetail_with_horse_id', async () => {
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(getHorseExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'horse-1', expect.any(Date), expect.any(Date))
+    expect(getHorseExpenseDetail).toHaveBeenCalledWith(mockBarn.id, 'horse-1', expect.any(Date), expect.any(Date), mockBarn.timezone)
   })
 
   it('should_render_horse_name_as_heading', async () => {
@@ -337,5 +337,54 @@ describe('HorseIncomePage', () => {
     const { container } = render(jsx)
     const text = container.textContent ?? ''
     expect(text.indexOf('May 5, 2026')).toBeLessThan(text.indexOf('May 20, 2026'))
+  })
+
+  describe('timezone-aware date display', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+    })
+
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    // 2026-05-11T02:00:00Z is 10:00 PM EDT on May 10 — a naive UTC-anchored formatter
+    // would show May 11 instead.
+    it('should_display_a_lesson_rows_date_in_the_viewers_local_timezone_not_utc', async () => {
+      vi.mocked(getHorseIncomeDetail).mockResolvedValue({
+        horseName: 'Thunderbolt',
+        rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-11T02:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+        chargeRows: [], total: 100,
+      })
+      const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
+      render(jsx)
+      expect(screen.getByText('May 10, 2026')).toBeDefined()
+    })
+
+    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_viewer_timezone', async () => {
+      vi.mocked(getHorseIncomeDetail).mockResolvedValue({
+        horseName: 'Thunderbolt',
+        rows: [],
+        chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
+        total: 500,
+      })
+      const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
+      render(jsx)
+      expect(screen.getByText('May 1, 2026')).toBeDefined()
+    })
+
+    it('should_keep_an_expense_rows_date_utc_anchored_regardless_of_viewer_timezone', async () => {
+      vi.mocked(getHorseExpenseDetail).mockResolvedValue({
+        horseName: 'Thunderbolt',
+        rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],
+        total: 75,
+      })
+      const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
+      render(jsx)
+      expect(screen.getByText('May 12, 2026')).toBeDefined()
+    })
   })
 })

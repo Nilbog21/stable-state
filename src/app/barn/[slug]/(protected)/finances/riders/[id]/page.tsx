@@ -4,7 +4,9 @@ import { getRiderIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDate } from '@/lib/format-date'
+import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
 import { Th, Td } from '@/components/ui/Table'
+
 
 type CombinedRow =
   | { kind: 'lesson'; key: string; date: string; href: string; amount: number; riderCount: number; split: number }
@@ -87,7 +89,11 @@ export default async function RiderIncomePage({
                 <tr key={row.key}>
                   <Td>
                     <Link href={row.href} className="underline">
-                      {formatShortDate(row.date)}
+                      {row.kind === 'lesson' ? (
+                        <LocalDateTime iso={row.date} options={DATE_ONLY_OPTIONS} />
+                      ) : (
+                        formatShortDate(row.date)
+                      )}
                     </Link>
                   </Td>
                   <Td>{TYPE_LABELS[row.kind]}</Td>

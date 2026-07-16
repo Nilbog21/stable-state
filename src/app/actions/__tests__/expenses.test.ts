@@ -161,6 +161,16 @@ describe('createExpenseAction', () => {
     expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ expenseTime: '09:00' }))
   })
 
+  it('should_pass_undefined_occurred_at_when_blank', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, occurred_at: '' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ occurredAt: undefined }))
+  })
+
+  it('should_pass_provided_occurred_at', async () => {
+    await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, occurred_at: '2026-07-10T13:00:00.000Z' }))
+    expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ occurredAt: '2026-07-10T13:00:00.000Z' }))
+  })
+
   it('should_pass_null_notes_when_blank', async () => {
     await createExpenseAction('barn-slug', noError, makeFormData({ ...baseFields, notes: '' }))
     expect(createExpense).toHaveBeenCalledWith('barn-1', expect.objectContaining({ notes: null }))

@@ -33,6 +33,7 @@ export interface Barn {
   default_board_fee: number
   exhaustion_threshold_high: number
   exhaustion_threshold_moderate: number
+  timezone: string
 }
 
 export interface BarnMembership {
@@ -408,6 +409,7 @@ export interface ExpenseInput {
   appliesToAllHorses: boolean
   horseIds?: string[]
   paymentType?: PaymentType | null
+  occurredAt?: string
 }
 
 export interface HorseExpenseSummary {

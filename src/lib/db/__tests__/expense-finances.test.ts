@@ -7,7 +7,10 @@ import type { HorseExpense } from '../types'
 // instructor_payout), so this flips it back to the positive magnitude the raw
 // HorseExpense fixture already uses. `appliesToAllHorses` is a test-only convenience
 // field (not part of TransactionRow) so call sites can build the horse_expenses
-// follow-up lookup row without re-specifying the value.
+// follow-up lookup row without re-specifying the value. occurredAt is built at midnight
+// in the fixture's assumed barn timezone (America/New_York, EDT/UTC-4 for the July
+// dates used throughout this file) — mirroring what #955's fixed ExpenseForm wiring
+// produces for a no-time entry, not the pre-#955 naive midnight-UTC derivation.
 function mockExpenseTxRow(overrides: Partial<HorseExpense> = {}) {
   const e = createMockHorseExpense(overrides)
   return {
@@ -22,7 +25,7 @@ function mockExpenseTxRow(overrides: Partial<HorseExpense> = {}) {
     lessonRiderId: null,
     agreementChargeId: null,
     expenseId: e.id,
-    occurredAt: `${e.expense_date}T00:00:00+00:00`,
+    occurredAt: `${e.expense_date}T00:00:00-04:00`,
     appliesToAllHorses: e.applies_to_all_horses,
     recipient: e.recipient,
     expenseType: e.expense_type,
@@ -88,7 +91,7 @@ describe('getExpenseFinancialSummary', () => {
   it('should_return_zero_total_and_empty_breakdown_when_no_expenses_in_range', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 0, breakdown: [] })
   })
@@ -103,7 +106,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 100 }])
   })
@@ -121,7 +124,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(junctionFn).not.toHaveBeenCalled()
   })
@@ -137,7 +140,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown.find((b) => b.horseId === 'horse-1')?.totalExpenses).toBe(50)
   })
@@ -152,7 +155,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown).toEqual([])
   })
@@ -167,7 +170,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown).toEqual([])
   })
@@ -182,7 +185,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 100 }])
   })
@@ -197,7 +200,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown).toEqual([])
   })
@@ -212,7 +215,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 100 }])
   })
@@ -227,7 +230,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
   })
@@ -246,7 +249,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown.map((b) => b.horseId)).toEqual(['horse-2', 'horse-1'])
   })
@@ -260,7 +263,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
   })
@@ -275,7 +278,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
   })
@@ -290,7 +293,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.breakdown).toEqual([{ horseId: 'horse-orphan', horseName: 'horse-orphan', totalExpenses: 100 }])
   })
@@ -305,7 +308,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
   })
@@ -320,7 +323,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
   })
@@ -328,7 +331,7 @@ describe('getExpenseFinancialSummary', () => {
   it('should_propagate_error_from_getTransactionRows', async () => {
     vi.mocked(getTransactionRows).mockRejectedValue(new Error('expenses error'))
 
-    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('expenses error')
+    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('expenses error')
   })
 
   it('should_count_an_orphaned_expense_transaction_toward_total_but_exclude_it_from_the_breakdown', async () => {
@@ -344,7 +347,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate)
+    const result = await getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ totalExpenses: 100, breakdown: [] })
     expect(horseExpensesFn).not.toHaveBeenCalled()
@@ -356,7 +359,7 @@ describe('getExpenseFinancialSummary', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('horse_expenses error')
+    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
   })
 
   it('should_throw_when_horses_query_errors', async () => {
@@ -368,7 +371,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('horses error')
+    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horses error')
   })
 
   it('should_throw_when_expense_horses_query_errors', async () => {
@@ -381,7 +384,7 @@ describe('getExpenseFinancialSummary', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate)).rejects.toThrow('junction error')
+    await expect(getExpenseFinancialSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('junction error')
   })
 })
 
@@ -423,7 +426,7 @@ describe('getHorseExpenseDetail', () => {
     const { select } = makeHorseLookupChain(null)
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ horseName: 'horse-1', rows: [], total: 0 })
   })
@@ -434,7 +437,7 @@ describe('getHorseExpenseDetail', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseLookupChain(horse))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ horseName: 'Thunderbolt', rows: [], total: 0 })
   })
@@ -450,9 +453,80 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: '2026-07-10', amount: 100, horseCount: 1, splitAmount: 100 }])
+  })
+
+  it('should_derive_expense_date_from_the_barns_local_wall_clock_not_a_naive_utc_slice', async () => {
+    // 2026-08-01T02:00:00Z is 10:00 PM EDT on July 31 — a naive slice(0, 10) of the raw
+    // ISO instant would read "2026-08-01" instead, the wrong calendar day.
+    const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-31' }), occurredAt: '2026-08-01T02:00:00+00:00' }
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorseLookupChain(horse)
+      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    expect(result.rows[0].expenseDate).toBe('2026-07-31')
+  })
+
+  it('should_query_getTransactionRows_with_a_day_of_padding_on_each_side_of_the_requested_month', async () => {
+    const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
+    vi.mocked(getTransactionRows).mockResolvedValue([])
+    const fromFn = vi.fn().mockReturnValue(makeHorseLookupChain(horse))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    const oneDayMs = 24 * 60 * 60 * 1000
+    expect(getTransactionRows).toHaveBeenCalledWith(
+      'barn-1',
+      ['expense'],
+      { startDate: new Date(startDate.getTime() - oneDayMs), endDate: new Date(endDate.getTime() + oneDayMs) },
+      expect.anything()
+    )
+  })
+
+  it('should_include_an_expense_whose_occurred_at_instant_falls_after_the_utc_month_boundary_but_decodes_to_the_requested_local_month', async () => {
+    // 2026-08-01T02:00:00Z (a July 31 11pm EDT entry) is >= endDate (2026-08-01T00:00Z) —
+    // an unpadded range query would miss this row entirely, which is the bug this guards.
+    const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-31' }), occurredAt: '2026-08-01T02:00:00+00:00' }
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorseLookupChain(horse)
+      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: '2026-07-31', amount: 100, horseCount: 1, splitAmount: 100 }])
+  })
+
+  it('should_exclude_an_expense_whose_decoded_local_date_falls_outside_the_requested_month_despite_being_within_the_padded_query_range', async () => {
+    // occurred_at is within the padded query window, but its barn-local date (June 30) is
+    // outside the requested July month — must be filtered out despite the mock returning it.
+    const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-06-30' }), occurredAt: '2026-06-30T14:00:00+00:00' }
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorseLookupChain(horse)
+      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    expect(result.rows).toEqual([])
   })
 
   it('should_treat_null_junction_data_as_empty', async () => {
@@ -466,7 +540,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([])
   })
@@ -482,7 +556,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([])
   })
@@ -505,7 +579,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn2 } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: '2026-07-10', amount: 100, horseCount: 1, splitAmount: 100 }])
   })
@@ -526,7 +600,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([])
   })
@@ -547,7 +621,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([])
   })
@@ -569,7 +643,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].horseCount).toBe(2)
   })
@@ -591,7 +665,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].splitAmount).toBe(50)
   })
@@ -611,7 +685,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(160)
   })
@@ -620,7 +694,7 @@ describe('getHorseExpenseDetail', () => {
     const { select } = makeHorseLookupChain(null, new Error('horse error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('horse error')
+    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse error')
   })
 
   it('should_propagate_error_from_getTransactionRows', async () => {
@@ -629,7 +703,7 @@ describe('getHorseExpenseDetail', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseLookupChain(horse))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('expenses error')
+    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('expenses error')
   })
 
   it('should_throw_when_barn_horses_query_errors', async () => {
@@ -647,7 +721,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('barn horses error')
+    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('barn horses error')
   })
 
   it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
@@ -660,7 +734,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('horse_expenses error')
+    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
   })
 
   it('should_throw_when_expense_horses_query_errors', async () => {
@@ -674,7 +748,7 @@ describe('getHorseExpenseDetail', () => {
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('junction error')
+    await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('junction error')
   })
 })
 
@@ -694,7 +768,7 @@ describe('getRecipientExpenseSummary', () => {
   it('should_return_empty_array_when_no_expenses_in_range', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
 
-    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -706,7 +780,7 @@ describe('getRecipientExpenseSummary', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual([{ recipient: 'Dr. Smith', totalExpenses: 80 }])
   })
@@ -718,7 +792,7 @@ describe('getRecipientExpenseSummary', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result.map((r) => r.recipient)).toEqual(['Dr. Smith', 'Feed Co'])
   })
@@ -729,7 +803,7 @@ describe('getRecipientExpenseSummary', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -737,7 +811,7 @@ describe('getRecipientExpenseSummary', () => {
   it('should_propagate_error_from_getTransactionRows', async () => {
     vi.mocked(getTransactionRows).mockRejectedValue(new Error('expenses error'))
 
-    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate)).rejects.toThrow('expenses error')
+    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('expenses error')
   })
 
   it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
@@ -746,7 +820,7 @@ describe('getRecipientExpenseSummary', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate)).rejects.toThrow('horse_expenses error')
+    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
   })
 })
 
@@ -766,7 +840,7 @@ describe('getRecipientExpenseDetail', () => {
   it('should_return_empty_rows_and_zero_total_when_no_expenses_in_range', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([])
 
-    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ rows: [], total: 0 })
   })
@@ -778,7 +852,7 @@ describe('getRecipientExpenseDetail', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([{ expenseId: 'expense-a', expenseDate: '2026-07-05', expenseType: 'Veterinary', amount: 50 }])
   })
@@ -790,7 +864,7 @@ describe('getRecipientExpenseDetail', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(80)
   })
@@ -801,7 +875,7 @@ describe('getRecipientExpenseDetail', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(row)]))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ rows: [], total: 0 })
   })
@@ -809,7 +883,7 @@ describe('getRecipientExpenseDetail', () => {
   it('should_propagate_error_from_getTransactionRows', async () => {
     vi.mocked(getTransactionRows).mockRejectedValue(new Error('expenses error'))
 
-    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)).rejects.toThrow('expenses error')
+    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')).rejects.toThrow('expenses error')
   })
 
   it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
@@ -818,6 +892,6 @@ describe('getRecipientExpenseDetail', () => {
     const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)).rejects.toThrow('horse_expenses error')
+    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate, 'America/New_York')).rejects.toThrow('horse_expenses error')
   })
 })

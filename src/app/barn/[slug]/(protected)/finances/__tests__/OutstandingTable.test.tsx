@@ -210,4 +210,37 @@ describe('OutstandingTable', () => {
     expect(vi.mocked(updatePaymentTypeAction)).not.toHaveBeenCalled()
     expect(vi.mocked(updateChargePaymentTypeAction)).not.toHaveBeenCalled()
   })
+
+  describe('timezone-aware date display', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+    })
+
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    // 2026-06-10T02:00:00Z is 10:00 PM EDT on June 9 — a naive UTC-anchored formatter
+    // would show June 10 instead.
+    const earlyUtcLessonItem = { ...lessonItem, date: '2026-06-10T02:00:00Z' }
+    const earlyUtcCancellationFeeItem = { ...cancellationFeeItem, date: '2026-06-10T02:00:00Z' }
+
+    it('should_display_a_lesson_rows_date_in_the_viewers_local_timezone_not_utc', () => {
+      render(<OutstandingTable items={[earlyUtcLessonItem]} barnSlug="green-acres" />)
+      expect(screen.getByText('Jun 9, 2026')).toBeDefined()
+    })
+
+    it('should_display_a_cancellation_fee_rows_date_in_the_viewers_local_timezone_not_utc', () => {
+      render(<OutstandingTable items={[earlyUtcCancellationFeeItem]} barnSlug="green-acres" />)
+      expect(screen.getByText('Jun 9, 2026')).toBeDefined()
+    })
+
+    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_viewer_timezone', () => {
+      render(<OutstandingTable items={[boardItem]} barnSlug="green-acres" />)
+      expect(screen.getByText('Jun 1, 2026')).toBeDefined()
+    })
+  })
 })

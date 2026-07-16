@@ -4,8 +4,10 @@ import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstanding
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import type { OutstandingItem, Role } from '@/lib/db/types'
 import { formatShortDate } from '@/lib/format-date'
+import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
 import { Th, Td } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
+
 
 const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lesson: 'Lesson',
@@ -74,15 +76,19 @@ export default async function OutstandingPage({
                 : role === 'manager'
                 ? `/barn/${slug}/agreements/${item.linkId}`
                 : undefined
+              const isInstant = item.itemType === 'lesson' || item.itemType === 'cancellation_fee'
+              const dateDisplay = isInstant
+                ? <LocalDateTime iso={item.date} options={DATE_ONLY_OPTIONS} />
+                : formatShortDate(item.date)
               return (
               <tr key={item.id}>
                 <Td>
                   {href ? (
                     <Link href={href} className="underline">
-                      {formatShortDate(item.date)}
+                      {dateDisplay}
                     </Link>
                   ) : (
-                    formatShortDate(item.date)
+                    dateDisplay
                   )}
                 </Td>
                 <Td>{TYPE_LABELS[item.itemType]}</Td>
