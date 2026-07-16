@@ -74,6 +74,15 @@ describe('LessonForm (edit mode)', () => {
     expect(exertionInput.value).toBe('4')
   })
 
+  it('should_default_exertion_level_to_3_when_absent_from_initial_lesson', () => {
+    // exertion_level is only absent for a rider-role LessonDetail read, which this
+    // manager/trainer-only form never receives in practice — this covers the fallback branch.
+    const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: undefined, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
+    render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
+    expect(exertionInput.value).toBe('3')
+  })
+
   it('should_preselect_current_rider_in_dropdown_for_normal_lesson', () => {
     const { container } = render(<LessonForm {...baseProps} />)
     const select = container.querySelector('select[name="rider_id"]') as HTMLSelectElement

@@ -209,7 +209,7 @@ export default async function LessonDetailPage({
                   {lesson.lesson_horses.map((lh, i) => (
                     <li key={lh.horses?.id ?? i}>
                       <span>{lh.horses?.name ?? '—'}</span>{' '}
-                      <span className="text-zinc-500">(exertion {lh.exertion_level})</span>{' '}
+                      {role !== 'rider' && <span className="text-zinc-500">(exertion {lh.exertion_level})</span>}{' '}
                       {lh.horses?.is_active === false ? (
                         <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Inactive</span>
                       ) : lh.horses?.is_available === false ? (
