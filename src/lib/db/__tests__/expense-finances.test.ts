@@ -476,6 +476,59 @@ describe('getHorseExpenseDetail', () => {
     expect(result.rows[0].expenseDate).toBe('2026-07-31')
   })
 
+  it('should_query_getTransactionRows_with_a_day_of_padding_on_each_side_of_the_requested_month', async () => {
+    const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
+    vi.mocked(getTransactionRows).mockResolvedValue([])
+    const fromFn = vi.fn().mockReturnValue(makeHorseLookupChain(horse))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    const oneDayMs = 24 * 60 * 60 * 1000
+    expect(getTransactionRows).toHaveBeenCalledWith(
+      'barn-1',
+      ['expense'],
+      { startDate: new Date(startDate.getTime() - oneDayMs), endDate: new Date(endDate.getTime() + oneDayMs) },
+      expect.anything()
+    )
+  })
+
+  it('should_include_an_expense_whose_occurred_at_instant_falls_after_the_utc_month_boundary_but_decodes_to_the_requested_local_month', async () => {
+    // 2026-08-01T02:00:00Z (a July 31 11pm EDT entry) is >= endDate (2026-08-01T00:00Z) —
+    // an unpadded range query would miss this row entirely, which is the bug this guards.
+    const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-31' }), occurredAt: '2026-08-01T02:00:00+00:00' }
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorseLookupChain(horse)
+      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    expect(result.rows).toEqual([{ expenseId: 'expense-1', expenseDate: '2026-07-31', amount: 100, horseCount: 1, splitAmount: 100 }])
+  })
+
+  it('should_exclude_an_expense_whose_decoded_local_date_falls_outside_the_requested_month_despite_being_within_the_padded_query_range', async () => {
+    // occurred_at is within the padded query window, but its barn-local date (June 30) is
+    // outside the requested July month — must be filtered out despite the mock returning it.
+    const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
+    const row = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-06-30' }), occurredAt: '2026-06-30T14:00:00+00:00' }
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'horses') return makeHorseLookupChain(horse)
+      if (table === 'horse_expenses') return makeHorseExpensesLookupChain([horseExpensesLookupRow(row)])
+      return makeJunctionChain([{ expense_id: 'expense-1', horse_id: 'horse-1' }])
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    expect(result.rows).toEqual([])
+  })
+
   it('should_treat_null_junction_data_as_empty', async () => {
     const horse = { id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01T00:00:00Z', deactivated_at: null }
     const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, applies_to_all_horses: false, expense_date: '2026-07-10' })

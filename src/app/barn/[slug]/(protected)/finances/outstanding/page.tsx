@@ -4,11 +4,10 @@ import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstanding
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import type { OutstandingItem, Role } from '@/lib/db/types'
 import { formatShortDate } from '@/lib/format-date'
-import { LocalDateTime } from '@/components/LocalDateTime'
+import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
 import { Th, Td } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 
-const DATE_ONLY_OPTIONS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
 
 const TYPE_LABELS: Record<OutstandingItem['itemType'], string> = {
   lesson: 'Lesson',

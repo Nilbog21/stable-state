@@ -9,3 +9,8 @@ export function LocalDateTime({ iso, options }: { iso: string; options: Intl.Dat
   const formatted = new Intl.DateTimeFormat('en-US', options).format(new Date(iso))
   return <span suppressHydrationWarning>{formatted}</span>
 }
+
+// Shared date-only (no time-of-day) options for a viewer-local LocalDateTime — used
+// by the finance drill-down/Outstanding pages to render a lesson_at instant's date
+// alongside DATE-column rows formatted via formatShortDate.
+export const DATE_ONLY_OPTIONS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }

@@ -3,10 +3,9 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getTrainerIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
-import { LocalDateTime } from '@/components/LocalDateTime'
+import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
 import { Th, Td } from '@/components/ui/Table'
 
-const DATE_ONLY_OPTIONS: Intl.DateTimeFormatOptions = { month: 'short', day: 'numeric', year: 'numeric' }
 
 export default async function TrainerIncomePage({
   params,

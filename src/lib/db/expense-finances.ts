@@ -26,6 +26,12 @@ function applicableHorseIdsForExpense(
   return junctionRows.filter((r) => r.expense_id === expense.id).map((r) => r.horse_id)
 }
 
+// A day of padding on each side of the requested month's UTC boundary — more than any
+// BARN_TIMEZONES offset (max 10h) — so a barn-local expense whose occurred_at instant
+// falls just outside the nominal UTC range still gets fetched; see QUERY_PADDING_MS's
+// use below.
+const QUERY_PADDING_MS = 24 * 60 * 60 * 1000
+
 // #829/#865: expense-kind transactions rows are the ledger source of truth for
 // getExpenseFinancialSummary/getHorseExpenseDetail — only an expense whose amount is
 // known has one (see sync_expense_transaction), so this already excludes planned
@@ -36,6 +42,16 @@ function applicableHorseIdsForExpense(
 // to the calendar date it falls on in the barn's own local time — a naive
 // occurredAt.slice(0, 10) would read the wrong day for an entry near a local midnight
 // boundary whose UTC digits land on a different date.
+//
+// startDate/endDate are the requested month's UTC-midnight boundary (from
+// resolveFinancesMonth), but a barn-local calendar month doesn't line up with that UTC
+// range — a barn west of UTC can have an end-of-month expense whose occurred_at instant
+// falls on the UTC day after endDate (missed by a plain range query), or a
+// start-of-month expense falling before startDate. Query with QUERY_PADDING_MS of slack
+// on each side, then filter down to the actual requested month using each row's own
+// decoded expense_date — a wall-clock string comparison, matching the convention already
+// used by getPastDueExpenses/getUpcomingScheduledExpenses, rather than trying to encode
+// the barn-local month boundary back into an instant.
 async function fetchExpenseTransactionsInRange(
   supabase: SupabaseClient,
   barnId: string,
@@ -43,7 +59,12 @@ async function fetchExpenseTransactionsInRange(
   endDate: Date,
   timezone: string
 ): Promise<{ id: string; expense_date: string; amount: number; applies_to_all_horses: boolean; recipient: string | null; expense_type: string | null }[]> {
-  const rows = await getTransactionRows(barnId, ['expense'], { startDate, endDate }, supabase)
+  const rows = await getTransactionRows(
+    barnId,
+    ['expense'],
+    { startDate: new Date(startDate.getTime() - QUERY_PADDING_MS), endDate: new Date(endDate.getTime() + QUERY_PADDING_MS) },
+    supabase
+  )
   if (!rows.length) return []
 
   const expenseIds = [...new Set(rows.map((r) => r.expenseId).filter((id): id is string => id !== null))]
@@ -66,18 +87,28 @@ async function fetchExpenseTransactionsInRange(
   // transaction's own id, which never matches a real horse_expenses/expense_horses row,
   // so it naturally drops out of every per-horse/per-recipient breakdown below instead of
   // corrupting one.
-  return rows.map((row) => {
-    const expenseId = row.expenseId ?? row.id
-    const details = row.expenseId ? detailsByExpenseId.get(row.expenseId) : undefined
-    return {
-      id: expenseId,
-      expense_date: instantToLocalWallClock(new Date(row.occurredAt), timezone).slice(0, 10),
-      amount: positiveAmount(row.kind, row.amount),
-      applies_to_all_horses: details?.applies_to_all_horses ?? false,
-      recipient: details?.recipient ?? null,
-      expense_type: details?.expense_type ?? null,
-    }
-  })
+  //
+  // startDate/endDate are always exact UTC midnights of the requested month's first day
+  // (see resolveFinancesMonth), so their raw digits already are the barn-local month
+  // boundary we want — no timezone conversion needed for the boundary itself, only for
+  // each row's own expense_date above.
+  const monthStartLocal = startDate.toISOString().slice(0, 10)
+  const monthEndLocal = endDate.toISOString().slice(0, 10)
+
+  return rows
+    .map((row) => {
+      const expenseId = row.expenseId ?? row.id
+      const details = row.expenseId ? detailsByExpenseId.get(row.expenseId) : undefined
+      return {
+        id: expenseId,
+        expense_date: instantToLocalWallClock(new Date(row.occurredAt), timezone).slice(0, 10),
+        amount: positiveAmount(row.kind, row.amount),
+        applies_to_all_horses: details?.applies_to_all_horses ?? false,
+        recipient: details?.recipient ?? null,
+        expense_type: details?.expense_type ?? null,
+      }
+    })
+    .filter((e) => e.expense_date >= monthStartLocal && e.expense_date < monthEndLocal)
 }
 
 async function getExpenseHorseJunctionRows(
