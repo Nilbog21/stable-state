@@ -21,3 +21,14 @@ export function formatExpenseHorses(expense: { applies_to_all_horses: boolean; h
   if (expense.applies_to_all_horses) return 'Entire Barn'
   return expense.horse_names.length > 0 ? expense.horse_names.join(', ') : '—'
 }
+
+// Mirrors getPastDueExpenses' own due-datetime derivation (expenses.ts) — only a
+// still-unamounted (planned) expense can be past due.
+export function isExpensePastDue(
+  expense: { amount: number | null; expense_date: string; expense_time: string | null },
+  now: number = Date.now()
+): boolean {
+  if (expense.amount !== null) return false
+  const dueAt = new Date(`${expense.expense_date}T${expense.expense_time ?? '23:59:59.999'}Z`).getTime()
+  return dueAt < now
+}

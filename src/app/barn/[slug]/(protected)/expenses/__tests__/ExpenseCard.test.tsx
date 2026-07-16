@@ -5,8 +5,8 @@ import { createMockExpenseWithHorses } from '@/test/fixtures'
 
 afterEach(cleanup)
 
-function renderCard(overrides = {}) {
-  render(<ExpenseCard expense={createMockExpenseWithHorses(overrides)} slug="green-acres" />)
+function renderCard(overrides = {}, now?: number) {
+  render(<ExpenseCard expense={createMockExpenseWithHorses(overrides)} slug="green-acres" now={now} />)
 }
 
 describe('ExpenseCard', () => {
@@ -20,9 +20,9 @@ describe('ExpenseCard', () => {
     expect(screen.getByText(/2:30 PM/)).toBeDefined()
   })
 
-  it('should_render_dash_when_expense_time_not_set', () => {
+  it('should_omit_time_segment_when_expense_time_not_set', () => {
     renderCard({ expense_time: null })
-    expect(screen.getByText((_, el) => el?.textContent === 'Jul 1, 2026 · —')).toBeDefined()
+    expect(screen.getByText((_, el) => el?.textContent === 'Jul 1, 2026')).toBeDefined()
   })
 
   it('should_render_recipient', () => {
@@ -60,9 +60,25 @@ describe('ExpenseCard', () => {
     expect(screen.getByText('$42.50')).toBeDefined()
   })
 
-  it('should_render_dash_when_amount_not_set', () => {
+  it('should_render_no_amount_specified_when_amount_not_set', () => {
     renderCard({ amount: null, expense_time: '09:00:00' })
-    expect(screen.getByText('—')).toBeDefined()
+    expect(screen.getByText('(no amount specified)')).toBeDefined()
+  })
+
+  it('should_not_style_no_amount_specified_as_amber_before_due', () => {
+    renderCard({ amount: null, expense_date: '2026-07-01', expense_time: null }, Date.parse('2026-06-01T00:00:00Z'))
+    expect(screen.getByText('(no amount specified)').className).not.toContain('amber')
+  })
+
+  it('should_style_no_amount_specified_as_amber_and_show_past_due_badge_once_due_has_passed', () => {
+    renderCard({ amount: null, expense_date: '2026-07-01', expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
+    expect(screen.getByText('(no amount specified)').className).toContain('amber')
+    expect(screen.getByText('Past Due')).toBeDefined()
+  })
+
+  it('should_not_show_past_due_badge_when_amount_is_set', () => {
+    renderCard({ amount: 42.5, expense_date: '2026-07-01', expense_time: null }, Date.parse('2026-07-02T00:00:00Z'))
+    expect(screen.queryByText('Past Due')).toBeNull()
   })
 
   it('should_link_whole_card_to_expense_edit_page', () => {
