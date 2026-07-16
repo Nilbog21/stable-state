@@ -18,7 +18,9 @@ import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
   updateExhaustionThresholdsAction,
+  updateBarnTimezoneAction,
 } from './actions'
+import { BARN_TIMEZONES } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 import { cardBaseClass } from '@/components/ui/Card'
 import { Th, Td, TableActions } from '@/components/ui/Table'
@@ -307,6 +309,32 @@ export default async function SettingsPage({
         </form>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           Applies to new boarding agreements only — existing boarders are unchanged.
+        </p>
+      </AccordionSection>
+
+      <AccordionSection title="Barn Timezone">
+        <form action={updateBarnTimezoneAction.bind(null, slug)} className="flex flex-wrap items-end gap-3">
+          <div>
+            <label htmlFor="timezone" className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300">
+              Timezone
+            </label>
+            <select
+              id="timezone"
+              name="timezone"
+              defaultValue={barn.timezone}
+              className="rounded border border-zinc-300 px-3 py-1.5 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+            >
+              {BARN_TIMEZONES.map((tz) => (
+                <option key={tz.value} value={tz.value}>
+                  {tz.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button type="submit">Save</Button>
+        </form>
+        <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
+          Used to determine when scheduled expenses become past due and which month an expense falls into near month boundaries.
         </p>
       </AccordionSection>
     </main>
