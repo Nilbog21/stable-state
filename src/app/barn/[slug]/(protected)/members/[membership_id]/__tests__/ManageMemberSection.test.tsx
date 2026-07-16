@@ -10,6 +10,19 @@ const defaultProps = {
   revokeAction: vi.fn() as unknown as () => Promise<void>,
 }
 
+function deferredRevoke() {
+  let resolve!: () => void
+  const promise = new Promise<void>((r) => {
+    resolve = r
+  })
+  const revokeAction = vi.fn(() => promise) as unknown as () => Promise<void>
+  return { revokeAction, resolve }
+}
+
+function isDisabled(name: RegExp) {
+  return (screen.getByRole('button', { name }) as HTMLButtonElement).disabled
+}
+
 describe('ManageMemberSection', () => {
   beforeEach(() => {
     Object.defineProperty(navigator, 'clipboard', {
@@ -106,10 +119,54 @@ describe('ManageMemberSection', () => {
     vi.useRealTimers()
   })
 
-  it('should_call_revoke_action_on_revoke_submit', () => {
+  it('should_call_revoke_action_on_revoke_submit', async () => {
     const revokeAction = vi.fn() as unknown as () => Promise<void>
     render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
-    fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
     expect(revokeAction).toHaveBeenCalledOnce()
+  })
+
+  it('should_disable_copy_invite_button_while_revoke_is_pending', async () => {
+    const { revokeAction } = deferredRevoke()
+    render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    expect(isDisabled(/copy invite/i)).toBe(true)
+  })
+
+  it('should_show_loading_state_on_revoke_button_while_pending', async () => {
+    const { revokeAction } = deferredRevoke()
+    render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    expect(isDisabled(/revoke/i)).toBe(true)
+  })
+
+  it('should_keep_copy_invite_disabled_until_token_prop_actually_changes', async () => {
+    const { revokeAction, resolve } = deferredRevoke()
+    const { rerender } = render(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      resolve()
+      await Promise.resolve()
+    })
+
+    // Action settled, but the prop hasn't been re-fetched with the new token yet
+    rerender(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} />)
+    expect(isDisabled(/copy invite/i)).toBe(true)
+
+    // Fresh token prop lands
+    rerender(<ManageMemberSection {...defaultProps} revokeAction={revokeAction} inviteToken="tok-new" />)
+    expect(isDisabled(/copy invite/i)).toBe(false)
   })
 })
