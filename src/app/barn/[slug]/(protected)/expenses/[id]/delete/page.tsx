@@ -28,6 +28,12 @@ export default async function DeleteExpensePage({
         {expense.recipient} ({formatExpenseAmount(expense.amount)}). This cannot be undone.
       </p>
       <form action={deleteExpense}>
+        {expense.amount !== null && (
+          <label className="mb-6 flex items-start gap-2 text-sm text-zinc-600 dark:text-zinc-400">
+            <input type="checkbox" name="alsoDeleteTransactions" className="mt-1" />
+            Also delete the collected record from Finances
+          </label>
+        )}
         <Button type="submit" variant="danger">Confirm Delete</Button>
       </form>
     </main>
