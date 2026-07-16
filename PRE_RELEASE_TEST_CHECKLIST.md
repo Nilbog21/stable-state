@@ -218,6 +218,10 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding") and a blank Lessons cell (not a charge count); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
 - [ ] **By Instructor** tab also shows the same **Non-lesson income** row
 - [ ] Remove a trainer's membership after they've instructed a paid lesson → **By Instructor** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Collected income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
+- [ ] **By Paid To** tab: one row per recipient with their total expenses for the month, recipient name is an underlined link (not just underlined on hover)
+- [ ] Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
+- [ ] Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month (Date, Type, Amount columns), date links to the expense's edit page, bottom **Total** matches the By Paid To summary
+- [ ] A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL
 
 Manage Barn (`/barn/dev-barn/settings`):
 
@@ -361,6 +365,7 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/barn/[slug]/finances/horses/[id]` | Phase 4 |
 | `/barn/[slug]/finances/riders/[id]` | Phase 4 |
 | `/barn/[slug]/finances/trainers/[id]` | Phase 4 |
+| `/barn/[slug]/finances/expenses/[recipient]` | Phase 4 |
 | `/barn/[slug]/settings` | Phases 2, 4, 7 |
 | `/barn/[slug]/settings/tiers/new` | Phase 2 |
 | `/barn/[slug]/settings/tiers/[id]` | Phase 4 |

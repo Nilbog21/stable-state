@@ -24,6 +24,8 @@ function mockExpenseTxRow(overrides: Partial<HorseExpense> = {}) {
     expenseId: e.id,
     occurredAt: `${e.expense_date}T00:00:00+00:00`,
     appliesToAllHorses: e.applies_to_all_horses,
+    recipient: e.recipient,
+    expenseType: e.expense_type,
   }
 }
 
@@ -46,7 +48,7 @@ vi.mock('../transactions', async (importOriginal) => {
 
 import { createClient } from '@/lib/supabase/server'
 import { getTransactionRows } from '../transactions'
-import { getExpenseFinancialSummary, getHorseExpenseDetail } from '../expense-finances'
+import { getExpenseFinancialSummary, getHorseExpenseDetail, getRecipientExpenseSummary, getRecipientExpenseDetail } from '../expense-finances'
 
 describe('getExpenseFinancialSummary', () => {
   beforeEach(() => {
@@ -673,5 +675,149 @@ describe('getHorseExpenseDetail', () => {
     vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
     await expect(getHorseExpenseDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('junction error')
+  })
+})
+
+describe('getRecipientExpenseSummary', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.mocked(getTransactionRows).mockReset()
+  })
+
+  const startDate = new Date('2026-07-01T00:00:00Z')
+  const endDate = new Date('2026-08-01T00:00:00Z')
+
+  function horseExpensesLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
+    return { id: row.expenseId, applies_to_all_horses: row.appliesToAllHorses, recipient: row.recipient, expense_type: row.expenseType }
+  }
+
+  it('should_return_empty_array_when_no_expenses_in_range', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([])
+
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_group_multiple_expenses_under_the_same_recipient', async () => {
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith' })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Dr. Smith' })
+    vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([{ recipient: 'Dr. Smith', totalExpenses: 80 }])
+  })
+
+  it('should_sort_breakdown_by_total_expenses_descending', async () => {
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 30, recipient: 'Feed Co' })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 90, recipient: 'Dr. Smith' })
+    vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+
+    expect(result.map((r) => r.recipient)).toEqual(['Dr. Smith', 'Feed Co'])
+  })
+
+  it('should_skip_an_orphaned_expense_transaction_with_no_resolvable_recipient', async () => {
+    const orphanedRow = { ...mockExpenseTxRow({ id: 'expense-1', amount: 100 }), expenseId: null }
+    vi.mocked(getTransactionRows).mockResolvedValue([orphanedRow])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([]))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getRecipientExpenseSummary('barn-1', startDate, endDate)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_propagate_error_from_getTransactionRows', async () => {
+    vi.mocked(getTransactionRows).mockRejectedValue(new Error('expenses error'))
+
+    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate)).rejects.toThrow('expenses error')
+  })
+
+  it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100 })
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await expect(getRecipientExpenseSummary('barn-1', startDate, endDate)).rejects.toThrow('horse_expenses error')
+  })
+})
+
+describe('getRecipientExpenseDetail', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.mocked(getTransactionRows).mockReset()
+  })
+
+  const startDate = new Date('2026-07-01T00:00:00Z')
+  const endDate = new Date('2026-08-01T00:00:00Z')
+
+  function horseExpensesLookupRow(row: ReturnType<typeof mockExpenseTxRow>) {
+    return { id: row.expenseId, applies_to_all_horses: row.appliesToAllHorses, recipient: row.recipient, expense_type: row.expenseType }
+  }
+
+  it('should_return_empty_rows_and_zero_total_when_no_expenses_in_range', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([])
+
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+
+    expect(result).toEqual({ rows: [], total: 0 })
+  })
+
+  it('should_filter_rows_to_exact_recipient_match_only', async () => {
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith', expense_type: 'Veterinary', expense_date: '2026-07-05' })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Feed Co', expense_date: '2026-07-06' })
+    vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+
+    expect(result.rows).toEqual([{ expenseId: 'expense-a', expenseDate: '2026-07-05', expenseType: 'Veterinary', amount: 50 }])
+  })
+
+  it('should_compute_total_as_sum_of_row_amounts', async () => {
+    const rowA = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Dr. Smith', expense_date: '2026-07-05' })
+    const rowB = mockExpenseTxRow({ id: 'expense-b', amount: 30, recipient: 'Dr. Smith', expense_date: '2026-07-15' })
+    vi.mocked(getTransactionRows).mockResolvedValue([rowA, rowB])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(rowA), horseExpensesLookupRow(rowB)]))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+
+    expect(result.total).toBe(80)
+  })
+
+  it('should_return_empty_rows_and_zero_total_when_recipient_has_no_expenses_that_month', async () => {
+    const row = mockExpenseTxRow({ id: 'expense-a', amount: 50, recipient: 'Feed Co' })
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain([horseExpensesLookupRow(row)]))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    const result = await getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)
+
+    expect(result).toEqual({ rows: [], total: 0 })
+  })
+
+  it('should_propagate_error_from_getTransactionRows', async () => {
+    vi.mocked(getTransactionRows).mockRejectedValue(new Error('expenses error'))
+
+    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)).rejects.toThrow('expenses error')
+  })
+
+  it('should_throw_when_horse_expenses_lookup_query_errors', async () => {
+    const row = mockExpenseTxRow({ id: 'expense-1', amount: 100, recipient: 'Dr. Smith' })
+    vi.mocked(getTransactionRows).mockResolvedValue([row])
+    const fromFn = vi.fn().mockReturnValue(makeHorseExpensesLookupChain(null, new Error('horse_expenses error')))
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await expect(getRecipientExpenseDetail('barn-1', 'Dr. Smith', startDate, endDate)).rejects.toThrow('horse_expenses error')
   })
 })

@@ -428,3 +428,15 @@ export interface HorseExpenseDetailRow {
   horseCount: number
   splitAmount: number
 }
+
+export interface RecipientExpenseSummary {
+  recipient: string
+  totalExpenses: number
+}
+
+export interface RecipientExpenseDetailRow {
+  expenseId: string
+  expenseDate: string
+  expenseType: string
+  amount: number
+}
