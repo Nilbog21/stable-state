@@ -1,3 +1,5 @@
+'use client'
+
 import { Card } from '@/components/ui/Card'
 import type { LessonWithDetails } from '@/lib/db/types'
 import { isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
@@ -21,7 +23,8 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembe
   return (
     <li>
       <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 p-4">
-        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+        {/* suppressHydrationWarning: server (host TZ) and client (viewer's local TZ) produce different strings */}
+        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50" suppressHydrationWarning>
           {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lesson.lesson_at))}
         </span>
         {lesson.instructor_name && (

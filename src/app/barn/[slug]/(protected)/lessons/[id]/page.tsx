@@ -6,6 +6,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import type { LessonDetail } from '@/lib/db/types'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible, getHorseAttentionReasons } from '@/lib/lesson-authorization'
+import { LocalDateTime } from '@/components/LocalDateTime'
 import { DeleteLessonButton } from '../DeleteLessonButton'
 import { HorseStatusBanner } from '../HorseStatusBanner'
 import { deleteLessonAction } from '@/app/actions/lessons'
@@ -106,11 +107,6 @@ export default async function LessonDetailPage({
 
   const instructorName = lesson.instructor_name ?? '—'
 
-  const formattedDate = new Intl.DateTimeFormat('en-US', {
-    dateStyle: 'medium',
-    timeStyle: 'short',
-  }).format(new Date(lesson.lesson_at))
-
   const canSeeNotes = role === 'trainer' || role === 'manager'
 
   const myRiderEntry = role === 'rider'
@@ -191,7 +187,9 @@ export default async function LessonDetailPage({
         <dl className="divide-y divide-zinc-200 dark:divide-zinc-800">
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Date &amp; Time</dt>
-            <dd className="text-sm text-zinc-900 dark:text-zinc-50">{formattedDate}</dd>
+            <dd className="text-sm text-zinc-900 dark:text-zinc-50">
+              <LocalDateTime iso={lesson.lesson_at} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
+            </dd>
           </div>
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Instructor</dt>
