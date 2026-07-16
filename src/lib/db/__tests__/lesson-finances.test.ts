@@ -840,8 +840,8 @@ describe('getHorseIncomeSummary', () => {
     })
   })
 
-  describe('instructor cut netting', () => {
-    it('should_subtract_cut_before_splitting_across_two_horses', async () => {
+  describe('gross income (pre-cut fees) (#971)', () => {
+    it('should_not_subtract_cut_before_splitting_across_two_horses', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', horse_id: 'horse-1' },
@@ -851,11 +851,11 @@ describe('getHorseIncomeSummary', () => {
 
       const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result.every((r) => r.totalIncome === 37.5)).toBe(true)
+      expect(result.every((r) => r.totalIncome === 50)).toBe(true)
     })
 
-    it('should_apply_cut_once_per_lesson_regardless_of_horse_count', async () => {
-      vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
+    it('should_ignore_cut_regardless_of_horse_count', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 90, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', horse_id: 'horse-1' },
         { lesson_id: 'lesson-1', horse_id: 'horse-2' },
@@ -867,7 +867,7 @@ describe('getHorseIncomeSummary', () => {
 
       const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result.every((r) => r.totalIncome === 25)).toBe(true)
+      expect(result.every((r) => r.totalIncome === 30)).toBe(true)
     })
 
     it('should_not_apply_cut_to_charge_income', async () => {
@@ -882,23 +882,23 @@ describe('getHorseIncomeSummary', () => {
       expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 500 }])
     })
 
-    it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+    it('should_report_the_full_fee_for_a_comped_lesson_ignoring_cut', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 0, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
       const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: -25 }])
+      expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 0 }])
     })
 
-    it('should_subtract_cut_from_no_horse_row_without_splitting', async () => {
+    it('should_not_subtract_cut_from_no_horse_row', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([])
 
       const result = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result).toEqual([{ horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 75 }])
+      expect(result).toEqual([{ horseId: NO_HORSE_LABEL, horseName: NO_HORSE_LABEL, totalIncome: 100 }])
     })
   })
 })
@@ -1117,8 +1117,8 @@ describe('getRiderIncomeSummary', () => {
     })
   })
 
-  describe('instructor cut netting', () => {
-    it('should_subtract_cut_before_splitting_across_two_riders', async () => {
+  describe('gross income (pre-cut fees) (#971)', () => {
+    it('should_not_subtract_cut_before_splitting_across_two_riders', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', rider_id: 'mem-1' },
@@ -1128,11 +1128,11 @@ describe('getRiderIncomeSummary', () => {
 
       const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result.every((r) => r.totalIncome === 37.5)).toBe(true)
+      expect(result.every((r) => r.totalIncome === 50)).toBe(true)
     })
 
-    it('should_apply_cut_once_per_lesson_regardless_of_rider_count', async () => {
-      vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
+    it('should_ignore_cut_regardless_of_rider_count', async () => {
+      vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 90, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([
         { lesson_id: 'lesson-1', rider_id: 'mem-1' },
         { lesson_id: 'lesson-1', rider_id: 'mem-2' },
@@ -1142,7 +1142,7 @@ describe('getRiderIncomeSummary', () => {
 
       const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result.every((r) => r.totalIncome === 25)).toBe(true)
+      expect(result.every((r) => r.totalIncome === 30)).toBe(true)
     })
 
     it('should_not_apply_cut_to_charge_income', async () => {
@@ -1157,23 +1157,23 @@ describe('getRiderIncomeSummary', () => {
       expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 500 }])
     })
 
-    it('should_allow_negative_income_for_a_comped_lesson_and_not_clamp_to_zero', async () => {
+    it('should_report_the_full_fee_for_a_comped_lesson_ignoring_cut', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 0, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
       const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: -25 }])
+      expect(result).toEqual([{ riderId: 'mem-1', riderName: 'Alice Rider', totalIncome: 0 }])
     })
 
-    it('should_subtract_cut_from_no_rider_row_without_splitting', async () => {
+    it('should_not_subtract_cut_from_no_rider_row', async () => {
       vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 25, collected: true, instructorId: null, occurredAt: '2026-05-10T10:00:00Z', tierName: 'Custom' }])
       vi.mocked(getLessonJunctionRows).mockResolvedValue([])
 
       const result = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-      expect(result).toEqual([{ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 75 }])
+      expect(result).toEqual([{ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 100 }])
     })
   })
 })
@@ -2229,22 +2229,27 @@ describe('reconciliation regression', () => {
     ]))
   })
 
-  it('should_reconcile_by_horse_breakdown_with_collected_income', async () => {
-    const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate)
+  it('should_reconcile_by_horse_gross_breakdown_with_tier_gross_total', async () => {
+    // #971: getHorseIncomeSummary's totalIncome is gross (pre-cut) since HORSE_INCOME_DESCRIPTOR
+    // sets splitsGrossFee — it no longer reconciles with collectedIncome (net-of-cut), only with
+    // the tier breakdown's own gross figure (subtotal + instructorCut summed).
+    const { breakdown } = await getFinancialSummary('barn-1', startDate, endDate)
+    const tierGrossTotal = breakdown.reduce((sum, b) => sum + b.subtotal + b.instructorCut, 0)
     const horseIncome = await getHorseIncomeSummary('barn-1', startDate, endDate)
 
-    const horseTotal = horseIncome.reduce((sum, r) => sum + r.totalIncome, 0)
+    const horseGrossTotal = horseIncome.reduce((sum, r) => sum + r.totalIncome, 0)
 
-    expect(horseTotal).toBe(collectedIncome)
+    expect(horseGrossTotal).toBe(tierGrossTotal)
   })
 
-  it('should_reconcile_by_rider_breakdown_with_collected_income', async () => {
-    const { collectedIncome } = await getFinancialSummary('barn-1', startDate, endDate)
+  it('should_reconcile_by_rider_gross_breakdown_with_tier_gross_total', async () => {
+    const { breakdown } = await getFinancialSummary('barn-1', startDate, endDate)
+    const tierGrossTotal = breakdown.reduce((sum, b) => sum + b.subtotal + b.instructorCut, 0)
     const riderIncome = await getRiderIncomeSummary('barn-1', startDate, endDate)
 
-    const riderTotal = riderIncome.reduce((sum, r) => sum + r.totalIncome, 0)
+    const riderGrossTotal = riderIncome.reduce((sum, r) => sum + r.totalIncome, 0)
 
-    expect(riderTotal).toBe(collectedIncome)
+    expect(riderGrossTotal).toBe(tierGrossTotal)
   })
 
   it('should_reconcile_by_trainer_breakdown_with_collected_income', async () => {
@@ -2258,12 +2263,15 @@ describe('reconciliation regression', () => {
 })
 
 describe('computeHorseNetIncome', () => {
+  // #971: the first argument's totalIncome is now gross (pre-cut) — see HORSE_INCOME_DESCRIPTOR's
+  // splitsGrossFee — so net here is a single gross-minus-expenses subtraction, not a double
+  // subtraction of both cut and expenses.
   it('should_return_zero_expenses_for_income_only_horse', () => {
     const result = computeHorseNetIncome(
       [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 100 }],
       []
     )
-    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', income: 100, expenses: 0, net: 100 }])
+    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', gross: 100, expenses: 0, net: 100 }])
   })
 
   it('should_return_negative_net_for_expense_only_horse', () => {
@@ -2271,7 +2279,7 @@ describe('computeHorseNetIncome', () => {
       [],
       [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 40 }]
     )
-    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', income: 0, expenses: 40, net: -40 }])
+    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', gross: 0, expenses: 40, net: -40 }])
   })
 
   it('should_combine_income_and_expenses_for_same_horse', () => {
@@ -2279,7 +2287,7 @@ describe('computeHorseNetIncome', () => {
       [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalIncome: 100 }],
       [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 40 }]
     )
-    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', income: 100, expenses: 40, net: 60 }])
+    expect(result).toEqual([{ horseId: 'horse-1', horseName: 'Thunderbolt', gross: 100, expenses: 40, net: 60 }])
   })
 
   it('should_sort_by_income_descending', () => {

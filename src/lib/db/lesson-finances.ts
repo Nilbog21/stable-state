@@ -131,6 +131,10 @@ function computeDetailRows<P>(
   return rows
 }
 
+// #971: horseIncome's totalIncome is gross (pre-cut, via HORSE_INCOME_DESCRIPTOR's
+// splitsGrossFee), so net here is a single gross-minus-expenses subtraction — expenses
+// (a horse's own vet/farrier costs) are shown for transparency but instructor cut is not
+// double-subtracted the way it used to be.
 export function computeHorseNetIncome(
   horseIncome: HorseIncomeSummary[],
   expenseBreakdown: HorseExpenseSummary[]
@@ -146,12 +150,12 @@ export function computeHorseNetIncome(
         horseId,
         // horseId always comes from one of the two maps' keys, so this is never undefined
         horseName: (income ?? expenses)!.horseName,
-        income: income?.totalIncome ?? 0,
+        gross: income?.totalIncome ?? 0,
         expenses: expenses?.totalExpenses ?? 0,
         net: (income?.totalIncome ?? 0) - (expenses?.totalExpenses ?? 0),
       }
     })
-    .sort((a, b) => b.income - a.income || a.horseName.localeCompare(b.horseName))
+    .sort((a, b) => b.gross - a.gross || a.horseName.localeCompare(b.horseName))
 }
 
 export async function getFinancialSummary(
@@ -248,6 +252,13 @@ export interface EntityIncomeDescriptor {
   resolveNames: (ids: string[], barnId: string, client: SupabaseClient) => Promise<Map<string, string>>
   /** trainer only — raw pre-cut fee sum per entity, for the summary's grossIncome column. */
   includeGrossIncome?: boolean
+  /**
+   * #971: horse/rider only — summary mode's own totalIncome becomes the gross (pre-cut) split
+   * instead of net-of-cut, since By Horse/By Rider no longer track a per-entity share of
+   * instructor cut (it's "outside this view" for those tables — see finances-reconciliation.ts).
+   * Detail mode is unaffected (drill-down pages stay net-of-cut, out of #971's scope).
+   */
+  splitsGrossFee?: boolean
 }
 
 export const HORSE_INCOME_DESCRIPTOR: EntityIncomeDescriptor = {
@@ -257,6 +268,7 @@ export const HORSE_INCOME_DESCRIPTOR: EntityIncomeDescriptor = {
   chargesApply: true,
   getChargeEntityId: (c) => c.horseId,
   resolveNames: resolveHorseNames,
+  splitsGrossFee: true,
 }
 
 export const RIDER_INCOME_DESCRIPTOR: EntityIncomeDescriptor = {
@@ -266,6 +278,7 @@ export const RIDER_INCOME_DESCRIPTOR: EntityIncomeDescriptor = {
   chargesApply: true,
   getChargeEntityId: (c) => c.riderId,
   resolveNames: resolveMemberNames,
+  splitsGrossFee: true,
 }
 
 export const TRAINER_INCOME_DESCRIPTOR: EntityIncomeDescriptor = {
@@ -342,7 +355,11 @@ async function getEntityIncomeSummary(
 
   const junctionRows = await fetchJunctionRows(descriptor, barnId, lessonIds, supabase)
   const getKey = participantKey(descriptor, junctionRows)
-  const grouped = computeGroupedIncome(lessons, getKey, descriptor.fallbackLabel)
+  // #971: splitsGrossFee zeroes each row's cut before computeGroupedIncome nets it, so
+  // totalIncome ends up as the gross (pre-cut) split — reusing the existing proportional
+  // split logic rather than duplicating it via a second grouped pass.
+  const groupedRows = descriptor.splitsGrossFee ? lessons.map((l) => ({ ...l, instructorCut: 0 })) : lessons
+  const grouped = computeGroupedIncome(groupedRows, getKey, descriptor.fallbackLabel)
 
   let grossByEntity: Map<string, number> | undefined
   if (descriptor.includeGrossIncome) {

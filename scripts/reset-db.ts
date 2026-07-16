@@ -183,7 +183,18 @@ export function buildExpenseSeeds(now: Date): ExpenseSeed[] {
       86400000
   )
   const todayTime = upcoming.toISOString().slice(11, 19)
+  // #971 empty-state testing: barnCreatedAt is now 4 calendar months back, but buildLessonDates
+  // only seeds lessons in the 3 months before that — so the barn's creation month itself has no
+  // lessons. This priced expense (paymentType assigned below) gives that lesson-free month a
+  // collected transaction, so its tables' empty states can be exercised against real data.
+  const barnCreationMonthStart = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 4, 15))
+  const barnCreationMonthOffset = Math.round(
+    (Date.UTC(barnCreationMonthStart.getUTCFullYear(), barnCreationMonthStart.getUTCMonth(), barnCreationMonthStart.getUTCDate()) -
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())) /
+      86400000
+  )
   const seeds: ExpenseSeed[] = [
+    { daysOffset: barnCreationMonthOffset, time: null, amount: 150, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -80, time: null, amount: 450, recipient: 'Barn Insurance Co.', expenseType: 'Insurance', appliesToAllHorses: true },
     { daysOffset: -75, time: null, amount: 85, recipient: 'Dr. Hoof Farrier', expenseType: 'Farrier', appliesToAllHorses: false, horseIndex: 0 },
     { daysOffset: -60, time: null, amount: 250, recipient: 'Riverside Vet Clinic', expenseType: 'Veterinary', appliesToAllHorses: true },
@@ -223,7 +234,10 @@ async function run() {
   console.log('Re-seeding dev fixtures…')
 
   const now = new Date()
-  const barnCreatedAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 3, 1)).toISOString()
+  // #971: 4 months back (not 3) so the barn's creation month has no seeded lessons —
+  // buildLessonDates only seeds the 3 months before this one — letting the Finances page's
+  // earliest navigable month exercise real empty-state/unattributed-only rendering.
+  const barnCreatedAt = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 4, 1)).toISOString()
 
   mustSucceed(
     await supabase.from('barns').insert({ id: DEV_BARN_ID, name: DEV_BARN_NAME, slug: DEV_BARN_SLUG, created_at: barnCreatedAt }),

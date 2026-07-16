@@ -302,7 +302,33 @@ describe('buildExpenseSeeds', () => {
 
   it('should_keep_all_non_future_daysOffset_within_the_barn_age_window', () => {
     const seeds = buildExpenseSeeds(NOW)
-    expect(seeds.filter((s) => s.daysOffset <= 0).every((s) => s.daysOffset >= -85)).toBe(true)
+    expect(seeds.filter((s) => s.daysOffset <= 0).every((s) => s.daysOffset >= -125)).toBe(true)
+  })
+
+  function findSeedInBarnCreationMonth(seeds: ReturnType<typeof buildExpenseSeeds>) {
+    const monthStart = Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() - 4, 1)
+    const nextMonthStart = Date.UTC(NOW.getUTCFullYear(), NOW.getUTCMonth() - 3, 1)
+    return seeds.find((s) => {
+      const d = new Date(NOW)
+      d.setUTCDate(d.getUTCDate() + s.daysOffset)
+      const t = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate())
+      return t >= monthStart && t < nextMonthStart
+    })
+  }
+
+  it('should_include_a_seed_dated_in_the_barn_creation_month', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(findSeedInBarnCreationMonth(seeds)).toBeDefined()
+  })
+
+  it('should_price_the_barn_creation_month_expense', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(findSeedInBarnCreationMonth(seeds)!.amount).not.toBeNull()
+  })
+
+  it('should_give_the_barn_creation_month_expense_a_payment_type', () => {
+    const seeds = buildExpenseSeeds(NOW)
+    expect(findSeedInBarnCreationMonth(seeds)!.paymentType).not.toBeNull()
   })
 
   it('should_include_a_today_dated_timed_planned_expense', () => {

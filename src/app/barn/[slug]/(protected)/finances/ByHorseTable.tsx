@@ -1,20 +1,21 @@
 'use client'
 import Link from 'next/link'
 import { Td } from '@/components/ui/Table'
-import { InfoPopover } from './InfoPopover'
 import { SortableTh } from './SortableTh'
+import { ReconciliationFoot } from './ReconciliationFoot'
 import { useSortableRows } from './useSortableRows'
 import { formatCurrency } from '@/lib/format-currency'
 import type { HorseNetIncomeRow } from '@/lib/db/types'
+import type { ReconciliationColumn } from '@/lib/finances-reconciliation'
 
-type SortKey = 'horseName' | 'income' | 'expenses' | 'net'
+type SortKey = 'horseName' | 'gross' | 'expenses' | 'net'
 
 function getValue(row: HorseNetIncomeRow, key: SortKey): string | number {
   switch (key) {
     case 'horseName':
       return row.horseName
-    case 'income':
-      return row.income
+    case 'gross':
+      return row.gross
     case 'expenses':
       return row.expenses
     case 'net':
@@ -26,12 +27,16 @@ export function ByHorseTable({
   rows,
   slug,
   monthParam,
-  noHorseLabel,
+  gross,
+  expenses,
+  net,
 }: {
   rows: HorseNetIncomeRow[]
   slug: string
   monthParam: string
-  noHorseLabel: string
+  gross: ReconciliationColumn
+  expenses: ReconciliationColumn
+  net: ReconciliationColumn
 }) {
   const { sorted, sortKey, sortDir, toggleSort } = useSortableRows<HorseNetIncomeRow, SortKey>(rows, getValue, 'horseName')
 
@@ -41,32 +46,33 @@ export function ByHorseTable({
         <thead>
           <tr>
             <SortableTh sortKey="horseName" label="Horse" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="income" label="Gross" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="expenses" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh sortKey="net" label="Net" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
+            <SortableTh sortKey="gross" label="Gross" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This horse's lesson and agreement income, before the instructor's cut" />
+            <SortableTh sortKey="expenses" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This horse's own vet, farrier, and other costs" />
+            <SortableTh sortKey="net" label="Net" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="Gross minus this horse's own expenses" />
           </tr>
         </thead>
         <tbody>
           {sorted.map((row) => (
             <tr key={row.horseId}>
               <Td>
-                {row.horseId === noHorseLabel ? (
-                  <>
-                    {row.horseName}
-                    <InfoPopover text="Paid lessons with no horse recorded" align="left" />
-                  </>
-                ) : (
-                  <Link href={`/barn/${slug}/finances/horses/${row.horseId}?month=${monthParam}`} className="underline">
-                    {row.horseName}
-                  </Link>
-                )}
+                <Link href={`/barn/${slug}/finances/horses/${row.horseId}?month=${monthParam}`} className="underline">
+                  {row.horseName}
+                </Link>
               </Td>
-              <Td>{formatCurrency(row.income)}</Td>
-              <Td>{formatCurrency(row.expenses)}</Td>
+              <Td>{formatCurrency(row.gross)}</Td>
+              <Td>{row.expenses === 0 ? '—' : formatCurrency(row.expenses, { forceParens: true })}</Td>
               <Td>{formatCurrency(row.net)}</Td>
             </tr>
           ))}
         </tbody>
+        <ReconciliationFoot
+          labelColSpan={1}
+          gross={gross}
+          expenses={expenses}
+          net={net}
+          outsideInfoText="Instructor pay isn't tied to a specific horse."
+          unattributedInfoText="A paid lesson with no horse recorded, or an expense record whose original entry was deleted after being marked paid — never a barn-wide expense split across horses, which appears in each horse's own row instead."
+        />
       </table>
     </div>
   )

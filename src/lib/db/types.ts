@@ -275,7 +275,7 @@ export interface TrainerIncomeDetailRow {
 export interface HorseNetIncomeRow {
   horseId: string
   horseName: string
-  income: number
+  gross: number
   expenses: number
   net: number
 }

@@ -1,62 +1,82 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { render, screen, cleanup, fireEvent, within } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 import { ByRiderTable } from '../ByRiderTable'
+import type { ReconciliationColumn } from '@/lib/finances-reconciliation'
 
 afterEach(cleanup)
 
-const NO_RIDER_LABEL = 'No rider'
-
 const rows = [
   { riderId: 'r-2', riderName: 'Zoe', totalIncome: 100 },
-  { riderId: 'r-1', riderName: 'Alice', totalIncome: 50 },
+  { riderId: 'r-1', riderName: 'Amy', totalIncome: 50 },
 ]
+
+const gross: ReconciliationColumn = { subtotal: 150, outside: 0, unattributed: 0, total: 150 }
+const expenses: ReconciliationColumn = { subtotal: 0, outside: 55, unattributed: 5, total: 60 }
+const net: ReconciliationColumn = { subtotal: 150, outside: -55, unattributed: -5, total: 90 }
 
 function rowNames(container: HTMLElement) {
   return Array.from(container.querySelectorAll('tbody tr')).map((tr) => tr.querySelector('td')?.textContent)
 }
 
+function renderTable(props: Partial<React.ComponentProps<typeof ByRiderTable>> = {}) {
+  return render(<ByRiderTable rows={rows} slug="green-acres" monthParam="2026-06" gross={gross} expenses={expenses} net={net} {...props} />)
+}
+
 describe('ByRiderTable', () => {
-  it('should_render_net_header_instead_of_income', () => {
-    render(<ByRiderTable rows={rows} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    expect(screen.getByRole('columnheader', { name: 'Net' })).toBeDefined()
+  it('should_render_uniform_gross_expenses_net_headers', () => {
+    renderTable()
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼ⓘ]/g, '').trim())
+    expect(headers).toEqual(['Rider', 'Gross', 'Expenses', 'Net'])
   })
 
-  it('should_not_render_income_header', () => {
-    render(<ByRiderTable rows={rows} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    expect(screen.queryByRole('columnheader', { name: 'Income' })).toBeNull()
+  it('should_render_a_dash_for_the_always_zero_per_row_expenses_cell', () => {
+    renderTable()
+    const row = screen.getByText('Amy').closest('tr')!
+    expect(row.textContent).toContain('—')
+  })
+
+  it('should_render_net_equal_to_gross_since_expenses_is_always_zero_per_row', () => {
+    renderTable()
+    const row = screen.getByText('Amy').closest('tr')!
+    // gross $50.00 appears twice: once under Gross, once under Net
+    expect(row.textContent?.match(/\$50\.00/g)?.length).toBe(2)
   })
 
   it('should_default_sort_by_rider_name_ascending', () => {
-    const { container } = render(<ByRiderTable rows={rows} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    expect(rowNames(container)).toEqual(['Alice', 'Zoe'])
+    const { container } = renderTable()
+    expect(rowNames(container)).toEqual(['Amy', 'Zoe'])
   })
 
-  it('should_flip_to_descending_when_rider_header_clicked', () => {
-    const { container } = render(<ByRiderTable rows={rows} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    fireEvent.click(screen.getByRole('columnheader', { name: /Rider/ }).querySelector('button')!)
-    expect(rowNames(container)).toEqual(['Zoe', 'Alice'])
-  })
-
-  it('should_sort_ascending_by_net_on_first_click', () => {
-    const { container } = render(<ByRiderTable rows={rows} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    fireEvent.click(screen.getByRole('columnheader', { name: 'Net' }).querySelector('button')!)
-    expect(rowNames(container)).toEqual(['Alice', 'Zoe'])
+  it('should_sort_by_gross_column_when_clicked', () => {
+    const { container } = renderTable()
+    fireEvent.click(screen.getByRole('columnheader', { name: /^Gross/ }).querySelector('button')!)
+    expect(rowNames(container)).toEqual(['Amy', 'Zoe'])
   })
 
   it('should_link_rider_name_to_drilldown_with_month_param', () => {
-    render(<ByRiderTable rows={rows} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    expect(screen.getByRole('link', { name: 'Alice' }).getAttribute('href')).toBe('/barn/green-acres/finances/riders/r-1?month=2026-06')
+    renderTable()
+    expect(screen.getByRole('link', { name: 'Amy' }).getAttribute('href')).toBe('/barn/green-acres/finances/riders/r-1?month=2026-06')
   })
 
-  it('should_render_no_rider_row_without_a_link', () => {
-    render(<ByRiderTable rows={[{ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 80 }]} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    const row = screen.getByText(NO_RIDER_LABEL).closest('tr')!
-    expect(within(row).queryByRole('link')).toBeNull()
+  it('should_not_render_a_no_rider_row_in_the_body', () => {
+    renderTable()
+    expect(screen.queryByText('No rider')).toBeNull()
   })
 
-  it('should_render_no_rider_row_with_info_popover', () => {
-    render(<ByRiderTable rows={[{ riderId: NO_RIDER_LABEL, riderName: NO_RIDER_LABEL, totalIncome: 80 }]} slug="green-acres" monthParam="2026-06" noRiderLabel={NO_RIDER_LABEL} />)
-    const row = screen.getByText(NO_RIDER_LABEL).closest('tr')!
-    expect(row.querySelector('button[aria-label="Info"]')).not.toBeNull()
+  it('should_render_a_tfoot_reconciliation_footer', () => {
+    const { container } = renderTable()
+    expect(container.querySelector('tfoot')).not.toBeNull()
+  })
+
+  it('should_render_the_footer_total_row_matching_the_gross_expenses_net_totals', () => {
+    renderTable()
+    const totalRow = screen.getByText('Total').closest('tr')!
+    const cells = Array.from(totalRow.querySelectorAll('td')).map((td) => td.textContent)
+    expect(cells).toEqual(['Total', '$150.00', '($60.00)', '$90.00'])
+  })
+
+  it('should_exclude_the_footer_from_the_sortable_tbody', () => {
+    const { container } = renderTable()
+    expect(container.querySelectorAll('tbody tr')).toHaveLength(2)
   })
 })
