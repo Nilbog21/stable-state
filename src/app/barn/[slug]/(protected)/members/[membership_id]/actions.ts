@@ -128,6 +128,7 @@ export async function removeMemberAction(
   const target = await getMembershipById(membershipId)
   if (!target || target.barn_id !== barn.id) notFound()
   if (target.user_id === user.id) notFound()
+  if (target.role === 'manager') notFound()
 
   await deleteMembership(membershipId)
 

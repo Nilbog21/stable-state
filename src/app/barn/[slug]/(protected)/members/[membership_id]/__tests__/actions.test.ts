@@ -628,6 +628,14 @@ describe('removeMemberAction', () => {
     expect(deleteMembership).not.toHaveBeenCalled()
   })
 
+  it('should_404_when_target_role_is_manager', async () => {
+    vi.mocked(getMembershipById).mockResolvedValue(managerTargetMembership)
+
+    await expect(removeMemberAction('green-acres', 'mem-mgr-target')).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
+    expect(deleteMembership).not.toHaveBeenCalled()
+  })
+
   it('should_call_deleteMembership_with_target_id', async () => {
     vi.mocked(getMembershipById).mockResolvedValue(targetTrainerMembership)
 
