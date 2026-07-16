@@ -2,8 +2,7 @@
 
 import { useState } from 'react'
 import type { ExpenseWithHorses } from '@/lib/db/types'
-import { Th } from '@/components/ui/Table'
-import { ExpenseRow } from './ExpenseRow'
+import { ExpenseCard } from './ExpenseCard'
 
 interface Props {
   expenses: ExpenseWithHorses[]
@@ -28,25 +27,10 @@ export function OlderExpensesToggle({ expenses, slug }: Props) {
         {show ? 'Hide older expenses' : 'Show older expenses'}
       </button>
       {show && (
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr>
-                <Th scope="col">Date</Th>
-                <Th scope="col">Time</Th>
-                <Th scope="col">Recipient</Th>
-                <Th scope="col">Type</Th>
-                <Th scope="col">Horse(s)</Th>
-                <Th scope="col">Amount</Th>
-                <Th scope="col" align="right">Actions</Th>
-              </tr>
-            </thead>
-            <tbody>
-              {expenses.map((expense) => (
-                <ExpenseRow key={expense.id} expense={expense} slug={slug} />
-              ))}
-            </tbody>
-          </table>
+        <div className="flex flex-col gap-2">
+          {expenses.map((expense) => (
+            <ExpenseCard key={expense.id} expense={expense} slug={slug} />
+          ))}
         </div>
       )}
     </>

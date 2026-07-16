@@ -80,13 +80,13 @@ A manager's or trainer's detail page also shows an **Instructor Access** section
 
 ## Expenses
 
-**View expenses** — Go to **Expenses** to see recent spending. Older expenses are hidden by default; tap **Show older expenses** to expand them. Each row shows the date, time (if scheduled), who was paid, the expense type, which horse(s) it covers (or "Entire Barn"), and the amount — shown as a dash if not yet entered.
+**View expenses** — Go to **Expenses** to see recent spending. Older expenses are hidden by default; tap **Show older expenses** to expand them. Each expense shows as a card with the date, time (if scheduled), who was paid, the expense type, which horse(s) it covers (or "Entire Barn"), and the amount — shown as a dash if not yet entered. Tap a card to open and edit that expense.
 
 **Add an expense** — Tap **Add Expense**. Enter who was paid and pick a date; everything else is optional. The Time field only appears for today or a future date — a past date means the expense already happened, so there's nothing to schedule. Leave the amount blank to log a planned visit (like a farrier appointment scheduled for next week) and fill it in later once you know the cost, or enter it right away for something you're paying for on the spot. If you've paid this recipient before, the expense type fills in automatically based on what you've entered for them in the past — you can still change it. Check **Entire Barn** if the expense covers every horse, or check off specific horses instead. A **Payment Type** field lets you record how it was paid — leave it unset if that's not tracked for this expense.
 
-**Edit an expense** — Click **Edit** on any expense row to fill in a cost after a planned visit or fix a mistake. The form opens pre-filled, including the Entire Barn / specific-horses state; change anything and save.
+**Edit an expense** — Tap any expense card to fill in a cost after a planned visit or fix a mistake. The form opens pre-filled, including the Entire Barn / specific-horses state; change anything and save.
 
-**Delete an expense** — Click **Delete** on any expense row, then confirm. This cannot be undone.
+**Delete an expense** — Open the expense (tap its card), then click **Delete** and confirm. This cannot be undone.
 
 ## Finances
 

@@ -1,9 +1,8 @@
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpensesByBarn } from '@/lib/db/expenses'
 import { Button } from '@/components/ui/Button'
-import { Th } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
-import { ExpenseRow } from './ExpenseRow'
+import { ExpenseCard } from './ExpenseCard'
 import { OlderExpensesToggle } from './OlderExpensesToggle'
 
 const OLDER_EXPENSE_CUTOFF_DAYS = 7
@@ -41,25 +40,10 @@ export default async function ExpensesPage({
       ) : (
         <>
           {recentExpenses.length > 0 && (
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr>
-                    <Th scope="col">Date</Th>
-                    <Th scope="col">Time</Th>
-                    <Th scope="col">Recipient</Th>
-                    <Th scope="col">Type</Th>
-                    <Th scope="col">Horse(s)</Th>
-                    <Th scope="col">Amount</Th>
-                    <Th scope="col" align="right">Actions</Th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recentExpenses.map((expense) => (
-                    <ExpenseRow key={expense.id} expense={expense} slug={slug} />
-                  ))}
-                </tbody>
-              </table>
+            <div className="mt-6 flex flex-col gap-2">
+              {recentExpenses.map((expense) => (
+                <ExpenseCard key={expense.id} expense={expense} slug={slug} />
+              ))}
             </div>
           )}
           <OlderExpensesToggle expenses={olderExpenses} slug={slug} />
