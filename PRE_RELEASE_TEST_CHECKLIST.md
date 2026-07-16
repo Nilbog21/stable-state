@@ -211,13 +211,12 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] Tap the ⓘ info icon on **Outstanding Expenses** → shows explanatory text that an entry is listed for a missing amount, a missing payment type, or both
 - [ ] Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page
 - [ ] Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**, now contributing its amount to the bold total instead of $0
-- [ ] That same expense also shows up under Total Expenses/By Horse for its month
+- [ ] That same expense also contributes to every tab's footer Total for Expenses that month, and to the By Horse tab's own Expenses column for its horse
 - [ ] Now set a Payment Type on that same expense and save → it disappears from **Outstanding Expenses** entirely
 - [ ] "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, leases/boarding charges, and cancellation fees, each lesson/cancellation-fee row linking to its lesson — confirm outstanding expenses do **not** appear on this page (no Outstanding Expenses equivalent there)
 - [ ] Month navigation `←`/`→` works and updates `?month=YYYY-MM`; navigate to the previous month and see the past lesson from Phase 3 (and seeded past-month data) reflected
-- [ ] Summary rows appear in order **Gross Income → Total Expenses → Net Income → Pending income**, none with a month/year suffix (the month picker above already shows it)
-- [ ] Net Income equals Gross Income minus Total Expenses
-- [ ] Tapping the ⓘ next to **Net Income** shows "Gross Income minus Total Expenses"
+- [ ] Below the Outstanding sections, only a single **Pending income** line appears for the current month, no month/year suffix (the month picker above already shows it) — no Gross Income / Total Expenses / Net Income summary boxes above it (#971 removed them, since their numbers didn't reconcile with any one breakdown table below)
+- [ ] Every tab shows uniform **Gross | Expenses | Net** columns (`—` for a column a tab has no concept of), and every tab ends in a footer with **Subtotal / Outside this view / Unattributed / Total** rows
 - [ ] **By Horse** is the default tab on page load (no `?tab=` needed)
 - [ ] **By Horse** tab: **Horse | Gross | Expenses | Net** columns; horse name is an underlined link (not just underlined on hover); add an expense for a horse with a lesson this month → its Expenses/Net update; a horse with $0 expenses shows `$0.00` (not blank); a horse with expenses but no lessons this month still appears, with `$0.00` Gross and a negative Net; click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` shows one combined table (lessons, leases/boarding charges, and expenses) ordered by date ascending, with a **Type** column and expense Amount/Split in parentheses (e.g. `($25.00)`); the bottom **Net** figure matches this horse's Net on the By Horse tab; month param preserved
 - [ ] On page load, By Horse rows are sorted by **Horse** name ascending (A→Z), with a ▲ next to the Horse header
@@ -225,36 +224,34 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] After tapping **Gross**, a ▲ appears on the Gross header (and disappears from Horse)
 - [ ] Tapping a sort header does not change the URL (no `?sort=` param, no page reload)
 - [ ] Tap the **Gross** header again → order reverses and the indicator flips to ▼
-- [ ] **By Tier** tab (no longer default, still reachable via the pill): your new tiers and seeded tiers listed with price, lesson count, a **Gross** column, an **Instructor Cut** column (sum of that tier's lessons' own snapshotted cuts, or `—` when zero), and **Net** — column order is Tier | Price | Lessons | Gross | Instructor Cut | Net
-- [ ] For a tier's row, Gross equals Net plus Instructor Cut
-- [ ] Gross Income (summary box) matches the sum of the By Tier tab's Net column plus any Non-lesson income row
-- [ ] A tier with no paid lessons this month still appears, with `$0.00` Net and a `0` lesson count (not omitted from the list)
-- [ ] Edit a tier's instructor cut, book a new lesson under it, and confirm the tier's Instructor Cut column reflects a mix of the old and new per-lesson rates rather than the new rate × total count
+- [ ] Tap the ⓘ next to a **Gross**/**Expenses**/**Net** header on any tab → shows explanatory text and does **not** trigger a sort (the icon sits beside, not inside, the sort button)
+- [ ] **By Tier** tab (no longer default, still reachable via the pill): your new tiers and seeded tiers listed with price (or `—` for Custom), a **Gross** column, an **Expenses** column (renamed from "Instructor Cut" — sum of that tier's lessons' own snapshotted cuts, or `—` when zero), and **Net** — column order is Tier | Price | Gross | Expenses | Net (no more Lessons count column)
+- [ ] For a tier's row, Gross equals Net plus Expenses
+- [ ] A tier with no paid lessons this month still appears, with `$0.00` Gross/Net (not omitted from the list)
+- [ ] Edit a tier's instructor cut, book a new lesson under it, and confirm the tier's Expenses column reflects a mix of the old and new per-lesson rates rather than the new rate × total count
 - [ ] On page load, By Tier rows are sorted by **Tier** name ascending, with a ▲ next to the Tier header
 - [ ] Tap the **Net** header on By Tier → rows re-sort by that column ascending
 - [ ] After tapping **Net** on By Tier, a ▲ appears on the Net header (and disappears from Tier)
 - [ ] Tap the **Net** header on By Tier again → order reverses and the indicator flips to ▼
-- [ ] **By Rider** tab: single **Net** column (no separate Gross — the table has no expenses to net against) showing collected income per rider, net of the instructor cut; name is an underlined link to drill-down `/barn/dev-barn/finances/riders/[id]`, which shows one combined table (lessons + leases/boarding charges) ordered by date ascending with a **Type** column, matching the By Horse drill-down's layout — no more separate "Leases & Boarding" table; bottom **Total** matches the By Rider summary; month param preserved
+- [ ] **By Rider** tab: **Rider | Gross | Expenses | Net** columns — Expenses is always `—` (no rider-level expense concept, and its header isn't clickable/sortable) and Net always equals Gross; name is an underlined link to drill-down `/barn/dev-barn/finances/riders/[id]`, which shows one combined table (lessons + leases/boarding charges) ordered by date ascending with a **Type** column, matching the By Horse drill-down's layout; bottom **Total** matches the By Rider summary; month param preserved
 - [ ] On page load, By Rider rows are sorted by **Rider** name ascending, with a ▲ next to the Rider header
-- [ ] Tap the **Net** header on By Rider → rows re-sort by that column ascending
-- [ ] After tapping **Net** on By Rider, a ▲ appears on the Net header (and disappears from Rider)
-- [ ] Tap the **Net** header on By Rider again → order reverses and the indicator flips to ▼
-- [ ] **By Instructor** tab: **Gross | Instructor Cut | Net** columns per trainer full name — Gross is the trainer's pre-cut lesson fees, Instructor Cut is the deducted amount (parenthesized), Net is the take-home figure; trainer name is an underlined link to a new drill-down `/barn/dev-barn/finances/trainers/[id]` — one table of that trainer's paid lessons (date linking to the lesson, Type always "Lesson", fee net of the cut), bottom **Total** matches the By Instructor summary's Net figure; month param preserved
+- [ ] Tap the **Gross** header on By Rider → rows re-sort ascending; tap the **Net** header instead → identical resulting order (both share a sort key, since the two columns are always equal for this tab)
+- [ ] **By Instructor** tab: **Trainer | Gross | Expenses | Net** columns — Gross is the trainer's pre-cut lesson fees, Expenses (renamed from "Instructor Cut") is the deducted amount (parenthesized), Net is the take-home figure; trainer name is an underlined link to drill-down `/barn/dev-barn/finances/trainers/[id]` — one table of that trainer's paid lessons (date linking to the lesson, Type always "Lesson", fee net of the cut), bottom **Total** matches the By Instructor summary's Net figure; month param preserved
 - [ ] On page load, By Instructor rows are sorted by **Trainer** name ascending, with a ▲ next to the Trainer header
 - [ ] Tap the **Net** header on By Instructor → rows re-sort by that column ascending
 - [ ] After tapping **Net** on By Instructor, a ▲ appears on the Net header (and disappears from Trainer)
 - [ ] Tap the **Net** header on By Instructor again → order reverses and the indicator flips to ▼
-- [ ] Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it) and renders in parentheses, e.g. `($25.00)`, not with a leading minus sign; it's still included in Gross Income (not dropped or clamped to zero)
-- [ ] Gross vs Pending income figures are consistent with what you marked paid, net of the instructor cut; the **Outstanding Income** section above stays at the raw (gross) fee
-- [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Gross Income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding") and a blank Lessons cell (not a charge count); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
-- [ ] **By Instructor** tab also shows the same **Non-lesson income** row
-- [ ] On that trainer's member detail page, tap **Remove** and confirm the browser prompt after they've instructed a paid lesson → you're redirected to the Members list and the removed trainer no longer appears there; back on Finances, **By Instructor** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Gross Income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
-- [ ] **By Paid To** tab: **Recipient | Expense Amount** columns, recipient name is an underlined link (not just underlined on hover)
+- [ ] Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it) and renders in parentheses, e.g. `($25.00)`, not with a leading minus sign; it's still included in every tab's Gross/Net totals (not dropped or clamped to zero)
+- [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, **By Tier** and **By Instructor**'s footer **Outside this view** row for Gross increases by the charge amount (a charge has no tier or instructor); **By Horse** (Apple) and **By Rider** (Dana) Gross totals include the full charge amount directly (a charge is horse- and rider-tied); drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
+- [ ] On that trainer's member detail page, tap **Remove** and confirm the browser prompt after they've instructed a paid lesson → you're redirected to the Members list and the removed trainer no longer appears there; back on Finances, the lesson's fee is still counted, now folded into **By Instructor**'s footer **Unattributed** row (tap its ⓘ to confirm the explanation covers a removed instructor) instead of a "No instructor" body row
+- [ ] **By Paid To** tab: **Recipient | Gross | Expenses | Net** columns — Gross and Net are always `—` (a recipient has no revenue concept); Expenses (renamed from "Expense Amount") is the recipient's total; recipient name is an underlined link (not just underlined on hover)
 - [ ] On page load, By Paid To rows are sorted by **Recipient** name ascending, with a ▲ next to the Recipient header
-- [ ] Tap the **Expense Amount** header on By Paid To → rows re-sort by that column ascending, with the ▲ moving off Recipient; tap again → order reverses and the indicator flips to ▼
+- [ ] Tap the **Expenses** header on By Paid To → rows re-sort by that column ascending, with the ▲ moving off Recipient; tap again → order reverses and the indicator flips to ▼
 - [ ] Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
 - [ ] Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month (Date, Type, Amount columns), date links to the expense's edit page, bottom **Total** matches the By Paid To summary
 - [ ] A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL
+- [ ] **Reconciliation check** (#971): open all five tabs for the same month and confirm each one's footer **Total** row shows the identical Gross figure, identical Expenses figure, and identical Net figure across every tab
+- [ ] **Unattributed-expense check** (#971): delete a paid expense from `/barn/dev-barn/expenses/[id]/delete` **without** checking "Also delete the collected record from Finances" (its `transactions` row survives with no `horse_expenses` row behind it) → back on Finances, that amount now appears under **Unattributed** in the By Horse and By Paid To footers instead of silently disappearing; tap the ⓘ to confirm the explanation
 
 Manage Barn (`/barn/dev-barn/settings`):
 
