@@ -6,7 +6,7 @@ import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { getDueDocuments } from '@/lib/db/documents'
 import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
-import { getOutstandingLessons } from '@/lib/db/outstanding'
+import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import type { DueDocument, LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
 import { UpcomingLessonsSections } from './UpcomingLessonsSections'
@@ -40,7 +40,7 @@ export default async function BarnDashboardPage({
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      const [lessons, pending, due, expenses, outstandingLessons, outstandingCharges] = await Promise.all([
+      const [lessons, pending, due, expenses, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
         getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), user.id, membership.role),
         membership.role === 'manager' ? getPendingMemberships(barn.id) : Promise.resolve([]),
         membership.role === 'manager' ? getDueDocuments(barn.id, now.toISOString().slice(0, 10)) : Promise.resolve([]),
@@ -48,13 +48,14 @@ export default async function BarnDashboardPage({
           ? getUpcomingScheduledExpenses(barn.id, now.toISOString(), weekOut.toISOString())
           : Promise.resolve([]),
         getOutstandingLessons(barn.id, user.id, membership.role),
+        getOutstandingCancellationFees(barn.id, user.id, membership.role),
         getOutstandingCharges(barn.id, user.id, membership.role),
       ])
       upcomingLessons = lessons
       pendingCount = pending.length
       dueDocuments = due
       upcomingExpenses = expenses
-      unpaidLessonsCount = outstandingLessons.length
+      unpaidLessonsCount = outstandingLessons.length + outstandingCancellationFees.length
       unpaidChargesCount = outstandingCharges.length
     }
   }
