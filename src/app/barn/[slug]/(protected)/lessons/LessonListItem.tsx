@@ -22,7 +22,7 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembe
     <li>
       <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 p-4">
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-          {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'UTC' }).format(new Date(lesson.lesson_at))}
+          {new Intl.DateTimeFormat('en-US', { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(lesson.lesson_at))}
         </span>
         {lesson.instructor_name && (
           <span className="text-sm text-zinc-700 dark:text-zinc-300">{lesson.instructor_name}</span>

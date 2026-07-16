@@ -4,7 +4,7 @@ import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getT
 import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { getPastDueExpenses } from '@/lib/db/expenses'
-import { getExpenseFinancialSummary } from '@/lib/db/expense-finances'
+import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
@@ -15,7 +15,7 @@ import { Pill } from '@/components/ui/Pill'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
 
-const VALID_TABS = ['horse', 'tier', 'rider', 'trainer'] as const
+const VALID_TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
 type Tab = typeof VALID_TABS[number]
 
 export default async function FinancesPage({
@@ -34,7 +34,7 @@ export default async function FinancesPage({
   const { startDate, endDate, monthLabel, isCurrentMonth, prevMonthUrl, nextMonthUrl } =
     resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, pastDueExpenses] = await Promise.all([
+  const [{ collectedIncome, pendingIncome, breakdown }, horseIncome, riderIncome, trainerIncome, outstandingLessons, outstandingCharges, outstandingCancellationFees, expenseSummary, pastDueExpenses, recipientExpenses] = await Promise.all([
     getFinancialSummary(barn.id, startDate, endDate),
     getHorseIncomeSummary(barn.id, startDate, endDate),
     getRiderIncomeSummary(barn.id, startDate, endDate),
@@ -44,6 +44,7 @@ export default async function FinancesPage({
     getOutstandingCancellationFees(barn.id),
     getExpenseFinancialSummary(barn.id, startDate, endDate),
     getPastDueExpenses(barn.id),
+    getRecipientExpenseSummary(barn.id, startDate, endDate),
   ])
 
   const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
@@ -195,6 +196,9 @@ export default async function FinancesPage({
           </Pill>
           <Pill href={`?tab=trainer${monthQ}`} active={tab === 'trainer'}>
             By Instructor
+          </Pill>
+          <Pill href={`?tab=recipient${monthQ}`} active={tab === 'recipient'}>
+            By Paid To
           </Pill>
         </div>
       </div>
@@ -380,6 +384,41 @@ export default async function FinancesPage({
           <EmptyState
             heading={`No trainer income in ${monthLabel}.`}
             subtext="Instructor income will appear here once lessons are paid."
+          />
+        )
+      )}
+
+      {tab === 'recipient' && (
+        recipientExpenses.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Recipient</Th>
+                  <Th>Amount</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {recipientExpenses.map((row) => (
+                  <tr key={row.recipient}>
+                    <Td>
+                      <Link
+                        href={`/barn/${slug}/finances/expenses/${encodeURIComponent(row.recipient)}?month=${formatMonthParam(startDate)}`}
+                        className="underline"
+                      >
+                        {row.recipient}
+                      </Link>
+                    </Td>
+                    <Td>{formatCurrency(row.totalExpenses)}</Td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            heading={`No expenses in ${monthLabel}.`}
+            subtext="Expense breakdown by recipient will appear here once expenses are recorded."
           />
         )
       )}

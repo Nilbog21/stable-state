@@ -23,7 +23,8 @@ export function DateHourPicker({
   const [date, setDate] = useState(initialDate ?? localToday)
   const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
 
-  const combinedValue = `${date}T${String(hour).padStart(2, '0')}:00`
+  const [year, month, day] = date.split('-').map(Number)
+  const combinedValue = date ? new Date(year, month - 1, day, hour).toISOString() : ''
 
   useEffect(() => {
     onChange?.(date ? combinedValue : '')

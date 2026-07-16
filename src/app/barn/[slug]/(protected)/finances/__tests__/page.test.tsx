@@ -28,7 +28,7 @@ vi.mock('@/lib/db/outstanding', async () => {
 })
 vi.mock('@/lib/db/agreement-finances', () => ({ getOutstandingCharges: vi.fn() }))
 vi.mock('@/lib/db/expenses', () => ({ getPastDueExpenses: vi.fn() }))
-vi.mock('@/lib/db/expense-finances', () => ({ getExpenseFinancialSummary: vi.fn() }))
+vi.mock('@/lib/db/expense-finances', () => ({ getExpenseFinancialSummary: vi.fn(), getRecipientExpenseSummary: vi.fn() }))
 vi.mock('@/app/actions/lessons', () => ({ updatePaymentTypeAction: vi.fn() }))
 vi.mock('@/app/actions/expenses', () => ({ resolvePastDueExpenseAction: vi.fn() }))
 
@@ -44,7 +44,7 @@ import { getFinancialSummary, getHorseIncomeSummary, getRiderIncomeSummary, getT
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { getPastDueExpenses } from '@/lib/db/expenses'
-import { getExpenseFinancialSummary } from '@/lib/db/expense-finances'
+import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
 import FinancesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -67,6 +67,8 @@ describe('FinancesPage', () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([])
     vi.mocked(getExpenseFinancialSummary).mockReset()
     vi.mocked(getExpenseFinancialSummary).mockResolvedValue({ totalExpenses: 0, breakdown: [] })
+    vi.mocked(getRecipientExpenseSummary).mockReset()
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([])
     vi.mocked(getPastDueExpenses).mockReset()
     vi.mocked(getPastDueExpenses).mockResolvedValue([])
   })
@@ -353,6 +355,91 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     expect(screen.getByText('No rider income in June 2026.')).toBeDefined()
+  })
+
+  it('should_display_recipient_name', async () => {
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([
+      { recipient: 'Dr. Smith', totalExpenses: 120 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    expect(screen.getByText('Dr. Smith')).toBeDefined()
+  })
+
+  it('should_display_recipient_expense_amount', async () => {
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([
+      { recipient: 'Dr. Smith', totalExpenses: 120 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    expect(screen.getByText('$120.00')).toBeDefined()
+  })
+
+  it('should_style_recipient_name_link_with_persistent_underline', async () => {
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([
+      { recipient: 'Dr. Smith', totalExpenses: 120 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Dr. Smith' })
+    expect(link.className).toContain('underline')
+  })
+
+  it('should_not_style_recipient_name_link_as_hover_only_underline', async () => {
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([
+      { recipient: 'Dr. Smith', totalExpenses: 120 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Dr. Smith' })
+    expect(link.className).not.toContain('hover:underline')
+  })
+
+  it('should_link_recipient_name_to_encoded_drill_down_with_month_param', async () => {
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([
+      { recipient: 'Dr. Smith & Co', totalExpenses: 120 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient', month: '2026-05' }),
+    })
+    render(jsx)
+    const link = screen.getByRole('link', { name: 'Dr. Smith & Co' })
+    expect(link.getAttribute('href')).toBe(`/barn/green-acres/finances/expenses/${encodeURIComponent('Dr. Smith & Co')}?month=2026-05`)
+  })
+
+  it('should_display_empty_state_when_no_recipient_expenses', async () => {
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    expect(screen.getByText(/no expenses/i)).toBeDefined()
+  })
+
+  it('should_display_recipient_empty_state_with_current_month_and_year', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
+    vi.mocked(getRecipientExpenseSummary).mockResolvedValue([])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'recipient' }),
+    })
+    render(jsx)
+    expect(screen.getByText('No expenses in June 2026.')).toBeDefined()
   })
 
   it('should_use_explicit_valid_month_param', async () => {

@@ -931,7 +931,12 @@ describe('LessonForm exhaustion bars', () => {
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(2))
-    expect(getProjectedExhaustion.mock.calls[1][0]).toContain('2026-06-15')
+    // The received value is a UTC instant now, not a raw '2026-06-15...' string —
+    // decode it back to the local calendar date it represents instead of substring matching.
+    const receivedIso = getProjectedExhaustion.mock.calls[1][0] as string
+    const receivedDate = new Date(receivedIso)
+    const localDate = `${receivedDate.getFullYear()}-${String(receivedDate.getMonth() + 1).padStart(2, '0')}-${String(receivedDate.getDate()).padStart(2, '0')}`
+    expect(localDate).toBe('2026-06-15')
   })
 
   it('should_call_getProjectedExhaustion_with_the_ids_of_every_horse_passed_in_props', async () => {

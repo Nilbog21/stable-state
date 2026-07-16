@@ -65,6 +65,41 @@ describe('createLessonWithParticipants', () => {
     })
   })
 
+  it('should_store_a_utc_instant_that_decodes_back_to_the_intended_wall_clock_time_in_a_non_utc_timezone', async () => {
+    const originalTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+      vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+      // Mirrors DateHourPicker.tsx's own construction: a lesson entered for
+      // "4:00 PM" local time on 2026-05-16 (EDT, UTC-4).
+      const intendedLocalHour = 16
+      const lessonAt = new Date(2026, 4, 16, intendedLocalHour).toISOString()
+
+      await createLessonWithParticipants({
+        barnId: 'barn-1',
+        instructorId: 'user-1',
+        lessonAt,
+        fee: 75,
+        horseIds: ['horse-1'],
+        exertionLevels: [3],
+        riderIds: ['rider-1'],
+        lessonType: 'normal',
+      })
+
+      const [, rpcArgs] = mockRpc.mock.calls[0]
+      const storedLessonAt = rpcArgs.p_lesson_at as string
+
+      // The exact value the RPC receives is what lands in the lesson_at
+      // TIMESTAMPTZ column — decoding it back (mirroring LessonForm.tsx's
+      // parseInitialHour) must reproduce the wall-clock hour it was entered as.
+      expect(new Date(storedLessonAt).getHours()).toBe(intendedLocalHour)
+    } finally {
+      process.env.TZ = originalTz
+    }
+  })
+
   it('should_pass_instructor_cut_to_rpc_when_provided', async () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)

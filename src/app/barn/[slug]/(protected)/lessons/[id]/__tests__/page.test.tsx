@@ -151,6 +151,20 @@ describe('LessonDetailPage', () => {
     expect(screen.getByText(/\$75/)).toBeDefined()
   })
 
+  it('should_render_the_lesson_time_in_the_viewers_local_timezone_not_utc', async () => {
+    const originalTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      // 2026-05-17T10:00:00Z is 6:00 AM EDT (UTC-4) — a naive UTC-timeZone
+      // formatter would show 10:00 AM instead.
+      const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+      render(jsx)
+      expect(screen.getByText(/6:00 am/i)).toBeDefined()
+    } finally {
+      process.env.TZ = originalTz
+    }
+  })
+
   it('should_render_dash_when_instructor_is_null', async () => {
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, instructor_name: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
