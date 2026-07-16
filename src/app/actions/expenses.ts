@@ -11,7 +11,8 @@ const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshb
 export async function deleteExpenseAction(
   barnId: string,
   barnSlug: string,
-  expenseId: string
+  expenseId: string,
+  formData: FormData
 ): Promise<void> {
   await requireMembership(barnSlug, ['manager'])
 
@@ -21,7 +22,8 @@ export async function deleteExpenseAction(
     return
   }
 
-  await deleteExpense(expenseId, barnId)
+  const deleteCollectedTransactions = formData.get('alsoDeleteTransactions') === 'on'
+  await deleteExpense(expenseId, barnId, deleteCollectedTransactions)
   redirect(`/barn/${barnSlug}/expenses`)
 }
 

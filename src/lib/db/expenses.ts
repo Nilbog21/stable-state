@@ -99,13 +99,18 @@ export async function updateExpense(expenseId: string, barnId: string, updates: 
   return expense as HorseExpense
 }
 
-export async function deleteExpense(expenseId: string, barnId: string, client?: SupabaseClient): Promise<void> {
+export async function deleteExpense(
+  expenseId: string,
+  barnId: string,
+  deleteCollectedTransactions = false,
+  client?: SupabaseClient
+): Promise<void> {
   const supabase = client ?? await createClient()
-  const { error } = await supabase
-    .from('horse_expenses')
-    .delete()
-    .eq('id', expenseId)
-    .eq('barn_id', barnId)
+  const { error } = await supabase.rpc('delete_expense_with_transactions', {
+    p_expense_id: expenseId,
+    p_barn_id: barnId,
+    p_delete_collected: deleteCollectedTransactions,
+  })
   if (error) throw error
 }
 

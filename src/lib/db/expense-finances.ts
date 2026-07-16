@@ -53,8 +53,9 @@ async function fetchExpenseTransactionsInRange(
   }
 
   // expenseId is null for a transaction whose source horse_expenses row was hard-deleted
-  // (deleteExpense has no transactions cleanup; expense_id is ON DELETE SET NULL) — kept
-  // (not filtered out) so its amount still counts toward totalExpenses, mirroring
+  // while deleteExpense's default kept the collected transactions row (expense_id is
+  // ON DELETE SET NULL) — kept (not filtered out) so its amount still counts toward
+  // totalExpenses, mirroring
   // lesson-finance-queries.ts's orphaned-lessonId precedent. Falls back to the
   // transaction's own id, which never matches a real horse_expenses/expense_horses row,
   // so it naturally drops out of every per-horse breakdown below instead of corrupting one.
