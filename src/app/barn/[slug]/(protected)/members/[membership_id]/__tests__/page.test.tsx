@@ -843,6 +843,16 @@ describe('MemberDetailPage', () => {
       expect(screen.queryByRole('button', { name: /^remove$/i })).toBeNull()
     })
 
+    it('should_not_show_remove_button_for_manager_viewing_other_manager_target', async () => {
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(
+        createMockMembership({ id: 'mem-mgr-target', user_id: 'user-mgr-target', barn_id: 'barn-1', role: 'manager' })
+      )
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ user_id: 'user-mgr-target', first_name: 'Morgan', last_name: 'Manager' }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-mgr-target') })
+      render(jsx)
+      expect(screen.queryByRole('button', { name: /^remove$/i })).toBeNull()
+    })
+
     it('should_call_removeMemberAction_when_remove_confirmed', async () => {
       vi.spyOn(window, 'confirm').mockReturnValue(true)
       vi.mocked(removeMemberAction).mockResolvedValue(undefined)
