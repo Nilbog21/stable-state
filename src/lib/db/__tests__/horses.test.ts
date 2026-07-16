@@ -169,7 +169,7 @@ describe('createHorse', () => {
 })
 
 describe('getHorseExertionSummary', () => {
-  const since = new Date('2026-05-26T00:00:00Z')
+  const targetDate = new Date('2026-05-26T00:00:00Z')
 
   function makeRpc(data: unknown[] | null, error: Error | null = null) {
     return vi.fn().mockResolvedValue({ data, error })
@@ -187,7 +187,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 2, totalExertion: 6, jumpingCount: 0 },
@@ -195,14 +195,14 @@ describe('getHorseExertionSummary', () => {
     ])
   })
 
-  it('should_return_zero_counts_for_horses_with_no_lessons_in_window', async () => {
+  it('should_return_zero_counts_for_horses_with_lessons_outside_the_plus_minus_three_day_window', async () => {
     vi.mocked(createClient).mockResolvedValue({
       rpc: makeRpc([
         { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, lesson_count: 0, total_exertion: 0, jumping_count: 0 },
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 0, totalExertion: 0, jumpingCount: 0 },
@@ -217,7 +217,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 1, totalExertion: 5, jumpingCount: 0 },
@@ -230,7 +230,7 @@ describe('getHorseExertionSummary', () => {
       rpc: makeRpc([]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([])
   })
@@ -239,11 +239,11 @@ describe('getHorseExertionSummary', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await getHorseExertionSummary('barn-1', since)
+    await getHorseExertionSummary('barn-1', targetDate)
 
     expect(mockRpc).toHaveBeenCalledWith('get_horse_exertion_summary', {
       p_barn_id: 'barn-1',
-      p_since: since.toISOString(),
+      p_target_date: targetDate.toISOString(),
     })
   })
 
@@ -252,7 +252,7 @@ describe('getHorseExertionSummary', () => {
       rpc: makeRpc(null, new Error('rpc error')),
     } as any)
 
-    await expect(getHorseExertionSummary('barn-1', since)).rejects.toThrow('rpc error')
+    await expect(getHorseExertionSummary('barn-1', targetDate)).rejects.toThrow('rpc error')
   })
 
   it('should_return_empty_array_when_rpc_returns_null_data', async () => {
@@ -260,7 +260,7 @@ describe('getHorseExertionSummary', () => {
       rpc: makeRpc(null),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([])
   })
@@ -273,7 +273,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 2, totalExertion: 6, jumpingCount: 1 },
@@ -288,7 +288,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result).toEqual([
       { id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true, unavailability_reason: null, lessonCount: 1, totalExertion: 3, jumpingCount: 0 },
@@ -302,7 +302,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result[0].is_available).toBe(false)
   })
@@ -314,7 +314,7 @@ describe('getHorseExertionSummary', () => {
       ]),
     } as any)
 
-    const result = await getHorseExertionSummary('barn-1', since)
+    const result = await getHorseExertionSummary('barn-1', targetDate)
 
     expect(result[0].is_available).toBe(true)
   })
