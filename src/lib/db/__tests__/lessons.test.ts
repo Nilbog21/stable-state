@@ -848,6 +848,33 @@ describe('getLessonById', () => {
     expect(select).not.toHaveBeenCalledWith(expect.stringContaining('private_notes'))
   })
 
+  it('should_select_exertion_level_for_trainer_role', async () => {
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = mockLessonsFrom(noInstructorData)
+
+    await getLessonById('lesson-1', 'barn-1', 'trainer')
+
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('exertion_level'))
+  })
+
+  it('should_select_exertion_level_for_manager_role', async () => {
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = mockLessonsFrom(noInstructorData)
+
+    await getLessonById('lesson-1', 'barn-1', 'manager')
+
+    expect(select).toHaveBeenCalledWith(expect.stringContaining('exertion_level'))
+  })
+
+  it('should_not_select_exertion_level_for_rider_role', async () => {
+    const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
+    const { select } = mockLessonsFrom(noInstructorData)
+
+    await getLessonById('lesson-1', 'barn-1', 'rider')
+
+    expect(select).not.toHaveBeenCalledWith(expect.stringContaining('exertion_level'))
+  })
+
   it('should_select_cancelled_at_for_rider_role', async () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
