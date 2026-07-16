@@ -42,9 +42,9 @@ export default async function FinancesPage({
     getOutstandingLessons(barn.id),
     getOutstandingCharges(barn.id),
     getOutstandingCancellationFees(barn.id),
-    getExpenseFinancialSummary(barn.id, startDate, endDate),
-    getOutstandingExpenses(barn.id),
-    getRecipientExpenseSummary(barn.id, startDate, endDate),
+    getExpenseFinancialSummary(barn.id, startDate, endDate, barn.timezone),
+    getOutstandingExpenses(barn.id, barn.timezone),
+    getRecipientExpenseSummary(barn.id, startDate, endDate, barn.timezone),
   ])
 
   const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)

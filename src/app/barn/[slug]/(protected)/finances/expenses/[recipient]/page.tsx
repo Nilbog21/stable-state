@@ -20,7 +20,7 @@ export default async function RecipientExpensePage({
   const { month: monthParam } = await searchParams
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const { rows, total } = await getRecipientExpenseDetail(barn.id, recipient, startDate, endDate)
+  const { rows, total } = await getRecipientExpenseDetail(barn.id, recipient, startDate, endDate, barn.timezone)
 
   const sortedRows = [...rows].sort((a, b) => new Date(a.expenseDate).getTime() - new Date(b.expenseDate).getTime())
 

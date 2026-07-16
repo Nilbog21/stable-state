@@ -37,7 +37,7 @@ export default async function HorseIncomePage({
 
   const [{ horseName, rows, chargeRows, total }, expenseDetail] = await Promise.all([
     getHorseIncomeDetail(barn.id, horseId, startDate, endDate),
-    getHorseExpenseDetail(barn.id, horseId, startDate, endDate),
+    getHorseExpenseDetail(barn.id, horseId, startDate, endDate, barn.timezone),
   ])
 
   const combinedRows: CombinedRow[] = [

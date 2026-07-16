@@ -7,6 +7,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveHorseNames } from './horses'
 import { getTransactionRows, positiveAmount } from './transactions'
+import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import type { ExpenseFinancialSummary, HorseExpenseDetailRow, RecipientExpenseSummary, RecipientExpenseDetailRow } from './types'
 
 function applicableHorseIdsForExpense(
@@ -30,12 +31,17 @@ function applicableHorseIdsForExpense(
 // known has one (see sync_expense_transaction), so this already excludes planned
 // expenses without a separate null-amount filter. Reads the base rows via
 // transactions.ts:getTransactionRows, then resolves applies_to_all_horses (the one
-// extra field it needs) via a small follow-up horse_expenses lookup.
+// extra field it needs) via a small follow-up horse_expenses lookup. `timezone`
+// (barns.timezone) decodes each row's occurredAt (a real UTC instant, post-#955) back
+// to the calendar date it falls on in the barn's own local time — a naive
+// occurredAt.slice(0, 10) would read the wrong day for an entry near a local midnight
+// boundary whose UTC digits land on a different date.
 async function fetchExpenseTransactionsInRange(
   supabase: SupabaseClient,
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<{ id: string; expense_date: string; amount: number; applies_to_all_horses: boolean; recipient: string | null; expense_type: string | null }[]> {
   const rows = await getTransactionRows(barnId, ['expense'], { startDate, endDate }, supabase)
   if (!rows.length) return []
@@ -65,7 +71,7 @@ async function fetchExpenseTransactionsInRange(
     const details = row.expenseId ? detailsByExpenseId.get(row.expenseId) : undefined
     return {
       id: expenseId,
-      expense_date: row.occurredAt.slice(0, 10),
+      expense_date: instantToLocalWallClock(new Date(row.occurredAt), timezone).slice(0, 10),
       amount: positiveAmount(row.kind, row.amount),
       applies_to_all_horses: details?.applies_to_all_horses ?? false,
       recipient: details?.recipient ?? null,
@@ -92,10 +98,11 @@ async function getExpenseHorseJunctionRows(
 export async function getExpenseFinancialSummary(
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<ExpenseFinancialSummary> {
   const supabase = await createClient()
-  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate, timezone)
   if (!expenses.length) return { totalExpenses: 0, breakdown: [] }
 
   const { data: barnHorses, error: horsesError } = await supabase
@@ -137,7 +144,8 @@ export async function getHorseExpenseDetail(
   barnId: string,
   horseId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<{ horseName: string; rows: HorseExpenseDetailRow[]; total: number }> {
   const supabase = await createClient()
 
@@ -150,7 +158,7 @@ export async function getHorseExpenseDetail(
   if (horseError) throw horseError
   if (!horse) return { horseName: horseId, rows: [], total: 0 }
 
-  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate, timezone)
   if (!expenses.length) return { horseName: horse.name, rows: [], total: 0 }
 
   const { data: barnHorses, error: barnHorsesError } = await supabase
@@ -186,10 +194,11 @@ export async function getHorseExpenseDetail(
 export async function getRecipientExpenseSummary(
   barnId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<RecipientExpenseSummary[]> {
   const supabase = await createClient()
-  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate, timezone)
 
   const breakdownMap = new Map<string, number>()
   for (const expense of expenses) {
@@ -206,10 +215,11 @@ export async function getRecipientExpenseDetail(
   barnId: string,
   recipient: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<{ rows: RecipientExpenseDetailRow[]; total: number }> {
   const supabase = await createClient()
-  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate)
+  const expenses = await fetchExpenseTransactionsInRange(supabase, barnId, startDate, endDate, timezone)
 
   // recipient and expense_type are both NOT NULL columns on horse_expenses and are always
   // resolved together from the same lookup row (see fetchExpenseTransactionsInRange's
