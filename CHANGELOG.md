@@ -34,6 +34,7 @@ All notable changes to Stable State are documented here. Written for barn manage
 - **Exhaustion bars on the Horses page** show each horse's recent lesson load at a glance, so you can see which horses need rest.
 - **Configurable thresholds.** Managers can set barn-wide exhaustion thresholds, or override them for an individual horse.
 - **Live exhaustion bars on the lesson form** while picking horses, updating as you change the date or exertion level.
+- **Visible to managers and trainers only.** Riders don't see exhaustion bars or exertion ratings on horses or lessons.
 
 ### Expenses
 
@@ -56,7 +57,9 @@ All notable changes to Stable State are documented here. Written for barn manage
 - **Add a trainer the same way you add a rider** — a name-only record with a personal invite link to share once they're ready to join.
 - **Invite links are now personal and single-use**, rather than one link shared barn-wide.
 - **Contact info is visible to any active barn member** on a member's detail page; managers can edit it directly for members who haven't signed in yet.
+- **Grant or revoke instructor access** for any member from their member detail page.
 - **Document expiration reminders.** Give a document an optional reminder date; a "Reminder Due" badge and dashboard reminder appear once that date passes.
+- **Riders can view their own documents but no longer upload or edit them** — ask a manager to add or update a rider's documents.
 - **Manage Barn settings page** is now organized into collapsible sections.
 
 ### Sign-in
