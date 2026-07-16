@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockLessonTier } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
@@ -379,18 +379,33 @@ describe('SettingsPage', () => {
     expect(screen.getByText('Bob Smith')).toBeDefined()
   })
 
-  it('should_render_joined_date_anchored_to_utc_not_local_timezone', async () => {
-    const activeMember = createMockMembership({ id: 'mem-a', user_id: 'user-3', created_at: '2026-01-02T02:00:00Z' })
-    vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
-    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-a', 'Bob Smith']]))
+  describe('joined date timezone', () => {
+    let originalTz: string | undefined
 
-    const jsx = await SettingsPage({
-      params: Promise.resolve({ slug: 'green-acres' }),
-      searchParams: Promise.resolve({}),
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
     })
-    render(jsx)
 
-    expect(screen.getByText('Jan 2, 2026')).toBeDefined()
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    it('should_render_joined_date_in_the_viewers_local_timezone_not_utc', async () => {
+      // 2026-01-02T02:00:00Z is 9:00 PM EST on Jan 1 — a UTC-anchored formatter
+      // would show Jan 2 instead.
+      const activeMember = createMockMembership({ id: 'mem-a', user_id: 'user-3', created_at: '2026-01-02T02:00:00Z' })
+      vi.mocked(getActiveMemberships).mockResolvedValue([activeMember])
+      vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-a', 'Bob Smith']]))
+
+      const jsx = await SettingsPage({
+        params: Promise.resolve({ slug: 'green-acres' }),
+        searchParams: Promise.resolve({}),
+      })
+      render(jsx)
+
+      expect(screen.getByText('Jan 1, 2026')).toBeDefined()
+    })
   })
 
   it('should_render_membership_id_for_active_member_when_name_unresolved', async () => {

@@ -8,7 +8,7 @@ import {
   getActiveMemberships,
 } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
-import { formatShortDate } from '@/lib/format-date'
+import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
 import {
   approveMembershipAction,
   rejectMembershipAction,
@@ -75,7 +75,9 @@ function MemberRow({
       <Td tone="secondary" className="capitalize">
         {membership.role}
       </Td>
-      <Td tone="secondary">{formatShortDate(membership.created_at)}</Td>
+      <Td tone="secondary">
+        <LocalDateTime iso={membership.created_at} options={DATE_ONLY_OPTIONS} />
+      </Td>
       <TableActions>{actionSlot}</TableActions>
     </tr>
   )
