@@ -353,4 +353,35 @@ describe('CancelLessonPage', () => {
     fireEvent.click(screen.getByLabelText(/cancelled by rider/i))
     expect(screen.queryByRole('radio', { name: 'Alice' })).toBeNull()
   })
+
+  it('should_show_late_fee_warning_for_normal_lesson_within_24h', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: futureIso })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.getByText(/due a late cancellation fee/i)).toBeDefined()
+  })
+
+  it('should_hide_late_fee_warning_for_normal_lesson_beyond_24h', async () => {
+    const farFutureIso = new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString()
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: farFutureIso })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    expect(screen.queryByText(/due a late cancellation fee/i)).toBeNull()
+  })
+
+  it('should_show_group_late_fee_gap_warning_within_24h_when_rider_selected', async () => {
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLesson,
+      lesson_at: futureIso,
+      lesson_type: 'group' as const,
+      lesson_riders: [
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } },
+        { rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-2', name: 'Bob', user_id: 'user-2' } },
+      ],
+    })
+    const jsx = await CancelLessonPage({ params })
+    render(jsx)
+    fireEvent.click(screen.getByLabelText(/cancelled by rider/i))
+    expect(screen.getByText(/no late cancellation fees are currently leveraged/i)).toBeDefined()
+  })
 })

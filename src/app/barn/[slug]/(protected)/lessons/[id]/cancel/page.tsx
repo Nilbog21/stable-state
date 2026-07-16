@@ -61,6 +61,7 @@ export default async function CancelLessonPage({
             cancelledByInstructorDefault={cancelledByInstructorDefault}
             groupInstructorDescription={groupInstructorDescription}
             pickerRiders={pickerRiders}
+            lessonAt={lesson.lesson_at}
           />
           <div className="flex flex-col gap-1">
             <label htmlFor="notes" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">

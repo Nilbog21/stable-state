@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { isLessonCancellationEligible, canManageLesson, isLateCancellation, isInstructorOfLesson, getHorseAttentionReasons, isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
+import { isLessonCancellationEligible, canManageLesson, isLateCancellation, isWithinLateCancellationWindow, isInstructorOfLesson, getHorseAttentionReasons, isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
 
 describe('isLessonCancellationEligible', () => {
   it('should_return_true_when_lesson_at_is_future_and_paid', () => {
@@ -60,6 +60,18 @@ describe('isLateCancellation', () => {
   it('should_return_false_when_cancelled_by_rider_more_than_24_hours_before_lesson', () => {
     const farLessonAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
     expect(isLateCancellation(farLessonAt, false)).toBe(false)
+  })
+})
+
+describe('isWithinLateCancellationWindow', () => {
+  it('should_return_true_when_lesson_is_within_24_hours', () => {
+    const soonLessonAt = new Date(Date.now() + 60 * 60 * 1000).toISOString()
+    expect(isWithinLateCancellationWindow(soonLessonAt)).toBe(true)
+  })
+
+  it('should_return_false_when_lesson_is_more_than_24_hours_away', () => {
+    const farLessonAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    expect(isWithinLateCancellationWindow(farLessonAt)).toBe(false)
   })
 })
 
