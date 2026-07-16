@@ -74,12 +74,12 @@ describe('ExpensesPage', () => {
     expect(screen.queryByText('Old Vet')).toBeNull()
   })
 
-  it('should_not_render_table_when_all_expenses_are_older_than_cutoff', async () => {
+  it('should_not_render_any_expense_cards_when_all_expenses_are_older_than_cutoff', async () => {
     vi.mocked(getExpensesByBarn).mockResolvedValue([
       createMockExpenseWithHorses({ expense_date: dateOffsetDays(10) }),
     ])
     const jsx = await ExpensesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.queryByRole('table')).toBeNull()
+    expect(screen.getAllByRole('link')).toHaveLength(1)
   })
 })
