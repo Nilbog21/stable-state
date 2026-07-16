@@ -19,6 +19,7 @@ vi.mock('@/lib/db/barns', () => ({
   updateBarnDefaultBoardFee: vi.fn(),
   setInstructorCut: vi.fn(),
   updateExhaustionThresholds: vi.fn(),
+  updateBarnTimezone: vi.fn(),
 }))
 
 const mockRedirect = vi.hoisted(() =>
@@ -46,7 +47,7 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
 import {
   createTierAction,
   updateTierAction,
@@ -55,6 +56,7 @@ import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
   updateExhaustionThresholdsAction,
+  updateBarnTimezoneAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -815,5 +817,55 @@ describe('updateDefaultBoardFeeAction', () => {
     await updateDefaultBoardFeeAction('green-acres', makeFormData({ default_board_fee: '-5' }))
 
     expect(updateBarnDefaultBoardFee).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateBarnTimezoneAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateBarnTimezone).mockReset()
+    mockRedirect.mockClear()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateBarnTimezone).mockResolvedValue(mockBarn)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await expect(
+      updateBarnTimezoneAction('green-acres', makeFormData({ timezone: 'America/Los_Angeles' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateBarnTimezone_with_submitted_value', async () => {
+    await expect(
+      updateBarnTimezoneAction('green-acres', makeFormData({ timezone: 'America/Los_Angeles' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateBarnTimezone).toHaveBeenCalledWith(mockBarn.id, 'America/Los_Angeles')
+  })
+
+  it('should_redirect_to_settings_after_update', async () => {
+    await expect(
+      updateBarnTimezoneAction('green-acres', makeFormData({ timezone: 'America/Los_Angeles' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+
+  it('should_return_early_when_timezone_is_blank', async () => {
+    await updateBarnTimezoneAction('green-acres', makeFormData({ timezone: '' }))
+
+    expect(updateBarnTimezone).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_timezone_is_not_in_the_allowed_list', async () => {
+    await updateBarnTimezoneAction('green-acres', makeFormData({ timezone: 'Europe/London' }))
+
+    expect(updateBarnTimezone).not.toHaveBeenCalled()
   })
 })

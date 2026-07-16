@@ -473,6 +473,28 @@ describe('SettingsPage', () => {
     expect(screen.getByText(/applies to new boarding agreements only/i)).toBeDefined()
   })
 
+  it('should_render_barn_timezone_select_with_current_value', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const select = screen.getByLabelText(/timezone/i) as HTMLSelectElement
+    expect(select.value).toBe(mockBarn.timezone)
+  })
+
+  it('should_render_barn_timezone_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /barn timezone/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
   it('should_render_exhaustion_thresholds_heading_in_label_style', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
