@@ -562,6 +562,14 @@ describe('deleteExpense', () => {
     await deleteExpense('expense-1', 'barn-1', false, mockClient)
 
     expect(mockRpc).toHaveBeenCalled()
+  })
+
+  it('should_not_call_createClient_when_client_injected', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const mockClient = { rpc: mockRpc } as any
+
+    await deleteExpense('expense-1', 'barn-1', false, mockClient)
+
     expect(createClient).not.toHaveBeenCalled()
   })
 })
