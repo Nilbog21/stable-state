@@ -94,7 +94,9 @@ export function LessonForm({
   )
 
   const initialExertionMap = new Map(
-    (initialLesson?.lesson_horses ?? []).map(lh => [lh.horses?.id ?? '', lh.exertion_level])
+    // exertion_level is absent from LessonDetail only for the rider role — this form is
+    // manager/trainer-only, so it's always present here; the fallback just satisfies the type.
+    (initialLesson?.lesson_horses ?? []).map(lh => [lh.horses?.id ?? '', lh.exertion_level ?? 3])
   )
 
   const initialRiderIds = new Set(

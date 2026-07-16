@@ -138,7 +138,7 @@ describe('FinancesPage', () => {
     })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const section = screen.getByText('Collected income').closest('section')!
+    const section = screen.getByText('Gross Income').closest('section')!
     expect(within(section).getByText('$225.00')).toBeDefined()
   })
 
@@ -156,11 +156,11 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/Premium/)).toBeDefined()
   })
 
-  it('should_display_breakdown_subtotal', async () => {
+  it('should_display_breakdown_net', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 0,
       pendingIncome: 0,
-      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 125, instructorCut: 0 }],
+      breakdown: [{ tierName: 'Custom', price: null, lessonCount: 1, subtotal: 125, instructorCut: 25 }],
     })
     const jsx = await FinancesPage({
       params: Promise.resolve({ slug: 'green-acres' }),
@@ -242,12 +242,12 @@ describe('FinancesPage', () => {
     expect(screen.getByText(/no horse activity/i)).toBeDefined()
   })
 
-  it('should_display_collected_income_label_without_month_suffix', async () => {
+  it('should_display_gross_income_label_without_month_suffix', async () => {
     vi.useFakeTimers()
     vi.setSystemTime(new Date('2026-06-13T12:00:00Z'))
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Collected income')).toBeDefined()
+    expect(screen.getByText('Gross Income')).toBeDefined()
   })
 
   it('should_call_getFinancialSummary_with_first_day_of_current_month_as_start_date', async () => {
@@ -692,7 +692,7 @@ describe('FinancesPage', () => {
     expect(screen.queryByRole('link', { name: '>' })).toBeNull()
   })
 
-  it('should_display_collected_income_label_instead_of_total_income', async () => {
+  it('should_display_gross_income_label', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 150,
       pendingIncome: 0,
@@ -700,7 +700,7 @@ describe('FinancesPage', () => {
     } as any)
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText(/collected income/i)).toBeDefined()
+    expect(screen.getByText('Gross Income')).toBeDefined()
   })
 
   it('should_not_display_total_income_label', async () => {
@@ -778,7 +778,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 100, pendingIncome: 50, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const collected = screen.getByText('Collected income').closest('section')!
+    const collected = screen.getByText('Gross Income').closest('section')!
     const pending = screen.getByText(/pending income/i).closest('section')!
     expect(collected.compareDocumentPosition(pending)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -786,7 +786,7 @@ describe('FinancesPage', () => {
   it('should_render_total_expenses_after_collected_income', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const collected = screen.getByText('Collected income').closest('section')!
+    const collected = screen.getByText('Gross Income').closest('section')!
     const totalExpenses = screen.getByText('Total Expenses').closest('section')!
     expect(collected.compareDocumentPosition(totalExpenses)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -795,7 +795,7 @@ describe('FinancesPage', () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     const totalExpenses = screen.getByText('Total Expenses').closest('section')!
-    const net = screen.getByText('Net').closest('section')!
+    const net = screen.getByText('Net Income').closest('section')!
     expect(totalExpenses.compareDocumentPosition(net)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
 
@@ -805,7 +805,7 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 50, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const net = screen.getByText('Net').closest('section')!
+    const net = screen.getByText('Net Income').closest('section')!
     const pending = screen.getByText(/pending income/i).closest('section')!
     expect(net.compareDocumentPosition(pending)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
   })
@@ -824,10 +824,16 @@ describe('FinancesPage', () => {
     expect(screen.getByText('$80.00')).toBeDefined()
   })
 
-  it('should_display_net_label', async () => {
+  it('should_display_net_income_label', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    expect(screen.getByText('Net')).toBeDefined()
+    expect(screen.getByText('Net Income')).toBeDefined()
+  })
+
+  it('should_render_info_button_on_net_income_label', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /Net Income/ })).toBeDefined()
   })
 
   it('should_display_net_as_collected_minus_total_expenses', async () => {
@@ -985,15 +991,19 @@ describe('FinancesPage', () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({ collectedIncome: 0, pendingIncome: 50, breakdown: [] })
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const pendingSection = screen.getByText(/pending income/i).closest('section')
-    expect(pendingSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /pending income/i })).toBeDefined()
   })
 
-  it('should_render_info_button_on_collected_label', async () => {
+  it('should_render_info_button_on_gross_income_label', async () => {
     const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
-    const collectedSection = screen.getByText(/collected income/i).closest('section')
-    expect(collectedSection?.querySelector('button[aria-label="Info"]')).not.toBeNull()
+    expect(screen.getByRole('button', { name: /Gross Income/ })).toBeDefined()
+  })
+
+  it('should_render_info_button_on_total_expenses_label', async () => {
+    const jsx = await FinancesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /Total Expenses/ })).toBeDefined()
   })
 
   it('should_render_separator_before_tab_bar', async () => {
@@ -1062,6 +1072,30 @@ describe('FinancesPage', () => {
     })
     render(jsx)
     expect(screen.getByText('Shadowfax')).toBeDefined()
+  })
+
+  it('should_render_by_rider_table_net_header', async () => {
+    vi.mocked(getRiderIncomeSummary).mockResolvedValue([
+      { riderId: 'r-1', riderName: 'Bob', totalIncome: 100 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
+    render(jsx)
+    expect(screen.getByRole('columnheader', { name: 'Net' })).toBeDefined()
+  })
+
+  it('should_not_render_by_rider_table_income_header', async () => {
+    vi.mocked(getRiderIncomeSummary).mockResolvedValue([
+      { riderId: 'r-1', riderName: 'Bob', totalIncome: 100 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'rider' }),
+    })
+    render(jsx)
+    expect(screen.queryByRole('columnheader', { name: 'Income' })).toBeNull()
   })
 
   it('should_show_rider_tab_content_when_tab_is_rider', async () => {
@@ -1221,6 +1255,50 @@ describe('FinancesPage', () => {
     expect(row.querySelector('button[aria-label="Info"]')).not.toBeNull()
   })
 
+  it('should_render_by_tier_table_gross_header_between_lessons_and_instructor_cut', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 100,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 25 }],
+    })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    const headers = screen.getAllByRole('columnheader').map((h) => h.textContent?.replace(/[▲▼]/g, '').trim())
+    expect(headers).toEqual(['Tier', 'Price', 'Lessons', 'Gross', 'Instructor Cut', 'Net'])
+  })
+
+  it('should_compute_by_tier_table_gross_as_net_plus_instructor_cut', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 125,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 25 }],
+    })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    const row = screen.getByText('Premium').closest('tr')!
+    expect(within(row).getByText('$125.00')).toBeDefined()
+  })
+
+  it('should_not_render_by_tier_table_subtotal_header', async () => {
+    vi.mocked(getFinancialSummary).mockResolvedValue({
+      collectedIncome: 100,
+      pendingIncome: 0,
+      breakdown: [{ tierName: 'Premium', price: 50, lessonCount: 2, subtotal: 100, instructorCut: 25 }],
+    })
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.queryByRole('columnheader', { name: 'Subtotal' })).toBeNull()
+  })
+
   it('should_show_dash_for_custom_tier_price', async () => {
     vi.mocked(getFinancialSummary).mockResolvedValue({
       collectedIncome: 100,
@@ -1284,7 +1362,7 @@ describe('FinancesPage', () => {
     )
   })
 
-  it('should_render_by_instructor_table_total_income_header', async () => {
+  it('should_render_by_instructor_table_gross_header', async () => {
     vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
       { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
     ])
@@ -1293,7 +1371,19 @@ describe('FinancesPage', () => {
       searchParams: Promise.resolve({ tab: 'trainer' }),
     })
     render(jsx)
-    expect(screen.getByRole('columnheader', { name: 'Total Income' })).toBeDefined()
+    expect(screen.getByRole('columnheader', { name: 'Gross' })).toBeDefined()
+  })
+
+  it('should_not_render_by_instructor_table_total_income_header', async () => {
+    vi.mocked(getTrainerIncomeSummary).mockResolvedValue([
+      { trainerId: 't-1', trainerName: 'Jane Smith', totalIncome: 300, grossIncome: 350 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'trainer' }),
+    })
+    render(jsx)
+    expect(screen.queryByRole('columnheader', { name: 'Total Income' })).toBeNull()
   })
 
   it('should_render_by_instructor_table_instructor_cut_header', async () => {
@@ -1485,6 +1575,30 @@ describe('FinancesPage', () => {
     render(jsx)
     const pills = screen.getAllByRole('link', { name: /^By / })
     expect(pills[0].textContent).toBe('By Horse')
+  })
+
+  it('should_render_by_horse_table_gross_header', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'h-1', horseName: 'Copper', totalIncome: 100 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    expect(screen.getByRole('columnheader', { name: 'Gross' })).toBeDefined()
+  })
+
+  it('should_not_render_by_horse_table_income_header', async () => {
+    vi.mocked(getHorseIncomeSummary).mockResolvedValue([
+      { horseId: 'h-1', horseName: 'Copper', totalIncome: 100 },
+    ])
+    const jsx = await FinancesPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ tab: 'horse' }),
+    })
+    render(jsx)
+    expect(screen.queryByRole('columnheader', { name: 'Income' })).toBeNull()
   })
 
   it('should_render_by_horse_table_expenses_header', async () => {

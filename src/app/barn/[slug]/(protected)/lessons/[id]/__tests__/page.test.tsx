@@ -183,6 +183,19 @@ describe('LessonDetailPage', () => {
     expect(screen.getAllByText('—').length).toBeGreaterThan(0)
   })
 
+  it('should_not_render_exertion_for_rider_role', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
+    vi.mocked(getLessonById).mockResolvedValue({
+      ...mockLessonDetail,
+      // exertion_level present here to prove the UI guard itself hides it, independent of
+      // the DAL-layer fix that omits the column for a real rider-role query.
+      lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
+    })
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.queryByText(/exertion/i)).toBeNull()
+  })
+
   it('should_render_dash_in_horses_section_when_lesson_has_no_horses', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, id: 'rider-1', role: 'rider' as const })
     vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_horses: [] })
