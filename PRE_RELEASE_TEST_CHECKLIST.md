@@ -194,9 +194,11 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Open a trainer's member detail page → **Add Document** button is present and links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
 - [ ] Open rider Gale Test's member detail page — **Add Document** button present, links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
 - [ ] As manager, rider Emery's member detail page shows an **Active Agreements** header with one card each for her seeded lease and boarding agreements (kind, horse, fee), each linking to its agreement detail page; a rider with no active agreements shows **No active agreements** with no add-boarding link; a managed (unclaimed) rider's detail page shows the same section
-- [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it → trainer reappears in the instructor select
-- [ ] Open your own manager member detail page → **Instructor Access** section shows **Grant Instructor Access** → tap it → you now appear in the instructor select on the new-lesson form; tap **Revoke Instructor Access** to undo
+- [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → a browser confirm prompt appears naming the trainer and warning they'll no longer be assignable to future lessons; **Cancel** it → access is unchanged; tap **Revoke Instructor Access** again and confirm → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it (no confirm prompt on grant) → trainer reappears in the instructor select
+- [ ] Open your own manager member detail page → **Instructor Access** section shows **Grant Instructor Access** → tap it (no confirm prompt) → you now appear in the instructor select on the new-lesson form; tap **Revoke Instructor Access** to undo (confirm prompt appears)
 - [ ] Open rider Gale Test's member detail page — no **Instructor Access** section is shown
+- [ ] Open Indigo Test's member detail page → a **Remove** button appears top-right of the header, next to the member's name → tap it and confirm the browser prompt → redirected to the Members list and Indigo Test no longer appears there
+- [ ] Open your own manager member detail page → no **Remove** button is shown
 
 Finances (`/barn/dev-barn/finances`):
 
@@ -222,7 +224,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] Collected vs Pending income figures are consistent with what you marked paid, net of the instructor cut; the **Outstanding Income** section above stays at the raw (gross) fee
 - [ ] Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, Collected income increases and **By Tier** shows a **Non-lesson income** row with a tap-to-toggle ⓘ ("Includes leases and boarding") and a blank Lessons cell (not a charge count); **By Horse** (Apple) and **By Rider** (Dana) totals include the full charge amount; drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
 - [ ] **By Instructor** tab also shows the same **Non-lesson income** row
-- [ ] Remove a trainer's membership after they've instructed a paid lesson → **By Instructor** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Collected income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
+- [ ] On that trainer's member detail page, tap **Remove** and confirm the browser prompt after they've instructed a paid lesson → you're redirected to the Members list and the removed trainer no longer appears there; back on Finances, **By Instructor** tab shows a **No instructor** row (plain text, not a link) with a tap-to-toggle ⓘ; the lesson's fee is still counted in Collected income (the **No horse**/**No rider** rows are defensive-only for legacy data and aren't reachable through the current lesson form or DB triggers, so skip trying to trigger them manually)
 - [ ] **By Paid To** tab: one row per recipient with their total expenses for the month, recipient name is an underlined link (not just underlined on hover)
 - [ ] Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
 - [ ] Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month (Date, Type, Amount columns), date links to the expense's edit page, bottom **Total** matches the By Paid To summary
@@ -230,9 +232,8 @@ Finances (`/barn/dev-barn/finances`):
 
 Manage Barn (`/barn/dev-barn/settings`):
 
-- [ ] Sections render as collapsible accordions, collapsed by default; Pending Requests auto-expands because Quinn Pending is present; clicking a section's heading toggles it open/closed independently of the others
-- [ ] **Approve** Quinn Pending under Pending Requests → Quinn moves to Active Members
-- [ ] **Remove** Quinn from Active Members (confirm the browser prompt)
+- [ ] Sections render as collapsible accordions, collapsed by default; Pending Requests auto-expands because Quinn Pending is present; clicking a section's heading toggles it open/closed independently of the others; there is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
+- [ ] **Approve** Quinn Pending under Pending Requests → Quinn becomes an active member and appears under the Members page's Riders/Trainers section
 - [ ] **Default Instructor Cut** field shows the current value (default `25`)
 - [ ] Change it and **Save** → value persists on reload; confirm the helper text says the change doesn't affect past lessons, not that it recalculates historical income
 - [ ] Try `0` — allowed
@@ -282,7 +283,7 @@ bash scripts/change-user.sh
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
-- [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper/Indigo Test, whichever are still unclaimed) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage member section, which a trainer viewing that page won't see either)
+- [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **Contact Info** section (#863 — a trainer can view any member's Contact Info), but **no Documents section**; open Blake's (a rider's) detail page — same: Contact Info shown, Documents hidden (#779 narrowed rider-document access to manager/self only)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons, plus any uncollected cancellation fees for lessons you instruct
