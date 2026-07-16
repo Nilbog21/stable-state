@@ -29,9 +29,12 @@ export function HorseCard({
 
   return (
     <Card>
-      {/* Inner Link keeps its own padding/hover classes — ExhaustionBar's expand button
-          can't nest inside <Card href>'s anchor (invalid HTML), and this is the only call site,
-          so extracting a shared "clickable row" primitive isn't worth it yet */}
+      {/* linkable branch: inner Link keeps its own padding/hover classes — ExhaustionBar's
+          expand button can't nest inside <Card href>'s anchor (invalid HTML), and this is
+          the only call site, so extracting a shared "clickable row" primitive isn't worth
+          it yet. !linkable branch has no such constraint (riders never render ExhaustionBar)
+          but stays a plain div here rather than <Card className> to keep this single ternary
+          as the one place that decides Link vs. non-Link rendering. */}
       {linkable ? (
         <Link
           href={`/barn/${barnSlug}/horses/${horse.id}`}
