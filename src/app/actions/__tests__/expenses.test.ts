@@ -39,29 +39,34 @@ describe('deleteExpenseAction', () => {
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
-    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1')
+    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1', makeFormData({}))
     expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager'])
   })
 
   it('should_redirect_to_list_when_expense_not_found', async () => {
     vi.mocked(getExpenseById).mockResolvedValue(null)
-    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1')
+    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1', makeFormData({}))
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/expenses')
   })
 
   it('should_not_call_deleteExpense_when_expense_not_found', async () => {
     vi.mocked(getExpenseById).mockResolvedValue(null)
-    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1')
+    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1', makeFormData({}))
     expect(deleteExpense).not.toHaveBeenCalled()
   })
 
-  it('should_call_deleteExpense_with_correct_args', async () => {
-    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1')
-    expect(deleteExpense).toHaveBeenCalledWith('expense-1', 'barn-1')
+  it('should_call_deleteExpense_with_false_by_default_when_checkbox_is_absent', async () => {
+    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1', makeFormData({}))
+    expect(deleteExpense).toHaveBeenCalledWith('expense-1', 'barn-1', false)
+  })
+
+  it('should_call_deleteExpense_with_true_when_checkbox_is_checked', async () => {
+    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1', makeFormData({ alsoDeleteTransactions: 'on' }))
+    expect(deleteExpense).toHaveBeenCalledWith('expense-1', 'barn-1', true)
   })
 
   it('should_redirect_to_list_after_delete', async () => {
-    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1')
+    await deleteExpenseAction('barn-1', 'barn-slug', 'expense-1', makeFormData({}))
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/expenses')
   })
 })

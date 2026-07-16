@@ -160,7 +160,10 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] On the new-expense form, set the date to yesterday — the Time field disappears; change it back to today or a future date — the Time field reappears
 - [ ] Edit a seeded expense (`/barn/dev-barn/expenses/[id]`) — form opens pre-filled including the correct Entire Barn / specific-horse checkbox state; change the recipient and amount, save, verify the row updates
 - [ ] On the new- and edit-expense forms, set a **Payment Type**, save, and confirm it persists on reload
-- [ ] Delete one seeded expense — it disappears from the list
+- [ ] Delete a seeded expense with **no amount set** — confirmation page shows a bare "Confirm Delete" with no checkbox; confirm → expense disappears from the list
+- [ ] Delete a seeded expense **with an amount** — confirmation page shows an unchecked-by-default "Also delete the collected record from Finances" checkbox
+- [ ] Confirm that delete without checking the box — expense is gone from the list but its record still shows up in Finances for that month
+- [ ] Delete another seeded expense with an amount, this time checking the box — its record is also gone from Finances
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 

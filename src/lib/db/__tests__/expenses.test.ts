@@ -524,36 +524,53 @@ describe('deleteExpense', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  function makeChain(error: Error | null = null) {
-    const mockEq2 = vi.fn().mockResolvedValue({ error })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const mockDelete = vi.fn().mockReturnValue({ eq: mockEq1 })
-    return { delete: mockDelete, mockDelete }
-  }
-
-  it('should_delete_expense', async () => {
-    const { delete: del, mockDelete } = makeChain()
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ delete: del }) } as any)
+  it('should_call_the_delete_expense_with_transactions_rpc_with_default_params', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await deleteExpense('expense-1', 'barn-1')
 
-    expect(mockDelete).toHaveBeenCalled()
+    expect(mockRpc).toHaveBeenCalledWith('delete_expense_with_transactions', {
+      p_expense_id: 'expense-1',
+      p_barn_id: 'barn-1',
+      p_delete_collected: false,
+    })
+  })
+
+  it('should_pass_delete_collected_transactions_true_through_to_the_rpc', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+
+    await deleteExpense('expense-1', 'barn-1', true)
+
+    expect(mockRpc).toHaveBeenCalledWith('delete_expense_with_transactions',
+      expect.objectContaining({ p_delete_collected: true })
+    )
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
-    const { delete: del } = makeChain(new Error('db error'))
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ delete: del }) } as any)
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(deleteExpense('expense-1', 'barn-1')).rejects.toThrow('db error')
   })
 
   it('should_use_injected_client_when_provided', async () => {
-    const { delete: del } = makeChain()
-    const mockClient = { from: vi.fn().mockReturnValue({ delete: del }) } as any
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const mockClient = { rpc: mockRpc } as any
 
-    await deleteExpense('expense-1', 'barn-1', mockClient)
+    await deleteExpense('expense-1', 'barn-1', false, mockClient)
 
-    expect(del).toHaveBeenCalled()
+    expect(mockRpc).toHaveBeenCalled()
+  })
+
+  it('should_not_call_createClient_when_client_injected', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    const mockClient = { rpc: mockRpc } as any
+
+    await deleteExpense('expense-1', 'barn-1', false, mockClient)
+
+    expect(createClient).not.toHaveBeenCalled()
   })
 })
 
