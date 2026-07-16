@@ -752,4 +752,111 @@ describe('LessonsPage', () => {
     render(jsx)
     expect(screen.getAllByText('Spirit').length).toBeGreaterThan(0)
   })
+
+  it('should_show_by_tier_pill_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /by tier/i })).toBeDefined()
+  })
+
+  it('should_show_by_tier_pill_for_trainer', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /by tier/i })).toBeDefined()
+  })
+
+  it('should_show_by_tier_pill_for_rider', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockRiderMembership)
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /by tier/i })).toBeDefined()
+  })
+
+  it('should_show_tier_name_pills_when_filter_is_tier', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'tier' }),
+    })
+    render(jsx)
+    const tierPill = screen.getAllByRole('link').find(
+      (l) => (l as HTMLAnchorElement).href?.includes('filter=tier&id=Custom')
+    )
+    expect(tierPill).toBeDefined()
+  })
+
+  it('should_show_matching_lesson_when_filtering_by_tier', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const matchingLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-match', tier_name: 'Beginner', horse_names: ['Thunderbolt'], horse_ids: ['horse-1'] })
+    const nonMatchingLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-other', tier_name: 'Advanced', horse_names: ['Spirit'], horse_ids: ['horse-2'], rider_names: ['Bob'], rider_ids: ['rider-2'] })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'tier', id: 'Beginner' }),
+    })
+    render(jsx)
+    expect(screen.getAllByText('Thunderbolt').length).toBeGreaterThan(0)
+  })
+
+  it('should_hide_non_matching_lesson_when_filtering_by_tier', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const matchingLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-match', tier_name: 'Beginner', horse_names: ['Thunderbolt'], horse_ids: ['horse-1'] })
+    const nonMatchingLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-other', tier_name: 'Advanced', horse_names: ['Spirit'], horse_ids: ['horse-2'], rider_names: ['Bob'], rider_ids: ['rider-2'] })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([matchingLesson, nonMatchingLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'tier', id: 'Beginner' }),
+    })
+    render(jsx)
+    expect(screen.queryByText('Bob')).toBeNull()
+  })
+
+  it('should_show_active_pill_style_for_selected_tier', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'tier', id: 'Custom' }),
+    })
+    render(jsx)
+    const pills = screen.getAllByRole('link', { name: /^custom$/i })
+    expect(pills.some((p) => p.className.includes('bg-zinc-900'))).toBe(true)
+  })
+
+  it('should_show_first_lesson_when_filter_is_tier_with_no_id', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const lesson2 = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-2', tier_name: 'Beginner', horse_names: ['Spirit'], horse_ids: ['horse-2'], rider_names: ['Bob'], rider_ids: ['rider-2'] })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.getAllByText('Thunderbolt').length).toBeGreaterThan(0)
+  })
+
+  it('should_show_second_lesson_when_filter_is_tier_with_no_id', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const lesson2 = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-2', tier_name: 'Beginner', horse_names: ['Spirit'], horse_ids: ['horse-2'], rider_names: ['Bob'], rider_ids: ['rider-2'] })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([mockLesson, lesson2])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.getAllByText('Spirit').length).toBeGreaterThan(0)
+  })
+
+  it('should_include_custom_tier_name_in_tier_options', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const customLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-custom', tier_name: 'Custom' })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([customLesson])
+    const jsx = await LessonsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({ filter: 'tier' }),
+    })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /^custom$/i })).toBeDefined()
+  })
 })
