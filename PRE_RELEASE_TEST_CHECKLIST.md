@@ -105,6 +105,7 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 ## Phase 4 — Manager verification
 
 - [ ] Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — confirms UTC storage round-trips correctly for your local timezone, not just that the created time displays back the same way it was entered
+- [ ] On the Lessons list and a lesson's detail page, confirm the displayed time matches the wall-clock time you entered (not shifted by your UTC offset) — if your system/browser clock is set to a non-UTC timezone, this also proves the display isn't silently forcing UTC
 
 Dashboard (`/barn/dev-barn`):
 
@@ -198,6 +199,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 Finances (`/barn/dev-barn/finances`):
 
 - [ ] **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons; set a payment type on one row via the inline dropdown → it leaves the list
+- [ ] A lesson row's date in **Outstanding Income** and in the By Horse/By Rider/By Instructor drill-downs matches the wall-clock time you entered for that lesson, not shifted by your UTC offset — a lease/boarding charge row's date, in contrast, is unaffected by timezone (it's a plain calendar date, not a time-of-day instant)
 - [ ] Late-cancel a normal lesson that was already marked paid (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding Income** with a **Type** of "Cancellation Fee"; mark it paid via the inline dropdown → it leaves the list
 - [ ] The **Outstanding Expenses** section (renamed from "Needs an amount", below Outstanding Income) shows a bold total above the list, summing only the expenses in it that have a known amount
 - [ ] **Outstanding Expenses** lists the seeded past-due planned expense as a single line (date — recipient — expense type) — confirm it does **not** appear inside the Outstanding Income table itself
@@ -241,6 +243,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
 - [ ] Change both and **Save** → values persist on reload
 - [ ] Try setting Moderate ≥ High → rejected with a field error and values unchanged
+- [ ] **Barn Timezone** select shows the current value (default Eastern); change it and Save → persists on reload; add a planned expense due a few minutes from now, wait for its due time to pass, then confirm it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
 
 Notifications and profile:
 
