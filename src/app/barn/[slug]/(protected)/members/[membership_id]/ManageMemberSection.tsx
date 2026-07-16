@@ -15,15 +15,20 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
 
   // Revoke regenerates the invite token server-side; Copy Invite must never read the
   // stale prop mid-flight. `pending` alone isn't enough (Next resolves the action's
-  // own promise before it finishes applying the revalidated props), so Copy Invite also
-  // stays disabled until inviteToken actually differs from what it was pre-revoke.
+  // own promise before it finishes applying the revalidated props), so both controls
+  // also stay disabled while inviteToken still equals what it was pre-revoke. Revoke
+  // itself must stay gated too, not just Copy Invite — otherwise a second Revoke click
+  // in that same window re-pins tokenBeforeRevoke to the same stale value, and Copy
+  // Invite re-enables the moment the *first* revoke's token lands even though a second
+  // revoke is still in flight and about to supersede it.
   const [tokenBeforeRevoke, setTokenBeforeRevoke] = useState<string | null>(null)
   const [, formAction, pending] = useActionState(async () => {
     setTokenBeforeRevoke(inviteToken)
     await revokeAction()
     return null
   }, null)
-  const copyDisabled = pending || (tokenBeforeRevoke !== null && inviteToken === tokenBeforeRevoke)
+  const awaitingFreshToken = tokenBeforeRevoke !== null && inviteToken === tokenBeforeRevoke
+  const busy = pending || awaitingFreshToken
 
   useEffect(() => {
     return () => {
@@ -52,11 +57,11 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
         This is an unlinked member. Use the following controls to invite this person to the barn.
       </p>
       <div className="flex items-center gap-2">
-        <Button type="button" variant="ghost" onClick={handleCopy} disabled={copyDisabled}>
+        <Button type="button" variant="ghost" onClick={handleCopy} disabled={busy}>
           {copied ? 'Copied!' : 'Copy Invite'}
         </Button>
         <form action={formAction}>
-          <Button type="submit" variant="danger" loading={pending}>
+          <Button type="submit" variant="danger" loading={busy}>
             Revoke
           </Button>
         </form>
