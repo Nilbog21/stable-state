@@ -141,7 +141,7 @@ export default async function FinancesPage({
         )}
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3.5 sm:grid-cols-4">
         <SummaryStatCard
           label="Gross Income"
           value={formatCurrency(collectedIncome)}
