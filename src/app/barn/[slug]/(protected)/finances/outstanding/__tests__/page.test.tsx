@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
 
@@ -209,5 +209,48 @@ describe('OutstandingPage', () => {
     render(jsx)
     const link = screen.getByRole('link', { name: /May 10, 2026/i })
     expect(link.getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-2')
+  })
+
+  describe('timezone-aware date display', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+    })
+
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    // 2026-05-16T02:00:00Z is 10:00 PM EDT on May 15 — a naive UTC-anchored formatter
+    // would show May 16 instead.
+    it('should_display_a_lesson_rows_date_in_the_viewers_local_timezone_not_utc', async () => {
+      vi.mocked(getOutstandingLessons).mockResolvedValue([{
+        id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-05-16T02:00:00Z',
+        instructor_name: null, rider_names: [], fee: 75,
+      }])
+      const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('May 15, 2026')).toBeDefined()
+    })
+
+    it('should_display_a_cancellation_fee_rows_date_in_the_viewers_local_timezone_not_utc', async () => {
+      vi.mocked(getOutstandingCancellationFees).mockResolvedValue([
+        { id: 'lesson-rider-1', lessonId: 'lesson-2', lessonAt: '2026-05-16T02:00:00Z', instructorName: null, riderName: 'Erin Rider', fee: 50 },
+      ])
+      const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('May 15, 2026')).toBeDefined()
+    })
+
+    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_viewer_timezone', async () => {
+      vi.mocked(getOutstandingCharges).mockResolvedValue([
+        { id: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', riderName: 'Carol Rider', fee: 500 },
+      ])
+      const jsx = await OutstandingPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('May 1, 2026')).toBeDefined()
+    })
   })
 })
