@@ -4,6 +4,81 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
+## v3.0.0 — July 2026
+
+### Leases & Boarding Agreements
+
+- **New Agreements area for managers.** Create a lease or boarding agreement between a rider and a horse, with a fee and billing schedule (one-time or monthly).
+- **Monthly charges generate automatically** each month for active agreements. A default board fee can be set for the barn to speed up new boarding agreements.
+- **Agreement charges show up in Finances** and on the Outstanding page, with an "Unpaid" badge on past-due agreement cards.
+- **Active Agreements** appear as cards on a rider's member detail page.
+
+### Recurring Lessons
+
+- **Mark a new lesson "Recurring (weekly)"** and it keeps generating itself every week automatically.
+- **Stop a recurring series** any time from the lesson edit page.
+
+### Lesson Cancellation
+
+- **One Cancel button** on the lesson page now handles cancelling the whole lesson or just your own participation in a group lesson.
+- **24-hour fee policy.** Cancelling a private lesson within 24 hours keeps the fee unless the instructor waives it — an amber warning explains this before you confirm.
+- **Cancellation reasons are visible** on the lesson page to everyone involved.
+
+### Horse Exhaustion Tracking
+
+- **Exhaustion bars on the Horses page** show each horse's recent lesson load at a glance, so you can see which horses need rest.
+- **Configurable thresholds.** Managers can set barn-wide exhaustion thresholds, or override them for an individual horse.
+- **Live exhaustion bars on the lesson form** while picking horses, updating as you change the date or exertion level.
+
+### Expenses
+
+- **New Expenses page for managers** — log recipient, date, amount, expense type, and which horse(s) an expense applies to (or the whole barn).
+- **Plan an expense before you know the amount**, then fill it in later.
+- **Expenses now appear in Finances** — in the monthly summary, the By Horse breakdown, and a per-horse drill-down.
+- **The dashboard's "Barn Schedule"** shows upcoming planned expenses alongside upcoming lessons.
+- **Outstanding Expenses section** on Finances lists expenses still missing an amount or payment type.
+
+### Finances
+
+- **Gross / Expenses / Net terminology**, with a running reconciliation at the bottom of each breakdown table.
+- **Income is now net of each lesson's instructor cut**, which managers set per fee tier in Manage Barn settings.
+- **New "By Instructor" and "By Paid To" (recipient) tabs**, each with its own drill-down page.
+- **Sortable table columns** — click a header to re-sort.
+
+### Members & Documents
+
+- **Any barn member can browse the full roster** — Managers, Trainers, and Riders sections — not just their own.
+- **Add a trainer the same way you add a rider** — a name-only record with a personal invite link to share once they're ready to join.
+- **Invite links are now personal and single-use**, rather than one link shared barn-wide.
+- **Contact info is visible to any active barn member** on a member's detail page; managers can edit it directly for members who haven't signed in yet.
+- **Document expiration reminders.** Give a document an optional reminder date; a "Reminder Due" badge and dashboard reminder appear once that date passes.
+- **Manage Barn settings page** is now organized into collapsible sections.
+
+### Sign-in
+
+- **"Keep me logged in" checkbox** on the login page keeps you signed in for 30 days instead of just a few hours.
+
+### Notifications
+
+- **Overnight reminders.** Outstanding payment reminders (unpaid lessons and agreements) and past-due expense reminders now generate automatically overnight, so managers see them even without a recent login.
+- **Read notifications are cleaned up automatically** after 30 days.
+- **Dashboard reminders** now also flag outstanding late-cancellation fees.
+
+### Navigation
+
+- **Mobile menu.** Section links collapse into a slide-out drawer on small screens, with the current page highlighted.
+- **Dashboard split into "Today" and "This Week"** for upcoming lessons, with upcoming scheduled expenses interleaved for managers.
+
+### Bug fixes
+
+- Lesson times could shift by a few hours depending on your timezone (#935)
+- Riders could view lessons they weren't enrolled in by guessing the URL (#549)
+- A page layout bug could cause content to appear off-center on desktop (#590)
+- Notifications meant for another person (e.g. a cancellation alert) sometimes failed to deliver (#591)
+- Joining a second barn with an invite link could fail if you already had an account (#887)
+
+---
+
 ## v2.0.4 — July 2026
 
 **Fixed document uploads failing for files over 1 MB.** You can now upload horse, trainer, and rider documents up to 4.5 MB (previously some uploads over 1 MB would fail with a confusing error, due to a mismatch between our app's limit and Vercel's own cap). Upload errors now show a clear message on the page instead of a blank crash.
