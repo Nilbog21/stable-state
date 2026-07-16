@@ -47,8 +47,8 @@ export function ReconciliationFoot({
         <ValueCell column={expenses} bucket="subtotal" forceParens />
         <ValueCell column={net} bucket="subtotal" />
       </tr>
-      <tr className="text-amber-700 dark:text-amber-400">
-        <Td colSpan={labelColSpan} className="uppercase tracking-wide text-amber-700 dark:text-amber-400">
+      <tr className="text-zinc-500 dark:text-zinc-400">
+        <Td colSpan={labelColSpan} tone="secondary" className="uppercase tracking-wide">
           Unattributed
           <InfoPopover text={unattributedInfoText} align="left" />
         </Td>

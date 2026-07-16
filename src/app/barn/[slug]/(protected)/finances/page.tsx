@@ -197,12 +197,14 @@ export default async function FinancesPage({
       </div>
 
       {isCurrentMonth && (
-        <div className="mb-6 flex items-baseline gap-2">
-          <span className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+        <div className="mb-6">
+          <p className="text-sm font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Pending income
             <InfoPopover text="Lessons scheduled this month that haven't been paid yet, net of the per-lesson instructor cut" />
-          </span>
-          <span className="font-semibold text-zinc-900 dark:text-zinc-50">{formatCurrency(pendingIncome)}</span>
+          </p>
+          <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+            {formatCurrency(pendingIncome)}
+          </p>
         </div>
       )}
 
