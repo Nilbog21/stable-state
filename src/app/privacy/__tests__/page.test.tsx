@@ -1,8 +1,17 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import { vi } from 'vitest'
 
 afterEach(cleanup)
+
+const mockNotFound = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND')
+  })
+)
+
+vi.mock('next/navigation', () => ({
+  notFound: mockNotFound,
+}))
 
 const mockReadFileSync = vi.hoisted(() => vi.fn().mockReturnValue('# Privacy Policy'))
 vi.mock('fs', () => ({
@@ -22,6 +31,7 @@ describe('PrivacyPage', () => {
   beforeEach(() => {
     mockReadFileSync.mockReset()
     mockReadFileSync.mockReturnValue('# Privacy Policy')
+    mockNotFound.mockClear()
   })
 
   it('should_read_privacy_policy_file', () => {
@@ -40,5 +50,17 @@ describe('PrivacyPage', () => {
     render(jsx)
 
     expect(screen.getByTestId('markdown').textContent).toBe('# Hello Privacy')
+  })
+
+  it('should_call_notFound_when_privacy_file_cannot_be_read', () => {
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error('ENOENT: no such file or directory')
+    })
+
+    try {
+      PrivacyPage()
+    } catch {}
+
+    expect(mockNotFound).toHaveBeenCalled()
   })
 })
