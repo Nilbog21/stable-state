@@ -199,3 +199,18 @@
    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
    See the License for the specific language governing permissions and
    limitations under the License.
+
+---
+
+## Additional Restriction (Non-Commercial Use)
+
+In addition to the terms of the Apache License, Version 2.0 above, the following
+restriction applies to this Work:
+
+This Work is free to use, modify, and self-host for personal or internal
+organizational purposes, with no obligation to pay. However, no person or entity
+may charge third parties for access to a hosted or managed instance of this Work
+(or any Derivative Work) without a separate written license from the copyright
+holder.
+
+For commercial licensing inquiries, contact the copyright holder, Adam Seefried.
