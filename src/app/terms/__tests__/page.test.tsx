@@ -3,6 +3,16 @@ import { render, screen, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
 
+const mockNotFound = vi.hoisted(() =>
+  vi.fn(() => {
+    throw new Error('NEXT_NOT_FOUND')
+  })
+)
+
+vi.mock('next/navigation', () => ({
+  notFound: mockNotFound,
+}))
+
 const mockReadFileSync = vi.hoisted(() => vi.fn().mockReturnValue('# Terms of Service'))
 vi.mock('fs', () => ({
   default: { readFileSync: mockReadFileSync },
@@ -34,5 +44,15 @@ describe('TermsPage', () => {
       expect.stringContaining('TERMS_OF_SERVICE.md'),
       'utf-8'
     )
+  })
+
+  it('should_call_notFound_when_terms_file_cannot_be_read', async () => {
+    mockReadFileSync.mockImplementation(() => {
+      throw new Error('ENOENT: no such file or directory')
+    })
+
+    try { await TermsPage() } catch {}
+
+    expect(mockNotFound).toHaveBeenCalled()
   })
 })

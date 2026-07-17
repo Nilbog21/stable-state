@@ -40,4 +40,4 @@ We may update these terms from time to time. Continued use of the Service after 
 
 ## Contact
 
-Questions about these terms can be directed to the barn's Stable State administrator.
+Questions about these terms can be directed to your barn manager.
