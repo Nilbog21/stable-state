@@ -1,4 +1,5 @@
 import { cookies } from 'next/headers'
+import Link from 'next/link'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { signInWithGoogle, signOut } from '@/app/actions/auth'
 import { GoogleSignInButton } from '@/components/ui/GoogleSignInButton'
@@ -44,13 +45,21 @@ export default async function LoginPage({
       ) : (
         <GoogleSignInButton action={signInWithGoogle} rememberChecked={rememberChecked} />
       )}
-      {/* Bare-text footer link — Button's boxy styling doesn't fit here */}
-      <a
-        href="/terms"
-        className="text-sm text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
-      >
-        Terms of Service
-      </a>
+      {/* Bare-text footer links — Button's boxy styling doesn't fit here */}
+      <div className="flex items-center gap-4">
+        <a
+          href="/terms"
+          className="text-sm text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          Terms of Service
+        </a>
+        <Link
+          href="/privacy"
+          className="text-sm text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+        >
+          Privacy Policy
+        </Link>
+      </div>
     </main>
   )
 }

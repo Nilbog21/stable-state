@@ -46,6 +46,15 @@ describe('LoginPage', () => {
     expect(screen.getByText(/stable state/i)).toBeDefined()
   })
 
+  it('should_render_privacy_policy_link', async () => {
+    const jsx = await LoginPage({ searchParams: Promise.resolve({}) })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /privacy policy/i })).toHaveProperty(
+      'href',
+      expect.stringContaining('/privacy')
+    )
+  })
+
   it('should_show_no_barns_guidance_when_param_true_and_user_authenticated', async () => {
     setupAuth()
     const jsx = await LoginPage({ searchParams: Promise.resolve({ no_barns: 'true' }) })

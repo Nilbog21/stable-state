@@ -4,6 +4,7 @@ const nextConfig: NextConfig = {
   outputFileTracingIncludes: {
     '/barn/[slug]/guide': ['./USER_GUIDE_*.md'],
     '/terms': ['./TERMS_OF_SERVICE.md'],
+    '/privacy': ['./PRIVACY_POLICY.md'],
   },
   experimental: {
     serverActions: {
