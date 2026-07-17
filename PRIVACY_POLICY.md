@@ -1,6 +1,6 @@
 # Privacy Policy
 
-_Effective: 2026-07-17_
+**Last updated: July 17, 2026**
 
 Stable State ("we", "the app") is barn management software. This policy explains what data we collect, why, and who else sees it.
 
@@ -41,4 +41,4 @@ Questions about this policy or requests regarding your data: **aseefried@gmail.c
 
 ## Changes to this policy
 
-If this policy changes, we'll update the effective date above.
+If this policy changes, we'll update the date above.
