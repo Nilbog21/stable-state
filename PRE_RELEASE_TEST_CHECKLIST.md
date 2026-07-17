@@ -14,6 +14,9 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 
 ## Phase 1 — Setup
 
+- [ ] Visit `/login` — a **Terms of Service** link is present
+- [ ] Clicking the link opens `/terms`
+- [ ] The `/terms` page renders the drafted terms content
 - [ ] Reset and reseed the dev database:
 
   ```bash
@@ -416,6 +419,7 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 |---|---|
 | `/` | Phase 7 |
 | `/login` | Phase 7 |
+| `/terms` | Phase 1 |
 | `/barns` | Phase 7 |
 | `/barn/[slug]` (dashboard) | Phases 4, 6 |
 | `/barn/[slug]/login` | Phases 1, 2, 7 |
