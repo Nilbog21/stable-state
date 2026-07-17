@@ -27,6 +27,13 @@ Update the architecture docs whenever a migration or role change is committed:
 - DAL change (new/changed function in `src/lib/db/`) → `docs/architecture/dal.md`, plus its index entry in `ARCHITECTURE.md`'s Data access layer section if a module was added/removed
 - Role change (new role, permissions matrix, RLS convention) → stays in `ARCHITECTURE.md`'s Role system / RLS conventions sections
 
+## Privacy Policy
+
+`PRIVACY_POLICY.md` (repo root, served at `/privacy`) must stay in sync with what the app actually does. Check it whenever a change touches:
+- A new/changed table or column that captures personal or financial data → review "What we collect"
+- A new third-party integration (analytics, email, storage, hosting, CI/backup tooling) → review "Third parties"
+- A new automated data export/backup flow → review "Data retention"
+
 ## User Guides
 
 When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE_MANAGER.md`, `USER_GUIDE_TRAINER.md`, and/or `USER_GUIDE_RIDER.md`.
