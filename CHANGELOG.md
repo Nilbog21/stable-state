@@ -4,6 +4,12 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
+## v3.0.3 — July 2026
+
+**A Privacy Policy page is now available.** Read it any time from a link on the login page — it explains what information we collect and confirms we never sell your data.
+
+---
+
 ## v3.0.2 — July 2026
 
 **A Terms of Service page is now available.** Read it any time from a link on the login page — it covers liability limits, uptime expectations, and account termination rights.
