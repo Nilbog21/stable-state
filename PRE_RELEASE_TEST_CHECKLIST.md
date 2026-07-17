@@ -23,6 +23,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
   This chains `seed-account.sh`, which prompts for **First name**, **Last name**, and **Barn slug** — each pre-filled from `.env.local` (`DEV_NAME`, `DEV_BARN`), so press **Enter** through all three to accept the defaults. Then, at `reset-db.sh`'s own `Press Enter when logged in, or Escape to skip role selection:` prompt, press **Escape** — you stay manager for now.
 - [ ] The script prints `Invite path: /barn/dev-barn/login?token=<uuid>` — open that path on your app origin
 - [ ] The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox (checked by default) — sign in with the **`DEV_EMAIL`** Google account
+- [ ] Visit `/login` — a **Terms of Service** link is present and opens `/terms`, rendering the drafted terms content
 - [ ] You are redirected to `/profile/complete` (fresh claimed stub has no contact info)
 - [ ] Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app as manager of Dev Barn
 - [ ] Shrink the browser below 768px wide — the nav bar's section links disappear and a ☰ button appears
@@ -416,6 +417,7 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 |---|---|
 | `/` | Phase 7 |
 | `/login` | Phase 7 |
+| `/terms` | Phase 1 |
 | `/barns` | Phase 7 |
 | `/barn/[slug]` (dashboard) | Phases 4, 6 |
 | `/barn/[slug]/login` | Phases 1, 2, 7 |

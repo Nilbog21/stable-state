@@ -44,6 +44,12 @@ export default async function LoginPage({
       ) : (
         <GoogleSignInButton action={signInWithGoogle} rememberChecked={rememberChecked} />
       )}
+      <a
+        href="/terms"
+        className="text-sm text-zinc-500 underline hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+      >
+        Terms of Service
+      </a>
     </main>
   )
 }
