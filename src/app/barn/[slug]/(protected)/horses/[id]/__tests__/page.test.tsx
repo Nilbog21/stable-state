@@ -12,14 +12,10 @@ vi.mock('../actions', () => ({
   updateHorseAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
   updateHorseDocumentReminderDateAction: vi.fn(),
-  uploadHorsePhotoAction: vi.fn(),
   deleteHorsePhotoAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
-}))
-vi.mock('../HorsePhotoForm', () => ({
-  HorsePhotoForm: ({ label }: { label: string }) => <div data-testid="horse-photo-form">{label}</div>,
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -316,6 +312,16 @@ describe('HorseDetailPage', () => {
     expect(img.src).toBe('https://example.com/photo-signed')
   })
 
+  it('should_not_crop_non_square_photos', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    const img = screen.getByRole('img', { name: 'Thunderbolt' }) as HTMLImageElement
+    expect(img.className).toContain('h-48')
+    expect(img.className).toContain('w-auto')
+    expect(img.className).not.toContain('object-cover')
+  })
+
   it('should_fetch_signed_url_for_the_horses_photo_path', async () => {
     vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
     await HorseDetailPage({ params: pageParams })
@@ -343,6 +349,15 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('Replace Photo')).toBeDefined()
+  })
+
+  it('should_link_replace_photo_control_to_the_reused_upload_page', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'Replace Photo' }).getAttribute('href')).toBe(
+      '/barn/green-acres/documents/new?entity=horse&id=horse-1&type=photo'
+    )
   })
 
   it('should_render_remove_control_for_manager_when_photo_present', async () => {
@@ -374,10 +389,18 @@ describe('HorseDetailPage', () => {
     expect(getSignedUrl).not.toHaveBeenCalled()
   })
 
-  it('should_render_add_photo_cta_for_manager_when_photo_absent', async () => {
+  it('should_render_set_photo_cta_for_manager_when_photo_absent', async () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.getByText('Add Photo')).toBeDefined()
+    expect(screen.getByText('Set Photo')).toBeDefined()
+  })
+
+  it('should_link_set_photo_cta_to_the_reused_upload_page', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'Set Photo' }).getAttribute('href')).toBe(
+      '/barn/green-acres/documents/new?entity=horse&id=horse-1&type=photo'
+    )
   })
 
   it('should_render_no_photo_text_when_photo_absent', async () => {
@@ -386,17 +409,17 @@ describe('HorseDetailPage', () => {
     expect(screen.getByText(/no photo yet/i)).toBeDefined()
   })
 
-  it('should_not_render_add_photo_cta_for_trainer_when_photo_absent', async () => {
+  it('should_not_render_set_photo_cta_for_trainer_when_photo_absent', async () => {
     mockRequireMembershipAs(trainerMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.queryByText('Add Photo')).toBeNull()
+    expect(screen.queryByText('Set Photo')).toBeNull()
   })
 
-  it('should_not_render_add_photo_cta_for_rider_when_photo_absent', async () => {
+  it('should_not_render_set_photo_cta_for_rider_when_photo_absent', async () => {
     mockRequireMembershipAs(riderMembership)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
-    expect(screen.queryByText('Add Photo')).toBeNull()
+    expect(screen.queryByText('Set Photo')).toBeNull()
   })
 })
