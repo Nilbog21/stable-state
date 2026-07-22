@@ -106,6 +106,8 @@ export async function updateHorseDetails(
     is_available: boolean
     unavailability_reason: string | null
     exhaustion_thresholds: { moderate: number; high: number } | null
+    feed_notes: string | null
+    medication_notes: string | null
   }
 ): Promise<void> {
   const supabase = await createClient()
@@ -118,6 +120,8 @@ export async function updateHorseDetails(
     p_unavailability_reason: updates.unavailability_reason,
     p_exhaustion_threshold_moderate: updates.exhaustion_thresholds?.moderate ?? null,
     p_exhaustion_threshold_high: updates.exhaustion_thresholds?.high ?? null,
+    p_feed_notes: updates.feed_notes,
+    p_medication_notes: updates.medication_notes,
   })
   if (error) throw error
 }

@@ -38,6 +38,10 @@ const customThresholdsHorse = createMockHorse({
   exhaustion_threshold_moderate: 2,
   exhaustion_threshold_high: 6,
 })
+const horseWithNotes = createMockHorse({
+  feed_notes: '2 flakes hay AM/PM',
+  medication_notes: 'Bute 1g daily',
+})
 
 const mockAction = vi.fn().mockResolvedValue({ error: null })
 
@@ -339,6 +343,43 @@ describe('HorseManagerForm', () => {
 
     expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).value).toBe('3')
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('8')
+  })
+
+  it('should_render_feed_notes_textarea', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    expect(screen.getByRole('textbox', { name: /feed notes/i })).toBeDefined()
+  })
+
+  it('should_render_medication_notes_textarea', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    expect(screen.getByRole('textbox', { name: /medication notes/i })).toBeDefined()
+  })
+
+  it('should_prefill_feed_notes_textarea_with_horse_value', () => {
+    render(<HorseManagerForm horse={horseWithNotes} barn={mockBarn} action={mockAction} />)
+    expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('2 flakes hay AM/PM')
+  })
+
+  it('should_prefill_medication_notes_textarea_with_horse_value', () => {
+    render(<HorseManagerForm horse={horseWithNotes} barn={mockBarn} action={mockAction} />)
+    expect((screen.getByRole('textbox', { name: /medication notes/i }) as HTMLTextAreaElement).value).toBe('Bute 1g daily')
+  })
+
+  it('should_render_feed_notes_textarea_empty_when_horse_value_is_null', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('')
+  })
+
+  it('should_update_feed_notes_textarea_on_change', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '1 flake AM only' } })
+    expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('1 flake AM only')
+  })
+
+  it('should_update_medication_notes_textarea_on_change', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Banamine PRN' } })
+    expect((screen.getByRole('textbox', { name: /medication notes/i }) as HTMLTextAreaElement).value).toBe('Banamine PRN')
   })
 
   it('should_display_barn_defaults_after_save_when_checked_instead_of_stale_horse_prop_values', async () => {

@@ -57,6 +57,20 @@ export default async function HorseDetailPage({
               <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.unavailability_reason}</dd>
             </div>
           )}
+
+          {horse.feed_notes && (
+            <div className="flex flex-col gap-1 py-4">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Feed Notes</dt>
+              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.feed_notes}</dd>
+            </div>
+          )}
+
+          {horse.medication_notes && (
+            <div className="flex flex-col gap-1 py-4">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Medication Notes</dt>
+              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.medication_notes}</dd>
+            </div>
+          )}
         </dl>
       )}
 

@@ -36,6 +36,13 @@ function mockRequireMembershipAs(membership: ReturnType<typeof createMockMembers
 
 const availableHorse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true, unavailability_reason: null })
 const unavailableHorse = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: false, unavailability_reason: 'on stall rest' })
+const horseWithNotes = createMockHorse({
+  id: 'horse-1',
+  name: 'Thunderbolt',
+  is_available: true,
+  feed_notes: '2 flakes hay AM/PM',
+  medication_notes: 'Bute 1g daily',
+})
 
 const pageParams = Promise.resolve({ slug: 'green-acres', id: 'horse-1' })
 
@@ -139,6 +146,44 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText('on stall rest')).toBeNull()
+  })
+
+  it('should_render_feed_notes_for_trainer_when_set', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithNotes)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('2 flakes hay AM/PM')).toBeDefined()
+  })
+
+  it('should_render_medication_notes_for_rider_when_set', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithNotes)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Bute 1g daily')).toBeDefined()
+  })
+
+  it('should_not_render_feed_notes_row_for_trainer_when_null', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Feed Notes')).toBeNull()
+  })
+
+  it('should_not_render_medication_notes_row_for_trainer_when_null', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Medication Notes')).toBeNull()
+  })
+
+  it('should_render_feed_notes_for_trainer_when_horse_is_unavailable', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue({ ...horseWithNotes, is_available: false, unavailability_reason: 'on stall rest' })
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('2 flakes hay AM/PM')).toBeDefined()
   })
 
   it('should_render_documents_heading_in_text_sm', async () => {

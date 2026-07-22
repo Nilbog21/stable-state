@@ -37,6 +37,9 @@ export async function updateHorseAction(
     thresholds = { moderate, high }
   }
 
+  const feedNotes = (formData.get('feed_notes') as string | null)?.trim() || null
+  const medicationNotes = (formData.get('medication_notes') as string | null)?.trim() || null
+
   try {
     await updateHorseDetails(horseId, barn.id, {
       ...(name ? { name } : {}),
@@ -44,6 +47,8 @@ export async function updateHorseAction(
       is_available: isAvailable,
       unavailability_reason: reason,
       exhaustion_thresholds: thresholds,
+      feed_notes: feedNotes,
+      medication_notes: medicationNotes,
     })
   } catch (err) {
     return { error: getErrorMessage(err) }
