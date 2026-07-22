@@ -10,13 +10,20 @@ export const ALLOWED_EXTENSIONS = new Set(['pdf', 'jpg', 'jpeg', 'png', 'docx'])
 // Vercel hard-caps request bodies at 4.5 MB at the edge, independent of next.config.ts's bodySizeLimit.
 export const MAX_FILE_SIZE = 4500000
 
-export function validateFile(file: File | null): string {
+export const PHOTO_MIME_TYPES = new Set(['image/jpeg', 'image/png'])
+export const PHOTO_EXTENSIONS = new Set(['jpg', 'jpeg', 'png'])
+
+export function validateFile(
+  file: File | null,
+  allowedMimeTypes: Set<string> = ALLOWED_MIME_TYPES,
+  allowedExtensions: Set<string> = ALLOWED_EXTENSIONS
+): string {
   if (!file || file.size === 0) throw new Error('No file provided')
   if (file.size > MAX_FILE_SIZE) throw new Error('File exceeds 4.5 MB limit')
-  if (!ALLOWED_MIME_TYPES.has(file.type)) throw new Error('Unsupported file type')
+  if (!allowedMimeTypes.has(file.type)) throw new Error('Unsupported file type')
   const nameParts = file.name.split('.')
   const ext = (nameParts.length > 1 ? nameParts.pop() : '') || ''
-  if (!ALLOWED_EXTENSIONS.has(ext.toLowerCase())) throw new Error('Unsupported file type')
+  if (!allowedExtensions.has(ext.toLowerCase())) throw new Error('Unsupported file type')
   return ext.toLowerCase()
 }
 

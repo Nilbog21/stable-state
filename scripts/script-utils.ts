@@ -55,6 +55,16 @@ async function removeDocumentStorage(
   if (error) throw new Error(`remove storage ${table}: ${(error as { message?: string }).message}`)
 }
 
+async function removeHorsePhotoStorage(
+  query: { data: { photo_path: string | null }[] | null; error: unknown },
+  supabase: SupabaseClient
+): Promise<void> {
+  const paths = (query.data ?? []).map((h) => h.photo_path).filter((p): p is string => !!p)
+  if (!paths.length) return
+  const { error } = await supabase.storage.from('documents').remove(paths)
+  if (error) throw new Error(`remove storage horses: ${(error as { message?: string }).message}`)
+}
+
 export async function teardownBarnData(barnId: string, supabase: SupabaseClient): Promise<void> {
   mustSucceed(await supabase.rpc('teardown_dev_barn_lessons', { p_barn_id: barnId }), 'teardown lessons')
   mustSucceed(await supabase.from('lesson_tiers').delete().eq('barn_id', barnId), 'delete lesson_tiers')
@@ -63,6 +73,7 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
     await removeDocumentStorage(table, await supabase.from(table).select('storage_path').eq('barn_id', barnId), supabase)
     mustSucceed(await supabase.from(table).delete().eq('barn_id', barnId), `delete ${table}`)
   }
+  await removeHorsePhotoStorage(await supabase.from('horses').select('photo_path').eq('barn_id', barnId), supabase)
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', barnId), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
 }
@@ -75,6 +86,7 @@ export async function teardownAllData(supabase: SupabaseClient): Promise<void> {
     await removeDocumentStorage(table, await supabase.from(table).select('storage_path').not('id', 'is', null), supabase)
     mustSucceed(await supabase.from(table).delete().not('id', 'is', null), `delete ${table}`)
   }
+  await removeHorsePhotoStorage(await supabase.from('horses').select('photo_path').not('id', 'is', null), supabase)
   mustSucceed(await supabase.from('horses').delete().not('id', 'is', null), 'delete horses')
   mustSucceed(await supabase.from('barn_memberships').delete().not('id', 'is', null), 'delete barn_memberships')
   mustSucceed(await supabase.from('profiles').delete().not('id', 'is', null), 'delete profiles')

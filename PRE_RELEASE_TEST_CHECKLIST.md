@@ -178,6 +178,13 @@ Expenses (`/barn/dev-barn/expenses`):
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
+- [ ] Open a horse with no photo → placeholder icon and **Set Photo** button show
+- [ ] Tap **Set Photo** → navigates to the same upload screen used for horse documents, with Document Type locked to "Photo" (no dropdown) and no Notes/Expiration reminder date fields
+- [ ] Tap **Choose File** and select a non-square JPG or PNG → upload starts immediately with no separate Upload button click, and you land back on the horse detail page with the photo displayed, scaled to a fixed height with its aspect ratio preserved (not cropped to a square)
+- [ ] With a photo set, tap **Replace Photo**, choose a different image → upload starts immediately and the new photo displays
+- [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
+- [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
+- [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
 - [ ] Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
 - [ ] With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
@@ -352,6 +359,7 @@ bash scripts/change-user.sh
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Horse detail page shows the Feed Notes/Medication Notes entered as manager, read-only (no textareas, no Save button); clear one as manager and confirm its row disappears here on reload instead of showing blank
+- [ ] Horse detail page: a horse's photo (if a manager has set one) displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
@@ -371,8 +379,8 @@ bash scripts/change-user.sh
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Leases, no Boarding, no Expenses**
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
-- [ ] Horses page's Available/Unavailable cards have no hover state
-- [ ] Horses page's Available/Unavailable cards do not navigate to a horse detail page when tapped
+- [ ] Tap an Available or Unavailable card → navigates to that horse's detail page (#1002 — cards became linkable so a rider can view the horse's photo)
+- [ ] On a horse's detail page, a photo (if a manager has set one) displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
