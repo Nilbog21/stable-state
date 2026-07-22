@@ -41,12 +41,13 @@ Three roles: `manager`, `trainer`, `rider`.
 | horse_expenses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — |
 | expense_horses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — |
 | transactions | SELECT (barn-scoped); no INSERT/UPDATE/DELETE grant to `authenticated` — writes only via `SECURITY DEFINER` RPCs (`sync_lesson_transactions`/`collect_lesson_payment`/`delete_lesson_with_transactions`, #827) | — | — |
+| member_horse_privileges | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — (no direct read/write grant — a privileged rider's access is exercised only through the `auth_get_horse_document_privilege`/`auth_has_horse_lesson_read_privilege` helper functions and the policies they back on `horse_documents`/`lessons`/`lesson_horses`/`lesson_riders`, #997) |
 
 ## DB schema
 
 All tables are in the `public` schema with RLS enabled. Full column definitions, constraints, and per-table notes: [`docs/architecture/schema.md`](docs/architecture/schema.md).
 
-Tables: `roles`, `barns`, `barn_memberships`, `horses`, `lessons`, `lesson_tiers`, `lesson_series`, `lesson_horses`, `lesson_riders`, `profiles`, `notifications`, `horse_documents`, `staff_documents`, `rider_documents`, `agreements`, `agreement_charges`, `horse_expenses`, `expense_horses`, `transactions`
+Tables: `roles`, `barns`, `barn_memberships`, `horses`, `lessons`, `lesson_tiers`, `lesson_series`, `lesson_horses`, `lesson_riders`, `profiles`, `notifications`, `horse_documents`, `staff_documents`, `rider_documents`, `agreements`, `agreement_charges`, `horse_expenses`, `expense_horses`, `transactions`, `member_horse_privileges`
 
 ## RLS conventions
 
@@ -63,6 +64,10 @@ Tables: `roles`, `barns`, `barn_memberships`, `horses`, `lessons`, `lesson_tiers
 `auth_is_active_barn_member(p_barn_id uuid)` is a `SECURITY DEFINER` SQL function that returns `true` if the calling user has any active `barn_memberships` row in the given barn, regardless of role. Used inside `get_active_barn_member_summaries` (see [`docs/architecture/rpc.md`](docs/architecture/rpc.md)) rather than a new row-level SELECT policy on `barn_memberships` — a broad policy would satisfy #779's "any active member can browse the roster" requirement but would also expose `invite_token` on every row it authorizes, since `barn_memberships` has no column-level GRANT restriction for `authenticated` (same bug class the `auth_can_read_instructor_membership`/`get_instructor_membership_names` pair above already fixed once).
 
 `auth_can_read_barn_member_profile(p_profile_id uuid)` is a `SECURITY DEFINER` SQL function backing the `profiles_barn_members_read` policy, returning `true` if the calling user shares an active barn membership with the barn membership row(s) owning `p_profile_id`. Replaces that policy's original inline `barn_memberships` subquery (#779 follow-up), which was itself subject to `barn_memberships`' own narrow RLS (own-row/manager-full-barn/trainer-reads-riders) — so a trainer viewing a manager's profile, or a rider viewing a trainer's or manager's profile (both newly reachable via #779's broadened roster), silently got zero rows back and the name fell back to "Unknown Member". Same recursion class as `auth_is_barn_manager`.
+
+`auth_get_horse_document_privilege(p_horse_id uuid, p_barn_id uuid)` is a `SECURITY DEFINER` SQL function that returns the calling user's `member_horse_privileges.document_privileges` value (`'none'`/`'read'`/`'write'`) for the given horse — `'none'` if the caller has no active membership in the barn or no privileges row for that horse. Backs `horse_documents_select_privilege` (`IN ('read','write')`) and `horse_documents_insert_privilege` (`= 'write'`), letting a manager-granted rider read or upload documents for a specific horse without a broader `horse_documents` grant. Same recursion-safe rationale as `auth_is_enrolled_rider` — checks the caller's own row via a `SECURITY DEFINER` join rather than a plain subquery.
+
+`auth_has_horse_lesson_read_privilege(p_horse_id uuid, p_barn_id uuid)` is a `SECURITY DEFINER` SQL function that returns `true` if the calling user has an active `member_horse_privileges` row for the given horse with `lesson_read_privileges = true`. Backs `lessons_select_horse_privilege`/`lesson_horses_select_horse_privilege`/`lesson_riders_select_horse_privilege` (a privileged rider sees any lesson that includes their privileged horse, not just lessons they're enrolled in) and is also checked inside `get_horse_projected_exhaustion` (see [`docs/architecture/rpc.md`](docs/architecture/rpc.md)) so that same rider can see their horse's projected exhaustion. One flag drives both concerns (schedule visibility and exhaustion visibility) rather than two separate columns/functions.
 
 RLS policies always go in a **separate migration file** from schema changes.
 
