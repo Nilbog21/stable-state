@@ -1,10 +1,11 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails } from '@/lib/db/horses'
+import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
-import { removeFile } from '@/lib/db/document-storage'
+import { removeFile, validateFile, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { parseNonNegativeInt } from '@/lib/parse-amount'
 
@@ -57,6 +58,41 @@ export async function updateHorseAction(
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
   return { error: null }
+}
+
+export async function uploadHorsePhotoAction(
+  barnSlug: string,
+  horseId: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const file = formData.get('file') as File | null
+  let ext: string
+  try {
+    ext = validateFile(file, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  try {
+    await replaceHorsePhoto(horseId, barn.id, file!, ext)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  redirect(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function deleteHorsePhotoAction(
+  barnSlug: string,
+  horseId: string
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await removeHorsePhoto(horseId, barn.id)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
 export async function deleteHorseDocumentAction(
