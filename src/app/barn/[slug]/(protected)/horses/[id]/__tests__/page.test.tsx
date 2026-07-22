@@ -7,13 +7,19 @@ vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
 vi.mock('@/lib/db/documents', () => ({
   getDocumentsWithUrls: vi.fn(),
 }))
+vi.mock('@/lib/db/document-storage', () => ({ getSignedUrl: vi.fn() }))
 vi.mock('../actions', () => ({
   updateHorseAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
   updateHorseDocumentReminderDateAction: vi.fn(),
+  uploadHorsePhotoAction: vi.fn(),
+  deleteHorsePhotoAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
+}))
+vi.mock('../HorsePhotoForm', () => ({
+  HorsePhotoForm: ({ label }: { label: string }) => <div data-testid="horse-photo-form">{label}</div>,
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -22,6 +28,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound, useRouter: () => ({ 
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
+import { getSignedUrl } from '@/lib/db/document-storage'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -43,6 +50,7 @@ const horseWithNotes = createMockHorse({
   feed_notes: '2 flakes hay AM/PM',
   medication_notes: 'Bute 1g daily',
 })
+const horseWithPhoto = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg' })
 
 const pageParams = Promise.resolve({ slug: 'green-acres', id: 'horse-1' })
 
@@ -65,6 +73,8 @@ describe('HorseDetailPage', () => {
     mockRequireMembershipAs(managerMembership)
     vi.mocked(getHorseById).mockResolvedValue(availableHorse)
     vi.mocked(getDocumentsWithUrls).mockResolvedValue([])
+    vi.mocked(getSignedUrl).mockReset()
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/photo-signed')
   })
 
   it('should_call_requireMembership_with_allowed_roles', async () => {
@@ -296,5 +306,84 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText(/reminder due/i)).toBeNull()
+  })
+
+  it('should_render_photo_via_signed_url_when_present', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    const img = screen.getByRole('img', { name: 'Thunderbolt' }) as HTMLImageElement
+    expect(img.src).toBe('https://example.com/photo-signed')
+  })
+
+  it('should_fetch_signed_url_for_the_horses_photo_path', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    await HorseDetailPage({ params: pageParams })
+    expect(getSignedUrl).toHaveBeenCalledWith('barn-1/horse-photos/horse-1/1.jpg')
+  })
+
+  it('should_render_photo_for_trainer_when_present', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('img', { name: 'Thunderbolt' })).toBeDefined()
+  })
+
+  it('should_render_photo_for_rider_when_present', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('img', { name: 'Thunderbolt' })).toBeDefined()
+  })
+
+  it('should_render_replace_and_remove_controls_for_manager_when_photo_present', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Replace Photo')).toBeDefined()
+    expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
+  })
+
+  it('should_not_render_replace_or_remove_controls_for_trainer_when_photo_present', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Replace Photo')).toBeNull()
+    expect(screen.queryByRole('button', { name: /remove/i })).toBeNull()
+  })
+
+  it('should_not_fetch_signed_url_when_photo_path_is_absent', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(getSignedUrl).not.toHaveBeenCalled()
+  })
+
+  it('should_render_add_photo_cta_for_manager_when_photo_absent', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Add Photo')).toBeDefined()
+  })
+
+  it('should_render_no_photo_text_when_photo_absent', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText(/no photo yet/i)).toBeDefined()
+  })
+
+  it('should_not_render_add_photo_cta_for_trainer_when_photo_absent', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Add Photo')).toBeNull()
+  })
+
+  it('should_not_render_add_photo_cta_for_rider_when_photo_absent', async () => {
+    mockRequireMembershipAs(riderMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Add Photo')).toBeNull()
   })
 })
