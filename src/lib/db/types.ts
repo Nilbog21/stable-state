@@ -34,6 +34,7 @@ export interface Barn {
   exhaustion_threshold_high: number
   exhaustion_threshold_moderate: number
   timezone: string
+  is_demo: boolean
 }
 
 export interface BarnMembership {
@@ -73,6 +74,7 @@ export interface Horse {
   exhaustion_threshold_moderate: number | null
   feed_notes: string | null
   medication_notes: string | null
+  photo_path: string | null
   created_at: string
   updated_at: string
 }

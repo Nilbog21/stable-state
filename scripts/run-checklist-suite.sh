@@ -28,6 +28,8 @@ if [ "$MODE" != "interactive" ] && [ "$MODE" != "auto" ]; then
   exit 1
 fi
 
+PORT="${2:-3000}"
+
 BARN_SLUG="e2e-$(date +%s)-$RANDOM"
 
 cleanup() {
@@ -50,6 +52,6 @@ fi
 
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-E2E_BASE_URL="http://localhost:3000" \
+E2E_BASE_URL="http://localhost:$PORT" \
 TEST_BARN_SLUG="$BARN_SLUG" \
   npx playwright test "${PLAYWRIGHT_ARGS[@]}"

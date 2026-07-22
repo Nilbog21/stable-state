@@ -7,6 +7,8 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/horses', () => ({
   updateHorseDetails: vi.fn(),
+  replaceHorsePhoto: vi.fn(),
+  removeHorsePhoto: vi.fn(),
 }))
 
 vi.mock('@/lib/db/documents', () => ({
@@ -23,8 +25,13 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
+const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
+  throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
+}))
+vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
+
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails } from '@/lib/db/horses'
+import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
@@ -32,6 +39,8 @@ import {
   updateHorseAction,
   deleteHorseDocumentAction,
   updateHorseDocumentReminderDateAction,
+  uploadHorsePhotoAction,
+  deleteHorsePhotoAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -433,5 +442,107 @@ describe('updateHorseDocumentReminderDateAction', () => {
     vi.mocked(updateDocumentReminderDate).mockRejectedValue(new Error('update error'))
     const result = await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', '2027-01-01')
     expect(result.error).toBe('update error')
+  })
+})
+
+function makePhotoFile(): File {
+  return new File([new Uint8Array(100)], 'butter.jpg', { type: 'image/jpeg' })
+}
+
+describe('uploadHorsePhotoAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(replaceHorsePhoto).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
+
+    vi.mocked(replaceHorsePhoto).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  function formDataWithFile(): FormData {
+    const fd = new FormData()
+    fd.set('file', makePhotoFile())
+    return fd
+  }
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile()).catch(() => {})
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_return_error_when_file_type_is_not_jpeg_or_png', async () => {
+    const fd = new FormData()
+    fd.set('file', new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' }))
+    const result = await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'Unsupported file type' })
+  })
+
+  it('should_not_call_replaceHorsePhoto_when_file_type_is_invalid', async () => {
+    const fd = new FormData()
+    fd.set('file', new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' }))
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(replaceHorsePhoto).not.toHaveBeenCalled()
+  })
+
+  it('should_call_replaceHorsePhoto_with_barn_scoped_ids_file_and_extension', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile()).catch(() => {})
+    expect(replaceHorsePhoto).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, expect.any(File), 'jpg')
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile()).catch(() => {})
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_redirect_to_horse_detail_page_on_success', async () => {
+    await expect(uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_return_error_when_replaceHorsePhoto_fails', async () => {
+    vi.mocked(replaceHorsePhoto).mockRejectedValue(new Error('upload error'))
+    const result = await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())
+    expect(result).toEqual({ error: 'upload error' })
+  })
+
+  it('should_not_revalidate_when_replaceHorsePhoto_fails', async () => {
+    vi.mocked(replaceHorsePhoto).mockRejectedValue(new Error('upload error'))
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+})
+
+describe('deleteHorsePhotoAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(removeHorsePhoto).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(removeHorsePhoto).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_removeHorsePhoto_with_barn_scoped_ids', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1')
+    expect(removeHorsePhoto).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id)
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
 })

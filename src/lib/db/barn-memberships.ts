@@ -279,7 +279,7 @@ export const getBarnMembershipsForUser = cache(async (
   if (error) throw error
 
   return (data ?? [])
-    .filter(({ barns }) => barns !== null)
+    .filter(({ barns }) => barns !== null && !(barns as Barn).is_demo)
     .map(({ barns, ...membership }) => ({
       barn: barns as Barn,
       membership: membership as BarnMembership,

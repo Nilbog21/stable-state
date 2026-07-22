@@ -95,7 +95,7 @@ export default async function HorsesPage({
                 barnSlug={slug}
                 variant="available"
                 exhaustion={exhaustionByHorseId.get(horse.id)}
-                linkable={!isRider}
+                linkable
               />
             ))}
           </div>
@@ -113,7 +113,7 @@ export default async function HorsesPage({
                 barnSlug={slug}
                 variant="unavailable"
                 exhaustion={exhaustionByHorseId.get(horse.id)}
-                linkable={!isRider}
+                linkable
               />
             ))}
           </div>

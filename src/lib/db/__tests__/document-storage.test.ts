@@ -13,6 +13,8 @@ import {
   ALLOWED_MIME_TYPES,
   ALLOWED_EXTENSIONS,
   MAX_FILE_SIZE,
+  PHOTO_MIME_TYPES,
+  PHOTO_EXTENSIONS,
 } from '../document-storage'
 
 function makePdfFile(sizeBytes = 1024): File {
@@ -30,6 +32,19 @@ describe('constants', () => {
 
   it('should_export_max_file_size_as_4_5mb', () => {
     expect(MAX_FILE_SIZE).toBe(4500000)
+  })
+
+  it('should_export_photo_mime_types_as_jpeg_and_png_only', () => {
+    expect(PHOTO_MIME_TYPES.has('image/jpeg')).toBe(true)
+    expect(PHOTO_MIME_TYPES.has('image/png')).toBe(true)
+    expect(PHOTO_MIME_TYPES.has('application/pdf')).toBe(false)
+  })
+
+  it('should_export_photo_extensions_as_jpg_jpeg_png_only', () => {
+    expect(PHOTO_EXTENSIONS.has('jpg')).toBe(true)
+    expect(PHOTO_EXTENSIONS.has('jpeg')).toBe(true)
+    expect(PHOTO_EXTENSIONS.has('png')).toBe(true)
+    expect(PHOTO_EXTENSIONS.has('pdf')).toBe(false)
   })
 })
 
@@ -71,6 +86,16 @@ describe('validateFile', () => {
   it('should_throw_when_extension_is_not_allowed', () => {
     const file = new File([new Uint8Array(100)], 'bad.exe', { type: 'application/pdf' })
     expect(() => validateFile(file)).toThrow('Unsupported file type')
+  })
+
+  it('should_accept_jpeg_when_restricted_to_photo_types', () => {
+    const file = new File([new Uint8Array(100)], 'horse.JPG', { type: 'image/jpeg' })
+    expect(validateFile(file, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS)).toBe('jpg')
+  })
+
+  it('should_throw_when_pdf_is_passed_with_photo_only_allowed_types', () => {
+    const file = makePdfFile()
+    expect(() => validateFile(file, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS)).toThrow('Unsupported file type')
   })
 })
 

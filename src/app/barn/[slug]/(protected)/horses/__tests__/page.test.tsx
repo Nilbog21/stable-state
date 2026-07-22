@@ -383,20 +383,20 @@ describe('HorsesPage', () => {
       expect(screen.getByText('No horses yet')).toBeDefined()
     })
 
-    it('should_render_available_horse_card_as_not_linkable_for_rider', async () => {
+    it('should_render_available_horse_card_as_linkable_for_rider', async () => {
       vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
-      expect(screen.getByText('Thunderbolt').getAttribute('data-linkable')).toBe('false')
+      expect(screen.getByText('Thunderbolt').getAttribute('data-linkable')).toBe('true')
     })
 
-    it('should_render_unavailable_horse_card_as_not_linkable_for_rider', async () => {
+    it('should_render_unavailable_horse_card_as_linkable_for_rider', async () => {
       vi.mocked(getHorsesByBarn).mockResolvedValue([
         createMockHorse({ id: 'horse-2', name: 'Hobbled', is_available: false, unavailability_reason: 'Injury' }),
       ])
       const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
       render(jsx)
-      expect(screen.getByText('Hobbled').getAttribute('data-linkable')).toBe('false')
+      expect(screen.getByText('Hobbled').getAttribute('data-linkable')).toBe('true')
     })
   })
 
