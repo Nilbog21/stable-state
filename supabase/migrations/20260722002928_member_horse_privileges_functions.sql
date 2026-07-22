@@ -9,12 +9,15 @@ LANGUAGE sql
 SECURITY DEFINER
 SET search_path = public
 AS $$
-  SELECT COALESCE(mhp.document_privileges, 'none')
-  FROM public.barn_memberships bm
-  LEFT JOIN public.member_horse_privileges mhp
-    ON mhp.member_id = bm.id AND mhp.horse_id = p_horse_id AND mhp.barn_id = p_barn_id
-  WHERE bm.user_id = auth.uid() AND bm.barn_id = p_barn_id AND bm.status = 'active'
-  LIMIT 1;
+  SELECT COALESCE(
+    (SELECT mhp.document_privileges
+     FROM public.barn_memberships bm
+     JOIN public.member_horse_privileges mhp
+       ON mhp.member_id = bm.id AND mhp.horse_id = p_horse_id AND mhp.barn_id = p_barn_id
+     WHERE bm.user_id = auth.uid() AND bm.barn_id = p_barn_id AND bm.status = 'active'
+     LIMIT 1),
+    'none'
+  );
 $$;
 
 CREATE FUNCTION public.auth_has_horse_lesson_read_privilege(p_horse_id uuid, p_barn_id uuid)
@@ -29,6 +32,24 @@ AS $$
     WHERE bm.user_id = auth.uid() AND bm.barn_id = p_barn_id AND bm.status = 'active'
       AND mhp.horse_id = p_horse_id AND mhp.barn_id = p_barn_id
       AND mhp.lesson_read_privileges = true
+  );
+$$;
+
+-- #997: fully encapsulates the lessons/lesson_riders → lesson_horses join
+-- inside a single SECURITY DEFINER function, mirroring auth_is_enrolled_rider
+-- rather than leaving an inline cross-table subquery in the RLS policy
+-- itself — keeps the same recursion-safety guarantee if a future migration
+-- ever adds a lesson_horses policy that references lessons/lesson_riders.
+CREATE FUNCTION public.auth_lesson_has_privileged_horse(p_lesson_id uuid, p_barn_id uuid)
+RETURNS boolean
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM public.lesson_horses lh
+    WHERE lh.lesson_id = p_lesson_id AND lh.barn_id = p_barn_id
+      AND public.auth_has_horse_lesson_read_privilege(lh.horse_id, p_barn_id)
   );
 $$;
 

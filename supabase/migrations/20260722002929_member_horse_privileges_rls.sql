@@ -26,11 +26,7 @@ CREATE POLICY horse_documents_insert_privilege ON public.horse_documents
 -- to the existing staff/enrolled-rider SELECT policies.
 CREATE POLICY lessons_select_horse_privilege ON public.lessons
   FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.lesson_horses lh
-    WHERE lh.lesson_id = lessons.id AND lh.barn_id = lessons.barn_id
-      AND public.auth_has_horse_lesson_read_privilege(lh.horse_id, lessons.barn_id)
-  ));
+  USING (public.auth_lesson_has_privileged_horse(id, barn_id));
 
 CREATE POLICY lesson_horses_select_horse_privilege ON public.lesson_horses
   FOR SELECT TO authenticated
@@ -38,14 +34,13 @@ CREATE POLICY lesson_horses_select_horse_privilege ON public.lesson_horses
 
 CREATE POLICY lesson_riders_select_horse_privilege ON public.lesson_riders
   FOR SELECT TO authenticated
-  USING (EXISTS (
-    SELECT 1 FROM public.lesson_horses lh
-    WHERE lh.lesson_id = lesson_riders.lesson_id AND lh.barn_id = lesson_riders.barn_id
-      AND public.auth_has_horse_lesson_read_privilege(lh.horse_id, lesson_riders.barn_id)
-  ));
+  USING (public.auth_lesson_has_privileged_horse(lesson_id, barn_id));
 
 REVOKE ALL ON FUNCTION public.auth_get_horse_document_privilege(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.auth_get_horse_document_privilege(uuid, uuid) TO authenticated;
 
 REVOKE ALL ON FUNCTION public.auth_has_horse_lesson_read_privilege(uuid, uuid) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.auth_has_horse_lesson_read_privilege(uuid, uuid) TO authenticated;
+
+REVOKE ALL ON FUNCTION public.auth_lesson_has_privileged_horse(uuid, uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.auth_lesson_has_privileged_horse(uuid, uuid) TO authenticated;
