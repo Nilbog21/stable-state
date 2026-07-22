@@ -80,6 +80,8 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
     deactivated_at: null,
     exhaustion_threshold_high: null,
     exhaustion_threshold_moderate: null,
+    feed_notes: null,
+    medication_notes: null,
     created_at: '',
     updated_at: '',
     ...overrides,

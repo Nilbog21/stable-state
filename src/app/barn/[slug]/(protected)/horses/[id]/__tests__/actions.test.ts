@@ -72,6 +72,8 @@ describe('updateHorseAction', () => {
       is_available: true,
       unavailability_reason: null,
       exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: null,
+      medication_notes: null,
     })
   })
 
@@ -86,6 +88,8 @@ describe('updateHorseAction', () => {
       is_available: false,
       unavailability_reason: 'stall rest',
       exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: null,
+      medication_notes: null,
     })
   })
 
@@ -100,6 +104,8 @@ describe('updateHorseAction', () => {
       is_available: false,
       unavailability_reason: null,
       exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: null,
+      medication_notes: null,
     })
   })
 
@@ -113,6 +119,8 @@ describe('updateHorseAction', () => {
       is_available: false,
       unavailability_reason: null,
       exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: null,
+      medication_notes: null,
     })
   })
 
@@ -125,6 +133,8 @@ describe('updateHorseAction', () => {
       is_available: true,
       unavailability_reason: null,
       exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: null,
+      medication_notes: null,
     })
   })
 
@@ -137,6 +147,8 @@ describe('updateHorseAction', () => {
       is_available: true,
       unavailability_reason: null,
       exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: null,
+      medication_notes: null,
     })
   })
 
@@ -150,7 +162,51 @@ describe('updateHorseAction', () => {
       is_available: true,
       unavailability_reason: null,
       exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: null,
+      medication_notes: null,
     })
+  })
+
+  it('should_pass_feed_notes_and_medication_notes_to_updateHorseDetails', async () => {
+    const fd = validThresholdsFormData()
+    fd.set('feed_notes', '2 flakes hay AM/PM')
+    fd.set('medication_notes', 'Bute 1g daily')
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      feed_notes: '2 flakes hay AM/PM',
+      medication_notes: 'Bute 1g daily',
+    }))
+  })
+
+  it('should_trim_feed_notes_and_medication_notes_before_calling_updateHorseDetails', async () => {
+    const fd = validThresholdsFormData()
+    fd.set('feed_notes', '  2 flakes hay AM/PM  ')
+    fd.set('medication_notes', '  Bute 1g daily  ')
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      feed_notes: '2 flakes hay AM/PM',
+      medication_notes: 'Bute 1g daily',
+    }))
+  })
+
+  it('should_treat_blank_feed_notes_and_medication_notes_as_null', async () => {
+    const fd = validThresholdsFormData()
+    fd.set('feed_notes', '   ')
+    fd.set('medication_notes', '   ')
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      feed_notes: null,
+      medication_notes: null,
+    }))
+  })
+
+  it('should_treat_absent_feed_notes_and_medication_notes_fields_as_null', async () => {
+    const fd = validThresholdsFormData()
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      feed_notes: null,
+      medication_notes: null,
+    }))
   })
 
   it('should_not_call_updateHorseDetails_when_status_is_invalid', async () => {
