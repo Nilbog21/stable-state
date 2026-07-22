@@ -7,7 +7,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { createMockBarn } from '@/test/fixtures'
-import { getHorsesByBarn, getHorsesByIds, createHorse, getHorseExertionSummary, getHorseById, resolveHorseNames, updateHorseDetails, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '../horses'
+import { getHorsesByBarn, getHorsesByIds, createHorse, getHorseExertionSummary, getHorseById, resolveHorseNames, updateHorseDetails, updateHorsePhotoPath, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -678,6 +678,48 @@ describe('getHorseProjectedExhaustion', () => {
       p_target_date: targetDate.toISOString(),
       p_exclude_lesson_id: 'lesson-1',
     })
+  })
+})
+
+describe('updateHorsePhotoPath', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_update_photo_path', async () => {
+    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await updateHorsePhotoPath('horse-1', 'barn-1', 'barn-1/horse-photos/horse-1/123.jpg')
+    expect(update).toHaveBeenCalledWith({ photo_path: 'barn-1/horse-photos/horse-1/123.jpg' })
+  })
+
+  it('should_clear_photo_path_when_null', async () => {
+    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await updateHorsePhotoPath('horse-1', 'barn-1', null)
+    expect(update).toHaveBeenCalledWith({ photo_path: null })
+  })
+
+  it('should_throw_on_supabase_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockResolvedValue({ error: new Error('update error') }),
+          }),
+        }),
+      }),
+    } as any)
+
+    await expect(updateHorsePhotoPath('horse-1', 'barn-1', 'path.jpg')).rejects.toThrow('update error')
   })
 })
 
