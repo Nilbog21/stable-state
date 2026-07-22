@@ -126,6 +126,16 @@ export async function updateHorseDetails(
   if (error) throw error
 }
 
+export async function updateHorsePhotoPath(horseId: string, barnId: string, photoPath: string | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('horses')
+    .update({ photo_path: photoPath })
+    .eq('id', horseId)
+    .eq('barn_id', barnId)
+  if (error) throw error
+}
+
 export async function getHorseProjectedExhaustion(
   horseId: string,
   barnId: string,
