@@ -29,16 +29,18 @@ interface ScheduleExpenseRow {
 
 // Half-open interval [start, start + durationMinutes) — an item ending exactly when
 // another starts does not count as overlapping (e.g. back-to-back 9-10 and 10-11
-// lessons aren't a conflict). Standard scheduling convention; symmetric/transitive.
+// lessons aren't a conflict). Standard scheduling convention; symmetric, but NOT
+// transitive (A overlaps B and B overlaps C does not imply A overlaps C).
 //
-// new Date(item.start) parses the barn-local wall-clock string as local-to-the-server-
-// process, which would be wrong for *display* (see #935/#955) but is fine here — both
-// operands get the same (consistent, if arbitrary) offset assumption, which cancels out
-// in the subtraction. This function is never used for display, only relative comparison.
+// `item.start` carries no zone info, so it's parsed with an explicit 'Z' suffix to force
+// a fixed UTC offset rather than the host process's local one — new Date(item.start)
+// without it would be wrong even for relative comparison, not just display, since a real
+// local timezone's DST offset can differ between the two operands being compared (see
+// #935/#955 for the same class of bug). This function is never used for display.
 export function intervalsOverlap(a: ScheduleItem, b: ScheduleItem): boolean {
-  const aStart = new Date(a.start).getTime()
+  const aStart = new Date(a.start + 'Z').getTime()
   const aEnd = aStart + a.durationMinutes * 60_000
-  const bStart = new Date(b.start).getTime()
+  const bStart = new Date(b.start + 'Z').getTime()
   const bEnd = bStart + b.durationMinutes * 60_000
   return aStart < bEnd && bStart < aEnd
 }

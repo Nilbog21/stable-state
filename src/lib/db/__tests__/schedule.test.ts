@@ -127,6 +127,22 @@ describe('intervalsOverlap', () => {
     // the identical instant — consistent with the general boundary rule above.
     expect(intervalsOverlap(point('2026-06-10T09:00:00'), point('2026-06-10T09:00:00'))).toBe(false)
   })
+
+  it('should_be_unaffected_by_the_host_process_timezone_observing_dst', () => {
+    // Regression: item.start has no zone suffix, so parsing it naively (new Date(item.start),
+    // no explicit 'Z') is interpreted as local-to-the-host-process time. On a DST-observing
+    // host TZ, two items straddling a spring-forward transition would then get parsed with
+    // different UTC offsets, corrupting the comparison. Forcing UTC parsing sidesteps this
+    // regardless of host TZ.
+    const originalTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    try {
+      // US spring-forward 2026: 2:00 AM -> 3:00 AM on 2026-03-08.
+      expect(intervalsOverlap(lesson('2026-03-08T01:30:00'), lesson('2026-03-08T03:00:00'))).toBe(false)
+    } finally {
+      process.env.TZ = originalTz
+    }
+  })
 })
 
 describe('getScheduleForRange', () => {
