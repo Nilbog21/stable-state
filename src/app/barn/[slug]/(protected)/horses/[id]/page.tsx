@@ -4,7 +4,6 @@ import { getHorseById } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { HorseManagerForm } from './HorseManagerForm'
-import { HorsePhotoForm } from './HorsePhotoForm'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
@@ -15,7 +14,6 @@ import {
   updateHorseAction,
   deleteHorseDocumentAction,
   updateHorseDocumentReminderDateAction,
-  uploadHorsePhotoAction,
   deleteHorsePhotoAction,
 } from './actions'
 
@@ -40,10 +38,10 @@ export default async function HorseDetailPage({
   const boundUpdateAction = updateHorseAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
   const boundReminderDateAction = updateHorseDocumentReminderDateAction.bind(null, slug, horse.id)
-  const boundUploadPhotoAction = uploadHorsePhotoAction.bind(null, slug, horse.id)
   const boundDeletePhotoAction = horse.photo_path
     ? deleteHorsePhotoAction.bind(null, slug, horse.id)
     : null
+  const photoHref = `/barn/${slug}/documents/new?entity=horse&id=${horse.id}&type=photo`
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -59,7 +57,7 @@ export default async function HorseDetailPage({
           {role === 'manager' && (
             photoUrl ? (
               <div className="flex items-center gap-3">
-                <HorsePhotoForm action={boundUploadPhotoAction} label="Replace Photo" />
+                <Button href={photoHref} variant="ghost" size="sm">Replace Photo</Button>
                 <form action={boundDeletePhotoAction!}>
                   <Button type="submit" variant="danger" size="sm">
                     Remove
@@ -67,13 +65,13 @@ export default async function HorseDetailPage({
                 </form>
               </div>
             ) : (
-              <HorsePhotoForm action={boundUploadPhotoAction} label="Add Photo" />
+              <Button href={photoHref} size="sm">Set Photo</Button>
             )
           )}
         </div>
         {photoUrl ? (
           // eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset
-          <img src={photoUrl} alt={horse.name} className="h-48 w-48 rounded-md object-cover" />
+          <img src={photoUrl} alt={horse.name} className="h-48 w-auto rounded-md" />
         ) : (
           <EmptyState heading="No photo yet" subtext="A photo helps riders identify this horse at a glance." />
         )}
