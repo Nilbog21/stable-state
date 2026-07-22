@@ -351,6 +351,33 @@ describe('getScheduleForRange', () => {
     await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('junction error')
   })
 
+  it('should_treat_null_lessons_data_as_empty', async () => {
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: null }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_treat_null_expenses_data_as_empty', async () => {
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ expenses: null }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_treat_null_expense_horse_junction_data_as_empty', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ expenses: [expense], expenseHorses: null }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].horseIds).toEqual([])
+  })
+
   it('should_return_lessons_with_empty_expenses_when_horse_expenses_select_returns_no_rows', async () => {
     // manager_all_horse_expenses is manager-only RLS — a trainer/rider caller's session
     // silently gets zero rows back from horse_expenses rather than an error.
