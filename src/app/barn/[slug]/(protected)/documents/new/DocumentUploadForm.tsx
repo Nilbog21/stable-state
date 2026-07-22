@@ -21,9 +21,10 @@ export function DocumentUploadForm({ entity, action, cancelHref, photoMode }: Pr
   const [fileError, setFileError] = useState<string | null>(null)
   const [fileName, setFileName] = useState<string | null>(null)
   const inputRef = useRef<HTMLInputElement>(null)
+  const formRef = useRef<HTMLFormElement>(null)
 
   return (
-    <form action={formAction} className="space-y-4" onSubmit={() => setFileName(null)}>
+    <form ref={formRef} action={formAction} className="space-y-4" onSubmit={() => setFileName(null)}>
       {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
       {!photoMode && <input type="hidden" name="record_type" value={selectedType} />}
 
@@ -65,6 +66,7 @@ export function DocumentUploadForm({ entity, action, cancelHref, photoMode }: Pr
             } else {
               setFileError(null)
               setFileName(file?.name ?? null)
+              if (file && photoMode) formRef.current?.requestSubmit()
             }
           }}
           className="sr-only"

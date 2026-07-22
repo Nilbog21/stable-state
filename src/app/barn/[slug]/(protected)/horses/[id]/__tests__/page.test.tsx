@@ -312,13 +312,27 @@ describe('HorseDetailPage', () => {
     expect(img.src).toBe('https://example.com/photo-signed')
   })
 
-  it('should_not_crop_non_square_photos', async () => {
+  it('should_render_photo_at_fixed_height', async () => {
     vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     const img = screen.getByRole('img', { name: 'Thunderbolt' }) as HTMLImageElement
     expect(img.className).toContain('h-48')
+  })
+
+  it('should_render_photo_with_auto_width', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    const img = screen.getByRole('img', { name: 'Thunderbolt' }) as HTMLImageElement
     expect(img.className).toContain('w-auto')
+  })
+
+  it('should_not_crop_photo_to_a_square', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    const img = screen.getByRole('img', { name: 'Thunderbolt' }) as HTMLImageElement
     expect(img.className).not.toContain('object-cover')
   })
 

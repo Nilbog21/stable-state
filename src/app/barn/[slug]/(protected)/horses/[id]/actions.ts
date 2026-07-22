@@ -1,6 +1,7 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
+import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
@@ -82,7 +83,7 @@ export async function uploadHorsePhotoAction(
   }
 
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
-  return { error: null }
+  redirect(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
 export async function deleteHorsePhotoAction(

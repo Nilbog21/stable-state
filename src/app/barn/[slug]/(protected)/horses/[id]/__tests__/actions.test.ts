@@ -25,6 +25,11 @@ vi.mock('next/cache', () => ({
   revalidatePath: vi.fn(),
 }))
 
+const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
+  throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
+}))
+vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
+
 import { requireMembership } from '@/lib/auth/guard'
 import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
@@ -449,6 +454,7 @@ describe('uploadHorsePhotoAction', () => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(replaceHorsePhoto).mockReset()
     vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
 
     vi.mocked(replaceHorsePhoto).mockResolvedValue(undefined)
     vi.mocked(requireMembership).mockResolvedValue({
@@ -465,7 +471,7 @@ describe('uploadHorsePhotoAction', () => {
   }
 
   it('should_call_requireMembership_with_manager_role_only', async () => {
-    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile()).catch(() => {})
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
@@ -484,18 +490,18 @@ describe('uploadHorsePhotoAction', () => {
   })
 
   it('should_call_replaceHorsePhoto_with_barn_scoped_ids_file_and_extension', async () => {
-    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile()).catch(() => {})
     expect(replaceHorsePhoto).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, expect.any(File), 'jpg')
   })
 
   it('should_revalidate_horse_detail_path', async () => {
-    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())
+    await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile()).catch(() => {})
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
 
-  it('should_return_null_error_on_success', async () => {
-    const result = await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())
-    expect(result).toEqual({ error: null })
+  it('should_redirect_to_horse_detail_page_on_success', async () => {
+    await expect(uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile())).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
 
   it('should_return_error_when_replaceHorsePhoto_fails', async () => {

@@ -211,6 +211,39 @@ describe('DocumentUploadForm', () => {
     expect(fileInput.accept).toBe('.jpg,.jpeg,.png')
   })
 
+  it('should_auto_submit_form_on_valid_file_select_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" photoMode action={noop} cancelHref="/back" />)
+    const requestSubmitSpy = vi.spyOn(HTMLFormElement.prototype, 'requestSubmit').mockImplementation(() => {})
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'butter.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    expect(requestSubmitSpy).toHaveBeenCalled()
+    requestSubmitSpy.mockRestore()
+  })
+
+  it('should_not_auto_submit_form_on_valid_file_select_when_not_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
+    const requestSubmitSpy = vi.spyOn(HTMLFormElement.prototype, 'requestSubmit').mockImplementation(() => {})
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const file = new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' })
+    Object.defineProperty(fileInput, 'files', { value: [file], configurable: true })
+    fireEvent.change(fileInput)
+    expect(requestSubmitSpy).not.toHaveBeenCalled()
+    requestSubmitSpy.mockRestore()
+  })
+
+  it('should_not_auto_submit_form_when_selected_file_exceeds_size_limit_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" photoMode action={noop} cancelHref="/back" />)
+    const requestSubmitSpy = vi.spyOn(HTMLFormElement.prototype, 'requestSubmit').mockImplementation(() => {})
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    const bigFile = new File([new Uint8Array(4500001)], 'huge.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(fileInput, 'files', { value: [bigFile], configurable: true })
+    fireEvent.change(fileInput)
+    expect(requestSubmitSpy).not.toHaveBeenCalled()
+    requestSubmitSpy.mockRestore()
+  })
+
   it('should_show_document_type_select_when_not_in_photo_mode', () => {
     render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
     expect(screen.getByRole('combobox')).toBeDefined()

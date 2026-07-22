@@ -180,8 +180,8 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
 - [ ] Open a horse with no photo → placeholder icon and **Set Photo** button show
 - [ ] Tap **Set Photo** → navigates to the same upload screen used for horse documents, with Document Type locked to "Photo" (no dropdown) and no Notes/Expiration reminder date fields
-- [ ] Upload a non-square JPG or PNG → photo displays on the horse detail page, scaled to a fixed height with its aspect ratio preserved (not cropped to a square)
-- [ ] With a photo set, tap **Replace Photo** and upload a different image → new photo displays
+- [ ] Tap **Choose File** and select a non-square JPG or PNG → upload starts immediately with no separate Upload button click, and you land back on the horse detail page with the photo displayed, scaled to a fixed height with its aspect ratio preserved (not cropped to a square)
+- [ ] With a photo set, tap **Replace Photo**, choose a different image → upload starts immediately and the new photo displays
 - [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
 - [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
 - [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
