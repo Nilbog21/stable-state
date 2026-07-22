@@ -57,7 +57,7 @@ export default async function HorseDetailPage({
           {role === 'manager' && (
             photoUrl ? (
               <div className="flex items-center gap-3">
-                <Button href={photoHref} variant="ghost" size="sm">Replace Photo</Button>
+                <Button href={photoHref} size="sm">Replace Photo</Button>
                 <form action={boundDeletePhotoAction!}>
                   <Button type="submit" variant="danger" size="sm">
                     Remove
