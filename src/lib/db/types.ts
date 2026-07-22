@@ -34,6 +34,7 @@ export interface Barn {
   exhaustion_threshold_high: number
   exhaustion_threshold_moderate: number
   timezone: string
+  is_demo: boolean
 }
 
 export interface BarnMembership {

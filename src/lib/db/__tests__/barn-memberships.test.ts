@@ -689,6 +689,16 @@ describe('getBarnMembershipsForUser', () => {
 
     expect(result).toEqual([])
   })
+
+  it('should_exclude_rows_where_barn_is_demo', async () => {
+    const demoBarn = { ...mockBarn, id: 'barn-demo', is_demo: true }
+    const demoRow = { ...createMockMembership({ id: 'mem-2', barn_id: 'barn-demo' }), barns: demoBarn }
+    vi.mocked(createClient).mockResolvedValue(makeClient([mockRow, demoRow]))
+
+    const result = await getBarnMembershipsForUser('user-1')
+
+    expect(result).toEqual([expectedEntry])
+  })
 })
 
 describe('getInstructorsByBarn', () => {
