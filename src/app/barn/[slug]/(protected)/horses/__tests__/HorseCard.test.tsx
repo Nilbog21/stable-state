@@ -10,6 +10,7 @@ const exhaustion = {
 const availableHorse = {
   id: 'horse-1',
   name: 'Thunderbolt',
+  registered_name: null,
   is_active: true,
   is_available: true,
   unavailability_reason: null,
@@ -23,6 +24,7 @@ const availableHorse = {
 const unavailableHorse = {
   id: 'horse-2',
   name: 'Hobbled',
+  registered_name: null,
   is_active: true,
   is_available: false,
   unavailability_reason: 'Recovering from injury',
@@ -36,6 +38,7 @@ const unavailableHorse = {
 const unavailableNoReason = {
   id: 'horse-3',
   name: 'Resting',
+  registered_name: null,
   is_active: true,
   is_available: false,
   unavailability_reason: null,
@@ -49,6 +52,7 @@ const unavailableNoReason = {
 const inactiveHorse = {
   id: 'horse-4',
   name: 'Retired',
+  registered_name: null,
   is_active: false,
   is_available: true,
   unavailability_reason: null,
@@ -89,6 +93,16 @@ describe('HorseCard', () => {
     it('should_still_render_horse_name_when_not_linkable', () => {
       render(<HorseCard horse={availableHorse} barnSlug="green-acres" variant="available" linkable={false} />)
       expect(screen.getByText('Thunderbolt')).toBeDefined()
+    })
+
+    it('should_render_registered_name_in_parentheses_when_set', () => {
+      render(<HorseCard horse={{ ...availableHorse, registered_name: 'Four-Leaf Clover' }} barnSlug="green-acres" variant="available" exhaustion={exhaustion} />)
+      expect(screen.getByText('(Four-Leaf Clover)')).toBeDefined()
+    })
+
+    it('should_not_render_registered_name_when_unset', () => {
+      render(<HorseCard horse={availableHorse} barnSlug="green-acres" variant="available" exhaustion={exhaustion} />)
+      expect(screen.queryByText(/^\(.*\)$/)).toBeNull()
     })
   })
 
@@ -153,6 +167,11 @@ describe('HorseCard', () => {
     it('should_not_render_unavailability_reason', () => {
       render(<HorseCard horse={inactiveHorse} barnSlug="green-acres" variant="inactive" />)
       expect(screen.queryByText(/No reason given/)).toBeNull()
+    })
+
+    it('should_render_registered_name_in_parentheses_when_set', () => {
+      render(<HorseCard horse={{ ...inactiveHorse, registered_name: 'Old Timer' }} barnSlug="green-acres" variant="inactive" />)
+      expect(screen.getByText('(Old Timer)')).toBeDefined()
     })
   })
 })

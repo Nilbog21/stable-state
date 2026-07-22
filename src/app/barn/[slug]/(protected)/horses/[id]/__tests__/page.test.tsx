@@ -47,6 +47,12 @@ const horseWithNotes = createMockHorse({
   medication_notes: 'Bute 1g daily',
 })
 const horseWithPhoto = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg' })
+const horseWithRegisteredName = createMockHorse({
+  id: 'horse-1',
+  name: 'Thunderbolt',
+  is_available: true,
+  registered_name: 'Four-Leaf Clover',
+})
 
 const pageParams = Promise.resolve({ slug: 'green-acres', id: 'horse-1' })
 
@@ -190,6 +196,36 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('2 flakes hay AM/PM')).toBeDefined()
+  })
+
+  it('should_render_registered_name_for_trainer_when_set', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithRegisteredName)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Four-Leaf Clover')).toBeDefined()
+  })
+
+  it('should_render_registered_name_row_label_for_rider_when_set', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithRegisteredName)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Registered Name')).toBeDefined()
+  })
+
+  it('should_not_render_registered_name_row_for_trainer_when_null', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Registered Name')).toBeNull()
+  })
+
+  it('should_not_render_h1_registered_name_for_manager', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithRegisteredName)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('heading', { name: 'Thunderbolt' })).toBeDefined()
   })
 
   it('should_render_documents_heading_in_text_sm', async () => {

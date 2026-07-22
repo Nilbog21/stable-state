@@ -42,13 +42,14 @@ const horseWithNotes = createMockHorse({
   feed_notes: '2 flakes hay AM/PM',
   medication_notes: 'Bute 1g daily',
 })
+const horseWithRegisteredName = createMockHorse({ registered_name: 'Four-Leaf Clover' })
 
 const mockAction = vi.fn().mockResolvedValue({ error: null })
 
 describe('HorseManagerForm', () => {
-  it('should_render_name_input_prefilled_with_horse_name', () => {
+  it('should_render_barn_name_input_prefilled_with_horse_name', () => {
     render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
-    expect((screen.getByRole('textbox', { name: /^name$/i }) as HTMLInputElement).value).toBe('Thunderbolt')
+    expect((screen.getByRole('textbox', { name: /^barn name$/i }) as HTMLInputElement).value).toBe('Thunderbolt')
   })
 
   it('should_render_active_pill_button', () => {
@@ -343,6 +344,27 @@ describe('HorseManagerForm', () => {
 
     expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).value).toBe('3')
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('8')
+  })
+
+  it('should_render_registered_name_input', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    expect(screen.getByRole('textbox', { name: /registered name/i })).toBeDefined()
+  })
+
+  it('should_prefill_registered_name_input_with_horse_value', () => {
+    render(<HorseManagerForm horse={horseWithRegisteredName} barn={mockBarn} action={mockAction} />)
+    expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Four-Leaf Clover')
+  })
+
+  it('should_render_registered_name_input_empty_when_horse_value_is_null', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('')
+  })
+
+  it('should_update_registered_name_input_on_change', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+    fireEvent.change(screen.getByRole('textbox', { name: /registered name/i }), { target: { value: 'Blazing Comet' } })
+    expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Blazing Comet')
   })
 
   it('should_render_feed_notes_textarea', () => {

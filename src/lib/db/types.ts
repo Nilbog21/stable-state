@@ -66,6 +66,7 @@ export interface Horse {
   id: string
   barn_id: string
   name: string
+  registered_name: string | null
   is_active: boolean
   is_available: boolean
   unavailability_reason: string | null
@@ -188,6 +189,7 @@ export interface TrainerIncomeSummary {
 export interface HorseExertionSummary {
   id: string
   name: string
+  registered_name: string | null
   is_active: boolean
   is_available: boolean
   unavailability_reason: string | null

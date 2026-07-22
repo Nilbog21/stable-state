@@ -97,6 +97,25 @@ describe('HorsesPage', () => {
     await expect(HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
+  it('should_render_registered_name_for_manager_when_set', async () => {
+    vi.mocked(getHorseExertionSummary).mockResolvedValue([
+      { ...availableHorse, registered_name: 'Four-Leaf Clover' },
+    ])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('(Four-Leaf Clover)')).toBeDefined()
+  })
+
+  it('should_render_registered_name_for_rider_when_set', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+    vi.mocked(getHorsesByBarn).mockResolvedValue([
+      createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true, registered_name: 'Four-Leaf Clover' }),
+    ])
+    const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
+    expect(screen.getByText('(Four-Leaf Clover)')).toBeDefined()
+  })
+
   it('should_render_available_section_heading_when_available_horses_exist', async () => {
     vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
