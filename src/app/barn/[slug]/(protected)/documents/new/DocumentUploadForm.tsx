@@ -11,9 +11,10 @@ interface Props {
   entity: DocumentEntity
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   cancelHref: string
+  photoMode?: boolean
 }
 
-export function DocumentUploadForm({ entity, action, cancelHref }: Props) {
+export function DocumentUploadForm({ entity, action, cancelHref, photoMode }: Props) {
   const [state, formAction, pending] = useActionState(action, { error: null })
   const types = RECORD_TYPE_OPTIONS[entity]
   const [selectedType, setSelectedType] = useState(types[0].value)
@@ -24,32 +25,36 @@ export function DocumentUploadForm({ entity, action, cancelHref }: Props) {
   return (
     <form action={formAction} className="space-y-4" onSubmit={() => setFileName(null)}>
       {state.error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{state.error}</p>}
-      <input type="hidden" name="record_type" value={selectedType} />
+      {!photoMode && <input type="hidden" name="record_type" value={selectedType} />}
 
       <div>
         <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
           Document Type
         </label>
-        <select
-          value={selectedType}
-          onChange={(e) => setSelectedType(e.target.value)}
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-        >
-          {types.map((t) => (
-            <option key={t.value} value={t.value}>{t.label}</option>
-          ))}
-        </select>
+        {photoMode ? (
+          <p className="text-sm text-zinc-900 dark:text-zinc-50">Photo</p>
+        ) : (
+          <select
+            value={selectedType}
+            onChange={(e) => setSelectedType(e.target.value)}
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+          >
+            {types.map((t) => (
+              <option key={t.value} value={t.value}>{t.label}</option>
+            ))}
+          </select>
+        )}
       </div>
 
       <div>
         <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
-          File <span className="normal-case font-normal">(PDF, JPG, PNG, DOCX — max 4.5 MB)</span>
+          File <span className="normal-case font-normal">{photoMode ? '(JPG, PNG — max 4.5 MB)' : '(PDF, JPG, PNG, DOCX — max 4.5 MB)'}</span>
         </label>
         <input
           ref={inputRef}
           type="file"
           name="file"
-          accept=".pdf,.jpg,.jpeg,.png,.docx"
+          accept={photoMode ? '.jpg,.jpeg,.png' : '.pdf,.jpg,.jpeg,.png,.docx'}
           required
           onChange={(e) => {
             const file = e.target.files?.[0]
@@ -73,27 +78,31 @@ export function DocumentUploadForm({ entity, action, cancelHref }: Props) {
         {fileError && <p className="mt-1 text-xs text-red-600">{fileError}</p>}
       </div>
 
-      <div>
-        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
-          Notes <span className="normal-case font-normal">(optional)</span>
-        </label>
-        <input
-          type="text"
-          name="notes"
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-      </div>
+      {!photoMode && (
+        <div>
+          <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+            Notes <span className="normal-case font-normal">(optional)</span>
+          </label>
+          <input
+            type="text"
+            name="notes"
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        </div>
+      )}
 
-      <div>
-        <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
-          Expiration reminder date <span className="normal-case font-normal">(optional)</span>
-        </label>
-        <input
-          type="date"
-          name="reminder_date"
-          className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-        />
-      </div>
+      {!photoMode && (
+        <div>
+          <label className="block text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400 mb-1">
+            Expiration reminder date <span className="normal-case font-normal">(optional)</span>
+          </label>
+          <input
+            type="date"
+            name="reminder_date"
+            className="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+          />
+        </div>
+      )}
 
       <div className="flex items-center gap-3">
         <Button type="submit" loading={pending}>
