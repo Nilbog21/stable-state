@@ -37,7 +37,7 @@ Go to **Horses** to see horses grouped into two sections:
 - **Available** — horses in active rotation; each card shows the name.
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name and the reason provided by the barn manager.
 
-These cards are informational only, not tappable.
+Tap a card to open the horse's detail page, where a photo appears at the top if your barn manager has added one — handy for recognizing a horse by name.
 
 ## If something goes wrong
 

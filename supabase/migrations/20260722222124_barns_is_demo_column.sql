@@ -1,0 +1,1 @@
+ALTER TABLE public.barns ADD COLUMN is_demo BOOLEAN NOT NULL DEFAULT false;

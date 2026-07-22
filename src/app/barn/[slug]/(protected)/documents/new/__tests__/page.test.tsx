@@ -7,9 +7,10 @@ vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getMembershipById: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfileById: vi.fn() }))
 vi.mock('../actions', () => ({ uploadDocumentAction: vi.fn() }))
+vi.mock('../../../horses/[id]/actions', () => ({ uploadHorsePhotoAction: vi.fn() }))
 vi.mock('../DocumentUploadForm', () => ({
-  DocumentUploadForm: ({ entity, cancelHref }: { entity: string; cancelHref: string }) => (
-    <div data-testid="document-upload-form" data-cancel-href={cancelHref}>{entity}</div>
+  DocumentUploadForm: ({ entity, cancelHref, photoMode }: { entity: string; cancelHref: string; photoMode?: boolean }) => (
+    <div data-testid="document-upload-form" data-cancel-href={cancelHref} data-photo-mode={photoMode ?? false}>{entity}</div>
   ),
 }))
 
@@ -33,12 +34,14 @@ const targetTrainerMembership = createMockMembership({ id: 'mem-target-trn', use
 const targetProfile = createMockProfile({ user_id: 'user-target-trn', first_name: 'Bob', last_name: 'Trainer' })
 const targetRiderMembership = createMockMembership({ id: 'mem-target-rdr', user_id: 'user-target-rdr', barn_id: 'barn-1', role: 'rider' })
 
-function makeParams(slug: string, entity?: string, id?: string) {
+function makeParams(slug: string, entity?: string, id?: string, type?: string) {
   return {
     params: Promise.resolve({ slug }),
-    searchParams: Promise.resolve({ entity, id }),
+    searchParams: Promise.resolve({ entity, id, type }),
   }
 }
+
+const horseWithPhoto = createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg' })
 
 describe('NewDocumentPage', () => {
   beforeEach(() => {
@@ -194,5 +197,40 @@ describe('NewDocumentPage', () => {
     const jsx = await NewDocumentPage(makeParams('green-acres', 'rider', 'mem-target-rdr'))
     render(jsx)
     expect(screen.getByTestId('document-upload-form').textContent).toBe('rider')
+  })
+
+  it('should_call_requireMembership_with_manager_only_for_photo_type', async () => {
+    await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_render_set_photo_heading_when_horse_has_no_photo', async () => {
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /set photo — thunderbolt/i })).toBeDefined()
+  })
+
+  it('should_render_replace_photo_heading_when_horse_has_a_photo', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /replace photo — thunderbolt/i })).toBeDefined()
+  })
+
+  it('should_render_document_upload_form_in_photo_mode_for_photo_type', async () => {
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form').dataset.photoMode).toBe('true')
+  })
+
+  it('should_render_cancel_link_to_horse_detail_page_for_photo_type', async () => {
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form').dataset.cancelHref).toBe('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_call_notFound_for_photo_type_when_horse_does_not_exist', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(null)
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
   })
 })
