@@ -184,4 +184,35 @@ describe('DocumentUploadForm', () => {
     fireEvent.submit(screen.getByRole('button', { name: /upload/i }).closest('form')!)
     expect(screen.queryByText('upload.pdf')).toBeNull()
   })
+
+  it('should_show_locked_photo_type_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" photoMode action={noop} cancelHref="/back" />)
+    expect(screen.getByText('Photo')).toBeDefined()
+  })
+
+  it('should_not_show_document_type_select_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" photoMode action={noop} cancelHref="/back" />)
+    expect(screen.queryByRole('combobox')).toBeNull()
+  })
+
+  it('should_not_show_notes_field_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" photoMode action={noop} cancelHref="/back" />)
+    expect(screen.queryByText(/notes/i)).toBeNull()
+  })
+
+  it('should_not_show_reminder_date_field_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" photoMode action={noop} cancelHref="/back" />)
+    expect(screen.queryByText(/expiration reminder/i)).toBeNull()
+  })
+
+  it('should_restrict_file_input_to_photo_extensions_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" photoMode action={noop} cancelHref="/back" />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    expect(fileInput.accept).toBe('.jpg,.jpeg,.png')
+  })
+
+  it('should_show_document_type_select_when_not_in_photo_mode', () => {
+    render(<DocumentUploadForm entity="horse" action={noop} cancelHref="/back" />)
+    expect(screen.getByRole('combobox')).toBeDefined()
+  })
 })
