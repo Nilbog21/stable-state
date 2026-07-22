@@ -2,9 +2,9 @@
 
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails } from '@/lib/db/horses'
+import { updateHorseDetails, updateHorsePhotoPath } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
-import { removeFile } from '@/lib/db/document-storage'
+import { removeFile, uploadFile, validateFile, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { parseNonNegativeInt } from '@/lib/parse-amount'
 
@@ -57,6 +57,57 @@ export async function updateHorseAction(
   revalidatePath(`/barn/${barnSlug}/horses`)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
   return { error: null }
+}
+
+export async function uploadHorsePhotoAction(
+  barnSlug: string,
+  horseId: string,
+  currentPhotoPath: string | null,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const file = formData.get('file') as File | null
+  let ext: string
+  try {
+    ext = validateFile(file, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  const storagePath = `${barn.id}/horse-photos/${horseId}/${Date.now()}.${ext}`
+
+  try {
+    await uploadFile(storagePath, file!, file!.type)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  try {
+    await updateHorsePhotoPath(horseId, barn.id, storagePath)
+  } catch (err) {
+    await removeFile(storagePath).catch(() => {})
+    return { error: getErrorMessage(err) }
+  }
+
+  if (currentPhotoPath) {
+    await removeFile(currentPhotoPath).catch(() => {})
+  }
+
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  return { error: null }
+}
+
+export async function deleteHorsePhotoAction(
+  barnSlug: string,
+  horseId: string,
+  photoPath: string
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await updateHorsePhotoPath(horseId, barn.id, null)
+  await removeFile(photoPath).catch(() => {})
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
 export async function deleteHorseDocumentAction(
