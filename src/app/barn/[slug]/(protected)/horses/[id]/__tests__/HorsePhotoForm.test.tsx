@@ -1,7 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { useActionState } from 'react'
 import { HorsePhotoForm } from '../HorsePhotoForm'
+
+function makeFile(sizeBytes: number): File {
+  return new File([new Uint8Array(sizeBytes)], 'photo.jpg', { type: 'image/jpeg' })
+}
 
 vi.mock('react', async (importOriginal) => {
   const actual = await importOriginal<typeof import('react')>()
@@ -36,5 +40,26 @@ describe('HorsePhotoForm', () => {
     vi.mocked(useActionState).mockReturnValue([{ error: null }, noop, true] as any)
     render(<HorsePhotoForm action={noop} label="Add Photo" />)
     expect(screen.getByRole('button', { name: /uploading/i }).hasAttribute('disabled')).toBe(true)
+  })
+
+  it('should_show_oversized_file_error_when_file_exceeds_4_5mb', () => {
+    render(<HorsePhotoForm action={noop} label="Add Photo" />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [makeFile(4500001)] } })
+    expect(screen.getByRole('alert').textContent).toBe('File exceeds 4.5 MB limit')
+  })
+
+  it('should_clear_the_file_input_when_file_exceeds_4_5mb', () => {
+    render(<HorsePhotoForm action={noop} label="Add Photo" />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [makeFile(4500001)] } })
+    expect(fileInput.value).toBe('')
+  })
+
+  it('should_not_show_a_file_error_for_a_file_within_the_size_limit', () => {
+    render(<HorsePhotoForm action={noop} label="Add Photo" />)
+    const fileInput = document.querySelector('input[type="file"]') as HTMLInputElement
+    fireEvent.change(fileInput, { target: { files: [makeFile(1000)] } })
+    expect(screen.queryByRole('alert')).toBeNull()
   })
 })

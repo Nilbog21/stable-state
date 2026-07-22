@@ -338,20 +338,33 @@ describe('HorseDetailPage', () => {
     expect(screen.getByRole('img', { name: 'Thunderbolt' })).toBeDefined()
   })
 
-  it('should_render_replace_and_remove_controls_for_manager_when_photo_present', async () => {
+  it('should_render_replace_photo_control_for_manager_when_photo_present', async () => {
     vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('Replace Photo')).toBeDefined()
+  })
+
+  it('should_render_remove_control_for_manager_when_photo_present', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
     expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
   })
 
-  it('should_not_render_replace_or_remove_controls_for_trainer_when_photo_present', async () => {
+  it('should_not_render_replace_control_for_trainer_when_photo_present', async () => {
     mockRequireMembershipAs(trainerMembership)
     vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText('Replace Photo')).toBeNull()
+  })
+
+  it('should_not_render_remove_control_for_trainer_when_photo_present', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
     expect(screen.queryByRole('button', { name: /remove/i })).toBeNull()
   })
 

@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Barn, Horse, HorseExertionSummary } from './types'
+import { removeFile, uploadFile } from './document-storage'
 
 export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
   const supabase = await createClient()
@@ -134,6 +135,33 @@ export async function updateHorsePhotoPath(horseId: string, barnId: string, phot
     .eq('id', horseId)
     .eq('barn_id', barnId)
   if (error) throw error
+}
+
+export async function replaceHorsePhoto(horseId: string, barnId: string, file: File, ext: string): Promise<void> {
+  // ponytail: re-fetches the current photo_path here rather than trusting a value bound at
+  // page-render time, so a concurrent replace/remove can't be clobbered by a stale caller.
+  const current = await getHorseById(horseId, barnId)
+  const storagePath = `${barnId}/horse-photos/${horseId}/${Date.now()}.${ext}`
+
+  await uploadFile(storagePath, file, file.type)
+
+  try {
+    await updateHorsePhotoPath(horseId, barnId, storagePath)
+  } catch (err) {
+    await removeFile(storagePath).catch(() => {})
+    throw err
+  }
+
+  if (current?.photo_path) {
+    await removeFile(current.photo_path).catch(() => {})
+  }
+}
+
+export async function removeHorsePhoto(horseId: string, barnId: string): Promise<void> {
+  const current = await getHorseById(horseId, barnId)
+  if (!current?.photo_path) return
+  await updateHorsePhotoPath(horseId, barnId, null)
+  await removeFile(current.photo_path).catch(() => {})
 }
 
 export async function getHorseProjectedExhaustion(

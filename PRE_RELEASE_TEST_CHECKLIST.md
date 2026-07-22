@@ -178,8 +178,10 @@ Expenses (`/barn/dev-barn/expenses`):
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
-- [ ] Open a horse with no photo → placeholder icon and **Add Photo** button show; upload a JPG or PNG → photo displays, replacing the placeholder
-- [ ] With a photo set, tap **Replace Photo** and upload a different image → new photo displays and the old one is gone (reload to confirm it isn't just a stale client-side preview)
+- [ ] Open a horse with no photo → placeholder icon and **Add Photo** button show
+- [ ] Upload a JPG or PNG → photo displays, replacing the placeholder
+- [ ] With a photo set, tap **Replace Photo** and upload a different image → new photo displays
+- [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
 - [ ] With a photo set, tap **Remove** → placeholder and **Add Photo** button return
 - [ ] On the photo upload control, attempt to select a PDF → rejected with an inline error, not a crash
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
