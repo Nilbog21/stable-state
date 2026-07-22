@@ -238,6 +238,19 @@ export interface OutstandingItem {
   linkId?: string // id to link to, when different from `id` — lesson id for cancellation_fee, agreement id for lease/board
 }
 
+export type ScheduleItemType = 'lesson' | 'expense'
+
+export interface ScheduleItem {
+  id: string
+  itemType: ScheduleItemType
+  /** Barn-local wall clock "YYYY-MM-DDTHH:mm:ss" — NOT a UTC instant. Do not pass
+   *  through new Date()/<LocalDateTime> for display; see dal.md's schedule.ts entry. */
+  start: string
+  durationMinutes: number
+  instructorId: string | null
+  horseIds: string[]
+}
+
 export interface HorseChargeDetailRow {
   chargeId: string
   agreementId: string
