@@ -7,6 +7,7 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/horses', () => ({
   updateHorseDetails: vi.fn(),
+  updateHorsePhotoPath: vi.fn(),
 }))
 
 vi.mock('@/lib/db/documents', () => ({
@@ -16,7 +17,7 @@ vi.mock('@/lib/db/documents', () => ({
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/db/document-storage')>()
-  return { ...actual, removeFile: vi.fn() }
+  return { ...actual, removeFile: vi.fn(), uploadFile: vi.fn() }
 })
 
 vi.mock('next/cache', () => ({
@@ -24,14 +25,16 @@ vi.mock('next/cache', () => ({
 }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails } from '@/lib/db/horses'
+import { updateHorseDetails, updateHorsePhotoPath } from '@/lib/db/horses'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
-import { removeFile } from '@/lib/db/document-storage'
+import { removeFile, uploadFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
 import {
   updateHorseAction,
   deleteHorseDocumentAction,
   updateHorseDocumentReminderDateAction,
+  uploadHorsePhotoAction,
+  deleteHorsePhotoAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -433,5 +436,152 @@ describe('updateHorseDocumentReminderDateAction', () => {
     vi.mocked(updateDocumentReminderDate).mockRejectedValue(new Error('update error'))
     const result = await updateHorseDocumentReminderDateAction('green-acres', 'horse-1', 'doc-1', '2027-01-01')
     expect(result.error).toBe('update error')
+  })
+})
+
+function makePhotoFile(): File {
+  return new File([new Uint8Array(100)], 'butter.jpg', { type: 'image/jpeg' })
+}
+
+describe('uploadHorsePhotoAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(uploadFile).mockReset()
+    vi.mocked(updateHorsePhotoPath).mockReset()
+    vi.mocked(removeFile).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(updateHorsePhotoPath).mockResolvedValue(undefined)
+    vi.mocked(removeFile).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  function formDataWithFile(): FormData {
+    const fd = new FormData()
+    fd.set('file', makePhotoFile())
+    return fd
+  }
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_return_error_when_file_type_is_not_jpeg_or_png', async () => {
+    const fd = new FormData()
+    fd.set('file', new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' }))
+    const result = await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, fd)
+    expect(result).toEqual({ error: 'Unsupported file type' })
+  })
+
+  it('should_not_upload_when_file_type_is_invalid', async () => {
+    const fd = new FormData()
+    fd.set('file', new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' }))
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, fd)
+    expect(uploadFile).not.toHaveBeenCalled()
+  })
+
+  it('should_upload_to_horse_photos_prefix', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(uploadFile).toHaveBeenCalledWith(
+      expect.stringMatching(new RegExp(`^${mockBarnForDocs.id}/horse-photos/horse-1/\\d+\\.jpg$`)),
+      expect.any(File),
+      'image/jpeg'
+    )
+  })
+
+  it('should_update_photo_path_after_successful_upload', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(updateHorsePhotoPath).toHaveBeenCalledWith(
+      'horse-1',
+      mockBarnForDocs.id,
+      expect.stringMatching(new RegExp(`^${mockBarnForDocs.id}/horse-photos/horse-1/\\d+\\.jpg$`))
+    )
+  })
+
+  it('should_remove_old_photo_after_replacing', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', 'barn-1/horse-photos/horse-1/old.jpg', { error: null }, formDataWithFile())
+    expect(removeFile).toHaveBeenCalledWith('barn-1/horse-photos/horse-1/old.jpg')
+  })
+
+  it('should_not_remove_anything_when_there_was_no_previous_photo', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(removeFile).not.toHaveBeenCalled()
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_return_null_error_on_success', async () => {
+    const result = await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_upload_fails', async () => {
+    vi.mocked(uploadFile).mockRejectedValue(new Error('upload error'))
+    const result = await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(result).toEqual({ error: 'upload error' })
+  })
+
+  it('should_not_update_photo_path_when_upload_fails', async () => {
+    vi.mocked(uploadFile).mockRejectedValue(new Error('upload error'))
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(updateHorsePhotoPath).not.toHaveBeenCalled()
+  })
+
+  it('should_roll_back_uploaded_file_when_db_update_fails', async () => {
+    vi.mocked(updateHorsePhotoPath).mockRejectedValue(new Error('db error'))
+    await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(removeFile).toHaveBeenCalledWith(expect.stringMatching(new RegExp(`^${mockBarnForDocs.id}/horse-photos/horse-1/\\d+\\.jpg$`)))
+  })
+
+  it('should_return_error_when_db_update_fails', async () => {
+    vi.mocked(updateHorsePhotoPath).mockRejectedValue(new Error('db error'))
+    const result = await uploadHorsePhotoAction('green-acres', 'horse-1', null, { error: null }, formDataWithFile())
+    expect(result).toEqual({ error: 'db error' })
+  })
+})
+
+describe('deleteHorsePhotoAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateHorsePhotoPath).mockReset()
+    vi.mocked(removeFile).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(updateHorsePhotoPath).mockResolvedValue(undefined)
+    vi.mocked(removeFile).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1', 'barn-1/horse-photos/horse-1/photo.jpg')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_clear_photo_path', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1', 'barn-1/horse-photos/horse-1/photo.jpg')
+    expect(updateHorsePhotoPath).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, null)
+  })
+
+  it('should_remove_storage_file', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1', 'barn-1/horse-photos/horse-1/photo.jpg')
+    expect(removeFile).toHaveBeenCalledWith('barn-1/horse-photos/horse-1/photo.jpg')
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1', 'barn-1/horse-photos/horse-1/photo.jpg')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
 })
