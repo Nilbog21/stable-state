@@ -81,7 +81,7 @@ export default async function LessonsPage({
   const allLessons = await getLessonsByBarn(barn.id, user.id, membership.role)
   const isManager = membership.role === 'manager'
   const isTrainer = membership.role === 'trainer'
-  const effectiveFilter = filter ?? (isManager || isTrainer ? 'mine' : 'all')
+  const effectiveFilter = filter ?? (isTrainer ? 'mine' : 'all')
 
   let lessons = allLessons
   if (effectiveFilter === 'mine') {
