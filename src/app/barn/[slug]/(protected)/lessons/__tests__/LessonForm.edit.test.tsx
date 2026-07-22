@@ -939,7 +939,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   it('should_call_getProjectedExhaustion_with_the_id_of_an_inactive_assigned_horse_too', async () => {
-    const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const inactiveHorse = createMockHorse({ id: 'horse-2', name: 'Retired (inactive)', is_active: false })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     // Round-tripping initialLesson.lesson_at through the (local-aware) date/hour
@@ -948,7 +948,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   it('should_not_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {
-    const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const inactiveHorse = createMockHorse({ id: 'horse-2', name: 'Retired (inactive)', is_active: false })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
       'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
@@ -960,7 +960,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   it('should_not_render_an_exhaustion_bar_for_an_unavailable_horse', async () => {
-    const unavailableHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Blaze', is_active: true, is_available: false, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const unavailableHorse = createMockHorse({ id: 'horse-2', name: 'Blaze', is_available: false })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
       'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
@@ -981,7 +981,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   it('should_sort_checked_horse_before_available_horse_regardless_of_exhaustion', async () => {
-    const availableHorse: Horse = { id: 'horse-avail', barn_id: 'barn-1', name: 'Zeal', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const availableHorse = createMockHorse({ id: 'horse-avail', name: 'Zeal' })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-1': { existingRows: [{ lessonAt: 'x', exertionLevel: 5 }], thresholds: { high: 11, moderate: 5 } },
       'horse-avail': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
@@ -995,8 +995,8 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   it('should_sort_available_horses_least_to_most_exhausted', async () => {
-    const lessExhausted: Horse = { id: 'horse-low', barn_id: 'barn-1', name: 'Low', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
-    const moreExhausted: Horse = { id: 'horse-high', barn_id: 'barn-1', name: 'High', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const lessExhausted = createMockHorse({ id: 'horse-low', name: 'Low' })
+    const moreExhausted = createMockHorse({ id: 'horse-high', name: 'High' })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-high': { existingRows: [{ lessonAt: 'x', exertionLevel: 5 }], thresholds: { high: 11, moderate: 5 } },
       'horse-low': { existingRows: [{ lessonAt: 'x', exertionLevel: 1 }], thresholds: { high: 11, moderate: 5 } },
@@ -1010,8 +1010,8 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   it('should_sort_an_unchecked_inactive_horse_after_an_available_horse', async () => {
-    const availableHorse: Horse = { id: 'horse-avail', barn_id: 'barn-1', name: 'Zeal', is_active: true, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
-    const inactiveHorse: Horse = { id: 'horse-inactive', barn_id: 'barn-1', name: 'Retired', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const availableHorse = createMockHorse({ id: 'horse-avail', name: 'Zeal' })
+    const inactiveHorse = createMockHorse({ id: 'horse-inactive', name: 'Retired', is_active: false })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     const { container } = render(<LessonForm {...baseProps} horses={[inactiveHorse, availableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
@@ -1022,7 +1022,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   })
 
   it('should_render_an_exhaustion_bar_for_an_inactive_horse_still_checked_on_this_lesson', async () => {
-    const inactiveHorse: Horse = { id: 'horse-2', barn_id: 'barn-1', name: 'Retired (inactive)', is_active: false, is_available: true, unavailability_reason: null, deactivated_at: null, exhaustion_threshold_high: null, exhaustion_threshold_moderate: null, created_at: '', updated_at: '' }
+    const inactiveHorse = createMockHorse({ id: 'horse-2', name: 'Retired (inactive)', is_active: false })
     const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Retired (inactive)' } }] }
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
