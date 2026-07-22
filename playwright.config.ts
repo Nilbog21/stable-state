@@ -6,9 +6,6 @@ export default defineConfig({
   retries: process.env.CI ? 2 : 0,
   use: {
     baseURL: process.env.E2E_BASE_URL,
-    extraHTTPHeaders: process.env.VERCEL_AUTOMATION_BYPASS_SECRET
-      ? { 'x-vercel-protection-bypass': process.env.VERCEL_AUTOMATION_BYPASS_SECRET }
-      : {},
   },
   projects: [
     { name: 'manager', grep: /@manager/, use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/manager.json' } },
