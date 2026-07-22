@@ -86,6 +86,13 @@ export default async function HorseDetailPage({
             </dd>
           </div>
 
+          {horse.registered_name && (
+            <div className="flex flex-col gap-1 py-4">
+              <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Registered Name</dt>
+              <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.registered_name}</dd>
+            </div>
+          )}
+
           {!horse.is_available && horse.unavailability_reason && (
             <div className="flex flex-col gap-1 py-4">
               <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Reason</dt>

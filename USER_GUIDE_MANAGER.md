@@ -16,6 +16,8 @@ Use **Horses** in the nav to see horses grouped into three sections:
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name, the reason entered when marking them unavailable, and the same exhaustion bar.
 - **Inactive** — soft-deleted horses (visible to managers only); each card shows the horse name.
 
+Any horse with a **Registered Name** set shows it after the barn name in parentheses, e.g. "Clover (Four-Leaf Clover)".
+
 Empty sections are hidden. Tap any card to open the horse's detail page. To add a new horse, use the **Horse name** input and **Add** button in the page header (top right).
 
 ### Horse detail page (manager controls)
@@ -23,7 +25,8 @@ Empty sections are hidden. Tap any card to open the horse's detail page. To add 
 On the horse's detail page, managers see a photo, a unified form, and a documents section:
 
 - **Photo** — a single identification photo, visible to everyone in the barn so riders can recognize a horse by name. If no photo is set, tap **Set Photo**, which opens the same upload screen used for horse documents; choosing a JPG or PNG (max 4.5 MB) uploads it immediately, no separate Upload button needed. Once a photo is set, tap **Replace Photo** to swap it for a new one the same way, or **Remove** to clear it directly from the detail page. Trainers and riders can view the photo but not change it.
-- **Name** — pre-filled text input with the current name.
+- **Barn Name** — pre-filled text input with the current name.
+- **Registered Name** — optional text input for the horse's official/Coggins-report name, if different from its barn name. Leave blank if not applicable.
 - **Status** — a three-state pill control: **Active**, **Unavailable**, **Inactive**. Tap a pill to select the new status. When **Unavailable** is selected, a **Reason** textarea appears to record why the horse is out of rotation. When **Inactive** is selected for a currently active horse, a warning appears noting the horse will be removed from the roster and lesson scheduling.
 - **Exhaustion Thresholds** — a "Use barn defaults" checkbox (checked by default) that, when unchecked, reveals **Moderate threshold** and **High threshold** number fields to override this horse's exhaustion thresholds — useful for a horse on light duty. Moderate must be lower than High.
 - **Feed & Medication** — **Feed Notes** and **Medication Notes** textareas for free-form current-state notes (no history — the newest text always replaces the old). Leave either blank to clear it.

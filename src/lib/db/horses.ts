@@ -39,9 +39,10 @@ export async function getHorseExertionSummary(
     p_target_date: targetDate.toISOString(),
   })
   if (error) throw error
-  return (data ?? []).map((row: { id: string; name: string; is_active: boolean; is_available: boolean; unavailability_reason: string | null; exhaustion_threshold_high: number | null; exhaustion_threshold_moderate: number | null; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
+  return (data ?? []).map((row: { id: string; name: string; registered_name?: string | null; is_active: boolean; is_available: boolean; unavailability_reason: string | null; exhaustion_threshold_high: number | null; exhaustion_threshold_moderate: number | null; lesson_count: number | string; total_exertion: number | string; jumping_count: number | string }) => ({
     id: row.id,
     name: row.name,
+    registered_name: row.registered_name ?? null,
     is_active: row.is_active,
     is_available: row.is_available ?? true,
     unavailability_reason: row.unavailability_reason ?? null,
@@ -109,6 +110,7 @@ export async function updateHorseDetails(
     exhaustion_thresholds: { moderate: number; high: number } | null
     feed_notes: string | null
     medication_notes: string | null
+    registered_name: string | null
   }
 ): Promise<void> {
   const supabase = await createClient()
@@ -123,6 +125,7 @@ export async function updateHorseDetails(
     p_exhaustion_threshold_high: updates.exhaustion_thresholds?.high ?? null,
     p_feed_notes: updates.feed_notes,
     p_medication_notes: updates.medication_notes,
+    p_registered_name: updates.registered_name,
   })
   if (error) throw error
 }

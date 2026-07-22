@@ -30,6 +30,7 @@ export function HorseManagerForm({
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
+  const [registeredName, setRegisteredName] = useState(horse.registered_name ?? '')
   const [feedNotes, setFeedNotes] = useState(horse.feed_notes ?? '')
   const [medicationNotes, setMedicationNotes] = useState(horse.medication_notes ?? '')
   const { show, flash } = useSaveFlash()
@@ -76,13 +77,27 @@ export function HorseManagerForm({
 
       <div className="flex flex-col gap-1">
         <label htmlFor="horse-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
-          Name
+          Barn Name
         </label>
         <input
           id="horse-name"
           name="name"
           type="text"
           defaultValue={horse.name}
+          className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+        />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="horse-registered-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Registered Name
+        </label>
+        <input
+          id="horse-registered-name"
+          name="registered_name"
+          type="text"
+          value={registeredName}
+          onChange={e => setRegisteredName(e.target.value)}
           className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         />
       </div>
