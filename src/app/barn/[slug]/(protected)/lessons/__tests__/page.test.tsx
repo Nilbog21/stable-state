@@ -395,7 +395,7 @@ describe('LessonsPage', () => {
     expect(pill.className).toContain('bg-zinc-900')
   })
 
-  it('should_show_all_lessons_by_default_for_manager', async () => {
+  it('should_show_own_lesson_by_default_for_manager', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
     const myLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-mine', instructor_id: 'mem-1', horse_names: ['MyHorse'], horse_ids: ['horse-mine'] })
     const otherLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-other', instructor_id: 'other-mem', horse_names: ['OtherHorse'], horse_ids: ['horse-other'] })
@@ -403,6 +403,15 @@ describe('LessonsPage', () => {
     const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('MyHorse')).toBeDefined()
+  })
+
+  it('should_show_other_instructor_lesson_by_default_for_manager', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    const myLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-mine', instructor_id: 'mem-1', horse_names: ['MyHorse'], horse_ids: ['horse-mine'] })
+    const otherLesson = createMockLessonWithDetails({ ...mockLesson, id: 'lesson-other', instructor_id: 'other-mem', horse_names: ['OtherHorse'], horse_ids: ['horse-other'] })
+    vi.mocked(getLessonsByBarn).mockResolvedValue([myLesson, otherLesson])
+    const jsx = await LessonsPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+    render(jsx)
     expect(screen.getByText('OtherHorse')).toBeDefined()
   })
 
