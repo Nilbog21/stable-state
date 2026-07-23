@@ -182,7 +182,7 @@ describe('getBarnBackupData', () => {
     await expect(getBarnBackupData('barn-1', TIMEZONE)).rejects.toThrow('boom')
   })
 
-  it('should_treat_null_query_data_as_empty_lists', async () => {
+  it('should_treat_null_horses_query_data_as_empty_list', async () => {
     setupFrom({
       horses: { data: null },
       lessons: { data: null },
@@ -194,7 +194,33 @@ describe('getBarnBackupData', () => {
     const result = await getBarnBackupData('barn-1', TIMEZONE)
 
     expect(result.horses).toEqual([])
+  })
+
+  it('should_treat_null_lessons_query_data_as_empty_list', async () => {
+    setupFrom({
+      horses: { data: null },
+      lessons: { data: null },
+      agreement_charges: { data: null },
+      barn_memberships: { data: null },
+      profiles: { data: null },
+    })
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
     expect(result.lessons).toEqual([])
+  })
+
+  it('should_treat_null_barn_memberships_query_data_as_empty_members_list', async () => {
+    setupFrom({
+      horses: { data: null },
+      lessons: { data: null },
+      agreement_charges: { data: null },
+      barn_memberships: { data: null },
+      profiles: { data: null },
+    })
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
     expect(result.members).toEqual([])
   })
 
@@ -386,7 +412,7 @@ describe('getBarnBackupData', () => {
     expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
 
-  it('should_join_agreement_and_charge_rows_with_names_kind_and_payment_status', async () => {
+  it('should_join_agreement_rows_with_rider_horse_and_kind_names', async () => {
     setupFrom({
       horses: { data: [] },
       lessons: { data: [] },
@@ -412,6 +438,31 @@ describe('getBarnBackupData', () => {
     expect(result.agreements).toEqual([
       expect.objectContaining({ rider: 'Alice', horse: 'Thunderbolt', kind: 'board' }),
     ])
+  })
+
+  it('should_join_charge_rows_with_rider_horse_kind_and_payment_status', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: [createMockAgreementCharge({ id: 'charge-1', agreement_id: 'agreement-1', period: '2026-07-01' })] },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([
+      createMockAgreement({ id: 'agreement-1', rider_id: 'rider-1', horse_id: 'horse-1', kind: 'board' }),
+    ])
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['rider-1', 'Alice']]))
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+    vi.mocked(getTransactionRows).mockResolvedValue([
+      {
+        id: 'txn-1', kind: 'board_charge', amount: 200, collected: true, paymentType: 'venmo',
+        membershipId: null, horseId: null, lessonId: null, lessonRiderId: null,
+        agreementChargeId: 'charge-1', expenseId: null, occurredAt: '2026-07-01T00:00:00Z',
+      },
+    ])
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
     expect(result.agreementCharges).toEqual([
       expect.objectContaining({ rider: 'Alice', horse: 'Thunderbolt', kind: 'board', period: '2026-07-01', collected: true, paymentType: 'venmo' }),
     ])
@@ -611,7 +662,7 @@ describe('buildBarnDataWorkbook', () => {
     ])
   })
 
-  it('should_write_a_horse_row_under_its_header', () => {
+  it('should_write_the_horses_sheet_header_row', () => {
     const workbook = buildBarnDataWorkbook({
       ...emptyData,
       horses: [{
@@ -623,11 +674,37 @@ describe('buildBarnDataWorkbook', () => {
 
     const sheet = workbook.getWorksheet('Horses')!
     expect(sheet.getRow(1).values).toEqual([undefined, 'Name', 'Registered Name', 'Active', 'Available', 'Unavailability Reason', 'Feed Notes', 'Medication Notes', 'Owning Member', 'Created At'])
+  })
+
+  it('should_write_a_horse_row_name_cell', () => {
+    const workbook = buildBarnDataWorkbook({
+      ...emptyData,
+      horses: [{
+        name: 'Thunderbolt', registeredName: null, active: true, available: true,
+        unavailabilityReason: null, feedNotes: null, medicationNotes: null,
+        owningMember: 'Jane Owner', createdAt: '2026-01-01 09:00',
+      }],
+    })
+
+    const sheet = workbook.getWorksheet('Horses')!
     expect(sheet.getRow(2).getCell('name').value).toBe('Thunderbolt')
+  })
+
+  it('should_write_a_horse_row_owning_member_cell', () => {
+    const workbook = buildBarnDataWorkbook({
+      ...emptyData,
+      horses: [{
+        name: 'Thunderbolt', registeredName: null, active: true, available: true,
+        unavailabilityReason: null, feedNotes: null, medicationNotes: null,
+        owningMember: 'Jane Owner', createdAt: '2026-01-01 09:00',
+      }],
+    })
+
+    const sheet = workbook.getWorksheet('Horses')!
     expect(sheet.getRow(2).getCell('owningMember').value).toBe('Jane Owner')
   })
 
-  it('should_write_a_transaction_row_under_its_header', () => {
+  it('should_write_a_transaction_row_amount_cell', () => {
     const workbook = buildBarnDataWorkbook({
       ...emptyData,
       transactions: [{
@@ -638,6 +715,18 @@ describe('buildBarnDataWorkbook', () => {
 
     const sheet = workbook.getWorksheet('All Transactions')!
     expect(sheet.getRow(2).getCell('amount').value).toBe(50)
+  })
+
+  it('should_write_a_transaction_row_lesson_id_cell', () => {
+    const workbook = buildBarnDataWorkbook({
+      ...emptyData,
+      transactions: [{
+        kind: 'lesson_fee', amount: 50, collected: true, paymentType: 'cash', member: 'Alice', horse: 'Thunderbolt',
+        lessonId: 'lesson-1', lessonRiderId: null, agreementChargeId: null, expenseId: null, occurredAt: '2026-05-19 06:00',
+      }],
+    })
+
+    const sheet = workbook.getWorksheet('All Transactions')!
     expect(sheet.getRow(2).getCell('lessonId').value).toBe('lesson-1')
   })
 })
@@ -648,7 +737,7 @@ describe('buildBarnDataBackupBuffer', () => {
     defaultMocks()
   })
 
-  it('should_return_a_non_empty_xlsx_buffer', async () => {
+  it('should_return_a_buffer', async () => {
     setupFrom({
       horses: { data: [createMockHorse({ created_at: '2026-01-01T00:00:00Z' })] },
       lessons: { data: [] },
@@ -660,6 +749,19 @@ describe('buildBarnDataBackupBuffer', () => {
     const buffer = await buildBarnDataBackupBuffer('barn-1', TIMEZONE)
 
     expect(Buffer.isBuffer(buffer)).toBe(true)
+  })
+
+  it('should_return_a_non_empty_buffer', async () => {
+    setupFrom({
+      horses: { data: [createMockHorse({ created_at: '2026-01-01T00:00:00Z' })] },
+      lessons: { data: [] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+
+    const buffer = await buildBarnDataBackupBuffer('barn-1', TIMEZONE)
+
     expect(buffer.length).toBeGreaterThan(0)
   })
 })

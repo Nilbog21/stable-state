@@ -21,6 +21,12 @@ import type { Agreement, AgreementCharge, BarnMembership, Horse, Lesson, Profile
  * is the one deliberate exception: a full raw ledger dump for cross-referencing,
  * in addition to (not instead of) folding collected/payment status into the
  * Lessons and Agreement Charges sheets themselves.
+ *
+ * Every TIMESTAMPTZ column is rendered in the barn's own configured timezone
+ * (instantToLocalWallClock), not viewer-local — a departure from this app's usual
+ * "instants render viewer-local, never barn-local" rule (see barn-timezone.ts),
+ * made only because a downloaded static file has no live browser session to read
+ * a viewer's zone from; the barn's own timezone is the best available stand-in.
  */
 
 const ALL_TRANSACTION_KINDS: TransactionKind[] = [
@@ -40,6 +46,8 @@ const NO_INSTRUCTOR = 'No Instructor'
 const BACKUP_RANGE_START = new Date(0)
 const BACKUP_RANGE_END = new Date('9999-12-31T00:00:00Z')
 
+// Deliberately excludes horses.photo_path/photo_uploaded_by — a raw Storage path isn't
+// spreadsheet-readable, and the photo itself isn't covered by this export.
 export interface HorseBackupRow {
   name: string
   registeredName: string | null
@@ -99,6 +107,7 @@ export interface ExpenseBackupRow {
   notes: string | null
 }
 
+// Deliberately excludes profiles.photo_path — same reasoning as HorseBackupRow above.
 export interface MemberBackupRow {
   name: string
   role: string
