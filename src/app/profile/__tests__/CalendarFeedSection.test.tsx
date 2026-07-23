@@ -147,6 +147,30 @@ describe('CalendarFeedSection', () => {
     expect(screen.queryByText(/\/calendar\.ics\?token=tok-abc/)).toBeNull()
   })
 
+  it('should_reset_timer_on_rapid_second_copy_click', async () => {
+    vi.useFakeTimers()
+    render(
+      <CalendarFeedSection initialToken="tok-abc" getLinkAction={vi.fn()} regenerateAction={vi.fn()} />
+    )
+    const button = screen.getByRole('button', { name: /copy link/i })
+    await act(async () => {
+      fireEvent.click(button)
+      await Promise.resolve()
+    })
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
+    await act(async () => {
+      fireEvent.click(button)
+      await Promise.resolve()
+    })
+    act(() => {
+      vi.advanceTimersByTime(1500)
+    })
+    expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
+    vi.useRealTimers()
+  })
+
   it('should_show_loading_state_on_regenerate_button_while_pending', async () => {
     const { promise, resolve } = deferred<string>()
     const regenerateAction = vi.fn().mockReturnValue(promise)

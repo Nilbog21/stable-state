@@ -21,9 +21,10 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
     }
   }, [])
 
-  const url = token
-    ? `${typeof window !== 'undefined' ? window.location.origin : ''}/calendar.ics?token=${token}`
-    : ''
+  // Path only — the full origin is only ever read inside handleCopy (an event handler,
+  // guaranteed client-side), same as ManageMemberSection.tsx's invite-link copy, so this
+  // component never touches `window` during a server render.
+  const path = token ? `/calendar.ics?token=${token}` : ''
 
   async function handleGetLink() {
     setPending(true)
@@ -46,7 +47,7 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
 
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(url)
+      await navigator.clipboard.writeText(`${window.location.origin}${path}`)
     } catch {
       return
     }
@@ -71,7 +72,7 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
         </Button>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">{url}</code>
+          <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">{path}</code>
           <Button type="button" variant="ghost" onClick={handleCopy} disabled={pending}>
             {copied ? 'Copied!' : 'Copy Link'}
           </Button>

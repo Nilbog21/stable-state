@@ -84,6 +84,20 @@ describe('buildIcsFeed', () => {
     expect(result).toMatch(/\r\n {1}A/)
   })
 
+  it('should_fold_lines_with_multi_byte_characters_without_exceeding_the_byte_limit', () => {
+    const title = 'é'.repeat(60)
+    const items: CalendarFeedItem[] = [
+      { itemType: 'event', id: 'e-1', title, startsAt: '2026-10-31T23:00:00Z', durationMinutes: 0, notes: null },
+    ]
+    const result = buildIcsFeed('Sunny Acres', items)
+    const lines = result.split('\r\n')
+    for (const line of lines) {
+      expect(Buffer.byteLength(line, 'utf8')).toBeLessThanOrEqual(75)
+    }
+    const unfolded = result.replace(/\r\n /g, '')
+    expect(unfolded).toContain(`SUMMARY:${title}`)
+  })
+
   it('should_render_multiple_items_as_separate_vevents', () => {
     const items: CalendarFeedItem[] = [
       { itemType: 'lesson', id: 'l-1', title: 'Custom', startsAt: '2026-08-01T14:00:00Z', durationMinutes: 60, notes: null },
