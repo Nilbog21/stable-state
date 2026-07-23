@@ -50,6 +50,52 @@ export function intervalsOverlap(a: ScheduleItem, b: ScheduleItem): boolean {
   return aStart < bEnd && bStart < aEnd
 }
 
+// Two lessons are "nearby" iff the gap between them is less than bufferMinutes -- which,
+// since both have the same fixed LESSON_DURATION_MINUTES duration, reduces to a plain
+// start-to-start distance check against duration+buffer. This also always flags actual
+// overlaps regardless of buffer size (a raw start-to-start-only check would miss overlaps
+// whenever the gap is large relative to the buffer).
+export function isLessonNearby(aLessonAt: string, bLessonAt: string, bufferMinutes: number): boolean {
+  const distanceMs = Math.abs(new Date(aLessonAt).getTime() - new Date(bLessonAt).getTime())
+  return distanceMs < (LESSON_DURATION_MINUTES + bufferMinutes) * 60_000
+}
+
+// Barn-scoped, excludes the lesson being checked and its own instructor (no self-notification).
+// DB-level gte/lt bound already matches the isLessonNearby threshold exactly; the JS-side
+// isLessonNearby filter is defense-in-depth in case that bound and this predicate ever drift.
+export async function getNearbyInstructorMembershipIds(
+  barnId: string,
+  excludeLessonId: string,
+  lessonAt: string,
+  excludeInstructorId: string | null,
+  bufferMinutes: number,
+  client?: SupabaseClient
+): Promise<string[]> {
+  const supabase = client ?? await createClient()
+  const windowMs = (LESSON_DURATION_MINUTES + bufferMinutes) * 60_000
+  const centerMs = new Date(lessonAt).getTime()
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('id, instructor_id, lesson_at')
+    .eq('barn_id', barnId)
+    .is('cancelled_at', null)
+    .not('instructor_id', 'is', null)
+    .neq('id', excludeLessonId)
+    .gte('lesson_at', new Date(centerMs - windowMs).toISOString())
+    .lt('lesson_at', new Date(centerMs + windowMs).toISOString())
+  if (error) throw error
+
+  const rows = (data ?? []) as { id: string; instructor_id: string | null; lesson_at: string }[]
+  const nearbyInstructorIds = new Set<string>()
+  for (const row of rows) {
+    if (!row.instructor_id || row.instructor_id === excludeInstructorId) continue
+    if (!isLessonNearby(lessonAt, row.lesson_at, bufferMinutes)) continue
+    nearbyInstructorIds.add(row.instructor_id)
+  }
+  return [...nearbyInstructorIds]
+}
+
 export function mergeScheduleItems(
   lessons: ScheduleLessonRow[],
   expenses: ScheduleExpenseRow[],

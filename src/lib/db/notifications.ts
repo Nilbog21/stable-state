@@ -137,6 +137,37 @@ export async function resolveCancellationRecipients(params: CancellationRecipien
   return riderRecipients
 }
 
+// Shared by submitLesson (immediate, single lesson) and generate-recurring-lessons.ts
+// (batched across a cron run) so both produce identical notification copy.
+export function formatNearbyInstructorNotification(count: number): { title: string; body: string } {
+  return {
+    title: `${count} new lesson${count === 1 ? '' : 's'} scheduled nearby`,
+    body: `${count === 1 ? 'A lesson was' : 'Lessons were'} added within your barn's schedule buffer of one of your lessons.`,
+  }
+}
+
+// instructor_lesson_nearby is written by two independent producers (submitLesson's
+// notifyNearbyInstructors, generate-recurring-lessons.ts) that would otherwise blindly
+// overwrite each other's count on upsert -- the same "two events sharing one
+// (user_id, barn_id, type) upsert key" collision class #535 fixed for lesson_cancelled.
+// Reading the existing unread row's count back out lets each producer add to it instead.
+// ponytail: parses the count from the title text rather than a dedicated column; a
+// read-then-write race between two near-simultaneous callers can still lose an
+// increment -- acceptable given how rarely two nearby-lesson events land in the same window.
+export async function getUnreadNotificationCount(
+  client: SupabaseClient, userId: string, barnId: string, type: NotificationType
+): Promise<number> {
+  const { data, error } = await client.rpc('get_unread_notification_title', {
+    p_user_id: userId,
+    p_barn_id: barnId,
+    p_type: type,
+  })
+  if (error) throw error
+
+  const match = /^\d+/.exec(data ?? '')
+  return match ? Number(match[0]) : 0
+}
+
 export async function getNotifications(
   userId: string,
   barnId: string,

@@ -9,6 +9,7 @@ export type NotificationType =
   | 'recurring_series_stopped'
   | 'recurring_lesson_horse_unavailable'
   | 'expense_past_due'
+  | 'instructor_lesson_nearby'
 export type MembershipStatus = 'active' | 'pending'
 
 export interface Profile {
@@ -36,6 +37,7 @@ export interface Barn {
   exhaustion_threshold_moderate: number
   timezone: string
   is_demo: boolean
+  schedule_buffer_minutes: number
 }
 
 export interface BarnMembership {

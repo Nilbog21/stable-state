@@ -4,10 +4,57 @@ import { requireMembership } from '@/lib/auth/guard'
 import { collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, updateCancellationFeePaymentType } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
-import type { PaymentType } from '@/lib/db/types'
+import { getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
+import { getNearbyInstructorMembershipIds } from '@/lib/db/schedule'
+import { createNotification, formatNearbyInstructorNotification, getUnreadNotificationCount, upsertNotificationsForRecipients } from '@/lib/db/notifications'
+import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import type { Barn, Lesson, NotificationType, PaymentType } from '@/lib/db/types'
 import { createHorse, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 import { parseLessonFormData } from './lesson-form-parsing'
+
+function sendNearbyInstructorNotificationViaRpc(
+  client: SupabaseClient,
+  params: { userId: string; barnId: string; type: NotificationType; title: string; body: string; link: string }
+): Promise<void> {
+  return createNotification(params, client)
+}
+
+// Best-effort courtesy notification -- failures here must never surface as a lesson
+// submission error, since the lesson itself was already created successfully.
+async function notifyNearbyInstructors(barnSlug: string, barn: Barn, lesson: Lesson): Promise<void> {
+  try {
+    const nearbyMembershipIds = await getNearbyInstructorMembershipIds(
+      barn.id, lesson.id, lesson.lesson_at, lesson.instructor_id, barn.schedule_buffer_minutes
+    )
+    if (nearbyMembershipIds.length === 0) return
+
+    const supabase = await createClient()
+    const recipients = new Map<string, { userId: string; barnId: string; payload: number }>()
+    for (const membershipId of nearbyMembershipIds) {
+      try {
+        const membership = await getMembershipByIdForBarn(membershipId, barn.id)
+        if (!membership?.user_id) continue
+        const existingCount = await getUnreadNotificationCount(supabase, membership.user_id, barn.id, 'instructor_lesson_nearby')
+        recipients.set(membership.user_id, { userId: membership.user_id, barnId: barn.id, payload: existingCount + 1 })
+      } catch (err) {
+        console.error(`Failed to resolve nearby-instructor recipient ${membershipId}:`, (err as Error).message)
+      }
+    }
+
+    await upsertNotificationsForRecipients(
+      supabase,
+      recipients,
+      formatNearbyInstructorNotification,
+      'instructor_lesson_nearby',
+      () => `/barn/${barnSlug}/lessons`,
+      sendNearbyInstructorNotificationViaRpc
+    )
+  } catch (err) {
+    console.error('Failed to notify nearby instructors:', (err as Error).message)
+  }
+}
 
 export async function submitLesson(
   barnId: string,
@@ -17,7 +64,7 @@ export async function submitLesson(
 ): Promise<{ error: string | null }> {
   const isRecurring = formData.get('is_recurring') === 'true'
 
-  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   const parsed = await parseLessonFormData(formData, barnId, membership)
   if ('error' in parsed) return parsed
@@ -25,6 +72,7 @@ export async function submitLesson(
   let { horseIds } = parsed.data
   const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId, instructorCut } = parsed.data
 
+  let lesson: Lesson
   try {
     if (newHorseName) {
       if (membership?.role !== 'manager') {
@@ -36,7 +84,7 @@ export async function submitLesson(
     }
 
     const createLesson = isRecurring ? createLessonSeries : createLessonWithParticipants
-    await createLesson({
+    lesson = await createLesson({
       barnId,
       instructorId,
       fee,
@@ -53,6 +101,8 @@ export async function submitLesson(
   } catch {
     return { error: 'Failed to submit lesson' }
   }
+
+  await notifyNearbyInstructors(barnSlug, barn, lesson)
 
   redirect(`/barn/${barnSlug}/lessons`)
 }

@@ -124,6 +124,8 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 
 **Horse Exhaustion Thresholds** — Set the barn-wide **Moderate threshold** and **High threshold** used to flag a horse as getting overworked, based on its recent exertion total. These are barn-wide defaults; an individual horse can be given its own thresholds that override them. The moderate threshold must be lower than the high threshold.
 
+**Schedule Buffer** — Set how many minutes of separation instructors expect between each other's lessons. When a new lesson is booked within this window of another instructor's lesson, that instructor gets a "New lesson scheduled nearby" notification so they know about the potential arena/space conflict. Defaults to 30 minutes.
+
 **Barn Events** — Add calendar entries that aren't a lesson or an expense, like a costume party or a barn closure. Tap **Add Event** in the section header to create one: give it a title, a date and hour, and optional notes. The **Visible to** checkboxes control who sees the event — Manager, Trainer, Rider — and default to everyone checked, so you only need to narrow it down for something that shouldn't be barn-wide. Tap **Edit** next to an event to change any of that or delete it.
 
 **Data Backup** — Tap **Download All Documents** to get a single zip file of every horse, trainer, and rider document, organized into one folder per horse and one shared folder per member. The button is disabled with an explanation when the barn has no documents yet. Tap **Download Data** to get a single spreadsheet covering your horses, lessons, agreements, expenses, transactions, and members — one sheet per record type, always available.
@@ -148,6 +150,7 @@ You will receive notifications for situations that need attention. Tap the bell 
 - **Outstanding payment** — the barn has past-due unpaid lessons or lease/boarding charges. Tap the notification to go to the full outstanding list. This is checked and updated once nightly, so it may take up to a day to clear after you mark everything paid.
 - **Recurring series stopped** — a weekly recurring lesson series stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review the barn's lessons.
 - **Outstanding expenses** — one or more expenses are past their scheduled date and still need an amount entered, a payment type picked, or both. Tap the notification to go to Finances. This is checked and updated once nightly, so it may take up to a day to clear after you resolve them.
+- **New lesson(s) scheduled nearby** — if you instruct lessons yourself, another instructor booked a lesson within the barn's schedule-buffer window (set in Settings) of one of yours. Tap the notification to review the schedule.
 
 ## If something goes wrong
 

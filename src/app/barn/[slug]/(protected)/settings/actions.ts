@@ -11,7 +11,7 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone, updateScheduleBufferMinutes } from '@/lib/db/barns'
 import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
 import { buildDocumentsBackupZip } from '@/lib/db/document-backup'
 import { buildBarnDataBackupBuffer } from '@/lib/db/backup'
@@ -159,6 +159,16 @@ export async function updateExhaustionThresholdsAction(
   }
 
   await updateExhaustionThresholds(barn.id, { moderate, high })
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+export async function updateScheduleBufferMinutesAction(barnSlug: string, formData: FormData): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const minutes = parseNonNegativeInt(formData.get('schedule_buffer_minutes') as string | null)
+  if (minutes === null) return
+
+  await updateScheduleBufferMinutes(barn.id, minutes)
   redirect(`/barn/${barnSlug}/settings`)
 }
 

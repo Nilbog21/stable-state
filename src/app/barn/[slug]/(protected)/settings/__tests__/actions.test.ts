@@ -20,6 +20,7 @@ vi.mock('@/lib/db/barns', () => ({
   setInstructorCut: vi.fn(),
   updateExhaustionThresholds: vi.fn(),
   updateBarnTimezone: vi.fn(),
+  updateScheduleBufferMinutes: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-events', () => ({
@@ -66,7 +67,7 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone, updateScheduleBufferMinutes } from '@/lib/db/barns'
 import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
 import { buildDocumentsBackupZip } from '@/lib/db/document-backup'
 import { buildBarnDataBackupBuffer } from '@/lib/db/backup'
@@ -79,6 +80,7 @@ import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
   updateExhaustionThresholdsAction,
+  updateScheduleBufferMinutesAction,
   updateBarnTimezoneAction,
   createEventAction,
   updateEventAction,
@@ -789,6 +791,62 @@ describe('reactivateTierAction', () => {
     await reactivateTierAction('green-acres', 'tier-1')
 
     expect(mockRedirect).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateScheduleBufferMinutesAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateScheduleBufferMinutes).mockReset()
+    mockRedirect.mockClear()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateScheduleBufferMinutes).mockResolvedValue(mockBarn)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await expect(
+      updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '45' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateScheduleBufferMinutes_with_parsed_minutes', async () => {
+    await expect(
+      updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '45' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateScheduleBufferMinutes).toHaveBeenCalledWith(mockBarn.id, 45)
+  })
+
+  it('should_redirect_to_settings_after_update', async () => {
+    await expect(
+      updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '45' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+
+  it('should_return_early_when_minutes_is_blank', async () => {
+    await updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '' }))
+
+    expect(updateScheduleBufferMinutes).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_minutes_is_non_numeric', async () => {
+    await updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: 'abc' }))
+
+    expect(updateScheduleBufferMinutes).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_minutes_is_negative', async () => {
+    await updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '-5' }))
+
+    expect(updateScheduleBufferMinutes).not.toHaveBeenCalled()
   })
 })
 

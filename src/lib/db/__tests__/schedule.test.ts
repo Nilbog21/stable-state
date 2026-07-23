@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getScheduleForRange, mergeScheduleItems, intervalsOverlap, LESSON_DURATION_MINUTES } from '../schedule'
+import { getScheduleForRange, mergeScheduleItems, intervalsOverlap, isLessonNearby, getNearbyInstructorMembershipIds, LESSON_DURATION_MINUTES } from '../schedule'
 
 describe('mergeScheduleItems', () => {
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
@@ -176,6 +176,158 @@ describe('intervalsOverlap', () => {
     } finally {
       process.env.TZ = originalTz
     }
+  })
+})
+
+describe('isLessonNearby', () => {
+  const buffer = 30 // LESSON_DURATION_MINUTES (60) + buffer = 90 min threshold
+
+  it('should_return_false_when_lessons_are_exactly_duration_plus_buffer_apart', () => {
+    expect(isLessonNearby('2026-06-10T09:00:00.000Z', '2026-06-10T10:30:00.000Z', buffer)).toBe(false)
+  })
+
+  it('should_return_true_when_lessons_are_one_millisecond_under_duration_plus_buffer_apart', () => {
+    expect(isLessonNearby('2026-06-10T09:00:00.000Z', '2026-06-10T10:29:59.999Z', buffer)).toBe(true)
+  })
+
+  it('should_return_true_when_lessons_actually_overlap', () => {
+    expect(isLessonNearby('2026-06-10T09:00:00.000Z', '2026-06-10T09:30:00.000Z', buffer)).toBe(true)
+  })
+
+  it('should_return_true_when_lessons_share_the_exact_same_instant', () => {
+    expect(isLessonNearby('2026-06-10T09:00:00.000Z', '2026-06-10T09:00:00.000Z', buffer)).toBe(true)
+  })
+
+  it('should_return_false_when_lessons_are_far_apart', () => {
+    expect(isLessonNearby('2026-06-10T09:00:00.000Z', '2026-06-10T15:00:00.000Z', buffer)).toBe(false)
+  })
+})
+
+describe('getNearbyInstructorMembershipIds', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  const barnId = 'barn-1'
+  const excludeLessonId = 'lesson-new'
+  const lessonAt = '2026-06-10T09:00:00.000Z'
+  const excludeInstructorId = 'mem-self'
+  const buffer = 30
+
+  // lessons query: select → eq(barn_id) → is(cancelled_at) → not(instructor_id) → neq(id) → gte → lt → resolves
+  function makeLessonsChain(data: unknown[] | null, error: Error | null = null) {
+    const mockLt = vi.fn().mockResolvedValue({ data, error })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockNeq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockNot = vi.fn().mockReturnValue({ neq: mockNeq })
+    const mockIs = vi.fn().mockReturnValue({ not: mockNot })
+    const mockEq = vi.fn().mockReturnValue({ is: mockIs })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockEq, mockIs, mockNot, mockNeq, mockGte, mockLt }
+  }
+
+  it('should_return_empty_array_when_no_nearby_lessons', async () => {
+    const { select } = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_the_instructor_id_of_a_nearby_lesson', async () => {
+    const { select } = makeLessonsChain([{ id: 'lesson-2', instructor_id: 'mem-other', lesson_at: '2026-06-10T09:30:00.000Z' }])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(result).toEqual(['mem-other'])
+  })
+
+  it('should_exclude_the_provided_instructor_id_from_results', async () => {
+    const { select } = makeLessonsChain([{ id: 'lesson-2', instructor_id: excludeInstructorId, lesson_at: '2026-06-10T09:30:00.000Z' }])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_dedupe_multiple_nearby_lessons_from_the_same_instructor', async () => {
+    const { select } = makeLessonsChain([
+      { id: 'lesson-2', instructor_id: 'mem-other', lesson_at: '2026-06-10T09:15:00.000Z' },
+      { id: 'lesson-3', instructor_id: 'mem-other', lesson_at: '2026-06-10T09:45:00.000Z' },
+    ])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(result).toEqual(['mem-other'])
+  })
+
+  it('should_apply_the_precise_isLessonNearby_filter_excluding_a_row_at_the_boundary', async () => {
+    // Defense-in-depth over the DB-level bound: a row exactly duration+buffer apart should
+    // never count as nearby, even if it were returned by the query.
+    const { select } = makeLessonsChain([{ id: 'lesson-2', instructor_id: 'mem-other', lesson_at: '2026-06-10T10:30:00.000Z' }])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_scope_the_query_to_barn_id', async () => {
+    const { select, mockEq } = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(mockEq).toHaveBeenCalledWith('barn_id', barnId)
+  })
+
+  it('should_exclude_cancelled_lessons_at_the_query_level', async () => {
+    const { select, mockIs } = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(mockIs).toHaveBeenCalledWith('cancelled_at', null)
+  })
+
+  it('should_exclude_the_provided_lesson_id_at_the_query_level', async () => {
+    const { select, mockNeq } = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(mockNeq).toHaveBeenCalledWith('id', excludeLessonId)
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const { select } = makeLessonsChain([])
+    const injectedClient = { from: vi.fn().mockReturnValue({ select }) } as any
+
+    await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer, injectedClient)
+
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('should_treat_null_data_as_empty', async () => {
+    const { select } = makeLessonsChain(null)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const { select } = makeLessonsChain(null, new Error('lessons error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await expect(
+      getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+    ).rejects.toThrow('lessons error')
   })
 })
 

@@ -55,6 +55,23 @@ export async function setInstructorCut(barnId: string, value: number, client?: S
   if (error) throw error
 }
 
+export async function updateScheduleBufferMinutes(
+  barnId: string,
+  minutes: number,
+  client?: SupabaseClient
+): Promise<Barn> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('barns')
+    .update({ schedule_buffer_minutes: minutes })
+    .eq('id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function updateExhaustionThresholds(
   barnId: string,
   updates: { moderate: number; high: number },
