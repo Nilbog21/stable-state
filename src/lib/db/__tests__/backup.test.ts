@@ -80,7 +80,7 @@ describe('getBarnBackupData', () => {
 
   it('should_resolve_horse_owning_member_name', async () => {
     setupFrom({
-      horses: { data: [createMockHorse({ owning_member_id: 'mem-1' })] },
+      horses: { data: [createMockHorse({ owning_member_id: 'mem-1', created_at: '2026-01-01T00:00:00Z' })] },
       lessons: { data: [] },
       agreement_charges: { data: [] },
       barn_memberships: { data: [] },
@@ -95,7 +95,7 @@ describe('getBarnBackupData', () => {
 
   it('should_leave_owning_member_null_when_horse_has_no_owner', async () => {
     setupFrom({
-      horses: { data: [createMockHorse({ owning_member_id: null })] },
+      horses: { data: [createMockHorse({ owning_member_id: null, created_at: '2026-01-01T00:00:00Z' })] },
       lessons: { data: [] },
       agreement_charges: { data: [] },
       barn_memberships: { data: [] },
@@ -109,7 +109,7 @@ describe('getBarnBackupData', () => {
 
   it('should_fall_back_to_unknown_member_for_an_unresolved_owning_member', async () => {
     setupFrom({
-      horses: { data: [createMockHorse({ owning_member_id: 'mem-gone' })] },
+      horses: { data: [createMockHorse({ owning_member_id: 'mem-gone', created_at: '2026-01-01T00:00:00Z' })] },
       lessons: { data: [] },
       agreement_charges: { data: [] },
       barn_memberships: { data: [] },
@@ -131,6 +131,180 @@ describe('getBarnBackupData', () => {
     })
 
     await expect(getBarnBackupData('barn-1', TIMEZONE)).rejects.toThrow('boom')
+  })
+
+  it('should_throw_on_lessons_query_error', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: null, error: new Error('boom') },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+
+    await expect(getBarnBackupData('barn-1', TIMEZONE)).rejects.toThrow('boom')
+  })
+
+  it('should_throw_on_agreement_charges_query_error', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: null, error: new Error('boom') },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement()])
+
+    await expect(getBarnBackupData('barn-1', TIMEZONE)).rejects.toThrow('boom')
+  })
+
+  it('should_throw_on_barn_memberships_query_error', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: null, error: new Error('boom') },
+      profiles: { data: [] },
+    })
+
+    await expect(getBarnBackupData('barn-1', TIMEZONE)).rejects.toThrow('boom')
+  })
+
+  it('should_throw_on_profiles_query_error', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [createMockMembership({ created_at: '2026-01-01T00:00:00Z' })] },
+      profiles: { data: null, error: new Error('boom') },
+    })
+
+    await expect(getBarnBackupData('barn-1', TIMEZONE)).rejects.toThrow('boom')
+  })
+
+  it('should_treat_null_query_data_as_empty_lists', async () => {
+    setupFrom({
+      horses: { data: null },
+      lessons: { data: null },
+      agreement_charges: { data: null },
+      barn_memberships: { data: null },
+      profiles: { data: null },
+    })
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
+    expect(result.horses).toEqual([])
+    expect(result.lessons).toEqual([])
+    expect(result.members).toEqual([])
+  })
+
+  it('should_treat_null_profiles_data_as_empty', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [createMockMembership({ profile_id: 'profile-gone', created_at: '2026-01-01T00:00:00Z' })] },
+      profiles: { data: null },
+    })
+
+    await expect(getBarnBackupData('barn-1', TIMEZONE)).rejects.toThrow()
+  })
+
+  it('should_leave_charges_empty_when_an_agreement_has_no_charges_yet', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement()])
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
+    expect(result.agreements).toHaveLength(1)
+    expect(result.agreementCharges).toEqual([])
+  })
+
+  it('should_treat_null_agreement_charges_data_as_empty', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: null },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+    vi.mocked(getAgreementsByBarn).mockResolvedValue([createMockAgreement()])
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
+    expect(result.agreementCharges).toEqual([])
+  })
+
+  it('should_fall_back_to_unknown_names_for_unresolved_lesson_horse_and_rider', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [createMockLesson({ id: 'lesson-1', instructor_id: null })] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+    vi.mocked(getLessonJunctionRows).mockImplementation(async (table) =>
+      table === 'lesson_horses'
+        ? [{ lesson_id: 'lesson-1', horse_id: 'horse-gone' }]
+        : [{ lesson_id: 'lesson-1', rider_id: 'rider-gone' }]
+    )
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
+    expect(result.lessons[0]).toEqual(expect.objectContaining({ horses: 'Unknown Horse', riders: 'Unknown Member' }))
+  })
+
+  it('should_fall_back_to_unknown_names_for_unresolved_document_owners', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+    vi.mocked(getAllBarnDocuments).mockResolvedValue({
+      horse: [{ id: 'd1', barn_id: 'barn-1', horse_id: 'horse-gone', record_type: 'coggins', storage_path: 's', file_name: 'coggins.pdf', file_size: 1, notes: null, reminder_date: null, created_at: '2026-01-01T00:00:00Z', updated_at: '' }],
+      trainer: [{ id: 'd2', barn_id: 'barn-1', trainer_id: 'mem-gone', record_type: 'other', storage_path: 's', file_name: 'contract.pdf', file_size: 1, notes: null, reminder_date: null, created_at: '2026-01-01T00:00:00Z', updated_at: '' }],
+      rider: [{ id: 'd3', barn_id: 'barn-1', rider_id: 'mem-gone-2', record_type: 'other', storage_path: 's', file_name: 'waiver.pdf', file_size: 1, notes: null, reminder_date: null, created_at: '2026-01-01T00:00:00Z', updated_at: '' }],
+    })
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
+    expect(result.documents).toEqual([
+      expect.objectContaining({ owner: 'Unknown Horse' }),
+      expect.objectContaining({ owner: 'Unknown Member' }),
+      expect.objectContaining({ owner: 'Unknown Member' }),
+    ])
+  })
+
+  it('should_fall_back_to_unknown_names_for_an_unresolved_transaction_member_and_horse', async () => {
+    setupFrom({
+      horses: { data: [] },
+      lessons: { data: [] },
+      agreement_charges: { data: [] },
+      barn_memberships: { data: [] },
+      profiles: { data: [] },
+    })
+    vi.mocked(getTransactionRows).mockImplementation(async (_barnId, kinds) => {
+      if (!kinds.includes('lesson_fee')) return []
+      return [
+        {
+          id: 'txn-1', kind: 'lesson_fee', amount: 50, collected: false, paymentType: null,
+          membershipId: 'mem-gone', horseId: 'horse-gone', lessonId: 'lesson-1', lessonRiderId: null,
+          agreementChargeId: null, expenseId: null, occurredAt: '2026-05-19T10:00:00Z',
+        },
+      ]
+    })
+
+    const result = await getBarnBackupData('barn-1', TIMEZONE)
+
+    expect(result.transactions[0]).toEqual(expect.objectContaining({ member: 'Unknown Member', horse: 'Unknown Horse' }))
   })
 
   it('should_build_a_lesson_row_with_joined_horses_riders_instructor_and_ledger_data', async () => {
@@ -312,7 +486,7 @@ describe('getBarnBackupData', () => {
       horses: { data: [] },
       lessons: { data: [] },
       agreement_charges: { data: [] },
-      barn_memberships: { data: [createMockMembership({ profile_id: 'profile-1', role: 'trainer', status: 'active', can_instruct: true })] },
+      barn_memberships: { data: [createMockMembership({ profile_id: 'profile-1', role: 'trainer', status: 'active', can_instruct: true, created_at: '2026-01-01T00:00:00Z' })] },
       profiles: { data: [createMockProfile({ id: 'profile-1', first_name: 'Jane', last_name: 'Trainer', email: 'jane@example.com' })] },
     })
 
@@ -370,7 +544,7 @@ describe('getBarnBackupData', () => {
       profiles: { data: [] },
     })
     vi.mocked(getTransactionRows).mockImplementation(async (_barnId, kinds) => {
-      if (kinds.includes('lesson_fee')) return []
+      if (!kinds.includes('lesson_fee')) return []
       return [
         {
           id: 'txn-1', kind: 'instructor_payout', amount: -12.5, collected: true, paymentType: 'cash',
@@ -398,7 +572,7 @@ describe('getBarnBackupData', () => {
       profiles: { data: [] },
     })
     vi.mocked(getTransactionRows).mockImplementation(async (_barnId, kinds) => {
-      if (kinds.includes('lesson_fee')) return []
+      if (!kinds.includes('lesson_fee')) return []
       return [
         {
           id: 'txn-1', kind: 'expense', amount: -100, collected: true, paymentType: 'cash',
@@ -476,7 +650,7 @@ describe('buildBarnDataBackupBuffer', () => {
 
   it('should_return_a_non_empty_xlsx_buffer', async () => {
     setupFrom({
-      horses: { data: [createMockHorse()] },
+      horses: { data: [createMockHorse({ created_at: '2026-01-01T00:00:00Z' })] },
       lessons: { data: [] },
       agreement_charges: { data: [] },
       barn_memberships: { data: [] },
