@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'url'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { upsertProfile, updateContactInfo, replaceProfilePhoto } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
@@ -297,9 +297,15 @@ export async function seedBarn(
   // #1004: Emery has a photo pre-set so "view another member's photo, read-only" is
   // manually testable without a live upload (which the change-user.sh role swap can't
   // do for a self-write — see PRE_RELEASE_TEST_CHECKLIST.md's Phase 6 note).
-  const emeryPhotoBytes = readFileSync(join(DATA_DIR, 'emery-photo.jpg'))
-  const emeryPhotoFile = new File([emeryPhotoBytes], 'emery-photo.jpg', { type: 'image/jpeg' })
-  await replaceProfilePhoto(riderProfileIds[1], barnId, emeryPhotoFile, 'jpg', supabase)
+  // #505: scripts/data/*.jpg is gitignored (manually placed per dev checkout, never
+  // deployed), so /demo calling seedBarn() in production must skip these gracefully
+  // rather than crash on a missing file.
+  const emeryPhotoPath = join(DATA_DIR, 'emery-photo.jpg')
+  if (existsSync(emeryPhotoPath)) {
+    const emeryPhotoBytes = readFileSync(emeryPhotoPath)
+    const emeryPhotoFile = new File([emeryPhotoBytes], 'emery-photo.jpg', { type: 'image/jpeg' })
+    await replaceProfilePhoto(riderProfileIds[1], barnId, emeryPhotoFile, 'jpg', supabase)
+  }
 
   mustSucceed(
     await supabase.from('barn_memberships').insert(
@@ -357,10 +363,13 @@ export async function seedBarn(
   }
 
   // #1038: Butter has a photo pre-set so rider/trainer read-only photo-display checklist
-  // steps have real backing data (mirrors Emery's profile photo above).
-  const butterPhotoBytes = readFileSync(join(DATA_DIR, 'butter-photo.jpg'))
-  const butterPhotoFile = new File([butterPhotoBytes], 'butter-photo.jpg', { type: 'image/jpeg' })
-  await replaceHorsePhoto(horseIds[1], barnId, butterPhotoFile, 'jpg', supabase)
+  // steps have real backing data (mirrors Emery's profile photo above). See #505 note above.
+  const butterPhotoPath = join(DATA_DIR, 'butter-photo.jpg')
+  if (existsSync(butterPhotoPath)) {
+    const butterPhotoBytes = readFileSync(butterPhotoPath)
+    const butterPhotoFile = new File([butterPhotoBytes], 'butter-photo.jpg', { type: 'image/jpeg' })
+    await replaceHorsePhoto(horseIds[1], barnId, butterPhotoFile, 'jpg', supabase)
+  }
 
   const retiredHorse = await createHorse(barnId, DEV_RETIRED_HORSE, undefined, supabase)
 
