@@ -98,8 +98,8 @@ export async function updateProfilePhotoPath(profileId: string, photoPath: strin
 }
 
 export async function replaceProfilePhoto(profileId: string, barnId: string, file: File, ext: string): Promise<void> {
-  // ponytail: re-fetches the current photo_path here rather than trusting a value bound at
-  // page-render time, so a concurrent replace/remove can't be clobbered by a stale caller.
+  // Re-fetches the current photo_path here rather than trusting a value bound at page-render
+  // time, so a concurrent replace/remove can't be clobbered by a stale caller.
   const current = await getProfileById(profileId)
   const storagePath = `${barnId}/profile-photos/${profileId}/${Date.now()}.${ext}`
 
