@@ -13,6 +13,7 @@ import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
   updateExhaustionThresholdsAction,
+  updateScheduleBufferMinutesAction,
   updateBarnTimezoneAction,
   downloadAllDocumentsAction,
 } from './actions'
@@ -200,6 +201,33 @@ export default async function SettingsPage({
         />
         <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
           Default exertion-sum thresholds used when a horse has no per-horse override.
+        </p>
+      </AccordionSection>
+
+      <AccordionSection title="Schedule Buffer">
+        <form action={updateScheduleBufferMinutesAction.bind(null, slug)} className="flex items-end gap-4">
+          <div>
+            <label
+              htmlFor="schedule_buffer_minutes"
+              className="mb-1 block text-sm text-zinc-700 dark:text-zinc-300"
+            >
+              Buffer (minutes)
+            </label>
+            <input
+              type="number"
+              id="schedule_buffer_minutes"
+              name="schedule_buffer_minutes"
+              min="0"
+              step="1"
+              required
+              defaultValue={barn.schedule_buffer_minutes}
+              className="w-24 rounded border border-zinc-300 px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900"
+            />
+          </div>
+          <Button type="submit">Save</Button>
+        </form>
+        <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
+          Instructors are notified when another instructor books a lesson within this many minutes of one of their own.
         </p>
       </AccordionSection>
 

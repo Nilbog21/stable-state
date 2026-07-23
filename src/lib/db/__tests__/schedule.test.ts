@@ -312,6 +312,15 @@ describe('getNearbyInstructorMembershipIds', () => {
     expect(createClient).not.toHaveBeenCalled()
   })
 
+  it('should_treat_null_data_as_empty', async () => {
+    const { select } = makeLessonsChain(null)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
+
+    expect(result).toEqual([])
+  })
+
   it('should_throw_when_supabase_returns_error', async () => {
     const { select } = makeLessonsChain(null, new Error('lessons error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
