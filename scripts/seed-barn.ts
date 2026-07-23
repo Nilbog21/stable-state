@@ -7,7 +7,7 @@ import { createTier } from '@/lib/db/lesson-tiers'
 import { createHorse, replaceHorsePhoto } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createLessonSeries } from '@/lib/db/lesson-series'
-import { createPendingMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
+import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from '@/lib/db/agreements'
 import { createExpense } from '@/lib/db/expenses'
 import type { PaymentType } from '@/lib/db/types'
@@ -31,7 +31,6 @@ export const DEV_RETIRED_HORSE = 'Willow'
 export const DEV_UNAVAILABLE_HORSE = 'Hazel'
 export const DEV_UNAVAILABLE_REASON = 'Recovering from minor injury'
 
-export const DEV_PENDING_RIDER = { email: 'pending1@dev.local', firstName: 'Quinn', lastName: 'Pending' }
 export const DEV_MANAGER_2 = { email: 'manager2@dev.local', firstName: 'Morgan', lastName: 'Manager' }
 // #950: kept out of DEV_TRAINERS so the existing i % trainerRowIds.length round-robin
 // assigning the main seed lessons is untouched — this trainer gets exactly one lesson.
@@ -335,16 +334,6 @@ export async function seedBarn(
     }).select('id').single(),
     'insert trainer4 membership'
   )
-
-  const { data: pendingData, error: pendingErr } = await supabase.auth.admin.createUser({
-    email: DEV_PENDING_RIDER.email,
-    email_confirm: true,
-  })
-  if (pendingErr) throw new Error(`create pending rider: ${pendingErr.message}`)
-  const pendingUserId = pendingData.user.id
-
-  const pendingProfile = await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
-  await createPendingMembership(pendingUserId, barnId, 'rider', pendingProfile.id, supabase)
 
   const allRiderMembers = await getActiveMembersWithProfiles(barnId, 'rider', supabase)
   const riderRowIds = riderIds.map((uid) => {

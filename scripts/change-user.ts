@@ -9,10 +9,6 @@ export function mustSucceed<T>(result: { data: T | null; error: unknown }, label
   return result.data as T
 }
 
-export function isSelfSelect(devEmail: string, targetEmail: string): boolean {
-  return devEmail === targetEmail
-}
-
 export function formatProfileLine(
   profile: { first_name: string; last_name: string; email: string },
   index: number
@@ -53,17 +49,6 @@ async function promptSelection(max: number): Promise<number> {
       } else {
         resolve(n)
       }
-      rl.close()
-    })
-  })
-}
-
-async function promptConfirm(question: string): Promise<boolean> {
-  const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
-  return new Promise((resolve, reject) => {
-    rl.once('close', () => reject(new Error('input closed before an answer was given')))
-    rl.question(`${question} (y/N): `, (answer) => {
-      resolve(answer.trim().toLowerCase() === 'y')
       rl.close()
     })
   })
@@ -126,7 +111,7 @@ async function run() {
       .from('barn_memberships')
       .select('profile_id, status')
       .eq('barn_id', barnId)
-      .in('status', ['active', 'pending'])
+      .eq('status', 'active')
       .order('created_at', { ascending: true }),
     'fetch barn memberships'
   )
@@ -163,30 +148,15 @@ async function run() {
     process.exit(1)
   }
 
-  const isSelf = isSelfSelect(DEV_EMAIL, target.email)
-
-  const targetRow = mustSucceed<{ id: string; status: string }>(
+  const targetRow = mustSucceed<{ id: string }>(
     await supabase
       .from('barn_memberships')
-      .select('id, status')
+      .select('id')
       .eq('profile_id', target.id)
       .eq('barn_id', barnId)
       .single(),
     'fetch target membership'
   )
-
-  if (targetRow.status === 'pending') {
-    const label = isSelf ? 'Your own membership in this barn' : `${target.first_name} ${target.last_name}'s membership`
-    const activate = await promptConfirm(`${label} is pending — activate it?`)
-    if (!activate) {
-      console.error('cannot switch to a pending membership without activating it')
-      process.exit(1)
-    }
-    mustSucceed(
-      await supabase.from('barn_memberships').update({ status: 'active' }).eq('id', targetRow.id),
-      'activate target membership'
-    )
-  }
 
   const currentRow = mustSucceed<{ id: string; profile_id: string } | null>(
     await supabase.from('barn_memberships').select('id, profile_id').eq('user_id', devUserId).eq('barn_id', barnId).maybeSingle(),

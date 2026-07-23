@@ -24,7 +24,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | Table | manager | trainer | rider |
 |---|---|---|---|
 | barns | SELECT, UPDATE (own barn) | SELECT | SELECT |
-| barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE approve pending in barn; UPDATE `can_instruct` for barn members; DELETE any non-manager in barn (#969 — a manager can no longer delete another manager's row, or their own, even via a direct call; manager removal requires direct DB access) | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own — plus (#779) any active barn member can read barn-wide member summaries (`id`/`user_id`/`profile_id`/`role`/`can_instruct`/`created_at`, never `invite_token`) via the `get_active_barn_member_summaries` RPC |
+| barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE `can_instruct` for barn members; DELETE any non-manager in barn (#969 — a manager can no longer delete another manager's row, or their own, even via a direct call; manager removal requires direct DB access) | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own — plus (#779) any active barn member can read barn-wide member summaries (`id`/`user_id`/`profile_id`/`role`/`can_instruct`/`created_at`, never `invite_token`) via the `get_active_barn_member_summaries` RPC |
 | horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT |
 | lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (any column; instructor_id locked by RLS) | SELECT (enrolled only), INSERT |
 | lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT (enrolled only), INSERT |
@@ -93,7 +93,7 @@ Modules: `auth.ts`, `transactions.ts`, `agreements.ts`, `agreement-finances.ts`,
 No API routes. All mutations go through Next.js Server Actions.
 
 - **Global actions:** `src/app/actions/` — auth (`auth.ts`), lesson submission, payment-type update, stopping a recurring series, and projected-exhaustion lookup (`lessons.ts`), whole-lesson and per-rider cancellation (`lesson-cancellation.ts`), notification mark-all-read (`notifications.ts`), expense create, delete, recipient-type lookup, and past-due-expense resolution (`expenses.ts`); `lesson-form-parsing.ts` — deliberately has no `'use server'` directive, so `parseLessonFormData` (shared parse/validate step for `submitLesson` and `updateLessonAction`, mirroring `parseExpenseFormData`) is never independently reachable as a Server Action and can't skip the `requireMembership` check its callers perform
-- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`profile/`, `barn/[slug]/horses/`, `barn/[slug]/horses/[id]/`, `barn/[slug]/register/`, `barn/[slug]/settings/`, `barn/[slug]/(protected)/approvals/`, `barn/[slug]/(protected)/members/[membership_id]/`, `barn/[slug]/(protected)/agreements/`)
+- **Feature-scoped actions:** co-located `actions.ts` files inside route directories (`profile/`, `barn/[slug]/horses/`, `barn/[slug]/horses/[id]/`, `barn/[slug]/register/`, `barn/[slug]/settings/`, `barn/[slug]/(protected)/members/[membership_id]/`, `barn/[slug]/(protected)/agreements/`)
 
 ## Auth guard
 

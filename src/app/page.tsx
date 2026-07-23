@@ -9,11 +9,8 @@ export default async function Home() {
 
   const memberships = await getBarnMembershipsForUser(user.id);
   const active = memberships.filter((m) => m.membership.status === "active");
-  const pending = memberships.filter((m) => m.membership.status === "pending");
 
   if (active.length === 1) redirect(`/barn/${active[0].barn.slug}`);
   if (active.length > 1) redirect("/barns");
-  if (pending.length === 1) redirect(`/barn/${pending[0].barn.slug}/pending`);
-  if (pending.length > 1) redirect("/barns");
   redirect("/login?no_barns=true");
 }

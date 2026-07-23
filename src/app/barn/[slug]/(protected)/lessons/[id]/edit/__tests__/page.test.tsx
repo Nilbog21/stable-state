@@ -117,13 +117,13 @@ describe('EditLessonPage', () => {
   })
 
   it('should_call_notFound_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'inactive' } as any)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 
   it('should_invoke_notFound_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'pending' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockManagerMembership, status: 'inactive' } as any)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
     await expect(EditLessonPage({ params })).rejects.toThrow()
     expect(notFound).toHaveBeenCalled()

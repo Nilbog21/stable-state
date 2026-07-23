@@ -3,7 +3,6 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getUpcomingLessons } from '@/lib/db/lessons'
-import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { getDueDocuments } from '@/lib/db/documents'
 import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
@@ -26,7 +25,6 @@ export default async function BarnDashboardPage({
 
   let upcomingLessons: LessonWithDetails[] | null = null
   let upcomingExpenses: ScheduledExpense[] = []
-  let pendingCount = 0
   let dueDocuments: DueDocument[] = []
   let unpaidLessonsCount = 0
   let unpaidChargesCount = 0
@@ -40,9 +38,8 @@ export default async function BarnDashboardPage({
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
       const now = new Date()
       const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      const [lessons, pending, due, expenses, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
+      const [lessons, due, expenses, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
         getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), user.id, membership.role),
-        membership.role === 'manager' ? getPendingMemberships(barn.id) : Promise.resolve([]),
         membership.role === 'manager' ? getDueDocuments(barn.id, now.toISOString().slice(0, 10)) : Promise.resolve([]),
         membership.role === 'manager'
           ? getUpcomingScheduledExpenses(barn.id, now.toISOString(), weekOut.toISOString(), barn.timezone)
@@ -52,7 +49,6 @@ export default async function BarnDashboardPage({
         getOutstandingCharges(barn.id, user.id, membership.role),
       ])
       upcomingLessons = lessons
-      pendingCount = pending.length
       dueDocuments = due
       upcomingExpenses = expenses
       unpaidLessonsCount = outstandingLessons.length + outstandingCancellationFees.length
@@ -60,7 +56,7 @@ export default async function BarnDashboardPage({
     }
   }
 
-  const hasReminders = pendingCount > 0 || dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
+  const hasReminders = dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -73,13 +69,6 @@ export default async function BarnDashboardPage({
             Reminders
           </h2>
           <div className="space-y-2">
-            {pendingCount > 0 && (
-              <div>
-                <Button href={`/barn/${slug}/settings`} variant="warning">
-                  {pendingCount} pending {pendingCount === 1 ? 'new member request' : 'new member requests'}
-                </Button>
-              </div>
-            )}
             {unpaidLessonsCount > 0 && (
               <div>
                 <Button href={`/barn/${slug}/finances/outstanding`} variant="warning">

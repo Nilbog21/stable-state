@@ -155,26 +155,6 @@ describe('ProtectedBarnLayout - auth guard', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_throw_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      ...mockManagerMembership,
-      status: 'pending',
-    })
-
-    await expect(ProtectedBarnLayout({ children, params })).rejects.toThrow('NEXT_REDIRECT')
-  })
-
-  it('should_redirect_to_pending_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({
-      ...mockManagerMembership,
-      status: 'pending',
-    })
-
-    try { await ProtectedBarnLayout({ children, params }) } catch {}
-
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
-  })
-
   it('should_throw_when_membership_is_not_active', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({
       ...mockManagerMembership,
@@ -523,12 +503,12 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     expect(screen.queryByRole('button', { name: /switch barn/i })).toBeNull()
   })
 
-  it('should_not_show_barn_switcher_caret_when_second_membership_is_pending', async () => {
-    const pendingMembership = {
+  it('should_not_show_barn_switcher_caret_when_second_membership_is_inactive', async () => {
+    const inactiveMembership = {
       barn: createMockBarn({ id: 'barn-2', name: 'Other Barn', slug: 'other-barn', default_instructor_cut: 25, created_at: '' }),
-      membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'pending' as const },
+      membership: { ...mockManagerMembership, id: 'mem-2', barn_id: 'barn-2', status: 'inactive' as any },
     }
-    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, pendingMembership])
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry, inactiveMembership])
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
     expect(screen.queryByRole('button', { name: /switch barn/i })).toBeNull()

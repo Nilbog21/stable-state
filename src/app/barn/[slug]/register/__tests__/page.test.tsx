@@ -74,12 +74,6 @@ describe('BarnRegisterPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/')
   })
 
-  it('should_redirect_to_pending_when_user_has_pending_membership', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'pending' }))
-    await expect(renderPage('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
-    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
-  })
-
   it('should_render_join_barn_heading', async () => {
     const jsx = await renderPage('green-acres', 'tok-1')
     render(jsx)

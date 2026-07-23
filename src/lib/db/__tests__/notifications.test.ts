@@ -48,7 +48,7 @@ describe('createNotification', () => {
     const mockRpc = vi.fn().mockResolvedValue({ error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'Pending approval' })
+    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'lesson_cancelled', title: 'Lesson cancelled' })
 
     expect(mockRpc).toHaveBeenCalledWith(
       'create_or_update_notification',
@@ -71,7 +71,7 @@ describe('createNotification', () => {
     const mockRpc = vi.fn().mockResolvedValue({ error: null })
     const injectedClient = { rpc: mockRpc } as any
 
-    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'pending_approval', title: 'New request' }, injectedClient)
+    await createNotification({ userId: 'user-1', barnId: 'barn-1', type: 'lesson_cancelled', title: 'Lesson cancelled' }, injectedClient)
 
     expect(createClient).not.toHaveBeenCalled()
     expect(mockRpc).toHaveBeenCalledWith('create_or_update_notification', expect.any(Object))

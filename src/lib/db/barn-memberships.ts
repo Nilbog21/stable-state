@@ -19,41 +19,6 @@ export async function getUserMembership(
   return data
 }
 
-// No longer called from the app (self-registration is closed, #777) — kept for
-// scripts/reset-db.ts, which still seeds a baseline pending row for testing approve/reject.
-export async function createPendingMembership(
-  userId: string,
-  barnId: string,
-  role: 'trainer' | 'rider',
-  profileId: string,
-  client?: SupabaseClient
-): Promise<BarnMembership> {
-  const supabase = client ?? await createClient()
-  const { data, error } = await supabase
-    .from('barn_memberships')
-    .insert({ user_id: userId, profile_id: profileId, barn_id: barnId, role, status: 'pending' })
-    .select()
-    .single()
-
-  if (error) throw error
-  return data
-}
-
-export async function getPendingMemberships(
-  barnId: string
-): Promise<BarnMembership[]> {
-  const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('barn_memberships')
-    .select('*')
-    .eq('barn_id', barnId)
-    .eq('status', 'pending')
-    .order('created_at', { ascending: true })
-
-  if (error) throw error
-  return data ?? []
-}
-
 export async function getActiveMemberships(
   barnId: string
 ): Promise<BarnMembership[]> {
@@ -67,16 +32,6 @@ export async function getActiveMemberships(
 
   if (error) throw error
   return data ?? []
-}
-
-export async function approveMembership(membershipId: string): Promise<void> {
-  const supabase = await createClient()
-  const { error } = await supabase
-    .from('barn_memberships')
-    .update({ status: 'active' })
-    .eq('id', membershipId)
-
-  if (error) throw error
 }
 
 export async function deleteMembership(membershipId: string): Promise<void> {

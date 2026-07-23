@@ -93,7 +93,7 @@ describe('HorsesPage', () => {
   })
 
   it('should_call_notFound_when_membership_is_not_active', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...managerMembership, status: 'pending' })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...managerMembership, status: 'inactive' } as any)
     await expect(HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_NOT_FOUND')
   })
 

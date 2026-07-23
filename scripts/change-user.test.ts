@@ -1,7 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
   mustSucceed,
-  isSelfSelect,
   formatProfileLine,
   formatBarnLine,
   mergeMembersWithProfiles,
@@ -17,16 +16,6 @@ describe('mustSucceed', () => {
 
   it('should_return_data_when_result_has_no_error', () => {
     expect(mustSucceed({ data: [1, 2, 3], error: null }, 'ok')).toEqual([1, 2, 3])
-  })
-})
-
-describe('isSelfSelect', () => {
-  it('should_return_true_when_emails_match', () => {
-    expect(isSelfSelect('dev@example.com', 'dev@example.com')).toBe(true)
-  })
-
-  it('should_return_false_when_emails_differ', () => {
-    expect(isSelfSelect('dev@example.com', 'other@example.com')).toBe(false)
   })
 })
 

@@ -38,7 +38,7 @@ Open [http://localhost:3000](http://localhost:3000).
 
 ### Dev database reset
 
-To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 additional manager, 3 trainers, 3 riders, 1 pending rider, 3 horses, 2 fee tiers, 34 lessons):
+To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 additional manager, 3 trainers, 3 riders, 3 horses, 2 fee tiers, 34 lessons):
 
 ```bash
 bash scripts/reset-db.sh

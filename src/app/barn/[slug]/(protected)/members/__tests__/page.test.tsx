@@ -68,7 +68,7 @@ describe('MembersPage', () => {
   })
 
   it('should_redirect_to_login_when_membership_is_pending', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(createMockMembership({ status: 'pending' }))
+    vi.mocked(getUserMembership).mockResolvedValue({ ...createMockMembership(), status: 'inactive' } as any)
     await expect(MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })

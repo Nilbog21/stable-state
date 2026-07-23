@@ -104,7 +104,7 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_call_notFound_when_membership_is_not_active', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'pending' as const })
+    vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, status: 'inactive' } as any)
     vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
 
     await expect(

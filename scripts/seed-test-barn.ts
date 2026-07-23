@@ -97,15 +97,13 @@ async function run() {
   const { userId: trainerId, profileId: trainerProfileId } = await createUser('trainer', 'Test', 'Trainer')
   const { userId: riderId,   profileId: riderProfileId   } = await createUser('rider', 'Test', 'Rider')
   const { userId: rider2Id,  profileId: rider2ProfileId  } = await createUser('rider2', 'Test', 'Rider2')
-  const { userId: pendingId, profileId: pendingProfileId } = await createUser('pending', 'Quinn', 'Pending')
 
   mustSucceed(
     await supabase.from('barn_memberships').insert([
-      { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active',  can_instruct: true,  profile_id: managerProfileId },
-      { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active',  can_instruct: true,  profile_id: trainerProfileId },
-      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active',  can_instruct: false, profile_id: riderProfileId   },
-      { user_id: rider2Id,  barn_id: barnId, role: 'rider',   status: 'active',  can_instruct: false, profile_id: rider2ProfileId  },
-      { user_id: pendingId, barn_id: barnId, role: 'rider',   status: 'pending', can_instruct: false, profile_id: pendingProfileId },
+      { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active', can_instruct: true,  profile_id: managerProfileId },
+      { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active', can_instruct: true,  profile_id: trainerProfileId },
+      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false, profile_id: riderProfileId   },
+      { user_id: rider2Id,  barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false, profile_id: rider2ProfileId  },
     ]),
     'insert memberships'
   )
@@ -336,7 +334,6 @@ async function run() {
   console.log(`  Horses:   Apollo, Bella`)
   console.log(`  Tiers:    Standard ($80, default), Premium ($120)`)
   console.log(`  Lessons:  8 (5 past, 1 today, 2 future; 1 group; all but 1 marked paid)`)
-  console.log(`  Pending:  Quinn Pending (rider, awaiting approval)`)
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
   console.log(`  Lease:    1 unpaid (2 months backdated)`)
   console.log(`  Documents: 1 undated (Apollo, Coggins), 1 past-due reminder (Bella, Insurance Binder)`)
