@@ -5,7 +5,33 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients } from '../notifications'
+import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients, formatNearbyInstructorNotification } from '../notifications'
+
+describe('formatNearbyInstructorNotification', () => {
+  it('should_use_singular_phrasing_when_count_is_one', () => {
+    const { title } = formatNearbyInstructorNotification(1)
+
+    expect(title).toBe('1 new lesson scheduled nearby')
+  })
+
+  it('should_use_plural_phrasing_when_count_is_greater_than_one', () => {
+    const { title } = formatNearbyInstructorNotification(3)
+
+    expect(title).toBe('3 new lessons scheduled nearby')
+  })
+
+  it('should_use_singular_phrasing_in_body_when_count_is_one', () => {
+    const { body } = formatNearbyInstructorNotification(1)
+
+    expect(body).toContain('A lesson was')
+  })
+
+  it('should_use_plural_phrasing_in_body_when_count_is_greater_than_one', () => {
+    const { body } = formatNearbyInstructorNotification(2)
+
+    expect(body).toContain('Lessons were')
+  })
+})
 
 describe('createNotification', () => {
   beforeEach(() => {
