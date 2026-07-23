@@ -14,7 +14,7 @@ import {
   computeExhaustionWindowTotals,
   EXHAUSTION_PAST_BOUNDARY_INDEX,
   EXHAUSTION_FUTURE_BOUNDARY_INDEX,
-} from './reset-db'
+} from './seed-barn'
 
 describe('buildLessonDates', () => {
   const NOW = new Date('2024-06-15T10:00:00.000Z')
