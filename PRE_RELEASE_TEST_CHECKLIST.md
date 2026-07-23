@@ -379,6 +379,12 @@ Mobile spot-check (resize the browser to ~390px wide, or use your browser's devi
 - [ ] Nav bar and its dropdowns (avatar menu, notification bell) remain usable — reachable and dismissible by tap, with no reliance on hover
 - [ ] Lessons and Horses lists stay readable without horizontal scrolling
 
+Calendar feed (#1018):
+
+- [ ] On `/profile?barn=dev-barn`, a **Calendar Feed** section appears; tap **Get my calendar link** — a link is revealed containing `/calendar.ics?token=...`
+- [ ] Open that link directly (or `curl` it) — returns `Content-Type: text/calendar` and includes VEVENT entries for lessons across the whole barn (manager sees everything), not just your own
+- [ ] Tap **Regenerate** — the displayed link changes to a new token, and the old link now 404s
+
 ## Phase 5 — Trainer
 
 Switch role (interactive):
@@ -417,6 +423,7 @@ bash scripts/change-user.sh
 - [ ] (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
 - [ ] Dashboard: if any of your instructed lessons are unpaid, a "Reminders" section with an "N unpaid lessons" card appears, linking to `/barn/dev-barn/finances/outstanding` — this is your only nav path to that page (no Finances link in the nav)
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (#1018) On the same Profile page, get/open your Calendar Feed link — it includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
 
 ## Phase 6 — Rider
 
@@ -450,6 +457,7 @@ bash scripts/change-user.sh
 > Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. This code path is already exercised for real in Phase 2-4's own-photo check (as yourself, no impersonation), which is sufficient coverage — don't re-add a self-photo check to an impersonated phase.
 - [ ] Switch to Emery (`change-user.sh` → Dev Barn → Emery) and open her own member detail page — the same Active Agreements cards from Phase 4 render as plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page; switch back to Dana afterward
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (#1018) On the same Profile page, get/open your Calendar Feed link — it includes only lessons Dana is enrolled in, not other riders' lessons
 
 ## Phase 7 — Multi-barn
 
