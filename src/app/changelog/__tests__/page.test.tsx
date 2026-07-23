@@ -52,6 +52,15 @@ describe('ChangelogPage', () => {
     expect(screen.getByTestId('markdown').textContent).toBe('# Hello Changelog')
   })
 
+  it('should_render_back_link_to_barns', () => {
+    const jsx = ChangelogPage()
+    render(jsx)
+
+    expect(
+      (screen.getByRole('link', { name: /back/i }) as HTMLAnchorElement).href
+    ).toContain('/barns')
+  })
+
   it('should_call_notFound_when_changelog_file_cannot_be_read', () => {
     mockReadFileSync.mockImplementation(() => {
       throw new Error('ENOENT: no such file or directory')

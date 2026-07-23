@@ -31,6 +31,14 @@ describe('AboutPage', () => {
     expect(screen.getByText(/stable state is a multi-tenant lesson-tracking application/i)).toBeDefined()
   })
 
+  it('should_render_back_link_to_barns', () => {
+    render(AboutPage())
+
+    expect(
+      (screen.getByRole('link', { name: /back/i }) as HTMLAnchorElement).href
+    ).toContain('/barns')
+  })
+
   it('should_render_terms_of_service_link', () => {
     render(AboutPage())
 
