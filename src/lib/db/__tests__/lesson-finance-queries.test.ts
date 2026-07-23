@@ -155,6 +155,16 @@ describe('getLessonFeeRows', () => {
     ])
   })
 
+  it('should_derive_collected_from_the_lesson_fee_row_even_when_instructor_payout_is_processed_last_with_a_stale_value', async () => {
+    vi.mocked(getTransactionRows).mockResolvedValue([
+      txRow({ kind: 'lesson_fee', amount: 100, collected: false, paymentType: null }),
+      txRow({ kind: 'instructor_payout', amount: -30, collected: true, membershipId: 'mem-1' }),
+    ])
+    makeLessonsLookupChain([{ id: 'lesson-1', tier_name: 'Standard' }])
+    const result = await getLessonFeeRows('barn-1', startDate, endDate)
+    expect(result[0].collected).toBe(false)
+  })
+
   it('should_keep_rows_for_different_lessons_separate', async () => {
     vi.mocked(getTransactionRows).mockResolvedValue([
       txRow({ lessonId: 'lesson-1', kind: 'lesson_fee', amount: 50 }),
@@ -281,6 +291,25 @@ describe('getLessonFeeRows', () => {
         },
       ])
       expect(froms.lesson_riders).toHaveBeenCalledWith('id', ['lr-1'])
+    })
+
+    it('should_derive_collected_from_the_rider_cancellation_fee_row_even_when_instructor_payout_is_processed_last_with_a_stale_value', async () => {
+      vi.mocked(getTransactionRows).mockResolvedValue([
+        txRow({
+          id: 'txn-fee', kind: 'rider_cancellation_fee', amount: 80, collected: false,
+          paymentType: null, lessonId: null, lessonRiderId: 'lr-1', occurredAt: '2026-05-10T10:00:00Z',
+        }),
+        txRow({
+          id: 'txn-payout', kind: 'instructor_payout', amount: -20, collected: true,
+          paymentType: null, lessonId: 'lesson-1', membershipId: 'mem-1',
+        }),
+      ])
+      makeMultiTableChain({
+        lesson_riders: { data: [{ id: 'lr-1', lesson_id: 'lesson-1' }] },
+        lessons: { data: [{ id: 'lesson-1', tier_name: 'Standard' }] },
+      })
+      const result = await getLessonFeeRows('barn-1', startDate, endDate)
+      expect(result[0].collected).toBe(false)
     })
 
     it('should_skip_the_lesson_riders_lookup_when_no_rider_cancellation_fee_rows_are_present', async () => {
