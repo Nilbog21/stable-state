@@ -6,6 +6,7 @@ cd "$(git rev-parse --show-toplevel)"
 NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-}"
 SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
 DEV_SUPABASE_URL="${DEV_SUPABASE_URL:-}"
+DEV_NAME="${DEV_NAME:-}"
 
 if [ ! -f ".env.local" ]; then
   echo "Error: .env.local not found. Copy .env.example to .env.local and fill in values." >&2
@@ -19,8 +20,9 @@ parse_var() {
 NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
 SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
+DEV_NAME="$(parse_var DEV_NAME || true)"
 
-for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DEV_SUPABASE_URL; do
+for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DEV_SUPABASE_URL DEV_NAME; do
   if [ -z "${!var_name}" ]; then
     echo "Error: $var_name is not set" >&2
     exit 1
@@ -36,5 +38,6 @@ fi
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
   DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
+  DEV_NAME="$DEV_NAME" \
   TEST_BARN_SLUG="$BARN_SLUG" \
   npx tsx scripts/seed-test-barn.ts

@@ -8,6 +8,7 @@
 // Playwright tests should hardcode these patterns to derive credentials from the slug.
 
 import { fileURLToPath } from 'url'
+import { randomUUID } from 'crypto'
 import { upsertProfile } from '@/lib/db/profiles'
 import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createTier } from '@/lib/db/lesson-tiers'
@@ -18,11 +19,13 @@ import { createExpense } from '@/lib/db/expenses'
 import { createAgreement } from '@/lib/db/agreements'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { teardown } from './teardown-test-barn'
+import { buildInvitePath } from './seed-account'
 import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const BARN_SLUG = process.env.TEST_BARN_SLUG
+const DEV_NAME = process.env.DEV_NAME
 
 const TEST_PASSWORD = 'TestPass123!'
 
@@ -30,10 +33,19 @@ export function buildTestUserEmail(barnSlug: string, role: string): string {
   return `${role}@${barnSlug}.e2e`
 }
 
+// Mirrors seed-account.sh's `${DEV_NAME%% *}` / `${DEV_NAME#* }` bash split so both
+// scripts derive the same first/last name from one DEV_NAME env var.
+export function splitDevName(devName: string): { firstName: string; lastName: string } {
+  const spaceIndex = devName.indexOf(' ')
+  if (spaceIndex === -1) return { firstName: devName, lastName: '' }
+  return { firstName: devName.slice(0, spaceIndex), lastName: devName.slice(spaceIndex + 1) }
+}
+
 async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
+  if (!DEV_NAME) throw new Error('DEV_NAME is required')
   assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
@@ -94,6 +106,33 @@ async function run() {
       { user_id: pendingId, barn_id: barnId, role: 'rider',   status: 'pending', can_instruct: false, profile_id: pendingProfileId },
     ]),
     'insert memberships'
+  )
+
+  // Dev-manager stub — lets the developer running /testIssue claim a real manager
+  // membership in this throwaway barn via the normal invite flow (claim_managed_member
+  // merges into their existing profile, per #887), so scripts/change-user.sh has a row
+  // of theirs to swap into. Mirrors seed-account.ts's stub-creation, not reused directly
+  // since that script is interactive/single-shot and this one seeds unattended.
+  const { firstName: devFirstName, lastName: devLastName } = splitDevName(DEV_NAME!)
+  const devProfile = mustSucceed<{ id: string }>(
+    await supabase
+      .from('profiles')
+      .insert({ first_name: devFirstName, last_name: devLastName, is_managed: true })
+      .select('id')
+      .single(),
+    'insert dev-manager stub profile'
+  )
+  const devInviteToken = randomUUID()
+  mustSucceed(
+    await supabase.from('barn_memberships').insert({
+      barn_id: barnId,
+      profile_id: devProfile.id,
+      role: 'manager',
+      status: 'active',
+      can_instruct: false,
+      invite_token: devInviteToken,
+    }),
+    'insert dev-manager stub membership'
   )
 
   const { data: riderMemberships, error: rmErr } = await supabase
@@ -271,6 +310,7 @@ async function run() {
   console.log(`  Pending:  Quinn Pending (rider, awaiting approval)`)
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
   console.log(`  Lease:    1 unpaid (2 months backdated)`)
+  console.log(`  Dev invite (manager, for change-user.sh): ${buildInvitePath(BARN_SLUG, devInviteToken)}`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
