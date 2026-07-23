@@ -464,6 +464,56 @@ describe('HorseDetailPage', () => {
     expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
   })
 
+  it('should_not_render_replace_control_for_manager_when_photo_locked_to_owner', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
+      id: 'horse-1',
+      name: 'Thunderbolt',
+      photo_path: 'barn-1/horse-photos/horse-1/1.jpg',
+      owning_member_id: 'mem-owner-x',
+      photo_uploaded_by: 'mem-owner-x',
+    }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Replace Photo')).toBeNull()
+  })
+
+  it('should_not_render_remove_control_for_manager_when_photo_locked_to_owner', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
+      id: 'horse-1',
+      name: 'Thunderbolt',
+      photo_path: 'barn-1/horse-photos/horse-1/1.jpg',
+      owning_member_id: 'mem-owner-x',
+      photo_uploaded_by: 'mem-owner-x',
+    }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /remove/i })).toBeNull()
+  })
+
+  it('should_render_replace_control_for_manager_when_horse_has_owner_but_photo_is_unlocked', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
+      id: 'horse-1',
+      name: 'Thunderbolt',
+      photo_path: 'barn-1/horse-photos/horse-1/1.jpg',
+      owning_member_id: 'mem-owner-x',
+      photo_uploaded_by: null,
+    }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Replace Photo')).toBeDefined()
+  })
+
+  it('should_render_set_photo_cta_for_manager_when_horse_has_owner_but_no_photo_yet', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
+      id: 'horse-1',
+      name: 'Thunderbolt',
+      owning_member_id: 'mem-owner-x',
+    }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Set Photo')).toBeDefined()
+  })
+
   it('should_not_render_replace_control_for_trainer_when_photo_present', async () => {
     mockRequireMembershipAs(trainerMembership)
     vi.mocked(getHorseById).mockResolvedValue(horseWithPhoto)
@@ -515,6 +565,38 @@ describe('HorseDetailPage', () => {
 
   it('should_not_render_set_photo_cta_for_rider_when_photo_absent', async () => {
     mockRequireMembershipAs(riderMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Set Photo')).toBeNull()
+  })
+
+  it('should_render_set_photo_cta_for_owner_rider_when_photo_absent', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: riderMembership.id }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Set Photo')).toBeDefined()
+  })
+
+  it('should_render_replace_control_for_owner_rider_when_photo_present', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg', owning_member_id: riderMembership.id }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Replace Photo')).toBeDefined()
+  })
+
+  it('should_render_remove_control_for_owner_rider_when_photo_present', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg', owning_member_id: riderMembership.id }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
+  })
+
+  it('should_not_render_set_photo_cta_for_non_owner_rider_when_photo_absent', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: 'mem-other' }))
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText('Set Photo')).toBeNull()

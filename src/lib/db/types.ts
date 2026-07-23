@@ -76,8 +76,9 @@ export interface Horse {
   exhaustion_threshold_moderate: number | null
   feed_notes: string | null
   medication_notes: string | null
-  photo_path: string | null
   owning_member_id: string | null
+  photo_path: string | null
+  photo_uploaded_by: string | null
   created_at: string
   updated_at: string
 }

@@ -52,9 +52,12 @@ export default async function NewDocumentPage({
   }
 
   if (entity === 'horse' && type === 'photo') {
-    const { barn } = await requireMembership(slug, ['manager'])
+    const { barn, membership: callerMembership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
     const horse = await getHorseById(id, barn.id)
     if (!horse) notFound()
+
+    const isOwner = horse.owning_member_id === callerMembership.id
+    if (callerMembership.role !== 'manager' && !isOwner) notFound()
 
     return (
       <main className="mx-auto max-w-md px-4 py-12">

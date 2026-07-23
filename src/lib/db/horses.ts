@@ -133,12 +133,27 @@ export async function updateHorseDetails(
 }
 
 export async function updateHorsePhotoPath(horseId: string, barnId: string, photoPath: string | null, client?: SupabaseClient): Promise<void> {
-  const supabase = client ?? await createClient()
-  const { error } = await supabase
-    .from('horses')
-    .update({ photo_path: photoPath })
-    .eq('id', horseId)
-    .eq('barn_id', barnId)
+  // A script-injected (service-role) client bypasses the owner/manager RPC's
+  // auth.uid() check entirely, same as the plain .update() a trusted script would run.
+  // There's no acting membership to attribute a set to, so only clear photo_uploaded_by
+  // on delete; a set leaves whatever attribution (if any) was already there untouched.
+  if (client) {
+    const update: { photo_path: string | null; photo_uploaded_by?: null } = { photo_path: photoPath }
+    if (photoPath === null) update.photo_uploaded_by = null
+    const { error } = await client
+      .from('horses')
+      .update(update)
+      .eq('id', horseId)
+      .eq('barn_id', barnId)
+    if (error) throw error
+    return
+  }
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('update_horse_photo', {
+    p_horse_id: horseId,
+    p_barn_id: barnId,
+    p_photo_path: photoPath,
+  })
   if (error) throw error
 }
 

@@ -573,9 +573,9 @@ describe('uploadHorsePhotoAction', () => {
     return fd
   }
 
-  it('should_call_requireMembership_with_manager_role_only', async () => {
+  it('should_call_requireMembership_with_all_roles', async () => {
     await uploadHorsePhotoAction('green-acres', 'horse-1', { error: null }, formDataWithFile()).catch(() => {})
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
   })
 
   it('should_return_error_when_file_type_is_not_jpeg_or_png', async () => {
@@ -634,9 +634,9 @@ describe('deleteHorsePhotoAction', () => {
     })
   })
 
-  it('should_call_requireMembership_with_manager_role_only', async () => {
+  it('should_call_requireMembership_with_all_roles', async () => {
     await deleteHorsePhotoAction('green-acres', 'horse-1')
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
   })
 
   it('should_call_removeHorsePhoto_with_barn_scoped_ids', async () => {
@@ -645,6 +645,17 @@ describe('deleteHorsePhotoAction', () => {
   })
 
   it('should_revalidate_horse_detail_path', async () => {
+    await deleteHorsePhotoAction('green-acres', 'horse-1')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_not_throw_when_removeHorsePhoto_is_not_authorized', async () => {
+    vi.mocked(removeHorsePhoto).mockRejectedValue(new Error('not_authorized'))
+    await expect(deleteHorsePhotoAction('green-acres', 'horse-1')).resolves.toBeUndefined()
+  })
+
+  it('should_still_revalidate_when_removeHorsePhoto_is_not_authorized', async () => {
+    vi.mocked(removeHorsePhoto).mockRejectedValue(new Error('not_authorized'))
     await deleteHorsePhotoAction('green-acres', 'horse-1')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })

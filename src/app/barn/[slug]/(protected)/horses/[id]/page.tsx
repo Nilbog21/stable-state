@@ -41,6 +41,9 @@ export default async function HorseDetailPage({
 
   const canSeeDocuments = role === 'manager' || role === 'trainer'
   const isManager = role === 'manager'
+  const isOwner = horse.owning_member_id === membership.id
+  const isPhotoLockedToOwner = horse.owning_member_id !== null && horse.photo_uploaded_by === horse.owning_member_id
+  const canWritePhoto = isOwner || (isManager && !isPhotoLockedToOwner)
 
   const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
   const photoUrl = horse.photo_path ? await getSignedUrl(horse.photo_path) : null
@@ -107,7 +110,7 @@ export default async function HorseDetailPage({
           <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             Photo
           </h2>
-          {role === 'manager' && (
+          {canWritePhoto && (
             photoUrl ? (
               <div className="flex items-center gap-3">
                 <Button href={photoHref} size="sm">Replace Photo</Button>

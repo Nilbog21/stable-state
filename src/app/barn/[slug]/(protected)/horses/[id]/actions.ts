@@ -77,7 +77,7 @@ export async function uploadHorsePhotoAction(
   prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
   const file = formData.get('file') as File | null
   let ext: string
@@ -101,8 +101,14 @@ export async function deleteHorsePhotoAction(
   barnSlug: string,
   horseId: string
 ): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
-  await removeHorsePhoto(horseId, barn.id)
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+  try {
+    await removeHorsePhoto(horseId, barn.id)
+  } catch {
+    // The UI already hides this control once locked; this guards a stale-page race
+    // (owner uploads between page render and a locked-out manager's click) instead of
+    // crashing — revalidate so the page reflects the current true state.
+  }
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
