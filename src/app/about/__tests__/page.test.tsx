@@ -47,28 +47,23 @@ describe('AboutPage', () => {
     ).toContain('/privacy')
   })
 
-  it('should_render_changelog_link', () => {
+  it('should_render_changelog_link_with_current_version', () => {
     render(AboutPage())
 
-    expect(
-      (screen.getByRole('link', { name: 'Changelog' }) as HTMLAnchorElement).href
-    ).toContain('/changelog')
+    const changelogLink = screen.getByRole('link', {
+      name: /changelog — version v3\.0\.3/i,
+    }) as HTMLAnchorElement
+    expect(changelogLink.href).toContain('/changelog')
   })
 
-  it('should_render_current_version_linking_to_changelog', () => {
-    render(AboutPage())
-
-    const versionLink = screen.getByRole('link', { name: /version v3\.0\.3/i }) as HTMLAnchorElement
-    expect(versionLink.href).toContain('/changelog')
-  })
-
-  it('should_omit_version_when_changelog_cannot_be_read', () => {
+  it('should_omit_version_from_changelog_link_when_changelog_cannot_be_read', () => {
     mockReadFileSync.mockImplementation(() => {
       throw new Error('ENOENT: no such file or directory')
     })
 
     render(AboutPage())
 
+    expect(screen.getByRole('link', { name: 'Changelog' })).toBeDefined()
     expect(screen.queryByText(/version v/i)).toBeNull()
   })
 })

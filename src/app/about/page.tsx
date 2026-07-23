@@ -29,11 +29,6 @@ export default function AboutPage() {
           membership and finances, trainers book and submit lessons, and riders track their own
           lesson history.
         </p>
-        {version && (
-          <p>
-            <Link href="/changelog">Version {version}</Link>
-          </p>
-        )}
         <ul>
           <li>
             <Link href="/terms">Terms of Service</Link>
@@ -42,7 +37,7 @@ export default function AboutPage() {
             <Link href="/privacy">Privacy Policy</Link>
           </li>
           <li>
-            <Link href="/changelog">Changelog</Link>
+            <Link href="/changelog">Changelog{version && ` — Version ${version}`}</Link>
           </li>
         </ul>
       </div>
