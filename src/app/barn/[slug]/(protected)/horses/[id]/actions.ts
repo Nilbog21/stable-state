@@ -68,7 +68,7 @@ export async function uploadHorsePhotoAction(
   prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
   const file = formData.get('file') as File | null
   let ext: string
@@ -92,7 +92,7 @@ export async function deleteHorsePhotoAction(
   barnSlug: string,
   horseId: string
 ): Promise<void> {
-  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
   await removeHorsePhoto(horseId, barn.id)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
