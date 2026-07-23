@@ -20,6 +20,12 @@ vi.mock('../ProfileForm', () => ({
   ProfileForm: vi.fn((props: { heading: string }) => <h1>{props.heading}</h1>),
 }))
 
+vi.mock('../CalendarFeedSection', () => ({
+  CalendarFeedSection: vi.fn((props: { initialToken: string | null }) => (
+    <div data-testid="calendar-feed-section">{props.initialToken ?? 'no-token'}</div>
+  )),
+}))
+
 const mockRedirect = vi.hoisted(() =>
   vi.fn((url: string) => {
     throw Object.assign(new Error('NEXT_REDIRECT'), {
@@ -35,12 +41,15 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('../actions', () => ({
   updateProfileAction: vi.fn(),
+  getCalendarFeedLinkAction: vi.fn(),
+  regenerateCalendarFeedLinkAction: vi.fn(),
 }))
 
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { ProfileForm } from '../ProfileForm'
+import { CalendarFeedSection } from '../CalendarFeedSection'
 import ProfilePage from '../page'
 import ProfileCompletePage from '../complete/page'
 
@@ -133,6 +142,62 @@ describe('ProfilePage - redirectAfterSave', () => {
     render((await ProfilePage({ searchParams: Promise.resolve({ barn: 'barn-a' }) })) as React.ReactElement)
     const [props] = vi.mocked(ProfileForm).mock.calls[0]
     expect(props.redirectAfterSave).toBe('/barn/barn-a')
+  })
+})
+
+describe('ProfilePage - CalendarFeedSection', () => {
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockReset()
+    vi.mocked(getProfileByUserId).mockReset()
+    vi.mocked(getBarnMembershipsForUser).mockReset()
+    vi.mocked(CalendarFeedSection).mockClear()
+    mockRedirect.mockClear()
+  })
+
+  it('should_not_render_when_no_barn_param', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
+    ])
+    render((await ProfilePage()) as React.ReactElement)
+    expect(screen.queryByTestId('calendar-feed-section')).toBeNull()
+  })
+
+  it('should_not_render_when_barn_param_does_not_match_any_active_membership', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      { barn: createMockBarn({ slug: 'green-acres' }), membership: createMockMembership({ status: 'active' }) },
+    ])
+    render((await ProfilePage({ searchParams: Promise.resolve({ barn: 'no-such-barn' }) })) as React.ReactElement)
+    expect(screen.queryByTestId('calendar-feed-section')).toBeNull()
+  })
+
+  it('should_render_with_matching_active_membership_token', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      {
+        barn: createMockBarn({ slug: 'green-acres' }),
+        membership: createMockMembership({ status: 'active', calendar_feed_token: 'tok-xyz' }),
+      },
+    ])
+    render((await ProfilePage({ searchParams: Promise.resolve({ barn: 'green-acres' }) })) as React.ReactElement)
+    expect(screen.getByTestId('calendar-feed-section').textContent).toBe('tok-xyz')
+  })
+
+  it('should_render_with_null_token_when_membership_has_none_yet', async () => {
+    mockAuth({ id: 'user-1', email: 'user@example.com' })
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
+      {
+        barn: createMockBarn({ slug: 'green-acres' }),
+        membership: createMockMembership({ status: 'active', calendar_feed_token: null }),
+      },
+    ])
+    render((await ProfilePage({ searchParams: Promise.resolve({ barn: 'green-acres' }) })) as React.ReactElement)
+    expect(screen.getByTestId('calendar-feed-section').textContent).toBe('no-token')
   })
 })
 
