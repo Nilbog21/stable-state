@@ -38,7 +38,7 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 
 `.test.ts` files are automated via vitest (`ci.sh` → `npm run test:coverage`). `.sh` wrapper scripts are not automated — `.test.sh` files, where they exist, are run manually by hand and don't need to be wired into `ci.sh`.
 
-`reset-db` is the canonical example of the full pattern.
+`reset-db`/`seed-barn` is the canonical example of the full pattern, split across two files (#502): `reset-db.ts` holds the `.sh`-validated bootstrapping, `seed-barn.ts` holds the pure logic and its `.test.ts`.
 
 ### Audit — release-2
 

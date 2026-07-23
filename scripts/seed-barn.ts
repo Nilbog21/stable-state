@@ -231,11 +231,10 @@ export async function seedBarn(
   supabase: SupabaseClient,
   barnId: string,
   barnSlug: string,
-  managerUserId: string
+  managerUserId: string,
+  now: Date = new Date()
 ): Promise<SeedBarnResult> {
   console.log(`Seeding barn ${barnSlug}…`)
-
-  const now = new Date()
 
   const m2Profile = await upsertProfile(managerUserId, DEV_MANAGER_2.email, DEV_MANAGER_2.firstName, DEV_MANAGER_2.lastName, supabase)
   const m2Membership = mustSucceed<{ id: string }>(

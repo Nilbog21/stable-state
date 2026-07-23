@@ -56,7 +56,7 @@ async function run() {
   })
   if (m2Err) throw new Error(`create manager2: ${m2Err.message}`)
 
-  const { lessonDates, pastLessons, expenseSeeds, defaultBoardFee } = await seedBarn(supabase, DEV_BARN_ID, DEV_BARN_SLUG, m2Data.user.id)
+  const { lessonDates, pastLessons, expenseSeeds, defaultBoardFee } = await seedBarn(supabase, DEV_BARN_ID, DEV_BARN_SLUG, m2Data.user.id, now)
 
   const paidCount = pastLessons.filter((_: unknown, i: number) => getPaymentType(i, true) !== null).length - 1
   const groupCount = lessonDates.filter((_, i) => isGroupLesson(i)).length
