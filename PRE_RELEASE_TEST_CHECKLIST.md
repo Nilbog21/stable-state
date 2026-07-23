@@ -20,6 +20,8 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] Visit `/login` — a **Privacy Policy** link is present
 - [ ] Clicking the link opens `/privacy`
 - [ ] The `/privacy` page renders the drafted privacy policy content
+- [ ] In a fresh/incognito browser (no existing session), visit `/demo` — a spinner and "Explore Stable State" heading render, then you land in a new `/barn/demo-.../` barn as its manager (requires `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` in `.env.local`, from `scripts/setup-demo-user.sh` — `/demo` 404s if unset)
+- [ ] Visiting `/demo` again in the same browser resumes the same demo barn (same URL) instead of creating a new one
 - [ ] Reset and reseed the dev database:
 
   ```bash
@@ -480,6 +482,7 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/login` | Phase 7 |
 | `/terms` | Phase 1 |
 | `/privacy` | Phase 1 |
+| `/demo` | Phase 1 |
 | `/barns` | Phase 7 |
 | `/barn/[slug]` (dashboard) | Phases 4, 6 |
 | `/barn/[slug]/login` | Phases 1, 2, 7 |
