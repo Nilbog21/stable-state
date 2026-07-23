@@ -676,4 +676,14 @@ describe('SettingsPage', () => {
 
     expect(screen.getByText(/grouped by horse and member/i)).toBeDefined()
   })
+
+  it('should_render_a_data_sub_block_with_an_always_enabled_download_button', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /download data/i }).hasAttribute('disabled')).toBe(false)
+  })
 })
