@@ -331,6 +331,10 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] Change both and **Save** → values persist on reload
 - [ ] Try setting Moderate ≥ High → rejected with a field error and values unchanged
 - [ ] **Barn Timezone** select shows the current value (default Eastern); change it and Save → persists on reload; add a planned expense due a few minutes from now, wait for its due time to pass, then confirm it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
+- [ ] **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
+- [ ] Create an event with a title, date/hour, and notes → it appears in the Barn Events list with the correct title, date, and "manager, trainer, rider" visible-to text
+- [ ] **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked and Manager/Trainer still checked
+- [ ] From the event's Edit page, tap **Delete** → confirm page shows the event's title → **Confirm Delete** → event no longer appears in the Barn Events list
 
 Notifications and profile:
 
@@ -472,6 +476,9 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/barn/[slug]/settings` | Phases 2, 4, 7 |
 | `/barn/[slug]/settings/tiers/new` | Phase 2 |
 | `/barn/[slug]/settings/tiers/[id]` | Phase 4 |
+| `/barn/[slug]/settings/events/new` | Phase 4 |
+| `/barn/[slug]/settings/events/[id]` | Phase 4 |
+| `/barn/[slug]/settings/events/[id]/delete` | Phase 4 |
 | `/barn/[slug]/guide` | Phase 4 |
 | `/profile` | Phase 4 |
 | `/profile/complete` | Phases 1, 2 |

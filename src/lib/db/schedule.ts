@@ -5,10 +5,10 @@ import { getLessonJunctionRows } from './lesson-finance-queries'
 import type { ScheduleItem } from './types'
 
 /**
- * Merged, duration-aware read of `lessons` + `horse_expenses` for availability/conflict
- * checking (#1013). No physical `events` table — mirrors the existing `agreement_charges`
- * vs. lessons precedent in Finances; a UNION across two indexed tables isn't a real
- * bottleneck at barn scale. Raw-row fetch + merge only, no name resolution — same idiom as
+ * Merged, duration-aware read of `lessons` + `horse_expenses` + `barn_events` (#1014) for
+ * availability/conflict checking (#1013). A UNION across indexed tables isn't a real
+ * bottleneck at barn scale — mirrors the existing `agreement_charges` vs. lessons precedent
+ * in Finances. Raw-row fetch + merge only, no name resolution — same idiom as
  * lesson-finance-queries.ts.
  */
 
@@ -25,6 +25,11 @@ interface ScheduleExpenseRow {
   id: string
   start: string // barn-local wall clock, see ScheduleItem.start
   horse_ids: string[]
+}
+
+interface ScheduleEventRow {
+  id: string
+  start: string // barn-local wall clock, see ScheduleItem.start
 }
 
 // Half-open interval [start, start + durationMinutes) — an item ending exactly when
@@ -45,7 +50,11 @@ export function intervalsOverlap(a: ScheduleItem, b: ScheduleItem): boolean {
   return aStart < bEnd && bStart < aEnd
 }
 
-export function mergeScheduleItems(lessons: ScheduleLessonRow[], expenses: ScheduleExpenseRow[]): ScheduleItem[] {
+export function mergeScheduleItems(
+  lessons: ScheduleLessonRow[],
+  expenses: ScheduleExpenseRow[],
+  events: ScheduleEventRow[] = []
+): ScheduleItem[] {
   const lessonItems: ScheduleItem[] = lessons.map((l) => ({
     id: l.id,
     itemType: 'lesson',
@@ -62,7 +71,15 @@ export function mergeScheduleItems(lessons: ScheduleLessonRow[], expenses: Sched
     instructorId: null,
     horseIds: e.horse_ids,
   }))
-  return [...lessonItems, ...expenseItems].sort((a, b) => a.start.localeCompare(b.start))
+  const eventItems: ScheduleItem[] = events.map((e) => ({
+    id: e.id,
+    itemType: 'event',
+    start: e.start,
+    durationMinutes: 0,
+    instructorId: null,
+    horseIds: [],
+  }))
+  return [...lessonItems, ...expenseItems, ...eventItems].sort((a, b) => a.start.localeCompare(b.start))
 }
 
 /**
@@ -74,7 +91,9 @@ export function mergeScheduleItems(lessons: ScheduleLessonRow[], expenses: Sched
  *
  * RLS is respected as-is, no new grants: horse_expenses SELECT is manager-only, so a
  * trainer/rider caller gets lesson items back with no expense items, silently (zero rows,
- * not an error).
+ * not an error). barn_events SELECT (#1014) is role-filtered rather than manager-only —
+ * a trainer/rider caller gets back whatever events `visible_to_roles` includes their role
+ * in, via RLS; no DAL-level role check needed here.
  */
 export async function getScheduleForRange(
   barnId: string,
@@ -157,5 +176,20 @@ export async function getScheduleForRange(
     horse_ids: expenseHorseIdsByExpenseId.get(e.id) ?? [],
   }))
 
-  return mergeScheduleItems(scheduleLessonRows, scheduleExpenseRows)
+  // event_at, like lesson_at, is a true UTC instant — same real-instant bound as lessons,
+  // no wall-clock coarse/precise split needed (that's only for horse_expenses' zoneless digits).
+  const { data: eventData, error: eventsError } = await supabase
+    .from('barn_events')
+    .select('id, event_at')
+    .eq('barn_id', barnId)
+    .gte('event_at', from)
+    .lt('event_at', to)
+  if (eventsError) throw eventsError
+
+  const scheduleEventRows: ScheduleEventRow[] = ((eventData ?? []) as { id: string; event_at: string }[]).map((e) => ({
+    id: e.id,
+    start: instantToLocalWallClock(new Date(e.event_at), timezone),
+  }))
+
+  return mergeScheduleItems(scheduleLessonRows, scheduleExpenseRows, scheduleEventRows)
 }
