@@ -72,6 +72,34 @@ export async function updateScheduleBufferMinutes(
   return data
 }
 
+export async function countDemoBarns(client: SupabaseClient): Promise<number> {
+  const { count, error } = await client
+    .from('barns')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_demo', true)
+
+  if (error) throw error
+  return count ?? 0
+}
+
+export async function getOldestDemoBarn(client: SupabaseClient): Promise<Barn | null> {
+  const { data, error } = await client
+    .from('barns')
+    .select('*')
+    .eq('is_demo', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteBarn(barnId: string, client: SupabaseClient): Promise<void> {
+  const { error } = await client.from('barns').delete().eq('id', barnId)
+  if (error) throw error
+}
+
 export async function updateExhaustionThresholds(
   barnId: string,
   updates: { moderate: number; high: number },
