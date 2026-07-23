@@ -1313,13 +1313,13 @@ describe('getUpcomingLessons', () => {
     expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
   })
 
-  it('should_filter_by_instructor_id_using_callers_own_membership_id_for_manager_role', async () => {
+  it('should_not_filter_by_instructor_id_for_manager_role', async () => {
     const { select, mockInstructorEq } = makeInstructorLessonsChain([])
     vi.mocked(createClient).mockResolvedValue({ from: fromWithCallerMembership(select, 'manager-membership-1') } as any)
 
     await getUpcomingLessons('barn-1', from, to, 'user-1', 'manager')
 
-    expect(mockInstructorEq).toHaveBeenCalledWith('instructor_id', 'manager-membership-1')
+    expect(mockInstructorEq).not.toHaveBeenCalled()
   })
 
   it('should_filter_by_instructor_id_using_callers_own_membership_id_for_trainer_role', async () => {
