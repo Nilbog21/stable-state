@@ -200,9 +200,31 @@ describe('NewDocumentPage', () => {
     expect(screen.getByTestId('document-upload-form').textContent).toBe('rider')
   })
 
-  it('should_call_requireMembership_with_manager_only_for_photo_type', async () => {
+  it('should_call_requireMembership_with_all_roles_for_photo_type', async () => {
     await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_call_notFound_for_photo_type_when_caller_is_non_owner_rider', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: 'mem-other' }))
+    await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  it('should_render_document_upload_form_for_photo_type_when_caller_is_owner', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-rdr' } as any,
+      barn: mockBarn,
+      membership: riderMembership,
+    })
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: riderMembership.id }))
+    const jsx = await NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))
+    render(jsx)
+    expect(screen.getByTestId('document-upload-form')).toBeDefined()
   })
 
   it('should_render_set_photo_heading_when_horse_has_no_photo', async () => {

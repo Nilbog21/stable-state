@@ -749,36 +749,32 @@ describe('updateHorsePhotoPath', () => {
   })
 
   it('should_update_photo_path', async () => {
-    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
-    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update }),
-    } as any)
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
 
     await updateHorsePhotoPath('horse-1', 'barn-1', 'barn-1/horse-photos/horse-1/123.jpg')
-    expect(update).toHaveBeenCalledWith({ photo_path: 'barn-1/horse-photos/horse-1/123.jpg' })
+    expect(rpc).toHaveBeenCalledWith('update_horse_photo', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_photo_path: 'barn-1/horse-photos/horse-1/123.jpg',
+    })
   })
 
   it('should_clear_photo_path_when_null', async () => {
-    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
-    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update }),
-    } as any)
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
 
     await updateHorsePhotoPath('horse-1', 'barn-1', null)
-    expect(update).toHaveBeenCalledWith({ photo_path: null })
+    expect(rpc).toHaveBeenCalledWith('update_horse_photo', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_photo_path: null,
+    })
   })
 
   it('should_throw_on_supabase_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockResolvedValue({ error: new Error('update error') }),
-          }),
-        }),
-      }),
+      rpc: vi.fn().mockResolvedValue({ error: new Error('update error') }),
     } as any)
 
     await expect(updateHorsePhotoPath('horse-1', 'barn-1', 'path.jpg')).rejects.toThrow('update error')
@@ -820,9 +816,7 @@ function makeSelectChainForPhotoPath(photoPath: string | null) {
 
 function makeUpdateChainForPhotoPath(error: Error | null = null) {
   return {
-    update: vi.fn().mockReturnValue({
-      eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error }) }),
-    }),
+    rpc: vi.fn().mockResolvedValue({ error }),
   }
 }
 
@@ -840,7 +834,7 @@ describe('replaceHorsePhoto', () => {
   it('should_upload_to_horse_photos_prefix', async () => {
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath(null)) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForPhotoPath()) } as any)
+      .mockResolvedValueOnce(makeUpdateChainForPhotoPath() as any)
 
     await replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg')
 
@@ -851,17 +845,21 @@ describe('replaceHorsePhoto', () => {
     const updateChain = makeUpdateChainForPhotoPath()
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath(null)) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(updateChain) } as any)
+      .mockResolvedValueOnce(updateChain as any)
 
     await replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg')
 
-    expect(updateChain.update).toHaveBeenCalledWith({ photo_path: expect.stringMatching(/^barn-1\/horse-photos\/horse-1\/\d+\.jpg$/) })
+    expect(updateChain.rpc).toHaveBeenCalledWith('update_horse_photo', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_photo_path: expect.stringMatching(/^barn-1\/horse-photos\/horse-1\/\d+\.jpg$/),
+    })
   })
 
   it('should_remove_old_photo_after_replacing', async () => {
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath('barn-1/horse-photos/horse-1/old.jpg')) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForPhotoPath()) } as any)
+      .mockResolvedValueOnce(makeUpdateChainForPhotoPath() as any)
 
     await replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg')
 
@@ -871,7 +869,7 @@ describe('replaceHorsePhoto', () => {
   it('should_not_remove_anything_when_there_was_no_previous_photo', async () => {
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath(null)) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForPhotoPath()) } as any)
+      .mockResolvedValueOnce(makeUpdateChainForPhotoPath() as any)
 
     await replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg')
 
@@ -881,7 +879,7 @@ describe('replaceHorsePhoto', () => {
   it('should_roll_back_uploaded_file_when_db_update_fails', async () => {
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath(null)) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForPhotoPath(new Error('db error'))) } as any)
+      .mockResolvedValueOnce(makeUpdateChainForPhotoPath(new Error('db error')) as any)
 
     await expect(replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg')).rejects.toThrow('db error')
     expect(removeFile).toHaveBeenCalledWith(expect.stringMatching(/^barn-1\/horse-photos\/horse-1\/\d+\.jpg$/), undefined)
@@ -890,7 +888,7 @@ describe('replaceHorsePhoto', () => {
   it('should_not_remove_old_photo_when_db_update_fails', async () => {
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath('barn-1/horse-photos/horse-1/old.jpg')) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForPhotoPath(new Error('db error'))) } as any)
+      .mockResolvedValueOnce(makeUpdateChainForPhotoPath(new Error('db error')) as any)
 
     await expect(replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg')).rejects.toThrow('db error')
     expect(removeFile).not.toHaveBeenCalledWith('barn-1/horse-photos/horse-1/old.jpg')
@@ -940,17 +938,21 @@ describe('removeHorsePhoto', () => {
     const updateChain = makeUpdateChainForPhotoPath()
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath('barn-1/horse-photos/horse-1/photo.jpg')) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(updateChain) } as any)
+      .mockResolvedValueOnce(updateChain as any)
 
     await removeHorsePhoto('horse-1', 'barn-1')
 
-    expect(updateChain.update).toHaveBeenCalledWith({ photo_path: null })
+    expect(updateChain.rpc).toHaveBeenCalledWith('update_horse_photo', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_photo_path: null,
+    })
   })
 
   it('should_remove_storage_file_when_photo_present', async () => {
     vi.mocked(createClient)
       .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForPhotoPath('barn-1/horse-photos/horse-1/photo.jpg')) } as any)
-      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForPhotoPath()) } as any)
+      .mockResolvedValueOnce(makeUpdateChainForPhotoPath() as any)
 
     await removeHorsePhoto('horse-1', 'barn-1')
 
