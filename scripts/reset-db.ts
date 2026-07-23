@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'url'
-import { upsertProfile, updateContactInfo } from '@/lib/db/profiles'
+import { upsertProfile, updateContactInfo, replaceProfilePhoto } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
 
 import { createHorse } from '@/lib/db/horses'
@@ -42,6 +42,11 @@ export const DEV_MANAGER_2 = { email: 'manager2@dev.local', firstName: 'Morgan',
 export const DEV_TRAINER_4 = { email: 'trainer4@dev.local', firstName: 'Drew', lastName: 'Trainer' }
 
 export const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
+
+// #1004: a 1x1 pixel JPEG, inline rather than a checked-in fixture file — reset-db has
+// no existing convention for binary test assets, and this is the smallest valid JPEG.
+const DEV_PHOTO_JPEG_BASE64 =
+  '/9j/4AAQSkZJRgABAQEAYABgAAD/2wBDAAMCAgICAgMCAgIDAwMDBAYEBAQEBAgGBgUGCQgKCgkICQkKDA8MCgsOCwkJDRENDg8QEBEQCgwSExIQEw8QEBD/wAALCAABAAEBAREA/8QAFAABAAAAAAAAAAAAAAAAAAAABf/EABQQAQAAAAAAAAAAAAAAAAAAAAX/2gAIAQEAAD8AVN//2Q=='
 
 const DEV_TIER_NAME = 'Normal Tier'
 const DEV_TIER_PRICE = 100
@@ -310,6 +315,12 @@ async function run() {
     { phone: '555-0301', emergency_contact_name: 'Jamie Rider', emergency_contact_phone: '555-0302' },
     supabase
   )
+
+  // #1004: Emery has a photo pre-set so "view another member's photo, read-only" is
+  // manually testable without a live upload (which the change-user.sh role swap can't
+  // do for a self-write — see PRE_RELEASE_TEST_CHECKLIST.md's Phase 6 note).
+  const devPhotoFile = new File([Buffer.from(DEV_PHOTO_JPEG_BASE64, 'base64')], 'dev-photo.jpg', { type: 'image/jpeg' })
+  await replaceProfilePhoto(riderProfileIds[1], DEV_BARN_ID, devPhotoFile, 'jpg')
 
   mustSucceed(
     await supabase.from('barn_memberships').insert(
@@ -687,7 +698,7 @@ async function run() {
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
   console.log(`  Manager2: ${DEV_MANAGER_2.email} (can_instruct=true — appears in instructor dropdown)`)
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
-  console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')}`)
+  console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')} (${DEV_RIDERS[1].firstName} has a profile photo set)`)
   console.log(`  Pending:  ${DEV_PENDING_RIDER.email} (${DEV_PENDING_RIDER.firstName} ${DEV_PENDING_RIDER.lastName}, awaiting approval)`)
   console.log(`  Horses:   ${DEV_HORSES.join(', ')}, plus ${DEV_RETIRED_HORSE} (retired, deactivated_at 30 days ago, 3 past lessons + 1 upcoming), plus ${DEV_UNAVAILABLE_HORSE} (unavailable: "${DEV_UNAVAILABLE_REASON}")`)
   console.log(`  Tiers:    ${DEV_TIER_NAME} ($${DEV_TIER_PRICE}, default), ${DEV_TIER_2_NAME} ($${DEV_TIER_2_PRICE})`)
