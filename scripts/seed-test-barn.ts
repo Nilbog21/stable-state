@@ -15,6 +15,8 @@ import { createTier } from '@/lib/db/lesson-tiers'
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createExpense } from '@/lib/db/expenses'
+import { createAgreement } from '@/lib/db/agreements'
+import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { teardown } from './teardown-test-barn'
 import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
@@ -51,7 +53,7 @@ async function run() {
     'insert barn'
   )
 
-  const { data: barn } = await supabase.from('barns').select('id').eq('slug', BARN_SLUG).single()
+  const { data: barn } = await supabase.from('barns').select('id, timezone').eq('slug', BARN_SLUG).single()
   if (!barn) throw new Error('barn not found after insert')
   const barnId = barn.id
 
@@ -116,6 +118,11 @@ async function run() {
     new Date(now.getTime() - daysAgo * 24 * 60 * 60 * 1000).toISOString()
   const future = (daysAhead: number) =>
     new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000).toISOString()
+  // DATE-only columns (horse_expenses.expense_date) must land on the barn's own
+  // calendar day, not UTC's — getUpcomingScheduledExpenses compares them against a
+  // barn-timezone wall-clock window (see barns.timezone in docs/architecture/schema.md).
+  const futureBarnLocalDate = (daysAhead: number) =>
+    instantToLocalWallClock(new Date(future(daysAhead)), barn.timezone).slice(0, 10)
 
   await createLessonWithParticipants({
     barnId, instructorId: trainerMembershipId, lessonAt: past(5), fee: tier1.price,
@@ -177,6 +184,26 @@ async function run() {
     lessonType: 'normal', jumping: false, tierName: tier1.name,
   }, supabase)
 
+  // Same-day lesson so the dashboard's "Today" section (split from "This Week") has
+  // something to render. fee: 0 keeps it out of every outstanding-fee query
+  // regardless of how much time passes between seeding and the e2e run.
+  await createLessonWithParticipants({
+    barnId, instructorId: trainerMembershipId, lessonAt: now.toISOString(), fee: 0,
+    horseIds: [horse1.id], exertionLevels: [2], riderIds: [rider1MembershipId],
+    lessonType: 'normal', jumping: false, tierName: 'Custom',
+  }, supabase)
+
+  // Isolated unpaid lease charge — one_time cadence backdates the charge's period to
+  // 2 months ago (a monthly agreement's first charge is always for the current month,
+  // per create_agreement_with_first_charge, so it wouldn't be "outstanding" yet).
+  // Enrolls rider2 only, mirroring the isolated unpaid lesson above, so the 'rider'
+  // test login still has zero reminders.
+  const leaseStartDate = new Date(now.getTime() - 60 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  await createAgreement({
+    barnId, riderId: rider2MembershipId, horseId: horse2.id, fee: 150,
+    kind: 'lease', cadence: 'one_time', startDate: leaseStartDate,
+  }, supabase)
+
   // Undated document reminder for the dashboard's Document Reminders card — the
   // e2e spec sets a past reminder_date via the horse page's UI form. No DAL
   // equivalent takes a service-role client (documents.ts's createDocument always
@@ -212,7 +239,7 @@ async function run() {
   // Time is pinned to 23:00 (vs. the lesson's uncontrolled seed-time-of-day) so the
   // e2e spec can assert a deterministic "lesson card before expense card" DOM order.
   await createExpense(barnId, {
-    expenseDate: future(2).slice(0, 10),
+    expenseDate: futureBarnLocalDate(2),
     expenseTime: '23:00',
     recipient: 'Valley Farrier',
     expenseType: 'Farrier',
@@ -223,7 +250,7 @@ async function run() {
   // Date-only planned expense (no expense_time) — must NOT appear on the dashboard,
   // which only shows scheduled expenses that have a time set.
   await createExpense(barnId, {
-    expenseDate: future(4).slice(0, 10),
+    expenseDate: futureBarnLocalDate(4),
     recipient: 'Feed Supplier',
     expenseType: 'Feed',
     appliesToAllHorses: true,
@@ -236,9 +263,10 @@ async function run() {
   console.log(`  Rider:    ${buildTestUserEmail(BARN_SLUG, 'rider')} / ${TEST_PASSWORD}`)
   console.log(`  Horses:   Apollo, Bella`)
   console.log(`  Tiers:    Standard ($80, default), Premium ($120)`)
-  console.log(`  Lessons:  7 (5 past, 2 future; 1 group; all but 1 marked paid)`)
+  console.log(`  Lessons:  8 (5 past, 1 today, 2 future; 1 group; all but 1 marked paid)`)
   console.log(`  Pending:  Quinn Pending (rider, awaiting approval)`)
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
+  console.log(`  Lease:    1 unpaid (2 months backdated)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

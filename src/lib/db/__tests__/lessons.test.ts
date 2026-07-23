@@ -1215,7 +1215,7 @@ describe('getUpcomingLessons', () => {
   const to = '2026-06-09T00:00:00.000Z'
 
   // manager/trainer path: select → eq(barn_id) → gte → lt → [trainer only: eq(instructor_id)] → order
-  function makeInstructorLessonsChain(data: unknown[], error: Error | null = null) {
+  function makeInstructorLessonsChain(data: unknown[] | null, error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
     const mockInstructorEq = vi.fn().mockReturnValue({ order: mockOrder })
     const mockLt = vi.fn().mockReturnValue({ order: mockOrder, eq: mockInstructorEq })
@@ -1472,6 +1472,15 @@ describe('getUpcomingLessons', () => {
 
   it('should_return_empty_array_when_no_lessons_in_range', async () => {
     const { select } = makeInstructorLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: fromWithCallerMembership(select) } as any)
+
+    const result = await getUpcomingLessons('barn-1', from, to, 'user-1', 'manager')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_return_empty_array_when_lessons_data_is_null_for_manager', async () => {
+    const { select } = makeInstructorLessonsChain(null)
     vi.mocked(createClient).mockResolvedValue({ from: fromWithCallerMembership(select) } as any)
 
     const result = await getUpcomingLessons('barn-1', from, to, 'user-1', 'manager')

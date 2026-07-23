@@ -12,6 +12,11 @@ test('dashboard_this_week_section_visible @manager', async ({ page }) => {
   await expect(page.getByRole('heading', { name: 'This Week' })).toBeVisible()
 })
 
+test('dashboard_today_section_visible @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  await expect(page.getByRole('heading', { name: 'Today' })).toBeVisible()
+})
+
 // The Valley Farrier expense is seeded at 23:00 on the same day as a lesson whose
 // own time-of-day isn't controlled (it's "2 days from whenever the suite seeded the
 // barn") — pinning the expense to near end-of-day makes "lesson card, then expense
@@ -29,11 +34,31 @@ test('dashboard_date_only_planned_expense_not_shown @manager', async ({ page }) 
   await expect(page.getByText('Feed Supplier')).toHaveCount(0)
 })
 
-test('dashboard_expense_card_shows_recipient_type_and_horse @manager', async ({ page }) => {
+test('dashboard_expense_card_shows_scheduled_time @manager', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}`)
   const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
-  const text = await expenseLink.innerText()
-  expect(text.includes('Valley Farrier') && text.includes('Farrier') && text.includes('Apollo')).toBe(true)
+  await expect(expenseLink.locator('p').first()).toContainText('11:00 PM')
+})
+
+test('dashboard_expense_card_shows_recipient @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
+  await expect(expenseLink).toContainText('Valley Farrier')
+})
+
+// A substring check for "Farrier" alone would trivially pass off the recipient name
+// ("Valley Farrier") even if the expense-type field were removed entirely — this
+// targets the type paragraph specifically so it verifies that field independently.
+test('dashboard_expense_card_shows_type @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
+  await expect(expenseLink.locator('p').nth(2)).toHaveText('Farrier')
+})
+
+test('dashboard_expense_card_shows_horse @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
+  await expect(expenseLink).toContainText('Apollo')
 })
 
 test('dashboard_reminders_header_visible_for_manager @manager', async ({ page }) => {
@@ -82,7 +107,8 @@ test('dashboard_unpaid_lesson_reminder_links_to_outstanding @manager', async ({ 
   await expect(unpaidLessons).toHaveAttribute('href', `/barn/${barnSlug}/finances/outstanding`)
 })
 
-test('dashboard_unpaid_lease_reminder_hidden_when_zero_charges @manager', async ({ page }) => {
+test('dashboard_unpaid_lease_reminder_links_to_outstanding @manager', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}`)
-  await expect(page.getByRole('link', { name: /unpaid lease/ })).toHaveCount(0)
+  const unpaidLease = page.getByRole('link', { name: /unpaid lease/ })
+  await expect(unpaidLease).toHaveAttribute('href', `/barn/${barnSlug}/finances/outstanding`)
 })

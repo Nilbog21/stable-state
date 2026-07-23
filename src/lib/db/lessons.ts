@@ -312,5 +312,5 @@ export async function getUpcomingLessons(
 
   const { data: lessons, error: lessonsError } = await query.order('lesson_at', { ascending: true })
   if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons, barnId)
+  return hydrateParticipants(supabase, lessons ?? [], barnId)
 }
