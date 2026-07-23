@@ -123,6 +123,8 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 
 **Horse Exhaustion Thresholds** — Set the barn-wide **Moderate threshold** and **High threshold** used to flag a horse as getting overworked, based on its recent exertion total. These are barn-wide defaults; an individual horse can be given its own thresholds that override them. The moderate threshold must be lower than the high threshold.
 
+**Barn Events** — Add calendar entries that aren't a lesson or an expense, like a costume party or a barn closure. Tap **Add Event** in the section header to create one: give it a title, a date and hour, and optional notes. The **Visible to** checkboxes control who sees the event — Manager, Trainer, Rider — and default to everyone checked, so you only need to narrow it down for something that shouldn't be barn-wide. Tap **Edit** next to an event to change any of that or delete it.
+
 ## Approvals
 
 New members always join through a per-person invite link (see **Members** above), not by requesting access, so this section is normally empty. Go to **Settings** to review any pending membership requests — approving one grants the member active access to the barn.
