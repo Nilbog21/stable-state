@@ -1,0 +1,88 @@
+import { test, expect } from '@playwright/test'
+
+const barnSlug = process.env.TEST_BARN_SLUG!
+
+test('dashboard_barn_schedule_heading_visible @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  await expect(page.getByRole('heading', { name: 'Barn Schedule' })).toBeVisible()
+})
+
+test('dashboard_this_week_section_visible @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  await expect(page.getByRole('heading', { name: 'This Week' })).toBeVisible()
+})
+
+// The Valley Farrier expense is seeded at 23:00 on the same day as a lesson whose
+// own time-of-day isn't controlled (it's "2 days from whenever the suite seeded the
+// barn") — pinning the expense to near end-of-day makes "lesson card, then expense
+// card, then the later lesson 3 days out" a deterministic DOM order regardless.
+test('dashboard_expense_interleaved_with_lesson_by_time_in_this_week @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  const thisWeek = page.locator('section').filter({ has: page.getByRole('heading', { name: 'This Week', exact: true }) })
+  const cardLinks = thisWeek.locator('a[href*="/lessons/"], a[href*="/expenses/"]')
+  const hrefs = await cardLinks.evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''))
+  expect(hrefs.map((h) => h.includes('/expenses/'))).toEqual([false, true, false])
+})
+
+test('dashboard_date_only_planned_expense_not_shown @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  await expect(page.getByText('Feed Supplier')).toHaveCount(0)
+})
+
+test('dashboard_expense_card_shows_recipient_type_and_horse @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  const expenseLink = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Valley Farrier' })
+  const text = await expenseLink.innerText()
+  expect(text.includes('Valley Farrier') && text.includes('Farrier') && text.includes('Apollo')).toBe(true)
+})
+
+test('dashboard_reminders_header_visible_for_manager @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  await expect(page.getByRole('heading', { name: 'Reminders' })).toBeVisible()
+})
+
+test('dashboard_reminders_header_hidden_for_rider_with_no_reminders @rider', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  await expect(page.getByRole('heading', { name: 'Reminders' })).toHaveCount(0)
+})
+
+test('dashboard_pending_request_badge_links_to_settings @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  const badge = page.getByRole('link', { name: '1 pending new member request' })
+  await expect(badge).toHaveAttribute('href', `/barn/${barnSlug}/settings`)
+})
+
+test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}/horses`)
+  await page.getByRole('link', { name: /Apollo/ }).first().click()
+  await expect(page).toHaveURL(new RegExp(`/barn/${barnSlug}/horses/`))
+
+  const pastDate = new Date()
+  pastDate.setUTCDate(pastDate.getUTCDate() - 1)
+  const pastDateStr = pastDate.toISOString().slice(0, 10)
+
+  const dateInput = page.locator('input[type="date"]')
+  await dateInput.fill(pastDateStr)
+  await dateInput.blur()
+  await page.waitForLoadState('networkidle')
+
+  await page.goto(`/barn/${barnSlug}`)
+  const expectedDate = new Date(pastDateStr).toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    year: 'numeric',
+    timeZone: 'UTC',
+  })
+  await expect(page.getByRole('link', { name: `Apollo — Coggins — ${expectedDate}` })).toBeVisible()
+})
+
+test('dashboard_unpaid_lesson_reminder_links_to_outstanding @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  const unpaidLessons = page.getByRole('link', { name: /unpaid lesson/ })
+  await expect(unpaidLessons).toHaveAttribute('href', `/barn/${barnSlug}/finances/outstanding`)
+})
+
+test('dashboard_unpaid_lease_reminder_hidden_when_zero_charges @manager', async ({ page }) => {
+  await page.goto(`/barn/${barnSlug}`)
+  await expect(page.getByRole('link', { name: /unpaid lease/ })).toHaveCount(0)
+})
