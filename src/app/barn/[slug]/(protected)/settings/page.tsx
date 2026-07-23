@@ -15,6 +15,7 @@ import {
   updateExhaustionThresholdsAction,
   updateBarnTimezoneAction,
   downloadAllDocumentsAction,
+  downloadBarnDataAction,
 } from './actions'
 import { BARN_TIMEZONES } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
@@ -23,7 +24,7 @@ import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
-import { DownloadAllDocumentsButton } from './DownloadAllDocumentsButton'
+import { DownloadButton } from './DownloadButton'
 import type { BarnMembership } from '@/lib/db/types'
 
 function AccordionSection({
@@ -352,9 +353,22 @@ export default async function SettingsPage({
             : 'No documents to download yet.'}
         </p>
         <div className="mt-2">
-          <DownloadAllDocumentsButton
+          <DownloadButton
             action={downloadAllDocumentsAction.bind(null, slug)}
             disabled={!hasDocuments}
+            label="Download All Documents"
+          />
+        </div>
+
+        <h3 className="mt-6 text-sm font-medium text-zinc-700 dark:text-zinc-300">Data</h3>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+          Downloads a spreadsheet of your horses, lessons, agreements, expenses, transactions, members, and document records — one sheet per record type.
+        </p>
+        <div className="mt-2">
+          <DownloadButton
+            action={downloadBarnDataAction.bind(null, slug)}
+            disabled={false}
+            label="Download Data"
           />
         </div>
       </AccordionSection>
