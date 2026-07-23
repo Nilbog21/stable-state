@@ -46,10 +46,37 @@ const horseWithRegisteredName = createMockHorse({ registered_name: 'Four-Leaf Cl
 
 const mockAction = vi.fn().mockResolvedValue({ error: null })
 
+const mockMembers = [
+  { membershipId: 'mem-1', name: 'Dana Rider' },
+  { membershipId: 'mem-2', name: 'Emery Rider' },
+]
+
 describe('HorseManagerForm', () => {
   it('should_render_barn_name_input_prefilled_with_horse_name', () => {
     render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
     expect((screen.getByRole('textbox', { name: /^barn name$/i }) as HTMLInputElement).value).toBe('Thunderbolt')
+  })
+
+  it('should_render_none_option_selected_when_horse_has_no_owner', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
+    expect((screen.getByRole('combobox', { name: /owner/i }) as HTMLSelectElement).value).toBe('')
+  })
+
+  it('should_render_current_owner_selected_when_horse_has_an_owner', () => {
+    const ownedHorse = createMockHorse({ owning_member_id: 'mem-2' })
+    render(<HorseManagerForm horse={ownedHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
+    expect((screen.getByRole('combobox', { name: /owner/i }) as HTMLSelectElement).value).toBe('mem-2')
+  })
+
+  it('should_list_all_members_as_owner_options', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
+    expect(screen.getByRole('option', { name: 'Dana Rider' })).toBeDefined()
+    expect(screen.getByRole('option', { name: 'Emery Rider' })).toBeDefined()
+  })
+
+  it('should_name_the_owner_select_owning_member_id', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
+    expect(screen.getByRole('combobox', { name: /owner/i }).getAttribute('name')).toBe('owning_member_id')
   })
 
   it('should_render_active_pill_button', () => {
