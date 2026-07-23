@@ -76,7 +76,25 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   }
   await removePhotoPathStorage('horses', await supabase.from('horses').select('photo_path').eq('barn_id', barnId), supabase)
   mustSucceed(await supabase.from('horses').delete().eq('barn_id', barnId), 'delete horses')
+
+  // Unclaimed managed-member stub profiles (e.g. seed-test-barn.ts's dev-manager invite)
+  // are about to lose their only barn_memberships row and would otherwise leak one
+  // orphaned profiles row per re-seed. Claimed profiles have is_managed=false and are
+  // never touched here. barn_memberships.profile_id FKs to profiles, so the membership
+  // row must go first.
+  const membershipProfileIds = mustSucceed(
+    await supabase.from('barn_memberships').select('profile_id').eq('barn_id', barnId),
+    'fetch membership profile ids'
+  ).map((m: { profile_id: string }) => m.profile_id)
+
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
+
+  if (membershipProfileIds.length > 0) {
+    mustSucceed(
+      await supabase.from('profiles').delete().eq('is_managed', true).in('id', membershipProfileIds),
+      'delete stale managed-stub profiles'
+    )
+  }
 }
 
 export async function teardownAllData(supabase: SupabaseClient): Promise<void> {

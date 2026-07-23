@@ -295,17 +295,22 @@ export async function getUpcomingLessons(
     return hydrateParticipants(supabase, lessons ?? [], barnId)
   }
 
-  const callerMembership = await getUserMembership(userId, barnId)
-  if (!callerMembership) return []
-
-  const { data: lessons, error: lessonsError } = await supabase
+  let query = supabase
     .from('lessons')
     .select('*')
     .eq('barn_id', barnId)
-    .eq('instructor_id', callerMembership.id)
     .gte('lesson_at', from)
     .lt('lesson_at', to)
-    .order('lesson_at', { ascending: true })
+
+  // A manager sees the barn-wide schedule; a trainer sees only lessons they instruct
+  // (mirrors getOutstandingLessonRows' own manager/trainer split).
+  if (role === 'trainer') {
+    const callerMembership = await getUserMembership(userId, barnId)
+    if (!callerMembership) return []
+    query = query.eq('instructor_id', callerMembership.id)
+  }
+
+  const { data: lessons, error: lessonsError } = await query.order('lesson_at', { ascending: true })
   if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons, barnId)
+  return hydrateParticipants(supabase, lessons ?? [], barnId)
 }
