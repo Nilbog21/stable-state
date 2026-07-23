@@ -633,6 +633,15 @@ describe('getUnreadNotificationCount', () => {
 
     expect(count).toBe(0)
   })
+
+  it('should_throw_when_the_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('not_authorized') })
+    const client = { rpc: mockRpc } as any
+
+    await expect(
+      getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+    ).rejects.toThrow('not_authorized')
+  })
 })
 
 describe('getNotifications', () => {

@@ -190,7 +190,12 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
   // same-day submitLesson call) so this run's upsert adds to it instead of overwriting it --
   // see getUnreadNotificationCount's comment for the collision this closes.
   for (const recipient of nearbyInstructorRecipients.values()) {
-    recipient.payload += await getUnreadNotificationCount(supabase, recipient.userId, recipient.barnId, 'instructor_lesson_nearby')
+    try {
+      recipient.payload += await getUnreadNotificationCount(supabase, recipient.userId, recipient.barnId, 'instructor_lesson_nearby')
+    } catch (err) {
+      errorCount++
+      console.error(`Failed to read unread count for recipient ${recipient.userId}:`, (err as Error).message)
+    }
   }
   errorCount += await upsertNotificationsForRecipients(
     supabase,
