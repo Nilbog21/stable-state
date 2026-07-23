@@ -38,13 +38,14 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 
 `.test.ts` files are automated via vitest (`ci.sh` → `npm run test:coverage`). `.sh` wrapper scripts are not automated — `.test.sh` files, where they exist, are run manually by hand and don't need to be wired into `ci.sh`.
 
-`reset-db` is the canonical example of the full pattern.
+`reset-db`/`seed-barn` is the canonical example of the full pattern, split across two files (#502): `reset-db.ts` holds the `.sh`-validated bootstrapping, `seed-barn.ts` holds the pure logic and its `.test.ts`.
 
 ### Audit — release-2
 
 | Script | `.sh` | `.ts` | `.test.ts` | `.test.sh` | Notes |
 |---|---|---|---|---|---|
-| `reset-db` | ✓ | ✓ | ✓ | — | Canonical model |
+| `reset-db` | ✓ | ✓ | — | — | Canonical model; `.ts` only does bootstrapping (teardown, barn-row insert, manager2 auth-user creation) and delegates all seeding to `seed-barn.ts`'s `seedBarn()` (#502) — its own pure-function tests moved with the logic to `seed-barn.test.ts` |
+| `seed-barn` | — | ✓ | ✓ | — | Shared seeding module (#502): exports `seedBarn(supabase, barnId, barnSlug, managerUserId)` plus the fixture constants and pure date/variation/payment-type helpers `reset-db.ts` (and, eventually, the demo-barn creation flow, #505) call. `managerUserId` is an already-created auth user id — the caller creates that auth user itself (`reset-db.ts`'s "manager2" persona today) rather than `seedBarn` owning it, since a future caller may pass an already-authenticated user instead |
 | `change-user` | ✓ | ✓ | ✓ | — | `.ts` uses `readline` for numbered-list selection; bash can't do this cleanly |
 | `seed-account` | ✓ | ✓ | ✓ | — | Creates a managed-manager stub (direct service-role inserts) and prints the invite path; `.test.ts` covers `buildInvitePath`; `--allow-prod` flag bypasses the `assertDevProject` dev-project check for the documented one-time production bootstrap use (README's "Production bootstrap" step 2) |
 | `seed-test-barn` | ✓ | ✓ | ✓ | — | Positional arg: barn slug; teardown-first for idempotency; email/password auth users; always reads `.env.local` (the CI-only `--skip-env-local-check` bypass was removed in #1007 along with the Vercel-based e2e workflow that was its only caller) |
@@ -61,4 +62,4 @@ Add a **`.test.sh`** only when the shell script has non-trivial branching logic 
 
 ## Testing
 
-Pure function tests live in a vitest test file alongside the script (e.g. `reset-db.test.ts`). Shell wrapper behavior (env validation, tsx invocation) is tested in the corresponding `.test.sh` file.
+Pure function tests live in a vitest test file alongside the script (e.g. `seed-barn.test.ts`). Shell wrapper behavior (env validation, tsx invocation) is tested in the corresponding `.test.sh` file.
