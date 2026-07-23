@@ -126,6 +126,27 @@ describe('uploadFile', () => {
     const file = makePdfFile()
     await expect(uploadFile('some/path', file, 'application/pdf')).rejects.toThrow('upload error')
   })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const injectedClient = {
+      storage: { from: vi.fn().mockReturnValue({ upload: vi.fn().mockResolvedValue({ error: null }) }) },
+    } as any
+
+    const file = makePdfFile()
+    await uploadFile('some/path', file, 'application/pdf', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_upload', async () => {
+    const mockStorageFrom = vi.fn().mockReturnValue({ upload: vi.fn().mockResolvedValue({ error: null }) })
+    const injectedClient = { storage: { from: mockStorageFrom } } as any
+
+    const file = makePdfFile()
+    await uploadFile('some/path', file, 'application/pdf', injectedClient)
+
+    expect(mockStorageFrom).toHaveBeenCalledWith('documents')
+  })
 })
 
 describe('removeFile', () => {
@@ -152,6 +173,25 @@ describe('removeFile', () => {
     } as any)
 
     await expect(removeFile('some/path')).rejects.toThrow('remove error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const injectedClient = {
+      storage: { from: vi.fn().mockReturnValue({ remove: vi.fn().mockResolvedValue({ error: null }) }) },
+    } as any
+
+    await removeFile('some/path', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_remove', async () => {
+    const mockStorageFrom = vi.fn().mockReturnValue({ remove: vi.fn().mockResolvedValue({ error: null }) })
+    const injectedClient = { storage: { from: mockStorageFrom } } as any
+
+    await removeFile('some/path', injectedClient)
+
+    expect(mockStorageFrom).toHaveBeenCalledWith('documents')
   })
 })
 
