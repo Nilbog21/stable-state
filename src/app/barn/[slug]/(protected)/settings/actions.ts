@@ -14,6 +14,7 @@ import {
 import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
 import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
 import { buildDocumentsBackupZip } from '@/lib/db/document-backup'
+import { buildBarnDataBackupBuffer } from '@/lib/db/backup'
 import { uploadFile, getSignedUrl } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { parseNonNegativeAmount, parseNonNegativeInt } from '@/lib/parse-amount'
@@ -247,6 +248,32 @@ export async function downloadAllDocumentsAction(
       storagePath,
       new File([new Uint8Array(buffer)], 'all-documents.zip', { type: 'application/zip' }),
       'application/zip',
+      undefined,
+      true
+    )
+    const url = await getSignedUrl(storagePath)
+    return { error: null, url }
+  } catch (err) {
+    return { error: getErrorMessage(err), url: null }
+  }
+}
+
+export async function downloadBarnDataAction(
+  barnSlug: string,
+  _prevState: { error: string | null; url: string | null },
+  _formData: FormData
+): Promise<{ error: string | null; url: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  try {
+    const buffer = await buildBarnDataBackupBuffer(barn.id, barn.timezone)
+    const storagePath = `${barn.id}/backup-archive/data-export.xlsx`
+    await uploadFile(
+      storagePath,
+      new File([new Uint8Array(buffer)], 'data-export.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       undefined,
       true
     )

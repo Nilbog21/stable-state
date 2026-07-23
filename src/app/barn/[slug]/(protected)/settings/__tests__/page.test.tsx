@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockLessonTier, createMockBarnEvent } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
@@ -19,6 +19,14 @@ vi.mock('../approvals/actions', () => ({
   approveMembershipAction: vi.fn(),
   rejectMembershipAction: vi.fn(),
 }))
+vi.mock('../actions', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../actions')>()
+  return {
+    ...actual,
+    downloadAllDocumentsAction: vi.fn(),
+    downloadBarnDataAction: vi.fn(),
+  }
+})
 const mockNotFound = vi.hoisted(() =>
   vi.fn(() => { throw new Error('NEXT_NOT_FOUND') })
 )
@@ -38,6 +46,7 @@ import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { getEventsByBarn } from '@/lib/db/barn-events'
 import { getAllBarnDocuments } from '@/lib/db/document-backup'
+import { downloadAllDocumentsAction, downloadBarnDataAction } from '../actions'
 import SettingsPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -52,6 +61,8 @@ describe('SettingsPage', () => {
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getEventsByBarn).mockReset()
     vi.mocked(getAllBarnDocuments).mockReset()
+    vi.mocked(downloadAllDocumentsAction).mockReset()
+    vi.mocked(downloadBarnDataAction).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
@@ -60,6 +71,8 @@ describe('SettingsPage', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     vi.mocked(getEventsByBarn).mockResolvedValue([])
     vi.mocked(getAllBarnDocuments).mockResolvedValue({ horse: [], trainer: [], rider: [] })
+    vi.mocked(downloadAllDocumentsAction).mockResolvedValue({ error: null, url: null })
+    vi.mocked(downloadBarnDataAction).mockResolvedValue({ error: null, url: null })
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -675,5 +688,28 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByText(/grouped by horse and member/i)).toBeDefined()
+  })
+
+  it('should_render_a_data_sub_block_with_an_always_enabled_download_button', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /download data/i }).hasAttribute('disabled')).toBe(false)
+  })
+
+  it('should_bind_the_download_data_button_to_downloadBarnDataAction_not_downloadAllDocumentsAction', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    fireEvent.submit(screen.getByRole('button', { name: /download data/i }).closest('form')!)
+
+    await waitFor(() => expect(downloadBarnDataAction).toHaveBeenCalled())
+    expect(downloadAllDocumentsAction).not.toHaveBeenCalled()
   })
 })
