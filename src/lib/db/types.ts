@@ -77,8 +77,19 @@ export interface Horse {
   feed_notes: string | null
   medication_notes: string | null
   photo_path: string | null
+  owning_member_id: string | null
   created_at: string
   updated_at: string
+}
+
+export interface MemberHorsePrivilege {
+  id: string
+  barn_id: string
+  member_id: string
+  horse_id: string
+  document_privileges: 'none' | 'read' | 'write'
+  lesson_read_privileges: boolean
+  created_at: string
 }
 
 

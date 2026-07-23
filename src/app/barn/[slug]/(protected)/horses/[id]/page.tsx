@@ -3,7 +3,11 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
+import { resolveMemberNames } from '@/lib/db/member-names'
+import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
+import { getHorsePrivileges } from '@/lib/db/member-horse-privileges'
 import { HorseManagerForm } from './HorseManagerForm'
+import { HorseAccessSection } from './HorseAccessSection'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
@@ -15,6 +19,11 @@ import {
   deleteHorseDocumentAction,
   updateHorseDocumentReminderDateAction,
   deleteHorsePhotoAction,
+  grantHorseAccessAction,
+  updateHorseAccessDocumentAction,
+  updateHorseAccessLessonAction,
+  revokeHorseAccessAction,
+  setHorseOwnerAction,
 } from './actions'
 
 export default async function HorseDetailPage({
@@ -31,9 +40,36 @@ export default async function HorseDetailPage({
   const role = membership.role
 
   const canSeeDocuments = role === 'manager' || role === 'trainer'
+  const isManager = role === 'manager'
 
   const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
   const photoUrl = horse.photo_path ? await getSignedUrl(horse.photo_path) : null
+
+  const ownerName = horse.owning_member_id
+    ? (await resolveMemberNames([horse.owning_member_id], barn.id)).get(horse.owning_member_id) ?? null
+    : null
+
+  const allMembers = isManager
+    ? [
+        ...(await getActiveMembersWithProfiles(barn.id, 'manager')),
+        ...(await getActiveMembersWithProfiles(barn.id, 'trainer')),
+        ...(await getActiveMembersWithProfiles(barn.id, 'rider')),
+      ].map((m) => ({ membershipId: m.membershipId, name: m.name }))
+    : []
+
+  const privileges = isManager ? await getHorsePrivileges(horse.id, barn.id) : []
+  const privilegeNames = privileges.length > 0
+    ? await resolveMemberNames(privileges.map((p) => p.member_id), barn.id)
+    : new Map<string, string>()
+  const grants = privileges.map((p) => ({
+    id: p.id,
+    memberId: p.member_id,
+    name: privilegeNames.get(p.member_id) ?? p.member_id,
+    documentPrivileges: p.document_privileges,
+    lessonReadPrivileges: p.lesson_read_privileges,
+  }))
+  const grantedMemberIds = new Set(privileges.map((p) => p.member_id))
+  const availableMembers = allMembers.filter((m) => !grantedMemberIds.has(m.membershipId))
 
   const boundUpdateAction = updateHorseAction.bind(null, slug, horse.id)
   const boundDeleteAction = deleteHorseDocumentAction.bind(null, slug, horse.id)
@@ -41,6 +77,11 @@ export default async function HorseDetailPage({
   const boundDeletePhotoAction = horse.photo_path
     ? deleteHorsePhotoAction.bind(null, slug, horse.id)
     : null
+  const boundGrantAccessAction = grantHorseAccessAction.bind(null, slug, horse.id)
+  const boundUpdateAccessDocumentAction = updateHorseAccessDocumentAction.bind(null, slug, horse.id)
+  const boundUpdateAccessLessonAction = updateHorseAccessLessonAction.bind(null, slug, horse.id)
+  const boundRevokeAccessAction = revokeHorseAccessAction.bind(null, slug, horse.id)
+  const boundSetHorseOwnerAction = setHorseOwnerAction.bind(null, slug, horse.id)
   const photoHref = `/barn/${slug}/documents/new?entity=horse&id=${horse.id}&type=photo`
 
   return (
@@ -48,6 +89,18 @@ export default async function HorseDetailPage({
       <h1 className="mb-6 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         {horse.name}
       </h1>
+
+      {ownerName && (
+        <p className="mb-6 text-sm text-zinc-600 dark:text-zinc-400">
+          Owner:{' '}
+          <a
+            href={`/barn/${slug}/members/${horse.owning_member_id}`}
+            className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
+          >
+            {ownerName}
+          </a>
+        </p>
+      )}
 
       <section className="mb-10">
         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
@@ -119,6 +172,21 @@ export default async function HorseDetailPage({
       {role === 'manager' && (
         <section className="mt-6">
           <HorseManagerForm horse={horse} barn={barn} action={boundUpdateAction} />
+        </section>
+      )}
+
+      {role === 'manager' && (
+        <section className="mt-10">
+          <HorseAccessSection
+            grants={grants}
+            availableMembers={availableMembers}
+            ownerMemberId={horse.owning_member_id}
+            onGrant={boundGrantAccessAction}
+            onUpdateDocument={boundUpdateAccessDocumentAction}
+            onUpdateLesson={boundUpdateAccessLessonAction}
+            onRevoke={boundRevokeAccessAction}
+            onSetOwner={boundSetHorseOwnerAction}
+          />
         </section>
       )}
 

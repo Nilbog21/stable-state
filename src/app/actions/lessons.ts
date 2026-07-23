@@ -30,7 +30,7 @@ export async function submitLesson(
       if (membership?.role !== 'manager') {
         return { error: 'not authorized to add horses' }
       }
-      const horse = await createHorse(barnId, newHorseName)
+      const horse = await createHorse(barnId, newHorseName, membership.id)
       horseIds = [...horseIds, horse.id]
       exertionLevels.set(horse.id, newHorseExertionLevel)
     }
@@ -75,7 +75,7 @@ export async function updateLessonAction(
   try {
     if (newHorseName) {
       if (membership.role !== 'manager') return { error: 'not authorized to add horses' }
-      const horse = await createHorse(barnId, newHorseName)
+      const horse = await createHorse(barnId, newHorseName, membership.id)
       horseIds = [...horseIds, horse.id]
       exertionLevels.set(horse.id, newHorseExertionLevel)
     }

@@ -415,4 +415,5 @@ describe('HorseManagerForm', () => {
     expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).value).toBe('5')
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('11')
   })
+
 })

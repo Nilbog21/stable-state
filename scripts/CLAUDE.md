@@ -17,7 +17,7 @@ Scripts use db layer functions from `src/lib/db/` wherever an equivalent functio
 ```ts
 const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
-await createHorse(barnId, name, supabase)
+await createHorse(barnId, name, undefined, supabase)
 ```
 
 `createServiceClient` (from `./script-utils`) sets the standard `auth` options and avoids repeating the same three-liner across scripts.

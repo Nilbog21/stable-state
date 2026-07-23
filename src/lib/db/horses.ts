@@ -16,12 +16,12 @@ export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
   return data
 }
 
-export async function createHorse(barnId: string, name: string, client?: SupabaseClient): Promise<Horse> {
+export async function createHorse(barnId: string, name: string, owningMemberId?: string | null, client?: SupabaseClient): Promise<Horse> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('horses')
-    .insert({ barn_id: barnId, name })
+    .insert({ barn_id: barnId, name, owning_member_id: owningMemberId ?? null })
     .select()
     .single()
 
@@ -111,6 +111,7 @@ export async function updateHorseDetails(
     feed_notes: string | null
     medication_notes: string | null
     registered_name: string | null
+    owning_member_id: string | null
   }
 ): Promise<void> {
   const supabase = await createClient()
@@ -126,6 +127,7 @@ export async function updateHorseDetails(
     p_feed_notes: updates.feed_notes,
     p_medication_notes: updates.medication_notes,
     p_registered_name: updates.registered_name,
+    p_owning_member_id: updates.owning_member_id,
   })
   if (error) throw error
 }
