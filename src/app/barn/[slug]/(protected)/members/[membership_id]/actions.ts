@@ -6,11 +6,12 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById, setCanInstruct, deleteMembership } from '@/lib/db/barn-memberships'
 import { revokeInviteToken } from '@/lib/db/member-invites'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
-import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
-import { removeFile } from '@/lib/db/document-storage'
+import { updateContactInfo, getProfileById, replaceProfilePhoto, removeProfilePhoto } from '@/lib/db/profiles'
+import { removeFile, validateFile, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { parseContactFields } from '@/lib/contact-info'
 import { resolveManageableTarget } from '@/lib/document-target'
+import type { Barn, Profile } from '@/lib/db/types'
 
 export async function deleteDocumentAction(
   barnSlug: string,
@@ -143,5 +144,68 @@ export async function revokeInviteTokenAction(
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await revokeInviteToken(membershipId, barn.id)
   revalidatePath(`/barn/${barnSlug}/members`)
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+}
+
+// Self can always upload/replace/delete their own photo; a manager may do so only for a
+// managed/stub profile (mirrors updateContactInfoAction's is_managed gate above) — once a
+// member claims their profile, is_managed flips false and this locks out manager writes.
+async function resolvePhotoTarget(
+  barnSlug: string,
+  membershipId: string
+): Promise<{ error: string } | { barn: Barn; targetProfile: Profile }> {
+  const { user, barn, membership: callerMembership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+
+  const targetMembership = await getMembershipById(membershipId)
+  if (!targetMembership || targetMembership.barn_id !== barn.id) return { error: 'Not found' }
+
+  const targetProfile = await getProfileById(targetMembership.profile_id)
+  if (!targetProfile) return { error: 'Not found' }
+
+  const isOwnPage = targetMembership.user_id === user.id
+  if (!isOwnPage && !(callerMembership.role === 'manager' && targetProfile.is_managed)) {
+    return { error: 'Forbidden' }
+  }
+
+  return { barn, targetProfile }
+}
+
+export async function uploadProfilePhotoAction(
+  barnSlug: string,
+  membershipId: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const resolved = await resolvePhotoTarget(barnSlug, membershipId)
+  if ('error' in resolved) return { error: resolved.error }
+  const { barn, targetProfile } = resolved
+
+  const file = formData.get('file') as File | null
+  let ext: string
+  try {
+    ext = validateFile(file, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  try {
+    await replaceProfilePhoto(targetProfile.id, barn.id, file!, ext)
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
+  revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  redirect(`/barn/${barnSlug}/members/${membershipId}`)
+}
+
+export async function deleteProfilePhotoAction(
+  barnSlug: string,
+  membershipId: string
+): Promise<void> {
+  const resolved = await resolvePhotoTarget(barnSlug, membershipId)
+  if ('error' in resolved) notFound()
+  const { targetProfile } = resolved
+
+  await removeProfilePhoto(targetProfile.id)
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
 }
