@@ -3,6 +3,7 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
+import { getEventsByBarn } from '@/lib/db/barn-events'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
@@ -99,9 +100,10 @@ export default async function SettingsPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const [tiers, pending] = await Promise.all([
+  const [tiers, pending, events] = await Promise.all([
     getAllTiersByBarn(barn.id),
     getPendingMemberships(barn.id),
+    getEventsByBarn(barn.id),
   ])
 
   const nameMap = await resolveMemberNames(pending.map((m) => m.id), barn.id)
@@ -238,6 +240,50 @@ export default async function SettingsPage({
             heading="No tiers yet"
             subtext="Lesson tiers you add will appear here."
             cta={{ label: 'Add Tier', href: `/barn/${slug}/settings/tiers/new` }}
+          />
+        )}
+      </AccordionSection>
+
+      <AccordionSection
+        title="Barn Events"
+        headerExtra={<Button href={`/barn/${slug}/settings/events/new`}>Add Event</Button>}
+      >
+        {events.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead>
+                <tr>
+                  <Th>Title</Th>
+                  <Th>Date</Th>
+                  <Th>Visible To</Th>
+                  <Th align="right">Actions</Th>
+                </tr>
+              </thead>
+              <tbody>
+                {events.map((event) => (
+                  <tr key={event.id}>
+                    <Td>{event.title}</Td>
+                    <Td tone="secondary">
+                      <LocalDateTime iso={event.event_at} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
+                    </Td>
+                    <Td tone="secondary" className="capitalize">
+                      {event.visible_to_roles.join(', ')}
+                    </Td>
+                    <TableActions>
+                      <Button href={`/barn/${slug}/settings/events/${event.id}`} variant="ghost" size="sm">
+                        Edit
+                      </Button>
+                    </TableActions>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <EmptyState
+            heading="No events yet"
+            subtext="Barn events you add will appear here."
+            cta={{ label: 'Add Event', href: `/barn/${slug}/settings/events/new` }}
           />
         )}
       </AccordionSection>

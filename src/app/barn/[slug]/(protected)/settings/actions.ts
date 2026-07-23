@@ -12,8 +12,12 @@ import {
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
 import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
+import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
 import { parseNonNegativeAmount, parseNonNegativeInt } from '@/lib/parse-amount'
 import { BARN_TIMEZONES } from '@/lib/barn-timezone'
+import type { Role } from '@/lib/db/types'
+
+const VALID_EVENT_ROLES: Role[] = ['manager', 'trainer', 'rider']
 
 function parseBoolean(raw: string | null): boolean | null {
   if (raw === 'true') return true
@@ -161,5 +165,65 @@ export async function updateBarnTimezoneAction(barnSlug: string, formData: FormD
   if (!BARN_TIMEZONES.some((tz) => tz.value === timezone)) return
 
   await updateBarnTimezone(barn.id, timezone)
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+function validateEventFields(title: string | undefined, eventAt: string | undefined): string | null {
+  const errors: string[] = []
+  if (!title) errors.push('Title is required')
+  if (!eventAt) errors.push('Date is required')
+  return errors.length > 0 ? errors.join(', ') : null
+}
+
+function parseVisibleToRoles(formData: FormData): Role[] {
+  return (formData.getAll('visible_to_roles') as string[]).filter((r): r is Role =>
+    (VALID_EVENT_ROLES as string[]).includes(r)
+  )
+}
+
+export async function createEventAction(
+  barnSlug: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const title = (formData.get('title') as string | null)?.trim()
+  const eventAt = (formData.get('event_at') as string | null)?.trim()
+
+  const fieldErrors = validateEventFields(title, eventAt)
+  if (fieldErrors) return { error: fieldErrors }
+
+  const notes = (formData.get('notes') as string | null)?.trim() || null
+  const visibleToRoles = parseVisibleToRoles(formData)
+
+  await createEvent(barn.id, { title: title!, eventAt: eventAt!, notes, visibleToRoles })
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+export async function updateEventAction(
+  barnSlug: string,
+  eventId: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const title = (formData.get('title') as string | null)?.trim()
+  const eventAt = (formData.get('event_at') as string | null)?.trim()
+
+  const fieldErrors = validateEventFields(title, eventAt)
+  if (fieldErrors) return { error: fieldErrors }
+
+  const notes = (formData.get('notes') as string | null)?.trim() || null
+  const visibleToRoles = parseVisibleToRoles(formData)
+
+  await updateEvent(eventId, barn.id, { title: title!, eventAt: eventAt!, notes, visibleToRoles })
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
+export async function deleteEventAction(barnSlug: string, eventId: string): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await deleteEvent(eventId, barn.id)
   redirect(`/barn/${barnSlug}/settings`)
 }

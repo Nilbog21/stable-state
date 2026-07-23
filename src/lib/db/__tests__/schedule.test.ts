@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockLesson, createMockHorseExpense } from '@/test/fixtures'
+import { createMockLesson, createMockHorseExpense, createMockBarnEvent } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -83,6 +83,40 @@ describe('mergeScheduleItems', () => {
     )
 
     expect(result.map((r) => r.id)).toEqual(['expense-1', 'lesson-1'])
+  })
+
+  it('should_map_an_event_row_to_a_schedule_item_with_zero_duration', () => {
+    const result = mergeScheduleItems([], [], [{ id: 'event-1', start: '2026-06-10T10:00:00' }])
+
+    expect(result[0].durationMinutes).toBe(0)
+  })
+
+  it('should_map_an_event_row_with_event_item_type', () => {
+    const result = mergeScheduleItems([], [], [{ id: 'event-1', start: '2026-06-10T10:00:00' }])
+
+    expect(result[0].itemType).toBe('event')
+  })
+
+  it('should_set_instructor_id_null_on_an_event_item', () => {
+    const result = mergeScheduleItems([], [], [{ id: 'event-1', start: '2026-06-10T10:00:00' }])
+
+    expect(result[0].instructorId).toBeNull()
+  })
+
+  it('should_set_empty_horse_ids_on_an_event_item', () => {
+    const result = mergeScheduleItems([], [], [{ id: 'event-1', start: '2026-06-10T10:00:00' }])
+
+    expect(result[0].horseIds).toEqual([])
+  })
+
+  it('should_sort_lesson_expense_and_event_items_together_by_start_ascending', () => {
+    const result = mergeScheduleItems(
+      [{ id: 'lesson-1', start: '2026-06-15T10:00:00', instructor_id: null, horse_ids: [] }],
+      [{ id: 'expense-1', start: '2026-06-01T10:00:00', horse_ids: [] }],
+      [{ id: 'event-1', start: '2026-06-10T10:00:00' }]
+    )
+
+    expect(result.map((r) => r.id)).toEqual(['expense-1', 'event-1', 'lesson-1'])
   })
 })
 
@@ -190,30 +224,44 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockIn }
   }
 
+  // barn_events query: select → eq(barn_id) → gte(event_at) → lt(event_at) → resolves
+  function makeEventsChain(data: unknown[] | null, error: Error | null = null) {
+    const mockLt = vi.fn().mockResolvedValue({ data, error })
+    const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
+    const mockEq = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockEq, mockGte, mockLt }
+  }
+
   function makeFrom({
     lessons = [],
     lessonHorses = [],
     expenses = [],
     expenseHorses = [],
+    events = [],
     lessonsError = null,
     expensesError = null,
     lessonHorsesError = null,
     expenseHorsesError = null,
+    eventsError = null,
   }: {
     lessons?: unknown[] | null
     lessonHorses?: unknown[] | null
     expenses?: unknown[] | null
     expenseHorses?: unknown[] | null
+    events?: unknown[] | null
     lessonsError?: Error | null
     expensesError?: Error | null
     lessonHorsesError?: Error | null
     expenseHorsesError?: Error | null
+    eventsError?: Error | null
   } = {}) {
     return vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain(lessons, lessonsError)
       if (table === 'lesson_horses') return makeLessonHorsesChain(lessonHorses, lessonHorsesError)
       if (table === 'horse_expenses') return makeExpensesChain(expenses, expensesError)
       if (table === 'expense_horses') return makeExpenseHorsesChain(expenseHorses, expenseHorsesError)
+      if (table === 'barn_events') return makeEventsChain(events, eventsError)
       throw new Error(`unexpected table: ${table}`)
     })
   }
@@ -403,5 +451,51 @@ describe('getScheduleForRange', () => {
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
     expect(result.map((r) => r.itemType)).toEqual(['lesson'])
+  })
+
+  it('should_return_event_items_only_when_only_events_exist_in_range', async () => {
+    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: [event] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.itemType)).toEqual(['event'])
+  })
+
+  it('should_return_merged_lesson_expense_and_event_items_for_a_mixed_range', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-04T10:00:00Z' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ lessons: [lesson], expenses: [expense], events: [event] }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id).sort()).toEqual(['event-1', 'expense-1', 'lesson-1'])
+  })
+
+  it('should_set_empty_horse_ids_and_null_instructor_id_on_an_event_item', async () => {
+    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: [event] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].horseIds).toEqual([])
+    expect(result[0].instructorId).toBeNull()
+  })
+
+  it('should_throw_when_the_events_query_rejects', async () => {
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: null, eventsError: new Error('events error') }) } as any)
+
+    await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('events error')
+  })
+
+  it('should_treat_null_events_data_as_empty', async () => {
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: null }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result).toEqual([])
   })
 })
