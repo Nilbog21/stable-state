@@ -67,8 +67,8 @@ export async function getHorsesByIds(horseIds: string[], barnId: string): Promis
   return data
 }
 
-export async function getHorseById(horseId: string, barnId: string): Promise<Horse | null> {
-  const supabase = await createClient()
+export async function getHorseById(horseId: string, barnId: string, client?: SupabaseClient): Promise<Horse | null> {
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('horses')
     .select()
@@ -130,8 +130,8 @@ export async function updateHorseDetails(
   if (error) throw error
 }
 
-export async function updateHorsePhotoPath(horseId: string, barnId: string, photoPath: string | null): Promise<void> {
-  const supabase = await createClient()
+export async function updateHorsePhotoPath(horseId: string, barnId: string, photoPath: string | null, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
   const { error } = await supabase
     .from('horses')
     .update({ photo_path: photoPath })
@@ -140,31 +140,31 @@ export async function updateHorsePhotoPath(horseId: string, barnId: string, phot
   if (error) throw error
 }
 
-export async function replaceHorsePhoto(horseId: string, barnId: string, file: File, ext: string): Promise<void> {
+export async function replaceHorsePhoto(horseId: string, barnId: string, file: File, ext: string, client?: SupabaseClient): Promise<void> {
   // ponytail: re-fetches the current photo_path here rather than trusting a value bound at
   // page-render time, so a concurrent replace/remove can't be clobbered by a stale caller.
-  const current = await getHorseById(horseId, barnId)
+  const current = await getHorseById(horseId, barnId, client)
   const storagePath = `${barnId}/horse-photos/${horseId}/${Date.now()}.${ext}`
 
-  await uploadFile(storagePath, file, file.type)
+  await uploadFile(storagePath, file, file.type, client)
 
   try {
-    await updateHorsePhotoPath(horseId, barnId, storagePath)
+    await updateHorsePhotoPath(horseId, barnId, storagePath, client)
   } catch (err) {
-    await removeFile(storagePath).catch(() => {})
+    await removeFile(storagePath, client).catch(() => {})
     throw err
   }
 
   if (current?.photo_path) {
-    await removeFile(current.photo_path).catch(() => {})
+    await removeFile(current.photo_path, client).catch(() => {})
   }
 }
 
-export async function removeHorsePhoto(horseId: string, barnId: string): Promise<void> {
-  const current = await getHorseById(horseId, barnId)
+export async function removeHorsePhoto(horseId: string, barnId: string, client?: SupabaseClient): Promise<void> {
+  const current = await getHorseById(horseId, barnId, client)
   if (!current?.photo_path) return
-  await updateHorsePhotoPath(horseId, barnId, null)
-  await removeFile(current.photo_path).catch(() => {})
+  await updateHorsePhotoPath(horseId, barnId, null, client)
+  await removeFile(current.photo_path, client).catch(() => {})
 }
 
 export async function getHorseProjectedExhaustion(
