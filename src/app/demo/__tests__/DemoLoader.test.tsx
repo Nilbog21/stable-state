@@ -1,6 +1,7 @@
 import React from 'react'
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, cleanup, waitFor } from '@testing-library/react'
+import { redirect } from 'next/navigation'
 
 afterEach(cleanup)
 
@@ -8,6 +9,15 @@ vi.mock('../actions', () => ({ createOrResumeDemoBarn: vi.fn() }))
 
 import { createOrResumeDemoBarn } from '../actions'
 import { DemoLoader } from '../DemoLoader'
+
+function getRedirectError(): unknown {
+  try {
+    redirect('/barn/demo-test/')
+  } catch (err) {
+    return err
+  }
+  throw new Error('redirect() did not throw')
+}
 
 describe('DemoLoader', () => {
   it('should_render_spinner_and_heading_while_loading', () => {
@@ -45,5 +55,19 @@ describe('DemoLoader', () => {
 
     await waitFor(() => expect(screen.getByText("Couldn't start the demo")).toBeDefined())
     expect(screen.getByRole('link', { name: 'Try again' }).getAttribute('href')).toBe('/demo')
+  })
+
+  it('should_not_show_failure_state_when_the_action_rejects_with_a_redirect_error', async () => {
+    vi.mocked(createOrResumeDemoBarn).mockRejectedValue(getRedirectError())
+
+    const onUnhandledRejection = vi.fn()
+    process.once('unhandledRejection', onUnhandledRejection)
+
+    render(<DemoLoader />)
+
+    await waitFor(() => expect(onUnhandledRejection).toHaveBeenCalledTimes(1))
+
+    expect(screen.queryByText("Couldn't start the demo")).toBeNull()
+    expect(screen.getByText('Explore Stable State')).toBeDefined()
   })
 })
