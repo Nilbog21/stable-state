@@ -14,6 +14,7 @@ import { createTier } from '@/lib/db/lesson-tiers'
 
 import { createHorse } from '@/lib/db/horses'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
+import { createExpense } from '@/lib/db/expenses'
 import { teardown } from './teardown-test-barn'
 import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
@@ -80,13 +81,15 @@ async function run() {
   const { userId: trainerId, profileId: trainerProfileId } = await createUser('trainer', 'Test', 'Trainer')
   const { userId: riderId,   profileId: riderProfileId   } = await createUser('rider', 'Test', 'Rider')
   const { userId: rider2Id,  profileId: rider2ProfileId  } = await createUser('rider2', 'Test', 'Rider2')
+  const { userId: pendingId, profileId: pendingProfileId } = await createUser('pending', 'Quinn', 'Pending')
 
   mustSucceed(
     await supabase.from('barn_memberships').insert([
-      { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active', can_instruct: true,  profile_id: managerProfileId },
-      { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active', can_instruct: true,  profile_id: trainerProfileId },
-      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false, profile_id: riderProfileId   },
-      { user_id: rider2Id,  barn_id: barnId, role: 'rider',   status: 'active', can_instruct: false, profile_id: rider2ProfileId  },
+      { user_id: managerId, barn_id: barnId, role: 'manager', status: 'active',  can_instruct: true,  profile_id: managerProfileId },
+      { user_id: trainerId, barn_id: barnId, role: 'trainer', status: 'active',  can_instruct: true,  profile_id: trainerProfileId },
+      { user_id: riderId,   barn_id: barnId, role: 'rider',   status: 'active',  can_instruct: false, profile_id: riderProfileId   },
+      { user_id: rider2Id,  barn_id: barnId, role: 'rider',   status: 'active',  can_instruct: false, profile_id: rider2ProfileId  },
+      { user_id: pendingId, barn_id: barnId, role: 'rider',   status: 'pending', can_instruct: false, profile_id: pendingProfileId },
     ]),
     'insert memberships'
   )
@@ -151,7 +154,7 @@ async function run() {
   }, supabase)
 
   const pastLessons = mustSucceed(
-    await supabase.from('lessons').select('id').eq('barn_id', barnId).lt('lesson_at', past(2)),
+    await supabase.from('lessons').select('id').eq('barn_id', barnId).lt('lesson_at', now.toISOString()),
     'fetch past lessons'
   )
   mustSucceed(
@@ -164,6 +167,68 @@ async function run() {
     'mark past lessons paid'
   )
 
+  // Created after the paid-marking step above, so it starts (and stays) unpaid.
+  // Enrolls rider2 only — not the 'rider' test login — so 'rider' has zero unpaid
+  // lessons/charges while the manager still sees one barn-wide, giving the dashboard
+  // Reminders section both a shown (manager) and hidden (rider) case to assert against.
+  await createLessonWithParticipants({
+    barnId, instructorId: trainerMembershipId, lessonAt: past(1), fee: tier1.price,
+    horseIds: [horse2.id], exertionLevels: [3], riderIds: [rider2MembershipId],
+    lessonType: 'normal', jumping: false, tierName: tier1.name,
+  }, supabase)
+
+  // Undated document reminder for the dashboard's Document Reminders card — the
+  // e2e spec sets a past reminder_date via the horse page's UI form. No DAL
+  // equivalent takes a service-role client (documents.ts's createDocument always
+  // calls the SSR client), so this is a raw insert; the storage object itself is a
+  // real (if dummy) upload, not just a DB row — the horse detail page's Documents
+  // table signs a URL for every row it renders (getSignedUrl → createSignedUrl),
+  // which errors on a path with nothing actually stored there.
+  // Path shape must match documents/new/actions.ts's `${barn.id}/${folder}/${entityId}/...`
+  // convention — storage RLS keys off (storage.foldername(name))[1]/[2] as barn_id/entity-type.
+  const documentStoragePath = `${barnId}/horses/${horse1.id}/coggins.pdf`
+  mustSucceed(
+    await supabase.storage.from('documents').upload(documentStoragePath, Buffer.from('test document'), {
+      contentType: 'application/pdf',
+    }),
+    'upload horse document file'
+  )
+  mustSucceed(
+    await supabase.from('horse_documents').insert({
+      barn_id: barnId,
+      horse_id: horse1.id,
+      record_type: 'coggins',
+      storage_path: documentStoragePath,
+      file_name: 'coggins.pdf',
+      file_size: 1024,
+      notes: null,
+      reminder_date: null,
+    }),
+    'insert horse document'
+  )
+
+  // Scheduled expense, same calendar day as the future(2) lesson above — the
+  // dashboard's Barn Schedule interleaves lessons and expenses by time within a day.
+  // Time is pinned to 23:00 (vs. the lesson's uncontrolled seed-time-of-day) so the
+  // e2e spec can assert a deterministic "lesson card before expense card" DOM order.
+  await createExpense(barnId, {
+    expenseDate: future(2).slice(0, 10),
+    expenseTime: '23:00',
+    recipient: 'Valley Farrier',
+    expenseType: 'Farrier',
+    appliesToAllHorses: false,
+    horseIds: [horse1.id],
+  }, supabase)
+
+  // Date-only planned expense (no expense_time) — must NOT appear on the dashboard,
+  // which only shows scheduled expenses that have a time set.
+  await createExpense(barnId, {
+    expenseDate: future(4).slice(0, 10),
+    recipient: 'Feed Supplier',
+    expenseType: 'Feed',
+    appliesToAllHorses: true,
+  }, supabase)
+
   console.log(`Done. Test barn seeded:`)
   console.log(`  Barn:     ${barnName} (slug: ${BARN_SLUG}, id: ${barnId})`)
   console.log(`  Manager:  ${buildTestUserEmail(BARN_SLUG, 'manager')} / ${TEST_PASSWORD}`)
@@ -171,7 +236,9 @@ async function run() {
   console.log(`  Rider:    ${buildTestUserEmail(BARN_SLUG, 'rider')} / ${TEST_PASSWORD}`)
   console.log(`  Horses:   Apollo, Bella`)
   console.log(`  Tiers:    Standard ($80, default), Premium ($120)`)
-  console.log(`  Lessons:  6 (4 past, 2 future; 1 group; 3 marked paid)`)
+  console.log(`  Lessons:  7 (5 past, 2 future; 1 group; all but 1 marked paid)`)
+  console.log(`  Pending:  Quinn Pending (rider, awaiting approval)`)
+  console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

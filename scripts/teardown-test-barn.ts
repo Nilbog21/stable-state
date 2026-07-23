@@ -12,7 +12,7 @@ const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 const BARN_SLUG = process.env.TEST_BARN_SLUG
 
-export const TEST_ROLES = ['manager', 'trainer', 'rider', 'rider2'] as const
+export const TEST_ROLES = ['manager', 'trainer', 'rider', 'rider2', 'pending'] as const
 
 export async function teardown(barnSlug: string, supabase: SupabaseClient): Promise<void> {
   const { data: barn } = await supabase.from('barns').select('id').eq('slug', barnSlug).maybeSingle()
