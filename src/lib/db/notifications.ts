@@ -137,6 +137,15 @@ export async function resolveCancellationRecipients(params: CancellationRecipien
   return riderRecipients
 }
 
+// Shared by submitLesson (immediate, single lesson) and generate-recurring-lessons.ts
+// (batched across a cron run) so both produce identical notification copy.
+export function formatNearbyInstructorNotification(count: number): { title: string; body: string } {
+  return {
+    title: `${count} new lesson${count === 1 ? '' : 's'} scheduled nearby`,
+    body: `${count === 1 ? 'A lesson was' : 'Lessons were'} added within your barn's schedule buffer of one of your lessons.`,
+  }
+}
+
 export async function getNotifications(
   userId: string,
   barnId: string,
