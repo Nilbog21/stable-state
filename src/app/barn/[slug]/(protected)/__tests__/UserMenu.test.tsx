@@ -187,6 +187,37 @@ describe('UserMenu - User Guide link', () => {
 
 })
 
+describe('UserMenu - About link', () => {
+  it('should_show_about_link_when_dropdown_is_open', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: /about/i })).toBeDefined()
+  })
+
+  it('should_about_link_point_to_about_route', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect((screen.getByRole('link', { name: /about/i }) as HTMLAnchorElement).href).toContain('/about')
+  })
+
+  it('should_close_dropdown_when_about_link_is_clicked', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /about/i }))
+    expect(screen.queryByText('Sign out')).toBeNull()
+  })
+
+  it('should_about_link_appear_between_user_guide_and_sign_out', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    const guideLink = screen.getByRole('link', { name: /user guide/i })
+    const aboutLink = screen.getByRole('link', { name: /about/i })
+    const signOutButton = screen.getByRole('button', { name: /sign out/i })
+    expect(guideLink.compareDocumentPosition(aboutLink) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(aboutLink.compareDocumentPosition(signOutButton) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+})
+
 describe('UserMenu - dirty navigation blocking', () => {
   const mockSetPendingNav = vi.fn()
 
@@ -221,5 +252,12 @@ describe('UserMenu - dirty navigation blocking', () => {
     fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
     fireEvent.click(screen.getByRole('link', { name: /user guide/i }))
     expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/barn/test-barn/guide' })
+  })
+
+  it('should_set_pending_nav_to_about_when_dirty_and_about_link_clicked', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    fireEvent.click(screen.getByRole('link', { name: /about/i }))
+    expect(mockSetPendingNav).toHaveBeenCalledWith({ type: 'push', href: '/about' })
   })
 })
