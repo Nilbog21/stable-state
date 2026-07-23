@@ -21,6 +21,7 @@ export interface Profile {
   phone: string | null
   emergency_contact_name: string | null
   emergency_contact_phone: string | null
+  photo_path: string | null
   created_at: string
 }
 
