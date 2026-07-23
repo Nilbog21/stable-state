@@ -28,9 +28,15 @@ export function validateFile(
   return ext.toLowerCase()
 }
 
-export async function uploadFile(storagePath: string, file: File, contentType: string, client?: SupabaseClient): Promise<void> {
+export async function uploadFile(
+  storagePath: string,
+  file: File,
+  contentType: string,
+  client?: SupabaseClient,
+  upsert = false
+): Promise<void> {
   const supabase = client ?? await createClient()
-  const { error } = await supabase.storage.from('documents').upload(storagePath, file, { contentType })
+  const { error } = await supabase.storage.from('documents').upload(storagePath, file, { contentType, upsert })
   if (error) throw error
 }
 
@@ -38,6 +44,14 @@ export async function removeFile(storagePath: string, client?: SupabaseClient): 
   const supabase = client ?? await createClient()
   const { error } = await supabase.storage.from('documents').remove([storagePath])
   if (error) throw error
+}
+
+export async function downloadFile(storagePath: string, client?: SupabaseClient): Promise<Blob> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase.storage.from('documents').download(storagePath)
+  if (error) throw error
+  if (!data) throw new Error('No file data returned')
+  return data
 }
 
 export async function getSignedUrl(storagePath: string): Promise<string> {
