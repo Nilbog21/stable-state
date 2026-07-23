@@ -69,6 +69,7 @@ export default async function EditLessonPage({
       feed_notes: null,
       medication_notes: null,
       photo_path: null,
+      owning_member_id: null,
       created_at: '',
       updated_at: '',
     }))

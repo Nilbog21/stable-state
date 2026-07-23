@@ -151,8 +151,8 @@ async function run() {
   const tier1 = await createTier(barnId, 'Standard', 80, true, null, null, 25, supabase)
   const tier2 = await createTier(barnId, 'Premium', 120, false, null, null, 25, supabase)
 
-  const horse1 = await createHorse(barnId, 'Apollo', supabase)
-  const horse2 = await createHorse(barnId, 'Bella', supabase)
+  const horse1 = await createHorse(barnId, 'Apollo', undefined, supabase)
+  const horse2 = await createHorse(barnId, 'Bella', undefined, supabase)
 
   const now = new Date()
   const past = (daysAgo: number) =>
