@@ -240,7 +240,7 @@ export interface OutstandingItem {
   linkId?: string // id to link to, when different from `id` — lesson id for cancellation_fee, agreement id for lease/board
 }
 
-export type ScheduleItemType = 'lesson' | 'expense'
+export type ScheduleItemType = 'lesson' | 'expense' | 'event'
 
 export interface ScheduleItem {
   id: string
@@ -251,6 +251,23 @@ export interface ScheduleItem {
   durationMinutes: number
   instructorId: string | null
   horseIds: string[]
+}
+
+export interface BarnEvent {
+  id: string
+  barn_id: string
+  title: string
+  event_at: string
+  notes: string | null
+  visible_to_roles: Role[]
+  created_at: string
+}
+
+export interface BarnEventInput {
+  title: string
+  eventAt: string
+  notes?: string | null
+  visibleToRoles: Role[]
 }
 
 export interface HorseChargeDetailRow {
