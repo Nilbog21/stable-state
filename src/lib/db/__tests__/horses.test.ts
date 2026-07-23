@@ -820,6 +820,16 @@ function makeUpdateChainForPhotoPath(error: Error | null = null) {
   }
 }
 
+function makeInjectedUpdateChainForPhotoPath(error: Error | null = null) {
+  return {
+    update: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        eq: vi.fn().mockResolvedValue({ error }),
+      }),
+    }),
+  }
+}
+
 describe('replaceHorsePhoto', () => {
   const file = new File([new Uint8Array(10)], 'photo.jpg', { type: 'image/jpeg' })
 
@@ -906,7 +916,7 @@ describe('replaceHorsePhoto', () => {
     const injectedClient = {
       from: vi.fn()
         .mockReturnValueOnce(makeSelectChainForPhotoPath(null))
-        .mockReturnValueOnce(makeUpdateChainForPhotoPath()),
+        .mockReturnValueOnce(makeInjectedUpdateChainForPhotoPath()),
     } as any
 
     await replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg', injectedClient)
@@ -918,7 +928,7 @@ describe('replaceHorsePhoto', () => {
     const injectedClient = {
       from: vi.fn()
         .mockReturnValueOnce(makeSelectChainForPhotoPath(null))
-        .mockReturnValueOnce(makeUpdateChainForPhotoPath()),
+        .mockReturnValueOnce(makeInjectedUpdateChainForPhotoPath()),
     } as any
 
     await replaceHorsePhoto('horse-1', 'barn-1', file, 'jpg', injectedClient)
@@ -972,7 +982,7 @@ describe('removeHorsePhoto', () => {
     const injectedClient = {
       from: vi.fn()
         .mockReturnValueOnce(makeSelectChainForPhotoPath('barn-1/horse-photos/horse-1/photo.jpg'))
-        .mockReturnValueOnce(makeUpdateChainForPhotoPath()),
+        .mockReturnValueOnce(makeInjectedUpdateChainForPhotoPath()),
     } as any
 
     await removeHorsePhoto('horse-1', 'barn-1', injectedClient)
@@ -984,7 +994,7 @@ describe('removeHorsePhoto', () => {
     const injectedClient = {
       from: vi.fn()
         .mockReturnValueOnce(makeSelectChainForPhotoPath('barn-1/horse-photos/horse-1/photo.jpg'))
-        .mockReturnValueOnce(makeUpdateChainForPhotoPath()),
+        .mockReturnValueOnce(makeInjectedUpdateChainForPhotoPath()),
     } as any
 
     await removeHorsePhoto('horse-1', 'barn-1', injectedClient)
