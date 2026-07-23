@@ -8,9 +8,9 @@ export async function GET(request: NextRequest) {
   if (!token) return new NextResponse('Missing token', { status: 400 })
 
   const feed = await getCalendarFeedData(token)
-  if (!feed.valid) return new NextResponse('Not found', { status: 404 })
+  if (!feed.valid || feed.barnName === null) return new NextResponse('Not found', { status: 404 })
 
-  const ics = buildIcsFeed(feed.barnName!, feed.items)
+  const ics = buildIcsFeed(feed.barnName, feed.items)
   return new NextResponse(ics, {
     status: 200,
     headers: {

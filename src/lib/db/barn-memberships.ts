@@ -131,10 +131,11 @@ export type ActiveMemberSummaryRow = {
 
 // Reads any active member's row within a barn, including ones the narrow direct-query
 // policies (own-row/manager-full-barn/trainer-reads-riders) don't cover — broadened per
-// #779 via the same column-limited RPC used by getActiveMembersWithProfiles, so this can
-// never surface invite_token (or calendar_feed_token, #1018 — same column-limiting
-// rationale) either. Kept separate from getMembershipById (used elsewhere by write-gated
-// actions that don't need the broadened read) to keep blast radius minimal.
+// #779 via the same column-limited RPC used by getActiveMembersWithProfiles. invite_token
+// is intentionally still surfaced on the direct-query branch (the member detail page's
+// manager-only ManageMemberSection needs it to render a shareable invite link);
+// calendar_feed_token is a personal bearer credential no caller of this function needs to
+// see for another member, so it's redacted on both branches (#1018).
 export async function getMembershipByIdForBarn(
   membershipId: string,
   barnId: string,
@@ -143,7 +144,7 @@ export async function getMembershipByIdForBarn(
   const supabase = client ?? await createClient()
 
   const direct = await getMembershipById(membershipId, supabase)
-  if (direct) return direct
+  if (direct) return { ...direct, calendar_feed_token: null }
 
   const { data: summaryRows, error } = await supabase.rpc('get_active_barn_member_summaries', {
     p_barn_id: barnId,

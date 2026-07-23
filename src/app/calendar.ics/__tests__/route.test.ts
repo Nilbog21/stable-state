@@ -14,6 +14,11 @@ describe('GET /calendar.ics', () => {
     const request = new Request('http://localhost:3000/calendar.ics')
     const response = await GET(request as any)
     expect(response.status).toBe(400)
+  })
+
+  it('should_not_call_getCalendarFeedData_when_token_missing', async () => {
+    const request = new Request('http://localhost:3000/calendar.ics')
+    await GET(request as any)
     expect(vi.mocked(getCalendarFeedData)).not.toHaveBeenCalled()
   })
 
@@ -24,7 +29,14 @@ describe('GET /calendar.ics', () => {
     expect(response.status).toBe(404)
   })
 
-  it('should_return_200_with_ics_content_type_for_valid_token', async () => {
+  it('should_return_404_when_valid_but_barn_name_is_null', async () => {
+    vi.mocked(getCalendarFeedData).mockResolvedValue({ valid: true, barnName: null, items: [] })
+    const request = new Request('http://localhost:3000/calendar.ics?token=good-tok')
+    const response = await GET(request as any)
+    expect(response.status).toBe(404)
+  })
+
+  it('should_return_200_for_valid_token', async () => {
     vi.mocked(getCalendarFeedData).mockResolvedValue({
       valid: true,
       barnName: 'Sunny Acres',
@@ -35,9 +47,46 @@ describe('GET /calendar.ics', () => {
     const request = new Request('http://localhost:3000/calendar.ics?token=good-tok')
     const response = await GET(request as any)
     expect(response.status).toBe(200)
+  })
+
+  it('should_return_ics_content_type_for_valid_token', async () => {
+    vi.mocked(getCalendarFeedData).mockResolvedValue({
+      valid: true,
+      barnName: 'Sunny Acres',
+      items: [
+        { itemType: 'lesson', id: 'l-1', title: 'Custom', startsAt: '2026-08-01T14:00:00Z', durationMinutes: 60, notes: null },
+      ],
+    })
+    const request = new Request('http://localhost:3000/calendar.ics?token=good-tok')
+    const response = await GET(request as any)
     expect(response.headers.get('Content-Type')).toBe('text/calendar; charset=utf-8')
+  })
+
+  it('should_include_vevent_in_body_for_valid_token', async () => {
+    vi.mocked(getCalendarFeedData).mockResolvedValue({
+      valid: true,
+      barnName: 'Sunny Acres',
+      items: [
+        { itemType: 'lesson', id: 'l-1', title: 'Custom', startsAt: '2026-08-01T14:00:00Z', durationMinutes: 60, notes: null },
+      ],
+    })
+    const request = new Request('http://localhost:3000/calendar.ics?token=good-tok')
+    const response = await GET(request as any)
     const body = await response.text()
     expect(body).toContain('BEGIN:VEVENT')
+  })
+
+  it('should_include_lesson_summary_in_body_for_valid_token', async () => {
+    vi.mocked(getCalendarFeedData).mockResolvedValue({
+      valid: true,
+      barnName: 'Sunny Acres',
+      items: [
+        { itemType: 'lesson', id: 'l-1', title: 'Custom', startsAt: '2026-08-01T14:00:00Z', durationMinutes: 60, notes: null },
+      ],
+    })
+    const request = new Request('http://localhost:3000/calendar.ics?token=good-tok')
+    const response = await GET(request as any)
+    const body = await response.text()
     expect(body).toContain('SUMMARY:Custom')
   })
 

@@ -13,6 +13,7 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
   const [token, setToken] = useState(initialToken)
   const [pending, setPending] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
@@ -28,8 +29,11 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
 
   async function handleGetLink() {
     setPending(true)
+    setError(null)
     try {
       setToken(await getLinkAction())
+    } catch {
+      setError('Could not generate your calendar link. Please try again.')
     } finally {
       setPending(false)
     }
@@ -38,8 +42,11 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
   async function handleRegenerate() {
     setPending(true)
     setCopied(false)
+    setError(null)
     try {
       setToken(await regenerateAction())
+    } catch {
+      setError('Could not regenerate your calendar link. Please try again.')
     } finally {
       setPending(false)
     }
@@ -81,6 +88,7 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
           </Button>
         </div>
       )}
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </section>
   )
 }

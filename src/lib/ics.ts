@@ -13,6 +13,10 @@ function toIcsDateTime(instant: string | Date): string {
 
 export function escapeIcsText(text: string): string {
   return text
+    // Normalize CRLF/bare-CR line endings to \n first — RFC 5545 has no separate escape
+    // for a raw carriage return, and leaving one unescaped can read as a stray line
+    // terminator to a strict parser.
+    .replace(/\r\n?/g, '\n')
     .replace(/\\/g, '\\\\')
     .replace(/\n/g, '\\n')
     .replace(/,/g, '\\,')
@@ -29,6 +33,11 @@ function foldLine(line: string): string {
   while (Buffer.byteLength(rest, 'utf8') > 75) {
     let end = 75
     while (end > 0 && Buffer.byteLength(rest.slice(0, end), 'utf8') > 75) end--
+    // Don't split a UTF-16 surrogate pair (astral character, e.g. emoji) across the fold
+    // boundary — if `end` lands between a high surrogate and its low-surrogate partner,
+    // back off one more so the whole pair moves to the next line.
+    const code = rest.charCodeAt(end - 1)
+    if (end > 1 && code >= 0xd800 && code <= 0xdbff) end--
     chunks.push(rest.slice(0, end))
     rest = ' ' + rest.slice(end)
   }

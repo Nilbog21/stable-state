@@ -16,16 +16,37 @@ describe('buildIcsFeed', () => {
     expect(result).toContain('X-WR-CALNAME:Sunny Acres — My Schedule')
   })
 
-  it('should_render_a_lesson_event_with_utc_dtstart_and_dtend', () => {
-    const items: CalendarFeedItem[] = [
-      { itemType: 'lesson', id: 'l-1', title: 'Custom', startsAt: '2026-08-01T14:00:00Z', durationMinutes: 60, notes: null },
-    ]
-    const result = buildIcsFeed('Sunny Acres', items)
+  const lessonItem: CalendarFeedItem[] = [
+    { itemType: 'lesson', id: 'l-1', title: 'Custom', startsAt: '2026-08-01T14:00:00Z', durationMinutes: 60, notes: null },
+  ]
+
+  it('should_render_a_lesson_event_with_begin_vevent', () => {
+    const result = buildIcsFeed('Sunny Acres', lessonItem)
     expect(result).toContain('BEGIN:VEVENT')
+  })
+
+  it('should_render_a_lesson_event_with_uid', () => {
+    const result = buildIcsFeed('Sunny Acres', lessonItem)
     expect(result).toContain('UID:lesson-l-1@stablestate.app')
+  })
+
+  it('should_render_a_lesson_event_with_utc_dtstart', () => {
+    const result = buildIcsFeed('Sunny Acres', lessonItem)
     expect(result).toContain('DTSTART:20260801T140000Z')
+  })
+
+  it('should_render_a_lesson_event_with_utc_dtend', () => {
+    const result = buildIcsFeed('Sunny Acres', lessonItem)
     expect(result).toContain('DTEND:20260801T150000Z')
+  })
+
+  it('should_render_a_lesson_event_with_summary', () => {
+    const result = buildIcsFeed('Sunny Acres', lessonItem)
     expect(result).toContain('SUMMARY:Custom')
+  })
+
+  it('should_render_a_lesson_event_with_end_vevent', () => {
+    const result = buildIcsFeed('Sunny Acres', lessonItem)
     expect(result).toContain('END:VEVENT')
   })
 
@@ -70,6 +91,22 @@ describe('buildIcsFeed', () => {
     expect(result).toContain('DESCRIPTION:Line one\\nLine two')
   })
 
+  it('should_escape_bare_carriage_returns_in_notes_as_literal_backslash_n', () => {
+    const items: CalendarFeedItem[] = [
+      { itemType: 'event', id: 'e-1', title: 'Costume Party', startsAt: '2026-10-31T23:00:00Z', durationMinutes: 0, notes: 'Line one\rLine two' },
+    ]
+    const result = buildIcsFeed('Sunny Acres', items)
+    expect(result).toContain('DESCRIPTION:Line one\\nLine two')
+  })
+
+  it('should_collapse_crlf_in_notes_to_a_single_escaped_newline', () => {
+    const items: CalendarFeedItem[] = [
+      { itemType: 'event', id: 'e-1', title: 'Costume Party', startsAt: '2026-10-31T23:00:00Z', durationMinutes: 0, notes: 'Line one\r\nLine two' },
+    ]
+    const result = buildIcsFeed('Sunny Acres', items)
+    expect(result).toContain('DESCRIPTION:Line one\\nLine two')
+  })
+
   it('should_fold_lines_longer_than_75_octets', () => {
     const longTitle = 'A'.repeat(120)
     const items: CalendarFeedItem[] = [
@@ -94,6 +131,20 @@ describe('buildIcsFeed', () => {
     for (const line of lines) {
       expect(Buffer.byteLength(line, 'utf8')).toBeLessThanOrEqual(75)
     }
+    const unfolded = result.replace(/\r\n /g, '')
+    expect(unfolded).toContain(`SUMMARY:${title}`)
+  })
+
+  it('should_fold_lines_with_astral_characters_without_splitting_a_surrogate_pair', () => {
+    // 64 B's after the 8-byte "SUMMARY:" prefix puts byte 75 exactly on the high
+    // surrogate of the first emoji (a surrogate pair in UTF-16) — the fold boundary
+    // that used to split the pair.
+    const title = 'B'.repeat(64) + '🐴'.repeat(10)
+    const items: CalendarFeedItem[] = [
+      { itemType: 'event', id: 'e-1', title, startsAt: '2026-10-31T23:00:00Z', durationMinutes: 0, notes: null },
+    ]
+    const result = buildIcsFeed('Sunny Acres', items)
+    expect(result).not.toContain('�')
     const unfolded = result.replace(/\r\n /g, '')
     expect(unfolded).toContain(`SUMMARY:${title}`)
   })

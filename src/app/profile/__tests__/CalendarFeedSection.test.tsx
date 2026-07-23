@@ -187,4 +187,45 @@ describe('CalendarFeedSection', () => {
       await Promise.resolve()
     })
   })
+
+  it('should_show_error_message_when_get_link_action_fails', async () => {
+    const getLinkAction = vi.fn().mockRejectedValue(new Error('network error'))
+    render(
+      <CalendarFeedSection initialToken={null} getLinkAction={getLinkAction} regenerateAction={vi.fn()} />
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /get my calendar link/i }))
+      await Promise.resolve()
+    })
+    expect(screen.getByText(/could not generate your calendar link/i)).toBeDefined()
+  })
+
+  it('should_show_error_message_when_regenerate_action_fails', async () => {
+    const regenerateAction = vi.fn().mockRejectedValue(new Error('network error'))
+    render(
+      <CalendarFeedSection initialToken="tok-abc" getLinkAction={vi.fn()} regenerateAction={regenerateAction} />
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /regenerate/i }))
+      await Promise.resolve()
+    })
+    expect(screen.getByText(/could not regenerate your calendar link/i)).toBeDefined()
+  })
+
+  it('should_clear_previous_error_on_new_get_link_attempt', async () => {
+    const getLinkAction = vi.fn().mockRejectedValueOnce(new Error('fail')).mockResolvedValueOnce('new-tok')
+    render(
+      <CalendarFeedSection initialToken={null} getLinkAction={getLinkAction} regenerateAction={vi.fn()} />
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /get my calendar link/i }))
+      await Promise.resolve()
+    })
+    expect(screen.getByText(/could not generate your calendar link/i)).toBeDefined()
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /get my calendar link/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/could not generate your calendar link/i)).toBeNull()
+  })
 })
