@@ -14,6 +14,14 @@ describe('EventForm — new mode', () => {
     expect(screen.getByLabelText(/title/i)).toBeDefined()
   })
 
+  it('should_update_title_value_on_change', () => {
+    render(<EventForm mode="new" action={mockAction} />)
+
+    fireEvent.change(screen.getByLabelText(/title/i), { target: { value: 'Costume Party' } })
+
+    expect((screen.getByLabelText(/title/i) as HTMLInputElement).value).toBe('Costume Party')
+  })
+
   it('should_render_date_picker', () => {
     render(<EventForm mode="new" action={mockAction} />)
 
