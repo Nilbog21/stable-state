@@ -347,6 +347,8 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] Create an event with a title, date/hour, and notes → it appears in the Barn Events list with the correct title, date, and "manager, trainer, rider" visible-to text
 - [ ] **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked and Manager/Trainer still checked
 - [ ] From the event's Edit page, tap **Delete** → confirm page shows the event's title → **Confirm Delete** → event no longer appears in the Barn Events list
+- [ ] **Data Backup** section shows a **Download All Documents** button, enabled (documents were already uploaded earlier in this phase)
+- [ ] Tap **Download All Documents** → a `.zip` downloads; open it and confirm it contains `horse/<name>/` and `member/<name>/` folders holding the documents uploaded earlier, each file named `<original>-<type>-<date>.<ext>`
 
 Notifications and profile:
 
