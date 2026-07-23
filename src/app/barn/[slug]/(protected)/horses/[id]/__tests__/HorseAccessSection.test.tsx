@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
+
+const mockRouterRefresh = vi.fn()
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ refresh: mockRouterRefresh }),
+}))
+
 import { HorseAccessSection } from '../HorseAccessSection'
 
 afterEach(() => {
