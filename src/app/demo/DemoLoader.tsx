@@ -20,6 +20,7 @@ export function DemoLoader() {
         <p className="text-sm text-zinc-500 dark:text-zinc-400">
           Something went wrong setting up your demo barn. Please try again.
         </p>
+        {/* Bare-text link — Button's boxy styling doesn't fit here */}
         <a href="/demo" className="text-sm font-medium text-blue-600 hover:underline dark:text-blue-400">
           Try again
         </a>

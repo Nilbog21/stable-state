@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getBarnBySlug, updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone, updateScheduleBufferMinutes, countDemoBarns, getOldestDemoBarn, deleteBarn } from '../barns'
+import { getBarnBySlug, updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone, updateScheduleBufferMinutes, createDemoBarn, countDemoBarns, getOldestDemoBarn, deleteBarn } from '../barns'
 
 const mockBarn = createMockBarn()
 
@@ -348,6 +348,29 @@ describe('setInstructorCut', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(mockRpc).toHaveBeenCalledWith('set_instructor_cut', { p_barn_id: 'barn-1', p_value: 30 })
+  })
+})
+
+describe('createDemoBarn', () => {
+  it('should_insert_a_demo_barn_with_the_given_slug', async () => {
+    const single = vi.fn().mockResolvedValue({ data: { ...mockBarn, slug: 'demo-abc12345', is_demo: true }, error: null })
+    const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) })
+    const mockClient = { from: vi.fn().mockReturnValue({ insert }) } as any
+
+    const result = await createDemoBarn('demo-abc12345', mockClient)
+
+    expect(insert).toHaveBeenCalledWith({ name: 'Demo Barn', slug: 'demo-abc12345', is_demo: true })
+    expect(result).toEqual({ ...mockBarn, slug: 'demo-abc12345', is_demo: true })
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('insert failed')
+    const single = vi.fn().mockResolvedValue({ data: null, error: dbError })
+    const mockClient = {
+      from: vi.fn().mockReturnValue({ insert: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) }),
+    } as any
+
+    await expect(createDemoBarn('demo-abc12345', mockClient)).rejects.toThrow('insert failed')
   })
 })
 

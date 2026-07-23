@@ -6,10 +6,16 @@ vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('@/lib/supabase/server', () => ({ createClient: vi.fn() }))
 vi.mock('@/lib/db/barns', () => ({
   getBarnBySlug: vi.fn(),
+  createDemoBarn: vi.fn(),
   countDemoBarns: vi.fn(),
   getOldestDemoBarn: vi.fn(),
   deleteBarn: vi.fn(),
 }))
+vi.mock('@/lib/db/barn-memberships', () => ({
+  getUserMembership: vi.fn(),
+  createActiveMembership: vi.fn(),
+}))
+vi.mock('@/lib/db/profiles', () => ({ getProfileByUserId: vi.fn() }))
 vi.mock('@/lib/db/service-role', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/lib/db/service-role')>()
   return {
@@ -33,7 +39,9 @@ const mockCookies = vi.hoisted(() => vi.fn())
 vi.mock('next/headers', () => ({ cookies: mockCookies }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getBarnBySlug, countDemoBarns, getOldestDemoBarn, deleteBarn } from '@/lib/db/barns'
+import { getBarnBySlug, createDemoBarn, countDemoBarns, getOldestDemoBarn, deleteBarn } from '@/lib/db/barns'
+import { getUserMembership, createActiveMembership } from '@/lib/db/barn-memberships'
+import { getProfileByUserId } from '@/lib/db/profiles'
 import { createServiceClient, findOrCreateAuthUser, teardownBarnData } from '@/lib/db/service-role'
 import { seedBarn } from '../../../../scripts/seed-barn'
 import { createOrResumeDemoBarn } from '../actions'
@@ -46,56 +54,9 @@ function mockCookieStore(initial: Record<string, string> = {}) {
   return { get, set }
 }
 
-function makeServiceClient(opts: {
-  membershipCheck?: { data: unknown; error: unknown }
-  barnInsert?: { data: unknown; error: unknown }
-  profileSelect?: { data: unknown; error: unknown }
-  membershipInsert?: { error: unknown }
-} = {}) {
-  const membershipCheck = opts.membershipCheck ?? { data: null, error: null }
-  const barnInsert = opts.barnInsert ?? { data: { id: 'new-barn-1', slug: 'demo-abc12345', name: 'Demo Barn' }, error: null }
-  const profileSelect = opts.profileSelect ?? { data: { id: 'profile-1' }, error: null }
-  const membershipInsert = opts.membershipInsert ?? { error: null }
-
-  const from = vi.fn((table: string) => {
-    if (table === 'barn_memberships') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              maybeSingle: vi.fn().mockResolvedValue(membershipCheck),
-            }),
-          }),
-        }),
-        insert: vi.fn().mockResolvedValue(membershipInsert),
-      }
-    }
-    if (table === 'barns') {
-      return {
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue(barnInsert),
-          }),
-        }),
-      }
-    }
-    if (table === 'profiles') {
-      return {
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            maybeSingle: vi.fn().mockResolvedValue(profileSelect),
-          }),
-        }),
-      }
-    }
-    throw new Error(`unexpected table ${table}`)
-  })
-
-  return { from } as any
-}
-
 describe('createOrResumeDemoBarn', () => {
   const demoUser = createMockUser({ id: 'demo-user-1', email: 'demo@stable-state.app' })
+  const demoProfile = { id: 'profile-1' }
 
   beforeEach(() => {
     vi.stubEnv('DEMO_USER_EMAIL', 'demo@stable-state.app')
@@ -105,18 +66,21 @@ describe('createOrResumeDemoBarn', () => {
     vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key')
 
     mockRedirect.mockClear()
-    vi.mocked(createClient).mockReset()
+    vi.mocked(createClient).mockReset().mockResolvedValue({ auth: { signInWithPassword: vi.fn() } } as any)
     vi.mocked(getBarnBySlug).mockReset()
+    vi.mocked(createDemoBarn).mockReset().mockResolvedValue(createMockBarn({ id: 'new-barn-1', slug: 'demo-abc12345' }))
     vi.mocked(countDemoBarns).mockReset().mockResolvedValue(0)
     vi.mocked(getOldestDemoBarn).mockReset()
     vi.mocked(deleteBarn).mockReset()
-    vi.mocked(createServiceClient).mockReset()
+    vi.mocked(getUserMembership).mockReset().mockResolvedValue(null)
+    vi.mocked(createActiveMembership).mockReset()
+    vi.mocked(getProfileByUserId).mockReset().mockResolvedValue(demoProfile as any)
+    vi.mocked(createServiceClient).mockReset().mockReturnValue({} as any)
     vi.mocked(findOrCreateAuthUser).mockReset().mockResolvedValue('morgan-user-1')
     vi.mocked(teardownBarnData).mockReset()
     vi.mocked(seedBarn).mockReset().mockResolvedValue(undefined as any)
 
     setupAuth(demoUser)
-    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient())
     mockCookieStore()
   })
 
@@ -128,6 +92,18 @@ describe('createOrResumeDemoBarn', () => {
 
   it('should_redirect_to_login_when_demo_user_password_missing', async () => {
     vi.stubEnv('DEMO_USER_PASSWORD', '')
+    await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/login?error=demo_unavailable')
+  })
+
+  it('should_redirect_to_login_when_supabase_url_missing', async () => {
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', '')
+    await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
+    expect(mockRedirect).toHaveBeenCalledWith('/login?error=demo_unavailable')
+  })
+
+  it('should_redirect_to_login_when_service_role_key_missing', async () => {
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', '')
     await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/login?error=demo_unavailable')
   })
@@ -164,13 +140,21 @@ describe('createOrResumeDemoBarn', () => {
     expect(seedBarn).toHaveBeenCalled()
   })
 
+  it('should_redirect_to_login_without_creating_a_barn_when_visitor_profile_missing', async () => {
+    vi.mocked(getProfileByUserId).mockResolvedValue(null)
+
+    await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/login?error=demo_unavailable')
+    expect(createDemoBarn).not.toHaveBeenCalled()
+    expect(seedBarn).not.toHaveBeenCalled()
+  })
+
   it('should_redirect_immediately_when_resume_cookie_barn_and_membership_exist', async () => {
     mockCookieStore({ demo_barn_slug: 'demo-existing' })
     const existingBarn = createMockBarn({ id: 'existing-barn-1', slug: 'demo-existing', is_demo: true })
     vi.mocked(getBarnBySlug).mockResolvedValue(existingBarn)
-    vi.mocked(createServiceClient).mockReturnValue(
-      makeServiceClient({ membershipCheck: { data: { id: 'membership-1' }, error: null } })
-    )
+    vi.mocked(getUserMembership).mockResolvedValue({ id: 'membership-1' } as any)
 
     await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
 
@@ -192,9 +176,7 @@ describe('createOrResumeDemoBarn', () => {
     mockCookieStore({ demo_barn_slug: 'demo-someone-elses' })
     const otherBarn = createMockBarn({ id: 'other-barn-1', slug: 'demo-someone-elses', is_demo: true })
     vi.mocked(getBarnBySlug).mockResolvedValue(otherBarn)
-    vi.mocked(createServiceClient).mockReturnValue(
-      makeServiceClient({ membershipCheck: { data: null, error: null } })
-    )
+    vi.mocked(getUserMembership).mockResolvedValue(null)
 
     await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
 
@@ -252,19 +234,12 @@ describe('createOrResumeDemoBarn', () => {
     expect(countDemoBarns).not.toHaveBeenCalled()
   })
 
-  it('should_redirect_to_login_when_visitor_profile_missing', async () => {
-    vi.mocked(createServiceClient).mockReturnValue(makeServiceClient({ profileSelect: { data: null, error: null } }))
-
-    await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
-
-    expect(mockRedirect).toHaveBeenCalledWith('/login?error=demo_unavailable')
-  })
-
   it('should_seed_the_new_barn_and_add_the_visitor_as_manager', async () => {
     await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
 
     expect(findOrCreateAuthUser).toHaveBeenCalledWith('manager2@dev.local', expect.anything())
     expect(seedBarn).toHaveBeenCalledWith(expect.anything(), 'new-barn-1', 'demo-abc12345', 'morgan-user-1')
+    expect(createActiveMembership).toHaveBeenCalledWith('demo-user-1', 'profile-1', 'new-barn-1', 'manager', expect.anything())
   })
 
   it('should_set_demo_barn_slug_and_barn_session_cookies_on_a_new_barn', async () => {

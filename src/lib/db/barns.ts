@@ -72,6 +72,17 @@ export async function updateScheduleBufferMinutes(
   return data
 }
 
+export async function createDemoBarn(slug: string, client: SupabaseClient): Promise<Barn> {
+  const { data, error } = await client
+    .from('barns')
+    .insert({ name: 'Demo Barn', slug, is_demo: true })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
 export async function countDemoBarns(client: SupabaseClient): Promise<number> {
   const { count, error } = await client
     .from('barns')

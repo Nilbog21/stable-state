@@ -104,7 +104,7 @@ describe('findOrCreateAuthUser', () => {
     expect(id).toBe('new-1')
   })
 
-  it('should_throw_when_create_errors', async () => {
+  it('should_throw_when_create_errors_and_re_lookup_also_finds_nothing', async () => {
     const client = {
       auth: {
         admin: {
@@ -115,6 +115,25 @@ describe('findOrCreateAuthUser', () => {
     } as any
 
     await expect(findOrCreateAuthUser('new@x.com', client)).rejects.toThrow('create auth user new@x.com: boom')
+  })
+
+  it('should_return_race_winner_id_when_create_errors_but_re_lookup_finds_the_user', async () => {
+    const listUsers = vi.fn()
+      .mockResolvedValueOnce(listUsersPage([]))
+      .mockResolvedValueOnce(listUsersPage([{ id: 'race-winner-1', email: 'new@x.com' }]))
+    const client = {
+      auth: {
+        admin: {
+          listUsers,
+          createUser: vi.fn().mockResolvedValue({ data: null, error: { message: 'duplicate key' } }),
+        },
+      },
+    } as any
+
+    const id = await findOrCreateAuthUser('new@x.com', client)
+
+    expect(id).toBe('race-winner-1')
+    expect(listUsers).toHaveBeenCalledTimes(2)
   })
 
   it('should_throw_when_create_returns_no_user', async () => {
@@ -198,6 +217,43 @@ describe('teardownBarnData', () => {
     await teardownBarnData('barn-1', client)
 
     expect(client.storage.from).toHaveBeenCalledWith('documents')
+  })
+
+  it('should_purge_managed_stub_profile_photo_storage_before_deleting_profiles', async () => {
+    const client = buildClient({
+      tables: {
+        lesson_tiers: { data: [], error: null },
+        notifications: { data: [], error: null },
+        horse_documents: { data: [], error: null },
+        staff_documents: { data: [], error: null },
+        rider_documents: { data: [], error: null },
+        horses: { data: [], error: null },
+        barn_memberships: [{ data: [{ profile_id: 'p1' }], error: null }, { data: [], error: null }],
+        profiles: [{ data: [{ photo_path: 'p/1.jpg' }], error: null }, { data: [], error: null }],
+      },
+    })
+
+    await teardownBarnData('barn-1', client)
+
+    expect(client.storage.from('documents').remove).toHaveBeenCalledWith(['p/1.jpg'])
+  })
+
+  it('should_throw_when_profile_photo_storage_removal_errors', async () => {
+    const client = buildClient({
+      tables: {
+        lesson_tiers: { data: [], error: null },
+        notifications: { data: [], error: null },
+        horse_documents: { data: [], error: null },
+        staff_documents: { data: [], error: null },
+        rider_documents: { data: [], error: null },
+        horses: { data: [], error: null },
+        barn_memberships: [{ data: [{ profile_id: 'p1' }], error: null }, { data: [], error: null }],
+        profiles: [{ data: [{ photo_path: 'p/1.jpg' }], error: null }, { data: [], error: null }],
+      },
+      storageError: { message: 'storage down' },
+    })
+
+    await expect(teardownBarnData('barn-1', client)).rejects.toThrow('remove storage profiles: storage down')
   })
 
   it('should_skip_managed_stub_profile_delete_when_no_memberships_found', async () => {

@@ -249,6 +249,23 @@ describe('getProfileByUserId', () => {
 
     expect(mockEq).toHaveBeenCalledWith('user_id', 'user-42')
   })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+          }),
+        }),
+      }),
+    } as any
+
+    const result = await getProfileByUserId('user-1', mockClient)
+
+    expect(result).toEqual(mockProfile)
+    expect(createClient).not.toHaveBeenCalled()
+  })
 })
 
 describe('getProfileById', () => {

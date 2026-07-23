@@ -5,10 +5,11 @@ import { cookies } from 'next/headers'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { getAuthenticatedUser } from '@/lib/db/auth'
-import { getBarnBySlug, countDemoBarns, getOldestDemoBarn, deleteBarn } from '@/lib/db/barns'
-import { createServiceClient, mustSucceed, findOrCreateAuthUser, teardownBarnData } from '@/lib/db/service-role'
+import { getBarnBySlug, createDemoBarn, countDemoBarns, getOldestDemoBarn, deleteBarn } from '@/lib/db/barns'
+import { getUserMembership, createActiveMembership } from '@/lib/db/barn-memberships'
+import { getProfileByUserId } from '@/lib/db/profiles'
+import { createServiceClient, findOrCreateAuthUser, teardownBarnData } from '@/lib/db/service-role'
 import { seedBarn, DEV_MANAGER_2 } from '../../../scripts/seed-barn'
-import type { Barn } from '@/lib/db/types'
 
 const DEMO_BARN_SLUG_COOKIE = 'demo_barn_slug'
 const DEMO_COOKIE_MAX_AGE = 60 * 60 * 24 // 24h
@@ -29,13 +30,17 @@ function cookieOptions(path: string) {
 export async function createOrResumeDemoBarn(): Promise<void> {
   const DEMO_USER_EMAIL = process.env.DEMO_USER_EMAIL
   const DEMO_USER_PASSWORD = process.env.DEMO_USER_PASSWORD
+  const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL
+  const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   const DEMO_BARN_CAP = Number(process.env.DEMO_BARN_CAP ?? '20')
 
-  if (!DEMO_USER_EMAIL || !DEMO_USER_PASSWORD) {
+  if (!DEMO_USER_EMAIL || !DEMO_USER_PASSWORD || !SUPABASE_URL || !SERVICE_ROLE_KEY) {
     redirect('/login?error=demo_unavailable')
   }
 
   const requestClient = await createClient()
+  // Manual auth check rather than requireMembership: an unauthenticated visitor has no
+  // barn/membership yet to check against — establishing one is this action's whole job.
   let user = await getAuthenticatedUser()
 
   if (!user) {
@@ -49,10 +54,14 @@ export async function createOrResumeDemoBarn(): Promise<void> {
     user = data.user
   }
 
-  const serviceClient = createServiceClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.SUPABASE_SERVICE_ROLE_KEY!
-  )
+  // Checked before any barn is created/seeded so a visitor without a profiles row (e.g.
+  // mid /profile/complete) can't leave an orphaned, fully-seeded demo barn behind.
+  const profile = await getProfileByUserId(user.id, requestClient)
+  if (!profile) {
+    redirect('/login?error=demo_unavailable')
+  }
+
+  const serviceClient = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
   const cookieStore = await cookies()
   const existingSlug = cookieStore.get(DEMO_BARN_SLUG_COOKIE)?.value
@@ -60,15 +69,7 @@ export async function createOrResumeDemoBarn(): Promise<void> {
   if (existingSlug) {
     const barn = await getBarnBySlug(existingSlug, serviceClient)
     if (barn) {
-      const membership = mustSucceed(
-        await serviceClient
-          .from('barn_memberships')
-          .select('id')
-          .eq('user_id', user.id)
-          .eq('barn_id', barn.id)
-          .maybeSingle(),
-        'check existing demo barn membership'
-      )
+      const membership = await getUserMembership(user.id, barn.id, serviceClient)
       if (membership) {
         cookieStore.set(`barn_session_${barn.slug}`, user.id, cookieOptions(`/barn/${barn.slug}/`))
         redirect(`/barn/${barn.slug}/`)
@@ -76,6 +77,10 @@ export async function createOrResumeDemoBarn(): Promise<void> {
     }
   }
 
+  // ponytail: cap check -> reap -> insert isn't transactional, so concurrent requests at
+  // the cap boundary can both reap the same barn and both insert, overshooting the cap by
+  // one. Self-healing on the next request; upgrade to a `pg_advisory_xact_lock`-backed RPC
+  // if the cap ever needs to be a hard bound.
   if (DEMO_BARN_CAP > 0 && (await countDemoBarns(serviceClient)) >= DEMO_BARN_CAP) {
     const oldest = await getOldestDemoBarn(serviceClient)
     if (oldest) {
@@ -85,32 +90,12 @@ export async function createOrResumeDemoBarn(): Promise<void> {
   }
 
   const slug = `demo-${randomUUID().slice(0, 8)}`
-  const barn = mustSucceed<Barn>(
-    await serviceClient.from('barns').insert({ name: 'Demo Barn', slug, is_demo: true }).select().single(),
-    'insert demo barn'
-  )
+  const barn = await createDemoBarn(slug, serviceClient)
 
   const morganUserId = await findOrCreateAuthUser(DEV_MANAGER_2.email, serviceClient)
   await seedBarn(serviceClient, barn.id, barn.slug, morganUserId)
 
-  const profile = mustSucceed<{ id: string } | null>(
-    await serviceClient.from('profiles').select('id').eq('user_id', user.id).maybeSingle(),
-    'fetch visitor profile'
-  )
-  if (!profile) {
-    redirect('/login?error=demo_unavailable')
-  }
-
-  mustSucceed(
-    await serviceClient.from('barn_memberships').insert({
-      user_id: user.id,
-      profile_id: profile.id,
-      barn_id: barn.id,
-      role: 'manager',
-      status: 'active',
-    }),
-    'insert visitor manager membership'
-  )
+  await createActiveMembership(user.id, profile.id, barn.id, 'manager', serviceClient)
 
   cookieStore.set(DEMO_BARN_SLUG_COOKIE, barn.slug, cookieOptions('/'))
   cookieStore.set(`barn_session_${barn.slug}`, user.id, cookieOptions(`/barn/${barn.slug}/`))

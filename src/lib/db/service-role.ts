@@ -35,7 +35,13 @@ export async function findOrCreateAuthUser(email: string, client: SupabaseClient
   if (existingId) return existingId
 
   const { data, error } = await client.auth.admin.createUser({ email, email_confirm: true })
-  if (error) throw new Error(`create auth user ${email}: ${error.message}`)
+  if (error) {
+    // A concurrent /demo request can win the race to create this same shared fixture
+    // identity between our lookup above and this createUser call — re-check before failing.
+    const [raceWinnerId] = await findAuthUserIdsByEmails([email], client)
+    if (raceWinnerId) return raceWinnerId
+    throw new Error(`create auth user ${email}: ${error.message}`)
+  }
   if (!data?.user) throw new Error(`create auth user ${email}: no user returned`)
   return data.user.id
 }
@@ -81,6 +87,11 @@ export async function teardownBarnData(barnId: string, supabase: SupabaseClient)
   mustSucceed(await supabase.from('barn_memberships').delete().eq('barn_id', barnId), 'delete barn_memberships')
 
   if (membershipProfileIds.length > 0) {
+    await removePhotoPathStorage(
+      'profiles',
+      await supabase.from('profiles').select('photo_path').eq('is_managed', true).in('id', membershipProfileIds),
+      supabase
+    )
     mustSucceed(
       await supabase.from('profiles').delete().eq('is_managed', true).in('id', membershipProfileIds),
       'delete stale managed-stub profiles'
