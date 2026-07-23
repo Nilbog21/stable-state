@@ -648,6 +648,17 @@ describe('deleteHorsePhotoAction', () => {
     await deleteHorsePhotoAction('green-acres', 'horse-1')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
   })
+
+  it('should_not_throw_when_removeHorsePhoto_is_not_authorized', async () => {
+    vi.mocked(removeHorsePhoto).mockRejectedValue(new Error('not_authorized'))
+    await expect(deleteHorsePhotoAction('green-acres', 'horse-1')).resolves.toBeUndefined()
+  })
+
+  it('should_still_revalidate_when_removeHorsePhoto_is_not_authorized', async () => {
+    vi.mocked(removeHorsePhoto).mockRejectedValue(new Error('not_authorized'))
+    await deleteHorsePhotoAction('green-acres', 'horse-1')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
 })
 
 describe('grantHorseAccessAction', () => {

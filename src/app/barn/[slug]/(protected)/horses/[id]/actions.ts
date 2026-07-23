@@ -102,7 +102,13 @@ export async function deleteHorsePhotoAction(
   horseId: string
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
-  await removeHorsePhoto(horseId, barn.id)
+  try {
+    await removeHorsePhoto(horseId, barn.id)
+  } catch {
+    // The UI already hides this control once locked; this guards a stale-page race
+    // (owner uploads between page render and a locked-out manager's click) instead of
+    // crashing — revalidate so the page reflects the current true state.
+  }
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 

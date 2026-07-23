@@ -42,7 +42,8 @@ export default async function HorseDetailPage({
   const canSeeDocuments = role === 'manager' || role === 'trainer'
   const isManager = role === 'manager'
   const isOwner = horse.owning_member_id === membership.id
-  const canWritePhoto = isManager || isOwner
+  const isPhotoLockedToOwner = horse.owning_member_id !== null && horse.photo_uploaded_by === horse.owning_member_id
+  const canWritePhoto = isOwner || (isManager && !isPhotoLockedToOwner)
 
   const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
   const photoUrl = horse.photo_path ? await getSignedUrl(horse.photo_path) : null
