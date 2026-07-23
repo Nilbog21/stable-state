@@ -31,13 +31,13 @@ export default function AboutPage() {
         </p>
         <ul>
           <li>
+            <Link href="/changelog">Changelog{version && ` — Version ${version}`}</Link>
+          </li>
+          <li>
             <Link href="/terms">Terms of Service</Link>
           </li>
           <li>
             <Link href="/privacy">Privacy Policy</Link>
-          </li>
-          <li>
-            <Link href="/changelog">Changelog{version && ` — Version ${version}`}</Link>
           </li>
         </ul>
       </div>
