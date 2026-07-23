@@ -40,8 +40,14 @@ trap cleanup EXIT
 echo "Seeding test barn $BARN_SLUG..."
 bash scripts/seed-test-barn.sh "$BARN_SLUG"
 
-echo "Ensuring Playwright browsers are installed..."
-npx playwright install --with-deps chromium
+echo "Checking Playwright system dependencies..."
+if ! npx playwright install-deps chromium --dry-run; then
+  echo "Error: missing Playwright system dependencies (see above). Run 'sudo npx playwright install-deps chromium' yourself, then re-run this script." >&2
+  exit 1
+fi
+
+echo "Ensuring Playwright Chromium browser is installed..."
+npx playwright install chromium
 
 PLAYWRIGHT_ARGS=()
 if [ "$MODE" = "auto" ]; then
