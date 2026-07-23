@@ -17,4 +17,8 @@ describe('TEST_ROLES', () => {
   it('should_include_rider2', () => {
     expect(TEST_ROLES).toContain('rider2')
   })
+
+  it('should_include_pending', () => {
+    expect(TEST_ROLES).toContain('pending')
+  })
 })
