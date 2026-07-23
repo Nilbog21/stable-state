@@ -1,8 +1,10 @@
 import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
-import { upsertProfile } from '@/lib/db/profiles'
-import { mustSucceed, createServiceClient, findAuthUserIdsByEmails } from './script-utils'
+import { upsertProfile, updateContactInfo } from '@/lib/db/profiles'
+import { createServiceClient, findAuthUserIdsByEmails } from './script-utils'
 
+// Email/password provider must be enabled in the Supabase dashboard:
+// Authentication → Providers → Email (one-time manual step per project, including prod).
 export const DEMO_EMAIL = 'demo@stable-state.app'
 
 export function formatDemoCredentialsOutput(email: string, password: string): string {
@@ -19,6 +21,9 @@ async function run() {
   const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
   const password = randomUUID()
 
+  // ponytail: findAuthUserIdsByEmails paginates auth.admin.listUsers 50-at-a-time —
+  // fine for a one-time bootstrap script, revisit with a direct email filter if prod's
+  // user count ever makes this scan noticeably slow.
   const [existingUserId] = await findAuthUserIdsByEmails([DEMO_EMAIL], supabase)
 
   let userId: string
@@ -38,16 +43,14 @@ async function run() {
   }
 
   const profile = await upsertProfile(userId, DEMO_EMAIL, 'Demo', 'User', supabase)
-  mustSucceed(
-    await supabase
-      .from('profiles')
-      .update({
-        phone: '555-0100',
-        emergency_contact_name: 'Demo Emergency Contact',
-        emergency_contact_phone: '555-0199',
-      })
-      .eq('id', profile.id),
-    'update demo contact fields'
+  await updateContactInfo(
+    profile.id,
+    {
+      phone: '555-0100',
+      emergency_contact_name: 'Demo Emergency Contact',
+      emergency_contact_phone: '555-0199',
+    },
+    supabase
   )
 
   console.log(formatDemoCredentialsOutput(DEMO_EMAIL, password))
