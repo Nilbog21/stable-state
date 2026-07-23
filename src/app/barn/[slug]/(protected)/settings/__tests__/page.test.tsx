@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockLessonTier } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockLessonTier, createMockBarnEvent } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
@@ -13,6 +13,7 @@ vi.mock('@/lib/db/member-names', () => ({
   resolveMemberNames: vi.fn(),
 }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
+vi.mock('@/lib/db/barn-events', () => ({ getEventsByBarn: vi.fn() }))
 vi.mock('../approvals/actions', () => ({
   approveMembershipAction: vi.fn(),
   rejectMembershipAction: vi.fn(),
@@ -34,6 +35,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
+import { getEventsByBarn } from '@/lib/db/barn-events'
 import SettingsPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -46,12 +48,14 @@ describe('SettingsPage', () => {
     vi.mocked(getAllTiersByBarn).mockReset()
     vi.mocked(getPendingMemberships).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
+    vi.mocked(getEventsByBarn).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getAllTiersByBarn).mockResolvedValue([])
     vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    vi.mocked(getEventsByBarn).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -491,5 +495,80 @@ describe('SettingsPage', () => {
 
     const heading = screen.getByRole('heading', { name: /default board fee/i })
     expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_render_barn_events_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /barn events/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_render_event_title_as_text_in_list', async () => {
+    vi.mocked(getEventsByBarn).mockResolvedValue([
+      createMockBarnEvent({ id: 'event-1', title: 'Costume Party' }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('Costume Party')).toBeDefined()
+  })
+
+  it('should_render_visible_to_roles_for_an_event', async () => {
+    vi.mocked(getEventsByBarn).mockResolvedValue([
+      createMockBarnEvent({ id: 'event-1', title: 'Costume Party', visible_to_roles: ['manager', 'rider'] }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('manager, rider')).toBeDefined()
+  })
+
+  it('should_render_edit_link_for_an_event', async () => {
+    vi.mocked(getEventsByBarn).mockResolvedValue([
+      createMockBarnEvent({ id: 'event-1', title: 'Costume Party' }),
+    ])
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /^edit$/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/settings/events/event-1')
+  })
+
+  it('should_render_add_event_link_navigating_to_new_page', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: /add event/i }) as HTMLAnchorElement
+    expect(link.href).toContain('/barn/green-acres/settings/events/new')
+  })
+
+  it('should_render_empty_state_when_no_events', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText(/no events yet/i)).toBeDefined()
   })
 })
