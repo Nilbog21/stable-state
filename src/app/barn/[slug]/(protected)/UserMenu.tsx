@@ -73,6 +73,20 @@ export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }
           >
             User Guide
           </Link>
+          <Link
+            href="/about"
+            onClick={() => setOpen(false)}
+            onNavigate={(e) => {
+              if (dirty) {
+                e.preventDefault()
+                setOpen(false)
+                setPendingNav({ type: 'push', href: '/about' })
+              }
+            }}
+            className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            About
+          </Link>
           {/* Raw Tailwind, not <Button>: styled identically to the sibling
               Link menu rows above (Profile/Switch Barn/User Guide) — a
               dropdown menu-item pattern, not a button pattern. */}
