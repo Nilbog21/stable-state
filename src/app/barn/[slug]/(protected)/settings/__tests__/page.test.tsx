@@ -558,7 +558,7 @@ describe('SettingsPage', () => {
     })
     render(jsx)
 
-    const link = screen.getByRole('link', { name: /add event/i }) as HTMLAnchorElement
+    const [link] = screen.getAllByRole('link', { name: /add event/i }) as HTMLAnchorElement[]
     expect(link.href).toContain('/barn/green-acres/settings/events/new')
   })
 
