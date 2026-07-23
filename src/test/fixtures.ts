@@ -64,6 +64,7 @@ export function createMockProfile(overrides: Partial<Profile> = {}): Profile {
     phone: null,
     emergency_contact_name: null,
     emergency_contact_phone: null,
+    photo_path: null,
     created_at: '',
     ...overrides,
   }

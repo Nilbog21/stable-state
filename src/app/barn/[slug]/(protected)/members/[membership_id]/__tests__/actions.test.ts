@@ -19,6 +19,8 @@ vi.mock('@/lib/db/documents', () => ({
 vi.mock('@/lib/db/profiles', () => ({
   updateContactInfo: vi.fn(),
   getProfileById: vi.fn(),
+  replaceProfilePhoto: vi.fn(),
+  removeProfilePhoto: vi.fn(),
 }))
 
 vi.mock('@/lib/db/document-storage', async (importOriginal) => {
@@ -46,7 +48,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getMembershipById, setCanInstruct, deleteMembership } from '@/lib/db/barn-memberships'
 import { revokeInviteToken } from '@/lib/db/member-invites'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
-import { updateContactInfo, getProfileById } from '@/lib/db/profiles'
+import { updateContactInfo, getProfileById, replaceProfilePhoto, removeProfilePhoto } from '@/lib/db/profiles'
 import { removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
 import {
@@ -56,6 +58,8 @@ import {
   setCanInstructAction,
   revokeInviteTokenAction,
   removeMemberAction,
+  uploadProfilePhotoAction,
+  deleteProfilePhotoAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -655,5 +659,177 @@ describe('removeMemberAction', () => {
 
     await expect(removeMemberAction('green-acres', 'mem-target-trn')).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/members')
+  })
+})
+
+function makePhotoFile(): File {
+  return new File([new Uint8Array(100)], 'headshot.jpg', { type: 'image/jpeg' })
+}
+
+function formDataWithPhoto(): FormData {
+  const fd = new FormData()
+  fd.set('file', makePhotoFile())
+  return fd
+}
+
+describe('uploadProfilePhotoAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getMembershipById).mockReset()
+    vi.mocked(getProfileById).mockReset()
+    vi.mocked(replaceProfilePhoto).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    mockRedirect.mockClear()
+
+    vi.mocked(replaceProfilePhoto).mockResolvedValue(undefined)
+  })
+
+  it('should_return_not_found_when_target_membership_does_not_exist', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-gone', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Not found' })
+  })
+
+  it('should_return_not_found_when_target_membership_belongs_to_a_different_barn', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue({ ...riderMembership, barn_id: 'barn-other' })
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Not found' })
+  })
+
+  it('should_return_not_found_when_target_profile_does_not_exist', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(null)
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Not found' })
+  })
+
+  it('should_allow_self_upload_regardless_of_managed_status', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: false }))
+
+    await expect(uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, formDataWithPhoto())).rejects.toThrow('NEXT_REDIRECT')
+    expect(replaceProfilePhoto).toHaveBeenCalledWith('profile-1', 'barn-1', expect.any(File), 'jpg')
+  })
+
+  it('should_allow_manager_upload_for_managed_profile', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: true }))
+
+    await expect(uploadProfilePhotoAction('green-acres', 'mem-target-rdr', { error: null }, formDataWithPhoto())).rejects.toThrow('NEXT_REDIRECT')
+    expect(replaceProfilePhoto).toHaveBeenCalledWith('profile-1', 'barn-1', expect.any(File), 'jpg')
+  })
+
+  it('should_reject_manager_upload_for_unmanaged_profile', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: false }))
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-target-rdr', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Forbidden' })
+  })
+
+  it('should_not_call_replaceProfilePhoto_when_manager_upload_is_forbidden', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: false }))
+
+    await uploadProfilePhotoAction('green-acres', 'mem-target-rdr', { error: null }, formDataWithPhoto())
+    expect(replaceProfilePhoto).not.toHaveBeenCalled()
+  })
+
+  it('should_reject_trainer_uploading_for_another_member', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-trn' } as any, barn: mockBarn, membership: trainerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: true }))
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-target-rdr', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Forbidden' })
+  })
+
+  it('should_return_error_when_file_type_is_not_jpeg_or_png', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1' }))
+
+    const fd = new FormData()
+    fd.set('file', new File([new Uint8Array(100)], 'doc.pdf', { type: 'application/pdf' }))
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, fd)
+    expect(result).toEqual({ error: 'Unsupported file type' })
+  })
+
+  it('should_return_error_when_replaceProfilePhoto_fails', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1' }))
+    vi.mocked(replaceProfilePhoto).mockRejectedValue(new Error('upload error'))
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'upload error' })
+  })
+
+  it('should_revalidate_and_redirect_to_member_detail_page_on_success', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1' }))
+
+    await expect(uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, formDataWithPhoto())).rejects.toThrow('NEXT_REDIRECT')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-rdr')
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/members/mem-rdr')
+  })
+})
+
+describe('deleteProfilePhotoAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getMembershipById).mockReset()
+    vi.mocked(getProfileById).mockReset()
+    vi.mocked(removeProfilePhoto).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(removeProfilePhoto).mockResolvedValue(undefined)
+  })
+
+  it('should_allow_self_delete', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: false }))
+
+    await deleteProfilePhotoAction('green-acres', 'mem-rdr')
+    expect(removeProfilePhoto).toHaveBeenCalledWith('profile-1')
+  })
+
+  it('should_allow_manager_delete_for_managed_profile', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: true }))
+
+    await deleteProfilePhotoAction('green-acres', 'mem-target-rdr')
+    expect(removeProfilePhoto).toHaveBeenCalledWith('profile-1')
+  })
+
+  it('should_404_when_manager_targets_unmanaged_profile', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-mgr' } as any, barn: mockBarn, membership: managerMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1', is_managed: false }))
+
+    await expect(deleteProfilePhotoAction('green-acres', 'mem-target-rdr')).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(removeProfilePhoto).not.toHaveBeenCalled()
+  })
+
+  it('should_revalidate_member_detail_path_after_delete', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-1' }))
+
+    await deleteProfilePhotoAction('green-acres', 'mem-rdr')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-rdr')
   })
 })

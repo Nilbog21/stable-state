@@ -7,6 +7,7 @@ import { canManage } from '@/lib/document-target'
 import { DocumentUploadForm } from './DocumentUploadForm'
 import { uploadDocumentAction } from './actions'
 import { uploadHorsePhotoAction } from '../../horses/[id]/actions'
+import { uploadProfilePhotoAction } from '../../members/[membership_id]/actions'
 import type { DocumentEntity } from '@/lib/document-record-types'
 
 export default async function NewDocumentPage({
@@ -19,7 +20,36 @@ export default async function NewDocumentPage({
   const { slug } = await params
   const { entity, id, type } = await searchParams
 
-  if (!id || (entity !== 'horse' && entity !== 'trainer' && entity !== 'rider')) notFound()
+  if (!id || (entity !== 'horse' && entity !== 'trainer' && entity !== 'rider' && entity !== 'profile')) notFound()
+
+  if (entity === 'profile' && type === 'photo') {
+    const { user, barn, membership: callerMembership } = await requireMembership(slug, ['manager', 'trainer', 'rider'])
+
+    const targetMembership = await getMembershipById(id)
+    if (!targetMembership || targetMembership.barn_id !== barn.id) notFound()
+
+    const targetProfile = await getProfileById(targetMembership.profile_id)
+    if (!targetProfile) notFound()
+
+    const isOwnPage = targetMembership.user_id === user.id
+    if (!isOwnPage && !(callerMembership.role === 'manager' && targetProfile.is_managed)) notFound()
+
+    const displayName = `${targetProfile.first_name} ${targetProfile.last_name}`
+
+    return (
+      <main className="mx-auto max-w-md px-4 py-12">
+        <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          {targetProfile.photo_path ? 'Replace' : 'Set'} Photo — {displayName}
+        </h1>
+        <DocumentUploadForm
+          entity="rider"
+          photoMode
+          action={uploadProfilePhotoAction.bind(null, slug, targetMembership.id)}
+          cancelHref={`/barn/${slug}/members/${targetMembership.id}`}
+        />
+      </main>
+    )
+  }
 
   if (entity === 'horse' && type === 'photo') {
     const { barn } = await requireMembership(slug, ['manager'])

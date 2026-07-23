@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Profile } from './types'
+import { uploadFile, removeFile } from './document-storage'
 
 export async function upsertProfile(
   userId: string,
@@ -85,6 +86,42 @@ export async function updateContactInfo(
     .eq('id', profileId)
 
   if (error) throw error
+}
+
+export async function updateProfilePhotoPath(profileId: string, photoPath: string | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ photo_path: photoPath })
+    .eq('id', profileId)
+  if (error) throw error
+}
+
+export async function replaceProfilePhoto(profileId: string, barnId: string, file: File, ext: string): Promise<void> {
+  // Re-fetches the current photo_path here rather than trusting a value bound at page-render
+  // time, so a concurrent replace/remove can't be clobbered by a stale caller.
+  const current = await getProfileById(profileId)
+  const storagePath = `${barnId}/profile-photos/${profileId}/${Date.now()}.${ext}`
+
+  await uploadFile(storagePath, file, file.type)
+
+  try {
+    await updateProfilePhotoPath(profileId, storagePath)
+  } catch (err) {
+    await removeFile(storagePath).catch(() => {})
+    throw err
+  }
+
+  if (current?.photo_path) {
+    await removeFile(current.photo_path).catch(() => {})
+  }
+}
+
+export async function removeProfilePhoto(profileId: string): Promise<void> {
+  const current = await getProfileById(profileId)
+  if (!current?.photo_path) return
+  await updateProfilePhotoPath(profileId, null)
+  await removeFile(current.photo_path).catch(() => {})
 }
 
 export async function getProfilesByUserIds(
