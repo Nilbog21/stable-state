@@ -34,7 +34,7 @@ We never sell, rent, or share your data with third parties for marketing or any 
 
 ## Data retention & deletion
 
-Your barn's data is retained for as long as the barn account is active. A nightly automated backup of the production database is kept for 30 days (as a GitHub Actions artifact) for disaster recovery, then automatically expires. A barn manager can also generate an on-demand zip archive of all the barn's uploaded documents for their own records; each barn retains only its most recently generated archive, which is overwritten every time it's regenerated. To request deletion of your data, contact us at the address below.
+Your barn's data is retained for as long as the barn account is active. A nightly automated backup of the production database is kept for 30 days (as a GitHub Actions artifact) for disaster recovery, then automatically expires. A barn manager can also generate an on-demand zip archive of all the barn's uploaded documents, or an on-demand spreadsheet of the barn's lesson, financial, horse, and rider records, for their own records; each barn retains only its most recently generated archive/spreadsheet of each kind, which is overwritten every time it's regenerated. To request deletion of your data, contact us at the address below.
 
 ## Contact
 

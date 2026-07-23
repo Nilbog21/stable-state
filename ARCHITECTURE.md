@@ -86,7 +86,7 @@ Routes: `/`, `/barns`, `/barn/[slug]`, `/barn/[slug]/lessons`, `/barn/[slug]/les
 
 `src/lib/db/` — one file per domain. Never query Supabase directly from components or actions; always go through these modules. Full per-module function descriptions: [`docs/architecture/dal.md`](docs/architecture/dal.md).
 
-Modules: `auth.ts`, `transactions.ts`, `agreements.ts`, `agreement-finances.ts`, `expenses.ts`, `expense-finances.ts`, `barns.ts`, `barn-memberships.ts`, `member-names.ts`, `member-invites.ts`, `horses.ts`, `member-horse-privileges.ts`, `lessons.ts`, `lesson-participants.ts`, `lesson-series.ts`, `lesson-finance-queries.ts`, `lesson-finances.ts`, `outstanding.ts`, `schedule.ts`, `lesson-tiers.ts`, `barn-events.ts`, `profiles.ts`, `notifications.ts`, `document-storage.ts`, `documents.ts`, `document-backup.ts`, `types.ts`
+Modules: `auth.ts`, `transactions.ts`, `agreements.ts`, `agreement-finances.ts`, `expenses.ts`, `expense-finances.ts`, `barns.ts`, `barn-memberships.ts`, `member-names.ts`, `member-invites.ts`, `horses.ts`, `member-horse-privileges.ts`, `lessons.ts`, `lesson-participants.ts`, `lesson-series.ts`, `lesson-finance-queries.ts`, `lesson-finances.ts`, `outstanding.ts`, `schedule.ts`, `lesson-tiers.ts`, `barn-events.ts`, `profiles.ts`, `notifications.ts`, `document-storage.ts`, `documents.ts`, `document-backup.ts`, `backup.ts`, `types.ts`
 
 ## Server actions pattern
 
