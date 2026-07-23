@@ -15,6 +15,7 @@ import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds
 import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
 import { buildDocumentsBackupZip } from '@/lib/db/document-backup'
 import { uploadFile, getSignedUrl } from '@/lib/db/document-storage'
+import { getErrorMessage } from '@/lib/get-error-message'
 import { parseNonNegativeAmount, parseNonNegativeInt } from '@/lib/parse-amount'
 import { BARN_TIMEZONES } from '@/lib/barn-timezone'
 import type { Role } from '@/lib/db/types'
@@ -237,17 +238,21 @@ export async function downloadAllDocumentsAction(
 ): Promise<{ error: string | null; url: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
-  const buffer = await buildDocumentsBackupZip(barn.id)
-  if (!buffer) return { error: 'No documents to download yet', url: null }
+  try {
+    const buffer = await buildDocumentsBackupZip(barn.id)
+    if (!buffer) return { error: 'No documents to download yet', url: null }
 
-  const storagePath = `${barn.id}/backup-archive/all-documents.zip`
-  await uploadFile(
-    storagePath,
-    new File([new Uint8Array(buffer)], 'all-documents.zip', { type: 'application/zip' }),
-    'application/zip',
-    undefined,
-    true
-  )
-  const url = await getSignedUrl(storagePath)
-  return { error: null, url }
+    const storagePath = `${barn.id}/backup-archive/all-documents.zip`
+    await uploadFile(
+      storagePath,
+      new File([new Uint8Array(buffer)], 'all-documents.zip', { type: 'application/zip' }),
+      'application/zip',
+      undefined,
+      true
+    )
+    const url = await getSignedUrl(storagePath)
+    return { error: null, url }
+  } catch (err) {
+    return { error: getErrorMessage(err), url: null }
+  }
 }

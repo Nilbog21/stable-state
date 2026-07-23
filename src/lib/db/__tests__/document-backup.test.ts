@@ -150,6 +150,14 @@ describe('buildBackupZipEntries', () => {
 
     expect(entries[0].zipPath).toBe('horse/Thunderbolt/noext-coggins-2026-03-05')
   })
+
+  it('should_sanitize_slashes_in_uploaded_file_names_to_prevent_path_traversal', () => {
+    const docs = { horse: [makeDoc({ horse_id: 'horse-1', file_name: '../../../evil.pdf' })], trainer: [], rider: [] }
+
+    const entries = buildBackupZipEntries(docs, horseNames, new Map())
+
+    expect(entries[0].zipPath).toBe('horse/Thunderbolt/..-..-..-evil-coggins-2026-03-05.pdf')
+  })
 })
 
 describe('getAllBarnDocuments', () => {
@@ -295,7 +303,6 @@ describe('buildDocumentsBackupZip', () => {
     })
 
     const buffer = await buildDocumentsBackupZip('barn-1')
-    expect(buffer).not.toBeNull()
 
     const zip = await JSZip.loadAsync(buffer as Buffer)
     const expectedPath = 'horse/Thunderbolt/coggins-coggins-2026-03-05.pdf'
@@ -303,6 +310,18 @@ describe('buildDocumentsBackupZip', () => {
       .filter((f) => !f.dir)
       .map((f) => f.name)
     expect(filePaths).toEqual([expectedPath])
+  })
+
+  it('should_write_each_documents_downloaded_content_into_the_zip', async () => {
+    setupFrom({
+      horseDocs: [makeDoc({ horse_id: 'horse-1' })],
+      horseNames: [{ id: 'horse-1', name: 'Thunderbolt' }],
+    })
+
+    const buffer = await buildDocumentsBackupZip('barn-1')
+
+    const zip = await JSZip.loadAsync(buffer as Buffer)
+    const expectedPath = 'horse/Thunderbolt/coggins-coggins-2026-03-05.pdf'
     expect(await zip.files[expectedPath].async('string')).toBe('content')
   })
 
@@ -319,7 +338,6 @@ describe('buildDocumentsBackupZip', () => {
     )
 
     const buffer = await buildDocumentsBackupZip('barn-1')
-    expect(buffer).not.toBeNull()
 
     const zip = await JSZip.loadAsync(buffer as Buffer)
     const filePaths = Object.values(zip.files)

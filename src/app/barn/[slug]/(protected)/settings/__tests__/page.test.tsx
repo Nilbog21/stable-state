@@ -597,7 +597,7 @@ describe('SettingsPage', () => {
     expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
   })
 
-  it('should_disable_download_button_and_show_explanation_when_barn_has_no_documents', async () => {
+  it('should_disable_download_button_when_barn_has_no_documents', async () => {
     const jsx = await SettingsPage({
       params: Promise.resolve({ slug: 'green-acres' }),
       searchParams: Promise.resolve({}),
@@ -605,10 +605,19 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByRole('button', { name: /download all documents/i }).hasAttribute('disabled')).toBe(true)
+  })
+
+  it('should_show_explanation_when_barn_has_no_documents', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
     expect(screen.getByText('No documents to download yet.')).toBeDefined()
   })
 
-  it('should_enable_download_button_and_show_description_when_barn_has_documents', async () => {
+  it('should_enable_download_button_when_barn_has_documents', async () => {
     vi.mocked(getAllBarnDocuments).mockResolvedValue({
       horse: [
         {
@@ -636,6 +645,35 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByRole('button', { name: /download all documents/i }).hasAttribute('disabled')).toBe(false)
+  })
+
+  it('should_show_description_when_barn_has_documents', async () => {
+    vi.mocked(getAllBarnDocuments).mockResolvedValue({
+      horse: [
+        {
+          id: 'doc-1',
+          barn_id: 'barn-1',
+          horse_id: 'horse-1',
+          record_type: 'coggins',
+          storage_path: 'barn-1/horses/horse-1/coggins.pdf',
+          file_name: 'coggins.pdf',
+          file_size: 1024,
+          notes: null,
+          reminder_date: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+      trainer: [],
+      rider: [],
+    })
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
     expect(screen.getByText(/grouped by horse and member/i)).toBeDefined()
   })
 })

@@ -29,14 +29,15 @@ export async function getAllBarnDocuments(barnId: string, client?: SupabaseClien
 
 export type ZipEntry = { zipPath: string; storagePath: string }
 
-function sanitizeFolderName(name: string): string {
+function sanitizePathSegment(name: string): string {
   return name.replace(/[/\\]/g, '-')
 }
 
 function splitFileName(fileName: string): { base: string; ext: string } {
   const idx = fileName.lastIndexOf('.')
-  if (idx <= 0) return { base: fileName, ext: '' }
-  return { base: fileName.slice(0, idx), ext: fileName.slice(idx + 1) }
+  const base = idx <= 0 ? fileName : fileName.slice(0, idx)
+  const ext = idx <= 0 ? '' : fileName.slice(idx + 1)
+  return { base: sanitizePathSegment(base), ext: sanitizePathSegment(ext) }
 }
 
 function uniqueNameInFolder(usedNames: Map<string, Set<string>>, folder: string, base: string, ext: string): string {
@@ -72,13 +73,13 @@ export function buildBackupZipEntries(
   }
 
   for (const doc of docs.horse) {
-    addEntry(`horse/${sanitizeFolderName(horseNames.get(doc.horse_id) ?? doc.horse_id)}`, doc)
+    addEntry(`horse/${sanitizePathSegment(horseNames.get(doc.horse_id) ?? doc.horse_id)}`, doc)
   }
   for (const doc of docs.trainer) {
-    addEntry(`member/${sanitizeFolderName(memberNames.get(doc.trainer_id) ?? 'Unknown Member')}`, doc)
+    addEntry(`member/${sanitizePathSegment(memberNames.get(doc.trainer_id) ?? 'Unknown Member')}`, doc)
   }
   for (const doc of docs.rider) {
-    addEntry(`member/${sanitizeFolderName(memberNames.get(doc.rider_id) ?? 'Unknown Member')}`, doc)
+    addEntry(`member/${sanitizePathSegment(memberNames.get(doc.rider_id) ?? 'Unknown Member')}`, doc)
   }
 
   return entries

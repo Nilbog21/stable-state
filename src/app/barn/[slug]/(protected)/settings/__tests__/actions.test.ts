@@ -1096,16 +1096,23 @@ describe('downloadAllDocumentsAction', () => {
     const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
 
     expect(result).toEqual({ error: 'No documents to download yet', url: null })
+  })
+
+  it('should_not_upload_when_barn_has_no_documents', async () => {
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(null)
+
+    await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
     expect(uploadFile).not.toHaveBeenCalled()
   })
 
-  it('should_upload_the_zip_with_upsert_and_return_a_signed_url', async () => {
+  it('should_upload_the_zip_with_upsert', async () => {
     const buffer = Buffer.from('zip contents')
     vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
     vi.mocked(uploadFile).mockResolvedValue(undefined)
     vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-zip')
 
-    const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+    await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
 
     expect(uploadFile).toHaveBeenCalledWith(
       `${mockBarn.id}/backup-archive/all-documents.zip`,
@@ -1114,7 +1121,37 @@ describe('downloadAllDocumentsAction', () => {
       undefined,
       true
     )
+  })
+
+  it('should_request_a_signed_url_for_the_uploaded_zip_path', async () => {
+    const buffer = Buffer.from('zip contents')
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-zip')
+
+    await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
     expect(getSignedUrl).toHaveBeenCalledWith(`${mockBarn.id}/backup-archive/all-documents.zip`)
+  })
+
+  it('should_return_the_signed_url_on_success', async () => {
+    const buffer = Buffer.from('zip contents')
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-zip')
+
+    const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
     expect(result).toEqual({ error: null, url: 'https://example.com/signed-zip' })
+  })
+
+  it('should_return_an_error_message_when_the_upload_fails', async () => {
+    const buffer = Buffer.from('zip contents')
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
+    vi.mocked(uploadFile).mockRejectedValue(new Error('storage unavailable'))
+
+    const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(result).toEqual({ error: 'storage unavailable', url: null })
   })
 })
