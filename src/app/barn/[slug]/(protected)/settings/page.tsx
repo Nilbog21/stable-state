@@ -6,6 +6,7 @@ import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getEventsByBarn } from '@/lib/db/barn-events'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
+import { getAllBarnDocuments } from '@/lib/db/document-backup'
 import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
 import { approveMembershipAction, rejectMembershipAction } from '../approvals/actions'
 import {
@@ -13,6 +14,7 @@ import {
   updateInstructorCutAction,
   updateExhaustionThresholdsAction,
   updateBarnTimezoneAction,
+  downloadAllDocumentsAction,
 } from './actions'
 import { BARN_TIMEZONES } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
@@ -21,6 +23,7 @@ import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
+import { DownloadAllDocumentsButton } from './DownloadAllDocumentsButton'
 import type { BarnMembership } from '@/lib/db/types'
 
 function AccordionSection({
@@ -100,11 +103,15 @@ export default async function SettingsPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const [tiers, pending, events] = await Promise.all([
+  const [tiers, pending, events, barnDocuments] = await Promise.all([
     getAllTiersByBarn(barn.id),
     getPendingMemberships(barn.id),
     getEventsByBarn(barn.id),
+    getAllBarnDocuments(barn.id),
   ])
+
+  const hasDocuments =
+    barnDocuments.horse.length + barnDocuments.trainer.length + barnDocuments.rider.length > 0
 
   const nameMap = await resolveMemberNames(pending.map((m) => m.id), barn.id)
 
@@ -334,6 +341,22 @@ export default async function SettingsPage({
         </form>
         <p className="mt-2 text-xs text-zinc-500 dark:text-zinc-400">
           Used to determine when scheduled expenses become past due and which month an expense falls into near month boundaries.
+        </p>
+      </AccordionSection>
+
+      <AccordionSection
+        title="Data Backup"
+        headerExtra={
+          <DownloadAllDocumentsButton
+            action={downloadAllDocumentsAction.bind(null, slug)}
+            disabled={!hasDocuments}
+          />
+        }
+      >
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          {hasDocuments
+            ? 'Downloads every horse, trainer, and rider document as one zip archive, grouped by horse and member.'
+            : 'No documents to download yet.'}
         </p>
       </AccordionSection>
     </main>
