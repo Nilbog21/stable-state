@@ -344,20 +344,19 @@ export default async function SettingsPage({
         </p>
       </AccordionSection>
 
-      <AccordionSection
-        title="Data Backup"
-        headerExtra={
-          <DownloadAllDocumentsButton
-            action={downloadAllDocumentsAction.bind(null, slug)}
-            disabled={!hasDocuments}
-          />
-        }
-      >
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+      <AccordionSection title="Data Backup">
+        <h3 className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Documents</h3>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
           {hasDocuments
             ? 'Downloads every horse, trainer, and rider document as one zip archive, grouped by horse and member.'
             : 'No documents to download yet.'}
         </p>
+        <div className="mt-2">
+          <DownloadAllDocumentsButton
+            action={downloadAllDocumentsAction.bind(null, slug)}
+            disabled={!hasDocuments}
+          />
+        </div>
       </AccordionSection>
     </main>
   )
