@@ -270,7 +270,10 @@ describe('buildDocumentsBackupZip', () => {
 
     const zip = await JSZip.loadAsync(buffer as Buffer)
     const expectedPath = 'horse/Thunderbolt/coggins-coggins-2026-03-05.pdf'
-    expect(Object.keys(zip.files)).toEqual([expectedPath])
+    const filePaths = Object.values(zip.files)
+      .filter((f) => !f.dir)
+      .map((f) => f.name)
+    expect(filePaths).toEqual([expectedPath])
     expect(await zip.files[expectedPath].async('string')).toBe('content')
   })
 
