@@ -251,6 +251,11 @@ describe('NewDocumentPage', () => {
       await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
     })
 
+    it('should_call_notFound_when_target_profile_does_not_exist', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(null)
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
     it('should_call_notFound_when_manager_targets_an_unmanaged_profile', async () => {
       vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-target', is_managed: false }))
       await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')

@@ -684,6 +684,31 @@ describe('uploadProfilePhotoAction', () => {
     vi.mocked(replaceProfilePhoto).mockResolvedValue(undefined)
   })
 
+  it('should_return_not_found_when_target_membership_does_not_exist', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(null)
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-gone', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Not found' })
+  })
+
+  it('should_return_not_found_when_target_membership_belongs_to_a_different_barn', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue({ ...riderMembership, barn_id: 'barn-other' })
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Not found' })
+  })
+
+  it('should_return_not_found_when_target_profile_does_not_exist', async () => {
+    vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+    vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+    vi.mocked(getProfileById).mockResolvedValue(null)
+
+    const result = await uploadProfilePhotoAction('green-acres', 'mem-rdr', { error: null }, formDataWithPhoto())
+    expect(result).toEqual({ error: 'Not found' })
+  })
+
   it('should_allow_self_upload_regardless_of_managed_status', async () => {
     vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
     vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
