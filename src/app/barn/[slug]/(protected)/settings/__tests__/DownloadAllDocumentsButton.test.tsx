@@ -16,7 +16,7 @@ describe('DownloadAllDocumentsButton', () => {
     const action = vi.fn().mockResolvedValue({ error: null, url: null })
     render(<DownloadAllDocumentsButton action={action} disabled={true} />)
 
-    expect(screen.getByRole('button', { name: /download all documents/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /download all documents/i }).hasAttribute('disabled')).toBe(true)
   })
 
   it('should_not_show_error_initially', () => {
