@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients, formatNearbyInstructorNotification } from '../notifications'
+import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients, formatNearbyInstructorNotification, getUnreadNotificationCount } from '../notifications'
 
 describe('formatNearbyInstructorNotification', () => {
   it('should_use_singular_phrasing_when_count_is_one', () => {
@@ -599,6 +599,58 @@ describe('upsertNotificationsForRecipients', () => {
     )
 
     expect(mockUpsert).not.toHaveBeenCalled()
+  })
+})
+
+describe('getUnreadNotificationCount', () => {
+  function makeChain(result: { data: unknown }) {
+    const mockMaybeSingle = vi.fn().mockResolvedValue(result)
+    const mockIsNull = vi.fn().mockReturnValue({ maybeSingle: mockMaybeSingle })
+    const mockEq3 = vi.fn().mockReturnValue({ is: mockIsNull })
+    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq1 })
+    const mockFrom = vi.fn().mockReturnValue({ select: mockSelect })
+    return { mockFrom, mockSelect, mockEq1, mockEq2, mockEq3, mockIsNull, mockMaybeSingle }
+  }
+
+  it('should_filter_by_user_id_barn_id_and_type', async () => {
+    const { mockFrom, mockEq1, mockEq2, mockEq3 } = makeChain({ data: null })
+    const client = { from: mockFrom } as any
+
+    await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(mockFrom).toHaveBeenCalledWith('notifications')
+    expect(mockEq1).toHaveBeenCalledWith('user_id', 'user-1')
+    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(mockEq3).toHaveBeenCalledWith('type', 'instructor_lesson_nearby')
+  })
+
+  it('should_filter_to_unread_rows_only', async () => {
+    const { mockFrom, mockIsNull } = makeChain({ data: null })
+    const client = { from: mockFrom } as any
+
+    await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(mockIsNull).toHaveBeenCalledWith('read_at', null)
+  })
+
+  it('should_parse_the_leading_count_from_the_existing_titles', async () => {
+    const { mockFrom } = makeChain({ data: { title: '3 new lessons scheduled nearby' } })
+    const client = { from: mockFrom } as any
+
+    const count = await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(count).toBe(3)
+  })
+
+  it('should_return_zero_when_no_unread_row_exists', async () => {
+    const { mockFrom } = makeChain({ data: null })
+    const client = { from: mockFrom } as any
+
+    const count = await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(count).toBe(0)
   })
 })
 

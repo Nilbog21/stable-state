@@ -44,6 +44,7 @@ vi.mock('@/lib/db/schedule', () => ({
 vi.mock('@/lib/db/notifications', async (importOriginal) => ({
   ...(await importOriginal<typeof import('@/lib/db/notifications')>()),
   createNotification: vi.fn(),
+  getUnreadNotificationCount: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -68,7 +69,7 @@ import { createLessonWithParticipants, updateLessonWithParticipants, updateLesso
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
 import { getNearbyInstructorMembershipIds } from '@/lib/db/schedule'
-import { createNotification } from '@/lib/db/notifications'
+import { createNotification, getUnreadNotificationCount } from '@/lib/db/notifications'
 import { createClient } from '@/lib/supabase/server'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
@@ -90,6 +91,7 @@ describe('submitLesson', () => {
     vi.mocked(getNearbyInstructorMembershipIds).mockReset()
     vi.mocked(getMembershipByIdForBarn).mockReset()
     vi.mocked(createNotification).mockReset()
+    vi.mocked(getUnreadNotificationCount).mockReset()
     vi.mocked(createClient).mockReset()
     guardAs(mockTrainerMembership)
     vi.mocked(getInstructorsByBarn).mockResolvedValue([])
@@ -105,6 +107,7 @@ describe('submitLesson', () => {
     vi.mocked(getNearbyInstructorMembershipIds).mockResolvedValue([])
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(null)
     vi.mocked(createNotification).mockResolvedValue(undefined)
+    vi.mocked(getUnreadNotificationCount).mockResolvedValue(0)
     vi.mocked(createClient).mockResolvedValue({} as any)
   })
 
@@ -680,6 +683,34 @@ describe('submitLesson', () => {
       await submitLesson('barn-1', 'barn-slug', { error: null }, fd())
 
       expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons')
+    })
+
+    it('should_add_1_to_the_recipients_existing_unread_count_instead_of_overwriting_it', async () => {
+      vi.mocked(getNearbyInstructorMembershipIds).mockResolvedValue(['mem-other'])
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(createMockMembership({ id: 'mem-other', user_id: 'user-other' }))
+      vi.mocked(getUnreadNotificationCount).mockResolvedValue(2)
+
+      await submitLesson('barn-1', 'barn-slug', { error: null }, fd())
+
+      expect(createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ title: '3 new lessons scheduled nearby' }),
+        expect.anything()
+      )
+    })
+
+    it('should_still_notify_a_later_recipient_when_an_earlier_recipients_membership_lookup_throws', async () => {
+      vi.mocked(getNearbyInstructorMembershipIds).mockResolvedValue(['mem-broken', 'mem-other'])
+      vi.mocked(getMembershipByIdForBarn).mockImplementation(async (id: string) => {
+        if (id === 'mem-broken') throw new Error('db error')
+        return createMockMembership({ id: 'mem-other', user_id: 'user-other' })
+      })
+
+      await submitLesson('barn-1', 'barn-slug', { error: null }, fd())
+
+      expect(createNotification).toHaveBeenCalledWith(
+        expect.objectContaining({ userId: 'user-other' }),
+        expect.anything()
+      )
     })
   })
 })

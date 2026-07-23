@@ -343,7 +343,8 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
 - [ ] Change both and **Save** → values persist on reload
 - [ ] Try setting Moderate ≥ High → rejected with a field error and values unchanged
-- [ ] **Schedule Buffer** field shows the current value (default `30`) → change it and **Save** → value persists on reload
+- [ ] **Schedule Buffer** field shows the current value (default `30`)
+- [ ] Change it and **Save** → value persists on reload
 - [ ] **Barn Timezone** select shows the current value (default Eastern); change it and Save → persists on reload; add a planned expense due a few minutes from now, wait for its due time to pass, then confirm it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
 - [ ] **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] Create an event with a title, date/hour, and notes → it appears in the Barn Events list with the correct title, date, and "manager, trainer, rider" visible-to text
@@ -385,7 +386,9 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Lessons list defaults to **My Lessons** (only Alex's, now reassigned to you); switch to **All** to see every barn lesson including Blake's — filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
-- [ ] Create one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) — submission succeeds with no error; run `change-user.sh` again to switch to Blake and confirm a **New lesson scheduled nearby** notification appears in Blake's bell, linking to the barn's Lessons list; switch back to Alex afterward to continue this phase
+- [ ] Create one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) — submission succeeds with no error
+- [ ] Run `change-user.sh` again to switch to Blake and confirm a **New lesson scheduled nearby** notification appears in Blake's bell
+- [ ] Tap the notification → it links to the barn's Lessons list; switch back to Alex afterward to continue this phase
 - [ ] Edit one of your own lessons — the instructor field is **hidden entirely** (no label, no read-only text — just locked server-side)
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, click **Cancel** in the header and cancel a rider's spot (or the whole lesson) — works the same as manager; open Blake's lesson — no header **Cancel** button is shown

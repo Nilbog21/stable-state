@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateNextLessonForSeries, stopLessonSeries } from '@/lib/db/lesson-series'
-import { upsertNotificationsForRecipients, formatNearbyInstructorNotification } from '@/lib/db/notifications'
+import { upsertNotificationsForRecipients, formatNearbyInstructorNotification, getUnreadNotificationCount } from '@/lib/db/notifications'
 import { getActiveManagerUserIds } from '@/lib/db/barn-memberships'
 import { getNearbyInstructorMembershipIds } from '@/lib/db/schedule'
 import { mustSucceed, runCronJob } from './script-utils'
@@ -186,6 +186,12 @@ async function run(supabase: SupabaseClient): Promise<{ summary: string; hadErro
     'recurring_lesson_horse_unavailable',
     linkForBarn
   )
+  // Merge in whatever count is already sitting unread on each recipient's row (e.g. from a
+  // same-day submitLesson call) so this run's upsert adds to it instead of overwriting it --
+  // see getUnreadNotificationCount's comment for the collision this closes.
+  for (const recipient of nearbyInstructorRecipients.values()) {
+    recipient.payload += await getUnreadNotificationCount(supabase, recipient.userId, recipient.barnId, 'instructor_lesson_nearby')
+  }
   errorCount += await upsertNotificationsForRecipients(
     supabase,
     nearbyInstructorRecipients,

@@ -146,6 +146,30 @@ export function formatNearbyInstructorNotification(count: number): { title: stri
   }
 }
 
+// instructor_lesson_nearby is written by two independent producers (submitLesson's
+// notifyNearbyInstructors, generate-recurring-lessons.ts) that would otherwise blindly
+// overwrite each other's count on upsert -- the same "two events sharing one
+// (user_id, barn_id, type) upsert key" collision class #535 fixed for lesson_cancelled.
+// Reading the existing unread row's count back out lets each producer add to it instead.
+// ponytail: parses the count from the title text rather than a dedicated column; a
+// read-then-write race between two near-simultaneous callers can still lose an
+// increment -- acceptable given how rarely two nearby-lesson events land in the same window.
+export async function getUnreadNotificationCount(
+  client: SupabaseClient, userId: string, barnId: string, type: NotificationType
+): Promise<number> {
+  const { data } = await client
+    .from('notifications')
+    .select('title')
+    .eq('user_id', userId)
+    .eq('barn_id', barnId)
+    .eq('type', type)
+    .is('read_at', null)
+    .maybeSingle()
+
+  const match = /^\d+/.exec(data?.title ?? '')
+  return match ? Number(match[0]) : 0
+}
+
 export async function getNotifications(
   userId: string,
   barnId: string,

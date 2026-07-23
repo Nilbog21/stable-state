@@ -6,7 +6,7 @@ import { createLessonWithParticipants, updateLessonWithParticipants, updateLesso
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
 import { getNearbyInstructorMembershipIds } from '@/lib/db/schedule'
-import { createNotification, formatNearbyInstructorNotification, upsertNotificationsForRecipients } from '@/lib/db/notifications'
+import { createNotification, formatNearbyInstructorNotification, getUnreadNotificationCount, upsertNotificationsForRecipients } from '@/lib/db/notifications'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Barn, Lesson, NotificationType, PaymentType } from '@/lib/db/types'
@@ -31,16 +31,22 @@ async function notifyNearbyInstructors(barnSlug: string, barn: Barn, lesson: Les
     if (nearbyMembershipIds.length === 0) return
 
     const supabase = await createClient()
-    const recipients = new Map<string, { userId: string; barnId: string; payload: undefined }>()
+    const recipients = new Map<string, { userId: string; barnId: string; payload: number }>()
     for (const membershipId of nearbyMembershipIds) {
-      const membership = await getMembershipByIdForBarn(membershipId, barn.id)
-      if (membership?.user_id) recipients.set(membership.user_id, { userId: membership.user_id, barnId: barn.id, payload: undefined })
+      try {
+        const membership = await getMembershipByIdForBarn(membershipId, barn.id)
+        if (!membership?.user_id) continue
+        const existingCount = await getUnreadNotificationCount(supabase, membership.user_id, barn.id, 'instructor_lesson_nearby')
+        recipients.set(membership.user_id, { userId: membership.user_id, barnId: barn.id, payload: existingCount + 1 })
+      } catch (err) {
+        console.error(`Failed to resolve nearby-instructor recipient ${membershipId}:`, (err as Error).message)
+      }
     }
 
     await upsertNotificationsForRecipients(
       supabase,
       recipients,
-      () => formatNearbyInstructorNotification(1),
+      formatNearbyInstructorNotification,
       'instructor_lesson_nearby',
       () => `/barn/${barnSlug}/lessons`,
       sendNearbyInstructorNotificationViaRpc
