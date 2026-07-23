@@ -33,7 +33,6 @@ export function HorseAccessSection({
   const [selectedMemberId, setSelectedMemberId] = useState('')
 
   async function handleGrant() {
-    if (!selectedMemberId) return
     await onGrant(selectedMemberId)
     setSelectedMemberId('')
     router.refresh()

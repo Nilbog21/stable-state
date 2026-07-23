@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockHorse, createMockUser } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
@@ -25,7 +25,19 @@ vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
 }))
 vi.mock('../HorseAccessSection', () => ({
-  HorseAccessSection: () => <div data-testid="horse-access-section" />,
+  HorseAccessSection: (props: {
+    onGrant: (memberId: string) => Promise<void>
+    onUpdateDocument: (privilegeId: string, value: 'none' | 'read' | 'write') => Promise<void>
+    onUpdateLesson: (privilegeId: string, value: boolean) => Promise<void>
+    onRevoke: (privilegeId: string) => Promise<void>
+  }) => (
+    <div data-testid="horse-access-section">
+      <button onClick={() => props.onGrant('mem-test')}>test-grant</button>
+      <button onClick={() => props.onUpdateDocument('privilege-1', 'write')}>test-update-doc</button>
+      <button onClick={() => props.onUpdateLesson('privilege-1', true)}>test-update-lesson</button>
+      <button onClick={() => props.onRevoke('privilege-1')}>test-revoke</button>
+    </div>
+  ),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -38,6 +50,12 @@ import { getSignedUrl } from '@/lib/db/document-storage'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsePrivileges } from '@/lib/db/member-horse-privileges'
+import {
+  grantHorseAccessAction,
+  updateHorseAccessDocumentAction,
+  updateHorseAccessLessonAction,
+  revokeHorseAccessAction,
+} from '../actions'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -541,6 +559,14 @@ describe('HorseDetailPage', () => {
     expect(resolveMemberNames).not.toHaveBeenCalled()
   })
 
+  it('should_not_render_owner_line_when_owner_name_fails_to_resolve', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText(/^owner/i)).toBeNull()
+  })
+
   it('should_render_access_section_for_manager', async () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
@@ -570,5 +596,57 @@ describe('HorseDetailPage', () => {
     mockRequireMembershipAs(trainerMembership)
     await HorseDetailPage({ params: pageParams })
     expect(getHorsePrivileges).not.toHaveBeenCalled()
+  })
+
+  it('should_fetch_active_members_for_all_three_roles_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
+      { membershipId: 'mem-x', userId: 'user-x', name: 'Xavier Manager', isManaged: false, inviteToken: null },
+    ])
+    await HorseDetailPage({ params: pageParams })
+    expect(getActiveMembersWithProfiles).toHaveBeenCalledWith(mockBarn.id, 'manager')
+    expect(getActiveMembersWithProfiles).toHaveBeenCalledWith(mockBarn.id, 'trainer')
+    expect(getActiveMembersWithProfiles).toHaveBeenCalledWith(mockBarn.id, 'rider')
+  })
+
+  it('should_build_grants_falling_back_to_member_id_when_name_is_unresolved', async () => {
+    vi.mocked(getHorsePrivileges).mockResolvedValue([
+      { id: 'privilege-1', barn_id: 'barn-1', member_id: 'mem-a', horse_id: 'horse-1', document_privileges: 'read', lesson_read_privileges: true, created_at: '' },
+      { id: 'privilege-2', barn_id: 'barn-1', member_id: 'mem-unresolved', horse_id: 'horse-1', document_privileges: 'none', lesson_read_privileges: false, created_at: '' },
+    ])
+    vi.mocked(resolveMemberNames).mockImplementation(async (ids: string[]) => {
+      if (ids.includes('mem-a')) return new Map([['mem-a', 'Ada Rider']])
+      return new Map([['mem-owner', 'Emery Rider']])
+    })
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('horse-access-section')).toBeDefined()
+  })
+
+  it('should_wire_grant_action_with_barn_slug_and_horse_id', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    fireEvent.click(screen.getByText('test-grant'))
+    expect(grantHorseAccessAction).toHaveBeenCalledWith('green-acres', 'horse-1', 'mem-test')
+  })
+
+  it('should_wire_update_document_action_with_barn_slug_and_horse_id', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    fireEvent.click(screen.getByText('test-update-doc'))
+    expect(updateHorseAccessDocumentAction).toHaveBeenCalledWith('green-acres', 'horse-1', 'privilege-1', 'write')
+  })
+
+  it('should_wire_update_lesson_action_with_barn_slug_and_horse_id', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    fireEvent.click(screen.getByText('test-update-lesson'))
+    expect(updateHorseAccessLessonAction).toHaveBeenCalledWith('green-acres', 'horse-1', 'privilege-1', true)
+  })
+
+  it('should_wire_revoke_action_with_barn_slug_and_horse_id', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    fireEvent.click(screen.getByText('test-revoke'))
+    expect(revokeHorseAccessAction).toHaveBeenCalledWith('green-acres', 'horse-1', 'privilege-1')
   })
 })
