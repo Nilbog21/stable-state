@@ -17,6 +17,7 @@ import { createClient } from '@/lib/supabase/server'
 import { resolveMemberNames } from '../member-names'
 import { downloadFile } from '../document-storage'
 import { getAllBarnDocuments, buildBackupZipEntries, buildDocumentsBackupZip } from '../document-backup'
+import type { HorseDocument, TrainerDocument, RiderDocument } from '../types'
 
 function makeDoc(overrides: Record<string, unknown> = {}) {
   return {
@@ -31,7 +32,7 @@ function makeDoc(overrides: Record<string, unknown> = {}) {
     created_at: '2026-03-05T00:00:00Z',
     updated_at: '2026-03-05T00:00:00Z',
     ...overrides,
-  }
+  } as HorseDocument & TrainerDocument & RiderDocument
 }
 
 describe('buildBackupZipEntries', () => {
