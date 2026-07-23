@@ -8,14 +8,24 @@ vi.mock('@/lib/db/documents', () => ({
   getDocumentsWithUrls: vi.fn(),
 }))
 vi.mock('@/lib/db/document-storage', () => ({ getSignedUrl: vi.fn() }))
+vi.mock('@/lib/db/member-names', () => ({ resolveMemberNames: vi.fn() }))
+vi.mock('@/lib/db/barn-memberships', () => ({ getActiveMembersWithProfiles: vi.fn() }))
+vi.mock('@/lib/db/member-horse-privileges', () => ({ getHorsePrivileges: vi.fn() }))
 vi.mock('../actions', () => ({
   updateHorseAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
   updateHorseDocumentReminderDateAction: vi.fn(),
   deleteHorsePhotoAction: vi.fn(),
+  grantHorseAccessAction: vi.fn(),
+  updateHorseAccessDocumentAction: vi.fn(),
+  updateHorseAccessLessonAction: vi.fn(),
+  revokeHorseAccessAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
+}))
+vi.mock('../HorseAccessSection', () => ({
+  HorseAccessSection: () => <div data-testid="horse-access-section" />,
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -25,6 +35,9 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
+import { resolveMemberNames } from '@/lib/db/member-names'
+import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
+import { getHorsePrivileges } from '@/lib/db/member-horse-privileges'
 import HorseDetailPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -53,6 +66,12 @@ const horseWithRegisteredName = createMockHorse({
   is_available: true,
   registered_name: 'Four-Leaf Clover',
 })
+const ownedHorse = createMockHorse({
+  id: 'horse-1',
+  name: 'Thunderbolt',
+  is_available: true,
+  owning_member_id: 'mem-owner',
+})
 
 const pageParams = Promise.resolve({ slug: 'green-acres', id: 'horse-1' })
 
@@ -77,6 +96,12 @@ describe('HorseDetailPage', () => {
     vi.mocked(getDocumentsWithUrls).mockResolvedValue([])
     vi.mocked(getSignedUrl).mockReset()
     vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/photo-signed')
+    vi.mocked(resolveMemberNames).mockReset()
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-owner', 'Emery Rider']]))
+    vi.mocked(getActiveMembersWithProfiles).mockReset()
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
+    vi.mocked(getHorsePrivileges).mockReset()
+    vi.mocked(getHorsePrivileges).mockResolvedValue([])
   })
 
   it('should_call_requireMembership_with_allowed_roles', async () => {
@@ -471,5 +496,79 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText('Set Photo')).toBeNull()
+  })
+
+  it('should_render_owner_name_for_manager_when_set', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText(/emery rider/i)).toBeDefined()
+  })
+
+  it('should_render_owner_name_for_trainer_when_set', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText(/emery rider/i)).toBeDefined()
+  })
+
+  it('should_render_owner_name_for_rider_when_set', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText(/emery rider/i)).toBeDefined()
+  })
+
+  it('should_link_owner_name_to_the_members_detail_page', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(ownedHorse)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByRole('link', { name: /emery rider/i }).getAttribute('href')).toBe(
+      '/barn/green-acres/members/mem-owner'
+    )
+  })
+
+  it('should_not_render_owner_line_when_owner_is_unset', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText(/^owner/i)).toBeNull()
+  })
+
+  it('should_not_call_resolveMemberNames_when_owner_is_unset', async () => {
+    await HorseDetailPage({ params: pageParams })
+    expect(resolveMemberNames).not.toHaveBeenCalled()
+  })
+
+  it('should_render_access_section_for_manager', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('horse-access-section')).toBeDefined()
+  })
+
+  it('should_not_render_access_section_for_trainer', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByTestId('horse-access-section')).toBeNull()
+  })
+
+  it('should_not_render_access_section_for_rider', async () => {
+    mockRequireMembershipAs(riderMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByTestId('horse-access-section')).toBeNull()
+  })
+
+  it('should_fetch_horse_privileges_for_manager', async () => {
+    await HorseDetailPage({ params: pageParams })
+    expect(getHorsePrivileges).toHaveBeenCalledWith('horse-1', mockBarn.id)
+  })
+
+  it('should_not_fetch_horse_privileges_for_trainer', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    await HorseDetailPage({ params: pageParams })
+    expect(getHorsePrivileges).not.toHaveBeenCalled()
   })
 })
