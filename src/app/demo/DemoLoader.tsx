@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
+import { unstable_rethrow } from 'next/navigation'
 import { createOrResumeDemoBarn } from './actions'
 
 export function DemoLoader() {
@@ -10,7 +11,13 @@ export function DemoLoader() {
   useEffect(() => {
     if (started.current) return
     started.current = true
-    createOrResumeDemoBarn().catch(() => setFailed(true))
+    createOrResumeDemoBarn().catch((err: unknown) => {
+      // redirect() on success rejects this promise with a Next-internal control error
+      // rather than a real failure — rethrow it so Next's own redirect handling takes
+      // over instead of flashing this component's failure state.
+      unstable_rethrow(err)
+      setFailed(true)
+    })
   }, [])
 
   if (failed) {
