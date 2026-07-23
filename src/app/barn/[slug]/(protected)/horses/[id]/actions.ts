@@ -3,7 +3,13 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import { updateHorseDetails, updateHorseOwner, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import {
+  grantHorsePrivilege,
+  updateHorsePrivilegeDocumentAccess,
+  updateHorsePrivilegeLessonAccess,
+  revokeHorsePrivilege,
+} from '@/lib/db/member-horse-privileges'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile, validateFile, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
@@ -41,6 +47,7 @@ export async function updateHorseAction(
   const feedNotes = (formData.get('feed_notes') as string | null)?.trim() || null
   const medicationNotes = (formData.get('medication_notes') as string | null)?.trim() || null
   const registeredName = (formData.get('registered_name') as string | null)?.trim() || null
+  const owningMemberId = (formData.get('owning_member_id') as string | null)?.trim() || null
 
   try {
     await updateHorseDetails(horseId, barn.id, {
@@ -53,6 +60,7 @@ export async function updateHorseAction(
       medication_notes: medicationNotes,
       registered_name: registeredName,
     })
+    await updateHorseOwner(horseId, barn.id, owningMemberId)
   } catch (err) {
     return { error: getErrorMessage(err) }
   }
@@ -94,6 +102,48 @@ export async function deleteHorsePhotoAction(
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await removeHorsePhoto(horseId, barn.id)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function grantHorseAccessAction(
+  barnSlug: string,
+  horseId: string,
+  memberId: string
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await grantHorsePrivilege(horseId, barn.id, memberId)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function updateHorseAccessDocumentAction(
+  barnSlug: string,
+  horseId: string,
+  privilegeId: string,
+  value: 'none' | 'read' | 'write'
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await updateHorsePrivilegeDocumentAccess(privilegeId, barn.id, value)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function updateHorseAccessLessonAction(
+  barnSlug: string,
+  horseId: string,
+  privilegeId: string,
+  value: boolean
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await updateHorsePrivilegeLessonAccess(privilegeId, barn.id, value)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+export async function revokeHorseAccessAction(
+  barnSlug: string,
+  horseId: string,
+  privilegeId: string
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  await revokeHorsePrivilege(privilegeId, barn.id)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
