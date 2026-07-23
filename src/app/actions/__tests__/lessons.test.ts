@@ -305,7 +305,7 @@ describe('submitLesson', () => {
     guardAs(mockManagerMembership)
     const fd = makeFormData({ fee: '50', new_horse_name: 'Blaze', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(createHorse).toHaveBeenCalledWith('barn-1', 'Blaze')
+    expect(createHorse).toHaveBeenCalledWith('barn-1', 'Blaze', mockManagerMembership.id)
   })
 
   it('should_include_new_horse_id_in_lesson_participants', async () => {
@@ -959,7 +959,7 @@ describe('updateLessonAction', () => {
     vi.mocked(createHorse).mockResolvedValue(createMockHorse({ id: 'new-horse-1', name: 'Midnight', created_at: '', updated_at: '' }))
     const fd = makeFormData({ fee: '50', new_horse_name: 'Midnight', new_horse_exertion_level: '3', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
     await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
-    expect(createHorse).toHaveBeenCalledWith('barn-1', 'Midnight')
+    expect(createHorse).toHaveBeenCalledWith('barn-1', 'Midnight', mockManagerMembership.id)
   })
 
   it('should_call_updateLessonWithParticipants_with_new_horse_id', async () => {

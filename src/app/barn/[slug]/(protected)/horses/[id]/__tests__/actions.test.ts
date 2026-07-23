@@ -1,14 +1,22 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockMemberHorsePrivilege, createMockHorse } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({
   requireMembership: vi.fn(),
 }))
 
 vi.mock('@/lib/db/horses', () => ({
+  getHorseById: vi.fn(),
   updateHorseDetails: vi.fn(),
   replaceHorsePhoto: vi.fn(),
   removeHorsePhoto: vi.fn(),
+}))
+
+vi.mock('@/lib/db/member-horse-privileges', () => ({
+  grantHorsePrivilege: vi.fn(),
+  updateHorsePrivilegeDocumentAccess: vi.fn(),
+  updateHorsePrivilegeLessonAccess: vi.fn(),
+  revokeHorsePrivilege: vi.fn(),
 }))
 
 vi.mock('@/lib/db/documents', () => ({
@@ -28,10 +36,19 @@ vi.mock('next/cache', () => ({
 const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
   throw Object.assign(new Error('NEXT_REDIRECT'), { digest: `NEXT_REDIRECT;replace;${url}` })
 }))
-vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
+const mockNotFound = vi.hoisted(() => vi.fn(() => {
+  throw Object.assign(new Error('NEXT_NOT_FOUND'), { digest: 'NEXT_NOT_FOUND' })
+}))
+vi.mock('next/navigation', () => ({ redirect: mockRedirect, notFound: mockNotFound }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import { getHorseById, updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import {
+  grantHorsePrivilege,
+  updateHorsePrivilegeDocumentAccess,
+  updateHorsePrivilegeLessonAccess,
+  revokeHorsePrivilege,
+} from '@/lib/db/member-horse-privileges'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile } from '@/lib/db/document-storage'
 import { revalidatePath } from 'next/cache'
@@ -41,6 +58,11 @@ import {
   updateHorseDocumentReminderDateAction,
   uploadHorsePhotoAction,
   deleteHorsePhotoAction,
+  grantHorseAccessAction,
+  updateHorseAccessDocumentAction,
+  updateHorseAccessLessonAction,
+  revokeHorseAccessAction,
+  setHorseOwnerAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -58,6 +80,7 @@ function validThresholdsFormData(): FormData {
 describe('updateHorseAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
+    vi.mocked(getHorseById).mockReset()
     vi.mocked(updateHorseDetails).mockReset()
     vi.mocked(revalidatePath).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
@@ -65,6 +88,7 @@ describe('updateHorseAction', () => {
       barn: mockBarn,
       membership: mockManagerMembership,
     })
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', owning_member_id: null }))
     vi.mocked(updateHorseDetails).mockResolvedValue(undefined)
   })
 
@@ -84,6 +108,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -101,6 +126,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -118,6 +144,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -134,6 +161,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -149,6 +177,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -164,6 +193,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -180,6 +210,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -399,6 +430,36 @@ describe('updateHorseAction', () => {
     await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
     expect(revalidatePath).not.toHaveBeenCalled()
   })
+
+  it('should_preserve_the_horses_current_owner_when_saving_other_fields', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', owning_member_id: 'mem-existing-owner' }))
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      owning_member_id: 'mem-existing-owner',
+    }))
+  })
+
+  it('should_ignore_an_owning_member_id_field_in_form_data', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', owning_member_id: 'mem-existing-owner' }))
+    const fd = validThresholdsFormData()
+    fd.set('owning_member_id', 'mem-attacker-supplied')
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      owning_member_id: 'mem-existing-owner',
+    }))
+  })
+
+  it('should_return_error_when_horse_is_not_found', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(null)
+    const result = await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
+    expect(result).toEqual({ error: 'Horse not found' })
+  })
+
+  it('should_not_call_updateHorseDetails_when_horse_is_not_found', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(null)
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
+    expect(updateHorseDetails).not.toHaveBeenCalled()
+  })
 })
 
 const mockBarnForDocs = createMockBarn()
@@ -586,5 +647,207 @@ describe('deleteHorsePhotoAction', () => {
   it('should_revalidate_horse_detail_path', async () => {
     await deleteHorsePhotoAction('green-acres', 'horse-1')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+})
+
+describe('grantHorseAccessAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(grantHorsePrivilege).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(grantHorsePrivilege).mockResolvedValue(createMockMemberHorsePrivilege())
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await grantHorseAccessAction('green-acres', 'horse-1', 'mem-rider-1')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_grant_privilege_for_selected_member', async () => {
+    await grantHorseAccessAction('green-acres', 'horse-1', 'mem-rider-1')
+    expect(grantHorsePrivilege).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-rider-1')
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await grantHorseAccessAction('green-acres', 'horse-1', 'mem-rider-1')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+})
+
+describe('updateHorseAccessDocumentAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateHorsePrivilegeDocumentAccess).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(updateHorsePrivilegeDocumentAccess).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'write')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_update_document_privileges_for_the_grant', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'write')
+    expect(updateHorsePrivilegeDocumentAccess).toHaveBeenCalledWith('privilege-1', mockBarnForDocs.id, 'write')
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await updateHorseAccessDocumentAction('green-acres', 'horse-1', 'privilege-1', 'read')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+})
+
+describe('updateHorseAccessLessonAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateHorsePrivilegeLessonAccess).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(updateHorsePrivilegeLessonAccess).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await updateHorseAccessLessonAction('green-acres', 'horse-1', 'privilege-1', true)
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_update_lesson_read_privileges_for_the_grant', async () => {
+    await updateHorseAccessLessonAction('green-acres', 'horse-1', 'privilege-1', true)
+    expect(updateHorsePrivilegeLessonAccess).toHaveBeenCalledWith('privilege-1', mockBarnForDocs.id, true)
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await updateHorseAccessLessonAction('green-acres', 'horse-1', 'privilege-1', false)
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+})
+
+describe('revokeHorseAccessAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(revokeHorsePrivilege).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+
+    vi.mocked(revokeHorsePrivilege).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await revokeHorseAccessAction('green-acres', 'horse-1', 'privilege-1')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_revoke_the_privilege_grant', async () => {
+    await revokeHorseAccessAction('green-acres', 'horse-1', 'privilege-1')
+    expect(revokeHorsePrivilege).toHaveBeenCalledWith('privilege-1', mockBarnForDocs.id)
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await revokeHorseAccessAction('green-acres', 'horse-1', 'privilege-1')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+})
+
+describe('setHorseOwnerAction', () => {
+  const existingHorse = createMockHorse({
+    id: 'horse-1',
+    name: 'Stormy',
+    is_active: true,
+    is_available: true,
+    unavailability_reason: null,
+    exhaustion_threshold_moderate: 4,
+    exhaustion_threshold_high: 10,
+    feed_notes: 'hay',
+    medication_notes: 'bute',
+    registered_name: 'Four-Leaf Clover',
+    owning_member_id: null,
+  })
+
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getHorseById).mockReset()
+    vi.mocked(updateHorseDetails).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    mockNotFound.mockClear()
+
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarnForDocs,
+      membership: managerMembership,
+    })
+    vi.mocked(getHorseById).mockResolvedValue(existingHorse)
+    vi.mocked(updateHorseDetails).mockResolvedValue(undefined)
+  })
+
+  it('should_call_requireMembership_with_manager_role_only', async () => {
+    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateHorseDetails_with_the_new_owner_and_all_other_fields_preserved', async () => {
+    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, {
+      name: 'Stormy',
+      is_active: true,
+      is_available: true,
+      unavailability_reason: null,
+      exhaustion_thresholds: { moderate: 4, high: 10 },
+      feed_notes: 'hay',
+      medication_notes: 'bute',
+      registered_name: 'Four-Leaf Clover',
+      owning_member_id: 'mem-rider-1',
+    })
+  })
+
+  it('should_call_updateHorseDetails_with_null_owner_when_clearing_ownership', async () => {
+    await setHorseOwnerAction('green-acres', 'horse-1', null)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, expect.objectContaining({
+      owning_member_id: null,
+    }))
+  })
+
+  it('should_pass_null_thresholds_when_horse_has_no_custom_thresholds', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
+      id: 'horse-1',
+      exhaustion_threshold_moderate: null,
+      exhaustion_threshold_high: null,
+    }))
+    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, expect.objectContaining({
+      exhaustion_thresholds: null,
+    }))
+  })
+
+  it('should_revalidate_horse_detail_path', async () => {
+    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_call_notFound_when_horse_is_not_found', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(null)
+    await expect(setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')).rejects.toThrow('NEXT_NOT_FOUND')
+    expect(mockNotFound).toHaveBeenCalled()
   })
 })

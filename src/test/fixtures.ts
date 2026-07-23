@@ -1,4 +1,4 @@
-import type { Agreement, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, PaymentType, Profile, ScheduledExpense } from '@/lib/db/types'
+import type { Agreement, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledExpense } from '@/lib/db/types'
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
   return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, default_instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, timezone: 'America/New_York', is_demo: false, ...overrides }
@@ -89,6 +89,19 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
     photo_uploaded_by: null,
     created_at: '',
     updated_at: '',
+    ...overrides,
+  }
+}
+
+export function createMockMemberHorsePrivilege(overrides: Partial<MemberHorsePrivilege> = {}): MemberHorsePrivilege {
+  return {
+    id: 'privilege-1',
+    barn_id: 'barn-1',
+    member_id: 'mem-1',
+    horse_id: 'horse-1',
+    document_privileges: 'none',
+    lesson_read_privileges: false,
+    created_at: '',
     ...overrides,
   }
 }

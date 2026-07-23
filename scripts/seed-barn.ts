@@ -362,7 +362,7 @@ export async function seedBarn(
 
   const horseIds: string[] = []
   for (const name of DEV_HORSES) {
-    const horse = await createHorse(barnId, name, supabase)
+    const horse = await createHorse(barnId, name, undefined, supabase)
     horseIds.push(horse.id)
   }
 
@@ -372,15 +372,32 @@ export async function seedBarn(
   const butterPhotoFile = new File([butterPhotoBytes], 'butter-photo.jpg', { type: 'image/jpeg' })
   await replaceHorsePhoto(horseIds[1], barnId, butterPhotoFile, 'jpg', supabase)
 
-  const retiredHorse = await createHorse(barnId, DEV_RETIRED_HORSE, supabase)
+  const retiredHorse = await createHorse(barnId, DEV_RETIRED_HORSE, undefined, supabase)
 
-  const unavailableHorse = await createHorse(barnId, DEV_UNAVAILABLE_HORSE, supabase)
+  const unavailableHorse = await createHorse(barnId, DEV_UNAVAILABLE_HORSE, undefined, supabase)
   mustSucceed(
     await supabase.from('horses').update({
       is_available: false,
       unavailability_reason: DEV_UNAVAILABLE_REASON,
     }).eq('id', unavailableHorse.id),
     'mark seed horse unavailable'
+  )
+
+  // #998 manual-testability seed data: one horse owned by a rider (Owner line),
+  // one privileged grant on a different horse/rider (Access section).
+  mustSucceed(
+    await supabase.from('horses').update({ owning_member_id: riderRowIds[0] }).eq('id', horseIds[0]),
+    'set seed horse owner'
+  )
+  mustSucceed(
+    await supabase.from('member_horse_privileges').insert({
+      barn_id: barnId,
+      horse_id: horseIds[1],
+      member_id: riderRowIds[1],
+      document_privileges: 'read',
+      lesson_read_privileges: true,
+    }),
+    'seed horse privilege grant'
   )
 
   const lessonDates = buildLessonDates(now)

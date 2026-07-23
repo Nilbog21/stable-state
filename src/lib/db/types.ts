@@ -83,6 +83,16 @@ export interface Horse {
   updated_at: string
 }
 
+export interface MemberHorsePrivilege {
+  id: string
+  barn_id: string
+  member_id: string
+  horse_id: string
+  document_privileges: 'none' | 'read' | 'write'
+  lesson_read_privileges: boolean
+  created_at: string
+}
+
 
 export type LessonType = 'normal' | 'group'
 export type PaymentType = 'venmo' | 'zelle' | 'cash' | 'check' | 'freshbooks'

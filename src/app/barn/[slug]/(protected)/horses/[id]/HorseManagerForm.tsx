@@ -47,7 +47,6 @@ export function HorseManagerForm({
     moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
     high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
   })
-
   async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
     const result = await action(prevState, formData)
     if (!result.error) {

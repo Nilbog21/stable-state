@@ -48,7 +48,7 @@ describe('addHorseAction', () => {
   it('should_call_createHorse_when_manager', async () => {
     await addHorseAction('green-acres', formData)
 
-    expect(createHorse).toHaveBeenCalledWith(mockBarn.id, 'Thunderbolt')
+    expect(createHorse).toHaveBeenCalledWith(mockBarn.id, 'Thunderbolt', mockManagerMembership.id)
   })
 
   it('should_revalidate_horses_path_after_createHorse', async () => {
