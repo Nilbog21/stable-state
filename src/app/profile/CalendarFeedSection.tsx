@@ -64,7 +64,7 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
   }
 
   return (
-    <section className="mb-8 rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
+    <section className="mx-auto mb-8 max-w-md rounded-lg border border-zinc-200 p-4 dark:border-zinc-800">
       <h2 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-300">
         Calendar Feed
       </h2>
