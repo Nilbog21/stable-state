@@ -407,10 +407,9 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms, and no Unlinked badge on any managed/unclaimed row (rider never sees it, unlike a manager)
 - [ ] Open your own member detail page's Documents section — shows the empty state ("No documents yet"), with **no Add Document button** (#864 — rider self-service is read-only)
 - [ ] Open another member's detail page from the roster (a trainer, a manager) — page loads (no 404), shows their name and **Contact Info** section, but no Documents section
-- [ ] Open your own member detail page and tap **Set Photo**, choose a JPG or PNG → upload starts immediately and the photo displays on your own page
-- [ ] With your own photo set, tap **Replace Photo** and choose a different image → new photo displays
-- [ ] With your own photo set, tap **Remove** → placeholder and **Set Photo** button return
 - [ ] Open another member's detail page who has a photo set → photo displays, but no **Set Photo**/**Replace Photo**/**Remove** control is shown
+
+> Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. This code path is already exercised for real in Phase 2-4's own-photo check (as yourself, no impersonation), which is sufficient coverage — don't re-add a self-photo check to an impersonated phase.
 - [ ] Switch to Emery (`change-user.sh` → Dev Barn → Emery) and open her own member detail page — the same Active Agreements cards from Phase 4 render as plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page; switch back to Dana afterward
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
