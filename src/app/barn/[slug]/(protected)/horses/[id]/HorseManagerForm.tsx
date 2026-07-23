@@ -23,10 +23,12 @@ export function HorseManagerForm({
   horse,
   barn,
   action,
+  members = [],
 }: {
   horse: Horse
   barn: Barn
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
+  members?: { membershipId: string; name: string }[]
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
@@ -86,6 +88,25 @@ export function HorseManagerForm({
           defaultValue={horse.name}
           className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         />
+      </div>
+
+      <div className="flex flex-col gap-1">
+        <label htmlFor="horse-owner" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+          Owner
+        </label>
+        <select
+          id="horse-owner"
+          name="owning_member_id"
+          defaultValue={horse.owning_member_id ?? ''}
+          className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+        >
+          <option value="">— None —</option>
+          {members.map((member) => (
+            <option key={member.membershipId} value={member.membershipId}>
+              {member.name}
+            </option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-1">
