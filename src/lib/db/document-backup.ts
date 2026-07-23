@@ -91,9 +91,7 @@ export async function buildDocumentsBackupZip(barnId: string, client?: SupabaseC
   if (docs.horse.length + docs.trainer.length + docs.rider.length === 0) return null
 
   const horseIds = [...new Set(docs.horse.map((d) => d.horse_id))]
-  const membershipIds = [
-    ...new Set([...docs.trainer.map((d) => d.trainer_id), ...docs.rider.map((d) => d.rider_id)]),
-  ]
+  const membershipIds = [...new Set([...docs.trainer.map((d) => d.trainer_id), ...docs.rider.map((d) => d.rider_id)])]
 
   const [horseNames, memberNames] = await Promise.all([
     resolveHorseNames(horseIds, barnId, supabase),

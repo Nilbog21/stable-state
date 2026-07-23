@@ -126,6 +126,14 @@ describe('buildBackupZipEntries', () => {
     expect(entries[0].zipPath).toBe('member/Unknown Member/coggins-coggins-2026-03-05.pdf')
   })
 
+  it('should_fall_back_to_unknown_member_for_an_unresolved_rider_membership', () => {
+    const docs = { horse: [], trainer: [], rider: [makeDoc({ rider_id: 'mem-unknown' })] }
+
+    const entries = buildBackupZipEntries(docs, new Map(), new Map())
+
+    expect(entries[0].zipPath).toBe('member/Unknown Member/coggins-coggins-2026-03-05.pdf')
+  })
+
   it('should_sanitize_slashes_in_folder_names', () => {
     const docs = { horse: [makeDoc({ horse_id: 'horse-1' })], trainer: [], rider: [] }
 
@@ -197,6 +205,26 @@ describe('getAllBarnDocuments', () => {
     setupFrom({ errors: { horse_documents: new Error('boom') } })
 
     await expect(getAllBarnDocuments('barn-1')).rejects.toThrow('boom')
+  })
+
+  it('should_throw_on_staff_documents_query_error', async () => {
+    setupFrom({ errors: { staff_documents: new Error('boom') } })
+
+    await expect(getAllBarnDocuments('barn-1')).rejects.toThrow('boom')
+  })
+
+  it('should_throw_on_rider_documents_query_error', async () => {
+    setupFrom({ errors: { rider_documents: new Error('boom') } })
+
+    await expect(getAllBarnDocuments('barn-1')).rejects.toThrow('boom')
+  })
+
+  it('should_return_empty_lists_when_query_data_is_null', async () => {
+    setupFrom({ horseDocs: null, trainerDocs: null, riderDocs: null })
+
+    const result = await getAllBarnDocuments('barn-1')
+
+    expect(result).toEqual({ horse: [], trainer: [], rider: [] })
   })
 
   it('should_not_call_createClient_when_client_is_injected', async () => {
@@ -275,6 +303,30 @@ describe('buildDocumentsBackupZip', () => {
       .map((f) => f.name)
     expect(filePaths).toEqual([expectedPath])
     expect(await zip.files[expectedPath].async('string')).toBe('content')
+  })
+
+  it('should_include_trainer_and_rider_documents_grouped_under_resolved_member_names', async () => {
+    setupFrom({
+      trainerDocs: [makeDoc({ trainer_id: 'mem-9', storage_path: 's/t.pdf' })],
+      riderDocs: [makeDoc({ rider_id: 'mem-8', storage_path: 's/r.pdf' })],
+    })
+    vi.mocked(resolveMemberNames).mockResolvedValue(
+      new Map([
+        ['mem-9', 'Jane Trainer'],
+        ['mem-8', 'Bob Rider'],
+      ])
+    )
+
+    const buffer = await buildDocumentsBackupZip('barn-1')
+    expect(buffer).not.toBeNull()
+
+    const zip = await JSZip.loadAsync(buffer as Buffer)
+    const filePaths = Object.values(zip.files)
+      .filter((f) => !f.dir)
+      .map((f) => f.name)
+    expect(filePaths.sort()).toEqual(
+      ['member/Jane Trainer/coggins-coggins-2026-03-05.pdf', 'member/Bob Rider/coggins-coggins-2026-03-05.pdf'].sort()
+    )
   })
 
   it('should_download_each_documents_bytes_via_its_storage_path', async () => {
