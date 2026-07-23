@@ -88,7 +88,7 @@ export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }
             About
           </Link>
           {/* Raw Tailwind, not <Button>: styled identically to the sibling
-              Link menu rows above (Profile/Switch Barn/User Guide) — a
+              Link menu rows above (Profile/Switch Barn/User Guide/About) — a
               dropdown menu-item pattern, not a button pattern. */}
           <form action={signOut}>
             <button

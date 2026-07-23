@@ -342,7 +342,8 @@ Notifications and profile:
 - [ ] **Mark all read** clears the badge
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages; edit phone → Save → redirected back to the barn
 - [ ] Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
-- [ ] Avatar menu → **About** (`/about`) renders the app overview and current version
+- [ ] Avatar menu → **About** (`/about`) renders the app overview
+- [ ] `/about` shows the current version
 - [ ] Clicking the version on `/about` opens `/changelog`
 - [ ] The **Terms of Service** link on `/about` opens `/terms`
 - [ ] The **Privacy Policy** link on `/about` opens `/privacy`
