@@ -36,6 +36,7 @@ Tap the bell icon in the nav bar to view your notifications.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
 - **Recurring series stopped** — a weekly recurring series you instruct stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review your lessons.
 - **Recurring lesson generated with an unavailable horse** — the nightly job generated the next occurrence of a recurring series, but the horse assigned to it is currently marked unavailable or inactive. Tap the notification to review the lesson and reassign the horse if needed.
+- **New lesson(s) scheduled nearby** — another instructor booked a lesson within your barn's schedule-buffer window (set by your manager in Manage Barn settings) of one of your own lessons. Tap the notification to review the schedule.
 
 ## Horses
 
