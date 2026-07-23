@@ -22,9 +22,9 @@ for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
   fi
 done
 
-MODE="${1:-interactive}"
+MODE="${1:-auto}"
 if [ "$MODE" != "interactive" ] && [ "$MODE" != "auto" ]; then
-  echo "Error: unknown mode '$MODE' (expected 'auto' or no argument)" >&2
+  echo "Error: unknown mode '$MODE' (expected 'interactive', 'auto', or no argument)" >&2
   exit 1
 fi
 

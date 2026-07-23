@@ -12,7 +12,7 @@
     "lint": "eslint",
     "test": "vitest",
     "test:coverage": "vitest run --coverage",
-    "test:checklist": "bash scripts/run-checklist-suite.sh",
+    "test:checklist": "bash scripts/run-checklist-suite.sh interactive",
     "test:checklist:auto": "bash scripts/run-checklist-suite.sh auto"
   },
   "dependencies": {
