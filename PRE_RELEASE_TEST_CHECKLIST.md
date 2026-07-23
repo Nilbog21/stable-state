@@ -62,6 +62,11 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 - [ ] Create horses **Daisy**, **Eclipse**, and **Flint**
 - [ ] Open Daisy's detail page → set status pill to **Unavailable**, enter reason "Thrown shoe" → Save
 - [ ] Horses page now shows Daisy under **Unavailable** with the reason visible
+- [ ] On Eclipse's detail page, select rider Dana in the **Owner** dropdown → Save → an "Owner: Dana Rider" line appears above the photo, linking to Dana's member detail page
+- [ ] In the **Access** section, select rider Emery and tap **Grant Access** → Emery appears in the grants list with Documents set to **None** and lesson access **Cannot View**
+- [ ] Change Emery's **Documents** dropdown to **Read** → refresh the page → the selection persists
+- [ ] Tap Emery's **Cannot View** button → it flips to **Can View** and persists after refresh
+- [ ] Tap **Revoke** on Emery's row (confirm the browser prompt) → Emery no longer appears in the grants list and is selectable again in the add-member dropdown
 
 Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
 
