@@ -132,8 +132,9 @@ export type ActiveMemberSummaryRow = {
 // Reads any active member's row within a barn, including ones the narrow direct-query
 // policies (own-row/manager-full-barn/trainer-reads-riders) don't cover — broadened per
 // #779 via the same column-limited RPC used by getActiveMembersWithProfiles, so this can
-// never surface invite_token either. Kept separate from getMembershipById (used elsewhere
-// by write-gated actions that don't need the broadened read) to keep blast radius minimal.
+// never surface invite_token (or calendar_feed_token, #1018 — same column-limiting
+// rationale) either. Kept separate from getMembershipById (used elsewhere by write-gated
+// actions that don't need the broadened read) to keep blast radius minimal.
 export async function getMembershipByIdForBarn(
   membershipId: string,
   barnId: string,
@@ -161,6 +162,7 @@ export async function getMembershipByIdForBarn(
     status: 'active',
     can_instruct: row.can_instruct,
     invite_token: null,
+    calendar_feed_token: null,
     created_at: row.created_at,
   }
 }

@@ -593,6 +593,7 @@ describe('getMembershipByIdForBarn', () => {
       status: 'active',
       can_instruct: false,
       invite_token: null,
+      calendar_feed_token: null,
       created_at: '2026-01-01T00:00:00Z',
     })
   })
