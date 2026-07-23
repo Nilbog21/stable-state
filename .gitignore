@@ -3,6 +3,7 @@
 # internal dev use
 /specs
 .claude/settings.local.json
+/scripts/data
 
 # dependencies
 /node_modules

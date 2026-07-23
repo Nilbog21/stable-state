@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import type { SupabaseClient } from '@supabase/supabase-js'
 
 export const ALLOWED_MIME_TYPES = new Set([
   'application/pdf',
@@ -27,14 +28,14 @@ export function validateFile(
   return ext.toLowerCase()
 }
 
-export async function uploadFile(storagePath: string, file: File, contentType: string): Promise<void> {
-  const supabase = await createClient()
+export async function uploadFile(storagePath: string, file: File, contentType: string, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
   const { error } = await supabase.storage.from('documents').upload(storagePath, file, { contentType })
   if (error) throw error
 }
 
-export async function removeFile(storagePath: string): Promise<void> {
-  const supabase = await createClient()
+export async function removeFile(storagePath: string, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
   const { error } = await supabase.storage.from('documents').remove([storagePath])
   if (error) throw error
 }

@@ -5,8 +5,14 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
 }))
 
+vi.mock('../document-storage', () => ({
+  uploadFile: vi.fn(),
+  removeFile: vi.fn(),
+}))
+
 import { createClient } from '@/lib/supabase/server'
-import { upsertProfile, getProfilesByUserIds, updateContactInfo, getProfileByUserId, getProfileById, updateProfile } from '../profiles'
+import { uploadFile, removeFile } from '../document-storage'
+import { upsertProfile, getProfilesByUserIds, updateContactInfo, getProfileByUserId, getProfileById, updateProfile, updateProfilePhotoPath, replaceProfilePhoto, removeProfilePhoto } from '../profiles'
 
 const mockProfile = createMockProfile()
 
@@ -311,6 +317,37 @@ describe('getProfileById', () => {
 
     expect(mockEq).toHaveBeenCalledWith('id', 'profile-42')
   })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const injectedClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+          }),
+        }),
+      }),
+    } as any
+
+    await getProfileById('profile-1', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    const mockFrom = vi.fn().mockReturnValue({
+      select: vi.fn().mockReturnValue({
+        eq: vi.fn().mockReturnValue({
+          maybeSingle: vi.fn().mockResolvedValue({ data: mockProfile, error: null }),
+        }),
+      }),
+    })
+    const injectedClient = { from: mockFrom } as any
+
+    await getProfileById('profile-1', injectedClient)
+
+    expect(mockFrom).toHaveBeenCalledWith('profiles')
+  })
 })
 
 describe('updateProfile', () => {
@@ -420,5 +457,261 @@ describe('updateContactInfo', () => {
 
     expect(mockUpdate).toHaveBeenCalledWith({ phone: '555-1234' })
     expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateProfilePhotoPath', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_update_photo_path', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await updateProfilePhotoPath('profile-1', 'barn-1/profile-photos/profile-1/123.jpg')
+    expect(update).toHaveBeenCalledWith({ photo_path: 'barn-1/profile-photos/profile-1/123.jpg' })
+  })
+
+  it('should_clear_photo_path_when_null', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: mockEq })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update }),
+    } as any)
+
+    await updateProfilePhotoPath('profile-1', null)
+    expect(update).toHaveBeenCalledWith({ photo_path: null })
+  })
+
+  it('should_filter_by_profile_id', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({ eq: mockEq }),
+      }),
+    } as any)
+
+    await updateProfilePhotoPath('profile-99', 'path.jpg')
+    expect(mockEq).toHaveBeenCalledWith('id', 'profile-99')
+  })
+
+  it('should_throw_on_supabase_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        update: vi.fn().mockReturnValue({
+          eq: vi.fn().mockResolvedValue({ error: new Error('update error') }),
+        }),
+      }),
+    } as any)
+
+    await expect(updateProfilePhotoPath('profile-1', 'path.jpg')).rejects.toThrow('update error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: mockEq })
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await updateProfilePhotoPath('profile-1', 'path.jpg', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_use_injected_client_for_db_operation', async () => {
+    const mockEq = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: mockEq })
+    const mockFrom = vi.fn().mockReturnValue({ update })
+    const injectedClient = { from: mockFrom } as any
+
+    await updateProfilePhotoPath('profile-1', 'path.jpg', injectedClient)
+
+    expect(mockFrom).toHaveBeenCalledWith('profiles')
+  })
+})
+
+function makeSelectChainForProfilePhotoPath(photoPath: string | null) {
+  return {
+    select: vi.fn().mockReturnValue({
+      eq: vi.fn().mockReturnValue({
+        maybeSingle: vi.fn().mockResolvedValue({ data: createMockProfile({ id: 'profile-1', photo_path: photoPath }), error: null }),
+      }),
+    }),
+  }
+}
+
+function makeUpdateChainForProfilePhotoPath(error: Error | null = null) {
+  return {
+    update: vi.fn().mockReturnValue({
+      eq: vi.fn().mockResolvedValue({ error }),
+    }),
+  }
+}
+
+describe('replaceProfilePhoto', () => {
+  const file = new File([new Uint8Array(10)], 'photo.jpg', { type: 'image/jpeg' })
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.mocked(uploadFile).mockReset()
+    vi.mocked(removeFile).mockReset()
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(removeFile).mockResolvedValue(undefined)
+  })
+
+  it('should_upload_to_profile_photos_prefix', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath(null)) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForProfilePhotoPath()) } as any)
+
+    await replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg')
+
+    expect(uploadFile).toHaveBeenCalledWith(expect.stringMatching(/^barn-1\/profile-photos\/profile-1\/\d+\.jpg$/), file, 'image/jpeg', undefined)
+  })
+
+  it('should_update_photo_path_after_successful_upload', async () => {
+    const updateChain = makeUpdateChainForProfilePhotoPath()
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath(null)) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(updateChain) } as any)
+
+    await replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg')
+
+    expect(updateChain.update).toHaveBeenCalledWith({ photo_path: expect.stringMatching(/^barn-1\/profile-photos\/profile-1\/\d+\.jpg$/) })
+  })
+
+  it('should_remove_old_photo_after_replacing', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath('barn-1/profile-photos/profile-1/old.jpg')) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForProfilePhotoPath()) } as any)
+
+    await replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg')
+
+    expect(removeFile).toHaveBeenCalledWith('barn-1/profile-photos/profile-1/old.jpg', undefined)
+  })
+
+  it('should_not_remove_anything_when_there_was_no_previous_photo', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath(null)) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForProfilePhotoPath()) } as any)
+
+    await replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg')
+
+    expect(removeFile).not.toHaveBeenCalled()
+  })
+
+  it('should_roll_back_uploaded_file_when_db_update_fails', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath(null)) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForProfilePhotoPath(new Error('db error'))) } as any)
+
+    await expect(replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg')).rejects.toThrow('db error')
+    expect(removeFile).toHaveBeenCalledWith(expect.stringMatching(/^barn-1\/profile-photos\/profile-1\/\d+\.jpg$/), undefined)
+  })
+
+  it('should_not_remove_old_photo_when_db_update_fails', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath('barn-1/profile-photos/profile-1/old.jpg')) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForProfilePhotoPath(new Error('db error'))) } as any)
+
+    await expect(replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg')).rejects.toThrow('db error')
+    expect(removeFile).not.toHaveBeenCalledWith('barn-1/profile-photos/profile-1/old.jpg')
+  })
+
+  it('should_propagate_error_when_upload_fails', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath(null)) } as any)
+    vi.mocked(uploadFile).mockRejectedValue(new Error('upload error'))
+
+    await expect(replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg')).rejects.toThrow('upload error')
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const injectedClient = {
+      from: vi.fn()
+        .mockReturnValueOnce(makeSelectChainForProfilePhotoPath(null))
+        .mockReturnValueOnce(makeUpdateChainForProfilePhotoPath()),
+    } as any
+
+    await replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_forward_injected_client_to_upload_file', async () => {
+    const injectedClient = {
+      from: vi.fn()
+        .mockReturnValueOnce(makeSelectChainForProfilePhotoPath(null))
+        .mockReturnValueOnce(makeUpdateChainForProfilePhotoPath()),
+    } as any
+
+    await replaceProfilePhoto('profile-1', 'barn-1', file, 'jpg', injectedClient)
+
+    expect(uploadFile).toHaveBeenCalledWith(expect.stringMatching(/^barn-1\/profile-photos\/profile-1\/\d+\.jpg$/), file, 'image/jpeg', injectedClient)
+  })
+})
+
+describe('removeProfilePhoto', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+    vi.mocked(removeFile).mockReset()
+    vi.mocked(removeFile).mockResolvedValue(undefined)
+  })
+
+  it('should_clear_photo_path_when_photo_present', async () => {
+    const updateChain = makeUpdateChainForProfilePhotoPath()
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath('barn-1/profile-photos/profile-1/photo.jpg')) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(updateChain) } as any)
+
+    await removeProfilePhoto('profile-1')
+
+    expect(updateChain.update).toHaveBeenCalledWith({ photo_path: null })
+  })
+
+  it('should_remove_storage_file_when_photo_present', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath('barn-1/profile-photos/profile-1/photo.jpg')) } as any)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeUpdateChainForProfilePhotoPath()) } as any)
+
+    await removeProfilePhoto('profile-1')
+
+    expect(removeFile).toHaveBeenCalledWith('barn-1/profile-photos/profile-1/photo.jpg', undefined)
+  })
+
+  it('should_do_nothing_when_no_photo_is_present', async () => {
+    vi.mocked(createClient)
+      .mockResolvedValueOnce({ from: vi.fn().mockReturnValue(makeSelectChainForProfilePhotoPath(null)) } as any)
+
+    await removeProfilePhoto('profile-1')
+
+    expect(removeFile).not.toHaveBeenCalled()
+  })
+
+  it('should_not_call_createClient_when_client_is_injected', async () => {
+    const injectedClient = {
+      from: vi.fn()
+        .mockReturnValueOnce(makeSelectChainForProfilePhotoPath('barn-1/profile-photos/profile-1/photo.jpg'))
+        .mockReturnValueOnce(makeUpdateChainForProfilePhotoPath()),
+    } as any
+
+    await removeProfilePhoto('profile-1', injectedClient)
+
+    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
+  })
+
+  it('should_forward_injected_client_to_remove_file', async () => {
+    const injectedClient = {
+      from: vi.fn()
+        .mockReturnValueOnce(makeSelectChainForProfilePhotoPath('barn-1/profile-photos/profile-1/photo.jpg'))
+        .mockReturnValueOnce(makeUpdateChainForProfilePhotoPath()),
+    } as any
+
+    await removeProfilePhoto('profile-1', injectedClient)
+
+    expect(removeFile).toHaveBeenCalledWith('barn-1/profile-photos/profile-1/photo.jpg', injectedClient)
   })
 })

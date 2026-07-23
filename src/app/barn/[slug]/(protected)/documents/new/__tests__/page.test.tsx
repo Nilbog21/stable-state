@@ -8,6 +8,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({ getMembershipById: vi.fn() }))
 vi.mock('@/lib/db/profiles', () => ({ getProfileById: vi.fn() }))
 vi.mock('../actions', () => ({ uploadDocumentAction: vi.fn() }))
 vi.mock('../../../horses/[id]/actions', () => ({ uploadHorsePhotoAction: vi.fn() }))
+vi.mock('../../../members/[membership_id]/actions', () => ({ uploadProfilePhotoAction: vi.fn() }))
 vi.mock('../DocumentUploadForm', () => ({
   DocumentUploadForm: ({ entity, cancelHref, photoMode }: { entity: string; cancelHref: string; photoMode?: boolean }) => (
     <div data-testid="document-upload-form" data-cancel-href={cancelHref} data-photo-mode={photoMode ?? false}>{entity}</div>
@@ -232,5 +233,77 @@ describe('NewDocumentPage', () => {
   it('should_call_notFound_for_photo_type_when_horse_does_not_exist', async () => {
     vi.mocked(getHorseById).mockResolvedValue(null)
     await expect(NewDocumentPage(makeParams('green-acres', 'horse', 'horse-1', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+  })
+
+  describe('entity=profile&type=photo', () => {
+    beforeEach(() => {
+      vi.mocked(getMembershipById).mockResolvedValue(targetRiderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-target', first_name: 'Rita', last_name: 'Rider', is_managed: true }))
+    })
+
+    it('should_call_notFound_when_target_membership_does_not_exist', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue(null)
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_target_membership_is_in_a_different_barn', async () => {
+      vi.mocked(getMembershipById).mockResolvedValue({ ...targetRiderMembership, barn_id: 'barn-other' })
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_target_profile_does_not_exist', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(null)
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_manager_targets_an_unmanaged_profile', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-target', is_managed: false }))
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_call_notFound_when_trainer_targets_another_member', async () => {
+      vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-trn' } as any, barn: mockBarn, membership: trainerMembership })
+      await expect(NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))).rejects.toThrow('NEXT_NOT_FOUND')
+    })
+
+    it('should_render_form_for_manager_targeting_managed_profile', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form')).toBeDefined()
+    })
+
+    it('should_render_form_for_self_regardless_of_managed_status', async () => {
+      vi.mocked(requireMembership).mockResolvedValue({ user: { id: 'user-rdr' } as any, barn: mockBarn, membership: riderMembership })
+      vi.mocked(getMembershipById).mockResolvedValue(riderMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-self', is_managed: false }))
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form')).toBeDefined()
+    })
+
+    it('should_render_set_photo_heading_when_profile_has_no_photo', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /set photo — rita rider/i })).toBeDefined()
+    })
+
+    it('should_render_replace_photo_heading_when_profile_has_a_photo', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-target', first_name: 'Rita', last_name: 'Rider', is_managed: true, photo_path: 'barn-1/profile-photos/profile-target/1.jpg' }))
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByRole('heading', { name: /replace photo — rita rider/i })).toBeDefined()
+    })
+
+    it('should_render_document_upload_form_in_photo_mode', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form').dataset.photoMode).toBe('true')
+    })
+
+    it('should_render_cancel_link_to_member_detail_page', async () => {
+      const jsx = await NewDocumentPage(makeParams('green-acres', 'profile', 'mem-target-rdr', 'photo'))
+      render(jsx)
+      expect(screen.getByTestId('document-upload-form').dataset.cancelHref).toBe('/barn/green-acres/members/mem-target-rdr')
+    })
   })
 })

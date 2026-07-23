@@ -17,6 +17,7 @@ vi.mock('@/lib/db/agreements', () => ({
 vi.mock('@/lib/db/horses', () => ({
   resolveHorseNames: vi.fn(),
 }))
+vi.mock('@/lib/db/document-storage', () => ({ getSignedUrl: vi.fn() }))
 vi.mock('../actions', () => ({
   deleteDocumentAction: vi.fn(),
   updateDocumentReminderDateAction: vi.fn(),
@@ -24,6 +25,7 @@ vi.mock('../actions', () => ({
   setCanInstructAction: vi.fn(),
   revokeInviteTokenAction: vi.fn(),
   removeMemberAction: vi.fn(),
+  deleteProfilePhotoAction: vi.fn(),
 }))
 
 const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FOUND') }))
@@ -38,6 +40,7 @@ import { getProfileById } from '@/lib/db/profiles'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
 import { resolveHorseNames } from '@/lib/db/horses'
+import { getSignedUrl } from '@/lib/db/document-storage'
 import { deleteDocumentAction, revokeInviteTokenAction, removeMemberAction } from '../actions'
 import MemberDetailPage from '../page'
 
@@ -89,6 +92,8 @@ describe('MemberDetailPage', () => {
     vi.mocked(getActiveAgreementsForRider).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockReset()
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(getSignedUrl).mockReset()
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/photo-signed')
   })
 
   it('should_call_requireMembership_with_allowed_roles', async () => {
@@ -934,6 +939,86 @@ describe('MemberDetailPage', () => {
       render(jsx)
       fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }))
       expect(revokeInviteTokenAction).toHaveBeenCalledWith('green-acres', 'mem-target-trn')
+    })
+  })
+
+  describe('Photo section', () => {
+    const profileWithPhoto = createMockProfile({
+      id: 'profile-2', user_id: 'user-target-trn', first_name: 'Bob', last_name: 'Trainer',
+      is_managed: false, photo_path: 'barn-1/profile-photos/profile-2/1.jpg',
+    })
+    const managedProfileWithPhoto = createMockProfile({
+      id: 'profile-2', user_id: null, first_name: 'Bob', last_name: 'Trainer',
+      is_managed: true, photo_path: 'barn-1/profile-photos/profile-2/1.jpg',
+    })
+
+    it('should_render_photo_via_signed_url_when_present', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(profileWithPhoto)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      const img = screen.getByRole('img', { name: 'Bob Trainer' }) as HTMLImageElement
+      expect(img.src).toBe('https://example.com/photo-signed')
+    })
+
+    it('should_fetch_signed_url_for_the_profiles_photo_path', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(profileWithPhoto)
+      await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      expect(getSignedUrl).toHaveBeenCalledWith('barn-1/profile-photos/profile-2/1.jpg')
+    })
+
+    it('should_not_fetch_signed_url_when_photo_path_is_absent', async () => {
+      await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      expect(getSignedUrl).not.toHaveBeenCalled()
+    })
+
+    it('should_render_empty_state_when_no_photo', async () => {
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByText('No photo yet')).toBeDefined()
+    })
+
+    it('should_render_set_photo_link_for_manager_when_target_is_managed', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-2', is_managed: true }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByRole('link', { name: 'Set Photo' }).getAttribute('href')).toBe(
+        '/barn/green-acres/documents/new?entity=profile&id=mem-target-trn&type=photo'
+      )
+    })
+
+    it('should_not_render_set_photo_link_for_manager_when_target_is_not_managed', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-2', is_managed: false }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByText('Set Photo')).toBeNull()
+    })
+
+    it('should_render_replace_and_remove_controls_for_self_when_photo_present', async () => {
+      mockRequireMembershipAs(trainerMembership)
+      vi.mocked(getMembershipByIdForBarn).mockResolvedValue(trainerMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({
+        id: 'profile-own', user_id: 'user-trn', is_managed: false,
+        photo_path: 'barn-1/profile-photos/profile-own/1.jpg',
+      }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-trn') })
+      render(jsx)
+      expect(screen.getByText('Replace Photo')).toBeDefined()
+      expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
+    })
+
+    it('should_not_render_set_photo_link_when_trainer_views_another_unmanaged_member', async () => {
+      mockRequireMembershipAs(trainerMembership)
+      vi.mocked(getProfileById).mockResolvedValue(createMockProfile({ id: 'profile-2', is_managed: false }))
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByText('Set Photo')).toBeNull()
+    })
+
+    it('should_render_set_photo_link_for_manager_when_target_is_managed_and_unclaimed', async () => {
+      vi.mocked(getProfileById).mockResolvedValue(managedProfileWithPhoto)
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.getByText('Replace Photo')).toBeDefined()
     })
   })
 })

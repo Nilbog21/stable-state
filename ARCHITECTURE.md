@@ -31,7 +31,7 @@ Three roles: `manager`, `trainer`, `rider`.
 | lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT (enrolled only), INSERT |
 | lesson_tiers | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped) | — |
 | lesson_series | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT, INSERT, UPDATE own (`instructor_id` locked to caller's own membership) | — |
-| profiles | SELECT own + barn members; UPDATE own + any barn member's managed/stub profile only (contact fields only); INSERT own | SELECT own + barn members | SELECT own + barn members; INSERT/UPDATE own |
+| profiles | SELECT own + barn members; UPDATE own + any barn member's managed/stub profile only (contact fields and photo only); INSERT own | SELECT own + barn members | SELECT own + barn members; INSERT/UPDATE own |
 | notifications | SELECT/UPDATE/DELETE own; INSERT any authenticated (cross-user UPDATE/INSERT also reachable via `create_or_update_notification` RPC, gated on active membership in the target barn) | SELECT/UPDATE/DELETE own; INSERT any authenticated (see manager column) | SELECT/UPDATE/DELETE own; INSERT any authenticated (see manager column) |
 | horse_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT (barn-scoped) | — |
 | staff_documents | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, DELETE own rows only | — |
@@ -42,12 +42,13 @@ Three roles: `manager`, `trainer`, `rider`.
 | expense_horses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — |
 | transactions | SELECT (barn-scoped); no INSERT/UPDATE/DELETE grant to `authenticated` — writes only via `SECURITY DEFINER` RPCs (`sync_lesson_transactions`/`collect_lesson_payment`/`delete_lesson_with_transactions`, #827) | — | — |
 | member_horse_privileges | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — (no direct read/write grant — a privileged rider's access is exercised only through the `auth_get_horse_document_privilege`/`auth_has_horse_lesson_read_privilege` helper functions and the policies they back on `horse_documents`/`lessons`/`lesson_horses`/`lesson_riders`, #997) |
+| barn_events | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (role-filtered via `visible_to_roles`) | SELECT (role-filtered via `visible_to_roles`) |
 
 ## DB schema
 
 All tables are in the `public` schema with RLS enabled. Full column definitions, constraints, and per-table notes: [`docs/architecture/schema.md`](docs/architecture/schema.md).
 
-Tables: `roles`, `barns`, `barn_memberships`, `horses`, `lessons`, `lesson_tiers`, `lesson_series`, `lesson_horses`, `lesson_riders`, `profiles`, `notifications`, `horse_documents`, `staff_documents`, `rider_documents`, `agreements`, `agreement_charges`, `horse_expenses`, `expense_horses`, `transactions`, `member_horse_privileges`
+Tables: `roles`, `barns`, `barn_memberships`, `horses`, `lessons`, `lesson_tiers`, `lesson_series`, `lesson_horses`, `lesson_riders`, `profiles`, `notifications`, `horse_documents`, `staff_documents`, `rider_documents`, `agreements`, `agreement_charges`, `horse_expenses`, `expense_horses`, `transactions`, `member_horse_privileges`, `barn_events`
 
 ## RLS conventions
 
@@ -79,13 +80,13 @@ RLS policies always go in a **separate migration file** from schema changes.
 
 Full per-route role gating and behavior notes, including the persistent nav bar: [`docs/architecture/routes.md`](docs/architecture/routes.md).
 
-Routes: `/`, `/barns`, `/barn/[slug]`, `/barn/[slug]/lessons`, `/barn/[slug]/lessons/new`, `/barn/[slug]/lessons/[id]`, `/barn/[slug]/lessons/[id]/delete`, `/barn/[slug]/lessons/[id]/edit`, `/barn/[slug]/lessons/[id]/cancel`, `/barn/[slug]/lessons/[id]/cancel-rider/[riderId]`, `/barn/[slug]/expenses`, `/barn/[slug]/expenses/new`, `/barn/[slug]/expenses/[id]`, `/barn/[slug]/expenses/[id]/delete`, `/barn/[slug]/horses`, `/barn/[slug]/horses/[id]`, `/barn/[slug]/agreements`, `/barn/[slug]/agreements/new`, `/barn/[slug]/agreements/[id]`, `/barn/[slug]/agreements/[id]/edit`, `/barn/[slug]/members`, `/barn/[slug]/members/[membership_id]`, `/barn/[slug]/documents/new`, `/barn/[slug]/finances`, `/barn/[slug]/finances/outstanding`, `/barn/[slug]/finances/horses/[id]`, `/barn/[slug]/finances/riders/[id]`, `/barn/[slug]/finances/trainers/[id]`, `/barn/[slug]/finances/expenses/[recipient]`, `/barn/[slug]/settings`, `/barn/[slug]/settings/tiers/new`, `/barn/[slug]/settings/tiers/[id]`, `/barn/[slug]/guide`, `/profile`, `/profile/complete`, `/login`, `/terms`, `/barn/[slug]/register`, `/privacy`
+Routes: `/`, `/barns`, `/barn/[slug]`, `/barn/[slug]/lessons`, `/barn/[slug]/lessons/new`, `/barn/[slug]/lessons/[id]`, `/barn/[slug]/lessons/[id]/delete`, `/barn/[slug]/lessons/[id]/edit`, `/barn/[slug]/lessons/[id]/cancel`, `/barn/[slug]/lessons/[id]/cancel-rider/[riderId]`, `/barn/[slug]/expenses`, `/barn/[slug]/expenses/new`, `/barn/[slug]/expenses/[id]`, `/barn/[slug]/expenses/[id]/delete`, `/barn/[slug]/horses`, `/barn/[slug]/horses/[id]`, `/barn/[slug]/agreements`, `/barn/[slug]/agreements/new`, `/barn/[slug]/agreements/[id]`, `/barn/[slug]/agreements/[id]/edit`, `/barn/[slug]/members`, `/barn/[slug]/members/[membership_id]`, `/barn/[slug]/documents/new`, `/barn/[slug]/finances`, `/barn/[slug]/finances/outstanding`, `/barn/[slug]/finances/horses/[id]`, `/barn/[slug]/finances/riders/[id]`, `/barn/[slug]/finances/trainers/[id]`, `/barn/[slug]/finances/expenses/[recipient]`, `/barn/[slug]/settings`, `/barn/[slug]/settings/tiers/new`, `/barn/[slug]/settings/tiers/[id]`, `/barn/[slug]/settings/events/new`, `/barn/[slug]/settings/events/[id]`, `/barn/[slug]/settings/events/[id]/delete`, `/barn/[slug]/guide`, `/profile`, `/profile/complete`, `/login`, `/terms`, `/barn/[slug]/register`, `/privacy`
 
 ## Data access layer
 
 `src/lib/db/` — one file per domain. Never query Supabase directly from components or actions; always go through these modules. Full per-module function descriptions: [`docs/architecture/dal.md`](docs/architecture/dal.md).
 
-Modules: `auth.ts`, `transactions.ts`, `agreements.ts`, `agreement-finances.ts`, `expenses.ts`, `expense-finances.ts`, `barns.ts`, `barn-memberships.ts`, `member-names.ts`, `member-invites.ts`, `horses.ts`, `lessons.ts`, `lesson-participants.ts`, `lesson-series.ts`, `lesson-finance-queries.ts`, `lesson-finances.ts`, `outstanding.ts`, `schedule.ts`, `lesson-tiers.ts`, `profiles.ts`, `notifications.ts`, `document-storage.ts`, `documents.ts`, `types.ts`
+Modules: `auth.ts`, `transactions.ts`, `agreements.ts`, `agreement-finances.ts`, `expenses.ts`, `expense-finances.ts`, `barns.ts`, `barn-memberships.ts`, `member-names.ts`, `member-invites.ts`, `horses.ts`, `lessons.ts`, `lesson-participants.ts`, `lesson-series.ts`, `lesson-finance-queries.ts`, `lesson-finances.ts`, `outstanding.ts`, `schedule.ts`, `lesson-tiers.ts`, `barn-events.ts`, `profiles.ts`, `notifications.ts`, `document-storage.ts`, `documents.ts`, `types.ts`
 
 ## Server actions pattern
 

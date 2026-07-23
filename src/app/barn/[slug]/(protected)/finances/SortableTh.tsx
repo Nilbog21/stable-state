@@ -3,11 +3,13 @@ import { Th } from '@/components/ui/Table'
 import { InfoPopover } from './InfoPopover'
 import type { SortDir } from './useSortableRows'
 
-// Shared header cell for every breakdown table column (#971) — covers both the sortable
-// case (sortKey/activeKey/dir/onSort all provided) and the plain, non-sortable case (e.g.
-// By Rider's Expenses, By Paid To's Gross/Net), which otherwise diverged into ad hoc
-// <Th>+<InfoPopover> markup per table. The label/button and the info trigger live in one
-// inline-flex row so they never wrap onto separate lines regardless of mode.
+// Shared header cell for every breakdown table column (#971). Sortability is gated purely
+// on sortKey/onSort both being provided (e.g. By Rider's Expenses, By Paid To's Gross/Net
+// pass neither); activeKey/dir may be present either way — BreakdownTable (#981) passes
+// them unconditionally since they're inert without a matching sortKey/onSort. This
+// replaced ad hoc <Th>+<InfoPopover> markup per table. The label/button and the info
+// trigger live in one inline-flex row so they never wrap onto separate lines regardless
+// of mode.
 export function SortableTh<K extends string = string>({
   sortKey,
   label,

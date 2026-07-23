@@ -178,7 +178,7 @@ Expenses (`/barn/dev-barn/expenses`):
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 - [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
-- [ ] Open a horse with no photo → placeholder icon and **Set Photo** button show
+- [ ] Open Clover's detail page (no photo seeded) → placeholder icon and **Set Photo** button show
 - [ ] Tap **Set Photo** → navigates to the same upload screen used for horse documents, with Document Type locked to "Photo" (no dropdown) and no Notes/Expiration reminder date fields
 - [ ] Tap **Choose File** and select a non-square JPG or PNG → upload starts immediately with no separate Upload button click, and you land back on the horse detail page with the photo displayed, scaled to a fixed height with its aspect ratio preserved (not cropped to a square)
 - [ ] With a photo set, tap **Replace Photo**, choose a different image → upload starts immediately and the new photo displays
@@ -207,6 +207,11 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
 - [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render even though the account has no linked `user_id`; Documents section renders normally (not blocked) with an **Add Document** button
 - [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload
+- [ ] On Harper Test's member detail page, tap **Set Photo**, choose a JPG or PNG → upload starts immediately and you land back on the member page with the photo displayed
+- [ ] With Harper Test's photo set, tap **Replace Photo** and choose a different image → new photo displays
+- [ ] With Harper Test's photo set, tap **Remove** → placeholder and **Set Photo** button return
+- [ ] Open a claimed trainer's member detail page → no **Set Photo**/**Replace Photo**/**Remove** control is shown (manager can't edit a claimed member's photo)
+- [ ] Open your own manager member detail page → tap **Set Photo** and upload one → photo displays and persists on reload
 - [ ] Tap **Add Document** on Harper Test's page, upload a document → redirects back to the member page and the document lists with a working signed-URL link
 - [ ] Delete it → row disappears
 - [ ] Open a trainer's member detail page → **Add Document** button is present and links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
@@ -326,6 +331,10 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] Change both and **Save** → values persist on reload
 - [ ] Try setting Moderate ≥ High → rejected with a field error and values unchanged
 - [ ] **Barn Timezone** select shows the current value (default Eastern); change it and Save → persists on reload; add a planned expense due a few minutes from now, wait for its due time to pass, then confirm it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
+- [ ] **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
+- [ ] Create an event with a title, date/hour, and notes → it appears in the Barn Events list with the correct title, date, and "manager, trainer, rider" visible-to text
+- [ ] **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked and Manager/Trainer still checked
+- [ ] From the event's Edit page, tap **Delete** → confirm page shows the event's title → **Confirm Delete** → event no longer appears in the Barn Events list
 
 Notifications and profile:
 
@@ -362,7 +371,7 @@ bash scripts/change-user.sh
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Horse detail page shows the Feed Notes/Medication Notes entered as manager, read-only (no textareas, no Save button); clear one as manager and confirm its row disappears here on reload instead of showing blank
-- [ ] Horse detail page: a horse's photo (if a manager has set one) displays, but there is **no Set Photo / Replace Photo / Remove control**
+- [ ] Butter's horse detail page: her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
@@ -383,7 +392,7 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
 - [ ] Tap an Available or Unavailable card → navigates to that horse's detail page (#1002 — cards became linkable so a rider can view the horse's photo)
-- [ ] On a horse's detail page, a photo (if a manager has set one) displays, but there is **no Set Photo / Replace Photo / Remove control**
+- [ ] On Butter's detail page, her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
@@ -398,6 +407,9 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms, and no Unlinked badge on any managed/unclaimed row (rider never sees it, unlike a manager)
 - [ ] Open your own member detail page's Documents section — shows the empty state ("No documents yet"), with **no Add Document button** (#864 — rider self-service is read-only)
 - [ ] Open another member's detail page from the roster (a trainer, a manager) — page loads (no 404), shows their name and **Contact Info** section, but no Documents section
+- [ ] Open Emery's member detail page (her photo is seeded) → photo displays, but no **Set Photo**/**Replace Photo**/**Remove** control is shown
+
+> Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. This code path is already exercised for real in Phase 2-4's own-photo check (as yourself, no impersonation), which is sufficient coverage — don't re-add a self-photo check to an impersonated phase.
 - [ ] Switch to Emery (`change-user.sh` → Dev Barn → Emery) and open her own member detail page — the same Active Agreements cards from Phase 4 render as plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page; switch back to Dana afterward
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 
@@ -463,6 +475,9 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/barn/[slug]/settings` | Phases 2, 4, 7 |
 | `/barn/[slug]/settings/tiers/new` | Phase 2 |
 | `/barn/[slug]/settings/tiers/[id]` | Phase 4 |
+| `/barn/[slug]/settings/events/new` | Phase 4 |
+| `/barn/[slug]/settings/events/[id]` | Phase 4 |
+| `/barn/[slug]/settings/events/[id]/delete` | Phase 4 |
 | `/barn/[slug]/guide` | Phase 4 |
 | `/profile` | Phase 4 |
 | `/profile/complete` | Phases 1, 2 |

@@ -99,14 +99,24 @@ bash scripts/seed-account.sh --allow-prod
 
 The script prints an invite path (`/barn/<slug>/login?token=<token>`). Send the full URL (production domain + invite path) to the barn manager — they open it and sign in with Google to claim the account. A plain sign-in without the invite link will **not** activate the account.
 
-### 3. Add redirect URLs to Supabase
+### 3. Set up the demo user
+
+Create the shared demo account used by the public demo flow. Safe to re-run any time (it resets the demo password rather than erroring), and works the same way locally — no `--allow-prod` flag needed. Requires the Email provider enabled in the Supabase dashboard (**Authentication → Providers → Email**) — a one-time step per project, since the app's normal sign-in flow is Google OAuth only:
+
+```bash
+bash scripts/setup-demo-user.sh
+```
+
+The script prints `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` lines — paste them directly into `.env`.
+
+### 4. Add redirect URLs to Supabase
 
 In the Supabase dashboard → **Authentication** → **URL Configuration**, add both URLs to the **Redirect URLs** list:
 
 - `https://<your-vercel-domain>.vercel.app` (production)
 - `https://*.vercel.app/**` (preview deployments)
 
-### 4. Add redirect URIs to Google OAuth
+### 5. Add redirect URIs to Google OAuth
 
 In Google Cloud Console → **APIs & Services** → **Credentials** → your OAuth 2.0 client, add both URLs to **Authorized redirect URIs**:
 

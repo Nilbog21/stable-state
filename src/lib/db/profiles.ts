@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Profile } from './types'
+import { uploadFile, removeFile } from './document-storage'
 
 export async function upsertProfile(
   userId: string,
@@ -38,8 +39,8 @@ export async function getProfileByUserId(userId: string): Promise<Profile | null
   return data
 }
 
-export async function getProfileById(profileId: string): Promise<Profile | null> {
-  const supabase = await createClient()
+export async function getProfileById(profileId: string, client?: SupabaseClient): Promise<Profile | null> {
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
@@ -85,6 +86,42 @@ export async function updateContactInfo(
     .eq('id', profileId)
 
   if (error) throw error
+}
+
+export async function updateProfilePhotoPath(profileId: string, photoPath: string | null, client?: SupabaseClient): Promise<void> {
+  const supabase = client ?? await createClient()
+  const { error } = await supabase
+    .from('profiles')
+    .update({ photo_path: photoPath })
+    .eq('id', profileId)
+  if (error) throw error
+}
+
+export async function replaceProfilePhoto(profileId: string, barnId: string, file: File, ext: string, client?: SupabaseClient): Promise<void> {
+  // Re-fetches the current photo_path here rather than trusting a value bound at page-render
+  // time, so a concurrent replace/remove can't be clobbered by a stale caller.
+  const current = await getProfileById(profileId, client)
+  const storagePath = `${barnId}/profile-photos/${profileId}/${Date.now()}.${ext}`
+
+  await uploadFile(storagePath, file, file.type, client)
+
+  try {
+    await updateProfilePhotoPath(profileId, storagePath, client)
+  } catch (err) {
+    await removeFile(storagePath, client).catch(() => {})
+    throw err
+  }
+
+  if (current?.photo_path) {
+    await removeFile(current.photo_path, client).catch(() => {})
+  }
+}
+
+export async function removeProfilePhoto(profileId: string, client?: SupabaseClient): Promise<void> {
+  const current = await getProfileById(profileId, client)
+  if (!current?.photo_path) return
+  await updateProfilePhotoPath(profileId, null, client)
+  await removeFile(current.photo_path, client).catch(() => {})
 }
 
 export async function getProfilesByUserIds(
