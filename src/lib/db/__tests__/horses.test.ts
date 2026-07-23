@@ -808,6 +808,26 @@ describe('updateHorsePhotoPath', () => {
 
     await expect(updateHorsePhotoPath('horse-1', 'barn-1', 'path.jpg', injectedClient)).rejects.toThrow('update error')
   })
+
+  it('should_not_touch_photo_uploaded_by_on_injected_client_set', async () => {
+    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await updateHorsePhotoPath('horse-1', 'barn-1', 'path.jpg', injectedClient)
+
+    expect(update).toHaveBeenCalledWith({ photo_path: 'path.jpg' })
+  })
+
+  it('should_clear_photo_uploaded_by_on_injected_client_delete', async () => {
+    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await updateHorsePhotoPath('horse-1', 'barn-1', null, injectedClient)
+
+    expect(update).toHaveBeenCalledWith({ photo_path: null, photo_uploaded_by: null })
+  })
 })
 
 function makeSelectChainForPhotoPath(photoPath: string | null) {

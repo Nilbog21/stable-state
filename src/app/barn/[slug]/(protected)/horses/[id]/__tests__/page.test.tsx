@@ -481,12 +481,19 @@ describe('HorseDetailPage', () => {
     expect(screen.getByText('Set Photo')).toBeDefined()
   })
 
-  it('should_render_replace_and_remove_controls_for_owner_rider_when_photo_present', async () => {
+  it('should_render_replace_control_for_owner_rider_when_photo_present', async () => {
     mockRequireMembershipAs(riderMembership)
     vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg', owning_member_id: riderMembership.id }))
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('Replace Photo')).toBeDefined()
+  })
+
+  it('should_render_remove_control_for_owner_rider_when_photo_present', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', photo_path: 'barn-1/horse-photos/horse-1/1.jpg', owning_member_id: riderMembership.id }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
     expect(screen.getByRole('button', { name: /remove/i })).toBeDefined()
   })
 
