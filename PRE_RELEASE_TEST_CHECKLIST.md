@@ -185,6 +185,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
 - [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
 - [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
+- [ ] As manager, set a photo on a horse with no `owning_member_id` (all seeded horses, until #998 ships owner assignment) → succeeds; replace it again as manager → still succeeds (manager-set photos never lock out other managers)
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
 - [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
 - [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
@@ -371,7 +372,7 @@ bash scripts/change-user.sh
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Horse detail page shows the Feed Notes/Medication Notes entered as manager, read-only (no textareas, no Save button); clear one as manager and confirm its row disappears here on reload instead of showing blank
-- [ ] Butter's horse detail page: her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
+- [ ] Butter's horse detail page: her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (unless this trainer is Butter's `owning_member_id` — not yet assignable via UI until #998 lands, so not manually verifiable here)
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
@@ -392,7 +393,7 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
 - [ ] Tap an Available or Unavailable card → navigates to that horse's detail page (#1002 — cards became linkable so a rider can view the horse's photo)
-- [ ] On Butter's detail page, her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
+- [ ] On Butter's detail page, her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (same #998-blocked caveat as the trainer phase above — owner-write can't be manually verified until ownership is UI-assignable)
 - [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
