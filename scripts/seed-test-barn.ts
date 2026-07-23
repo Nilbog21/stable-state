@@ -186,9 +186,13 @@ async function run() {
 
   // Same-day lesson so the dashboard's "Today" section (split from "This Week") has
   // something to render. fee: 0 keeps it out of every outstanding-fee query
-  // regardless of how much time passes between seeding and the e2e run.
+  // regardless of how much time passes between seeding and the e2e run. Pinned 15
+  // minutes past seed time, not at it — getUpcomingLessons filters lesson_at >= the
+  // dashboard request's own `now`, which is always later than the seed instant, so
+  // an exact `now.toISOString()` lesson is already excluded by the time any test
+  // hits the page.
   await createLessonWithParticipants({
-    barnId, instructorId: trainerMembershipId, lessonAt: now.toISOString(), fee: 0,
+    barnId, instructorId: trainerMembershipId, lessonAt: new Date(now.getTime() + 15 * 60 * 1000).toISOString(), fee: 0,
     horseIds: [horse1.id], exertionLevels: [2], riderIds: [rider1MembershipId],
     lessonType: 'normal', jumping: false, tierName: 'Custom',
   }, supabase)
