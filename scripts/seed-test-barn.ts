@@ -9,6 +9,8 @@
 
 import { fileURLToPath } from 'url'
 import { randomUUID } from 'crypto'
+import { readFileSync } from 'fs'
+import { join } from 'path'
 import { upsertProfile } from '@/lib/db/profiles'
 import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { createTier } from '@/lib/db/lesson-tiers'
@@ -277,6 +279,33 @@ async function run() {
     'insert horse document'
   )
 
+  // Second document, already past its reminder_date, so the dashboard's Document
+  // Reminders card has content for manual walkthroughs without hand-editing a date
+  // via the UI (the coggins doc above stays undated — the e2e spec exercises setting
+  // its reminder date itself). Real (if tiny) PDF content, not a dummy buffer, same
+  // reason as above: getSignedUrl errors on a path with nothing actually stored there.
+  const pastDueDocumentPath = `${barnId}/horses/${horse2.id}/insurance.pdf`
+  const pastDueDocumentContent = readFileSync(join(process.cwd(), 'scripts/data/test_1_kb.pdf'))
+  mustSucceed(
+    await supabase.storage.from('documents').upload(pastDueDocumentPath, pastDueDocumentContent, {
+      contentType: 'application/pdf',
+    }),
+    'upload past-due horse document file'
+  )
+  mustSucceed(
+    await supabase.from('horse_documents').insert({
+      barn_id: barnId,
+      horse_id: horse2.id,
+      record_type: 'insurance_binder',
+      storage_path: pastDueDocumentPath,
+      file_name: 'insurance.pdf',
+      file_size: pastDueDocumentContent.length,
+      notes: null,
+      reminder_date: past(1).slice(0, 10),
+    }),
+    'insert past-due horse document'
+  )
+
   // Scheduled expense, same calendar day as the future(2) lesson above — the
   // dashboard's Barn Schedule interleaves lessons and expenses by time within a day.
   // Time is pinned to 23:00 (vs. the lesson's uncontrolled seed-time-of-day) so the
@@ -310,6 +339,7 @@ async function run() {
   console.log(`  Pending:  Quinn Pending (rider, awaiting approval)`)
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
   console.log(`  Lease:    1 unpaid (2 months backdated)`)
+  console.log(`  Documents: 1 undated (Apollo, Coggins), 1 past-due reminder (Bella, Insurance Binder)`)
   console.log(`  Dev invite (manager, for change-user.sh): ${buildInvitePath(BARN_SLUG, devInviteToken)}`)
 }
 
