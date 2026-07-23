@@ -52,6 +52,15 @@ describe('PrivacyPage', () => {
     expect(screen.getByTestId('markdown').textContent).toBe('# Hello Privacy')
   })
 
+  it('should_render_back_link_to_barns', () => {
+    const jsx = PrivacyPage()
+    render(jsx)
+
+    expect(
+      (screen.getByRole('link', { name: /back/i }) as HTMLAnchorElement).href
+    ).toContain('/barns')
+  })
+
   it('should_call_notFound_when_privacy_file_cannot_be_read', () => {
     mockReadFileSync.mockImplementation(() => {
       throw new Error('ENOENT: no such file or directory')
