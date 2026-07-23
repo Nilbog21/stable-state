@@ -13,7 +13,7 @@ vi.mock('next/navigation', () => ({
   notFound: mockNotFound,
 }))
 
-const mockReadFileSync = vi.hoisted(() => vi.fn().mockReturnValue('# Privacy Policy'))
+const mockReadFileSync = vi.hoisted(() => vi.fn().mockReturnValue('# Changelog'))
 vi.mock('fs', () => ({
   default: { readFileSync: mockReadFileSync },
   readFileSync: mockReadFileSync,
@@ -25,35 +25,35 @@ vi.mock('react-markdown', () => ({
   ),
 }))
 
-import PrivacyPage from '../page'
+import ChangelogPage from '../page'
 
-describe('PrivacyPage', () => {
+describe('ChangelogPage', () => {
   beforeEach(() => {
     mockReadFileSync.mockReset()
-    mockReadFileSync.mockReturnValue('# Privacy Policy')
+    mockReadFileSync.mockReturnValue('# Changelog')
     mockNotFound.mockClear()
   })
 
-  it('should_read_privacy_policy_file', () => {
-    PrivacyPage()
+  it('should_read_changelog_file', () => {
+    ChangelogPage()
 
     expect(mockReadFileSync).toHaveBeenCalledWith(
-      expect.stringContaining('PRIVACY_POLICY.md'),
+      expect.stringContaining('CHANGELOG.md'),
       'utf-8'
     )
   })
 
   it('should_render_markdown_content', () => {
-    mockReadFileSync.mockReturnValue('# Hello Privacy')
+    mockReadFileSync.mockReturnValue('# Hello Changelog')
 
-    const jsx = PrivacyPage()
+    const jsx = ChangelogPage()
     render(jsx)
 
-    expect(screen.getByTestId('markdown').textContent).toBe('# Hello Privacy')
+    expect(screen.getByTestId('markdown').textContent).toBe('# Hello Changelog')
   })
 
   it('should_render_back_link_to_barns', () => {
-    const jsx = PrivacyPage()
+    const jsx = ChangelogPage()
     render(jsx)
 
     expect(
@@ -61,13 +61,13 @@ describe('PrivacyPage', () => {
     ).toContain('/barns')
   })
 
-  it('should_call_notFound_when_privacy_file_cannot_be_read', () => {
+  it('should_call_notFound_when_changelog_file_cannot_be_read', () => {
     mockReadFileSync.mockImplementation(() => {
       throw new Error('ENOENT: no such file or directory')
     })
 
     try {
-      PrivacyPage()
+      ChangelogPage()
     } catch {}
 
     expect(mockNotFound).toHaveBeenCalled()

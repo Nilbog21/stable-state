@@ -5,13 +5,13 @@ import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 
 export const metadata = {
-  title: 'Privacy Policy — Stable State',
+  title: 'Changelog — Stable State',
 }
 
-export default function PrivacyPage() {
+export default function ChangelogPage() {
   let content: string
   try {
-    content = readFileSync(path.join(process.cwd(), 'PRIVACY_POLICY.md'), 'utf-8')
+    content = readFileSync(path.join(process.cwd(), 'CHANGELOG.md'), 'utf-8')
   } catch {
     return notFound()
   }
