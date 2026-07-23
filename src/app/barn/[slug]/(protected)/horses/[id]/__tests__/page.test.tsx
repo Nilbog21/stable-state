@@ -598,13 +598,27 @@ describe('HorseDetailPage', () => {
     expect(getHorsePrivileges).not.toHaveBeenCalled()
   })
 
-  it('should_fetch_active_members_for_all_three_roles_for_manager', async () => {
+  it('should_fetch_active_manager_members_for_manager', async () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
       { membershipId: 'mem-x', userId: 'user-x', name: 'Xavier Manager', isManaged: false, inviteToken: null },
     ])
     await HorseDetailPage({ params: pageParams })
     expect(getActiveMembersWithProfiles).toHaveBeenCalledWith(mockBarn.id, 'manager')
+  })
+
+  it('should_fetch_active_trainer_members_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
+      { membershipId: 'mem-x', userId: 'user-x', name: 'Xavier Manager', isManaged: false, inviteToken: null },
+    ])
+    await HorseDetailPage({ params: pageParams })
     expect(getActiveMembersWithProfiles).toHaveBeenCalledWith(mockBarn.id, 'trainer')
+  })
+
+  it('should_fetch_active_rider_members_for_manager', async () => {
+    vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([
+      { membershipId: 'mem-x', userId: 'user-x', name: 'Xavier Manager', isManaged: false, inviteToken: null },
+    ])
+    await HorseDetailPage({ params: pageParams })
     expect(getActiveMembersWithProfiles).toHaveBeenCalledWith(mockBarn.id, 'rider')
   })
 

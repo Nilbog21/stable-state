@@ -7,7 +7,6 @@ vi.mock('@/lib/auth/guard', () => ({
 
 vi.mock('@/lib/db/horses', () => ({
   updateHorseDetails: vi.fn(),
-  updateHorseOwner: vi.fn(),
   replaceHorsePhoto: vi.fn(),
   removeHorsePhoto: vi.fn(),
 }))
@@ -39,7 +38,7 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails, updateHorseOwner, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import {
   grantHorsePrivilege,
   updateHorsePrivilegeDocumentAccess,
@@ -77,7 +76,6 @@ describe('updateHorseAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(updateHorseDetails).mockReset()
-    vi.mocked(updateHorseOwner).mockReset()
     vi.mocked(revalidatePath).mockReset()
     vi.mocked(requireMembership).mockResolvedValue({
       user: { id: 'user-1' } as any,
@@ -85,7 +83,6 @@ describe('updateHorseAction', () => {
       membership: mockManagerMembership,
     })
     vi.mocked(updateHorseDetails).mockResolvedValue(undefined)
-    vi.mocked(updateHorseOwner).mockResolvedValue(undefined)
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
@@ -104,6 +101,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -121,6 +119,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -138,6 +137,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -154,6 +154,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -169,6 +170,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -184,6 +186,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -200,6 +203,7 @@ describe('updateHorseAction', () => {
       feed_notes: null,
       medication_notes: null,
       registered_name: null,
+      owning_member_id: null,
     })
   })
 
@@ -420,30 +424,30 @@ describe('updateHorseAction', () => {
     expect(revalidatePath).not.toHaveBeenCalled()
   })
 
-  it('should_call_updateHorseOwner_with_selected_owner', async () => {
+  it('should_pass_selected_owner_to_updateHorseDetails', async () => {
     const fd = validThresholdsFormData()
     fd.set('owning_member_id', 'mem-rider-1')
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseOwner).toHaveBeenCalledWith('horse-1', mockBarn.id, 'mem-rider-1')
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      owning_member_id: 'mem-rider-1',
+    }))
   })
 
-  it('should_call_updateHorseOwner_with_null_when_owner_field_is_blank', async () => {
+  it('should_pass_null_owner_to_updateHorseDetails_when_owner_field_is_blank', async () => {
     const fd = validThresholdsFormData()
     fd.set('owning_member_id', '')
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseOwner).toHaveBeenCalledWith('horse-1', mockBarn.id, null)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      owning_member_id: null,
+    }))
   })
 
-  it('should_call_updateHorseOwner_with_null_when_owner_field_is_absent', async () => {
+  it('should_pass_null_owner_to_updateHorseDetails_when_owner_field_is_absent', async () => {
     const fd = validThresholdsFormData()
     await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
-    expect(updateHorseOwner).toHaveBeenCalledWith('horse-1', mockBarn.id, null)
-  })
-
-  it('should_return_error_when_updateHorseOwner_fails', async () => {
-    vi.mocked(updateHorseOwner).mockRejectedValue(new Error('owner db error'))
-    const result = await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
-    expect(result).toEqual({ error: 'owner db error' })
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      owning_member_id: null,
+    }))
   })
 })
 

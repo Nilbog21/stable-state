@@ -68,9 +68,13 @@ describe('HorseManagerForm', () => {
     expect((screen.getByRole('combobox', { name: /owner/i }) as HTMLSelectElement).value).toBe('mem-2')
   })
 
-  it('should_list_all_members_as_owner_options', () => {
+  it('should_list_dana_as_an_owner_option', () => {
     render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
     expect(screen.getByRole('option', { name: 'Dana Rider' })).toBeDefined()
+  })
+
+  it('should_list_emery_as_an_owner_option', () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
     expect(screen.getByRole('option', { name: 'Emery Rider' })).toBeDefined()
   })
 
@@ -441,5 +445,28 @@ describe('HorseManagerForm', () => {
 
     expect((screen.getByLabelText(/moderate threshold/i) as HTMLInputElement).value).toBe('5')
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('11')
+  })
+
+  it('should_display_submitted_owner_after_save_instead_of_stale_horse_prop_value', async () => {
+    render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
+    fireEvent.change(screen.getByRole('combobox', { name: /owner/i }), { target: { value: 'mem-2' } })
+
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+    })
+
+    expect((screen.getByRole('combobox', { name: /owner/i }) as HTMLSelectElement).value).toBe('mem-2')
+  })
+
+  it('should_display_no_owner_after_save_when_cleared', async () => {
+    const ownedHorse = createMockHorse({ owning_member_id: 'mem-2' })
+    render(<HorseManagerForm horse={ownedHorse} barn={mockBarn} action={mockAction} members={mockMembers} />)
+    fireEvent.change(screen.getByRole('combobox', { name: /owner/i }), { target: { value: '' } })
+
+    await act(async () => {
+      fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+    })
+
+    expect((screen.getByRole('combobox', { name: /owner/i }) as HTMLSelectElement).value).toBe('')
   })
 })

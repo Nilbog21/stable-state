@@ -49,6 +49,7 @@ export function HorseManagerForm({
     moderate: horse.exhaustion_threshold_moderate ?? barn.exhaustion_threshold_moderate,
     high: horse.exhaustion_threshold_high ?? barn.exhaustion_threshold_high,
   })
+  const [owningMemberId, setOwningMemberId] = useState(horse.owning_member_id ?? '')
 
   async function wrappedAction(prevState: { error: string | null }, formData: FormData) {
     const result = await action(prevState, formData)
@@ -60,6 +61,7 @@ export function HorseManagerForm({
           ? { moderate: barn.exhaustion_threshold_moderate, high: barn.exhaustion_threshold_high }
           : { moderate: Number(formData.get('moderate')), high: Number(formData.get('high')) }
       )
+      setOwningMemberId(formData.get('owning_member_id') as string)
     }
     return result
   }
@@ -95,9 +97,10 @@ export function HorseManagerForm({
           Owner
         </label>
         <select
+          key={saveCount}
           id="horse-owner"
           name="owning_member_id"
-          defaultValue={horse.owning_member_id ?? ''}
+          defaultValue={owningMemberId}
           className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         >
           <option value="">— None —</option>

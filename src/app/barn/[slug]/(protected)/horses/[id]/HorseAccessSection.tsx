@@ -56,30 +56,32 @@ export function HorseAccessSection({
 
   return (
     <section>
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-        Access
-      </h2>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+          Access
+        </h2>
 
-      {availableMembers.length > 0 && (
-        <div className="mb-4 flex items-center gap-2">
-          <select
-            aria-label="Select member"
-            value={selectedMemberId}
-            onChange={(e) => setSelectedMemberId(e.target.value)}
-            className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
-          >
-            <option value="">Select member…</option>
-            {availableMembers.map((member) => (
-              <option key={member.membershipId} value={member.membershipId}>
-                {member.name}
-              </option>
-            ))}
-          </select>
-          <Button type="button" size="sm" onClick={handleGrant} disabled={!selectedMemberId}>
-            Grant Access
-          </Button>
-        </div>
-      )}
+        {availableMembers.length > 0 && (
+          <div className="flex items-center gap-2">
+            <select
+              aria-label="Select member"
+              value={selectedMemberId}
+              onChange={(e) => setSelectedMemberId(e.target.value)}
+              className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
+            >
+              <option value="">Select member…</option>
+              {availableMembers.map((member) => (
+                <option key={member.membershipId} value={member.membershipId}>
+                  {member.name}
+                </option>
+              ))}
+            </select>
+            <Button type="button" size="sm" onClick={handleGrant} disabled={!selectedMemberId}>
+              Grant Access
+            </Button>
+          </div>
+        )}
+      </div>
 
       {grants.length === 0 ? (
         <EmptyState

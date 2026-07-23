@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails, updateHorseOwner, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import {
   grantHorsePrivilege,
   updateHorsePrivilegeDocumentAccess,
@@ -59,8 +59,8 @@ export async function updateHorseAction(
       feed_notes: feedNotes,
       medication_notes: medicationNotes,
       registered_name: registeredName,
+      owning_member_id: owningMemberId,
     })
-    await updateHorseOwner(horseId, barn.id, owningMemberId)
   } catch (err) {
     return { error: getErrorMessage(err) }
   }
