@@ -83,6 +83,7 @@ describe('updateHorseAction', () => {
       exhaustion_thresholds: { moderate: 4, high: 10 },
       feed_notes: null,
       medication_notes: null,
+      registered_name: null,
     })
   })
 
@@ -99,6 +100,7 @@ describe('updateHorseAction', () => {
       exhaustion_thresholds: { moderate: 4, high: 10 },
       feed_notes: null,
       medication_notes: null,
+      registered_name: null,
     })
   })
 
@@ -115,6 +117,7 @@ describe('updateHorseAction', () => {
       exhaustion_thresholds: { moderate: 4, high: 10 },
       feed_notes: null,
       medication_notes: null,
+      registered_name: null,
     })
   })
 
@@ -130,6 +133,7 @@ describe('updateHorseAction', () => {
       exhaustion_thresholds: { moderate: 4, high: 10 },
       feed_notes: null,
       medication_notes: null,
+      registered_name: null,
     })
   })
 
@@ -144,6 +148,7 @@ describe('updateHorseAction', () => {
       exhaustion_thresholds: { moderate: 4, high: 10 },
       feed_notes: null,
       medication_notes: null,
+      registered_name: null,
     })
   })
 
@@ -158,6 +163,7 @@ describe('updateHorseAction', () => {
       exhaustion_thresholds: { moderate: 4, high: 10 },
       feed_notes: null,
       medication_notes: null,
+      registered_name: null,
     })
   })
 
@@ -173,6 +179,7 @@ describe('updateHorseAction', () => {
       exhaustion_thresholds: { moderate: 4, high: 10 },
       feed_notes: null,
       medication_notes: null,
+      registered_name: null,
     })
   })
 
@@ -215,6 +222,41 @@ describe('updateHorseAction', () => {
     expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
       feed_notes: null,
       medication_notes: null,
+    }))
+  })
+
+  it('should_pass_registered_name_to_updateHorseDetails', async () => {
+    const fd = validThresholdsFormData()
+    fd.set('registered_name', 'Four-Leaf Clover')
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      registered_name: 'Four-Leaf Clover',
+    }))
+  })
+
+  it('should_trim_registered_name_before_calling_updateHorseDetails', async () => {
+    const fd = validThresholdsFormData()
+    fd.set('registered_name', '  Four-Leaf Clover  ')
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      registered_name: 'Four-Leaf Clover',
+    }))
+  })
+
+  it('should_treat_blank_registered_name_as_null', async () => {
+    const fd = validThresholdsFormData()
+    fd.set('registered_name', '   ')
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      registered_name: null,
+    }))
+  })
+
+  it('should_treat_absent_registered_name_field_as_null', async () => {
+    const fd = validThresholdsFormData()
+    await updateHorseAction('green-acres', 'horse-1', { error: null }, fd)
+    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarn.id, expect.objectContaining({
+      registered_name: null,
     }))
   })
 

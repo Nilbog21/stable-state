@@ -9,7 +9,7 @@ import { addHorseAction } from './actions'
 import { EmptyState } from '@/components/EmptyState'
 import { Button } from '@/components/ui/Button'
 
-type HorseCardData = Pick<HorseExertionSummary, 'id' | 'name' | 'is_active' | 'is_available' | 'unavailability_reason'>
+type HorseCardData = Pick<HorseExertionSummary, 'id' | 'name' | 'registered_name' | 'is_active' | 'is_available' | 'unavailability_reason'>
 
 export default async function HorsesPage({
   params,

@@ -186,6 +186,9 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
 - [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
+- [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
+- [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
+- [ ] Clear **Registered Name** back to blank and Save → the card's parenthetical and the non-manager detail row are both gone on reload
 - [ ] Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
 - [ ] With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
 - [ ] Fill in **Feed Notes** and **Medication Notes** → Save → both persist on reload

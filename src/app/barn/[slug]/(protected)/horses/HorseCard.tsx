@@ -10,7 +10,7 @@ export function HorseCard({
   exhaustion,
   linkable = true,
 }: {
-  horse: Pick<HorseExertionSummary, 'id' | 'name' | 'is_active' | 'is_available' | 'unavailability_reason'>
+  horse: Pick<HorseExertionSummary, 'id' | 'name' | 'registered_name' | 'is_active' | 'is_available' | 'unavailability_reason'>
   barnSlug: string
   variant: 'available' | 'unavailable' | 'inactive'
   exhaustion?: { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }
@@ -19,6 +19,9 @@ export function HorseCard({
   const content = (
     <>
       <span className="font-medium text-zinc-900 dark:text-zinc-50">{horse.name}</span>
+      {horse.registered_name && (
+        <span className="ml-1 text-sm text-zinc-500 dark:text-zinc-400">({horse.registered_name})</span>
+      )}
       {variant === 'unavailable' && (
         <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">
           {horse.unavailability_reason ?? 'No reason given'}

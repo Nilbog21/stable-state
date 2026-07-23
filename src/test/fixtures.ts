@@ -74,6 +74,7 @@ export function createMockHorse(overrides: Partial<Horse> = {}): Horse {
     id: 'horse-1',
     barn_id: 'barn-1',
     name: 'Thunderbolt',
+    registered_name: null,
     is_active: true,
     is_available: true,
     unavailability_reason: null,
@@ -185,6 +186,7 @@ export function createMockHorseExertionSummary(overrides: Partial<HorseExertionS
   return {
     id: 'horse-1',
     name: 'Thunderbolt',
+    registered_name: null,
     is_active: true,
     is_available: true,
     unavailability_reason: null,

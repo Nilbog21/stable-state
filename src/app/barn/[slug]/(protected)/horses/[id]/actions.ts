@@ -40,6 +40,7 @@ export async function updateHorseAction(
 
   const feedNotes = (formData.get('feed_notes') as string | null)?.trim() || null
   const medicationNotes = (formData.get('medication_notes') as string | null)?.trim() || null
+  const registeredName = (formData.get('registered_name') as string | null)?.trim() || null
 
   try {
     await updateHorseDetails(horseId, barn.id, {
@@ -50,6 +51,7 @@ export async function updateHorseAction(
       exhaustion_thresholds: thresholds,
       feed_notes: feedNotes,
       medication_notes: medicationNotes,
+      registered_name: registeredName,
     })
   } catch (err) {
     return { error: getErrorMessage(err) }
