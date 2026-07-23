@@ -5,6 +5,7 @@ import { getProfileById } from '@/lib/db/profiles'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getActiveAgreementsForRider } from '@/lib/db/agreements'
 import { resolveHorseNames } from '@/lib/db/horses'
+import { getSignedUrl } from '@/lib/db/document-storage'
 import { canManage } from '@/lib/document-target'
 import { Card } from '@/components/ui/Card'
 import { ContactInfoForm } from './ContactInfoForm'
@@ -16,7 +17,7 @@ import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
-import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction, removeMemberAction } from './actions'
+import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction, removeMemberAction, deleteProfilePhotoAction } from './actions'
 import { Button } from '@/components/ui/Button'
 import type { TrainerDocument, RiderDocument, Agreement, Profile } from '@/lib/db/types'
 import { formatFee } from '@/lib/format-currency'
@@ -157,6 +158,15 @@ export default async function MemberDetailPage({
   const canEditContactInfo = callerRole === 'manager' && targetProfile?.is_managed === true
   const boundUpdateContactInfo = updateContactInfoAction.bind(null, slug, membership_id)
 
+  // #1004: any active barn member can view a photo — page access above is already the gate.
+  // Editing is self, or a manager on a still-managed/stub profile (mirrors canEditContactInfo).
+  const canEditPhoto = isOwnPage || canEditContactInfo
+  const photoUrl = targetProfile?.photo_path ? await getSignedUrl(targetProfile.photo_path) : null
+  const boundDeletePhotoAction = targetProfile?.photo_path
+    ? deleteProfilePhotoAction.bind(null, slug, membership_id)
+    : null
+  const photoHref = `/barn/${slug}/documents/new?entity=profile&id=${membership_id}&type=photo`
+
   const canManageInstructorAccess =
     callerRole === 'manager' && (targetRole === 'manager' || targetRole === 'trainer')
 
@@ -201,6 +211,34 @@ export default async function MemberDetailPage({
           revokeAction={revokeInviteTokenAction.bind(null, slug, membership_id)}
         />
       )}
+
+      <section className="mb-10">
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Photo
+          </h2>
+          {canEditPhoto && (
+            photoUrl ? (
+              <div className="flex items-center gap-3">
+                <Button href={photoHref} size="sm">Replace Photo</Button>
+                <form action={boundDeletePhotoAction!}>
+                  <Button type="submit" variant="danger" size="sm">
+                    Remove
+                  </Button>
+                </form>
+              </div>
+            ) : (
+              <Button href={photoHref} size="sm">Set Photo</Button>
+            )
+          )}
+        </div>
+        {photoUrl ? (
+          // eslint-disable-next-line @next/next/no-img-element -- signed URL, not an optimizable static asset
+          <img src={photoUrl} alt={displayName} className="h-48 w-auto rounded-md" />
+        ) : (
+          <EmptyState heading="No photo yet" subtext="A photo helps other members identify this person at a glance." />
+        )}
+      </section>
 
       {canViewAgreements && (
         <ActiveAgreements
