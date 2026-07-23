@@ -28,6 +28,15 @@ vi.mock('@/lib/db/barn-events', () => ({
   deleteEvent: vi.fn(),
 }))
 
+vi.mock('@/lib/db/document-backup', () => ({
+  buildDocumentsBackupZip: vi.fn(),
+}))
+
+vi.mock('@/lib/db/document-storage', () => ({
+  uploadFile: vi.fn(),
+  getSignedUrl: vi.fn(),
+}))
+
 const mockRedirect = vi.hoisted(() =>
   vi.fn((url: string) => {
     throw Object.assign(new Error('NEXT_REDIRECT'), {
@@ -55,6 +64,8 @@ import {
 } from '@/lib/db/lesson-tiers'
 import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
 import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
+import { buildDocumentsBackupZip } from '@/lib/db/document-backup'
+import { uploadFile, getSignedUrl } from '@/lib/db/document-storage'
 import {
   createTierAction,
   updateTierAction,
@@ -67,6 +78,7 @@ import {
   createEventAction,
   updateEventAction,
   deleteEventAction,
+  downloadAllDocumentsAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -1051,5 +1063,95 @@ describe('deleteEventAction', () => {
     await expect(deleteEventAction('green-acres', 'event-1')).rejects.toThrow('NEXT_REDIRECT')
 
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+})
+
+describe('downloadAllDocumentsAction', () => {
+  const emptyDownloadState = { error: null, url: null }
+  const emptyFormData = new FormData()
+
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(buildDocumentsBackupZip).mockReset()
+    vi.mocked(uploadFile).mockReset()
+    vi.mocked(getSignedUrl).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(null)
+
+    await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_return_no_documents_error_when_barn_has_no_documents', async () => {
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(null)
+
+    const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(result).toEqual({ error: 'No documents to download yet', url: null })
+  })
+
+  it('should_not_upload_when_barn_has_no_documents', async () => {
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(null)
+
+    await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(uploadFile).not.toHaveBeenCalled()
+  })
+
+  it('should_upload_the_zip_with_upsert', async () => {
+    const buffer = Buffer.from('zip contents')
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-zip')
+
+    await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(uploadFile).toHaveBeenCalledWith(
+      `${mockBarn.id}/backup-archive/all-documents.zip`,
+      expect.any(File),
+      'application/zip',
+      undefined,
+      true
+    )
+  })
+
+  it('should_request_a_signed_url_for_the_uploaded_zip_path', async () => {
+    const buffer = Buffer.from('zip contents')
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-zip')
+
+    await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(getSignedUrl).toHaveBeenCalledWith(`${mockBarn.id}/backup-archive/all-documents.zip`)
+  })
+
+  it('should_return_the_signed_url_on_success', async () => {
+    const buffer = Buffer.from('zip contents')
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-zip')
+
+    const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(result).toEqual({ error: null, url: 'https://example.com/signed-zip' })
+  })
+
+  it('should_return_an_error_message_when_the_upload_fails', async () => {
+    const buffer = Buffer.from('zip contents')
+    vi.mocked(buildDocumentsBackupZip).mockResolvedValue(buffer)
+    vi.mocked(uploadFile).mockRejectedValue(new Error('storage unavailable'))
+
+    const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(result).toEqual({ error: 'storage unavailable', url: null })
   })
 })

@@ -14,6 +14,7 @@ vi.mock('@/lib/db/member-names', () => ({
 }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/barn-events', () => ({ getEventsByBarn: vi.fn() }))
+vi.mock('@/lib/db/document-backup', () => ({ getAllBarnDocuments: vi.fn() }))
 vi.mock('../approvals/actions', () => ({
   approveMembershipAction: vi.fn(),
   rejectMembershipAction: vi.fn(),
@@ -36,6 +37,7 @@ import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getPendingMemberships } from '@/lib/db/barn-memberships'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { getEventsByBarn } from '@/lib/db/barn-events'
+import { getAllBarnDocuments } from '@/lib/db/document-backup'
 import SettingsPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -49,6 +51,7 @@ describe('SettingsPage', () => {
     vi.mocked(getPendingMemberships).mockReset()
     vi.mocked(resolveMemberNames).mockReset()
     vi.mocked(getEventsByBarn).mockReset()
+    vi.mocked(getAllBarnDocuments).mockReset()
     setupAuth()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
@@ -56,6 +59,7 @@ describe('SettingsPage', () => {
     vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     vi.mocked(getEventsByBarn).mockResolvedValue([])
+    vi.mocked(getAllBarnDocuments).mockResolvedValue({ horse: [], trainer: [], rider: [] })
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -570,5 +574,106 @@ describe('SettingsPage', () => {
     render(jsx)
 
     expect(screen.getByText(/no events yet/i)).toBeDefined()
+  })
+
+  it('should_render_data_backup_heading_in_label_style', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('heading', { name: /data backup/i }).className).toContain('uppercase')
+  })
+
+  it('should_render_data_backup_section_closed_by_default', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { name: /data backup/i })
+    expect((heading.closest('details') as HTMLDetailsElement).open).toBe(false)
+  })
+
+  it('should_disable_download_button_when_barn_has_no_documents', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /download all documents/i }).hasAttribute('disabled')).toBe(true)
+  })
+
+  it('should_show_explanation_when_barn_has_no_documents', async () => {
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText('No documents to download yet.')).toBeDefined()
+  })
+
+  it('should_enable_download_button_when_barn_has_documents', async () => {
+    vi.mocked(getAllBarnDocuments).mockResolvedValue({
+      horse: [
+        {
+          id: 'doc-1',
+          barn_id: 'barn-1',
+          horse_id: 'horse-1',
+          record_type: 'coggins',
+          storage_path: 'barn-1/horses/horse-1/coggins.pdf',
+          file_name: 'coggins.pdf',
+          file_size: 1024,
+          notes: null,
+          reminder_date: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+      trainer: [],
+      rider: [],
+    })
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByRole('button', { name: /download all documents/i }).hasAttribute('disabled')).toBe(false)
+  })
+
+  it('should_show_description_when_barn_has_documents', async () => {
+    vi.mocked(getAllBarnDocuments).mockResolvedValue({
+      horse: [
+        {
+          id: 'doc-1',
+          barn_id: 'barn-1',
+          horse_id: 'horse-1',
+          record_type: 'coggins',
+          storage_path: 'barn-1/horses/horse-1/coggins.pdf',
+          file_name: 'coggins.pdf',
+          file_size: 1024,
+          notes: null,
+          reminder_date: null,
+          created_at: '2026-01-01T00:00:00Z',
+          updated_at: '2026-01-01T00:00:00Z',
+        },
+      ],
+      trainer: [],
+      rider: [],
+    })
+
+    const jsx = await SettingsPage({
+      params: Promise.resolve({ slug: 'green-acres' }),
+      searchParams: Promise.resolve({}),
+    })
+    render(jsx)
+
+    expect(screen.getByText(/grouped by horse and member/i)).toBeDefined()
   })
 })
