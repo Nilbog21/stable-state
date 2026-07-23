@@ -42,7 +42,6 @@ export async function proxy(request: NextRequest) {
     const exemptPaths = [
       `/barn/${barnSlug}/login`,
       `/barn/${barnSlug}/register`,
-      `/barn/${barnSlug}/pending`,
     ]
     if (exemptPaths.includes(pathname)) {
       return response

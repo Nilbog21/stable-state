@@ -67,7 +67,7 @@ describe('MembersPage', () => {
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
   })
 
-  it('should_redirect_to_login_when_membership_is_pending', async () => {
+  it('should_redirect_to_login_when_membership_is_inactive', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...createMockMembership(), status: 'inactive' } as any)
     await expect(MembersPage({ params: Promise.resolve({ slug: 'green-acres' }) })).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/login')
