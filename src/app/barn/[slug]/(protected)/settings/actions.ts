@@ -243,7 +243,7 @@ export async function downloadAllDocumentsAction(
   const storagePath = `${barn.id}/backup-archive/all-documents.zip`
   await uploadFile(
     storagePath,
-    new File([buffer], 'all-documents.zip', { type: 'application/zip' }),
+    new File([new Uint8Array(buffer)], 'all-documents.zip', { type: 'application/zip' }),
     'application/zip',
     undefined,
     true
