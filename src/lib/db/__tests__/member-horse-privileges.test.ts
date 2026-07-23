@@ -165,37 +165,23 @@ describe('revokeHorsePrivilege', () => {
     vi.mocked(createClient).mockReset()
   })
 
-  it('should_delete_the_privilege_row', async () => {
-    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
-    const del = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ delete: del }) } as any)
+  it('should_call_the_revoke_horse_privilege_rpc', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
 
     await revokeHorsePrivilege('privilege-1', 'barn-1')
 
-    expect(del).toHaveBeenCalled()
-  })
-
-  it('should_scope_delete_to_barn_and_privilege_id', async () => {
-    const mockEq2 = vi.fn().mockResolvedValue({ error: null })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const del = vi.fn().mockReturnValue({ eq: mockEq1 })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ delete: del }) } as any)
-
-    await revokeHorsePrivilege('privilege-1', 'barn-1')
-
-    expect(mockEq1).toHaveBeenCalledWith('id', 'privilege-1')
-    expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
+    expect(rpc).toHaveBeenCalledWith('revoke_horse_privilege', {
+      p_privilege_id: 'privilege-1',
+      p_barn_id: 'barn-1',
+    })
   })
 
   it('should_throw_on_supabase_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        delete: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: new Error('delete error') }) }),
-        }),
-      }),
+      rpc: vi.fn().mockResolvedValue({ error: new Error('rpc error') }),
     } as any)
 
-    await expect(revokeHorsePrivilege('privilege-1', 'barn-1')).rejects.toThrow('delete error')
+    await expect(revokeHorsePrivilege('privilege-1', 'barn-1')).rejects.toThrow('rpc error')
   })
 })

@@ -24,10 +24,12 @@ function makeProps(overrides: Partial<Parameters<typeof HorseAccessSection>[0]> 
   return {
     grants,
     availableMembers,
+    ownerMemberId: null,
     onGrant: vi.fn().mockResolvedValue(undefined),
     onUpdateDocument: vi.fn().mockResolvedValue(undefined),
     onUpdateLesson: vi.fn().mockResolvedValue(undefined),
     onRevoke: vi.fn().mockResolvedValue(undefined),
+    onSetOwner: vi.fn().mockResolvedValue(undefined),
     ...overrides,
   }
 }
@@ -46,7 +48,7 @@ describe('HorseAccessSection', () => {
 
   it('should_render_empty_state_when_no_grants', () => {
     render(<HorseAccessSection {...makeProps({ grants: [] })} />)
-    expect(screen.getByText(/no members have been granted access/i)).toBeDefined()
+    expect(screen.getByText(/no additional members have been granted access/i)).toBeDefined()
   })
 
   it('should_reflect_current_document_privileges_in_select', () => {
@@ -119,5 +121,30 @@ describe('HorseAccessSection', () => {
     fireEvent.change(screen.getByRole('combobox', { name: /select member/i }), { target: { value: 'mem-3' } })
     fireEvent.click(screen.getByRole('button', { name: /grant access/i }))
     expect(onGrant).toHaveBeenCalledWith('mem-3')
+  })
+
+  it('should_show_set_as_owner_label_when_grant_is_not_the_owner', () => {
+    render(<HorseAccessSection {...makeProps({ ownerMemberId: null })} />)
+    expect(screen.getAllByRole('button', { name: /set as owner/i })).toHaveLength(2)
+  })
+
+  it('should_show_owner_label_for_the_current_owner_row', () => {
+    render(<HorseAccessSection {...makeProps({ ownerMemberId: 'mem-2' })} />)
+    expect(screen.getByRole('button', { name: /^owner$/i })).toBeDefined()
+    expect(screen.getAllByRole('button', { name: /set as owner/i })).toHaveLength(1)
+  })
+
+  it('should_call_onSetOwner_with_member_id_when_set_as_owner_is_clicked', () => {
+    const onSetOwner = vi.fn().mockResolvedValue(undefined)
+    render(<HorseAccessSection {...makeProps({ onSetOwner, ownerMemberId: null })} />)
+    fireEvent.click(screen.getAllByRole('button', { name: /set as owner/i })[0])
+    expect(onSetOwner).toHaveBeenCalledWith('mem-1')
+  })
+
+  it('should_call_onSetOwner_with_null_when_the_current_owner_is_clicked_again', () => {
+    const onSetOwner = vi.fn().mockResolvedValue(undefined)
+    render(<HorseAccessSection {...makeProps({ onSetOwner, ownerMemberId: 'mem-2' })} />)
+    fireEvent.click(screen.getByRole('button', { name: /^owner$/i }))
+    expect(onSetOwner).toHaveBeenCalledWith(null)
   })
 })

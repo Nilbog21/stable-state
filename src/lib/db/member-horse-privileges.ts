@@ -55,10 +55,9 @@ export async function updateHorsePrivilegeLessonAccess(
 
 export async function revokeHorsePrivilege(privilegeId: string, barnId: string): Promise<void> {
   const supabase = await createClient()
-  const { error } = await supabase
-    .from('member_horse_privileges')
-    .delete()
-    .eq('id', privilegeId)
-    .eq('barn_id', barnId)
+  const { error } = await supabase.rpc('revoke_horse_privilege', {
+    p_privilege_id: privilegeId,
+    p_barn_id: barnId,
+  })
   if (error) throw error
 }

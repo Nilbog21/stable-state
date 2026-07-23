@@ -17,17 +17,21 @@ type Grant = {
 export function HorseAccessSection({
   grants,
   availableMembers,
+  ownerMemberId,
   onGrant,
   onUpdateDocument,
   onUpdateLesson,
   onRevoke,
+  onSetOwner,
 }: {
   grants: Grant[]
   availableMembers: { membershipId: string; name: string }[]
+  ownerMemberId: string | null
   onGrant: (memberId: string) => Promise<void>
   onUpdateDocument: (privilegeId: string, value: 'none' | 'read' | 'write') => Promise<void>
   onUpdateLesson: (privilegeId: string, value: boolean) => Promise<void>
   onRevoke: (privilegeId: string) => Promise<void>
+  onSetOwner: (memberId: string | null) => Promise<void>
 }) {
   const router = useRouter()
   const [selectedMemberId, setSelectedMemberId] = useState('')
@@ -51,6 +55,11 @@ export function HorseAccessSection({
   async function handleRevoke(privilegeId: string, name: string) {
     if (!window.confirm(`Revoke ${name}'s access to this horse?`)) return
     await onRevoke(privilegeId)
+    router.refresh()
+  }
+
+  async function handleOwnerToggle(memberId: string, isCurrentOwner: boolean) {
+    await onSetOwner(isCurrentOwner ? null : memberId)
     router.refresh()
   }
 
@@ -85,8 +94,8 @@ export function HorseAccessSection({
 
       {grants.length === 0 ? (
         <EmptyState
-          heading="No members have been granted access"
-          subtext="Granting access lets a member read or upload this horse's documents, or see its lesson schedule."
+          heading="No additional members have been granted access"
+          subtext="Managers already have full access to this horse, and trainers can already read and upload its documents and view its lesson schedule. Use this section to grant that same access to a specific rider or boarder who wouldn't otherwise have it — including this horse's owner, if any."
         />
       ) : (
         <div className="overflow-x-auto">
@@ -94,6 +103,7 @@ export function HorseAccessSection({
             <thead>
               <tr>
                 <Th>Member</Th>
+                <Th>Owner</Th>
                 <Th>Documents</Th>
                 <Th>Lesson Schedule</Th>
                 <Th align="right">Actions</Th>
@@ -103,6 +113,16 @@ export function HorseAccessSection({
               {grants.map((grant) => (
                 <tr key={grant.id}>
                   <Td>{grant.name}</Td>
+                  <Td>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={grant.memberId === ownerMemberId ? 'primary' : 'ghost'}
+                      onClick={() => handleOwnerToggle(grant.memberId, grant.memberId === ownerMemberId)}
+                    >
+                      {grant.memberId === ownerMemberId ? 'Owner' : 'Set as Owner'}
+                    </Button>
+                  </Td>
                   <Td>
                     <select
                       aria-label={`${grant.name} document access`}

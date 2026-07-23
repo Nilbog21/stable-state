@@ -20,6 +20,7 @@ vi.mock('../actions', () => ({
   updateHorseAccessDocumentAction: vi.fn(),
   updateHorseAccessLessonAction: vi.fn(),
   revokeHorseAccessAction: vi.fn(),
+  setHorseOwnerAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
@@ -30,12 +31,14 @@ vi.mock('../HorseAccessSection', () => ({
     onUpdateDocument: (privilegeId: string, value: 'none' | 'read' | 'write') => Promise<void>
     onUpdateLesson: (privilegeId: string, value: boolean) => Promise<void>
     onRevoke: (privilegeId: string) => Promise<void>
+    onSetOwner: (memberId: string | null) => Promise<void>
   }) => (
     <div data-testid="horse-access-section">
       <button onClick={() => props.onGrant('mem-test')}>test-grant</button>
       <button onClick={() => props.onUpdateDocument('privilege-1', 'write')}>test-update-doc</button>
       <button onClick={() => props.onUpdateLesson('privilege-1', true)}>test-update-lesson</button>
       <button onClick={() => props.onRevoke('privilege-1')}>test-revoke</button>
+      <button onClick={() => props.onSetOwner('mem-test')}>test-set-owner</button>
     </div>
   ),
 }))
@@ -55,6 +58,7 @@ import {
   updateHorseAccessDocumentAction,
   updateHorseAccessLessonAction,
   revokeHorseAccessAction,
+  setHorseOwnerAction,
 } from '../actions'
 import HorseDetailPage from '../page'
 
@@ -662,5 +666,12 @@ describe('HorseDetailPage', () => {
     render(jsx)
     fireEvent.click(screen.getByText('test-revoke'))
     expect(revokeHorseAccessAction).toHaveBeenCalledWith('green-acres', 'horse-1', 'privilege-1')
+  })
+
+  it('should_wire_set_owner_action_with_barn_slug_and_horse_id', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    fireEvent.click(screen.getByText('test-set-owner'))
+    expect(setHorseOwnerAction).toHaveBeenCalledWith('green-acres', 'horse-1', 'mem-test')
   })
 })

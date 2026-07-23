@@ -23,6 +23,7 @@ import {
   updateHorseAccessDocumentAction,
   updateHorseAccessLessonAction,
   revokeHorseAccessAction,
+  setHorseOwnerAction,
 } from './actions'
 
 export default async function HorseDetailPage({
@@ -80,6 +81,7 @@ export default async function HorseDetailPage({
   const boundUpdateAccessDocumentAction = updateHorseAccessDocumentAction.bind(null, slug, horse.id)
   const boundUpdateAccessLessonAction = updateHorseAccessLessonAction.bind(null, slug, horse.id)
   const boundRevokeAccessAction = revokeHorseAccessAction.bind(null, slug, horse.id)
+  const boundSetHorseOwnerAction = setHorseOwnerAction.bind(null, slug, horse.id)
   const photoHref = `/barn/${slug}/documents/new?entity=horse&id=${horse.id}&type=photo`
 
   return (
@@ -169,7 +171,7 @@ export default async function HorseDetailPage({
 
       {role === 'manager' && (
         <section className="mt-6">
-          <HorseManagerForm horse={horse} barn={barn} action={boundUpdateAction} members={allMembers} />
+          <HorseManagerForm horse={horse} barn={barn} action={boundUpdateAction} />
         </section>
       )}
 
@@ -178,10 +180,12 @@ export default async function HorseDetailPage({
           <HorseAccessSection
             grants={grants}
             availableMembers={availableMembers}
-            onGrant={(memberId) => boundGrantAccessAction(memberId)}
-            onUpdateDocument={(privilegeId, value) => boundUpdateAccessDocumentAction(privilegeId, value)}
-            onUpdateLesson={(privilegeId, value) => boundUpdateAccessLessonAction(privilegeId, value)}
-            onRevoke={(privilegeId) => boundRevokeAccessAction(privilegeId)}
+            ownerMemberId={horse.owning_member_id}
+            onGrant={boundGrantAccessAction}
+            onUpdateDocument={boundUpdateAccessDocumentAction}
+            onUpdateLesson={boundUpdateAccessLessonAction}
+            onRevoke={boundRevokeAccessAction}
+            onSetOwner={boundSetHorseOwnerAction}
           />
         </section>
       )}

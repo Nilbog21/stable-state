@@ -1,9 +1,9 @@
 'use server'
 
 import { revalidatePath } from 'next/cache'
-import { redirect } from 'next/navigation'
+import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import { getHorseById, updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import {
   grantHorsePrivilege,
   updateHorsePrivilegeDocumentAccess,
@@ -22,6 +22,8 @@ export async function updateHorseAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
+  const horse = await getHorseById(horseId, barn.id)
+  if (!horse) return { error: 'Horse not found' }
 
   const status = formData.get('status')
   if (status !== 'active' && status !== 'unavailable' && status !== 'inactive') {
@@ -47,7 +49,6 @@ export async function updateHorseAction(
   const feedNotes = (formData.get('feed_notes') as string | null)?.trim() || null
   const medicationNotes = (formData.get('medication_notes') as string | null)?.trim() || null
   const registeredName = (formData.get('registered_name') as string | null)?.trim() || null
-  const owningMemberId = (formData.get('owning_member_id') as string | null)?.trim() || null
 
   try {
     await updateHorseDetails(horseId, barn.id, {
@@ -59,7 +60,7 @@ export async function updateHorseAction(
       feed_notes: feedNotes,
       medication_notes: medicationNotes,
       registered_name: registeredName,
-      owning_member_id: owningMemberId,
+      owning_member_id: horse.owning_member_id,
     })
   } catch (err) {
     return { error: getErrorMessage(err) }
@@ -144,6 +145,34 @@ export async function revokeHorseAccessAction(
 ): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
   await revokeHorsePrivilege(privilegeId, barn.id)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+}
+
+// Owner is now set exclusively from the Access table (a member must already
+// have a privilege row to be selected), so this always passes through the
+// horse's other current fields unchanged, changing only owning_member_id.
+export async function setHorseOwnerAction(
+  barnSlug: string,
+  horseId: string,
+  memberId: string | null
+): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+  const horse = await getHorseById(horseId, barn.id)
+  if (!horse) notFound()
+
+  await updateHorseDetails(horseId, barn.id, {
+    name: horse.name,
+    is_active: horse.is_active,
+    is_available: horse.is_available,
+    unavailability_reason: horse.unavailability_reason,
+    exhaustion_thresholds: horse.exhaustion_threshold_moderate != null && horse.exhaustion_threshold_high != null
+      ? { moderate: horse.exhaustion_threshold_moderate, high: horse.exhaustion_threshold_high }
+      : null,
+    feed_notes: horse.feed_notes,
+    medication_notes: horse.medication_notes,
+    registered_name: horse.registered_name,
+    owning_member_id: memberId,
+  })
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 

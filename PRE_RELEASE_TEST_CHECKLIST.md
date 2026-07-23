@@ -62,10 +62,17 @@ Horses (`/barn/dev-barn/horses`, inline Add Horse form in the page header):
 - [ ] Create horses **Daisy**, **Eclipse**, and **Flint**
 - [ ] Open Daisy's detail page → set status pill to **Unavailable**, enter reason "Thrown shoe" → Save
 - [ ] Horses page now shows Daisy under **Unavailable** with the reason visible
-- [ ] On Eclipse's detail page, select rider Dana in the **Owner** dropdown → Save → an "Owner: Dana Rider" line appears above the photo, linking to Dana's member detail page
-- [ ] In the **Access** section, select rider Emery and tap **Grant Access** → Emery appears in the grants list with Documents set to **None** and lesson access **Cannot View**
+- [ ] On Eclipse's detail page, in the **Access** section, select rider Dana and tap **Grant Access** → Dana appears in the grants list with an **Owner** column showing **Set as Owner**
+- [ ] Tap **Set as Owner** on Dana's row → the button changes to **Owner**
+- [ ] Refresh the page → an "Owner: Dana Rider" line appears above the photo, linking to Dana's member detail page
+- [ ] Refresh the page → Dana's row in the Access table still shows **Owner**, not **Set as Owner**
+- [ ] Grant access to rider Emery → Emery appears in the grants list with Documents set to **None** and lesson access **Cannot View**
 - [ ] Change Emery's **Documents** dropdown to **Read** → refresh the page → the selection persists
 - [ ] Tap Emery's **Cannot View** button → it flips to **Can View** and persists after refresh
+- [ ] Tap **Owner** on Dana's row (the current owner) → it flips back to **Set as Owner**
+- [ ] Refresh the page → the "Owner:" line above the photo is gone
+- [ ] Tap **Set as Owner** on Dana's row again, then tap **Revoke** on Dana's row (confirm the browser prompt) → Dana no longer appears in the grants list
+- [ ] Refresh the page → the "Owner:" line above the photo is still gone (revoking the owner cleared ownership)
 - [ ] Tap **Revoke** on Emery's row (confirm the browser prompt) → Emery no longer appears in the grants list and is selectable again in the add-member dropdown
 
 Agreements (`/barn/dev-barn/agreements?kind=lease` and `?kind=board`):
