@@ -800,6 +800,14 @@ describe('updateHorsePhotoPath', () => {
 
     expect(mockFrom).toHaveBeenCalledWith('horses')
   })
+
+  it('should_throw_on_injected_client_error', async () => {
+    const mockEq2 = vi.fn().mockResolvedValue({ error: new Error('update error') })
+    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
+    const injectedClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    await expect(updateHorsePhotoPath('horse-1', 'barn-1', 'path.jpg', injectedClient)).rejects.toThrow('update error')
+  })
 })
 
 function makeSelectChainForPhotoPath(photoPath: string | null) {
