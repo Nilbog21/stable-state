@@ -6,6 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import { createClient } from '@/lib/supabase/server'
 import { getEventsByBarn, getEventById, createEvent, updateEvent, deleteEvent } from '../barn-events'
+import type { Role } from '../types'
 
 const mockEvent = {
   id: 'event-1',
@@ -21,7 +22,7 @@ const mockInput = {
   title: 'Costume Party',
   eventAt: '2026-10-31T22:00:00Z',
   notes: null,
-  visibleToRoles: ['manager', 'trainer', 'rider'] as const,
+  visibleToRoles: ['manager', 'trainer', 'rider'] as Role[],
 }
 
 describe('getEventsByBarn', () => {

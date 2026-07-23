@@ -264,7 +264,7 @@ export default async function SettingsPage({
                   <tr key={event.id}>
                     <Td>{event.title}</Td>
                     <Td tone="secondary">
-                      <LocalDateTime iso={event.event_at} />
+                      <LocalDateTime iso={event.event_at} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
                     </Td>
                     <Td tone="secondary" className="capitalize">
                       {event.visible_to_roles.join(', ')}
