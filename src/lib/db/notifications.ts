@@ -157,16 +157,13 @@ export function formatNearbyInstructorNotification(count: number): { title: stri
 export async function getUnreadNotificationCount(
   client: SupabaseClient, userId: string, barnId: string, type: NotificationType
 ): Promise<number> {
-  const { data } = await client
-    .from('notifications')
-    .select('title')
-    .eq('user_id', userId)
-    .eq('barn_id', barnId)
-    .eq('type', type)
-    .is('read_at', null)
-    .maybeSingle()
+  const { data } = await client.rpc('get_unread_notification_title', {
+    p_user_id: userId,
+    p_barn_id: barnId,
+    p_type: type,
+  })
 
-  const match = /^\d+/.exec(data?.title ?? '')
+  const match = /^\d+/.exec(data ?? '')
   return match ? Number(match[0]) : 0
 }
 
