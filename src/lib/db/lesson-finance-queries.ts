@@ -99,6 +99,14 @@ export async function getLessonFeeRows(
   }
 
   const rows = new Map<string, LessonFeeRow>()
+  // `collected` must come from the fee-bearing row (lesson_fee/rider_cancellation_fee)
+  // whenever one exists for a key, regardless of which row the loop below visits
+  // last — instructor_payout no longer reliably mirrors it (see #870). This set
+  // tracks which keys have had a fee-bearing row processed so instructor_payout
+  // can tell "the fee row's value already won" apart from "no fee row exists for
+  // this key" (the orphaned-payout-only case, where its own `collected` is the
+  // only available source).
+  const feeSeenForKey = new Set<string>()
   for (const raw of rawRows) {
     const lessonId = resolvedLessonId(raw)
     const key = lessonId ?? raw.id
@@ -111,18 +119,15 @@ export async function getLessonFeeRows(
       occurredAt: raw.occurredAt,
       tierName: (lessonId && tierNameByLessonId.get(lessonId)) ?? DELETED_LESSON_LABEL,
     }
-    // `collected` is read off every kind, not just lesson_fee: an orphaned
-    // instructor_payout row (its paired fee row nulled to a different key, see the
-    // merge-key comment above) has no fee row to inherit `collected` from — and
-    // instructor_payout is only ever inserted when already collected (see
-    // sync_lesson_transactions), so this is always safe.
-    existing.collected = raw.collected
     if (raw.kind === 'lesson_fee' || raw.kind === 'rider_cancellation_fee') {
       existing.fee = raw.amount
       existing.occurredAt = raw.occurredAt
+      existing.collected = raw.collected
+      feeSeenForKey.add(key)
     } else {
       existing.instructorCut = positiveAmount(raw.kind, raw.amount)
       existing.instructorId = raw.membershipId
+      if (!feeSeenForKey.has(key)) existing.collected = raw.collected
     }
     rows.set(key, existing)
   }
