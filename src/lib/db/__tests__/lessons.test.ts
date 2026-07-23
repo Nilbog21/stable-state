@@ -1214,13 +1214,13 @@ describe('getUpcomingLessons', () => {
   const from = '2026-06-02T00:00:00.000Z'
   const to = '2026-06-09T00:00:00.000Z'
 
-  // manager/trainer path: select → eq(barn_id) → eq(instructor_id) → gte → lt → order
+  // manager/trainer path: select → eq(barn_id) → gte → lt → [trainer only: eq(instructor_id)] → order
   function makeInstructorLessonsChain(data: unknown[], error: Error | null = null) {
     const mockOrder = vi.fn().mockResolvedValue({ data, error })
-    const mockLt = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockInstructorEq = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockLt = vi.fn().mockReturnValue({ order: mockOrder, eq: mockInstructorEq })
     const mockGte = vi.fn().mockReturnValue({ lt: mockLt })
-    const mockInstructorEq = vi.fn().mockReturnValue({ gte: mockGte })
-    const mockBarnEq = vi.fn().mockReturnValue({ eq: mockInstructorEq })
+    const mockBarnEq = vi.fn().mockReturnValue({ gte: mockGte })
     const mockSelect = vi.fn().mockReturnValue({ eq: mockBarnEq })
     return { select: mockSelect, mockBarnEq, mockInstructorEq, mockGte, mockLt, mockOrder }
   }
@@ -1331,13 +1331,15 @@ describe('getUpcomingLessons', () => {
     expect(mockInstructorEq).toHaveBeenCalledWith('instructor_id', 'trainer-membership-1')
   })
 
-  it('should_return_empty_when_caller_has_no_membership_for_manager_role', async () => {
+  it('should_return_empty_when_caller_has_no_membership_for_trainer_role', async () => {
+    const { select: lessonsSelect } = makeInstructorLessonsChain([])
     const { select: membershipSelect } = makeCallerMembershipChain(null)
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ select: membershipSelect }),
-    } as any)
+    const fromFn = vi.fn().mockImplementation((table: string) =>
+      table === 'barn_memberships' ? { select: membershipSelect } : { select: lessonsSelect }
+    )
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-    const result = await getUpcomingLessons('barn-1', from, to, 'user-1', 'manager')
+    const result = await getUpcomingLessons('barn-1', from, to, 'trainer-1', 'trainer')
 
     expect(result).toEqual([])
   })
