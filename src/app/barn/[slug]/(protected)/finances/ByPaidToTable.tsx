@@ -1,16 +1,13 @@
 'use client'
 import Link from 'next/link'
-import { Td } from '@/components/ui/Table'
-import { SortableTh } from './SortableTh'
-import { ReconciliationFoot } from './ReconciliationFoot'
-import { useSortableRows } from './useSortableRows'
+import { BreakdownTable } from './BreakdownTable'
 import { formatCurrency } from '@/lib/format-currency'
 import type { RecipientExpenseSummary } from '@/lib/db/types'
 import type { ReconciliationColumn } from '@/lib/finances-reconciliation'
 
 type SortKey = 'recipient' | 'totalExpenses'
 
-function getValue(row: RecipientExpenseSummary, key: SortKey): string | number {
+function getSortValue(row: RecipientExpenseSummary, key: SortKey): string | number {
   switch (key) {
     case 'recipient':
       return row.recipient
@@ -32,42 +29,44 @@ export function ByPaidToTable({
   monthParam: string
   expenses: ReconciliationColumn
 }) {
-  const { sorted, sortKey, sortDir, toggleSort } = useSortableRows<RecipientExpenseSummary, SortKey>(rows, getValue, 'recipient')
-
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
-        <thead>
-          <tr>
-            <SortableTh sortKey="recipient" label="Recipient" activeKey={sortKey} dir={sortDir} onSort={toggleSort} />
-            <SortableTh label="Gross" infoText="No lesson or agreement income is ever paid directly to a recipient" />
-            <SortableTh sortKey="totalExpenses" label="Expenses" activeKey={sortKey} dir={sortDir} onSort={toggleSort} infoText="This recipient's total paid expenses this month" />
-            <SortableTh label="Net" infoText="A recipient has no income to net against, so this is always blank" />
-          </tr>
-        </thead>
-        <tbody>
-          {sorted.map((row) => (
-            <tr key={row.recipient}>
-              <Td>
-                <Link href={`/barn/${slug}/finances/expenses/${encodeURIComponent(row.recipient)}?month=${monthParam}`} className="underline">
-                  {row.recipient}
-                </Link>
-              </Td>
-              <Td>—</Td>
-              <Td>{row.totalExpenses === 0 ? '—' : formatCurrency(row.totalExpenses, { forceParens: true })}</Td>
-              <Td>—</Td>
-            </tr>
-          ))}
-        </tbody>
-        <ReconciliationFoot
-          labelColSpan={1}
-          gross={null}
-          expenses={expenses}
-          net={null}
-          outsideInfoText="Instructor pay isn't tied to a specific recipient."
-          unattributedInfoText="An expense record whose original entry was deleted after being marked paid."
-        />
-      </table>
-    </div>
+    <BreakdownTable<RecipientExpenseSummary, SortKey>
+      rows={rows}
+      rowKey={(row) => row.recipient}
+      defaultSortKey="recipient"
+      getSortValue={getSortValue}
+      gross={null}
+      expenses={expenses}
+      net={null}
+      outsideInfoText="Instructor pay isn't tied to a specific recipient."
+      unattributedInfoText="An expense record whose original entry was deleted after being marked paid."
+      columns={[
+        {
+          sortKey: 'recipient',
+          label: 'Recipient',
+          renderCell: (row) => (
+            <Link href={`/barn/${slug}/finances/expenses/${encodeURIComponent(row.recipient)}?month=${monthParam}`} className="underline">
+              {row.recipient}
+            </Link>
+          ),
+        },
+        {
+          label: 'Gross',
+          infoText: 'No lesson or agreement income is ever paid directly to a recipient',
+          renderCell: () => '—',
+        },
+        {
+          sortKey: 'totalExpenses',
+          label: 'Expenses',
+          infoText: "This recipient's total paid expenses this month",
+          renderCell: (row) => (row.totalExpenses === 0 ? '—' : formatCurrency(row.totalExpenses, { forceParens: true })),
+        },
+        {
+          label: 'Net',
+          infoText: 'A recipient has no income to net against, so this is always blank',
+          renderCell: () => '—',
+        },
+      ]}
+    />
   )
 }
