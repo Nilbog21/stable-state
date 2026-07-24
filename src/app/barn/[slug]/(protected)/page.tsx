@@ -142,14 +142,14 @@ export default async function BarnDashboardPage({
         <section>
           <div className="mb-4 flex items-center justify-between gap-2">
             <Link href={`/barn/${slug}?date=${addDays(selectedDate, -1)}`} aria-label="Previous day" className={dayNavLinkClass}>
-              ‹
+              &lt;
             </Link>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               {formatSelectedDate(selectedDate)}
               {selectedDate === todayStr && ' · Today'}
             </h2>
             <Link href={`/barn/${slug}?date=${addDays(selectedDate, 1)}`} aria-label="Next day" className={dayNavLinkClass}>
-              ›
+              &gt;
             </Link>
           </div>
           {selectedDate !== todayStr && (
