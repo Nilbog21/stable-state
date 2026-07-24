@@ -7,6 +7,7 @@ import { resolveMemberNames } from '@/lib/db/member-names'
 import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsePrivileges } from '@/lib/db/member-horse-privileges'
 import { HorseManagerForm } from './HorseManagerForm'
+import { HorseNotesForm } from './HorseNotesForm'
 import { HorseAccessSection } from './HorseAccessSection'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
@@ -24,6 +25,7 @@ import {
   updateHorseAccessLessonAction,
   revokeHorseAccessAction,
   setHorseOwnerAction,
+  updateHorseNotesAction,
 } from './actions'
 
 export default async function HorseDetailPage({
@@ -85,6 +87,7 @@ export default async function HorseDetailPage({
   const boundUpdateAccessLessonAction = updateHorseAccessLessonAction.bind(null, slug, horse.id)
   const boundRevokeAccessAction = revokeHorseAccessAction.bind(null, slug, horse.id)
   const boundSetHorseOwnerAction = setHorseOwnerAction.bind(null, slug, horse.id)
+  const boundUpdateHorseNotesAction = updateHorseNotesAction.bind(null, slug, horse.id)
   const photoHref = `/barn/${slug}/documents/new?entity=horse&id=${horse.id}&type=photo`
 
   return (
@@ -156,20 +159,26 @@ export default async function HorseDetailPage({
             </div>
           )}
 
-          {horse.feed_notes && (
+          {!isOwner && horse.feed_notes && (
             <div className="flex flex-col gap-1 py-4">
               <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Feed Notes</dt>
               <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.feed_notes}</dd>
             </div>
           )}
 
-          {horse.medication_notes && (
+          {!isOwner && horse.medication_notes && (
             <div className="flex flex-col gap-1 py-4">
               <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Medication Notes</dt>
               <dd className="text-sm text-zinc-900 dark:text-zinc-50">{horse.medication_notes}</dd>
             </div>
           )}
         </dl>
+      )}
+
+      {role !== 'manager' && isOwner && (
+        <section className="mt-6">
+          <HorseNotesForm horse={horse} action={boundUpdateHorseNotesAction} />
+        </section>
       )}
 
       {role === 'manager' && (

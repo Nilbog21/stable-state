@@ -25,7 +25,7 @@ Three roles: `manager`, `trainer`, `rider`.
 |---|---|---|---|
 | barns | SELECT, UPDATE (own barn) | SELECT | SELECT |
 | barn_memberships | SELECT own + barn; INSERT/UPDATE/DELETE own; UPDATE `can_instruct` for barn members; DELETE any non-manager in barn (#969 — a manager can no longer delete another manager's row, or their own, even via a direct call; manager removal requires direct DB access) | SELECT/INSERT/UPDATE/DELETE own | SELECT/INSERT/UPDATE/DELETE own — plus (#779) any active barn member can read barn-wide member summaries (`id`/`user_id`/`profile_id`/`role`/`can_instruct`/`created_at`, never `invite_token`) via the `get_active_barn_member_summaries` RPC |
-| horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT |
+| horses | SELECT, INSERT, UPDATE, DELETE | SELECT | SELECT — plus (#1006) the horse's owning member (`owning_member_id`) can write just `feed_notes`/`medication_notes` for their own horse via the `update_horse_notes` RPC, same owner-write-RPC convention as `photo_path` below |
 | lessons | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE own (any column; instructor_id locked by RLS) | SELECT (enrolled only), INSERT |
 | lesson_horses | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT (enrolled only), INSERT |
 | lesson_riders | SELECT, INSERT, UPDATE, DELETE | SELECT, INSERT, UPDATE, DELETE own | SELECT (enrolled only), INSERT |

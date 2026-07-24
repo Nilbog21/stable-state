@@ -39,7 +39,7 @@ Go to **Horses** to see horses grouped into two sections:
 - **Available** — horses in active rotation; each card shows the name.
 - **Unavailable** — horses temporarily out of rotation; each card shows the horse name and the reason provided by the barn manager.
 
-Any horse with a **Registered Name** set shows it after the barn name in parentheses, e.g. "Clover (Four-Leaf Clover)". Tap a card to open the horse's detail page, where a photo appears at the top if one has been added — handy for recognizing a horse by name. If your barn manager has made you that horse's owning member, you'll also see **Set Photo**/**Replace Photo**/**Remove** controls there, the same as a manager — once you upload your own photo, your manager can't overwrite it until you replace or remove it.
+Any horse with a **Registered Name** set shows it after the barn name in parentheses, e.g. "Clover (Four-Leaf Clover)". Tap a card to open the horse's detail page, where a photo appears at the top if one has been added — handy for recognizing a horse by name. If your barn manager has made you that horse's owning member, you'll also see **Set Photo**/**Replace Photo**/**Remove** controls there, the same as a manager — once you upload your own photo, your manager can't overwrite it until you replace or remove it — and **Feed Notes**/**Medication Notes** become editable textareas with a **Save** button instead of read-only text, letting you update your own horse's day-to-day notes yourself.
 
 ## If something goes wrong
 
