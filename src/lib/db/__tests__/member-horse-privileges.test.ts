@@ -177,7 +177,7 @@ describe('elevateOwnerPrivileges', () => {
     expect(update).toHaveBeenCalledWith({ document_privileges: 'write', lesson_read_privileges: true })
   })
 
-  it('should_scope_update_to_barn_horse_and_member', async () => {
+  it('should_scope_update_to_barn_id', async () => {
     const mockEq3 = vi.fn().mockResolvedValue({ error: null })
     const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
     const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
@@ -187,7 +187,29 @@ describe('elevateOwnerPrivileges', () => {
     await elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')
 
     expect(mockEq1).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_scope_update_to_horse_id', async () => {
+    const mockEq3 = vi.fn().mockResolvedValue({ error: null })
+    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const update = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')
+
     expect(mockEq2).toHaveBeenCalledWith('horse_id', 'horse-1')
+  })
+
+  it('should_scope_update_to_member_id', async () => {
+    const mockEq3 = vi.fn().mockResolvedValue({ error: null })
+    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    const update = vi.fn().mockReturnValue({ eq: mockEq1 })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')
+
     expect(mockEq3).toHaveBeenCalledWith('member_id', 'mem-3')
   })
 

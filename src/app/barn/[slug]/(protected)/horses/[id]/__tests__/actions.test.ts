@@ -942,10 +942,15 @@ describe('setHorseOwnerAction', () => {
     expect(elevateOwnerPrivileges).not.toHaveBeenCalled()
   })
 
-  it('should_only_elevate_the_new_owner_when_reassigning_ownership', async () => {
+  it('should_elevate_the_new_owner_when_reassigning_ownership', async () => {
     vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ ...existingHorse, owning_member_id: 'mem-old-owner' }))
     await setHorseOwnerAction('green-acres', 'horse-1', 'mem-new-owner')
     expect(elevateOwnerPrivileges).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-new-owner')
+  })
+
+  it('should_not_elevate_the_old_owner_when_reassigning_ownership', async () => {
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ ...existingHorse, owning_member_id: 'mem-old-owner' }))
+    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-new-owner')
     expect(elevateOwnerPrivileges).not.toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-old-owner')
   })
 })
