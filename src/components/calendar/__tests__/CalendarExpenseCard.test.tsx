@@ -7,25 +7,14 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { CalendarExpenseCard, formatExpenseDateTime } from '../CalendarExpenseCard'
+import { CalendarExpenseCard } from '../CalendarExpenseCard'
+import { formatExpenseTime } from '@/lib/format-expense'
 import { makeExpense } from '@/test/fixtures'
 
-describe('formatExpenseDateTime', () => {
-  it('should_prefix_with_today_when_expense_is_today', () => {
-    const now = new Date('2026-07-09T12:00:00Z')
-    expect(formatExpenseDateTime({ expense_date: '2026-07-09', expense_time: '14:00:00' }, now)).toMatch(/^Today · /)
-  })
-
-  it('should_not_prefix_with_today_when_expense_is_not_today', () => {
-    const now = new Date('2026-07-09T12:00:00Z')
-    expect(formatExpenseDateTime({ expense_date: '2026-07-11', expense_time: '14:00:00' }, now)).not.toMatch(/^Today/)
-  })
-})
-
 describe('CalendarExpenseCard', () => {
-  it('should_render_formatted_date_and_time', () => {
+  it('should_render_formatted_time', () => {
     render(<CalendarExpenseCard expense={makeExpense({ expense_date: '2026-07-15', expense_time: '14:00:00' })} slug="green-acres" />)
-    expect(screen.getByText(/ · /)).toBeDefined()
+    expect(screen.getByText(formatExpenseTime('14:00:00'))).toBeDefined()
   })
 
   it('should_render_recipient', () => {

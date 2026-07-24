@@ -21,7 +21,7 @@ export function isLateCancellation(lessonAt: string, cancelledByInstructor: bool
   return isWithinLateCancellationWindow(lessonAt)
 }
 
-// Shared by the #847 "Needs Attention" badge (LessonListItem, UpcomingLessonCard) and this
+// Shared by the #847 "Needs Attention" badge (LessonListItem, CalendarLessonCard) and this
 // file's own getHorseAttentionReasons — a lesson only ever flags a horse issue while it's
 // still upcoming and hasn't been cancelled.
 export function isLessonEligibleForAttentionBadge(lesson: { lesson_at: string; cancelled_at: string | null }): boolean {

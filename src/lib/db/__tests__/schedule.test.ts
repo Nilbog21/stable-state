@@ -119,6 +119,18 @@ describe('mergeScheduleItems', () => {
 
     expect(result.map((r) => r.id)).toEqual(['expense-1', 'event-1', 'lesson-1'])
   })
+
+  it('should_break_a_tie_on_identical_start_by_id_ascending', () => {
+    const result = mergeScheduleItems(
+      [
+        { id: 'lesson-b', start: '2026-06-15T10:00:00', instructor_id: null, horse_ids: [] },
+        { id: 'lesson-a', start: '2026-06-15T10:00:00', instructor_id: null, horse_ids: [] },
+      ],
+      []
+    )
+
+    expect(result.map((r) => r.id)).toEqual(['lesson-a', 'lesson-b'])
+  })
 })
 
 describe('intervalsOverlap', () => {

@@ -152,9 +152,9 @@ export default async function BarnDashboardPage({
           </div>
           {selectedDate !== todayStr && (
             <div className="mb-4">
-              <Link href={`/barn/${slug}`} className="text-sm font-medium text-zinc-600 underline dark:text-zinc-400">
+              <Button href={`/barn/${slug}`} variant="ghost" size="sm">
                 Today
-              </Link>
+              </Button>
             </div>
           )}
           <CalendarDayView items={dayItems} role={userRole} slug={slug} viewerMembershipId={membershipId} />

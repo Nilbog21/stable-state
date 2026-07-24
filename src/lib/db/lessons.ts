@@ -1,6 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
-import { getMembershipByIdForBarn, getUserMembership } from './barn-memberships'
+import { getMembershipByIdForBarn } from './barn-memberships'
 import { resolveMemberNames } from './member-names'
 import { getProfileById } from './profiles'
 import type { Lesson, LessonDetail, LessonWithDetails, PaymentType, Role } from './types'
@@ -286,46 +286,3 @@ export async function updateLesson(
   return data
 }
 
-export async function getUpcomingLessons(
-  barnId: string,
-  from: string,
-  to: string,
-  userId: string,
-  role: 'manager' | 'trainer' | 'rider'
-): Promise<LessonWithDetails[]> {
-  const supabase = await createClient()
-
-  if (role === 'rider') {
-    const lessonIds = await getRiderEnrolledLessonIds(barnId, userId)
-    if (!lessonIds.length) return []
-
-    const { data: lessons, error: lessonsError } = await supabase
-      .from('lessons')
-      .select('*')
-      .in('id', lessonIds)
-      .gte('lesson_at', from)
-      .lt('lesson_at', to)
-      .order('lesson_at', { ascending: true })
-    if (lessonsError) throw lessonsError
-    return hydrateParticipants(supabase, lessons ?? [], barnId)
-  }
-
-  let query = supabase
-    .from('lessons')
-    .select('*')
-    .eq('barn_id', barnId)
-    .gte('lesson_at', from)
-    .lt('lesson_at', to)
-
-  // A manager sees the barn-wide schedule; a trainer sees only lessons they instruct
-  // (mirrors getOutstandingLessonRows' own manager/trainer split).
-  if (role === 'trainer') {
-    const callerMembership = await getUserMembership(userId, barnId)
-    if (!callerMembership) return []
-    query = query.eq('instructor_id', callerMembership.id)
-  }
-
-  const { data: lessons, error: lessonsError } = await query.order('lesson_at', { ascending: true })
-  if (lessonsError) throw lessonsError
-  return hydrateParticipants(supabase, lessons ?? [], barnId)
-}

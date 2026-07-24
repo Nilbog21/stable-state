@@ -7,7 +7,7 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { CalendarLessonCard, formatLessonDate } from '../CalendarLessonCard'
+import { CalendarLessonCard, formatLessonTime } from '../CalendarLessonCard'
 import { createMockLesson } from '@/test/fixtures'
 import type { LessonWithDetails } from '@/lib/db/types'
 
@@ -28,25 +28,18 @@ function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetai
   }
 }
 
-describe('formatLessonDate', () => {
-  it('should_prefix_with_today_when_lesson_is_today', () => {
-    const now = new Date('2026-06-22T12:00:00Z')
+describe('formatLessonTime', () => {
+  it('should_format_the_lesson_start_time', () => {
     const iso = '2026-06-22T14:00:00Z'
-    expect(formatLessonDate(iso, now)).toMatch(/^Today · /)
+    expect(formatLessonTime(iso)).toBe(new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
   })
-
-  it('should_not_prefix_with_today_when_lesson_is_not_today', () => {
-    const now = new Date('2026-06-22T12:00:00Z')
-    const iso = '2026-05-19T10:00:00Z'
-    expect(formatLessonDate(iso, now)).not.toMatch(/^Today/)
-  })
-
 })
 
 describe('CalendarLessonCard', () => {
-  it('should_render_formatted_date', () => {
-    render(<CalendarLessonCard lesson={makeLesson({ lesson_at: '2026-06-15T14:00:00Z' })} role="manager" slug="green-acres" />)
-    expect(screen.getByText(/ · /)).toBeDefined()
+  it('should_render_formatted_time', () => {
+    const iso = '2026-06-15T14:00:00Z'
+    render(<CalendarLessonCard lesson={makeLesson({ lesson_at: iso })} role="manager" slug="green-acres" />)
+    expect(screen.getByText(formatLessonTime(iso))).toBeDefined()
   })
 
   it('should_render_horse_names', () => {

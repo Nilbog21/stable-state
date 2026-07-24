@@ -125,7 +125,12 @@ export function mergeScheduleItems(
     instructorId: null,
     horseIds: [],
   }))
-  return [...lessonItems, ...expenseItems, ...eventItems].sort((a, b) => a.start.localeCompare(b.start))
+  // #523 fixed identical-timestamp non-determinism for the old dashboard's expense list
+  // with a created_at tiebreaker; ScheduleItem carries no created_at, so id is the
+  // deterministic tiebreaker here instead.
+  return [...lessonItems, ...expenseItems, ...eventItems].sort(
+    (a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id)
+  )
 }
 
 // getScheduleForRange has no manual role dispatch -- it relies entirely on RLS, which is
@@ -133,15 +138,16 @@ export function mergeScheduleItems(
 // enrolled), and barn_events (role-filtered via visible_to_roles). It is NOT correct for
 // trainer + lessons: lessons_select_staff grants trainer the same barn-wide SELECT as
 // manager, so without this filter a trainer would see every lesson in the barn instead of
-// just their own -- the "own scope" restriction getUpcomingLessons currently applies via an
-// app-level `.eq('instructor_id', ...)` clause that getScheduleForRange doesn't reproduce.
+// just their own -- the "own scope" restriction the old getUpcomingLessons applied via an
+// app-level `.eq('instructor_id', ...)` clause, reproduced here since getScheduleForRange
+// doesn't (#1015 removed getUpcomingLessons once this became its only caller's replacement).
 export function scopeScheduleItemsForRole(items: ScheduleItem[], role: Role, membershipId: string): ScheduleItem[] {
   if (role !== 'trainer') return items
   return items.filter((item) => item.itemType !== 'lesson' || item.instructorId === membershipId)
 }
 
 /**
- * `from`/`to` are real UTC instants (matches getUpcomingLessons' convention).
+ * `from`/`to` are real UTC instants (matches the old getUpcomingLessons' convention).
  * `timezone` (barns.timezone) is required — horse_expenses.expense_date/expense_time are
  * barn-local wall-clock digits, not real instants (see expenses.ts:getOutstandingExpenses),
  * so ScheduleItem.start normalizes everything down into that same barn-local frame rather
