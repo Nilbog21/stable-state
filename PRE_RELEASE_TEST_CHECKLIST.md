@@ -20,6 +20,9 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] Visit `/login` — a **Privacy Policy** link is present
 - [ ] Clicking the link opens `/privacy`
 - [ ] The `/privacy` page renders the drafted privacy policy content
+- [ ] In a fresh/incognito browser (no existing session), visit `/demo` — a spinner and "Explore Stable State" heading render, then you land in a new `/barn/demo-.../` barn as its manager (requires `DEMO_USER_EMAIL`/`DEMO_USER_PASSWORD` in `.env.local`, from `scripts/setup-demo-user.sh` — `/demo` 404s if unset)
+- [ ] Visiting `/demo` again in the same browser resumes the same demo barn (same URL) instead of creating a new one
+- [ ] With `DEMO_USER_EMAIL` set but `DEMO_USER_PASSWORD` unset, visit `/demo` — you land on `/login` with a "demo is unavailable" message instead of a blank redirect
 - [ ] Reset and reseed the dev database:
 
   ```bash
@@ -128,8 +131,11 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 
 Dashboard (`/barn/dev-barn`):
 
-- [ ] Section is titled "Barn Schedule" and shows lessons and upcoming planned expenses (future date+time, no amount yet) together in the next 7 days, split into a "Today" section (only when something is scheduled today) and a "This Week" section (the remaining 6 days) — the seeded Riverside Vet Clinic expense 2 days out appears interleaved by time between that day's lessons
-- [ ] A date-only planned expense (no time set) does **not** appear on the dashboard
+- [ ] Dashboard shows a single-day calendar defaulting to today, with Prev/Next links and today's date in the heading
+- [ ] Today's seeded lessons and any planned expense scheduled for today (future date+time, no amount yet) appear together, sorted by time
+- [ ] Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for, and it appears there, interleaved by time with that day's lessons
+- [ ] A "Today" link appears only while viewing a day other than today, and returns to today's calendar when clicked
+- [ ] A date-only planned expense (no time set) does **not** appear on the calendar for its date
 - [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
 - [ ] A "Reminders" section header appears above the document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
 - [ ] No document-reminder cards appear under Reminders when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders (no separate "Document Reminders" heading) and links to that horse's or member's detail page
@@ -147,7 +153,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
 - [ ] Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
 - [ ] Times display in 12-hour AM/PM format everywhere (no military time)
-- [ ] Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list and on the Dashboard's Barn Schedule (Willow is seeded inactive); it does not appear on Willow's past lessons or on any cancelled lesson
+- [ ] Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list and on the Dashboard's Day view (navigate to the lesson's date if it isn't today, Willow is seeded inactive); it does not appear on Willow's past lessons or on any cancelled lesson
 - [ ] Open Willow's flagged lesson's detail page — a **Needs Attention** banner at the top reads "Willow is inactive"; open the same lesson's edit page — the same banner appears there too; the banner does not block editing or saving
 - [ ] On Willow's flagged lesson's edit page, without changing any field, click a nav link (or hit browser back) — a confirm dialog warns about the unresolved horse issue, defaulting to Stay; swap Willow out for an active horse and save, then reopen the edit page and confirm navigating away no longer prompts
 - [ ] Open a lesson's detail page (`/barn/dev-barn/lessons/[id]`) — horse notes and rider notes render read-only; Edit link visible; open a lesson with no notes recorded at all and confirm every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
@@ -165,8 +171,9 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] On a **group** lesson booked <24h away, select **Cancelled by Rider** → an amber "Warning: No late cancellation fees are currently leveraged for group lessons." label appears
 - [ ] On that same lesson, switch to **Cancelled by Instructor** → the label disappears
 - [ ] On a **group** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
-- [ ] On a **normal** lesson, cancel it (there's only one rider) → the lesson itself shows a **Cancelled** badge on the list, detail page, and Dashboard
-- [ ] On a **group** lesson, cancel riders one at a time via the picker → after the last active rider is cancelled, the lesson shows a **Cancelled** badge everywhere; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
+- [ ] On a **normal** lesson, cancel it (there's only one rider) → the lesson itself shows a **Cancelled** badge on the list and detail page
+- [ ] (#1015) That same cancelled lesson no longer appears on the Dashboard's Day view for its date, even navigating directly to that day
+- [ ] On a **group** lesson, cancel riders one at a time via the picker → after the last active rider is cancelled, the lesson shows a **Cancelled** badge on the list and detail page; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
 - [ ] On an already-cancelled lesson, open **Edit Lesson** (manager and, separately, the instructing trainer) → the Notes section shows a **Cancellation Notes** textarea (confirm it does *not* appear when editing a non-cancelled lesson) → edit it and Save → the detail page shows the updated text read-only under **Cancellation Notes** for every role, including the instructing trainer and a rider; clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
 - [ ] As manager, open an **unpaid** lesson's detail page and click **Delete** → confirm the browser prompt → lesson disappears entirely from the Lessons list and Finances (no **Cancelled** badge, no notification to instructor/riders); repeat on an already-cancelled lesson to confirm Delete is reachable regardless of state; as trainer, confirm no **Delete** button is shown on any lesson
 - [ ] On a **paid** (or $0-fee) lesson's detail page, click **Delete** → lands on `/barn/dev-barn/lessons/[id]/delete` (not a browser prompt) showing the collected amount and an unchecked-by-default checkbox; confirm without checking it → lesson is gone but its income still shows up in Finances for that month; repeat on another paid lesson, this time checking the box → lesson's income is also gone from Finances
@@ -341,6 +348,8 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
 - [ ] Change both and **Save** → values persist on reload
 - [ ] Try setting Moderate ≥ High → rejected with a field error and values unchanged
+- [ ] **Schedule Buffer** field shows the current value (default `30`)
+- [ ] Change it and **Save** → value persists on reload
 - [ ] **Barn Timezone** select shows the current value (default Eastern); change it and Save → persists on reload; add a planned expense due a few minutes from now, wait for its due time to pass, then confirm it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
 - [ ] **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] Create an event with a title, date/hour, and notes → it appears in the Barn Events list with the correct title, date, and "manager, trainer, rider" visible-to text
@@ -348,6 +357,8 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] From the event's Edit page, tap **Delete** → confirm page shows the event's title → **Confirm Delete** → event no longer appears in the Barn Events list
 - [ ] **Data Backup** section shows a **Download All Documents** button, enabled (documents were already uploaded earlier in this phase)
 - [ ] Tap **Download All Documents** → a `.zip` downloads; open it and confirm it contains `horse/<name>/` and `member/<name>/` folders holding the documents uploaded earlier, each file named `<original>-<type>-<date>.<ext>`
+- [ ] **Data Backup** section also shows a **Download Data** button, always enabled (no "nothing to export" state)
+- [ ] Tap **Download Data** → an `.xlsx` downloads; open it and confirm it has 8 sheets (Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions) and a horse/lesson/member created earlier in this phase appears by name (not a raw id) on the expected sheet
 
 Notifications and profile:
 
@@ -366,6 +377,12 @@ Mobile spot-check (resize the browser to ~390px wide, or use your browser's devi
 - [ ] Nav bar and its dropdowns (avatar menu, notification bell) remain usable — reachable and dismissible by tap, with no reliance on hover
 - [ ] Lessons and Horses lists stay readable without horizontal scrolling
 
+Calendar feed (#1018):
+
+- [ ] On `/profile?barn=dev-barn`, a **Calendar Feed** section appears; tap **Get my calendar link** — a link is revealed containing `/calendar.ics?token=...`
+- [ ] Open that link directly (or `curl` it) — returns `Content-Type: text/calendar` and includes VEVENT entries for lessons across the whole barn (manager sees everything), not just your own
+- [ ] Tap **Regenerate** — the displayed link changes to a new token, and the old link now 404s
+
 ## Phase 5 — Trainer
 
 Switch role (interactive):
@@ -382,6 +399,12 @@ bash scripts/change-user.sh
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Lessons list defaults to **My Lessons** (only Alex's, now reassigned to you); switch to **All** to see every barn lesson including Blake's — filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
+- [ ] Create one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) — submission succeeds with no error
+
+> This notification's recipient (Blake) isn't the persona you're currently acting as, so it can't be observed by switching personas with `change-user.sh` — the swap reassigns `barn_memberships.user_id` away from whichever persona you leave, permanently disconnecting it from the id the notification was written against. Verify the row directly instead (Supabase Studio or a `supabase db` query).
+
+- [ ] A `notifications` row exists for Blake's `user_id` with `type = 'instructor_lesson_nearby'` and `link = '/barn/dev-barn/lessons'`
+- [ ] That row's `title` reads **"1 new lesson scheduled nearby"** (or an incremented count, e.g. "2 new lessons scheduled nearby", if a prior nearby lesson already landed this same row this pass)
 - [ ] Edit one of your own lessons — the instructor field is **hidden entirely** (no label, no read-only text — just locked server-side)
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
 - [ ] On one of your own lessons, click **Cancel** in the header and cancel a rider's spot (or the whole lesson) — works the same as manager; open Blake's lesson — no header **Cancel** button is shown
@@ -395,8 +418,10 @@ bash scripts/change-user.sh
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **Contact Info** section (#863 — a trainer can view any member's Contact Info), but **no Documents section**; open Blake's (a rider's) detail page — same: Contact Info shown, Documents hidden (#779 narrowed rider-document access to manager/self only)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons, plus any uncollected cancellation fees for lessons you instruct
+- [ ] (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
 - [ ] Dashboard: if any of your instructed lessons are unpaid, a "Reminders" section with an "N unpaid lessons" card appears, linking to `/barn/dev-barn/finances/outstanding` — this is your only nav path to that page (no Finances link in the nav)
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (#1018) On the same Profile page, get/open your Calendar Feed link — it includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
 
 ## Phase 6 — Rider
 
@@ -411,7 +436,7 @@ bash scripts/change-user.sh
 - [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
 - [ ] Tap an Available or Unavailable card → navigates to that horse's detail page (#1002 — cards became linkable so a rider can view the horse's photo)
 - [ ] On Butter's detail page, her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (same #998-blocked caveat as the trainer phase above — owner-write can't be manually verified until ownership is UI-assignable)
-- [ ] Dashboard upcoming-lessons preview shows only lessons Dana is enrolled in — no "Barn Schedule" heading and no expenses shown (manager-only)
+- [ ] Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day, and no expenses (manager-only) or events outside her role's `visible_to_roles`
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Same lesson detail page — no exertion rating shown next to any horse name
@@ -430,6 +455,7 @@ bash scripts/change-user.sh
 > Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. This code path is already exercised for real in Phase 2-4's own-photo check (as yourself, no impersonation), which is sufficient coverage — don't re-add a self-photo check to an impersonated phase.
 - [ ] Switch to Emery (`change-user.sh` → Dev Barn → Emery) and open her own member detail page — the same Active Agreements cards from Phase 4 render as plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page; switch back to Dana afterward
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
+- [ ] (#1018) On the same Profile page, get/open your Calendar Feed link — it includes only lessons Dana is enrolled in, not other riders' lessons
 
 ## Phase 7 — Multi-barn
 
@@ -468,6 +494,7 @@ bash scripts/teardown-test-barn.sh test-barn-checklist
 | `/login` | Phase 7 |
 | `/terms` | Phase 1 |
 | `/privacy` | Phase 1 |
+| `/demo` | Phase 1 |
 | `/barns` | Phase 7 |
 | `/barn/[slug]` (dashboard) | Phases 4, 6 |
 | `/barn/[slug]/login` | Phases 1, 2, 7 |

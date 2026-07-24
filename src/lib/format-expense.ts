@@ -1,7 +1,7 @@
 /**
  * Pure expense-rendering formatters (date, time, amount, horse list) shared
  * by the expenses list cards, the expense delete-confirmation page, and the
- * dashboard's `UpcomingExpenseCard`.
+ * dashboard's `CalendarExpenseCard`.
  */
 
 export function formatExpenseDate(date: string): string {

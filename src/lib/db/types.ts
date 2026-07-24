@@ -8,6 +8,7 @@ export type NotificationType =
   | 'recurring_series_stopped'
   | 'recurring_lesson_horse_unavailable'
   | 'expense_past_due'
+  | 'instructor_lesson_nearby'
 export type MembershipStatus = 'active'
 
 export interface Profile {
@@ -35,6 +36,7 @@ export interface Barn {
   exhaustion_threshold_moderate: number
   timezone: string
   is_demo: boolean
+  schedule_buffer_minutes: number
 }
 
 export interface BarnMembership {
@@ -46,6 +48,7 @@ export interface BarnMembership {
   status: MembershipStatus
   can_instruct: boolean
   invite_token: string | null
+  calendar_feed_token: string | null
   created_at: string
 }
 
@@ -489,4 +492,21 @@ export interface RecipientExpenseDetailRow {
   expenseDate: string
   expenseType: string
   amount: number
+}
+
+export type CalendarFeedItemType = 'lesson' | 'event'
+
+export interface CalendarFeedItem {
+  itemType: CalendarFeedItemType
+  id: string
+  title: string
+  startsAt: string // true UTC instant
+  durationMinutes: number
+  notes: string | null
+}
+
+export interface CalendarFeedData {
+  valid: boolean
+  barnName: string | null
+  items: CalendarFeedItem[]
 }

@@ -2,6 +2,8 @@
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId, updateProfile } from '@/lib/db/profiles'
 import { parseContactFields } from '@/lib/contact-info'
+import { requireMembership } from '@/lib/auth/guard'
+import { getOrCreateCalendarFeedToken, regenerateCalendarFeedToken } from '@/lib/db/calendar-feed'
 
 // Not barn-scoped — no barnSlug/role dimension, every authenticated user
 // edits only their own profile, so requireMembership doesn't apply.
@@ -37,4 +39,16 @@ export async function updateProfileAction(
     console.error('updateProfileAction failed:', e)
     return { error: 'Failed to update profile' }
   }
+}
+
+// Barn-scoped, unlike updateProfileAction above — the calendar feed token belongs to a
+// specific membership, so requireMembership resolves the caller's own membership in this barn.
+export async function getCalendarFeedLinkAction(barnSlug: string): Promise<string> {
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+  return getOrCreateCalendarFeedToken(membership.id, barn.id)
+}
+
+export async function regenerateCalendarFeedLinkAction(barnSlug: string): Promise<string> {
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+  return regenerateCalendarFeedToken(membership.id, barn.id)
 }

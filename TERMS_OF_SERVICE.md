@@ -22,7 +22,7 @@ We do not guarantee any specific level of uptime or availability. Stable State r
 
 The Service is provided "as is" and "as available," without warranties of any kind, express or implied. To the maximum extent permitted by law, Stable State and its operator are not liable for indirect, incidental, or consequential damages arising from use of the Service, including lost data, lost revenue, or business interruption. Our total liability for any claim relating to the Service is limited to the amount you paid us in the 12 months before the claim arose.
 
-You are responsible for the accuracy of the data you enter (lesson records, financial records, horse and rider information) and for maintaining your own backups of anything critical. A barn manager can download a zip archive of all uploaded documents (health certificates, contracts, waivers, etc.) at any time from Manage Barn → Data Backup.
+You are responsible for the accuracy of the data you enter (lesson records, financial records, horse and rider information) and for maintaining your own backups of anything critical. A barn manager can download a zip archive of all uploaded documents (health certificates, contracts, waivers, etc.) at any time from Manage Barn → Data Backup. A full spreadsheet export of your barn's lesson, financial, horse, and rider records is available the same way.
 
 ## Termination
 

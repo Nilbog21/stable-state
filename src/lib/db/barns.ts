@@ -55,6 +55,62 @@ export async function setInstructorCut(barnId: string, value: number, client?: S
   if (error) throw error
 }
 
+export async function updateScheduleBufferMinutes(
+  barnId: string,
+  minutes: number,
+  client?: SupabaseClient
+): Promise<Barn> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('barns')
+    .update({ schedule_buffer_minutes: minutes })
+    .eq('id', barnId)
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function createDemoBarn(slug: string, client: SupabaseClient): Promise<Barn> {
+  const { data, error } = await client
+    .from('barns')
+    .insert({ name: 'Demo Barn', slug, is_demo: true })
+    .select()
+    .single()
+
+  if (error) throw error
+  return data
+}
+
+export async function countDemoBarns(client: SupabaseClient): Promise<number> {
+  const { count, error } = await client
+    .from('barns')
+    .select('id', { count: 'exact', head: true })
+    .eq('is_demo', true)
+
+  if (error) throw error
+  return count ?? 0
+}
+
+export async function getOldestDemoBarn(client: SupabaseClient): Promise<Barn | null> {
+  const { data, error } = await client
+    .from('barns')
+    .select('*')
+    .eq('is_demo', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function deleteBarn(barnId: string, client: SupabaseClient): Promise<void> {
+  const { error } = await client.from('barns').delete().eq('id', barnId)
+  if (error) throw error
+}
+
 export async function updateExhaustionThresholds(
   barnId: string,
   updates: { moderate: number; high: number },

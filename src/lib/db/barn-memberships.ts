@@ -5,15 +5,34 @@ import type { Barn, BarnMembership, Role } from './types'
 
 export async function getUserMembership(
   userId: string,
-  barnId: string
+  barnId: string,
+  client?: SupabaseClient
 ): Promise<BarnMembership | null> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
     .select('*')
     .eq('user_id', userId)
     .eq('barn_id', barnId)
     .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function createActiveMembership(
+  userId: string,
+  profileId: string,
+  barnId: string,
+  role: Role,
+  client?: SupabaseClient
+): Promise<BarnMembership> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .insert({ user_id: userId, profile_id: profileId, barn_id: barnId, role, status: 'active' })
+    .select()
+    .single()
 
   if (error) throw error
   return data
@@ -67,9 +86,11 @@ export type ActiveMemberSummaryRow = {
 
 // Reads any active member's row within a barn, including ones the narrow direct-query
 // policies (own-row/manager-full-barn/trainer-reads-riders) don't cover — broadened per
-// #779 via the same column-limited RPC used by getActiveMembersWithProfiles, so this can
-// never surface invite_token either. Kept separate from getMembershipById (used elsewhere
-// by write-gated actions that don't need the broadened read) to keep blast radius minimal.
+// #779 via the same column-limited RPC used by getActiveMembersWithProfiles. invite_token
+// is intentionally still surfaced on the direct-query branch (the member detail page's
+// manager-only ManageMemberSection needs it to render a shareable invite link);
+// calendar_feed_token is a personal bearer credential no caller of this function needs to
+// see for another member, so it's redacted on both branches (#1018).
 export async function getMembershipByIdForBarn(
   membershipId: string,
   barnId: string,
@@ -78,7 +99,7 @@ export async function getMembershipByIdForBarn(
   const supabase = client ?? await createClient()
 
   const direct = await getMembershipById(membershipId, supabase)
-  if (direct) return direct
+  if (direct) return { ...direct, calendar_feed_token: null }
 
   const { data: summaryRows, error } = await supabase.rpc('get_active_barn_member_summaries', {
     p_barn_id: barnId,
@@ -97,6 +118,7 @@ export async function getMembershipByIdForBarn(
     status: 'active',
     can_instruct: row.can_instruct,
     invite_token: null,
+    calendar_feed_token: null,
     created_at: row.created_at,
   }
 }

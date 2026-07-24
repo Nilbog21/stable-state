@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { getLessonJunctionRows } from './lesson-finance-queries'
-import type { ScheduleItem } from './types'
+import type { Role, ScheduleItem } from './types'
 
 /**
  * Merged, duration-aware read of `lessons` + `horse_expenses` + `barn_events` (#1014) for
@@ -50,6 +50,52 @@ export function intervalsOverlap(a: ScheduleItem, b: ScheduleItem): boolean {
   return aStart < bEnd && bStart < aEnd
 }
 
+// Two lessons are "nearby" iff the gap between them is less than bufferMinutes -- which,
+// since both have the same fixed LESSON_DURATION_MINUTES duration, reduces to a plain
+// start-to-start distance check against duration+buffer. This also always flags actual
+// overlaps regardless of buffer size (a raw start-to-start-only check would miss overlaps
+// whenever the gap is large relative to the buffer).
+export function isLessonNearby(aLessonAt: string, bLessonAt: string, bufferMinutes: number): boolean {
+  const distanceMs = Math.abs(new Date(aLessonAt).getTime() - new Date(bLessonAt).getTime())
+  return distanceMs < (LESSON_DURATION_MINUTES + bufferMinutes) * 60_000
+}
+
+// Barn-scoped, excludes the lesson being checked and its own instructor (no self-notification).
+// DB-level gte/lt bound already matches the isLessonNearby threshold exactly; the JS-side
+// isLessonNearby filter is defense-in-depth in case that bound and this predicate ever drift.
+export async function getNearbyInstructorMembershipIds(
+  barnId: string,
+  excludeLessonId: string,
+  lessonAt: string,
+  excludeInstructorId: string | null,
+  bufferMinutes: number,
+  client?: SupabaseClient
+): Promise<string[]> {
+  const supabase = client ?? await createClient()
+  const windowMs = (LESSON_DURATION_MINUTES + bufferMinutes) * 60_000
+  const centerMs = new Date(lessonAt).getTime()
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('id, instructor_id, lesson_at')
+    .eq('barn_id', barnId)
+    .is('cancelled_at', null)
+    .not('instructor_id', 'is', null)
+    .neq('id', excludeLessonId)
+    .gte('lesson_at', new Date(centerMs - windowMs).toISOString())
+    .lt('lesson_at', new Date(centerMs + windowMs).toISOString())
+  if (error) throw error
+
+  const rows = (data ?? []) as { id: string; instructor_id: string | null; lesson_at: string }[]
+  const nearbyInstructorIds = new Set<string>()
+  for (const row of rows) {
+    if (!row.instructor_id || row.instructor_id === excludeInstructorId) continue
+    if (!isLessonNearby(lessonAt, row.lesson_at, bufferMinutes)) continue
+    nearbyInstructorIds.add(row.instructor_id)
+  }
+  return [...nearbyInstructorIds]
+}
+
 export function mergeScheduleItems(
   lessons: ScheduleLessonRow[],
   expenses: ScheduleExpenseRow[],
@@ -79,13 +125,31 @@ export function mergeScheduleItems(
     instructorId: null,
     horseIds: [],
   }))
-  return [...lessonItems, ...expenseItems, ...eventItems].sort((a, b) => a.start.localeCompare(b.start))
+  // #523 fixed identical-timestamp non-determinism for the old dashboard's expense list
+  // with a created_at tiebreaker; ScheduleItem carries no created_at, so id is the
+  // deterministic tiebreaker here instead.
+  return [...lessonItems, ...expenseItems, ...eventItems].sort(
+    (a, b) => a.start.localeCompare(b.start) || a.id.localeCompare(b.id)
+  )
+}
+
+// getScheduleForRange has no manual role dispatch -- it relies entirely on RLS, which is
+// correct for manager (barn-wide), rider (lessons_select_rider already restricts to
+// enrolled), and barn_events (role-filtered via visible_to_roles). It is NOT correct for
+// trainer + lessons: lessons_select_staff grants trainer the same barn-wide SELECT as
+// manager, so without this filter a trainer would see every lesson in the barn instead of
+// just their own -- the "own scope" restriction the old getUpcomingLessons applied via an
+// app-level `.eq('instructor_id', ...)` clause, reproduced here since getScheduleForRange
+// doesn't (#1015 removed getUpcomingLessons once this became its only caller's replacement).
+export function scopeScheduleItemsForRole(items: ScheduleItem[], role: Role, membershipId: string): ScheduleItem[] {
+  if (role !== 'trainer') return items
+  return items.filter((item) => item.itemType !== 'lesson' || item.instructorId === membershipId)
 }
 
 /**
- * `from`/`to` are real UTC instants (matches getUpcomingLessons' convention).
+ * `from`/`to` are real UTC instants (matches the old getUpcomingLessons' convention).
  * `timezone` (barns.timezone) is required — horse_expenses.expense_date/expense_time are
- * barn-local wall-clock digits, not real instants (see expenses.ts:getUpcomingScheduledExpenses),
+ * barn-local wall-clock digits, not real instants (see expenses.ts:getOutstandingExpenses),
  * so ScheduleItem.start normalizes everything down into that same barn-local frame rather
  * than inventing a wall-clock-to-instant conversion.
  *
@@ -132,9 +196,10 @@ export async function getScheduleForRange(
     horse_ids: lessonHorseIdsByLessonId.get(l.id) ?? [],
   }))
 
-  // Mirrors getUpcomingScheduledExpenses (expenses.ts): coarse DB-level date bound, then a
-  // precise JS-side wall-clock comparison, since expense_date/expense_time are barn-local
-  // digits with no timezone info of their own to compare against real instants directly.
+  // Same coarse DB-level date bound + precise JS-side wall-clock comparison idiom
+  // getOutstandingExpenses (expenses.ts) uses, since expense_date/expense_time are
+  // barn-local digits with no timezone info of their own to compare against real instants
+  // directly.
   const fromWall = instantToLocalWallClock(new Date(from), timezone)
   const toWall = instantToLocalWallClock(new Date(to), timezone)
 

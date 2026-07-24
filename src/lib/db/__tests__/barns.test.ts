@@ -6,7 +6,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getBarnBySlug, updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '../barns'
+import { getBarnBySlug, updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone, updateScheduleBufferMinutes, createDemoBarn, countDemoBarns, getOldestDemoBarn, deleteBarn } from '../barns'
 
 const mockBarn = createMockBarn()
 
@@ -202,6 +202,63 @@ describe('updateExhaustionThresholds', () => {
   })
 })
 
+describe('updateScheduleBufferMinutes', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeChain(data: unknown | null, error: Error | null = null) {
+    const mockSingle = vi.fn().mockResolvedValue({ data, error })
+    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
+    const mockEq = vi.fn().mockReturnValue({ select: mockSelect })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
+    return { update: mockUpdate, mockUpdate, mockEq }
+  }
+
+  it('should_update_schedule_buffer_minutes_and_return_updated_barn', async () => {
+    const { update } = makeChain({ ...mockBarn, schedule_buffer_minutes: 45 })
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    const result = await updateScheduleBufferMinutes('barn-1', 45)
+
+    expect(result).toEqual({ ...mockBarn, schedule_buffer_minutes: 45 })
+  })
+
+  it('should_pass_minutes_to_update', async () => {
+    const { update, mockUpdate } = makeChain(mockBarn)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await updateScheduleBufferMinutes('barn-1', 45)
+
+    expect(mockUpdate).toHaveBeenCalledWith({ schedule_buffer_minutes: 45 })
+  })
+
+  it('should_scope_update_by_barn_id', async () => {
+    const { update, mockEq } = makeChain(mockBarn)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await updateScheduleBufferMinutes('barn-1', 45)
+
+    expect(mockEq).toHaveBeenCalledWith('id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const { update } = makeChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+
+    await expect(updateScheduleBufferMinutes('barn-1', 45)).rejects.toThrow('db error')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const { update } = makeChain(mockBarn)
+    const mockClient = { from: vi.fn().mockReturnValue({ update }) } as any
+
+    const result = await updateScheduleBufferMinutes('barn-1', 45, mockClient)
+
+    expect(result).toEqual(mockBarn)
+  })
+})
+
 describe('updateBarnTimezone', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
@@ -291,5 +348,140 @@ describe('setInstructorCut', () => {
 
     expect(createClient).not.toHaveBeenCalled()
     expect(mockRpc).toHaveBeenCalledWith('set_instructor_cut', { p_barn_id: 'barn-1', p_value: 30 })
+  })
+})
+
+describe('createDemoBarn', () => {
+  it('should_insert_a_demo_barn_with_the_given_slug', async () => {
+    const single = vi.fn().mockResolvedValue({ data: { ...mockBarn, slug: 'demo-abc12345', is_demo: true }, error: null })
+    const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) })
+    const mockClient = { from: vi.fn().mockReturnValue({ insert }) } as any
+
+    const result = await createDemoBarn('demo-abc12345', mockClient)
+
+    expect(insert).toHaveBeenCalledWith({ name: 'Demo Barn', slug: 'demo-abc12345', is_demo: true })
+    expect(result).toEqual({ ...mockBarn, slug: 'demo-abc12345', is_demo: true })
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('insert failed')
+    const single = vi.fn().mockResolvedValue({ data: null, error: dbError })
+    const mockClient = {
+      from: vi.fn().mockReturnValue({ insert: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) }),
+    } as any
+
+    await expect(createDemoBarn('demo-abc12345', mockClient)).rejects.toThrow('insert failed')
+  })
+})
+
+describe('countDemoBarns', () => {
+  it('should_return_the_count_of_demo_barns', async () => {
+    const eq = vi.fn().mockResolvedValue({ count: 3, error: null })
+    const mockClient = { from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq }) }) } as any
+
+    const result = await countDemoBarns(mockClient)
+
+    expect(result).toBe(3)
+    expect(eq).toHaveBeenCalledWith('is_demo', true)
+  })
+
+  it('should_return_zero_when_count_is_null', async () => {
+    const mockClient = {
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ count: null, error: null }) }) }),
+    } as any
+
+    const result = await countDemoBarns(mockClient)
+
+    expect(result).toBe(0)
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    const mockClient = {
+      from: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ count: null, error: dbError }) }) }),
+    } as any
+
+    await expect(countDemoBarns(mockClient)).rejects.toThrow('query failed')
+  })
+})
+
+describe('getOldestDemoBarn', () => {
+  it('should_return_the_oldest_demo_barn', async () => {
+    const mockClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: mockBarn, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any
+
+    const result = await getOldestDemoBarn(mockClient)
+
+    expect(result).toEqual(mockBarn)
+  })
+
+  it('should_return_null_when_no_demo_barns_exist', async () => {
+    const mockClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any
+
+    const result = await getOldestDemoBarn(mockClient)
+
+    expect(result).toBeNull()
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('query failed')
+    const mockClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockReturnValue({
+              limit: vi.fn().mockReturnValue({
+                maybeSingle: vi.fn().mockResolvedValue({ data: null, error: dbError }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any
+
+    await expect(getOldestDemoBarn(mockClient)).rejects.toThrow('query failed')
+  })
+})
+
+describe('deleteBarn', () => {
+  it('should_delete_the_barn_by_id', async () => {
+    const eq = vi.fn().mockResolvedValue({ error: null })
+    const mockClient = { from: vi.fn().mockReturnValue({ delete: vi.fn().mockReturnValue({ eq }) }) } as any
+
+    await deleteBarn('barn-1', mockClient)
+
+    expect(eq).toHaveBeenCalledWith('id', 'barn-1')
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('delete failed')
+    const mockClient = {
+      from: vi.fn().mockReturnValue({ delete: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: dbError }) }) }),
+    } as any
+
+    await expect(deleteBarn('barn-1', mockClient)).rejects.toThrow('delete failed')
   })
 })

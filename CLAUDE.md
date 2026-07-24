@@ -27,6 +27,10 @@ Update the architecture docs whenever a migration or role change is committed:
 - DAL change (new/changed function in `src/lib/db/`) → `docs/architecture/dal.md`, plus its index entry in `ARCHITECTURE.md`'s Data access layer section if a module was added/removed
 - Role change (new role, permissions matrix, RLS convention) → stays in `ARCHITECTURE.md`'s Role system / RLS conventions sections
 
+## Barn Data Backup
+
+`src/lib/db/backup.ts` (the "Download Data" spreadsheet export in Manage Barn → Data Backup) hand-maps a fixed set of tables into its own sheets — it does not introspect the schema, so a schema change to any of these tables can silently drop a new column/table from the export instead of erroring. Whenever a migration changes one of the following, also update `backup.ts`'s corresponding sheet: `horses`; `lessons`/`lesson_horses`/`lesson_riders`/`lesson_tiers`/`lesson_series`; `agreements`/`agreement_charges`; `horse_expenses`/`expense_horses`; `transactions`; `barn_memberships`/`profiles`; `horse_documents`/`staff_documents`/`rider_documents`.
+
 ## Privacy Policy
 
 `PRIVACY_POLICY.md` (repo root, served at `/privacy`) must stay in sync with what the app actually does. Check it whenever a change touches:
@@ -62,6 +66,8 @@ New UI must use the primitives in `src/components/ui/` — do not hand-roll raw 
 
 - `<Card href? className?>` (`Card.tsx`) — browseable item collections (horses, upcoming lessons, members). With `href` it renders as a full-card link with `bg-white`/hover states baked in; without `href` it renders a plain bordered `div` with no background or padding of its own — pass `className` for either variant's padding/spacing needs.
 - `<Button variant? size? loading? href?>` (`Button.tsx`) — all interactive actions. Variants: `primary` (default), `danger` for destructive actions, `ghost` for secondary actions, `warning` for amber attention-badge links (e.g. dashboard Reminders cards, including `DocumentRemindersSection`'s single-line `name — record type — date` entries). `size`: `md` (default) for standalone form/page actions, `sm` for compact table/row actions (Approve/Reject/Remove/Delete/Activate/Deactivate). `loading` disables the button and shows a spinner. With `href` it renders as a styled `Link` instead of a `<button>`. Joined-corner segmented toggles and icon-only/bare-text controls are poor structural fits — leave those as raw Tailwind with a comment explaining why (see `LessonForm.tsx`'s Normal/Group switch or `NotificationBell.tsx`).
+  - `ghost`'s subtle border reads as non-interactive when it's the only button in view (e.g. a lone "Today"/"Back" action with nothing else nearby for contrast) — this has come up as a review finding more than once. Use `ghost` only when it sits next to a `primary` action it should visually defer to; a standalone action gets `primary` even if it's logically secondary.
+- When matching an existing icon-only/bare-text raw-Tailwind control to a sibling one elsewhere in the app (e.g. date/month Prev-Next pagers), reuse that control's exact classes rather than inventing new ones — divergent one-off styling for the same interaction pattern is a recurring review finding.
 - `<Th>` / `<Td tone?>` / `<TableActions>` (`Table.tsx`) — all data tables. Use `tone="secondary"` on `<Td>` for secondary text cells. `<TableActions>` is a right-aligned `<Td>` for row action buttons.
 - `<Pill href active>` (`Pill.tsx`) — tab-pill view switchers (see "View switchers" above). Always renders as a `Link`; `active` selects the filled vs. outlined style.
 

@@ -6,11 +6,11 @@ Stable State is a barn management app for scheduling lessons, tracking horses an
 
 ## Dashboard
 
-Go to **Dashboard** to see your upcoming lessons for the next 7 days. If any of your lessons are unpaid, a **Reminders** section appears above them with an "N unpaid lessons" card — tap it to open the full **Outstanding Payments** list. The section is hidden when you have nothing unpaid.
+Go to **Dashboard** to see a day-by-day calendar of the lessons you instruct — not the whole barn's schedule. It opens on today by default; tap **‹**/**›** to move a day at a time, or tap **Today** to jump back. If any of your lessons are unpaid, a **Reminders** section appears above the calendar with an "N unpaid lessons" card — tap it to open the full **Outstanding Payments** list. The section is hidden when you have nothing unpaid.
 
 ## Lessons
 
-**View lessons** — Go to **Lessons** to see every lesson in the barn, not just your own. Tap **Show older lessons** to see the full history. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee. A lesson that's part of a recurring series shows a **Recurring** badge, both on the list and on its detail page. An upcoming, non-cancelled lesson with a horse that's gone inactive or unavailable shows a **Needs Attention** badge, both here and on your Dashboard's upcoming lessons — a group lesson flags this if any one of its horses is affected. Open the lesson's detail or edit page to see a banner naming each affected horse and why (e.g. "Rocky is unavailable: lame — resting per vet"); it's informational only and doesn't block editing or saving. If you try to leave the edit page without resolving the issue (e.g. by swapping out the affected horse), you'll see a confirmation prompt first.
+**View lessons** — Go to **Lessons** to see every lesson in the barn, not just your own. Tap **Show older lessons** to see the full history. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee. A lesson that's part of a recurring series shows a **Recurring** badge, both on the list and on its detail page. An upcoming, non-cancelled lesson with a horse that's gone inactive or unavailable shows a **Needs Attention** badge, both here and on your Dashboard's calendar (on the lesson's own day) — a group lesson flags this if any one of its horses is affected. Open the lesson's detail or edit page to see a banner naming each affected horse and why (e.g. "Rocky is unavailable: lame — resting per vet"); it's informational only and doesn't block editing or saving. If you try to leave the edit page without resolving the issue (e.g. by swapping out the affected horse), you'll see a confirmation prompt first.
 
 **Filter lessons** — A pill bar above the lesson list lets you narrow by dimension. The list opens on **My Lessons** by default, showing only lessons you instruct. Tap **All** to see every barn lesson, or tap **By Instructor**, **By Rider**, **By Horse**, or **By Tier** to reveal a second row of specific names, horses, or tier names; tap any pill there to filter to that instructor, rider, horse, or tier. The active filter is preserved in the URL, so the page can be bookmarked or refreshed without losing your selection.
 
@@ -36,6 +36,7 @@ Tap the bell icon in the nav bar to view your notifications.
 - **Complete your profile** — your profile is missing a phone number or emergency contact. Tap the notification to go directly to your profile and fill in the missing fields. This notification clears automatically the next time you sign in once your profile is complete.
 - **Recurring series stopped** — a weekly recurring series you instruct stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review your lessons.
 - **Recurring lesson generated with an unavailable horse** — the nightly job generated the next occurrence of a recurring series, but the horse assigned to it is currently marked unavailable or inactive. Tap the notification to review the lesson and reassign the horse if needed.
+- **New lesson(s) scheduled nearby** — another instructor booked a lesson within your barn's schedule-buffer window (set by your manager in Manage Barn settings) of one of your own lessons. Tap the notification to review the schedule.
 
 ## Horses
 
@@ -53,6 +54,8 @@ Tap any card to open the horse's detail page for full availability details, a **
 Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, tap **User Guide** to open this guide from any page, or tap **About** for the app version and links to our Terms of Service and Privacy Policy. When you open Profile from within a barn, the full barn nav bar appears at the top so you can navigate back to any section without losing your place.
 
 If you are a member of more than one barn, a **▾** caret appears next to the barn name in the nav bar. Tap the caret to open a barn-switcher dropdown and jump directly to any of your barns.
+
+From your Profile page (opened from a specific barn), a **Calendar Feed** section lets you subscribe to your barn schedule from your phone's calendar app (Google, Apple, Outlook). Tap **Get my calendar link** to generate a personal link, then add it to your calendar app as a URL subscription ("Add calendar → From URL"). Your calendar app checks for updates on its own schedule, typically every few hours — this isn't instant sync. Tap **Regenerate** if you ever want to invalidate the old link (e.g. it was shared by accident) and get a new one.
 
 ## Members
 

@@ -6,7 +6,7 @@ Stable State is a barn management app for scheduling lessons, tracking horses an
 
 ## Dashboard
 
-Go to **Dashboard** to see your **Barn Schedule** — every upcoming lesson barn-wide (not just ones you personally teach) and upcoming scheduled expenses (planned expenses with a date and time but no amount entered yet, like a vet visit) for the next 7 days, interleaved together in order and split into "Today" and "This Week". Tap an expense entry to open its detail page. Above that, a **Reminders** section gathers anything needing your attention — unpaid lessons and unpaid leases/boarding cards (tap either to open the full Outstanding Payments list), and one card per horse, member, or your own document with an expiration reminder date that's arrived (tap an entry to open that horse's or member's detail page). The whole Reminders section, and each item within it, is hidden when there's nothing to show.
+Go to **Dashboard** to see a day-by-day calendar of your barn's schedule — every lesson barn-wide (not just ones you personally teach), planned expenses (a date and time but no amount entered yet, like a vet visit), and any barn events, all for the day you're viewing, in order. It opens on today by default; tap **‹**/**›** to move a day at a time, or tap **Today** to jump back. Tap an expense entry to open its detail page. Above the calendar, a **Reminders** section gathers anything needing your attention — unpaid lessons and unpaid leases/boarding cards (tap either to open the full Outstanding Payments list), and one card per horse, member, or your own document with an expiration reminder date that's arrived (tap an entry to open that horse's or member's detail page). The whole Reminders section, and each item within it, is hidden when there's nothing to show.
 
 ## Horses
 
@@ -70,7 +70,7 @@ A manager's or trainer's detail page also shows an **Instructor Access** section
 
 ## Lessons
 
-**View lessons** — Go to **Lessons** to see recent activity. Older lessons are hidden by default; tap **Show older lessons** to expand them. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee. A lesson that's part of a recurring series shows a **Recurring** badge, both on the list and on its detail page. An upcoming, non-cancelled lesson with a horse that's gone inactive or unavailable shows a **Needs Attention** badge, both here and on the Dashboard's Barn Schedule — a group lesson flags this if any one of its horses is affected. Open the lesson's detail or edit page to see a banner naming each affected horse and why (e.g. "Rocky is unavailable: lame — resting per vet"); it's informational only and doesn't block editing or saving. If you try to leave the edit page without resolving the issue (e.g. by swapping out the affected horse), you'll see a confirmation prompt first.
+**View lessons** — Go to **Lessons** to see recent activity. Older lessons are hidden by default; tap **Show older lessons** to expand them. Lessons with a non-zero fee that have not been marked paid show an **Unpaid** badge next to the fee. A lesson that's part of a recurring series shows a **Recurring** badge, both on the list and on its detail page. An upcoming, non-cancelled lesson with a horse that's gone inactive or unavailable shows a **Needs Attention** badge, both here and on the Dashboard's calendar (on the lesson's own day) — a group lesson flags this if any one of its horses is affected. Open the lesson's detail or edit page to see a banner naming each affected horse and why (e.g. "Rocky is unavailable: lame — resting per vet"); it's informational only and doesn't block editing or saving. If you try to leave the edit page without resolving the issue (e.g. by swapping out the affected horse), you'll see a confirmation prompt first.
 
 **Filter lessons** — A pill bar above the lesson list lets you narrow by dimension. The list opens on **All** by default, showing every barn lesson. Tap **My Lessons** to see only lessons you instruct, or tap **By Instructor**, **By Rider**, **By Horse**, or **By Tier** to reveal a second row of specific names, horses, or tier names; tap any pill there to filter to that instructor, rider, horse, or tier. The active filter is preserved in the URL, so the page can be bookmarked or refreshed without losing your selection.
 
@@ -124,15 +124,19 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 
 **Horse Exhaustion Thresholds** — Set the barn-wide **Moderate threshold** and **High threshold** used to flag a horse as getting overworked, based on its recent exertion total. These are barn-wide defaults; an individual horse can be given its own thresholds that override them. The moderate threshold must be lower than the high threshold.
 
+**Schedule Buffer** — Set how many minutes of separation instructors expect between each other's lessons. When a new lesson is booked within this window of another instructor's lesson, that instructor gets a "New lesson scheduled nearby" notification so they know about the potential arena/space conflict. Defaults to 30 minutes.
+
 **Barn Events** — Add calendar entries that aren't a lesson or an expense, like a costume party or a barn closure. Tap **Add Event** in the section header to create one: give it a title, a date and hour, and optional notes. The **Visible to** checkboxes control who sees the event — Manager, Trainer, Rider — and default to everyone checked, so you only need to narrow it down for something that shouldn't be barn-wide. Tap **Edit** next to an event to change any of that or delete it.
 
-**Data Backup** — Tap **Download All Documents** to get a single zip file of every horse, trainer, and rider document, organized into one folder per horse and one shared folder per member. The button is disabled with an explanation when the barn has no documents yet.
+**Data Backup** — Tap **Download All Documents** to get a single zip file of every horse, trainer, and rider document, organized into one folder per horse and one shared folder per member. The button is disabled with an explanation when the barn has no documents yet. Tap **Download Data** to get a single spreadsheet covering your horses, lessons, agreements, expenses, transactions, and members — one sheet per record type, always available.
 
 ## Profile & Guide
 
 Tap your avatar (your initials) in the top-right corner to open the account menu. From there you can access your **Profile** to update your contact information, tap **User Guide** to open this guide from any page, or tap **About** for the app version and links to our Terms of Service and Privacy Policy. When you open Profile from within a barn, the full barn nav bar appears at the top so you can navigate back to any section without losing your place.
 
-If you are a member of more than one barn, a **▾** caret appears next to the barn name in the nav bar. Tap the caret to open a barn-switcher dropdown and jump directly to any of your barns.
+If you are a member of more than one barn, a **▾** caret appears next to the barn name in the nav bar. Tap the caret to open a barn-switcher dropdown and jump directly to any of your barns. If you tried our demo barn, it won't appear in this dropdown — that's intended, since most people already managing a real barn won't need it. It's still there: visiting `/demo` again takes you straight back to it.
+
+From your Profile page (opened from a specific barn), a **Calendar Feed** section lets you subscribe to your barn schedule from your phone's calendar app (Google, Apple, Outlook). Tap **Get my calendar link** to generate a personal link, then add it to your calendar app as a URL subscription ("Add calendar → From URL"). Your calendar app checks for updates on its own schedule, typically every few hours — this isn't instant sync. Tap **Regenerate** if you ever want to invalidate the old link (e.g. it was shared by accident) and get a new one.
 
 ## Notifications
 
@@ -144,6 +148,7 @@ You will receive notifications for situations that need attention. Tap the bell 
 - **Outstanding payment** — the barn has past-due unpaid lessons or lease/boarding charges. Tap the notification to go to the full outstanding list. This is checked and updated once nightly, so it may take up to a day to clear after you mark everything paid.
 - **Recurring series stopped** — a weekly recurring lesson series stopped generating new lessons because a rider on it is no longer an active member. Tap the notification to review the barn's lessons.
 - **Outstanding expenses** — one or more expenses are past their scheduled date and still need an amount entered, a payment type picked, or both. Tap the notification to go to Finances. This is checked and updated once nightly, so it may take up to a day to clear after you resolve them.
+- **New lesson(s) scheduled nearby** — if you instruct lessons yourself, another instructor booked a lesson within the barn's schedule-buffer window (set in Settings) of one of yours. Tap the notification to review the schedule.
 
 ## If something goes wrong
 

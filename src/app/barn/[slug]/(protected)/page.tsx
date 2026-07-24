@@ -1,21 +1,44 @@
 import { notFound } from 'next/navigation'
+import Link from 'next/link'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getUpcomingLessons } from '@/lib/db/lessons'
 import { getDueDocuments } from '@/lib/db/documents'
-import { getUpcomingScheduledExpenses } from '@/lib/db/expenses'
+import { getScheduleForRange, scopeScheduleItemsForRole } from '@/lib/db/schedule'
+import { getLessonsByIds } from '@/lib/db/lessons'
+import { getExpensesByIds } from '@/lib/db/expenses'
+import { getEventsByIds } from '@/lib/db/barn-events'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
-import type { DueDocument, LessonWithDetails, ScheduledExpense } from '@/lib/db/types'
-import { UpcomingLessonsSections } from './UpcomingLessonsSections'
+import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
+import { isValidDateString, addDays } from '@/lib/local-day'
+import { mergeDayScheduleDisplayItems, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
+import { CalendarDayView } from '@/components/calendar/CalendarDayView'
+import type { DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
 
+function formatSelectedDate(date: string): string {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
+    new Date(`${date}T00:00:00Z`)
+  )
+}
+
+// Icon-only Prev/Next controls have no good structural fit with the shared Button
+// component (see ARCHITECTURE.md's documented exception, mirrored by LessonForm's
+// Normal/Group switch) -- raw Tailwind instead. Both are plain SSR links (?date=...), no
+// client JS, and sized to a 44px minimum tap target per the project's mobile conventions.
+// Styled to match the Finances page's month-nav Prev/Next controls (#1015 review finding)
+// so the two date-paging affordances read as the same pattern app-wide.
+const dayNavLinkClass =
+  'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
+
 export default async function BarnDashboardPage({
   params,
+  searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ slug: string }>
+  searchParams?: Promise<{ date?: string }>
 }) {
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
@@ -23,34 +46,52 @@ export default async function BarnDashboardPage({
 
   const user = await getAuthenticatedUser()
 
-  let upcomingLessons: LessonWithDetails[] | null = null
-  let upcomingExpenses: ScheduledExpense[] = []
+  let dayItems: DayScheduleDisplayItem[] = []
   let dueDocuments: DueDocument[] = []
   let unpaidLessonsCount = 0
   let unpaidChargesCount = 0
   let userRole: 'manager' | 'trainer' | 'rider' | null = null
   let membershipId: string | undefined
+  let selectedDate = ''
+  let todayStr = ''
 
   if (user) {
     const membership = await getUserMembership(user.id, barn.id)
     if (membership?.role) {
       membershipId = membership.id
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
-      const now = new Date()
-      const weekOut = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
-      const [lessons, due, expenses, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
-        getUpcomingLessons(barn.id, now.toISOString(), weekOut.toISOString(), user.id, membership.role),
-        membership.role === 'manager' ? getDueDocuments(barn.id, now.toISOString().slice(0, 10)) : Promise.resolve([]),
-        membership.role === 'manager'
-          ? getUpcomingScheduledExpenses(barn.id, now.toISOString(), weekOut.toISOString(), barn.timezone)
-          : Promise.resolve([]),
+
+      todayStr = instantToLocalWallClock(new Date(), barn.timezone).slice(0, 10)
+      const { date: requestedDate } = await searchParams
+      selectedDate = requestedDate && isValidDateString(requestedDate) ? requestedDate : todayStr
+
+      const dayStart = wallClockToInstant(`${selectedDate}T00:00:00`, barn.timezone).toISOString()
+      const dayEnd = wallClockToInstant(`${addDays(selectedDate, 1)}T00:00:00`, barn.timezone).toISOString()
+
+      const [scheduleItems, due, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
+        getScheduleForRange(barn.id, dayStart, dayEnd, barn.timezone),
+        membership.role === 'manager' ? getDueDocuments(barn.id, new Date().toISOString().slice(0, 10)) : Promise.resolve([]),
         getOutstandingLessons(barn.id, user.id, membership.role),
         getOutstandingCancellationFees(barn.id, user.id, membership.role),
         getOutstandingCharges(barn.id, user.id, membership.role),
       ])
-      upcomingLessons = lessons
+
+      const scopedItems = scopeScheduleItemsForRole(scheduleItems, membership.role, membership.id)
+      const lessonIds = scopedItems.filter((item) => item.itemType === 'lesson').map((item) => item.id)
+      const expenseIds = scopedItems.filter((item) => item.itemType === 'expense').map((item) => item.id)
+      const eventIds = scopedItems.filter((item) => item.itemType === 'event').map((item) => item.id)
+
+      const [lessons, expensesRaw, events] = await Promise.all([
+        getLessonsByIds(barn.id, lessonIds),
+        getExpensesByIds(barn.id, expenseIds),
+        getEventsByIds(barn.id, eventIds),
+      ])
+      // Mirrors the pre-Day-view dashboard: only "planned" expenses (amount IS NULL) are
+      // shown, not every timed expense getScheduleForRange itself returns.
+      const expenses = expensesRaw.filter((expense) => expense.amount === null)
+
+      dayItems = mergeDayScheduleDisplayItems(scopedItems, lessons, expenses, events)
       dueDocuments = due
-      upcomingExpenses = expenses
       unpaidLessonsCount = outstandingLessons.length + outstandingCancellationFees.length
       unpaidChargesCount = outstandingCharges.length
     }
@@ -87,14 +128,29 @@ export default async function BarnDashboardPage({
           </div>
         </section>
       )}
-      {upcomingLessons !== null && userRole !== null && (
-        <UpcomingLessonsSections
-          lessons={upcomingLessons}
-          expenses={upcomingExpenses}
-          role={userRole}
-          slug={slug}
-          viewerMembershipId={membershipId}
-        />
+      {userRole !== null && (
+        <section>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <Link href={`/barn/${slug}?date=${addDays(selectedDate, -1)}`} aria-label="Previous day" className={dayNavLinkClass}>
+              &lt;
+            </Link>
+            <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+              {formatSelectedDate(selectedDate)}
+              {selectedDate === todayStr && ' · Today'}
+            </h2>
+            <Link href={`/barn/${slug}?date=${addDays(selectedDate, 1)}`} aria-label="Next day" className={dayNavLinkClass}>
+              &gt;
+            </Link>
+          </div>
+          {selectedDate !== todayStr && (
+            <div className="mb-4">
+              <Button href={`/barn/${slug}`} variant="primary" size="sm">
+                Today
+              </Button>
+            </div>
+          )}
+          <CalendarDayView items={dayItems} role={userRole} slug={slug} viewerMembershipId={membershipId} />
+        </section>
       )}
     </main>
   )

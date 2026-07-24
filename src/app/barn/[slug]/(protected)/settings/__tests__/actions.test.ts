@@ -20,6 +20,7 @@ vi.mock('@/lib/db/barns', () => ({
   setInstructorCut: vi.fn(),
   updateExhaustionThresholds: vi.fn(),
   updateBarnTimezone: vi.fn(),
+  updateScheduleBufferMinutes: vi.fn(),
 }))
 
 vi.mock('@/lib/db/barn-events', () => ({
@@ -30,6 +31,10 @@ vi.mock('@/lib/db/barn-events', () => ({
 
 vi.mock('@/lib/db/document-backup', () => ({
   buildDocumentsBackupZip: vi.fn(),
+}))
+
+vi.mock('@/lib/db/backup', () => ({
+  buildBarnDataBackupBuffer: vi.fn(),
 }))
 
 vi.mock('@/lib/db/document-storage', () => ({
@@ -62,9 +67,10 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone, updateScheduleBufferMinutes } from '@/lib/db/barns'
 import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
 import { buildDocumentsBackupZip } from '@/lib/db/document-backup'
+import { buildBarnDataBackupBuffer } from '@/lib/db/backup'
 import { uploadFile, getSignedUrl } from '@/lib/db/document-storage'
 import {
   createTierAction,
@@ -74,11 +80,13 @@ import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
   updateExhaustionThresholdsAction,
+  updateScheduleBufferMinutesAction,
   updateBarnTimezoneAction,
   createEventAction,
   updateEventAction,
   deleteEventAction,
   downloadAllDocumentsAction,
+  downloadBarnDataAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -786,6 +794,62 @@ describe('reactivateTierAction', () => {
   })
 })
 
+describe('updateScheduleBufferMinutesAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateScheduleBufferMinutes).mockReset()
+    mockRedirect.mockClear()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(updateScheduleBufferMinutes).mockResolvedValue(mockBarn)
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await expect(
+      updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '45' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_call_updateScheduleBufferMinutes_with_parsed_minutes', async () => {
+    await expect(
+      updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '45' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(updateScheduleBufferMinutes).toHaveBeenCalledWith(mockBarn.id, 45)
+  })
+
+  it('should_redirect_to_settings_after_update', async () => {
+    await expect(
+      updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '45' }))
+    ).rejects.toThrow('NEXT_REDIRECT')
+
+    expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/settings')
+  })
+
+  it('should_return_early_when_minutes_is_blank', async () => {
+    await updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '' }))
+
+    expect(updateScheduleBufferMinutes).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_minutes_is_non_numeric', async () => {
+    await updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: 'abc' }))
+
+    expect(updateScheduleBufferMinutes).not.toHaveBeenCalled()
+  })
+
+  it('should_return_early_when_minutes_is_negative', async () => {
+    await updateScheduleBufferMinutesAction('green-acres', makeFormData({ schedule_buffer_minutes: '-5' }))
+
+    expect(updateScheduleBufferMinutes).not.toHaveBeenCalled()
+  })
+})
+
 describe('updateDefaultBoardFeeAction', () => {
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
@@ -1151,6 +1215,70 @@ describe('downloadAllDocumentsAction', () => {
     vi.mocked(uploadFile).mockRejectedValue(new Error('storage unavailable'))
 
     const result = await downloadAllDocumentsAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(result).toEqual({ error: 'storage unavailable', url: null })
+  })
+})
+
+describe('downloadBarnDataAction', () => {
+  const emptyDownloadState = { error: null, url: null }
+  const emptyFormData = new FormData()
+
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(buildBarnDataBackupBuffer).mockReset()
+    vi.mocked(uploadFile).mockReset()
+    vi.mocked(getSignedUrl).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: mockManagerMembership,
+    })
+    vi.mocked(buildBarnDataBackupBuffer).mockResolvedValue(Buffer.from('xlsx contents'))
+    vi.mocked(uploadFile).mockResolvedValue(undefined)
+    vi.mocked(getSignedUrl).mockResolvedValue('https://example.com/signed-xlsx')
+  })
+
+  it('should_call_requireMembership_with_manager_role', async () => {
+    await downloadBarnDataAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+  })
+
+  it('should_build_the_backup_buffer_scoped_to_the_barn_and_its_timezone', async () => {
+    await downloadBarnDataAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(buildBarnDataBackupBuffer).toHaveBeenCalledWith(mockBarn.id, mockBarn.timezone)
+  })
+
+  it('should_upload_the_workbook_with_upsert', async () => {
+    await downloadBarnDataAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(uploadFile).toHaveBeenCalledWith(
+      `${mockBarn.id}/backup-archive/data-export.xlsx`,
+      expect.any(File),
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      undefined,
+      true
+    )
+  })
+
+  it('should_request_a_signed_url_for_the_uploaded_workbook_path', async () => {
+    await downloadBarnDataAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(getSignedUrl).toHaveBeenCalledWith(`${mockBarn.id}/backup-archive/data-export.xlsx`)
+  })
+
+  it('should_return_the_signed_url_on_success', async () => {
+    const result = await downloadBarnDataAction('green-acres', emptyDownloadState, emptyFormData)
+
+    expect(result).toEqual({ error: null, url: 'https://example.com/signed-xlsx' })
+  })
+
+  it('should_return_an_error_message_when_the_upload_fails', async () => {
+    vi.mocked(uploadFile).mockRejectedValue(new Error('storage unavailable'))
+
+    const result = await downloadBarnDataAction('green-acres', emptyDownloadState, emptyFormData)
 
     expect(result).toEqual({ error: 'storage unavailable', url: null })
   })

@@ -26,6 +26,22 @@ export async function getEventById(eventId: string, barnId: string): Promise<Bar
   return data
 }
 
+// Hydrates a set of getScheduleForRange event ids into display data, same idiom as
+// getLessonsByIds/getExpensesByIds. No extra hydration needed -- BarnEvent has no derived
+// display fields.
+export async function getEventsByIds(barnId: string, ids: string[]): Promise<BarnEvent[]> {
+  if (!ids.length) return []
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('barn_events')
+    .select('*')
+    .eq('barn_id', barnId)
+    .in('id', ids)
+
+  if (error) throw error
+  return data ?? []
+}
+
 export async function createEvent(barnId: string, input: BarnEventInput): Promise<BarnEvent> {
   const supabase = await createClient()
   const { data, error } = await supabase

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { localToday, isSameLocalDay } from '../local-day'
+import { localToday, isSameLocalDay, isValidDateString, addDays } from '../local-day'
 
 describe('localToday', () => {
   it('should_format_local_date_as_yyyy_mm_dd', () => {
@@ -38,5 +38,45 @@ describe('isSameLocalDay', () => {
     const a = new Date('2025-12-31T12:00:00')
     const b = new Date('2026-01-01T12:00:00')
     expect(isSameLocalDay(a, b)).toBe(false)
+  })
+})
+
+describe('isValidDateString', () => {
+  it('should_return_true_for_a_well_formed_date', () => {
+    expect(isValidDateString('2026-07-23')).toBe(true)
+  })
+
+  it('should_return_false_for_wrong_format', () => {
+    expect(isValidDateString('07/23/2026')).toBe(false)
+  })
+
+  it('should_return_false_for_an_out_of_range_month', () => {
+    expect(isValidDateString('2026-13-01')).toBe(false)
+  })
+
+  it('should_return_false_for_an_out_of_range_day', () => {
+    expect(isValidDateString('2026-02-30')).toBe(false)
+  })
+
+  it('should_return_false_for_an_empty_string', () => {
+    expect(isValidDateString('')).toBe(false)
+  })
+})
+
+describe('addDays', () => {
+  it('should_add_positive_days_within_a_month', () => {
+    expect(addDays('2026-07-23', 1)).toBe('2026-07-24')
+  })
+
+  it('should_subtract_days_via_a_negative_delta', () => {
+    expect(addDays('2026-07-23', -1)).toBe('2026-07-22')
+  })
+
+  it('should_roll_over_a_month_boundary', () => {
+    expect(addDays('2026-07-31', 1)).toBe('2026-08-01')
+  })
+
+  it('should_roll_over_a_year_boundary', () => {
+    expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
   })
 })

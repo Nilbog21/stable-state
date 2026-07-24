@@ -3,6 +3,8 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getProfileByUserId } from '@/lib/db/profiles'
 import { getBarnMembershipsForUser } from '@/lib/db/barn-memberships'
 import { ProfileForm } from './ProfileForm'
+import { CalendarFeedSection } from './CalendarFeedSection'
+import { getCalendarFeedLinkAction, regenerateCalendarFeedLinkAction } from './actions'
 
 export default async function ProfilePage({
   searchParams = Promise.resolve({}),
@@ -24,5 +26,18 @@ export default async function ProfilePage({
     ? `/barn/${barnSlug}`
     : active.length === 1 ? `/barn/${active[0].barn.slug}` : '/barns'
 
-  return <ProfileForm profile={profile} heading="Edit Profile" redirectAfterSave={redirectAfterSave} />
+  const activeMembershipForBarn = barnSlug ? active.find((m) => m.barn.slug === barnSlug) : undefined
+
+  return (
+    <>
+      <ProfileForm profile={profile} heading="Edit Profile" redirectAfterSave={redirectAfterSave} />
+      {activeMembershipForBarn && (
+        <CalendarFeedSection
+          initialToken={activeMembershipForBarn.membership.calendar_feed_token}
+          getLinkAction={getCalendarFeedLinkAction.bind(null, barnSlug!)}
+          regenerateAction={regenerateCalendarFeedLinkAction.bind(null, barnSlug!)}
+        />
+      )}
+    </>
+  )
 }

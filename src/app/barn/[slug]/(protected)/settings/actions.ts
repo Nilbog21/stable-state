@@ -11,9 +11,10 @@ import {
   deactivateTier,
   reactivateTier,
 } from '@/lib/db/lesson-tiers'
-import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone } from '@/lib/db/barns'
+import { updateBarnDefaultBoardFee, setInstructorCut, updateExhaustionThresholds, updateBarnTimezone, updateScheduleBufferMinutes } from '@/lib/db/barns'
 import { createEvent, updateEvent, deleteEvent } from '@/lib/db/barn-events'
 import { buildDocumentsBackupZip } from '@/lib/db/document-backup'
+import { buildBarnDataBackupBuffer } from '@/lib/db/backup'
 import { uploadFile, getSignedUrl } from '@/lib/db/document-storage'
 import { getErrorMessage } from '@/lib/get-error-message'
 import { parseNonNegativeAmount, parseNonNegativeInt } from '@/lib/parse-amount'
@@ -161,6 +162,16 @@ export async function updateExhaustionThresholdsAction(
   redirect(`/barn/${barnSlug}/settings`)
 }
 
+export async function updateScheduleBufferMinutesAction(barnSlug: string, formData: FormData): Promise<void> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  const minutes = parseNonNegativeInt(formData.get('schedule_buffer_minutes') as string | null)
+  if (minutes === null) return
+
+  await updateScheduleBufferMinutes(barn.id, minutes)
+  redirect(`/barn/${barnSlug}/settings`)
+}
+
 export async function updateBarnTimezoneAction(barnSlug: string, formData: FormData): Promise<void> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
 
@@ -247,6 +258,32 @@ export async function downloadAllDocumentsAction(
       storagePath,
       new File([new Uint8Array(buffer)], 'all-documents.zip', { type: 'application/zip' }),
       'application/zip',
+      undefined,
+      true
+    )
+    const url = await getSignedUrl(storagePath)
+    return { error: null, url }
+  } catch (err) {
+    return { error: getErrorMessage(err), url: null }
+  }
+}
+
+export async function downloadBarnDataAction(
+  barnSlug: string,
+  _prevState: { error: string | null; url: string | null },
+  _formData: FormData
+): Promise<{ error: string | null; url: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager'])
+
+  try {
+    const buffer = await buildBarnDataBackupBuffer(barn.id, barn.timezone)
+    const storagePath = `${barn.id}/backup-archive/data-export.xlsx`
+    await uploadFile(
+      storagePath,
+      new File([new Uint8Array(buffer)], 'data-export.xlsx', {
+        type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+      }),
+      'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
       undefined,
       true
     )

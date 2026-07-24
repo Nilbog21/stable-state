@@ -5,7 +5,33 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients } from '../notifications'
+import { createNotification, deleteNotificationByType, markAllNotificationsRead, getNotifications, upsertNotification, upsertNotificationsForRecipients, resolveCancellationRecipients, formatNearbyInstructorNotification, getUnreadNotificationCount } from '../notifications'
+
+describe('formatNearbyInstructorNotification', () => {
+  it('should_use_singular_phrasing_when_count_is_one', () => {
+    const { title } = formatNearbyInstructorNotification(1)
+
+    expect(title).toBe('1 new lesson scheduled nearby')
+  })
+
+  it('should_use_plural_phrasing_when_count_is_greater_than_one', () => {
+    const { title } = formatNearbyInstructorNotification(3)
+
+    expect(title).toBe('3 new lessons scheduled nearby')
+  })
+
+  it('should_use_singular_phrasing_in_body_when_count_is_one', () => {
+    const { body } = formatNearbyInstructorNotification(1)
+
+    expect(body).toContain('A lesson was')
+  })
+
+  it('should_use_plural_phrasing_in_body_when_count_is_greater_than_one', () => {
+    const { body } = formatNearbyInstructorNotification(2)
+
+    expect(body).toContain('Lessons were')
+  })
+})
 
 describe('createNotification', () => {
   beforeEach(() => {
@@ -573,6 +599,48 @@ describe('upsertNotificationsForRecipients', () => {
     )
 
     expect(mockUpsert).not.toHaveBeenCalled()
+  })
+})
+
+describe('getUnreadNotificationCount', () => {
+  it('should_call_the_get_unread_notification_title_rpc_with_user_barn_and_type', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null })
+    const client = { rpc: mockRpc } as any
+
+    await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(mockRpc).toHaveBeenCalledWith('get_unread_notification_title', {
+      p_user_id: 'user-1',
+      p_barn_id: 'barn-1',
+      p_type: 'instructor_lesson_nearby',
+    })
+  })
+
+  it('should_parse_the_leading_count_from_the_returned_title', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: '3 new lessons scheduled nearby' })
+    const client = { rpc: mockRpc } as any
+
+    const count = await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(count).toBe(3)
+  })
+
+  it('should_return_zero_when_no_unread_row_exists', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null })
+    const client = { rpc: mockRpc } as any
+
+    const count = await getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+
+    expect(count).toBe(0)
+  })
+
+  it('should_throw_when_the_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: null, error: new Error('not_authorized') })
+    const client = { rpc: mockRpc } as any
+
+    await expect(
+      getUnreadNotificationCount(client, 'user-1', 'barn-1', 'instructor_lesson_nearby')
+    ).rejects.toThrow('not_authorized')
   })
 })
 

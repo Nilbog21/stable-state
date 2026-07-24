@@ -9,6 +9,7 @@ vi.mock('@/lib/supabase/server', () => ({
 import { createClient } from '@/lib/supabase/server'
 import {
   getUserMembership,
+  createActiveMembership,
   getActiveMemberships,
   deleteMembership,
   getMembershipById,
@@ -97,6 +98,65 @@ describe('getUserMembership', () => {
 
     expect(mockUserEq).toHaveBeenCalledWith('user_id', 'user-1')
     expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_use_injected_client_when_provided', async () => {
+    const mockClient = {
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              maybeSingle: vi.fn().mockResolvedValue({ data: mockMembership, error: null }),
+            }),
+          }),
+        }),
+      }),
+    } as any
+
+    const result = await getUserMembership('user-1', 'barn-1', mockClient)
+
+    expect(result).toEqual(mockMembership)
+    expect(createClient).not.toHaveBeenCalled()
+  })
+})
+
+describe('createActiveMembership', () => {
+  it('should_insert_an_active_membership_with_the_given_role', async () => {
+    const single = vi.fn().mockResolvedValue({ data: { ...mockMembership, role: 'manager', status: 'active' }, error: null })
+    const insert = vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) })
+    const mockClient = { from: vi.fn().mockReturnValue({ insert }) } as any
+
+    const result = await createActiveMembership('user-1', 'profile-1', 'barn-1', 'manager', mockClient)
+
+    expect(insert).toHaveBeenCalledWith({
+      user_id: 'user-1',
+      profile_id: 'profile-1',
+      barn_id: 'barn-1',
+      role: 'manager',
+      status: 'active',
+    })
+    expect(result).toEqual({ ...mockMembership, role: 'manager', status: 'active' })
+  })
+
+  it('should_throw_when_supabase_returns_error', async () => {
+    const dbError = new Error('insert failed')
+    const single = vi.fn().mockResolvedValue({ data: null, error: dbError })
+    const mockClient = {
+      from: vi.fn().mockReturnValue({ insert: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) }),
+    } as any
+
+    await expect(createActiveMembership('user-1', 'profile-1', 'barn-1', 'manager', mockClient)).rejects.toThrow('insert failed')
+  })
+
+  it('should_use_default_client_when_none_provided', async () => {
+    const single = vi.fn().mockResolvedValue({ data: mockMembership, error: null })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ insert: vi.fn().mockReturnValue({ select: vi.fn().mockReturnValue({ single }) }) }),
+    } as any)
+
+    await createActiveMembership('user-1', 'profile-1', 'barn-1', 'manager')
+
+    expect(createClient).toHaveBeenCalled()
   })
 })
 
@@ -294,6 +354,14 @@ describe('getMembershipByIdForBarn', () => {
     expect(client.rpc).not.toHaveBeenCalled()
   })
 
+  it('should_redact_calendar_feed_token_when_narrow_policy_query_finds_row', async () => {
+    const client = makeDirectClient({ ...mockMembership, calendar_feed_token: 'real-token' })
+
+    const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(result?.calendar_feed_token).toBeNull()
+  })
+
   it('should_call_rpc_with_barn_id_when_direct_query_returns_null', async () => {
     const client = makeDirectClient(null)
     client.rpc = vi.fn().mockResolvedValue({
@@ -328,6 +396,7 @@ describe('getMembershipByIdForBarn', () => {
       status: 'active',
       can_instruct: false,
       invite_token: null,
+      calendar_feed_token: null,
       created_at: '2026-01-01T00:00:00Z',
     })
   })

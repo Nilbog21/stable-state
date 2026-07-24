@@ -5,12 +5,14 @@ import { Button } from '@/components/ui/Button'
 
 type DownloadState = { error: string | null; url: string | null }
 
-export function DownloadAllDocumentsButton({
+export function DownloadButton({
   action,
   disabled,
+  label,
 }: {
   action: (state: DownloadState, formData: FormData) => Promise<DownloadState>
   disabled: boolean
+  label: string
 }) {
   const [state, formAction, pending] = useActionState(action, { error: null, url: null })
 
@@ -26,7 +28,7 @@ export function DownloadAllDocumentsButton({
         </p>
       )}
       <Button type="submit" loading={pending} disabled={disabled}>
-        Download All Documents
+        {label}
       </Button>
     </form>
   )
