@@ -48,15 +48,27 @@ write_env_local() {
   } > "$dir/.env.local"
 }
 
-# Test 1: missing barn slug arg — exits non-zero, clear error, npx never invoked
+# Test 1: no slug, no --allow-prod — does not error, npx invoked with empty barn slug
 REPO="$(make_repo)"
 write_env_local "$REPO" yes
 NPX_LOG="$REPO/npx.log"
 err_output="$(cd "$REPO" && NPX_LOG="$NPX_LOG" PATH="$REPO/bin:$PATH" bash "$SCRIPT" 2>&1)" && script_exit=0 || script_exit=$?
-if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -qi "barn slug" && [ ! -f "$NPX_LOG" ]; then
-  assert_pass "missing barn slug: non-zero exit, clear error, npx not invoked"
+if [ "$script_exit" -eq 0 ] && grep -q "^CHANGE_USER_BARN_SLUG=$" "$NPX_LOG" 2>/dev/null; then
+  assert_pass "no slug, no --allow-prod: no error, npx invoked with empty barn slug"
 else
-  assert_fail "missing barn slug: non-zero exit, clear error, npx not invoked" "exit=$script_exit output=$err_output"
+  assert_fail "no slug, no --allow-prod: no error, npx invoked with empty barn slug" "exit=$script_exit output=$err_output"
+fi
+rm -rf "$REPO"
+
+# Test 1b: no slug, --allow-prod — exits non-zero, clear error, npx never invoked
+REPO="$(make_repo)"
+write_env_local "$REPO" no
+NPX_LOG="$REPO/npx.log"
+err_output="$(cd "$REPO" && NPX_LOG="$NPX_LOG" PATH="$REPO/bin:$PATH" bash "$SCRIPT" --allow-prod 2>&1)" && script_exit=0 || script_exit=$?
+if [ "$script_exit" -ne 0 ] && echo "$err_output" | grep -qi "barn slug" && [ ! -f "$NPX_LOG" ]; then
+  assert_pass "no slug, --allow-prod: non-zero exit, clear error, npx not invoked"
+else
+  assert_fail "no slug, --allow-prod: non-zero exit, clear error, npx not invoked" "exit=$script_exit output=$err_output"
 fi
 rm -rf "$REPO"
 

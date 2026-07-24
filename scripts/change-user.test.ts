@@ -2,6 +2,7 @@ import { describe, it, expect } from 'vitest'
 import {
   mustSucceed,
   formatProfileLine,
+  formatBarnLine,
   mergeMembersWithProfiles,
   resolveRevertUserId,
 } from './change-user'
@@ -27,6 +28,18 @@ describe('formatProfileLine', () => {
 
   it('should_increment_index_correctly', () => {
     expect(formatProfileLine(profile, 1)).toBe('2. Alex Trainer <alex@dev.local>')
+  })
+})
+
+describe('formatBarnLine', () => {
+  const barn = { name: 'Sunny Acres', slug: 'sunny-acres' }
+
+  it('should_format_one_based_index_with_name_and_slug', () => {
+    expect(formatBarnLine(barn, 0)).toBe('1. Sunny Acres (sunny-acres)')
+  })
+
+  it('should_increment_index_correctly', () => {
+    expect(formatBarnLine(barn, 1)).toBe('2. Sunny Acres (sunny-acres)')
   })
 })
 
