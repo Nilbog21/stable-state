@@ -1,5 +1,5 @@
 import { fileURLToPath } from 'url'
-import { readFileSync } from 'fs'
+import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'
 import { upsertProfile, updateContactInfo, replaceProfilePhoto } from '@/lib/db/profiles'
 import { createTier } from '@/lib/db/lesson-tiers'
@@ -12,7 +12,7 @@ import { createAgreement, generateChargeForMonth, getBarnDefaultBoardFee } from 
 import { createExpense } from '@/lib/db/expenses'
 import type { PaymentType } from '@/lib/db/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import { mustSucceed } from './script-utils'
+import { mustSucceed, findOrCreateAuthUser } from './script-utils'
 
 export const DEV_TRAINERS = [
   { email: 'trainer1@dev.local', firstName: 'Alex',  lastName: 'Trainer' },
@@ -263,16 +263,12 @@ export async function seedBarn(
 
   const trainerIds: string[] = []
   for (const t of DEV_TRAINERS) {
-    const { data, error } = await supabase.auth.admin.createUser({ email: t.email, email_confirm: true })
-    if (error) throw new Error(`create trainer ${t.email}: ${error.message}`)
-    trainerIds.push(data.user.id)
+    trainerIds.push(await findOrCreateAuthUser(t.email, supabase))
   }
 
   const riderIds: string[] = []
   for (const r of DEV_RIDERS) {
-    const { data, error } = await supabase.auth.admin.createUser({ email: r.email, email_confirm: true })
-    if (error) throw new Error(`create rider ${r.email}: ${error.message}`)
-    riderIds.push(data.user.id)
+    riderIds.push(await findOrCreateAuthUser(r.email, supabase))
   }
 
   const trainerProfileIds: string[] = []
@@ -301,9 +297,15 @@ export async function seedBarn(
   // #1004: Emery has a photo pre-set so "view another member's photo, read-only" is
   // manually testable without a live upload (which the change-user.sh role swap can't
   // do for a self-write — see PRE_RELEASE_TEST_CHECKLIST.md's Phase 6 note).
-  const emeryPhotoBytes = readFileSync(join(DATA_DIR, 'emery-photo.jpg'))
-  const emeryPhotoFile = new File([emeryPhotoBytes], 'emery-photo.jpg', { type: 'image/jpeg' })
-  await replaceProfilePhoto(riderProfileIds[1], barnId, emeryPhotoFile, 'jpg', supabase)
+  // #505: scripts/data/*.jpg is gitignored (manually placed per dev checkout, never
+  // deployed), so /demo calling seedBarn() in production must skip these gracefully
+  // rather than crash on a missing file.
+  const emeryPhotoPath = join(DATA_DIR, 'emery-photo.jpg')
+  if (existsSync(emeryPhotoPath)) {
+    const emeryPhotoBytes = readFileSync(emeryPhotoPath)
+    const emeryPhotoFile = new File([emeryPhotoBytes], 'emery-photo.jpg', { type: 'image/jpeg' })
+    await replaceProfilePhoto(riderProfileIds[1], barnId, emeryPhotoFile, 'jpg', supabase)
+  }
 
   mustSucceed(
     await supabase.from('barn_memberships').insert(
@@ -321,12 +323,11 @@ export async function seedBarn(
 
   // #950: 4th trainer, created outside DEV_TRAINERS/trainerRowIds so it doesn't disturb the
   // existing round-robin instructor assignment — gets exactly one ($0 comped) lesson below.
-  const { data: t4Data, error: t4Err } = await supabase.auth.admin.createUser({ email: DEV_TRAINER_4.email, email_confirm: true })
-  if (t4Err) throw new Error(`create trainer4: ${t4Err.message}`)
-  const t4Profile = await upsertProfile(t4Data.user.id, DEV_TRAINER_4.email, DEV_TRAINER_4.firstName, DEV_TRAINER_4.lastName, supabase)
+  const t4UserId = await findOrCreateAuthUser(DEV_TRAINER_4.email, supabase)
+  const t4Profile = await upsertProfile(t4UserId, DEV_TRAINER_4.email, DEV_TRAINER_4.firstName, DEV_TRAINER_4.lastName, supabase)
   const t4Membership = mustSucceed<{ id: string }>(
     await supabase.from('barn_memberships').insert({
-      user_id: t4Data.user.id,
+      user_id: t4UserId,
       profile_id: t4Profile.id,
       barn_id: barnId,
       role: 'trainer',
@@ -336,12 +337,7 @@ export async function seedBarn(
     'insert trainer4 membership'
   )
 
-  const { data: pendingData, error: pendingErr } = await supabase.auth.admin.createUser({
-    email: DEV_PENDING_RIDER.email,
-    email_confirm: true,
-  })
-  if (pendingErr) throw new Error(`create pending rider: ${pendingErr.message}`)
-  const pendingUserId = pendingData.user.id
+  const pendingUserId = await findOrCreateAuthUser(DEV_PENDING_RIDER.email, supabase)
 
   const pendingProfile = await upsertProfile(pendingUserId, DEV_PENDING_RIDER.email, DEV_PENDING_RIDER.firstName, DEV_PENDING_RIDER.lastName, supabase)
   await createPendingMembership(pendingUserId, barnId, 'rider', pendingProfile.id, supabase)
@@ -367,10 +363,13 @@ export async function seedBarn(
   }
 
   // #1038: Butter has a photo pre-set so rider/trainer read-only photo-display checklist
-  // steps have real backing data (mirrors Emery's profile photo above).
-  const butterPhotoBytes = readFileSync(join(DATA_DIR, 'butter-photo.jpg'))
-  const butterPhotoFile = new File([butterPhotoBytes], 'butter-photo.jpg', { type: 'image/jpeg' })
-  await replaceHorsePhoto(horseIds[1], barnId, butterPhotoFile, 'jpg', supabase)
+  // steps have real backing data (mirrors Emery's profile photo above). See #505 note above.
+  const butterPhotoPath = join(DATA_DIR, 'butter-photo.jpg')
+  if (existsSync(butterPhotoPath)) {
+    const butterPhotoBytes = readFileSync(butterPhotoPath)
+    const butterPhotoFile = new File([butterPhotoBytes], 'butter-photo.jpg', { type: 'image/jpeg' })
+    await replaceHorsePhoto(horseIds[1], barnId, butterPhotoFile, 'jpg', supabase)
+  }
 
   const retiredHorse = await createHorse(barnId, DEV_RETIRED_HORSE, undefined, supabase)
 

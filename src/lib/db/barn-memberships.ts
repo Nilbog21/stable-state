@@ -5,15 +5,34 @@ import type { Barn, BarnMembership, Role } from './types'
 
 export async function getUserMembership(
   userId: string,
-  barnId: string
+  barnId: string,
+  client?: SupabaseClient
 ): Promise<BarnMembership | null> {
-  const supabase = await createClient()
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('barn_memberships')
     .select('*')
     .eq('user_id', userId)
     .eq('barn_id', barnId)
     .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
+export async function createActiveMembership(
+  userId: string,
+  profileId: string,
+  barnId: string,
+  role: Role,
+  client?: SupabaseClient
+): Promise<BarnMembership> {
+  const supabase = client ?? await createClient()
+  const { data, error } = await supabase
+    .from('barn_memberships')
+    .insert({ user_id: userId, profile_id: profileId, barn_id: barnId, role, status: 'active' })
+    .select()
+    .single()
 
   if (error) throw error
   return data

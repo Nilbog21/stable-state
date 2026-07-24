@@ -27,8 +27,8 @@ export async function upsertProfile(
 }
 
 
-export async function getProfileByUserId(userId: string): Promise<Profile | null> {
-  const supabase = await createClient()
+export async function getProfileByUserId(userId: string, client?: SupabaseClient): Promise<Profile | null> {
+  const supabase = client ?? await createClient()
   const { data, error } = await supabase
     .from('profiles')
     .select('*')
