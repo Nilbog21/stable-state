@@ -1235,6 +1235,17 @@ describe('getUpcomingLessonsForHorse', () => {
     expect(links.mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
 
+  it('should_treat_null_link_lookup_data_as_empty_array', async () => {
+    const links = makeLinksChain(null)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(links),
+    } as any)
+
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(result).toEqual([])
+  })
+
   it('should_throw_when_the_link_lookup_errors', async () => {
     const links = makeLinksChain(null, new Error('link error'))
     vi.mocked(createClient).mockResolvedValue({
@@ -1276,6 +1287,18 @@ describe('getUpcomingLessonsForHorse', () => {
     expect(lessons.mockIs).toHaveBeenCalledWith('cancelled_at', null)
     expect(lessons.mockGte).toHaveBeenCalledWith('lesson_at', expect.any(String))
     expect(lessons.mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
+  })
+
+  it('should_treat_null_lessons_lookup_data_as_empty_array', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain(null)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(result).toEqual([])
   })
 
   it('should_throw_when_the_lessons_lookup_errors', async () => {
