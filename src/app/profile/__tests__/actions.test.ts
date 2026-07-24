@@ -27,8 +27,8 @@ import { updateProfileAction, getCalendarFeedLinkAction, regenerateCalendarFeedL
 
 const mockProfile = createMockProfile()
 
-function mockAuthUser(userId = 'user-1') {
-  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId } as any)
+function mockAuthUser(userId = 'user-1', email?: string) {
+  vi.mocked(getAuthenticatedUser).mockResolvedValue({ id: userId, email } as any)
 }
 
 function mockAuthNoUser() {
@@ -47,6 +47,33 @@ describe('updateProfileAction', () => {
 
   afterEach(() => {
     consoleSpy.mockRestore()
+    delete process.env.DEMO_USER_EMAIL
+  })
+
+  it('should_return_error_when_user_is_demo_user', async () => {
+    process.env.DEMO_USER_EMAIL = 'demo@example.com'
+    mockAuthUser('user-1', 'demo@example.com')
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+
+    const result = await updateProfileAction(form)
+
+    expect(result).toEqual({ error: 'not authenticated' })
+  })
+
+  it('should_not_call_updateProfile_when_user_is_demo_user', async () => {
+    process.env.DEMO_USER_EMAIL = 'demo@example.com'
+    mockAuthUser('user-1', 'demo@example.com')
+    vi.mocked(getProfileByUserId).mockResolvedValue(mockProfile)
+    vi.mocked(updateProfile).mockResolvedValue(undefined)
+    const form = new FormData()
+    form.set('first_name', 'Jane')
+    form.set('last_name', 'Doe')
+
+    await updateProfileAction(form)
+
+    expect(updateProfile).not.toHaveBeenCalled()
   })
 
   it('should_return_error_when_not_authenticated', async () => {
