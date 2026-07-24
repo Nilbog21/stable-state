@@ -60,7 +60,7 @@ describe('CalendarWeekView', () => {
 
   it('should_mark_the_day_matching_todaystr_with_a_today_suffix', () => {
     const days = [
-      { date: '2026-07-20', items: [] },
+      { date: '2026-07-20', items: [lessonItem('lesson-1')] },
       { date: '2026-07-21', items: [] },
     ]
     render(<CalendarWeekView days={days} todayStr="2026-07-21" role="manager" slug="green-acres" />)

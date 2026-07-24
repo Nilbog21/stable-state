@@ -11,18 +11,12 @@ import { getEventsByIds } from '@/lib/db/barn-events'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
-import { isValidDateString, addDays } from '@/lib/local-day'
+import { isValidDateString, addDays, formatCalendarDate } from '@/lib/local-day'
 import { mergeDayScheduleDisplayItems, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
 import { CalendarDayView } from '@/components/calendar/CalendarDayView'
 import type { DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
-
-function formatSelectedDate(date: string): string {
-  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
-    new Date(`${date}T00:00:00Z`)
-  )
-}
 
 // Icon-only Prev/Next controls have no good structural fit with the shared Button
 // component (see ARCHITECTURE.md's documented exception, mirrored by LessonForm's
@@ -135,7 +129,7 @@ export default async function BarnDashboardPage({
               &lt;
             </Link>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              {formatSelectedDate(selectedDate)}
+              {formatCalendarDate(selectedDate)}
               {selectedDate === todayStr && ' · Today'}
             </h2>
             <Link href={`/barn/${slug}?date=${addDays(selectedDate, 1)}`} aria-label="Next day" className={dayNavLinkClass}>
