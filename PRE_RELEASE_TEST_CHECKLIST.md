@@ -30,7 +30,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
   ```
 
   This chains `seed-account.sh`, which prompts for **First name**, **Last name**, and **Barn slug** — each pre-filled from `.env.local` (`DEV_NAME`, `DEV_BARN`), so press **Enter** through all three to accept the defaults. Then, at `reset-db.sh`'s own `Press Enter when logged in, or Escape to skip role selection:` prompt, press **Escape** — you stay manager for now.
-- [ ] The script prints `Invite path: /barn/dev-barn/login?token=<uuid>` — open that path on your app origin
+- [ ] The script prints `Invite path: /barn/dev-barn/register?token=<uuid>` — open that path on your app origin (no existing session, so it redirects to `/barn/dev-barn/login?token=<uuid>`)
 - [ ] The `/barn/dev-barn/login` page shows the **"Keep me logged in"** checkbox (checked by default) — sign in with the **`DEV_EMAIL`** Google account
 - [ ] You are redirected to `/profile/complete` (fresh claimed stub has no contact info)
 - [ ] Fill in phone, emergency contact name, and emergency contact phone → Save → you land in the app as manager of Dev Barn
@@ -97,7 +97,7 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 - [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row is a normal card link to its member detail page, alongside an inline amber **Unlinked** badge next to the name (no Copy Invite/Revoke buttons on this list)
 - [ ] Open Gale Test's member detail page as manager — a **Manage member** section appears right after the name with an amber notice and **Copy Invite**/**Revoke** buttons
 - [ ] While Gale Test is still unclaimed, upload a document on their detail page — confirms manager can upload/delete documents for a managed/unclaimed rider
-- [ ] Click **Copy Invite** on Gale Test's detail page → button briefly reads **Copied!** → the copied URL matches `/barn/dev-barn/login?token=<uuid>` (a well-formed UUID token)
+- [ ] Click **Copy Invite** on Gale Test's detail page → button briefly reads **Copied!** → the copied URL matches `/barn/dev-barn/register?token=<uuid>` (a well-formed UUID token)
 - [ ] *(Optional — requires a second Google account signed into a separate browser session; not exercisable on Vercel preview, which supports only one signed-in Google session per environment. This is the only checklist step that exercises the pre-claim-document-readability regression below — if you don't have a second Google account handy, prefer running this step locally with two browser profiles over skipping it outright.)* Open the copied URL as the secondary account → redirected to `/profile/complete` → fill contact fields and save → lands in Dev Barn as rider Gale Test; as Gale Test, open your own member detail page and confirm the document uploaded before claiming still opens via its signed-URL link (regression check: a claimed member's pre-claim documents must remain readable, not just the manager's); back as manager, confirm Gale Test's row no longer shows the Unlinked badge on the list, and their detail page no longer shows the Manage member section
 - [ ] On Harper Test's detail page, click **Revoke** → click **Copy Invite** again → the copied URL contains a **different** token than before
 - [ ] On Indigo Test's detail page, click **Revoke** then immediately click **Copy Invite** (as fast as possible, before the button re-enables) — Copy Invite is disabled/unclickable until the new token has loaded, so it never copies the just-revoked stale token (#939 regression check)
