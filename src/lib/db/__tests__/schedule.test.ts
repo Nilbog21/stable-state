@@ -703,4 +703,18 @@ describe('getScheduleForRange', () => {
 
     expect(result).toEqual([])
   })
+
+  it('should_order_a_lesson_before_an_expense_on_the_same_barn_local_day_despite_differing_utc_calendar_dates', async () => {
+    // Lesson at 2026-07-04T02:00:00Z = 2026-07-03T22:00:00 local (EDT, UTC-4) — a different
+    // UTC calendar day than the expense below despite being the earlier barn-local moment.
+    // A naive comparison of the lesson's raw UTC string against the expense's un-zoned wall-clock
+    // string would sort '2026-07-03...' (expense) before '2026-07-04...' (lesson) — wrong order.
+    const lesson = createMockLesson({ id: 'lesson-1', lesson_at: '2026-07-04T02:00:00.000Z' })
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '23:00:00' })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: [lesson], expenses: [expense] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result.map((r) => r.id)).toEqual(['lesson-1', 'expense-1'])
+  })
 })
