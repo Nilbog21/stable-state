@@ -4,7 +4,12 @@ Manual smoke test of all barn workflows against the dev environment. Run the pha
 
 Paths below are relative — prepend your app origin (local `npm run dev` or Vercel preview URL).
 
-> **Convention:** each checkbox verifies one independent assertion — split multi-clause verifications so a partial failure can be marked cleanly. Setup/data-creation steps that assert nothing are fine to leave bundled. See #934 for the backlog of any remaining bundled checkboxes not yet split. `(e2e-candidate)` items may bundle a chained sequence of assertions into one checkbox where doing so avoids duplicate setup (#1010) — once automated, the resulting e2e spec still asserts each step individually, so the one-assertion-per-checkbox diagnosability this Convention protects moves into the spec instead of the checklist. `(manual)` items must still keep one assertion per checkbox.
+> **Convention:** each checkbox verifies one independent assertion, so a partial failure can be marked cleanly. Split any checkbox that bundles multiple clauses — with two exceptions:
+>
+> - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
+> - **`(e2e-candidate)` items** may bundle a chained sequence of assertions into one checkbox when that avoids duplicate setup (#1010). Once automated, the resulting e2e spec still asserts each step individually — the per-step diagnosability this Convention protects just moves into the spec instead of the checklist. `(manual)` items don't get this exception and must still keep one assertion per checkbox.
+>
+> See #934 for the backlog of any remaining bundled checkboxes not yet split.
 
 ## Prerequisites
 
