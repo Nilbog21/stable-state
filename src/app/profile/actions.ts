@@ -12,6 +12,9 @@ export async function updateProfileAction(
 ): Promise<{ error: string | null }> {
   const user = await getAuthenticatedUser()
   if (!user) return { error: 'not authenticated' }
+  if (process.env.DEMO_USER_EMAIL && user.email === process.env.DEMO_USER_EMAIL) {
+    return { error: 'not authenticated' }
+  }
 
   const firstName = (formData.get('first_name') as string ?? '').trim()
   const lastName = (formData.get('last_name') as string ?? '').trim()
