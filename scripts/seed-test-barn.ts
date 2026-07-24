@@ -338,7 +338,8 @@ async function run() {
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
   console.log(`  Lease:    1 unpaid (2 months backdated)`)
   console.log(`  Documents: 1 undated (Apollo, Coggins), 1 past-due reminder (Bella, Insurance Binder)`)
-  console.log(`  Dev invite (manager, for change-user.sh): ${buildInvitePath(BARN_SLUG, devInviteToken)}`)
+  console.log(`  Dev invite (manager, for change-user.sh):`)
+  console.log(`    ${buildInvitePath(BARN_SLUG, devInviteToken)}`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
