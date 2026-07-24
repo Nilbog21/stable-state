@@ -287,6 +287,13 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('2 flakes hay AM/PM')).toBeDefined()
+  })
+
+  it('should_not_render_horse_notes_form_for_non_owner_trainer_when_notes_set', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithNotes)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
     expect(screen.queryByTestId('horse-notes-form')).toBeNull()
   })
 
