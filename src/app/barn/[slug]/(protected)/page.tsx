@@ -28,8 +28,10 @@ function formatSelectedDate(date: string): string {
 // component (see ARCHITECTURE.md's documented exception, mirrored by LessonForm's
 // Normal/Group switch) -- raw Tailwind instead. Both are plain SSR links (?date=...), no
 // client JS, and sized to a 44px minimum tap target per the project's mobile conventions.
+// Styled to match the Finances page's month-nav Prev/Next controls (#1015 review finding)
+// so the two date-paging affordances read as the same pattern app-wide.
 const dayNavLinkClass =
-  'flex h-11 w-11 shrink-0 items-center justify-center rounded-md text-lg text-zinc-500 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800'
+  'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
 
 export default async function BarnDashboardPage({
   params,
@@ -152,7 +154,7 @@ export default async function BarnDashboardPage({
           </div>
           {selectedDate !== todayStr && (
             <div className="mb-4">
-              <Button href={`/barn/${slug}`} variant="ghost" size="sm">
+              <Button href={`/barn/${slug}`} variant="primary" size="sm">
                 Today
               </Button>
             </div>
