@@ -2,20 +2,25 @@ import { test, expect } from '@playwright/test'
 import { createClient } from '@supabase/supabase-js'
 
 const barnSlug = process.env.TEST_BARN_SLUG!
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 
-// Chosen to land well outside seed-test-barn.ts's seeded lessons (past(10)..future(5)
-// days), so the direct-read query below can't collide with fixture data.
-const target = new Date()
-target.setDate(target.getDate() + 30)
-const year = target.getFullYear()
-const month = target.getMonth() + 1
-const day = target.getDate()
-const hour = 14 // 2:00 PM local
-const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @manager', async ({ page }, testInfo) => {
+  // Chosen to land well outside seed-test-barn.ts's seeded lessons (past(10)..future(5)
+  // days), so the direct-read query below can't collide with fixture data. Offset by
+  // project so 'manager' and 'mobile' (both @manager-tagged, same storageState) target
+  // distinct days instead of racing to insert the identical row.
+  const projectOffset = testInfo.project.name === 'mobile' ? 1 : 0
+  const target = new Date()
+  target.setDate(target.getDate() + 30 + projectOffset)
+  const year = target.getFullYear()
+  const month = target.getMonth() + 1
+  const day = target.getDate()
+  const hour = 14 // 2:00 PM local
+  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
-test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @manager', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}/lessons/new`)
 
   await page.getByRole('checkbox', { name: 'Apollo' }).check()
@@ -23,7 +28,13 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   await page.locator('#dh-date').fill(dateStr)
   await page.locator('#dh-hour').selectOption(String(hour))
 
-  await page.getByRole('button', { name: 'Submit' }).click()
+  // Keyboard activation instead of a raw pointer .click(): Submit sits at the
+  // bottom of a long scrollable form, the same shape that raced Chromium's
+  // mobile scroll-into-view animation against Playwright's actionability
+  // check in #501 (04c64505).
+  const submit = page.getByRole('button', { name: 'Submit' })
+  await submit.focus()
+  await submit.press('Enter')
   // waitUntil: 'commit' (URL changed) rather than the default 'load' — under
   // Next dev-mode compile pressure the full load event can lag well past the
   // redirect itself actually completing. 15s budget for the action's first,
@@ -32,7 +43,10 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
 
   // Mirrors DateHourPicker.tsx's own conversion — this checks the real
   // UI -> server action -> RPC -> storage pipeline against it, not a
-  // re-derivation of the logic under test.
+  // re-derivation of the logic under test. Assumes the Playwright-launched
+  // browser shares this Node process's local timezone — true here since
+  // Chromium runs as a local subprocess, not a remote/differently-configured
+  // browser, and no project pins a timezoneId.
   const expectedIso = new Date(year, month - 1, day, hour).toISOString()
 
   const supabase = createClient(supabaseUrl, anonKey)
@@ -49,9 +63,6 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
     .single()
   if (barnError) throw barnError
 
-  // >= 1, not exactly 1: the 'manager' and 'mobile' Playwright projects both run
-  // this spec against the same seeded barn and pick the same target instant, so
-  // a second, independently-correct row from the other project is expected here.
   const { data: lessons, error: lessonsError } = await supabase
     .from('lessons')
     .select('lesson_at')
@@ -59,5 +70,5 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
     .eq('lesson_at', expectedIso)
   if (lessonsError) throw lessonsError
 
-  expect(lessons.length).toBeGreaterThanOrEqual(1)
+  expect(lessons.length).toBe(1)
 })
