@@ -694,4 +694,44 @@ describe('BarnDashboardPage', () => {
 
     expect(screen.queryByRole('link', { name: 'Today' })).toBeNull()
   })
+
+  describe('demo mode banner', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+    })
+
+    afterEach(() => {
+      process.env.TZ = originalTz
+    })
+
+    it('should_render_demo_banner_when_barn_is_demo', async () => {
+      vi.mocked(getBarnBySlug).mockResolvedValue(
+        createMockBarn({ ...mockBarn, is_demo: true, created_at: '2026-05-17T00:00:00Z' })
+      )
+      const jsx = await renderPage()
+      render(jsx)
+
+      expect(screen.getByText(/this is a demo barn/i)).toBeDefined()
+    })
+
+    it('should_not_render_demo_banner_when_barn_is_not_demo', async () => {
+      const jsx = await renderPage()
+      render(jsx)
+
+      expect(screen.queryByText(/this is a demo barn/i)).toBeNull()
+    })
+
+    it('should_render_reset_time_as_seven_hours_after_barn_created_at', async () => {
+      vi.mocked(getBarnBySlug).mockResolvedValue(
+        createMockBarn({ ...mockBarn, is_demo: true, created_at: '2026-05-17T00:00:00Z' })
+      )
+      const jsx = await renderPage()
+      render(jsx)
+
+      expect(screen.getByText('3:00 AM', { exact: false })).toBeDefined()
+    })
+  })
 })
