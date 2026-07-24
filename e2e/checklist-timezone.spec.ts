@@ -24,7 +24,9 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   await page.locator('#dh-hour').selectOption(String(hour))
 
   await page.getByRole('button', { name: 'Submit' }).click()
-  await expect(page).toHaveURL(new RegExp(`/barn/${barnSlug}/lessons$`))
+  // Longer than the default 5s expect timeout: first hit to this server action
+  // in a dev-mode run can take a few seconds to compile.
+  await page.waitForURL(new RegExp(`/barn/${barnSlug}/lessons$`), { timeout: 15000 })
 
   // Mirrors DateHourPicker.tsx's own conversion — this checks the real
   // UI -> server action -> RPC -> storage pipeline against it, not a
