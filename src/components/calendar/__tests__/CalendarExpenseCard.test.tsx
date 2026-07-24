@@ -7,7 +7,7 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { UpcomingExpenseCard, formatExpenseDateTime } from '../UpcomingExpenseCard'
+import { CalendarExpenseCard, formatExpenseDateTime } from '../CalendarExpenseCard'
 import { makeExpense } from '@/test/fixtures'
 
 describe('formatExpenseDateTime', () => {
@@ -22,34 +22,34 @@ describe('formatExpenseDateTime', () => {
   })
 })
 
-describe('UpcomingExpenseCard', () => {
+describe('CalendarExpenseCard', () => {
   it('should_render_formatted_date_and_time', () => {
-    render(<UpcomingExpenseCard expense={makeExpense({ expense_date: '2026-07-15', expense_time: '14:00:00' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ expense_date: '2026-07-15', expense_time: '14:00:00' })} slug="green-acres" />)
     expect(screen.getByText(/ · /)).toBeDefined()
   })
 
   it('should_render_recipient', () => {
-    render(<UpcomingExpenseCard expense={makeExpense({ recipient: 'Dr. Smith' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ recipient: 'Dr. Smith' })} slug="green-acres" />)
     expect(screen.getByText('Dr. Smith')).toBeDefined()
   })
 
   it('should_render_expense_type', () => {
-    render(<UpcomingExpenseCard expense={makeExpense({ expense_type: 'Veterinary' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ expense_type: 'Veterinary' })} slug="green-acres" />)
     expect(screen.getByText('Veterinary')).toBeDefined()
   })
 
   it('should_render_horse_names', () => {
-    render(<UpcomingExpenseCard expense={makeExpense({ horse_names: ['Thunderbolt'] })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ horse_names: ['Thunderbolt'] })} slug="green-acres" />)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
   it('should_render_entire_barn_when_applies_to_all_horses', () => {
-    render(<UpcomingExpenseCard expense={makeExpense({ applies_to_all_horses: true, horse_names: [] })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ applies_to_all_horses: true, horse_names: [] })} slug="green-acres" />)
     expect(screen.getByText('Entire Barn')).toBeDefined()
   })
 
   it('should_link_to_expense_detail_page', () => {
-    render(<UpcomingExpenseCard expense={makeExpense({ id: 'expense-123' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ id: 'expense-123' })} slug="green-acres" />)
     const link = screen.getByRole('link') as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/expenses/expense-123')
   })

@@ -6,7 +6,8 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getScheduleForRange, mergeScheduleItems, intervalsOverlap, isLessonNearby, getNearbyInstructorMembershipIds, LESSON_DURATION_MINUTES } from '../schedule'
+import { getScheduleForRange, mergeScheduleItems, intervalsOverlap, isLessonNearby, getNearbyInstructorMembershipIds, scopeScheduleItemsForRole, LESSON_DURATION_MINUTES } from '../schedule'
+import type { ScheduleItem } from '../types'
 
 describe('mergeScheduleItems', () => {
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
@@ -328,6 +329,46 @@ describe('getNearbyInstructorMembershipIds', () => {
     await expect(
       getNearbyInstructorMembershipIds(barnId, excludeLessonId, lessonAt, excludeInstructorId, buffer)
     ).rejects.toThrow('lessons error')
+  })
+})
+
+describe('scopeScheduleItemsForRole', () => {
+  const lessonItem = (id: string, instructorId: string | null): ScheduleItem => ({
+    id, itemType: 'lesson', start: '2026-06-10T09:00:00', durationMinutes: 60, instructorId, horseIds: [],
+  })
+  const expenseItem = (id: string): ScheduleItem => ({
+    id, itemType: 'expense', start: '2026-06-10T09:00:00', durationMinutes: 0, instructorId: null, horseIds: [],
+  })
+
+  it('should_pass_through_all_items_unchanged_for_manager', () => {
+    const items = [lessonItem('lesson-1', 'mem-other'), expenseItem('expense-1')]
+
+    expect(scopeScheduleItemsForRole(items, 'manager', 'mem-self')).toEqual(items)
+  })
+
+  it('should_pass_through_all_items_unchanged_for_rider', () => {
+    const items = [lessonItem('lesson-1', 'mem-other'), expenseItem('expense-1')]
+
+    expect(scopeScheduleItemsForRole(items, 'rider', 'mem-self')).toEqual(items)
+  })
+
+  it('should_keep_only_lessons_instructed_by_the_caller_for_trainer', () => {
+    const own = lessonItem('lesson-1', 'mem-self')
+    const other = lessonItem('lesson-2', 'mem-other')
+
+    expect(scopeScheduleItemsForRole([own, other], 'trainer', 'mem-self')).toEqual([own])
+  })
+
+  it('should_keep_non_lesson_items_for_trainer_regardless_of_instructor', () => {
+    const expense = expenseItem('expense-1')
+
+    expect(scopeScheduleItemsForRole([expense], 'trainer', 'mem-self')).toEqual([expense])
+  })
+
+  it('should_drop_a_lesson_with_no_instructor_for_trainer', () => {
+    const unassigned = lessonItem('lesson-1', null)
+
+    expect(scopeScheduleItemsForRole([unassigned], 'trainer', 'mem-self')).toEqual([])
   })
 })
 

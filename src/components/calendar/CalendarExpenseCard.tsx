@@ -14,7 +14,7 @@ export function formatExpenseDateTime(expense: { expense_date: string; expense_t
   return `${date} · ${time}`
 }
 
-export function UpcomingExpenseCard({ expense, slug }: { expense: ScheduledExpense; slug: string }) {
+export function CalendarExpenseCard({ expense, slug }: { expense: ScheduledExpense; slug: string }) {
   const display = formatExpenseDateTime(expense, new Date())
 
   return (

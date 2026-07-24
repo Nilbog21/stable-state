@@ -50,7 +50,7 @@ const QUERY_PADDING_MS = 24 * 60 * 60 * 1000
 // start-of-month expense falling before startDate. Query with QUERY_PADDING_MS of slack
 // on each side, then filter down to the actual requested month using each row's own
 // decoded expense_date — a wall-clock string comparison, matching the convention already
-// used by getPastDueExpenses/getUpcomingScheduledExpenses, rather than trying to encode
+// used by getOutstandingExpenses, rather than trying to encode
 // the barn-local month boundary back into an instant.
 async function fetchExpenseTransactionsInRange(
   supabase: SupabaseClient,

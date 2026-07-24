@@ -30,3 +30,14 @@ export function instantToLocalWallClock(instant: Date, timeZone: string): string
   const get = (type: string) => parts.find((p) => p.type === type)!.value
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
 }
+
+// Reverse of instantToLocalWallClock: what real instant does this barn-local wall-clock
+// string correspond to? Guess-and-correct — treat the digits as if they were UTC, measure
+// how far that guess's own wall-clock rendering in `timeZone` drifts from the input, then
+// shift by that drift. A single correction is exact except within a DST transition window
+// (a wall-clock time that's skipped or repeated), which day-boundary calculations never hit.
+export function wallClockToInstant(wallClock: string, timeZone: string): Date {
+  const naiveUtc = new Date(wallClock + 'Z')
+  const offsetMs = naiveUtc.getTime() - new Date(instantToLocalWallClock(naiveUtc, timeZone) + 'Z').getTime()
+  return new Date(naiveUtc.getTime() + offsetMs)
+}

@@ -7,7 +7,7 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { UpcomingLessonCard, formatLessonDate } from '../UpcomingLessonCard'
+import { CalendarLessonCard, formatLessonDate } from '../CalendarLessonCard'
 import { createMockLesson } from '@/test/fixtures'
 import type { LessonWithDetails } from '@/lib/db/types'
 
@@ -43,66 +43,66 @@ describe('formatLessonDate', () => {
 
 })
 
-describe('UpcomingLessonCard', () => {
+describe('CalendarLessonCard', () => {
   it('should_render_formatted_date', () => {
-    render(<UpcomingLessonCard lesson={makeLesson({ lesson_at: '2026-06-15T14:00:00Z' })} role="manager" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson({ lesson_at: '2026-06-15T14:00:00Z' })} role="manager" slug="green-acres" />)
     expect(screen.getByText(/ · /)).toBeDefined()
   })
 
   it('should_render_horse_names', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
   it('should_show_instructor_name_for_rider_role', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="rider" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="rider" slug="green-acres" />)
     expect(screen.getByText('Jane Smith')).toBeDefined()
   })
 
   it('should_hide_instructor_name_for_manager_role', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
     expect(screen.queryByText('Jane Smith')).toBeNull()
   })
 
   it('should_hide_instructor_name_for_trainer_role', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="trainer" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="trainer" slug="green-acres" />)
     expect(screen.queryByText('Jane Smith')).toBeNull()
   })
 
   it('should_show_rider_names_for_manager_role', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
     expect(screen.getByText('Alice')).toBeDefined()
   })
 
   it('should_show_rider_names_for_trainer_role', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="trainer" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="trainer" slug="green-acres" />)
     expect(screen.getByText('Alice')).toBeDefined()
   })
 
   it('should_hide_rider_names_for_rider_role', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="rider" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="rider" slug="green-acres" />)
     expect(screen.queryByText('Alice')).toBeNull()
   })
 
   it('should_link_to_lesson_detail_page', () => {
-    render(<UpcomingLessonCard lesson={makeLesson({ id: 'lesson-123' })} role="manager" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson({ id: 'lesson-123' })} role="manager" slug="green-acres" />)
     const link = screen.getByRole('link') as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/lessons/lesson-123')
   })
 
   it('should_show_cancelled_badge_when_cancelled_at_is_set', () => {
-    render(<UpcomingLessonCard lesson={makeLesson({ cancelled_at: '2026-01-01T00:00:00Z' })} role="manager" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson({ cancelled_at: '2026-01-01T00:00:00Z' })} role="manager" slug="green-acres" />)
     expect(screen.getByText('Cancelled')).toBeDefined()
   })
 
   it('should_not_show_cancelled_badge_when_cancelled_at_is_null', () => {
-    render(<UpcomingLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
+    render(<CalendarLessonCard lesson={makeLesson()} role="manager" slug="green-acres" />)
     expect(screen.queryByText('Cancelled')).toBeNull()
   })
 
   it('should_show_cancelled_badge_when_own_participation_cancelled_for_rider', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({ rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] })}
         role="rider"
         slug="green-acres"
@@ -114,7 +114,7 @@ describe('UpcomingLessonCard', () => {
 
   it('should_not_show_participation_badge_for_manager_or_trainer_role', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({ rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] })}
         role="manager"
         slug="green-acres"
@@ -126,7 +126,7 @@ describe('UpcomingLessonCard', () => {
 
   it('should_not_duplicate_badge_when_whole_lesson_already_cancelled', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({
           cancelled_at: '2026-01-01T00:00:00Z',
           rider_ids: ['viewer-mem-1'],
@@ -142,7 +142,7 @@ describe('UpcomingLessonCard', () => {
 
   it('should_show_needs_attention_badge_when_future_uncancelled_lesson_needs_attention', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true })}
         role="manager"
         slug="green-acres"
@@ -153,7 +153,7 @@ describe('UpcomingLessonCard', () => {
 
   it('should_not_show_needs_attention_badge_when_lesson_is_in_the_past', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({ lesson_at: '2026-01-01T10:00:00Z', needs_attention: true })}
         role="manager"
         slug="green-acres"
@@ -164,7 +164,7 @@ describe('UpcomingLessonCard', () => {
 
   it('should_not_show_needs_attention_badge_when_lesson_is_cancelled', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' })}
         role="manager"
         slug="green-acres"
@@ -175,7 +175,7 @@ describe('UpcomingLessonCard', () => {
 
   it('should_not_show_needs_attention_badge_when_needs_attention_is_false', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: false })}
         role="manager"
         slug="green-acres"
@@ -186,7 +186,7 @@ describe('UpcomingLessonCard', () => {
 
   it('should_not_show_cancel_button_on_dashboard_card', () => {
     render(
-      <UpcomingLessonCard
+      <CalendarLessonCard
         lesson={makeLesson({ rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] })}
         role="rider"
         slug="green-acres"

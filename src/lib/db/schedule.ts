@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { getLessonJunctionRows } from './lesson-finance-queries'
-import type { ScheduleItem } from './types'
+import type { Role, ScheduleItem } from './types'
 
 /**
  * Merged, duration-aware read of `lessons` + `horse_expenses` + `barn_events` (#1014) for
@@ -128,10 +128,22 @@ export function mergeScheduleItems(
   return [...lessonItems, ...expenseItems, ...eventItems].sort((a, b) => a.start.localeCompare(b.start))
 }
 
+// getScheduleForRange has no manual role dispatch -- it relies entirely on RLS, which is
+// correct for manager (barn-wide), rider (lessons_select_rider already restricts to
+// enrolled), and barn_events (role-filtered via visible_to_roles). It is NOT correct for
+// trainer + lessons: lessons_select_staff grants trainer the same barn-wide SELECT as
+// manager, so without this filter a trainer would see every lesson in the barn instead of
+// just their own -- the "own scope" restriction getUpcomingLessons currently applies via an
+// app-level `.eq('instructor_id', ...)` clause that getScheduleForRange doesn't reproduce.
+export function scopeScheduleItemsForRole(items: ScheduleItem[], role: Role, membershipId: string): ScheduleItem[] {
+  if (role !== 'trainer') return items
+  return items.filter((item) => item.itemType !== 'lesson' || item.instructorId === membershipId)
+}
+
 /**
  * `from`/`to` are real UTC instants (matches getUpcomingLessons' convention).
  * `timezone` (barns.timezone) is required — horse_expenses.expense_date/expense_time are
- * barn-local wall-clock digits, not real instants (see expenses.ts:getUpcomingScheduledExpenses),
+ * barn-local wall-clock digits, not real instants (see expenses.ts:getOutstandingExpenses),
  * so ScheduleItem.start normalizes everything down into that same barn-local frame rather
  * than inventing a wall-clock-to-instant conversion.
  *
@@ -178,9 +190,10 @@ export async function getScheduleForRange(
     horse_ids: lessonHorseIdsByLessonId.get(l.id) ?? [],
   }))
 
-  // Mirrors getUpcomingScheduledExpenses (expenses.ts): coarse DB-level date bound, then a
-  // precise JS-side wall-clock comparison, since expense_date/expense_time are barn-local
-  // digits with no timezone info of their own to compare against real instants directly.
+  // Same coarse DB-level date bound + precise JS-side wall-clock comparison idiom
+  // getOutstandingExpenses (expenses.ts) uses, since expense_date/expense_time are
+  // barn-local digits with no timezone info of their own to compare against real instants
+  // directly.
   const fromWall = instantToLocalWallClock(new Date(from), timezone)
   const toWall = instantToLocalWallClock(new Date(to), timezone)
 

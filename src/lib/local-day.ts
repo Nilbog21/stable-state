@@ -18,3 +18,19 @@ export function localToday(now: Date = new Date()): string {
 export function isSameLocalDay(date: Date, now: Date): boolean {
   return localToday(date) === localToday(now)
 }
+
+// Validates a "YYYY-MM-DD" calendar-date string, e.g. a `?date=` search param, rejecting
+// both malformed input and out-of-range values (a naive regex alone would accept "2026-02-30").
+export function isValidDateString(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false
+  const d = new Date(s + 'T00:00:00Z')
+  return !Number.isNaN(d.getTime()) && d.toISOString().slice(0, 10) === s
+}
+
+// Pure calendar-day arithmetic on a "YYYY-MM-DD" string — not a real instant, so no
+// timezone is involved (unlike wallClockToInstant, which anchors to a barn's zone).
+export function addDays(date: string, delta: number): string {
+  const d = new Date(date + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() + delta)
+  return d.toISOString().slice(0, 10)
+}

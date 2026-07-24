@@ -105,6 +105,21 @@ export async function getLessonsByBarn(
   return overlayPaymentTypes(supabase, withDetails, barnId)
 }
 
+// Hydrates a set of getScheduleForRange lesson ids into display data. No role param -- RLS
+// still applies to this query independently, and the id list itself is already role-scoped
+// by the caller (scopeScheduleItemsForRole + getScheduleForRange).
+export async function getLessonsByIds(barnId: string, ids: string[]): Promise<LessonWithDetails[]> {
+  if (!ids.length) return []
+  const supabase = await createClient()
+  const { data: lessons, error } = await supabase
+    .from('lessons')
+    .select('*')
+    .eq('barn_id', barnId)
+    .in('id', ids)
+  if (error) throw error
+  return hydrateParticipants(supabase, lessons ?? [], barnId)
+}
+
 export async function getLessonById(lessonId: string, barnId: string, role: Role, callerMembershipId?: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   const riderSelect = role === 'rider'

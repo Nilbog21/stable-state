@@ -15,7 +15,7 @@ export function formatLessonDate(iso: string, now: Date): string {
   return `${date} · ${time}`
 }
 
-export function UpcomingLessonCard({
+export function CalendarLessonCard({
   lesson,
   role,
   slug,

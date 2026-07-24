@@ -5,7 +5,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { createClient } from '@/lib/supabase/server'
-import { getEventsByBarn, getEventById, createEvent, updateEvent, deleteEvent } from '../barn-events'
+import { getEventsByBarn, getEventById, getEventsByIds, createEvent, updateEvent, deleteEvent } from '../barn-events'
 import type { Role } from '../types'
 
 const mockEvent = {
@@ -132,6 +132,69 @@ describe('getEventById', () => {
     } as any)
 
     await expect(getEventById('event-1', 'barn-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('getEventsByIds', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeEventsChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockEq, mockIn }
+  }
+
+  it('should_return_empty_array_without_querying_when_ids_is_empty', async () => {
+    const result = await getEventsByIds('barn-1', [])
+
+    expect(result).toEqual([])
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('should_scope_the_query_to_barn_id', async () => {
+    const { select, mockEq } = makeEventsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getEventsByIds('barn-1', ['event-1'])
+
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_by_the_provided_ids', async () => {
+    const { select, mockIn } = makeEventsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getEventsByIds('barn-1', ['event-1', 'event-2'])
+
+    expect(mockIn).toHaveBeenCalledWith('id', ['event-1', 'event-2'])
+  })
+
+  it('should_return_the_matching_events', async () => {
+    const { select } = makeEventsChain([mockEvent])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getEventsByIds('barn-1', ['event-1'])
+
+    expect(result).toEqual([mockEvent])
+  })
+
+  it('should_treat_null_data_as_empty', async () => {
+    const { select } = makeEventsChain(null)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getEventsByIds('barn-1', ['event-1'])
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { select } = makeEventsChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await expect(getEventsByIds('barn-1', ['event-1'])).rejects.toThrow('db error')
   })
 })
 

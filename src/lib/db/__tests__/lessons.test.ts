@@ -36,6 +36,7 @@ import {
   deleteLesson,
   getLessonsByBarn,
   getLessonById,
+  getLessonsByIds,
   getUpcomingLessons,
   updateLesson,
 } from '../lessons'
@@ -1590,6 +1591,71 @@ describe('updateLesson', () => {
     } as any)
 
     await expect(updateLesson('lesson-1', 'barn-1', { fee: 90 })).rejects.toThrow('row-level security policy')
+  })
+})
+
+describe('getLessonsByIds', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeLessonsChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockEq, mockIn }
+  }
+
+  it('should_return_empty_array_without_querying_when_ids_is_empty', async () => {
+    const result = await getLessonsByIds('barn-1', [])
+
+    expect(result).toEqual([])
+    expect(createClient).not.toHaveBeenCalled()
+  })
+
+  it('should_scope_the_query_to_barn_id', async () => {
+    const { select, mockEq } = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getLessonsByIds('barn-1', ['lesson-1'])
+
+    expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_by_the_provided_ids', async () => {
+    const { select, mockIn } = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await getLessonsByIds('barn-1', ['lesson-1', 'lesson-2'])
+
+    expect(mockIn).toHaveBeenCalledWith('id', ['lesson-1', 'lesson-2'])
+  })
+
+  it('should_hydrate_participants_for_the_returned_lessons', async () => {
+    const { select } = makeLessonsChain([mockLesson])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+    const hydrated = [createMockLessonWithDetails({ id: mockLesson.id })]
+    vi.mocked(hydrateParticipants).mockResolvedValue(hydrated as any)
+
+    const result = await getLessonsByIds('barn-1', [mockLesson.id])
+
+    expect(result).toEqual(hydrated)
+  })
+
+  it('should_treat_null_data_as_empty', async () => {
+    const { select } = makeLessonsChain(null)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    const result = await getLessonsByIds('barn-1', ['lesson-1'])
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { select } = makeLessonsChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
+
+    await expect(getLessonsByIds('barn-1', ['lesson-1'])).rejects.toThrow('db error')
   })
 })
 
