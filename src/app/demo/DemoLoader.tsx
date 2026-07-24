@@ -12,9 +12,10 @@ export function DemoLoader() {
     if (started.current) return
     started.current = true
     createOrResumeDemoBarn().catch((err: unknown) => {
-      // redirect() on success rejects this promise with a Next-internal control error
-      // rather than a real failure — rethrow it so Next's own redirect handling takes
-      // over instead of flashing this component's failure state.
+      // Every redirect() call in the action — success (to the new barn) or failure
+      // (to /login) — rejects this promise with a Next-internal control error rather
+      // than a real failure. Rethrow it so Next's own redirect handling takes over
+      // instead of flashing this component's failure state.
       unstable_rethrow(err)
       setFailed(true)
     })

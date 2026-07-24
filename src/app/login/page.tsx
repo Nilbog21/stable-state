@@ -8,11 +8,12 @@ import { Button } from '@/components/ui/Button'
 export default async function LoginPage({
   searchParams,
 }: {
-  searchParams: Promise<{ no_barns?: string }>
+  searchParams: Promise<{ no_barns?: string; error?: string }>
 }) {
-  const { no_barns } = await searchParams
+  const { no_barns, error } = await searchParams
   const user = await getAuthenticatedUser()
   const showGuidance = no_barns === 'true' && user !== null
+  const showDemoUnavailable = error === 'demo_unavailable'
   const connected = !!process.env.NEXT_PUBLIC_SUPABASE_URL
   const rememberPref = (await cookies()).get('remember_me_pref')?.value
   const rememberChecked = rememberPref !== '0'
@@ -33,6 +34,11 @@ export default async function LoginPage({
           {connected ? 'Supabase connected' : 'Supabase env vars not set — add .env.local'}
         </span>
       </div>
+      {showDemoUnavailable ? (
+        <p className="text-sm text-red-600 dark:text-red-400">
+          The demo is unavailable right now. Please try again later.
+        </p>
+      ) : null}
       {showGuidance ? (
         <>
           <p className="text-sm text-zinc-600 dark:text-zinc-400">

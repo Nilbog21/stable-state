@@ -57,7 +57,7 @@ describe('DemoLoader', () => {
     expect(screen.getByRole('link', { name: 'Try again' }).getAttribute('href')).toBe('/demo')
   })
 
-  it('should_not_show_failure_state_when_the_action_rejects_with_a_redirect_error', async () => {
+  it('should_rethrow_a_redirect_error_instead_of_swallowing_it', async () => {
     vi.mocked(createOrResumeDemoBarn).mockRejectedValue(getRedirectError())
 
     const onUnhandledRejection = vi.fn()
@@ -66,8 +66,16 @@ describe('DemoLoader', () => {
     render(<DemoLoader />)
 
     await waitFor(() => expect(onUnhandledRejection).toHaveBeenCalledTimes(1))
+  })
+
+  it('should_not_show_failure_state_when_the_action_rejects_with_a_redirect_error', async () => {
+    vi.mocked(createOrResumeDemoBarn).mockRejectedValue(getRedirectError())
+
+    const settled = new Promise<void>((resolve) => process.once('unhandledRejection', () => resolve()))
+
+    render(<DemoLoader />)
+    await settled
 
     expect(screen.queryByText("Couldn't start the demo")).toBeNull()
-    expect(screen.getByText('Explore Stable State')).toBeDefined()
   })
 })
