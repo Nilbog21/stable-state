@@ -53,6 +53,17 @@ export async function updateHorsePrivilegeLessonAccess(
   if (error) throw error
 }
 
+export async function elevateOwnerPrivileges(horseId: string, barnId: string, memberId: string): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('member_horse_privileges')
+    .update({ document_privileges: 'write', lesson_read_privileges: true })
+    .eq('barn_id', barnId)
+    .eq('horse_id', horseId)
+    .eq('member_id', memberId)
+  if (error) throw error
+}
+
 export async function revokeHorsePrivilege(privilegeId: string, barnId: string): Promise<void> {
   const supabase = await createClient()
   const { error } = await supabase.rpc('revoke_horse_privilege', {

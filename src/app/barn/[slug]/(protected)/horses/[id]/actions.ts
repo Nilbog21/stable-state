@@ -9,6 +9,7 @@ import {
   updateHorsePrivilegeDocumentAccess,
   updateHorsePrivilegeLessonAccess,
   revokeHorsePrivilege,
+  elevateOwnerPrivileges,
 } from '@/lib/db/member-horse-privileges'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile, validateFile, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS } from '@/lib/db/document-storage'
@@ -200,6 +201,9 @@ export async function setHorseOwnerAction(
     registered_name: horse.registered_name,
     owning_member_id: memberId,
   })
+  if (memberId !== null) {
+    await elevateOwnerPrivileges(horseId, barn.id, memberId)
+  }
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 
