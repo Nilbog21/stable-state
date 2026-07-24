@@ -62,14 +62,14 @@ AS $$
           FROM lesson_riders lr2
           JOIN barn_memberships bm2 ON bm2.id = lr2.rider_id
           JOIN profiles p ON p.id = bm2.profile_id
-          WHERE lr2.lesson_id = l.id
+          WHERE lr2.lesson_id = l.id AND lr2.cancelled_at IS NULL
         ) AS rider_names,
         (
           SELECT string_agg(p.first_name || ' ' || left(p.last_name, 1) || '.', ', ' ORDER BY p.first_name, p.last_name)
           FROM lesson_riders lr2
           JOIN barn_memberships bm2 ON bm2.id = lr2.rider_id
           JOIN profiles p ON p.id = bm2.profile_id
-          WHERE lr2.lesson_id = l.id
+          WHERE lr2.lesson_id = l.id AND lr2.cancelled_at IS NULL
         ) AS rider_initials,
         (
           SELECT string_agg(h.name, ', ' ORDER BY h.name)
