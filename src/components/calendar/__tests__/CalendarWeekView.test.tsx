@@ -29,6 +29,20 @@ describe('CalendarWeekView', () => {
     expect(screen.queryByTestId('day-view')).toBeNull()
   })
 
+  it('should_show_manager_specific_empty_week_subtext', () => {
+    const days = [{ date: '2026-07-20', items: [] }]
+    render(<CalendarWeekView days={days} todayStr="2026-07-20" role="manager" slug="green-acres" />)
+
+    expect(screen.getByText(/lessons, expenses, or events/)).toBeDefined()
+  })
+
+  it('should_show_generic_empty_week_subtext_for_trainer', () => {
+    const days = [{ date: '2026-07-20', items: [] }]
+    render(<CalendarWeekView days={days} todayStr="2026-07-20" role="trainer" slug="green-acres" />)
+
+    expect(screen.getByText('Nothing scheduled this week.')).toBeDefined()
+  })
+
   it('should_render_a_day_view_for_a_day_with_items', () => {
     const days = [{ date: '2026-07-20', items: [lessonItem('lesson-1')] }]
     render(<CalendarWeekView days={days} todayStr="2026-07-20" role="manager" slug="green-acres" />)
