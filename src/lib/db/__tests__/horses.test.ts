@@ -13,7 +13,7 @@ vi.mock('../document-storage', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { uploadFile, removeFile } from '../document-storage'
 import { createMockBarn } from '@/test/fixtures'
-import { getHorsesByBarn, getHorsesByIds, createHorse, getHorseExertionSummary, getHorseById, resolveHorseNames, updateHorseDetails, updateHorseNotes, updateHorsePhotoPath, replaceHorsePhoto, removeHorsePhoto, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '../horses'
+import { getHorsesByBarn, getHorsesByIds, getOwnedHorses, createHorse, getHorseExertionSummary, getHorseById, resolveHorseNames, updateHorseDetails, updateHorseNotes, updateHorsePhotoPath, replaceHorsePhoto, removeHorsePhoto, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -1133,5 +1133,61 @@ describe('resolveExhaustionThresholds', () => {
     const horse = createMockHorse({ exhaustion_threshold_high: null, exhaustion_threshold_moderate: 15 })
 
     expect(resolveExhaustionThresholds(horse, barn)).toEqual({ high: 11, moderate: 10 })
+  })
+})
+
+describe('getOwnedHorses', () => {
+  function makeSelectChain(data: unknown, error: Error | null = null) {
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockEq2 = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
+    return { chain: { select: vi.fn().mockReturnValue({ eq: mockEq1 }) }, mockEq1, mockEq2, mockOrder }
+  }
+
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_return_horses_owned_by_the_given_membership', async () => {
+    const { chain } = makeSelectChain(mockHorses)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    const result = await getOwnedHorses('barn-1', 'mem-1')
+
+    expect(result).toEqual(mockHorses)
+  })
+
+  it('should_filter_by_barn_id', async () => {
+    const { chain, mockEq1 } = makeSelectChain(mockHorses)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await getOwnedHorses('barn-1', 'mem-1')
+
+    expect(mockEq1).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_by_owning_member_id', async () => {
+    const { chain, mockEq2 } = makeSelectChain(mockHorses)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await getOwnedHorses('barn-1', 'mem-1')
+
+    expect(mockEq2).toHaveBeenCalledWith('owning_member_id', 'mem-1')
+  })
+
+  it('should_return_empty_array_when_no_owned_horses', async () => {
+    const { chain } = makeSelectChain([])
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    const result = await getOwnedHorses('barn-1', 'mem-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_supabase_returns_an_error', async () => {
+    const { chain } = makeSelectChain(null, new Error('db error'))
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await expect(getOwnedHorses('barn-1', 'mem-1')).rejects.toThrow('db error')
   })
 })

@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, getOwnedHorses, resolveExhaustionThresholds } from '@/lib/db/horses'
 import type { HorseExertionSummary } from '@/lib/db/types'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
@@ -29,6 +29,9 @@ export default async function HorsesPage({
   const isManager = membership.role === 'manager'
   const isRider = membership.role === 'rider'
 
+  const ownedHorses = await getOwnedHorses(barn.id, membership.id)
+  const ownedIds = new Set(ownedHorses.map((h) => h.id))
+
   let available: HorseCardData[]
   let unavailable: HorseCardData[]
   let inactive: HorseExertionSummary[] = []
@@ -40,19 +43,21 @@ export default async function HorsesPage({
   if (isRider) {
     // Riders never get exertion/exhaustion data, not even via the RPC — see #765.
     const horses = await getHorsesByBarn(barn.id)
-    available = horses.filter((h) => h.is_available)
-    unavailable = horses.filter((h) => !h.is_available)
+    available = horses.filter((h) => h.is_available && !ownedIds.has(h.id))
+    unavailable = horses.filter((h) => !h.is_available && !ownedIds.has(h.id))
   } else {
     const today = new Date()
     const horses = await getHorseExertionSummary(barn.id, today)
 
+    // #1000: owned horses are excluded here, before the exhaustion RPC fan-out below, since the
+    // owned HorseCard variant never renders ExhaustionBar — same rationale as #765's rider skip.
     const availableFull = horses
-      .filter((h) => h.is_active && h.is_available)
+      .filter((h) => h.is_active && h.is_available && !ownedIds.has(h.id))
       .sort((a, b) => a.totalExertion - b.totalExertion)
-    const unavailableFull = horses.filter((h) => h.is_active && !h.is_available)
+    const unavailableFull = horses.filter((h) => h.is_active && !h.is_available && !ownedIds.has(h.id))
     available = availableFull
     unavailable = unavailableFull
-    inactive = horses.filter((h) => !h.is_active)
+    inactive = horses.filter((h) => !h.is_active && !ownedIds.has(h.id))
 
     const activeHorses = [...availableFull, ...unavailableFull]
     exhaustionByHorseId = new Map(
@@ -66,7 +71,8 @@ export default async function HorsesPage({
     )
   }
 
-  const allEmpty = available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
+  const allEmpty =
+    ownedHorses.length === 0 && available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -82,6 +88,17 @@ export default async function HorsesPage({
           />
           <Button type="submit">Add</Button>
         </form>
+      )}
+
+      {ownedHorses.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">My Horses</h2>
+          <div className="flex flex-col gap-2">
+            {ownedHorses.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="owned" linkable />
+            ))}
+          </div>
+        </section>
       )}
 
       {available.length > 0 && (

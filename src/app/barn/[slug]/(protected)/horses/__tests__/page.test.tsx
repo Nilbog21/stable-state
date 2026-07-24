@@ -15,6 +15,7 @@ vi.mock('@/lib/db/horses', async () => {
     getHorseExertionSummary: vi.fn(),
     getHorseProjectedExhaustion: vi.fn(),
     getHorsesByBarn: vi.fn(),
+    getOwnedHorses: vi.fn(),
   }
 })
 vi.mock('../actions', () => ({
@@ -49,7 +50,7 @@ vi.mock('next/navigation', () => ({ notFound: mockNotFound }))
 
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, getOwnedHorses } from '@/lib/db/horses'
 import HorsesPage from '../page'
 
 const mockBarn = createMockBarn()
@@ -69,12 +70,14 @@ describe('HorsesPage', () => {
     vi.mocked(getHorseExertionSummary).mockReset()
     vi.mocked(getHorseProjectedExhaustion).mockReset()
     vi.mocked(getHorsesByBarn).mockReset()
+    vi.mocked(getOwnedHorses).mockReset()
     vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
     setupAuth()
     vi.mocked(getUserMembership).mockResolvedValue(managerMembership)
     vi.mocked(getHorseExertionSummary).mockResolvedValue([])
     vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([])
     vi.mocked(getHorsesByBarn).mockResolvedValue([])
+    vi.mocked(getOwnedHorses).mockResolvedValue([])
   })
 
   it('should_call_notFound_when_barn_does_not_exist', async () => {
@@ -405,5 +408,95 @@ describe('HorsesPage', () => {
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)
     expect(screen.getByText('Thunderbolt').getAttribute('data-linkable')).toBe('true')
+  })
+
+  describe('My Horses section', () => {
+    it('should_call_getOwnedHorses_scoped_to_barn_and_membership', async () => {
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(getOwnedHorses).toHaveBeenCalledWith(mockBarn.id, managerMembership.id)
+    })
+
+    it('should_call_getOwnedHorses_scoped_to_membership_for_rider', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(getOwnedHorses).toHaveBeenCalledWith(mockBarn.id, riderMembership.id)
+    })
+
+    it('should_render_my_horses_heading_when_owned_horses_exist', async () => {
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('My Horses')).toBeDefined()
+    })
+
+    it('should_render_owned_horse_name', async () => {
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('Clover')).toBeDefined()
+    })
+
+    it('should_render_owned_horse_card_with_owned_variant', async () => {
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getByText('Clover').getAttribute('data-variant')).toBe('owned')
+    })
+
+    it('should_not_render_my_horses_heading_when_no_owned_horses', async () => {
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.queryByText('My Horses')).toBeNull()
+    })
+
+    it('should_exclude_owned_horse_from_available_section', async () => {
+      vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getAllByText('Thunderbolt')).toHaveLength(1)
+    })
+
+    it('should_not_fetch_projected_exhaustion_for_owned_horse', async () => {
+      vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(getHorseProjectedExhaustion).not.toHaveBeenCalled()
+    })
+
+    it('should_exclude_owned_horse_from_unavailable_section', async () => {
+      vi.mocked(getHorseExertionSummary).mockResolvedValue([unavailableHorse])
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-2', name: 'Hobbled', is_active: true, is_available: false })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getAllByText('Hobbled')).toHaveLength(1)
+    })
+
+    it('should_exclude_owned_horse_from_inactive_section_for_manager', async () => {
+      vi.mocked(getHorseExertionSummary).mockResolvedValue([inactiveHorse])
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-3', name: 'Retired', is_active: false })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getAllByText('Retired')).toHaveLength(1)
+    })
+
+    it('should_exclude_owned_horse_from_rider_sections', async () => {
+      vi.mocked(getUserMembership).mockResolvedValue(riderMembership)
+      vi.mocked(getHorsesByBarn).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.getAllByText('Thunderbolt')).toHaveLength(1)
+    })
+
+    it('should_suppress_empty_state_when_only_owned_horses_exist', async () => {
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-9', name: 'Clover' })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(screen.queryByText('No horses yet')).toBeNull()
+    })
   })
 })

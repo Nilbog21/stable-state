@@ -2,6 +2,13 @@ import Link from 'next/link'
 import type { HorseExertionSummary } from '@/lib/db/types'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { Card } from '@/components/ui/Card'
+import { Badge } from '@/components/ui/Badge'
+
+function ownedStatusBadge(horse: Pick<HorseExertionSummary, 'is_active' | 'is_available'>) {
+  if (!horse.is_active) return <Badge tone="gray">Inactive</Badge>
+  if (!horse.is_available) return <Badge tone="amber">Unavailable</Badge>
+  return <Badge tone="green">Active</Badge>
+}
 
 export function HorseCard({
   horse,
@@ -12,7 +19,7 @@ export function HorseCard({
 }: {
   horse: Pick<HorseExertionSummary, 'id' | 'name' | 'registered_name' | 'is_active' | 'is_available' | 'unavailability_reason'>
   barnSlug: string
-  variant: 'available' | 'unavailable' | 'inactive'
+  variant: 'available' | 'unavailable' | 'inactive' | 'owned'
   exhaustion?: { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }
   linkable?: boolean
 }) {
@@ -26,6 +33,16 @@ export function HorseCard({
         <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">
           {horse.unavailability_reason ?? 'No reason given'}
         </span>
+      )}
+      {variant === 'owned' && (
+        <>
+          <span className="ml-2">{ownedStatusBadge(horse)}</span>
+          {horse.is_active && !horse.is_available && (
+            <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">
+              {horse.unavailability_reason ?? 'No reason given'}
+            </span>
+          )}
+        </>
       )}
     </>
   )
