@@ -726,19 +726,27 @@ describe('BarnDashboardPage', () => {
     expect(heading.textContent).toContain('Jul 25')
   })
 
-  it('should_show_a_today_link_in_week_view_when_the_visible_week_does_not_include_today', async () => {
+  it('should_show_a_this_week_link_in_week_view_when_the_visible_week_does_not_include_today', async () => {
     const jsx = await renderPage({ view: 'week', date: '2026-01-01' })
     render(jsx)
 
-    const link = screen.getByRole('link', { name: 'Today' }) as HTMLAnchorElement
+    const link = screen.getByRole('link', { name: 'This Week' }) as HTMLAnchorElement
     expect(link.href).toBe('http://localhost:3000/barn/green-acres?view=week')
   })
 
-  it('should_hide_the_today_link_in_week_view_when_the_visible_week_includes_today', async () => {
+  it('should_hide_the_this_week_link_in_week_view_when_the_visible_week_includes_today', async () => {
     const jsx = await renderPage({ view: 'week' })
     render(jsx)
 
-    expect(screen.queryByRole('link', { name: 'Today' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'This Week' })).toBeNull()
+  })
+
+  it('should_render_this_week_suffix_in_the_heading_when_the_visible_week_includes_today', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { level: 2 })
+    expect(heading.textContent).toContain('This Week')
   })
 
   describe('demo mode banner', () => {

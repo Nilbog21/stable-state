@@ -110,6 +110,7 @@ export default async function BarnDashboardPage({
   const navLabel = view === 'week' ? 'week' : 'day'
   const viewQuery = view === 'week' ? 'view=week&' : ''
   const todayHref = `/barn/${slug}${view === 'week' ? '?view=week' : ''}`
+  const currentPeriodLabel = view === 'week' ? 'This Week' : 'Today'
 
   const hasReminders = dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
   const demoResetAt = barn.is_demo
@@ -172,7 +173,7 @@ export default async function BarnDashboardPage({
             </Link>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               {view === 'week' ? `${formatCalendarDate(weekDates[0])} – ${formatCalendarDate(weekDates[6])}` : formatCalendarDate(selectedDate)}
-              {isViewingCurrentPeriod && ' · Today'}
+              {isViewingCurrentPeriod && ` · ${currentPeriodLabel}`}
             </h2>
             <Link
               href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, stepDays)}`}
@@ -185,7 +186,7 @@ export default async function BarnDashboardPage({
           {!isViewingCurrentPeriod && (
             <div className="mb-4">
               <Button href={todayHref} variant="primary" size="sm">
-                Today
+                {currentPeriodLabel}
               </Button>
             </div>
           )}
