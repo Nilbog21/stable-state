@@ -36,8 +36,8 @@ for var_name in $required_vars; do
 done
 
 BARN_SLUG="${1:-}"
-if [ -z "$BARN_SLUG" ]; then
-  echo "Error: barn slug argument is required (e.g. test-barn-pr-99)" >&2
+if [ -z "$BARN_SLUG" ] && [ "$ALLOW_PROD" = true ]; then
+  echo "Error: barn slug argument is required with --allow-prod (e.g. test-barn-pr-99)" >&2
   exit 1
 fi
 
