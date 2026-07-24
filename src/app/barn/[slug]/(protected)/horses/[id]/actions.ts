@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getHorseById, updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import { getHorseById, updateHorseDetails, updateHorseNotes, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import {
   grantHorsePrivilege,
   updateHorsePrivilegeDocumentAccess,
@@ -67,6 +67,27 @@ export async function updateHorseAction(
   }
 
   revalidatePath(`/barn/${barnSlug}/horses`)
+  revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
+  return { error: null }
+}
+
+export async function updateHorseNotesAction(
+  barnSlug: string,
+  horseId: string,
+  prevState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+
+  const feedNotes = (formData.get('feed_notes') as string | null)?.trim() || null
+  const medicationNotes = (formData.get('medication_notes') as string | null)?.trim() || null
+
+  try {
+    await updateHorseNotes(horseId, barn.id, { feed_notes: feedNotes, medication_notes: medicationNotes })
+  } catch (err) {
+    return { error: getErrorMessage(err) }
+  }
+
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
   return { error: null }
 }

@@ -396,6 +396,8 @@ bash scripts/change-user.sh
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Horse detail page shows the Feed Notes/Medication Notes entered as manager, read-only (no textareas, no Save button); clear one as manager and confirm its row disappears here on reload instead of showing blank
+- [ ] (#1006) As manager, grant this trainer a horse-privileges row on a horse (Access section) then make them that horse's owning member; reopen the horse as this trainer — **Feed Notes**/**Medication Notes** are now editable textareas with a **Save** button
+- [ ] (#1006) Edit and save both Feed Notes and Medication Notes as this trainer, then reload — the new text persists
 - [ ] Butter's horse detail page: her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (unless this trainer is Butter's `owning_member_id` — not yet assignable via UI until #998 lands, so not manually verifiable here)
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage member section, which a trainer viewing that page won't see either)
@@ -420,6 +422,8 @@ bash scripts/change-user.sh
 - [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
 - [ ] Tap an Available or Unavailable card → navigates to that horse's detail page (#1002 — cards became linkable so a rider can view the horse's photo)
 - [ ] On Butter's detail page, her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (same #998-blocked caveat as the trainer phase above — owner-write can't be manually verified until ownership is UI-assignable)
+- [ ] (#1006) As manager, make Dana the owning member of a horse she has no privileges on yet (Access section); reopen that horse as Dana — **Feed Notes**/**Medication Notes** are editable textareas with a **Save** button
+- [ ] (#1006) On a horse Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day, and no expenses (manager-only) or events outside her role's `visible_to_roles`
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown

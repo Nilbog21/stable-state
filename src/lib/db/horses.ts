@@ -132,6 +132,21 @@ export async function updateHorseDetails(
   if (error) throw error
 }
 
+export async function updateHorseNotes(
+  horseId: string,
+  barnId: string,
+  updates: { feed_notes: string | null; medication_notes: string | null }
+): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('update_horse_notes', {
+    p_horse_id: horseId,
+    p_barn_id: barnId,
+    p_feed_notes: updates.feed_notes,
+    p_medication_notes: updates.medication_notes,
+  })
+  if (error) throw error
+}
+
 export async function updateHorsePhotoPath(horseId: string, barnId: string, photoPath: string | null, client?: SupabaseClient): Promise<void> {
   // A script-injected (service-role) client bypasses the owner/manager RPC's
   // auth.uid() check entirely, same as the plain .update() a trusted script would run.
