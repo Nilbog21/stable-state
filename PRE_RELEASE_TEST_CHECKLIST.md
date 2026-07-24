@@ -31,6 +31,10 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] `curl -X POST /api/cron/reset-demo` with a missing or wrong `Authorization` header — response is `401`
 - [ ] With `CRON_SECRET` set in `.env.local` and a demo barn from the step above manually backdated (`update barns set created_at = now() - interval '7 hours' where slug = '...'`), `curl -X POST /api/cron/reset-demo -H "Authorization: Bearer <CRON_SECRET>"` — response is `{"reaped":1}` (or more)
 - [ ] After that curl, the reaped barn no longer resolves at its old `/barn/demo-.../` URL
+- [ ] On the demo barn's dashboard, an amber banner reads "This is a demo barn. Data resets at approximately [time]."
+- [ ] In the nav, the demo barn's name renders as "{name} (DEMO)" in amber
+- [ ] The user menu does not show a **Profile** link while signed in as the demo user
+- [ ] Visiting `/profile` directly while signed in as the demo user redirects to `/`
 - [ ] Reset and reseed the dev database:
 
   ```bash
