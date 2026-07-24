@@ -11,18 +11,14 @@ import { getEventsByIds } from '@/lib/db/barn-events'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
-import { isValidDateString, addDays } from '@/lib/local-day'
-import { mergeDayScheduleDisplayItems, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
+import { isValidDateString, addDays, formatCalendarDate, getWeekDates } from '@/lib/local-day'
+import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
 import { CalendarDayView } from '@/components/calendar/CalendarDayView'
+import { CalendarWeekView } from '@/components/calendar/CalendarWeekView'
 import type { DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
-
-function formatSelectedDate(date: string): string {
-  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
-    new Date(`${date}T00:00:00Z`)
-  )
-}
+import { Pill } from '@/components/ui/Pill'
 
 // Icon-only Prev/Next controls have no good structural fit with the shared Button
 // component (see ARCHITECTURE.md's documented exception, mirrored by LessonForm's
@@ -38,7 +34,7 @@ export default async function BarnDashboardPage({
   searchParams = Promise.resolve({}),
 }: {
   params: Promise<{ slug: string }>
-  searchParams?: Promise<{ date?: string }>
+  searchParams?: Promise<{ date?: string; view?: string }>
 }) {
   const { slug } = await params
   const barn = await getBarnBySlug(slug)
@@ -47,6 +43,7 @@ export default async function BarnDashboardPage({
   const user = await getAuthenticatedUser()
 
   let dayItems: DayScheduleDisplayItem[] = []
+  let weekDays: { date: string; items: DayScheduleDisplayItem[] }[] = []
   let dueDocuments: DueDocument[] = []
   let unpaidLessonsCount = 0
   let unpaidChargesCount = 0
@@ -54,6 +51,8 @@ export default async function BarnDashboardPage({
   let membershipId: string | undefined
   let selectedDate = ''
   let todayStr = ''
+  let view: 'day' | 'week' = 'day'
+  let weekDates: string[] = []
 
   if (user) {
     const membership = await getUserMembership(user.id, barn.id)
@@ -62,14 +61,16 @@ export default async function BarnDashboardPage({
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
 
       todayStr = instantToLocalWallClock(new Date(), barn.timezone).slice(0, 10)
-      const { date: requestedDate } = await searchParams
+      const { date: requestedDate, view: requestedView } = await searchParams
       selectedDate = requestedDate && isValidDateString(requestedDate) ? requestedDate : todayStr
+      view = requestedView === 'week' ? 'week' : 'day'
+      weekDates = getWeekDates(selectedDate)
 
-      const dayStart = wallClockToInstant(`${selectedDate}T00:00:00`, barn.timezone).toISOString()
-      const dayEnd = wallClockToInstant(`${addDays(selectedDate, 1)}T00:00:00`, barn.timezone).toISOString()
+      const rangeStart = wallClockToInstant(`${selectedDate}T00:00:00`, barn.timezone).toISOString()
+      const rangeEnd = wallClockToInstant(`${addDays(selectedDate, view === 'week' ? 7 : 1)}T00:00:00`, barn.timezone).toISOString()
 
       const [scheduleItems, due, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
-        getScheduleForRange(barn.id, dayStart, dayEnd, barn.timezone),
+        getScheduleForRange(barn.id, rangeStart, rangeEnd, barn.timezone),
         membership.role === 'manager' ? getDueDocuments(barn.id, new Date().toISOString().slice(0, 10)) : Promise.resolve([]),
         getOutstandingLessons(barn.id, user.id, membership.role),
         getOutstandingCancellationFees(barn.id, user.id, membership.role),
@@ -90,12 +91,23 @@ export default async function BarnDashboardPage({
       // shown, not every timed expense getScheduleForRange itself returns.
       const expenses = expensesRaw.filter((expense) => expense.amount === null)
 
-      dayItems = mergeDayScheduleDisplayItems(scopedItems, lessons, expenses, events)
+      if (view === 'week') {
+        weekDays = groupScheduleItemsByDay(weekDates, scopedItems, lessons, expenses, events)
+      } else {
+        dayItems = mergeDayScheduleDisplayItems(scopedItems, lessons, expenses, events)
+      }
       dueDocuments = due
       unpaidLessonsCount = outstandingLessons.length + outstandingCancellationFees.length
       unpaidChargesCount = outstandingCharges.length
     }
   }
+
+  const weekIncludesToday = weekDates.includes(todayStr)
+  const isViewingCurrentPeriod = view === 'week' ? weekIncludesToday : selectedDate === todayStr
+  const stepDays = view === 'week' ? 7 : 1
+  const navLabel = view === 'week' ? 'week' : 'day'
+  const viewQuery = view === 'week' ? 'view=week&' : ''
+  const todayHref = `/barn/${slug}${view === 'week' ? '?view=week' : ''}`
 
   const hasReminders = dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
 
@@ -130,26 +142,46 @@ export default async function BarnDashboardPage({
       )}
       {userRole !== null && (
         <section>
+          <div className="mb-3 flex gap-2">
+            <Pill href={`/barn/${slug}?date=${selectedDate}`} active={view === 'day'}>
+              Day
+            </Pill>
+            <Pill href={`/barn/${slug}?view=week&date=${selectedDate}`} active={view === 'week'}>
+              Week
+            </Pill>
+          </div>
           <div className="mb-4 flex items-center justify-between gap-2">
-            <Link href={`/barn/${slug}?date=${addDays(selectedDate, -1)}`} aria-label="Previous day" className={dayNavLinkClass}>
+            <Link
+              href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, -stepDays)}`}
+              aria-label={`Previous ${navLabel}`}
+              className={dayNavLinkClass}
+            >
               &lt;
             </Link>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              {formatSelectedDate(selectedDate)}
-              {selectedDate === todayStr && ' · Today'}
+              {view === 'week' ? `${formatCalendarDate(selectedDate)} – ${formatCalendarDate(addDays(selectedDate, 6))}` : formatCalendarDate(selectedDate)}
+              {isViewingCurrentPeriod && ' · Today'}
             </h2>
-            <Link href={`/barn/${slug}?date=${addDays(selectedDate, 1)}`} aria-label="Next day" className={dayNavLinkClass}>
+            <Link
+              href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, stepDays)}`}
+              aria-label={`Next ${navLabel}`}
+              className={dayNavLinkClass}
+            >
               &gt;
             </Link>
           </div>
-          {selectedDate !== todayStr && (
+          {!isViewingCurrentPeriod && (
             <div className="mb-4">
-              <Button href={`/barn/${slug}`} variant="primary" size="sm">
+              <Button href={todayHref} variant="primary" size="sm">
                 Today
               </Button>
             </div>
           )}
-          <CalendarDayView items={dayItems} role={userRole} slug={slug} viewerMembershipId={membershipId} />
+          {view === 'week' ? (
+            <CalendarWeekView days={weekDays} todayStr={todayStr} role={userRole} slug={slug} viewerMembershipId={membershipId} />
+          ) : (
+            <CalendarDayView items={dayItems} role={userRole} slug={slug} viewerMembershipId={membershipId} />
+          )}
         </section>
       )}
     </main>

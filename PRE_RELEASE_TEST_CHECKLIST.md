@@ -148,6 +148,15 @@ Dashboard (`/barn/dev-barn`):
 - [ ] A "Reminders" section header appears above the document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
 - [ ] No document-reminder cards appear under Reminders when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders (no separate "Document Reminders" heading) and links to that horse's or member's detail page
 - [ ] If any lessons/charges are unpaid, "N unpaid lessons" and/or "N unpaid leases/boarding" cards appear under Reminders, each linking to `/barn/dev-barn/finances/outstanding`; each is hidden individually when its own count is zero
+- [ ] (#1016) A "Day"/"Week" pill switcher appears above the calendar
+- [ ] (#1016) The Day view is active by default
+- [ ] (#1016) Tapping "Week" switches to a 7-day view running from the currently viewed date through 6 days later
+- [ ] (#1016) In Week view, each of the 7 days shows its own date heading and that day's lessons/expenses/events, or "Nothing scheduled for this day." when empty
+- [ ] (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
+- [ ] (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
+- [ ] (#1016) In Week view, a "Today" link appears only when today's date isn't already inside the visible week
+- [ ] (#1016) Switching to Week view as a trainer shows only lessons you instruct across all 7 days, matching Day view's role-scoping
+- [ ] (#1016) Switching to Week view as a rider shows only your enrolled lessons
 
 Lessons (`/barn/dev-barn/lessons`):
 

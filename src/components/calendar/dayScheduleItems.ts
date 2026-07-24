@@ -35,3 +35,20 @@ export function mergeDayScheduleDisplayItems(
   }
   return result
 }
+
+// Buckets a week-wide `getScheduleForRange` result into one `mergeDayScheduleDisplayItems`
+// call per day. Bucketing is a plain string-prefix match on `item.start` -- no timezone
+// conversion needed, since `start` is already a barn-local wall-clock string (see
+// ScheduleItem's own doc comment in types.ts).
+export function groupScheduleItemsByDay(
+  dates: string[],
+  items: ScheduleItem[],
+  lessons: LessonWithDetails[],
+  expenses: ExpenseWithHorses[],
+  events: BarnEvent[]
+): { date: string; items: DayScheduleDisplayItem[] }[] {
+  return dates.map((date) => {
+    const dayItems = items.filter((item) => item.start.slice(0, 10) === date)
+    return { date, items: mergeDayScheduleDisplayItems(dayItems, lessons, expenses, events) }
+  })
+}

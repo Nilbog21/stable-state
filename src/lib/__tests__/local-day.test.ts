@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { localToday, isSameLocalDay, isValidDateString, addDays } from '../local-day'
+import { localToday, isSameLocalDay, isValidDateString, addDays, getWeekDates } from '../local-day'
 
 describe('localToday', () => {
   it('should_format_local_date_as_yyyy_mm_dd', () => {
@@ -78,5 +78,31 @@ describe('addDays', () => {
 
   it('should_roll_over_a_year_boundary', () => {
     expect(addDays('2026-12-31', 1)).toBe('2027-01-01')
+  })
+})
+
+describe('getWeekDates', () => {
+  it('should_return_seven_dates_starting_at_the_input_date', () => {
+    expect(getWeekDates('2026-07-20')).toEqual([
+      '2026-07-20',
+      '2026-07-21',
+      '2026-07-22',
+      '2026-07-23',
+      '2026-07-24',
+      '2026-07-25',
+      '2026-07-26',
+    ])
+  })
+
+  it('should_roll_over_a_month_boundary', () => {
+    expect(getWeekDates('2026-07-30')).toEqual([
+      '2026-07-30',
+      '2026-07-31',
+      '2026-08-01',
+      '2026-08-02',
+      '2026-08-03',
+      '2026-08-04',
+      '2026-08-05',
+    ])
   })
 })

@@ -9,6 +9,12 @@ vi.mock('@/components/calendar/CalendarDayView', () => ({
   ),
 }))
 
+vi.mock('@/components/calendar/CalendarWeekView', () => ({
+  CalendarWeekView: ({ days, role, slug, viewerMembershipId, todayStr }: { days: unknown[]; role: string; slug: string; viewerMembershipId?: string; todayStr: string }) => (
+    <div data-testid="calendar-week-view" data-role={role} data-slug={slug} data-day-count={days.length} data-viewer-membership-id={viewerMembershipId} data-today-str={todayStr} />
+  ),
+}))
+
 vi.mock('../DocumentRemindersSection', () => ({
   DocumentRemindersSection: ({ slug, dueDocuments }: { slug: string; dueDocuments: { id: string }[] }) => (
     <div data-testid="document-reminders" data-slug={slug} data-due-count={dueDocuments.length} />
@@ -115,7 +121,7 @@ function setupAuth(user: typeof mockUser | null = mockUser) {
   vi.mocked(getAuthenticatedUser).mockResolvedValue(user as any)
 }
 
-function renderPage(searchParams: { date?: string } = {}) {
+function renderPage(searchParams: { date?: string; view?: string } = {}) {
   return BarnDashboardPage({
     params: Promise.resolve({ slug: 'green-acres' }),
     searchParams: Promise.resolve(searchParams),
@@ -556,5 +562,136 @@ describe('BarnDashboardPage', () => {
     await renderPage()
 
     expect(getOutstandingCancellationFees).toHaveBeenCalledWith(mockBarn.id, mockUser.id, mockTrainerMembership.role)
+  })
+
+  it('should_render_calendar_day_view_when_view_param_is_absent', async () => {
+    const jsx = await renderPage()
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-day-view')).toBeDefined()
+    expect(screen.queryByTestId('calendar-week-view')).toBeNull()
+  })
+
+  it('should_render_calendar_day_view_when_view_param_is_invalid', async () => {
+    const jsx = await renderPage({ view: 'month' })
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-day-view')).toBeDefined()
+  })
+
+  it('should_render_calendar_week_view_when_view_param_is_week', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-week-view')).toBeDefined()
+    expect(screen.queryByTestId('calendar-day-view')).toBeNull()
+  })
+
+  it('should_pass_seven_day_buckets_to_calendar_week_view', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    expect(screen.getByTestId('calendar-week-view').getAttribute('data-day-count')).toBe('7')
+  })
+
+  it('should_pass_slug_and_viewer_membership_id_to_calendar_week_view', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    const el = screen.getByTestId('calendar-week-view')
+    expect(el.getAttribute('data-slug')).toBe('green-acres')
+    expect(el.getAttribute('data-viewer-membership-id')).toBe(mockManagerMembership.id)
+  })
+
+  it('should_pass_a_valid_today_str_to_calendar_week_view', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    const todayStrAttr = screen.getByTestId('calendar-week-view').getAttribute('data-today-str')
+    expect(todayStrAttr).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+  })
+
+  it('should_fetch_a_seven_day_range_in_week_view', async () => {
+    await renderPage({ view: 'week', date: '2026-07-20' })
+
+    const [, from, to] = vi.mocked(getScheduleForRange).mock.calls[0]
+    expect(new Date(to as string).getTime() - new Date(from as string).getTime()).toBe(7 * 24 * 60 * 60 * 1000)
+  })
+
+  it('should_scope_schedule_items_for_the_callers_role_in_week_view', async () => {
+    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
+    vi.mocked(getScheduleForRange).mockResolvedValue([lessonItem])
+
+    await renderPage({ view: 'week' })
+
+    expect(scopeScheduleItemsForRole).toHaveBeenCalledWith([lessonItem], 'trainer', mockTrainerMembership.id)
+  })
+
+  it('should_render_day_pill_pointing_at_the_day_view', async () => {
+    const jsx = await renderPage({ date: '2026-07-20' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Day' }) as HTMLAnchorElement
+    expect(link.href).toContain('date=2026-07-20')
+    expect(link.href).not.toContain('view=week')
+  })
+
+  it('should_render_week_pill_pointing_at_the_week_view', async () => {
+    const jsx = await renderPage({ date: '2026-07-20' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Week' }) as HTMLAnchorElement
+    expect(link.href).toContain('view=week')
+    expect(link.href).toContain('date=2026-07-20')
+  })
+
+  it('should_mark_the_week_pill_active_in_week_view', async () => {
+    const jsx = await renderPage({ view: 'week', date: '2026-07-20' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Week' })
+    expect(link.className).toContain('bg-zinc-900')
+  })
+
+  it('should_render_previous_week_link_stepping_by_seven_days', async () => {
+    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Previous week' }) as HTMLAnchorElement
+    expect(link.href).toContain('date=2026-07-16')
+    expect(link.href).toContain('view=week')
+  })
+
+  it('should_render_next_week_link_stepping_by_seven_days', async () => {
+    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Next week' }) as HTMLAnchorElement
+    expect(link.href).toContain('date=2026-07-30')
+    expect(link.href).toContain('view=week')
+  })
+
+  it('should_render_a_date_range_heading_in_week_view', async () => {
+    const jsx = await renderPage({ view: 'week', date: '2026-07-20' })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { level: 2 })
+    expect(heading.textContent).toContain('Jul 20')
+    expect(heading.textContent).toContain('Jul 26')
+  })
+
+  it('should_show_a_today_link_in_week_view_when_the_visible_week_does_not_include_today', async () => {
+    const jsx = await renderPage({ view: 'week', date: '2026-01-01' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Today' }) as HTMLAnchorElement
+    expect(link.href).toBe('http://localhost:3000/barn/green-acres?view=week')
+  })
+
+  it('should_hide_the_today_link_in_week_view_when_the_visible_week_includes_today', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    expect(screen.queryByRole('link', { name: 'Today' })).toBeNull()
   })
 })

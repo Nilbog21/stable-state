@@ -36,3 +36,15 @@ export function addDays(date: string, delta: number): string {
   d.setUTCDate(d.getUTCDate() + delta)
   return d.toISOString().slice(0, 10)
 }
+
+// The rolling 7-day window a Week view covers: startDate through startDate+6.
+export function getWeekDates(startDate: string): string[] {
+  return Array.from({ length: 7 }, (_, i) => addDays(startDate, i))
+}
+
+// Shared by the Day view's single heading and the Week view's per-day-cell headings.
+export function formatCalendarDate(date: string): string {
+  return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(
+    new Date(`${date}T00:00:00Z`)
+  )
+}

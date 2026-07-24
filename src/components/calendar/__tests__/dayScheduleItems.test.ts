@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarnEvent } from '@/test/fixtures'
-import { mergeDayScheduleDisplayItems } from '../dayScheduleItems'
+import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay } from '../dayScheduleItems'
 import type { ScheduleItem } from '@/lib/db/types'
 
 function scheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
@@ -68,5 +68,41 @@ describe('mergeDayScheduleDisplayItems', () => {
     const result = mergeDayScheduleDisplayItems(items, [], [], [])
 
     expect(result).toEqual([])
+  })
+})
+
+describe('groupScheduleItemsByDay', () => {
+  const dates = ['2026-07-20', '2026-07-21', '2026-07-22']
+
+  it('should_return_one_bucket_per_date_even_when_empty', () => {
+    const result = groupScheduleItemsByDay(dates, [], [], [], [])
+
+    expect(result).toEqual([
+      { date: '2026-07-20', items: [] },
+      { date: '2026-07-21', items: [] },
+      { date: '2026-07-22', items: [] },
+    ])
+  })
+
+  it('should_bucket_an_item_into_the_day_matching_its_start_date', () => {
+    const lesson = createMockLessonWithDetails({ id: 'lesson-1' })
+    const items = [scheduleItem({ id: 'lesson-1', itemType: 'lesson', start: '2026-07-21T09:00:00' })]
+
+    const result = groupScheduleItemsByDay(dates, items, [lesson], [], [])
+
+    expect(result).toEqual([
+      { date: '2026-07-20', items: [] },
+      { date: '2026-07-21', items: [{ itemType: 'lesson', id: 'lesson-1', lesson }] },
+      { date: '2026-07-22', items: [] },
+    ])
+  })
+
+  it('should_drop_an_item_whose_start_date_falls_outside_the_given_dates', () => {
+    const lesson = createMockLessonWithDetails({ id: 'lesson-1' })
+    const items = [scheduleItem({ id: 'lesson-1', itemType: 'lesson', start: '2026-08-01T09:00:00' })]
+
+    const result = groupScheduleItemsByDay(dates, items, [lesson], [], [])
+
+    expect(result.flatMap((bucket) => bucket.items)).toEqual([])
   })
 })

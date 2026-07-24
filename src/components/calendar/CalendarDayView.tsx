@@ -7,8 +7,8 @@ import type { Role } from '@/lib/db/types'
 
 // The shared "day-cell rendering" piece: given one day's already-hydrated, already-ordered
 // items, render them. Deliberately has no date heading/nav of its own -- the Day view page
-// wants one big heading, while the future Week view wants a small per-day-cell heading in a
-// 7-wide grid, so that stays out of this component.
+// wants one big heading, while the Week view (CalendarWeekView) wants a small per-day-section
+// heading above each stacked day, so that stays out of this component.
 export function CalendarDayView({
   items,
   role,
