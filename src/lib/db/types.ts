@@ -49,6 +49,7 @@ export interface BarnMembership {
   status: MembershipStatus
   can_instruct: boolean
   invite_token: string | null
+  calendar_feed_token: string | null
   created_at: string
 }
 
@@ -492,4 +493,21 @@ export interface RecipientExpenseDetailRow {
   expenseDate: string
   expenseType: string
   amount: number
+}
+
+export type CalendarFeedItemType = 'lesson' | 'event'
+
+export interface CalendarFeedItem {
+  itemType: CalendarFeedItemType
+  id: string
+  title: string
+  startsAt: string // true UTC instant
+  durationMinutes: number
+  notes: string | null
+}
+
+export interface CalendarFeedData {
+  valid: boolean
+  barnName: string | null
+  items: CalendarFeedItem[]
 }

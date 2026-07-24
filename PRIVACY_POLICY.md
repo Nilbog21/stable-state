@@ -1,6 +1,6 @@
 # Privacy Policy
 
-**Last updated: July 22, 2026**
+**Last updated: July 23, 2026**
 
 Stable State ("we", "the app") is barn management software. This policy explains what data we collect, why, and who else sees it.
 
@@ -12,6 +12,7 @@ Stable State ("we", "the app") is barn management software. This policy explains
 - **Barn records** — horse, lesson, agreement, expense, event, and transaction records your barn's staff enter to run their operations
 - **Uploaded documents** — files (e.g. coggins papers, contracts) uploaded to a horse, staff member, or rider's record
 - **Profile photo** — a picture you or your barn manager add to your member profile, visible to other members of your barn(s)
+- **Calendar feed link** — if you opt in from your Profile page, we generate an unguessable link containing a token that lets your phone's calendar app (Google, Apple, Outlook) read your barn schedule without signing in. Anyone who has the link can view the schedule it grants access to, so treat it like a password; regenerating it (or simply not using the feature) revokes the old link immediately
 
 We do not collect anything beyond what's needed to run the features your barn actually uses.
 

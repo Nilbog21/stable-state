@@ -559,6 +559,14 @@ describe('getMembershipByIdForBarn', () => {
     expect(client.rpc).not.toHaveBeenCalled()
   })
 
+  it('should_redact_calendar_feed_token_when_narrow_policy_query_finds_row', async () => {
+    const client = makeDirectClient({ ...mockMembership, calendar_feed_token: 'real-token' })
+
+    const result = await getMembershipByIdForBarn('mem-1', 'barn-1', client)
+
+    expect(result?.calendar_feed_token).toBeNull()
+  })
+
   it('should_call_rpc_with_barn_id_when_direct_query_returns_null', async () => {
     const client = makeDirectClient(null)
     client.rpc = vi.fn().mockResolvedValue({
@@ -593,6 +601,7 @@ describe('getMembershipByIdForBarn', () => {
       status: 'active',
       can_instruct: false,
       invite_token: null,
+      calendar_feed_token: null,
       created_at: '2026-01-01T00:00:00Z',
     })
   })

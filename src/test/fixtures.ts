@@ -48,6 +48,7 @@ export function createMockMembership(overrides: Partial<BarnMembership> = {}): B
     status: 'active',
     can_instruct: true,
     invite_token: null,
+    calendar_feed_token: null,
     created_at: '',
     ...overrides,
   }
