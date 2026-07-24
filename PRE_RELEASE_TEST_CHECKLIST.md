@@ -224,6 +224,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
 - [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
 - [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
+- [ ] (#1000) As manager, make yourself the owning member of Clover (Access section) → the Horses list shows a **My Horses** section at the top with Clover showing a green **Active** badge, and Clover no longer appears under Available
 - [ ] Clear **Registered Name** back to blank and Save → the card's parenthetical and the non-manager detail row are both gone on reload
 - [ ] Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
 - [ ] With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
@@ -424,6 +425,7 @@ bash scripts/change-user.sh
 - [ ] On Butter's detail page, her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (same #998-blocked caveat as the trainer phase above — owner-write can't be manually verified until ownership is UI-assignable)
 - [ ] (#1006) As manager, make Dana the owning member of a horse she has no privileges on yet (Access section); reopen that horse as Dana — **Feed Notes**/**Medication Notes** are editable textareas with a **Save** button
 - [ ] (#1006) On a horse Dana does *not* own, Feed Notes/Medication Notes remain read-only text
+- [ ] (#1000) Back on the Horses list as Dana, a **My Horses** section appears at the top showing the horse she now owns with a status badge, and that horse no longer appears under Available/Unavailable
 - [ ] Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day, and no expenses (manager-only) or events outside her role's `visible_to_roles`
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
