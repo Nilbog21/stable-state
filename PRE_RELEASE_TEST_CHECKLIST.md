@@ -245,6 +245,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
 Finances (`/barn/dev-barn/finances`):
 
+- [ ] (manual) The Finances page as a whole — Outstanding sections, tab pills, and every tab's table/footer — looks clean and visually consistent (spacing, alignment, typography) with the rest of the app
 - [ ] (e2e-candidate) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons; set a payment type on one row via the inline dropdown → it leaves the list
 - [ ] (e2e-candidate) A lesson row's date in **Outstanding Income** and in the By Horse/By Rider/By Instructor drill-downs matches the wall-clock time you entered for that lesson, not shifted by your UTC offset — a lease/boarding charge row's date, in contrast, is unaffected by timezone (it's a plain calendar date, not a time-of-day instant)
 - [ ] (e2e-candidate) Late-cancel a normal lesson that was already marked paid (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding Income** with a **Type** of "Cancellation Fee"; mark it paid via the inline dropdown → it leaves the list
