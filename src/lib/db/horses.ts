@@ -248,6 +248,38 @@ export async function getHorseProjectedExhaustion(
  * `Math.min(moderate, high - 1)` clamps the resolved pair back into order rather
  * than rejecting or throwing.
  */
+// Two-step lookup (link ids, then the lessons themselves) rather than an embedded
+// `lessons!inner` join -- mirrors getLessonsByBarn's rider branch, and avoids the
+// FK-embed ambiguity gotcha documented in agreement-finances.ts's outstanding-charges
+// query (#665).
+export async function getUpcomingLessonsForHorse(
+  horseId: string,
+  barnId: string
+): Promise<{ id: string; lessonAt: string }[]> {
+  const supabase = await createClient()
+  const { data: links, error: linksError } = await supabase
+    .from('lesson_horses')
+    .select('lesson_id')
+    .eq('horse_id', horseId)
+    .eq('barn_id', barnId)
+  if (linksError) throw linksError
+
+  const lessonIds = (links ?? []).map((l) => l.lesson_id)
+  if (!lessonIds.length) return []
+
+  const { data, error } = await supabase
+    .from('lessons')
+    .select('id, lesson_at')
+    .in('id', lessonIds)
+    .eq('barn_id', barnId)
+    .is('cancelled_at', null)
+    .gte('lesson_at', new Date().toISOString())
+    .order('lesson_at', { ascending: true })
+  if (error) throw error
+
+  return (data ?? []).map((row: { id: string; lesson_at: string }) => ({ id: row.id, lessonAt: row.lesson_at }))
+}
+
 export function resolveExhaustionThresholds(
   horse: Pick<Horse, 'exhaustion_threshold_high' | 'exhaustion_threshold_moderate'>,
   barn: Barn

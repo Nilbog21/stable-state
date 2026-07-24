@@ -26,9 +26,10 @@ async function fetchPaymentTypes(
 // authenticated (#937 review follow-up), so it can't be trimmed from the select
 // string per role the way private_notes is -- a rider's own session could still
 // read it directly via PostgREST. get_lesson_horse_exertion_levels is a
-// SECURITY DEFINER RPC (manager/trainer-only, same check as
-// get_horse_exertion_summary/get_horse_projected_exhaustion) that's the only
-// way to read it now, at both the app layer and via a direct call.
+// SECURITY DEFINER RPC that's the only way to read it now, at both the app layer
+// and via a direct call -- manager/trainer see every row; a rider sees a row only
+// for a horse they hold lesson_read_privileges for (#999; get_horse_exertion_summary,
+// barn-wide, stays manager/trainer-only).
 async function fetchExertionLevels(
   supabase: Awaited<ReturnType<typeof createClient>>,
   lessonId: string,
@@ -159,7 +160,10 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   const lessonData = data
 
   const rawHorses = lessonData.lesson_horses as RawLessonHorse[]
-  const exertionByHorseId = role === 'rider' ? new Map<string, number>() : await fetchExertionLevels(supabase, lessonId, barnId)
+  // #999: get_lesson_horse_exertion_levels now filters rows by privilege at the DB
+  // layer (manager/trainer see everything, a rider sees only a horse they hold
+  // lesson_read_privileges for), so this no longer needs its own role branch.
+  const exertionByHorseId = await fetchExertionLevels(supabase, lessonId, barnId)
   const lesson_horses = rawHorses.map((lh) => ({
     ...lh,
     exertion_level: lh.horses ? exertionByHorseId.get(lh.horses.id) : undefined,
