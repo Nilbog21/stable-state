@@ -25,7 +25,6 @@ vi.mock('@/lib/db/barns', () => ({
 
 vi.mock('@/lib/db/barn-memberships', () => ({
   getUserMembership: vi.fn(),
-  getPendingMemberships: vi.fn(),
 }))
 
 vi.mock('@/lib/db/schedule', () => ({
@@ -70,7 +69,7 @@ vi.mock('next/navigation', () => ({
 
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { getUserMembership, getPendingMemberships } from '@/lib/db/barn-memberships'
+import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getScheduleForRange, scopeScheduleItemsForRole } from '@/lib/db/schedule'
 import { getLessonsByIds } from '@/lib/db/lessons'
 import { getExpensesByIds } from '@/lib/db/expenses'
@@ -141,7 +140,6 @@ describe('BarnDashboardPage', () => {
     vi.mocked(getExpensesByIds).mockResolvedValue([])
     vi.mocked(getEventsByIds).mockReset()
     vi.mocked(getEventsByIds).mockResolvedValue([])
-    vi.mocked(getPendingMemberships).mockResolvedValue([])
     vi.mocked(getDueDocuments).mockReset()
     vi.mocked(getDueDocuments).mockResolvedValue([])
     vi.mocked(getOutstandingLessons).mockReset()
@@ -348,70 +346,6 @@ describe('BarnDashboardPage', () => {
     expect(screen.queryByRole('button', { name: /sign out/i })).toBeNull()
   })
 
-  it('should_render_pending_approvals_badge_when_count_is_nonzero', async () => {
-    vi.mocked(getPendingMemberships).mockResolvedValue([
-      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
-    ] as any)
-
-    const jsx = await renderPage()
-    render(jsx)
-
-    expect(screen.getByText(/pending new member request/i)).toBeDefined()
-  })
-
-  it('should_not_render_pending_approvals_badge_when_count_is_zero', async () => {
-    vi.mocked(getPendingMemberships).mockResolvedValue([])
-
-    const jsx = await renderPage()
-    render(jsx)
-
-    expect(screen.queryByText(/pending new member request/i)).toBeNull()
-  })
-
-  it('should_render_pending_approvals_badge_with_link_to_settings', async () => {
-    vi.mocked(getPendingMemberships).mockResolvedValue([
-      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
-    ] as any)
-
-    const jsx = await renderPage()
-    render(jsx)
-
-    const link = screen.getByRole('link', { name: /pending new member request/i }) as HTMLAnchorElement
-    expect(link.href).toContain('/barn/green-acres/settings')
-  })
-
-  it('should_not_render_pending_approvals_badge_for_trainer', async () => {
-    vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
-
-    const jsx = await renderPage()
-    render(jsx)
-
-    expect(screen.queryByText(/pending new member request/i)).toBeNull()
-  })
-
-  it('should_use_plural_pending_requests_when_count_is_greater_than_one', async () => {
-    vi.mocked(getPendingMemberships).mockResolvedValue([
-      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
-      { id: 'p2', user_id: 'u2', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
-    ] as any)
-
-    const jsx = await renderPage()
-    render(jsx)
-
-    expect(screen.getByText(/2 pending new member requests/i)).toBeDefined()
-  })
-
-  it('should_use_singular_new_member_request_wording_when_count_is_one', async () => {
-    vi.mocked(getPendingMemberships).mockResolvedValue([
-      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
-    ] as any)
-
-    const jsx = await renderPage()
-    render(jsx)
-
-    expect(screen.getByText('1 pending new member request')).toBeDefined()
-  })
-
   const mockDueHorseDoc = {
     id: 'doc-1',
     entity: 'horse' as const,
@@ -461,17 +395,6 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     expect(screen.queryByRole('heading', { name: 'Reminders' })).toBeNull()
-  })
-
-  it('should_render_reminders_heading_when_pending_count_nonzero', async () => {
-    vi.mocked(getPendingMemberships).mockResolvedValue([
-      { id: 'p1', user_id: 'u1', barn_id: 'barn-1', role: 'rider', status: 'pending', created_at: '' },
-    ] as any)
-
-    const jsx = await renderPage()
-    render(jsx)
-
-    expect(screen.getByRole('heading', { name: 'Reminders' })).toBeDefined()
   })
 
   it('should_render_reminders_heading_when_unpaid_lessons_count_nonzero', async () => {

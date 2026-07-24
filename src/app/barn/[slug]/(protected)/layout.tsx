@@ -40,7 +40,6 @@ export default async function ProtectedBarnLayout({
 
   const membership = await getUserMembership(user.id, barn.id)
   if (!membership) redirect(`/barn/${slug}/login`)
-  if (membership.status === 'pending') redirect(`/barn/${slug}/pending`)
   if (membership.status !== 'active') redirect(`/barn/${slug}/login`)
 
   const [allMemberships, profileRows, notifications] = await Promise.all([

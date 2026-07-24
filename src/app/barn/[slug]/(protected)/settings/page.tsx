@@ -4,11 +4,8 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getEventsByBarn } from '@/lib/db/barn-events'
-import { getPendingMemberships } from '@/lib/db/barn-memberships'
-import { resolveMemberNames } from '@/lib/db/member-names'
 import { getAllBarnDocuments } from '@/lib/db/document-backup'
-import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
-import { approveMembershipAction, rejectMembershipAction } from '../approvals/actions'
+import { LocalDateTime } from '@/components/LocalDateTime'
 import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
@@ -26,7 +23,6 @@ import { EmptyState } from '@/components/EmptyState'
 import { Badge } from '@/components/ui/Badge'
 import { ExhaustionThresholdsForm } from './ExhaustionThresholdsForm'
 import { DownloadButton } from './DownloadButton'
-import type { BarnMembership } from '@/lib/db/types'
 
 function AccordionSection({
   title,
@@ -58,29 +54,6 @@ function AccordionSection({
   )
 }
 
-function MemberRow({
-  membership,
-  name,
-  actionSlot,
-}: {
-  membership: BarnMembership
-  name: string
-  actionSlot: React.ReactNode
-}) {
-  return (
-    <tr>
-      <Td>{name}</Td>
-      <Td tone="secondary" className="capitalize">
-        {membership.role}
-      </Td>
-      <Td tone="secondary">
-        <LocalDateTime iso={membership.created_at} options={DATE_ONLY_OPTIONS} />
-      </Td>
-      <TableActions>{actionSlot}</TableActions>
-    </tr>
-  )
-}
-
 export default async function SettingsPage({
   params,
   searchParams: _searchParams,
@@ -105,9 +78,8 @@ export default async function SettingsPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const [tiers, pending, events, barnDocuments] = await Promise.all([
+  const [tiers, events, barnDocuments] = await Promise.all([
     getAllTiersByBarn(barn.id),
-    getPendingMemberships(barn.id),
     getEventsByBarn(barn.id),
     getAllBarnDocuments(barn.id),
   ])
@@ -115,58 +87,11 @@ export default async function SettingsPage({
   const hasDocuments =
     barnDocuments.horse.length + barnDocuments.trainer.length + barnDocuments.rider.length > 0
 
-  const nameMap = await resolveMemberNames(pending.map((m) => m.id), barn.id)
-
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Manage Barn
       </h1>
-
-      <AccordionSection title="Pending Requests" defaultOpen={pending.length > 0}>
-        {pending.length === 0 ? (
-          <EmptyState
-            heading="No pending requests"
-            subtext='From the Members page, add a member then share the link from "Copy Invite".'
-          />
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr>
-                  <Th>Name</Th>
-                  <Th>Role</Th>
-                  <Th>Requested</Th>
-                  <Th align="right">Actions</Th>
-                </tr>
-              </thead>
-              <tbody>
-                {pending.map((m) => (
-                  <MemberRow
-                    key={m.id}
-                    membership={m}
-                    name={nameMap.get(m.id) ?? m.id}
-                    actionSlot={
-                      <>
-                        <form action={approveMembershipAction.bind(null, slug, m.id)}>
-                          <Button type="submit" size="sm">
-                            Approve
-                          </Button>
-                        </form>
-                        <form action={rejectMembershipAction.bind(null, slug, m.id)}>
-                          <Button type="submit" variant="ghost" size="sm">
-                            Reject
-                          </Button>
-                        </form>
-                      </>
-                    }
-                  />
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </AccordionSection>
 
       <AccordionSection title="Default Instructor Cut">
         <form action={updateInstructorCutAction.bind(null, slug)} className="flex items-end gap-4">

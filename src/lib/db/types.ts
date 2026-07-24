@@ -1,7 +1,6 @@
 export type Role = 'manager' | 'trainer' | 'rider'
 export type NotificationType =
   | 'outstanding_payment'
-  | 'pending_approval'
   | 'lesson_cancelled'
   | 'rider_participation_cancelled'
   | 'incomplete_profile'
@@ -10,7 +9,7 @@ export type NotificationType =
   | 'recurring_lesson_horse_unavailable'
   | 'expense_past_due'
   | 'instructor_lesson_nearby'
-export type MembershipStatus = 'active' | 'pending'
+export type MembershipStatus = 'active'
 
 export interface Profile {
   id: string

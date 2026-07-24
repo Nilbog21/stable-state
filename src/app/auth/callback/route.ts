@@ -110,10 +110,6 @@ export async function GET(request: NextRequest) {
           return redirect(`${origin}/barn/${barnSlug}/register`)
         }
 
-        if (membership.status === 'pending') {
-          return redirect(`${origin}/barn/${barnSlug}/pending`)
-        }
-
         if (user) {
           try {
             const profile = await getProfileByUserId(user.id)
@@ -138,7 +134,6 @@ export async function GET(request: NextRequest) {
         : []
 
       const active = memberships.filter(m => m.membership.status === 'active')
-      const pending = memberships.filter(m => m.membership.status === 'pending')
 
       if (active.length >= 1 && user) {
         try {
@@ -169,12 +164,6 @@ export async function GET(request: NextRequest) {
           setBarnSession(response, barn.slug, user!.id)
         }
         return response
-      }
-      if (pending.length === 1) {
-        return redirect(`${origin}/barn/${pending[0].barn.slug}/pending`)
-      }
-      if (pending.length > 1) {
-        return redirect(`${origin}/barns`)
       }
       return redirect(`${origin}/login?no_barns=true`)
     }

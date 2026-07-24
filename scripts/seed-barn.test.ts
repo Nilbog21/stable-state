@@ -6,7 +6,6 @@ import {
   getPaymentType,
   isGroupLesson,
   drawBar,
-  DEV_PENDING_RIDER,
   DEV_MANAGER_2,
   PAYMENT_TYPES,
   buildExpenseSeeds,
@@ -137,20 +136,6 @@ describe('DEV_MANAGER_2', () => {
 
   it('should_have_lastName', () => {
     expect(DEV_MANAGER_2.lastName).toBeTruthy()
-  })
-})
-
-describe('DEV_PENDING_RIDER', () => {
-  it('should_have_email_as_string', () => {
-    expect(typeof DEV_PENDING_RIDER.email).toBe('string')
-  })
-
-  it('should_have_firstName', () => {
-    expect(DEV_PENDING_RIDER.firstName).toBeTruthy()
-  })
-
-  it('should_have_lastName', () => {
-    expect(DEV_PENDING_RIDER.lastName).toBeTruthy()
   })
 })
 

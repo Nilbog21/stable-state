@@ -108,8 +108,8 @@ describe('GuidePage', () => {
   it('should_call_notFound_when_membership_is_inactive', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({
       ...mockManagerMembership,
-      status: 'pending' as const,
-    })
+      status: 'inactive',
+    } as any)
 
     try { await GuidePage({ params: Promise.resolve({ slug: 'green-acres' }) }) } catch {}
 

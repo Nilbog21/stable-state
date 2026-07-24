@@ -45,7 +45,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] Other links stay unhighlighted
 - [ ] Temporarily `throw new Error('smoke test')` at the top of any page or Server Action, load it, then revert — confirm the global error boundary (`src/app/error.tsx`) renders "Something went wrong" with a working **Try again** button instead of a raw stack trace
 
-**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; pending rider Quinn Pending; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
+**Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
 
 ## Phase 2 — Manager seeding
 
@@ -137,8 +137,7 @@ Dashboard (`/barn/dev-barn`):
 - [ ] A "Today" link appears only while viewing a day other than today, and returns to today's calendar when clicked
 - [ ] A date-only planned expense (no time set) does **not** appear on the calendar for its date
 - [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
-- [ ] A "Reminders" section header appears above the pending-requests/document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
-- [ ] Pending-requests badge is visible under the Reminders header (Quinn Pending), reads "1 pending new member request" (singular wording, not "1 pending request"), and links to settings
+- [ ] A "Reminders" section header appears above the document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
 - [ ] No document-reminder cards appear under Reminders when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders (no separate "Document Reminders" heading) and links to that horse's or member's detail page
 - [ ] If any lessons/charges are unpaid, "N unpaid lessons" and/or "N unpaid leases/boarding" cards appear under Reminders, each linking to `/barn/dev-barn/finances/outstanding`; each is hidden individually when its own count is zero
 
@@ -336,8 +335,7 @@ Finances (`/barn/dev-barn/finances`):
 
 Manage Barn (`/barn/dev-barn/settings`):
 
-- [ ] Sections render as collapsible accordions, collapsed by default; Pending Requests auto-expands because Quinn Pending is present; clicking a section's heading toggles it open/closed independently of the others; there is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
-- [ ] **Approve** Quinn Pending under Pending Requests → Quinn becomes an active member and appears under the Members page's Riders/Trainers section
+- [ ] Sections render as collapsible accordions, collapsed by default; clicking a section's heading toggles it open/closed independently of the others; there is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
 - [ ] **Default Instructor Cut** field shows the current value (default `25`)
 - [ ] Change it and **Save** → value persists on reload; confirm the helper text says the change doesn't affect past lessons, not that it recalculates historical income
 - [ ] Try `0` — allowed
@@ -393,7 +391,7 @@ Switch role (interactive):
 bash scripts/change-user.sh
 ```
 
-> First prompt is a numbered list of barns — pick **Dev Barn**. Then pick **Alex** from the profile list — this list is scoped to Dev Barn's members only (active or pending), so no other barn's profiles appear. If the selected profile's membership is **pending**, you'll be prompted to activate it (y/N) before the switch proceeds.
+> First prompt is a numbered list of barns — pick **Dev Barn**. Then pick **Alex** from the profile list — this list is scoped to Dev Barn's active members only, so no other barn's profiles appear.
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 

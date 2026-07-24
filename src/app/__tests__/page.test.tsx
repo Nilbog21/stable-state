@@ -50,41 +50,11 @@ describe('Home', () => {
       expect(mockRedirect).toHaveBeenCalledWith('/barns')
     })
 
-    it('should_redirect_to_barn_pending_when_single_pending_membership', async () => {
-      setupAuth()
-      const barn = createMockBarn({ slug: 'green-acres' })
-      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
-        { barn, membership: createMockMembership({ status: 'pending' }) },
-      ])
-      await expect(Home()).rejects.toThrow('NEXT_REDIRECT')
-      expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/pending')
-    })
-
-    it('should_redirect_to_barns_when_multiple_pending_memberships', async () => {
-      setupAuth()
-      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
-        { barn: createMockBarn({ id: 'b1', slug: 'barn-one' }), membership: createMockMembership({ id: 'm1', status: 'pending' }) },
-        { barn: createMockBarn({ id: 'b2', slug: 'barn-two' }), membership: createMockMembership({ id: 'm2', status: 'pending' }) },
-      ])
-      await expect(Home()).rejects.toThrow('NEXT_REDIRECT')
-      expect(mockRedirect).toHaveBeenCalledWith('/barns')
-    })
-
     it('should_redirect_to_login_no_barns_when_no_memberships', async () => {
       setupAuth()
       vi.mocked(getBarnMembershipsForUser).mockResolvedValue([])
       await expect(Home()).rejects.toThrow('NEXT_REDIRECT')
       expect(mockRedirect).toHaveBeenCalledWith('/login?no_barns=true')
-    })
-
-    it('should_redirect_to_active_barn_when_user_has_mixed_active_and_pending_memberships', async () => {
-      setupAuth()
-      vi.mocked(getBarnMembershipsForUser).mockResolvedValue([
-        { barn: createMockBarn({ id: 'b1', slug: 'active-barn' }), membership: createMockMembership({ id: 'm1', status: 'active' }) },
-        { barn: createMockBarn({ id: 'b2', slug: 'pending-barn' }), membership: createMockMembership({ id: 'm2', status: 'pending' }) },
-      ])
-      await expect(Home()).rejects.toThrow('NEXT_REDIRECT')
-      expect(mockRedirect).toHaveBeenCalledWith('/barn/active-barn')
     })
   })
 })

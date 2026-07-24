@@ -48,9 +48,6 @@ export default async function BarnRegisterPage({
   if (existing?.status === 'active') {
     redirect(`/barn/${slug}/`)
   }
-  if (existing?.status === 'pending') {
-    redirect(`/barn/${slug}/pending`)
-  }
 
   return (
     <main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-white dark:bg-black">

@@ -6,7 +6,7 @@ Stable State is a barn management app for scheduling lessons, tracking horses an
 
 ## Dashboard
 
-Go to **Dashboard** to see a day-by-day calendar of your barn's schedule — every lesson barn-wide (not just ones you personally teach), planned expenses (a date and time but no amount entered yet, like a vet visit), and any barn events, all for the day you're viewing, in order. It opens on today by default; tap **‹**/**›** to move a day at a time, or tap **Today** to jump back. Tap an expense entry to open its detail page. Above the calendar, a **Reminders** section gathers anything needing your attention — a pending new member request badge, unpaid lessons and unpaid leases/boarding cards (tap either to open the full Outstanding Payments list), and one card per horse, member, or your own document with an expiration reminder date that's arrived (tap an entry to open that horse's or member's detail page). The whole Reminders section, and each item within it, is hidden when there's nothing to show.
+Go to **Dashboard** to see a day-by-day calendar of your barn's schedule — every lesson barn-wide (not just ones you personally teach), planned expenses (a date and time but no amount entered yet, like a vet visit), and any barn events, all for the day you're viewing, in order. It opens on today by default; tap **‹**/**›** to move a day at a time, or tap **Today** to jump back. Tap an expense entry to open its detail page. Above the calendar, a **Reminders** section gathers anything needing your attention — unpaid lessons and unpaid leases/boarding cards (tap either to open the full Outstanding Payments list), and one card per horse, member, or your own document with an expiration reminder date that's arrived (tap an entry to open that horse's or member's detail page). The whole Reminders section, and each item within it, is hidden when there's nothing to show.
 
 ## Horses
 
@@ -114,7 +114,7 @@ In the **By Paid To** tab, tap any recipient name to open a drill-down page list
 
 ## Settings
 
-Each part of Settings is a collapsible section — tap a section's heading to expand or collapse it. Sections start collapsed, except **Pending Requests**, which auto-expands whenever there's a pending request waiting on you.
+Each part of Settings is a collapsible section — tap a section's heading to expand or collapse it. Sections start collapsed.
 
 Go to **Settings** to set the barn's **Default Instructor Cut** — a flat amount used only to pre-fill a new lesson tier's own cut, and to set the instructor take for a Custom (untiered) lesson. Changing it never affects past lessons or tiers already created.
 
@@ -129,10 +129,6 @@ Go to **Settings** to manage fee tiers. The tier list shows each tier's name, pr
 **Barn Events** — Add calendar entries that aren't a lesson or an expense, like a costume party or a barn closure. Tap **Add Event** in the section header to create one: give it a title, a date and hour, and optional notes. The **Visible to** checkboxes control who sees the event — Manager, Trainer, Rider — and default to everyone checked, so you only need to narrow it down for something that shouldn't be barn-wide. Tap **Edit** next to an event to change any of that or delete it.
 
 **Data Backup** — Tap **Download All Documents** to get a single zip file of every horse, trainer, and rider document, organized into one folder per horse and one shared folder per member. The button is disabled with an explanation when the barn has no documents yet. Tap **Download Data** to get a single spreadsheet covering your horses, lessons, agreements, expenses, transactions, and members — one sheet per record type, always available.
-
-## Approvals
-
-New members always join through a per-person invite link (see **Members** above), not by requesting access, so this section is normally empty. Go to **Settings** to review any pending membership requests — approving one grants the member active access to the barn.
 
 ## Profile & Guide
 

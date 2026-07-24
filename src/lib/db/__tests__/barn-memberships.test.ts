@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { createMockMembership } from '@/test/fixtures'
+import type { MembershipStatus } from '../types'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -9,10 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import {
   getUserMembership,
   createActiveMembership,
-  createPendingMembership,
-  getPendingMemberships,
   getActiveMemberships,
-  approveMembership,
   deleteMembership,
   getMembershipById,
   getMembershipByIdForBarn,
@@ -162,181 +160,6 @@ describe('createActiveMembership', () => {
   })
 })
 
-describe('createPendingMembership', () => {
-  it('should_insert_membership_with_pending_status', async () => {
-    const mockInsert = vi.fn().mockReturnValue({
-      select: vi.fn().mockReturnValue({
-        single: vi.fn().mockResolvedValue({ data: createMockMembership({ status: 'pending' }), error: null }),
-      }),
-    })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ insert: mockInsert }),
-    } as any)
-
-    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')
-
-    expect(mockInsert).toHaveBeenCalledWith(
-      expect.objectContaining({ status: 'pending' })
-    )
-  })
-
-  it('should_return_the_created_membership', async () => {
-    const pending = createMockMembership({ status: 'pending' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: pending, error: null }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')
-
-    expect(result).toEqual(pending)
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('insert failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: null, error: dbError }),
-          }),
-        }),
-      }),
-    } as any)
-
-    await expect(createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1')).rejects.toThrow('insert failed')
-  })
-
-  it('should_not_call_createClient_when_client_is_injected', async () => {
-    vi.mocked(createClient).mockReset()
-    const injectedClient = {
-      from: vi.fn().mockReturnValue({
-        insert: vi.fn().mockReturnValue({
-          select: vi.fn().mockReturnValue({
-            single: vi.fn().mockResolvedValue({ data: createMockMembership({ status: 'pending' }), error: null }),
-          }),
-        }),
-      }),
-    } as any
-
-    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1', injectedClient)
-
-    expect(vi.mocked(createClient)).not.toHaveBeenCalled()
-  })
-
-  it('should_use_injected_client_for_db_operation', async () => {
-    vi.mocked(createClient).mockReset()
-    const mockFrom = vi.fn().mockReturnValue({
-      insert: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          single: vi.fn().mockResolvedValue({ data: createMockMembership({ status: 'pending' }), error: null }),
-        }),
-      }),
-    })
-    const injectedClient = { from: mockFrom } as any
-
-    await createPendingMembership('user-1', 'barn-1', 'trainer', 'profile-1', injectedClient)
-
-    expect(mockFrom).toHaveBeenCalled()
-  })
-})
-
-describe('getPendingMemberships', () => {
-  it('should_return_pending_memberships_for_barn', async () => {
-    const pending = [createMockMembership({ status: 'pending' })]
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockResolvedValue({ data: pending, error: null }),
-            }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await getPendingMemberships('barn-1')
-
-    expect(result).toEqual(pending)
-  })
-
-  it('should_return_empty_array_when_no_pending_memberships', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockResolvedValue({ data: [], error: null }),
-            }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await getPendingMemberships('barn-1')
-
-    expect(result).toEqual([])
-  })
-
-  it('should_query_by_barn_id_and_pending_status', async () => {
-    const mockStatusEq = vi.fn().mockReturnValue({
-      order: vi.fn().mockResolvedValue({ data: [], error: null }),
-    })
-    const mockBarnEq = vi.fn().mockReturnValue({ eq: mockStatusEq })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({ eq: mockBarnEq }),
-      }),
-    } as any)
-
-    await getPendingMemberships('barn-1')
-
-    expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
-    expect(mockStatusEq).toHaveBeenCalledWith('status', 'pending')
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('query failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockResolvedValue({ data: null, error: dbError }),
-            }),
-          }),
-        }),
-      }),
-    } as any)
-
-    await expect(getPendingMemberships('barn-1')).rejects.toThrow('query failed')
-  })
-
-  it('should_return_empty_array_when_data_is_null', async () => {
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        select: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({
-              order: vi.fn().mockResolvedValue({ data: null, error: null }),
-            }),
-          }),
-        }),
-      }),
-    } as any)
-
-    const result = await getPendingMemberships('barn-1')
-
-    expect(result).toEqual([])
-  })
-})
-
 describe('getActiveMemberships', () => {
   it('should_return_active_memberships_for_barn', async () => {
     const active = [mockMembership]
@@ -407,34 +230,6 @@ describe('getActiveMemberships', () => {
     const result = await getActiveMemberships('barn-1')
 
     expect(result).toEqual([])
-  })
-})
-
-describe('approveMembership', () => {
-  it('should_update_status_to_active', async () => {
-    const mockEq = vi.fn().mockResolvedValue({ error: null })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEq })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
-
-    await approveMembership('mem-1')
-
-    expect(mockUpdate).toHaveBeenCalledWith({ status: 'active' })
-    expect(mockEq).toHaveBeenCalledWith('id', 'mem-1')
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const dbError = new Error('update failed')
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockResolvedValue({ error: dbError }),
-        }),
-      }),
-    } as any)
-
-    await expect(approveMembership('mem-1')).rejects.toThrow('update failed')
   })
 })
 
@@ -700,24 +495,24 @@ describe('getBarnMembershipsForUser', () => {
     expect(result).toEqual([expectedEntry, { barn: barn2, membership: mem2 }])
   })
 
-  it('should_return_pending_only_membership_with_barn', async () => {
-    const pendingMem = createMockMembership({ status: 'pending' })
-    const pendingRow = { ...pendingMem, barns: mockBarn }
-    vi.mocked(createClient).mockResolvedValue(makeClient([pendingRow]))
+  it('should_return_inactive_only_membership_with_barn', async () => {
+    const inactiveMem = createMockMembership({ status: 'inactive' as unknown as MembershipStatus })
+    const inactiveRow = { ...inactiveMem, barns: mockBarn }
+    vi.mocked(createClient).mockResolvedValue(makeClient([inactiveRow]))
 
     const result = await getBarnMembershipsForUser('user-1')
 
-    expect(result).toEqual([{ barn: mockBarn, membership: pendingMem }])
+    expect(result).toEqual([{ barn: mockBarn, membership: inactiveMem }])
   })
 
-  it('should_return_mixed_active_and_pending_memberships', async () => {
-    const pendingMem = createMockMembership({ id: 'mem-2', status: 'pending' })
-    const pendingRow = { ...pendingMem, barns: mockBarn }
-    vi.mocked(createClient).mockResolvedValue(makeClient([mockRow, pendingRow]))
+  it('should_return_mixed_active_and_inactive_memberships', async () => {
+    const inactiveMem = createMockMembership({ id: 'mem-2', status: 'inactive' as unknown as MembershipStatus })
+    const inactiveRow = { ...inactiveMem, barns: mockBarn }
+    vi.mocked(createClient).mockResolvedValue(makeClient([mockRow, inactiveRow]))
 
     const result = await getBarnMembershipsForUser('user-1')
 
-    expect(result).toEqual([expectedEntry, { barn: mockBarn, membership: pendingMem }])
+    expect(result).toEqual([expectedEntry, { barn: mockBarn, membership: inactiveMem }])
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
