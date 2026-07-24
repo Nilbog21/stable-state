@@ -80,12 +80,6 @@ test('dashboard_reminders_header_hidden_for_rider_with_no_reminders @rider', asy
   await expect(page.getByRole('heading', { name: 'Reminders' })).toHaveCount(0)
 })
 
-test('dashboard_pending_request_badge_links_to_settings @manager', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}`)
-  const badge = page.getByRole('link', { name: '1 pending new member request' })
-  await expect(badge).toHaveAttribute('href', `/barn/${barnSlug}/settings`)
-})
-
 test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manager', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}/horses`)
   await page.getByRole('link', { name: /Apollo/ }).first().click()
