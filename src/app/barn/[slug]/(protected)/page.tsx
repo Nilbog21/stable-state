@@ -19,6 +19,7 @@ import type { DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
 import { Pill } from '@/components/ui/Pill'
+import { LocalDateTime } from '@/components/LocalDateTime'
 
 // Icon-only Prev/Next controls have no good structural fit with the shared Button
 // component (see ARCHITECTURE.md's documented exception, mirrored by LessonForm's
@@ -110,12 +111,21 @@ export default async function BarnDashboardPage({
   const todayHref = `/barn/${slug}${view === 'week' ? '?view=week' : ''}`
 
   const hasReminders = dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
+  const demoResetAt = barn.is_demo
+    ? new Date(new Date(barn.created_at).getTime() + 7 * 60 * 60 * 1000).toISOString()
+    : null
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Dashboard
       </h1>
+      {demoResetAt && (
+        <div className="mb-8 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
+          This is a demo barn. Data resets at approximately{' '}
+          <LocalDateTime iso={demoResetAt} options={{ timeStyle: 'short' }} />.
+        </div>
+      )}
       {hasReminders && (
         <section className="mb-8">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
