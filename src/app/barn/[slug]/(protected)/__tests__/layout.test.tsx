@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
 
 afterEach(cleanup)
 
@@ -512,6 +512,46 @@ describe('ProtectedBarnLayout - UserMenu', () => {
     const jsx = await ProtectedBarnLayout({ children, params })
     render(jsx)
     expect(screen.queryByRole('button', { name: /switch barn/i })).toBeNull()
+  })
+})
+
+describe('ProtectedBarnLayout - demo mode', () => {
+  beforeEach(() => {
+    vi.mocked(getAuthenticatedUser).mockReset()
+    setupAuth()
+    vi.mocked(getUserMembership).mockResolvedValue(mockManagerMembership)
+    vi.mocked(getBarnMembershipsForUser).mockResolvedValue([mockMembershipEntry])
+    vi.mocked(getProfilesByUserIds).mockResolvedValue([mockProfile])
+    vi.mocked(getNotifications).mockResolvedValue([])
+  })
+
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
+  it('should_append_demo_suffix_to_barn_name_when_barn_is_demo', async () => {
+    vi.mocked(getBarnBySlug).mockResolvedValue(createMockBarn({ ...mockBarn, is_demo: true }))
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    expect(screen.getByRole('link', { name: 'Green Acres (DEMO)' })).toBeDefined()
+  })
+
+  it('should_hide_profile_link_when_user_email_matches_demo_user_email', async () => {
+    vi.stubEnv('DEMO_USER_EMAIL', 'user@example.com')
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.queryByRole('link', { name: 'Profile' })).toBeNull()
+  })
+
+  it('should_show_profile_link_when_user_email_does_not_match_demo_user_email', async () => {
+    vi.stubEnv('DEMO_USER_EMAIL', 'someone-else@example.com')
+    vi.mocked(getBarnBySlug).mockResolvedValue(mockBarn)
+    const jsx = await ProtectedBarnLayout({ children, params })
+    render(jsx)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: 'Profile' })).toBeDefined()
   })
 })
 
