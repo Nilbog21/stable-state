@@ -99,7 +99,7 @@ export default async function LessonDetailPage({
   }
 
   const role = membership.role
-  const lesson = await getLessonById(id, barn.id, role, membership.id)
+  const lesson = await getLessonById(id, barn.id, role)
 
   if (!lesson) {
     notFound()

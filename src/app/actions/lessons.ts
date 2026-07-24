@@ -187,7 +187,7 @@ export async function deleteLessonAction(
 ): Promise<void> {
   const { membership } = await requireMembership(barnSlug, ['manager'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return

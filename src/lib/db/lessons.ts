@@ -24,12 +24,12 @@ async function fetchPaymentTypes(
 
 // exertion_level has no column-level GRANT restriction on lesson_horses for
 // authenticated (#937 review follow-up), so it can't be trimmed from the select
-// string per role the way private_notes is -- a rider's own session could still
-// read it directly via PostgREST. get_lesson_horse_exertion_levels is a
-// SECURITY DEFINER RPC that's the only way to read it now, at both the app layer
-// and via a direct call -- manager/trainer see every row; a rider sees a row only
-// for a horse they hold lesson_read_privileges for (#999; get_horse_exertion_summary,
-// barn-wide, stays manager/trainer-only).
+// string per role -- a rider's own session could still read it directly via
+// PostgREST. get_lesson_horse_exertion_levels is a SECURITY DEFINER RPC that's
+// the only way to read it now, at both the app layer and via a direct call --
+// manager/trainer see every row; a rider sees a row only for a horse they hold
+// lesson_read_privileges for (#999; get_horse_exertion_summary, barn-wide, stays
+// manager/trainer-only).
 async function fetchExertionLevels(
   supabase: Awaited<ReturnType<typeof createClient>>,
   lessonId: string,
@@ -41,6 +41,32 @@ async function fetchExertionLevels(
   })
   if (error) throw error
   return new Map((data ?? []).map((row: { horse_id: string; exertion_level: number }) => [row.horse_id, row.exertion_level]))
+}
+
+// rider_notes/private_notes have the same RLS gap #937 fixed for exertion_level:
+// lesson_riders' row-level SELECT policies don't restrict columns, so trimming
+// private_notes out of the select string per role (the pre-#999 fix) only closed
+// the app's own code path -- a caller with row visibility could still read every
+// rider's notes directly via PostgREST. get_lesson_rider_notes is the only way to
+// read either column now: manager/trainer get every row's real values; any other
+// caller with lesson visibility (enrolled or privileged rider) gets their own row's
+// rider_notes and NULL for everyone else's, private_notes always NULL.
+async function fetchRiderNotes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  lessonId: string,
+  barnId: string
+): Promise<Map<string, { rider_notes: string | null; private_notes: string | null }>> {
+  const { data, error } = await supabase.rpc('get_lesson_rider_notes', {
+    p_lesson_id: lessonId,
+    p_barn_id: barnId,
+  })
+  if (error) throw error
+  return new Map(
+    (data ?? []).map((row: { rider_id: string; rider_notes: string | null; private_notes: string | null }) => [
+      row.rider_id,
+      { rider_notes: row.rider_notes, private_notes: row.private_notes },
+    ])
+  )
 }
 
 export async function createLesson({
@@ -121,14 +147,12 @@ export async function getLessonsByIds(barnId: string, ids: string[]): Promise<Le
   return hydrateParticipants(supabase, lessons ?? [], barnId)
 }
 
-export async function getLessonById(lessonId: string, barnId: string, role: Role, callerMembershipId?: string): Promise<LessonDetail | null> {
+export async function getLessonById(lessonId: string, barnId: string, _role: Role): Promise<LessonDetail | null> {
   const supabase = await createClient()
-  const riderSelect = role === 'rider'
-    ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
-    : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
-  // exertion_level is never selected here directly for any role -- it's merged in
-  // separately via fetchExertionLevels above, which is the only column-safe way to
-  // read it (see that function's comment for why, and #999 for the privileged-rider case).
+  // exertion_level and rider_notes/private_notes are never selected here directly for
+  // any role -- both are merged in separately via fetchExertionLevels/fetchRiderNotes
+  // above, the only column-safe way to read them (see those functions' comments for why).
+  const riderSelect = 'rider_id, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
   const horseSelect = 'horse_notes, horses ( id, name, is_active, is_available, unavailability_reason )'
   const { data, error } = await supabase
     .from('lessons')
@@ -151,8 +175,6 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
 
   type RawLessonRider = {
     rider_id: string
-    rider_notes: string | null
-    private_notes?: string | null
     cancellation_notes: string | null
     cancelled_at: string | null
     barn_memberships: { user_id: string | null } | null
@@ -190,6 +212,10 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
     : null
 
   const membershipMap = await resolveMemberNames(riderMembershipIds, barnId, supabase)
+  // #999 review follow-up: get_lesson_rider_notes now does the manager/trainer-vs-own-row
+  // filtering at the DB layer (same as fetchExertionLevels above), so normalizeLr just
+  // reads its result straight through rather than branching on role/callerMembershipId itself.
+  const riderNotesById = await fetchRiderNotes(supabase, lessonId, barnId)
 
   type NormalizedLr = {
     rider_notes: string | null
@@ -200,8 +226,8 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   }
 
   const normalizeLr = (lr: RawLessonRider): NormalizedLr => ({
-    rider_notes: lr.rider_notes,
-    private_notes: (lr as { private_notes?: string | null }).private_notes ?? null,
+    rider_notes: riderNotesById.get(lr.rider_id)?.rider_notes ?? null,
+    private_notes: riderNotesById.get(lr.rider_id)?.private_notes ?? null,
     cancellation_notes: lr.cancellation_notes ?? null,
     cancelled_at: lr.cancelled_at ?? null,
     barn_membership: {
@@ -213,29 +239,14 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
 
   const paymentMap = await fetchPaymentTypes(supabase, [lessonId], barnId)
 
-  const base = {
+  return {
     ...lessonData,
     lesson_horses,
     payment_type: paymentMap.get(lessonId) ?? null,
     instructor_name,
     instructor_user_id,
     lesson_riders: rawRiders.map(normalizeLr) as NormalizedLr[],
-  }
-
-  if (role === 'rider') {
-    return {
-      ...base,
-      lesson_riders: base.lesson_riders.map((lr: NormalizedLr) => ({
-        ...lr,
-        private_notes: null,
-        // Anchored to the caller's own membership ID (a plain, always-present column) rather
-        // than the RLS-gated barn_memberships embed's user_id, so masking doesn't depend on
-        // barn_memberships_read_own continuing to cover the caller's own row.
-        rider_notes: lr.barn_membership?.id === callerMembershipId ? lr.rider_notes : null,
-      })),
-    } as LessonDetail
-  }
-  return base as LessonDetail
+  } as LessonDetail
 }
 
 export async function cancelLesson(lessonId: string, barnId: string, notes?: string | null, isLate = false): Promise<void> {
