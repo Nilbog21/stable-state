@@ -890,13 +890,16 @@ describe('getLessonById', () => {
     expect(rpc).toHaveBeenCalledWith('get_lesson_horse_exertion_levels', { p_lesson_id: 'lesson-1', p_barn_id: 'barn-1' })
   })
 
-  it('should_not_call_get_lesson_horse_exertion_levels_for_rider_role', async () => {
+  it('should_call_get_lesson_horse_exertion_levels_for_rider_role', async () => {
+    // #999: the RPC itself now filters rows by privilege (manager/trainer see
+    // everything, a rider sees only horses they hold lesson_read_privileges for),
+    // so getLessonById no longer needs its own role branch to skip the call.
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { rpc } = mockLessonsFrom(noInstructorData)
 
     await getLessonById('lesson-1', 'barn-1', 'rider')
 
-    expect(rpc).not.toHaveBeenCalledWith('get_lesson_horse_exertion_levels', expect.anything())
+    expect(rpc).toHaveBeenCalledWith('get_lesson_horse_exertion_levels', { p_lesson_id: 'lesson-1', p_barn_id: 'barn-1' })
   })
 
   it('should_merge_exertion_level_from_rpc_onto_matching_horse_for_trainer_role', async () => {
@@ -912,7 +915,26 @@ describe('getLessonById', () => {
     expect(result?.lesson_horses[0].exertion_level).toBe(4)
   })
 
-  it('should_leave_exertion_level_undefined_for_rider_role', async () => {
+  it('should_merge_exertion_level_from_rpc_onto_matching_horse_for_rider_role', async () => {
+    // A rider only gets a row back from get_lesson_horse_exertion_levels for a horse
+    // they hold lesson_read_privileges for (#999) -- when the RPC does return a row,
+    // getLessonById merges it the same way it already does for manager/trainer.
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [{ horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
+      lesson_riders: [],
+    }
+    mockLessonsFrom(lessonData, null, [], [{ horse_id: 'horse-1', exertion_level: 2 }])
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+
+    expect(result?.lesson_horses[0].exertion_level).toBe(2)
+  })
+
+  it('should_leave_exertion_level_undefined_for_rider_role_when_rpc_returns_no_matching_row', async () => {
+    // Non-privileged rider case: the RPC is still called, but returns no row for this
+    // horse, so exertion_level stays undefined the same way it does for any caller
+    // whose horse isn't in the RPC's result set.
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [{ horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }],
