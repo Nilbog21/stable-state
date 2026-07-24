@@ -56,7 +56,7 @@ describe('ManageMemberSection', () => {
       await Promise.resolve()
     })
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
-      expect.stringContaining('/barn/green-acres/login?token=tok-abc')
+      expect.stringContaining('/barn/green-acres/register?token=tok-abc')
     )
   })
 
