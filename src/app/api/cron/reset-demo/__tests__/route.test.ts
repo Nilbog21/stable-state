@@ -76,7 +76,7 @@ describe('POST /api/cron/reset-demo', () => {
     vi.mocked(getOldestDemoBarn).mockResolvedValue(RECENT_BARN)
     vi.mocked(countDemoBarns).mockResolvedValue(20)
 
-    const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+    await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
 
     expect(teardownBarnData).not.toHaveBeenCalled()
   })
