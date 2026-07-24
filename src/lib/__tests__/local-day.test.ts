@@ -82,27 +82,37 @@ describe('addDays', () => {
 })
 
 describe('getWeekDates', () => {
-  it('should_return_seven_dates_starting_at_the_input_date', () => {
-    expect(getWeekDates('2026-07-20')).toEqual([
+  it('should_return_the_sunday_start_calendar_week_containing_a_mid_week_date', () => {
+    // 2026-07-23 is a Thursday
+    expect(getWeekDates('2026-07-23')).toEqual([
+      '2026-07-19',
       '2026-07-20',
       '2026-07-21',
       '2026-07-22',
       '2026-07-23',
       '2026-07-24',
       '2026-07-25',
-      '2026-07-26',
     ])
   })
 
-  it('should_roll_over_a_month_boundary', () => {
-    expect(getWeekDates('2026-07-30')).toEqual([
-      '2026-07-30',
-      '2026-07-31',
-      '2026-08-01',
-      '2026-08-02',
-      '2026-08-03',
-      '2026-08-04',
-      '2026-08-05',
+  it('should_return_itself_as_the_start_when_input_is_a_sunday', () => {
+    expect(getWeekDates('2026-07-19')[0]).toBe('2026-07-19')
+  })
+
+  it('should_return_itself_as_the_end_when_input_is_a_saturday', () => {
+    expect(getWeekDates('2026-07-25')[6]).toBe('2026-07-25')
+  })
+
+  it('should_roll_over_a_month_and_year_boundary', () => {
+    // 2026-12-31 is a Thursday
+    expect(getWeekDates('2026-12-31')).toEqual([
+      '2026-12-27',
+      '2026-12-28',
+      '2026-12-29',
+      '2026-12-30',
+      '2026-12-31',
+      '2027-01-01',
+      '2027-01-02',
     ])
   })
 })

@@ -81,4 +81,28 @@ describe('CalendarWeekView', () => {
 
     expect(screen.getByText(/Today/)).toBeDefined()
   })
+
+  it('should_visually_highlight_the_section_matching_todaystr', () => {
+    const days = [
+      { date: '2026-07-20', items: [lessonItem('lesson-1')] },
+      { date: '2026-07-21', items: [] },
+    ]
+    render(<CalendarWeekView days={days} todayStr="2026-07-21" role="manager" slug="green-acres" />)
+
+    const headings = screen.getAllByRole('heading')
+    const todaySection = headings[1].closest('section')
+    expect(todaySection?.className).toContain('border-blue-200')
+  })
+
+  it('should_not_highlight_a_section_that_does_not_match_todaystr', () => {
+    const days = [
+      { date: '2026-07-20', items: [lessonItem('lesson-1')] },
+      { date: '2026-07-21', items: [] },
+    ]
+    render(<CalendarWeekView days={days} todayStr="2026-07-21" role="manager" slug="green-acres" />)
+
+    const headings = screen.getAllByRole('heading')
+    const nonTodaySection = headings[0].closest('section')
+    expect(nonTodaySection?.className ?? '').not.toContain('border-blue-200')
+  })
 })
