@@ -17,6 +17,8 @@ DEV_NAME="$(parse_var DEV_NAME || true)"
 NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
 SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
+DEV_BARN="$(parse_var DEV_BARN || true)"
+DEV_BARN="${DEV_BARN:-dev-barn}"
 
 for var_name in DEV_EMAIL DEV_NAME NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DEV_SUPABASE_URL; do
   if [ -z "${!var_name}" ]; then
@@ -42,4 +44,6 @@ if [ "$key" = $'\e' ]; then
   exit 0
 fi
 
-bash scripts/change-user.sh
+# Assumes the default barn slug was accepted at seed-account.sh's prompt above — if you
+# typed a different slug there, run `bash scripts/change-user.sh <slug>` yourself instead.
+bash scripts/change-user.sh "$DEV_BARN"

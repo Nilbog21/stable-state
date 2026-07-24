@@ -34,7 +34,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `DEV_EMAIL` | Reset script only | Your Google email — used by change-user.sh; must match the Google account you claim the seed invite with |
 | `DEV_NAME` | Reset script only | Your full name (first last) — split on first space for first/last name defaults in seed-account.sh |
 | `DEV_BARN` | Reset script only (optional) | Default barn slug for seed-account.sh (defaults to `dev-barn`) |
-| `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them |
+| `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them. `seed-test-barn`, `teardown-test-barn`, and `change-user` accept a `--allow-prod` flag to deliberately bypass this check — see [Manual smoke-testing against a target project](#manual-smoke-testing-against-a-target-project) |
 
 ### Dev database reset
 
@@ -44,7 +44,7 @@ To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 a
 bash scripts/reset-db.sh
 ```
 
-Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment to claim the account (sign in with Google if you aren't already signed in — an already-authenticated session skips straight to an Accept Invite button), then `change-user.sh` lets you select a dev role to sign in as.
+Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment to claim the account (sign in with Google if you aren't already signed in — an already-authenticated session skips straight to an Accept Invite button), then `change-user.sh <barn-slug>` lets you select a dev role to sign in as.
 
 ## Database setup
 
@@ -122,3 +122,34 @@ In Google Cloud Console → **APIs & Services** → **Credentials** → your OAu
 
 - `https://<your-vercel-domain>.vercel.app/auth/callback`
 - `https://*.vercel.app/auth/callback`
+
+## Manual smoke-testing against a target project
+
+Click through the live app as a seeded manager/trainer/rider against any target
+project (e.g. a prod smoke test) without a password login UI or hand-rolled cookie
+injection — reuses the same invite-claim + `change-user.sh` dance as local dev, just
+pointed elsewhere via `--allow-prod`:
+
+```bash
+bash scripts/seed-test-barn.sh --allow-prod <slug>
+```
+
+This seeds a throwaway test barn (with `manager`/`trainer`/`rider` fixtures) and prints
+a dev-manager invite path. Open that path on the target deployment and sign in with
+Google to claim a real manager membership in the barn.
+
+```bash
+bash scripts/change-user.sh --allow-prod <slug>
+```
+
+Pick a role from the printed list to swap into it — refresh the page after it runs.
+Run it again anytime to switch roles or switch back to yourself.
+
+```bash
+bash scripts/teardown-test-barn.sh --allow-prod <slug>
+```
+
+Clean up the barn and its fixture auth users when you're done. `--allow-prod` only
+skips the `DEV_SUPABASE_URL` dev-project check — it does not relax which barn or rows
+are touched, since the barn slug is always a required argument, never picked from an
+interactive list of every barn in the project.

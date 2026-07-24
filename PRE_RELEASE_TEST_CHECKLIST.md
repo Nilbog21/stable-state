@@ -13,7 +13,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 
 ## Prerequisites
 
-- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — only `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 doesn't use `DEV_BARN` at all — it prompts with a numbered list of barns to pick from)
+- [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 takes the barn slug as a required argument, e.g. `bash scripts/change-user.sh dev-barn`)
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
 - [ ] Email provider enabled in the Supabase dashboard (required by `seed-test-barn.sh` in Phase 7)
 
@@ -372,10 +372,10 @@ Calendar feed (#1018):
 Switch role (interactive):
 
 ```bash
-bash scripts/change-user.sh
+bash scripts/change-user.sh dev-barn
 ```
 
-> First prompt is a numbered list of barns — pick **Dev Barn**. Then pick **Alex** from the profile list — this list is scoped to Dev Barn's active members only, so no other barn's profiles appear.
+> Pick **Alex** from the profile list — this list is scoped to Dev Barn's active members only, so no other barn's profiles appear.
 >
 > `change-user.sh` copies the selected user's role onto your `DEV_EMAIL` membership and reassigns their lessons to you — you stay logged in as yourself. Refresh the page after it runs.
 
@@ -411,10 +411,10 @@ bash scripts/change-user.sh
 
 ## Phase 6 — Rider
 
-Switch role (pick **Dev Barn**, then **Dana**, from the same barn/member lists as Phase 5):
+Switch role (pick **Dana** from the same member list as Phase 5):
 
 ```bash
-bash scripts/change-user.sh
+bash scripts/change-user.sh dev-barn
 ```
 
 - [ ] Nav shows only: barn name, Lessons, Horses, Members, Guide — **no Leases, no Boarding, no Expenses**
@@ -441,7 +441,7 @@ bash scripts/change-user.sh
 - [ ] Open Emery's member detail page (her photo is seeded) → photo displays, but no **Set Photo**/**Replace Photo**/**Remove** control is shown
 
 > Self photo upload/replace/remove is **not** verified here as Dana — `change-user.sh` reassigns `barn_memberships.user_id` to your real login but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. This code path is already exercised for real in Phase 2-4's own-photo check (as yourself, no impersonation), which is sufficient coverage — don't re-add a self-photo check to an impersonated phase.
-- [ ] Switch to Emery (`change-user.sh` → Dev Barn → Emery) and open her own member detail page — the same Active Agreements cards from Phase 4 render as plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page; switch back to Dana afterward
+- [ ] Switch to Emery (`change-user.sh dev-barn` → Emery) and open her own member detail page — the same Active Agreements cards from Phase 4 render as plain non-clickable cards (no hover state, no navigation on tap) — not links to the manager-only agreement detail page; switch back to Dana afterward
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link rider nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (#1018) On the same Profile page, get/open your Calendar Feed link — it includes only lessons Dana is enrolled in, not other riders' lessons
 
@@ -462,7 +462,7 @@ bash scripts/change-user.sh
 - [ ] Run `bash scripts/seed-account.sh`, accepting the default first/last name, and enter `test-barn-checklist` as the barn slug — creates a fresh managed-manager stub invite in that barn and prints `Invite path: /barn/test-barn-checklist/register?token=<uuid>`
 - [ ] Open that invite path as `DEV_EMAIL` (already signed in elsewhere in this browser) — shows a "Join test-barn-checklist" confirmation with an **Accept Invite** button, no Google sign-in button
 - [ ] Click **Accept Invite** → claim succeeds and you land in **test-barn-checklist** as manager — no `?error=1` redirect
-- [ ] Run `change-user.sh` → pick **Dev Barn** → pick your own name → restores your manager role in Dev Barn (undoing the Phase 5/6 role swaps)
+- [ ] Run `change-user.sh dev-barn` → pick your own name → restores your manager role in Dev Barn (undoing the Phase 5/6 role swaps)
 - [ ] Back as `DEV_EMAIL`: the nav barn name now has a caret — the **BarnSwitcher** dropdown lists both barns, current one checkmarked; clicking the other navigates to its dashboard
 - [ ] At a mobile viewport (~390px wide, or your browser's device toolbar), the BarnSwitcher caret is still tappable (≥44px target) and the dropdown behaves the same as desktop
 - [ ] Visit `/barns` — one card per membership, both showing **Manager**, each linking to its barn
