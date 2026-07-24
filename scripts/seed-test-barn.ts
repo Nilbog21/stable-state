@@ -48,7 +48,7 @@ async function run() {
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
-  assertDevProject(SUPABASE_URL)
+  if (process.env.SEED_TEST_BARN_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
