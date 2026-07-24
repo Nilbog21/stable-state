@@ -43,6 +43,8 @@ If your barn manager has made you the owning member of any horse, a **My Horses*
 
 Any horse with a **Registered Name** set shows it after the barn name in parentheses, e.g. "Clover (Four-Leaf Clover)". Tap a card to open the horse's detail page, where a photo appears at the top if one has been added — handy for recognizing a horse by name. If your barn manager has made you that horse's owning member, you'll also see **Set Photo**/**Replace Photo**/**Remove** controls there, the same as a manager — once you upload your own photo, your manager can't overwrite it until you replace or remove it — and **Feed Notes**/**Medication Notes** become editable textareas with a **Save** button instead of read-only text, letting you update your own horse's day-to-day notes yourself.
 
+Your barn manager can also grant you specific access to a horse separately from ownership. If granted, you'll see additional sections on that horse's detail page: a **Documents** section (with an **Add Document** button only if you've been given upload access), an **Exhaustion** bar showing the horse's recent workload (tap it to see the ±3-day breakdown), and a collapsed **Upcoming Lessons** section at the bottom listing its scheduled lessons — tap any lesson to open its detail page, even if you're not enrolled in it yourself. On that lesson's detail page, you'll see this horse's notes and exertion rating, but not other riders' private notes.
+
 ## If something goes wrong
 
 If a page shows a "Something went wrong" message, tap **Try again**. If the problem continues, contact your barn manager.

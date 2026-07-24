@@ -435,12 +435,20 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#1006) As manager, make Dana the owning member of a horse she has no privileges on yet (Access section); reopen that horse as Dana — **Feed Notes**/**Medication Notes** are editable textareas with a **Save** button
 - [ ] (#1006) On a horse Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (#1000) Back on the Horses list as Dana, a **My Horses** section appears at the top showing the horse she now owns with a status badge, and that horse no longer appears under Available/Unavailable
+- [ ] (#999) As manager, grant Dana `document_privileges='read'` on a horse via its Access section; reopen that horse as Dana — a **Documents** section now appears, with no **Add Document** button
+- [ ] (#999) Change that same grant to `document_privileges='write'`; reopen the horse as Dana — the **Add Document** button now appears in the Documents section
+- [ ] (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
+- [ ] (#999) As manager, grant Dana `lesson_read_privileges=true` on a horse with at least one upcoming lesson; reopen that horse as Dana — an **Exhaustion** bar now appears, and tapping it expands the ±3-day breakdown
+- [ ] (#999) Same horse — a collapsed **Upcoming Lessons** section appears at the bottom of the page, listing its scheduled lessons
+- [ ] (#999) Tap a lesson in that Upcoming Lessons list that Dana is **not** enrolled in — the lesson detail page loads (no 404)
+- [ ] (#999) On a horse Dana has no lesson-read privilege on, neither the Exhaustion bar nor the Upcoming Lessons section appears
 - [ ] Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day, and no expenses (manager-only) or events outside her role's `visible_to_roles`
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
-- [ ] Same lesson detail page — no exertion rating shown next to any horse name
+- [ ] Same lesson detail page — no exertion rating shown next to any horse name (still true for a horse Dana holds no lesson-read privilege on)
+- [ ] (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse **does** show an exertion rating and its horse notes (if any), but other riders' rider/private notes stay hidden
 - [ ] Open an enrolled **group** lesson's detail page — every co-rider's real name is shown, not a blank or raw ID
-- [ ] Copy a lesson ID Dana is **not** enrolled in and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
+- [ ] Copy a lesson ID Dana is **not** enrolled in, for a lesson with no horse she holds lesson-read privileges on, and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson via the **Cancel** button in the lesson detail page header (no Cancel button on the Lessons list or Dashboard) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected; the instructor receives a "Lesson participation cancelled" notification
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) and her own uncollected late-cancellation fees, with a Type column — no such column entries for other riders' agreements
