@@ -63,7 +63,7 @@ async function run() {
     .join(' ')
 
   mustSucceed(
-    await supabase.from('barns').insert({ name: barnName, slug: BARN_SLUG }),
+    await supabase.from('barns').insert({ name: barnName, slug: BARN_SLUG, is_test_barn: true }),
     'insert barn'
   )
 

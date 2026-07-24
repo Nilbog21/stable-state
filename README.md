@@ -151,5 +151,16 @@ bash scripts/teardown-test-barn.sh --allow-prod <slug>
 
 Clean up the barn and its fixture auth users when you're done. `--allow-prod` only
 skips the `DEV_SUPABASE_URL` dev-project check — it does not relax which barn or rows
-are touched, since the barn slug is always a required argument, never picked from an
-interactive list of every barn in the project.
+are touched: `teardown-test-barn.sh` refuses to delete any barn whose row isn't marked
+`is_test_barn` (only `seed-test-barn.sh` sets this), so a mistyped or misremembered
+slug can never delete a real customer barn, even under `--allow-prod`.
+
+To clean up every leftover test barn on a project at once instead of one slug at a
+time, pass `--all` in place of the slug:
+
+```bash
+bash scripts/teardown-test-barn.sh --allow-prod --all
+```
+
+This tears down every barn marked `is_test_barn` on the target project — still scoped
+by that same marker, never a blanket "every barn" wipe.

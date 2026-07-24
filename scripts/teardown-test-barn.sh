@@ -9,6 +9,12 @@ if [ "${1:-}" = "--allow-prod" ]; then
   shift
 fi
 
+TEARDOWN_ALL=false
+if [ "${1:-}" = "--all" ]; then
+  TEARDOWN_ALL=true
+  shift
+fi
+
 NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-}"
 SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
 DEV_SUPABASE_URL="${DEV_SUPABASE_URL:-}"
@@ -37,10 +43,13 @@ for var_name in $required_vars; do
   fi
 done
 
-BARN_SLUG="${1:-}"
-if [ -z "$BARN_SLUG" ]; then
-  echo "Error: barn slug argument is required (e.g. test-barn-pr-99)" >&2
-  exit 1
+BARN_SLUG=""
+if [ "$TEARDOWN_ALL" = false ]; then
+  BARN_SLUG="${1:-}"
+  if [ -z "$BARN_SLUG" ]; then
+    echo "Error: barn slug argument is required (e.g. test-barn-pr-99), or pass --all to tear down every test barn" >&2
+    exit 1
+  fi
 fi
 
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
@@ -48,4 +57,5 @@ NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
   TEST_BARN_SLUG="$BARN_SLUG" \
   TEARDOWN_TEST_BARN_ALLOW_PROD="$ALLOW_PROD" \
+  TEARDOWN_ALL="$TEARDOWN_ALL" \
   npx tsx scripts/teardown-test-barn.ts

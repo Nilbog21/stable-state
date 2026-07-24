@@ -37,6 +37,7 @@ export interface Barn {
   timezone: string
   is_demo: boolean
   schedule_buffer_minutes: number
+  is_test_barn: boolean
 }
 
 export interface BarnMembership {
