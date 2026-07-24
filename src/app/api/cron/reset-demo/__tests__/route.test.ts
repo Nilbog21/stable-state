@@ -68,7 +68,20 @@ describe('POST /api/cron/reset-demo', () => {
     expect(body).toEqual({ reaped: 0 })
   })
 
-  it('should_default_demo_barn_cap_to_20_when_env_var_unset', async () => {
+  it('should_not_reap_when_demo_barn_cap_defaults_to_20_and_count_is_at_default_cap', async () => {
+    vi.unstubAllEnvs()
+    vi.stubEnv('CRON_SECRET', 'test-secret')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost')
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key')
+    vi.mocked(getOldestDemoBarn).mockResolvedValue(RECENT_BARN)
+    vi.mocked(countDemoBarns).mockResolvedValue(20)
+
+    const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+
+    expect(teardownBarnData).not.toHaveBeenCalled()
+  })
+
+  it('should_return_zero_reaped_when_demo_barn_cap_defaults_to_20_and_count_is_at_default_cap', async () => {
     vi.unstubAllEnvs()
     vi.stubEnv('CRON_SECRET', 'test-secret')
     vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost')
@@ -79,34 +92,59 @@ describe('POST /api/cron/reset-demo', () => {
     const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
     const body = await response.json()
 
-    expect(teardownBarnData).not.toHaveBeenCalled()
     expect(body).toEqual({ reaped: 0 })
   })
 
-  it('should_reap_a_demo_barn_older_than_six_hours', async () => {
+  it('should_teardown_and_delete_a_demo_barn_older_than_six_hours', async () => {
+    vi.mocked(getOldestDemoBarn).mockResolvedValueOnce(OLD_BARN).mockResolvedValueOnce(null)
+    vi.mocked(countDemoBarns).mockResolvedValue(1)
+
+    await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+
+    expect(teardownBarnData).toHaveBeenCalledWith('old-barn', expect.anything())
+    expect(deleteBarn).toHaveBeenCalledWith('old-barn', expect.anything())
+  })
+
+  it('should_return_reaped_count_of_one_for_a_demo_barn_older_than_six_hours', async () => {
     vi.mocked(getOldestDemoBarn).mockResolvedValueOnce(OLD_BARN).mockResolvedValueOnce(null)
     vi.mocked(countDemoBarns).mockResolvedValue(1)
 
     const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
     const body = await response.json()
 
-    expect(teardownBarnData).toHaveBeenCalledWith('old-barn', expect.anything())
-    expect(deleteBarn).toHaveBeenCalledWith('old-barn', expect.anything())
     expect(body).toEqual({ reaped: 1 })
   })
 
-  it('should_stop_reaping_once_oldest_remaining_barn_is_within_six_hours_and_under_cap', async () => {
+  it('should_not_teardown_when_oldest_remaining_barn_is_within_six_hours_and_under_cap', async () => {
+    vi.mocked(getOldestDemoBarn).mockResolvedValue(RECENT_BARN)
+    vi.mocked(countDemoBarns).mockResolvedValue(1)
+
+    await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+
+    expect(teardownBarnData).not.toHaveBeenCalled()
+  })
+
+  it('should_return_zero_reaped_when_oldest_remaining_barn_is_within_six_hours_and_under_cap', async () => {
     vi.mocked(getOldestDemoBarn).mockResolvedValue(RECENT_BARN)
     vi.mocked(countDemoBarns).mockResolvedValue(1)
 
     const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
     const body = await response.json()
 
-    expect(teardownBarnData).not.toHaveBeenCalled()
     expect(body).toEqual({ reaped: 0 })
   })
 
-  it('should_reap_additional_barns_when_over_cap_even_if_not_expired', async () => {
+  it('should_teardown_an_additional_barn_when_over_cap_even_if_not_expired', async () => {
+    vi.stubEnv('DEMO_BARN_CAP', '1')
+    vi.mocked(getOldestDemoBarn).mockResolvedValueOnce(RECENT_BARN).mockResolvedValueOnce(null)
+    vi.mocked(countDemoBarns).mockResolvedValue(2)
+
+    await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+
+    expect(teardownBarnData).toHaveBeenCalledWith('recent-barn', expect.anything())
+  })
+
+  it('should_return_reaped_count_of_one_when_over_cap_even_if_not_expired', async () => {
     vi.stubEnv('DEMO_BARN_CAP', '1')
     vi.mocked(getOldestDemoBarn).mockResolvedValueOnce(RECENT_BARN).mockResolvedValueOnce(null)
     vi.mocked(countDemoBarns).mockResolvedValue(2)
@@ -114,11 +152,20 @@ describe('POST /api/cron/reset-demo', () => {
     const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
     const body = await response.json()
 
-    expect(teardownBarnData).toHaveBeenCalledWith('recent-barn', expect.anything())
     expect(body).toEqual({ reaped: 1 })
   })
 
-  it('should_not_enforce_cap_when_demo_barn_cap_is_zero', async () => {
+  it('should_not_teardown_when_demo_barn_cap_is_zero', async () => {
+    vi.stubEnv('DEMO_BARN_CAP', '0')
+    vi.mocked(getOldestDemoBarn).mockResolvedValue(RECENT_BARN)
+    vi.mocked(countDemoBarns).mockResolvedValue(50)
+
+    await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+
+    expect(teardownBarnData).not.toHaveBeenCalled()
+  })
+
+  it('should_return_zero_reaped_when_demo_barn_cap_is_zero', async () => {
     vi.stubEnv('DEMO_BARN_CAP', '0')
     vi.mocked(getOldestDemoBarn).mockResolvedValue(RECENT_BARN)
     vi.mocked(countDemoBarns).mockResolvedValue(50)
@@ -126,7 +173,20 @@ describe('POST /api/cron/reset-demo', () => {
     const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
     const body = await response.json()
 
-    expect(teardownBarnData).not.toHaveBeenCalled()
+    expect(body).toEqual({ reaped: 0 })
+  })
+
+  it('should_stop_reaping_and_return_partial_count_when_teardown_throws', async () => {
+    vi.mocked(getOldestDemoBarn).mockResolvedValue(OLD_BARN)
+    vi.mocked(countDemoBarns).mockResolvedValue(1)
+    vi.mocked(teardownBarnData).mockRejectedValue(new Error('storage cleanup failed'))
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+    const body = await response.json()
+
+    expect(deleteBarn).not.toHaveBeenCalled()
+    expect(response.status).toBe(200)
     expect(body).toEqual({ reaped: 0 })
   })
 })

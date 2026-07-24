@@ -33,8 +33,17 @@ export async function POST(request: NextRequest) {
     const overCap = DEMO_BARN_CAP > 0 && (await countDemoBarns(client)) > DEMO_BARN_CAP
     if (!expired && !overCap) break
 
-    await teardownBarnData(oldest.id, client)
-    await deleteBarn(oldest.id, client)
+    // ponytail: a teardown/delete failure on the oldest barn would otherwise throw
+    // uncaught, 500ing the whole run with no {reaped} count and re-hitting the same
+    // barn first next hour — stop the run and report partial progress instead. If a
+    // barn ever gets permanently stuck here, that needs its own alerting, not this loop.
+    try {
+      await teardownBarnData(oldest.id, client)
+      await deleteBarn(oldest.id, client)
+    } catch (error) {
+      console.error(`[cron/reset-demo] failed to reap barn ${oldest.id}:`, error)
+      break
+    }
     reaped++
   }
 
