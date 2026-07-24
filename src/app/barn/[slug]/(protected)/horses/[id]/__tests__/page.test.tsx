@@ -3,14 +3,28 @@ import { render, screen, fireEvent } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockHorse, createMockUser } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
-vi.mock('@/lib/db/horses', () => ({ getHorseById: vi.fn() }))
+vi.mock('@/lib/db/horses', () => ({
+  getHorseById: vi.fn(),
+  getHorseProjectedExhaustion: vi.fn(),
+  resolveExhaustionThresholds: vi.fn(),
+  getUpcomingLessonsForHorse: vi.fn(),
+}))
 vi.mock('@/lib/db/documents', () => ({
   getDocumentsWithUrls: vi.fn(),
 }))
 vi.mock('@/lib/db/document-storage', () => ({ getSignedUrl: vi.fn() }))
 vi.mock('@/lib/db/member-names', () => ({ resolveMemberNames: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getActiveMembersWithProfiles: vi.fn() }))
-vi.mock('@/lib/db/member-horse-privileges', () => ({ getHorsePrivileges: vi.fn() }))
+vi.mock('@/lib/db/member-horse-privileges', () => ({
+  getHorsePrivileges: vi.fn(),
+  getMyHorseDocumentPrivilege: vi.fn(),
+  getMyHorseLessonReadPrivilege: vi.fn(),
+}))
+vi.mock('@/components/ExhaustionBar', () => ({
+  ExhaustionBar: ({ existingRows }: { existingRows: unknown[] }) => (
+    <div data-testid="exhaustion-bar" data-row-count={existingRows.length} />
+  ),
+}))
 vi.mock('../actions', () => ({
   updateHorseAction: vi.fn(),
   deleteHorseDocumentAction: vi.fn(),
@@ -51,12 +65,12 @@ const mockNotFound = vi.hoisted(() => vi.fn(() => { throw new Error('NEXT_NOT_FO
 vi.mock('next/navigation', () => ({ notFound: mockNotFound, useRouter: () => ({ refresh: vi.fn() }) }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getHorseById } from '@/lib/db/horses'
+import { getHorseById, getHorseProjectedExhaustion, resolveExhaustionThresholds, getUpcomingLessonsForHorse } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
-import { getHorsePrivileges } from '@/lib/db/member-horse-privileges'
+import { getHorsePrivileges, getMyHorseDocumentPrivilege, getMyHorseLessonReadPrivilege } from '@/lib/db/member-horse-privileges'
 import {
   grantHorseAccessAction,
   updateHorseAccessDocumentAction,
@@ -128,6 +142,16 @@ describe('HorseDetailPage', () => {
     vi.mocked(getActiveMembersWithProfiles).mockResolvedValue([])
     vi.mocked(getHorsePrivileges).mockReset()
     vi.mocked(getHorsePrivileges).mockResolvedValue([])
+    vi.mocked(getMyHorseDocumentPrivilege).mockReset()
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('none')
+    vi.mocked(getMyHorseLessonReadPrivilege).mockReset()
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(false)
+    vi.mocked(getHorseProjectedExhaustion).mockReset()
+    vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([])
+    vi.mocked(resolveExhaustionThresholds).mockReset()
+    vi.mocked(resolveExhaustionThresholds).mockReturnValue({ high: 11, moderate: 5 })
+    vi.mocked(getUpcomingLessonsForHorse).mockReset()
+    vi.mocked(getUpcomingLessonsForHorse).mockResolvedValue([])
   })
 
   it('should_call_requireMembership_with_allowed_roles', async () => {
@@ -354,6 +378,57 @@ describe('HorseDetailPage', () => {
     expect(screen.queryByRole('link', { name: /add document/i })).toBeNull()
   })
 
+  it('should_not_render_documents_section_for_rider_with_none_document_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('none')
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('No documents yet')).toBeNull()
+  })
+
+  it('should_render_documents_section_for_rider_with_read_document_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('read')
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('No documents yet')).toBeDefined()
+  })
+
+  it('should_not_render_add_document_link_for_rider_with_read_document_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('read')
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /add document/i })).toBeNull()
+  })
+
+  it('should_render_documents_section_for_rider_with_write_document_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('write')
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('No documents yet')).toBeDefined()
+  })
+
+  it('should_render_add_document_link_for_rider_with_write_document_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseDocumentPrivilege).mockResolvedValue('write')
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getAllByRole('link', { name: /add document/i }).length).toBeGreaterThan(0)
+  })
+
+  it('should_call_get_my_horse_document_privilege_with_horse_and_barn_id_for_rider', async () => {
+    mockRequireMembershipAs(riderMembership)
+    await HorseDetailPage({ params: pageParams })
+    expect(getMyHorseDocumentPrivilege).toHaveBeenCalledWith('horse-1', 'barn-1')
+  })
+
+  it('should_not_call_get_my_horse_document_privilege_for_manager', async () => {
+    await HorseDetailPage({ params: pageParams })
+    expect(getMyHorseDocumentPrivilege).not.toHaveBeenCalled()
+  })
+
   it('should_render_documents_list_for_manager_when_documents_exist', async () => {
     vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: mockDoc, signedUrl: 'https://example.com/signed' }] as any)
     const jsx = await HorseDetailPage({ params: pageParams })
@@ -395,6 +470,115 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.queryByText('No documents yet')).toBeNull()
+  })
+
+  it('should_render_exhaustion_bar_for_manager', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('exhaustion-bar')).toBeDefined()
+  })
+
+  it('should_render_exhaustion_bar_for_trainer', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('exhaustion-bar')).toBeDefined()
+  })
+
+  it('should_not_render_exhaustion_bar_for_rider_without_lesson_read_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(false)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByTestId('exhaustion-bar')).toBeNull()
+  })
+
+  it('should_render_exhaustion_bar_for_rider_with_lesson_read_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(true)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('exhaustion-bar')).toBeDefined()
+  })
+
+  it('should_pass_projected_exhaustion_rows_to_exhaustion_bar', async () => {
+    vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([
+      { lessonAt: '2026-07-20T10:00:00Z', exertionLevel: 3 },
+      { lessonAt: '2026-07-22T10:00:00Z', exertionLevel: 4 },
+    ])
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('exhaustion-bar').getAttribute('data-row-count')).toBe('2')
+  })
+
+  it('should_call_get_my_horse_lesson_read_privilege_with_horse_and_barn_id_for_rider', async () => {
+    mockRequireMembershipAs(riderMembership)
+    await HorseDetailPage({ params: pageParams })
+    expect(getMyHorseLessonReadPrivilege).toHaveBeenCalledWith('horse-1', 'barn-1')
+  })
+
+  it('should_not_call_get_my_horse_lesson_read_privilege_for_manager', async () => {
+    await HorseDetailPage({ params: pageParams })
+    expect(getMyHorseLessonReadPrivilege).not.toHaveBeenCalled()
+  })
+
+  it('should_render_upcoming_lessons_section_for_manager', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Upcoming Lessons')).toBeDefined()
+  })
+
+  it('should_not_render_upcoming_lessons_section_for_rider_without_lesson_read_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(false)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByText('Upcoming Lessons')).toBeNull()
+  })
+
+  it('should_render_upcoming_lessons_section_for_rider_with_lesson_read_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(true)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('Upcoming Lessons')).toBeDefined()
+  })
+
+  it('should_render_upcoming_lessons_accordion_as_collapsed_by_default', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    const details = screen.getByText('Upcoming Lessons').closest('details')
+    expect(details?.open).toBe(false)
+  })
+
+  it('should_render_empty_state_when_no_upcoming_lessons', async () => {
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('No upcoming lessons')).toBeDefined()
+  })
+
+  it('should_render_a_link_to_each_upcoming_lessons_detail_page', async () => {
+    vi.mocked(getUpcomingLessonsForHorse).mockResolvedValue([
+      { id: 'lesson-1', lessonAt: '2026-08-01T10:00:00Z' },
+    ])
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    const link = screen.getByRole('link', { name: /2026|aug/i }) as HTMLAnchorElement
+    expect(link.getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1')
+  })
+
+  it('should_call_get_upcoming_lessons_for_horse_with_horse_and_barn_id_for_rider', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(true)
+    await HorseDetailPage({ params: pageParams })
+    expect(getUpcomingLessonsForHorse).toHaveBeenCalledWith('horse-1', 'barn-1')
+  })
+
+  it('should_not_call_get_upcoming_lessons_for_horse_for_rider_without_lesson_read_privilege', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(false)
+    await HorseDetailPage({ params: pageParams })
+    expect(getUpcomingLessonsForHorse).not.toHaveBeenCalled()
   })
 
   it('should_render_documents_table_for_manager_when_documents_exist', async () => {
