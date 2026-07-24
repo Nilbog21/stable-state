@@ -37,9 +37,11 @@ export function addDays(date: string, delta: number): string {
   return d.toISOString().slice(0, 10)
 }
 
-// The rolling 7-day window a Week view covers: startDate through startDate+6.
-export function getWeekDates(startDate: string): string[] {
-  return Array.from({ length: 7 }, (_, i) => addDays(startDate, i))
+// The Sunday-start calendar week (Sun-Sat) containing the given date.
+export function getWeekDates(date: string): string[] {
+  const dayOfWeek = new Date(date + 'T00:00:00Z').getUTCDay() // 0 = Sunday
+  const weekStart = addDays(date, -dayOfWeek)
+  return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 }
 
 // Shared by the Day view's single heading and the Week view's per-day-cell headings.
