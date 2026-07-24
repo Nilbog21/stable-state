@@ -459,6 +459,14 @@ describe('HorsesPage', () => {
       expect(screen.getAllByText('Thunderbolt')).toHaveLength(1)
     })
 
+    it('should_not_fetch_projected_exhaustion_for_owned_horse', async () => {
+      vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
+      vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-1', name: 'Thunderbolt', is_active: true, is_available: true })])
+      const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
+      render(jsx)
+      expect(getHorseProjectedExhaustion).not.toHaveBeenCalled()
+    })
+
     it('should_exclude_owned_horse_from_unavailable_section', async () => {
       vi.mocked(getHorseExertionSummary).mockResolvedValue([unavailableHorse])
       vi.mocked(getOwnedHorses).mockResolvedValue([createMockHorse({ id: 'horse-2', name: 'Hobbled', is_active: true, is_available: false })])

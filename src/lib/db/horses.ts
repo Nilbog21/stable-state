@@ -54,6 +54,9 @@ export async function getHorseExertionSummary(
   }))
 }
 
+// #1000: no is_active filter, unlike getHorsesByBarn — an owner's deactivated horse must still
+// surface in the Horses-list page's My Horses section, badged Inactive, even for a rider/trainer
+// who otherwise never sees the manager-only Inactive section.
 export async function getOwnedHorses(barnId: string, membershipId: string): Promise<Horse[]> {
   const supabase = await createClient()
   const { data, error } = await supabase

@@ -34,7 +34,16 @@ export function HorseCard({
           {horse.unavailability_reason ?? 'No reason given'}
         </span>
       )}
-      {variant === 'owned' && <span className="ml-2">{ownedStatusBadge(horse)}</span>}
+      {variant === 'owned' && (
+        <>
+          <span className="ml-2">{ownedStatusBadge(horse)}</span>
+          {horse.is_active && !horse.is_available && (
+            <span className="mt-1 block text-sm text-zinc-500 dark:text-zinc-400">
+              {horse.unavailability_reason ?? 'No reason given'}
+            </span>
+          )}
+        </>
+      )}
     </>
   )
 

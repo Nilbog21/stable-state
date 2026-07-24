@@ -1157,13 +1157,21 @@ describe('getOwnedHorses', () => {
     expect(result).toEqual(mockHorses)
   })
 
-  it('should_filter_by_barn_id_and_owning_member_id', async () => {
-    const { chain, mockEq1, mockEq2 } = makeSelectChain(mockHorses)
+  it('should_filter_by_barn_id', async () => {
+    const { chain, mockEq1 } = makeSelectChain(mockHorses)
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
 
     await getOwnedHorses('barn-1', 'mem-1')
 
     expect(mockEq1).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_filter_by_owning_member_id', async () => {
+    const { chain, mockEq2 } = makeSelectChain(mockHorses)
+    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
+
+    await getOwnedHorses('barn-1', 'mem-1')
+
     expect(mockEq2).toHaveBeenCalledWith('owning_member_id', 'mem-1')
   })
 

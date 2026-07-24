@@ -233,8 +233,18 @@ describe('HorseCard', () => {
       expect(screen.getByText('Inactive')).toBeDefined()
     })
 
-    it('should_not_render_unavailability_reason', () => {
+    it('should_render_unavailability_reason_when_active_and_unavailable', () => {
       render(<HorseCard horse={ownedUnavailableHorse} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByText(/Injury/)).toBeDefined()
+    })
+
+    it('should_render_fallback_when_active_and_unavailable_with_no_reason', () => {
+      render(<HorseCard horse={{ ...ownedUnavailableHorse, unavailability_reason: null }} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByText(/No reason given/)).toBeDefined()
+    })
+
+    it('should_not_render_unavailability_reason_when_inactive', () => {
+      render(<HorseCard horse={{ ...ownedInactiveHorse, unavailability_reason: 'Injury' }} barnSlug="green-acres" variant="owned" />)
       expect(screen.queryByText(/Injury/)).toBeNull()
     })
 

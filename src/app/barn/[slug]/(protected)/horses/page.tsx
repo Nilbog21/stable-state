@@ -43,19 +43,21 @@ export default async function HorsesPage({
   if (isRider) {
     // Riders never get exertion/exhaustion data, not even via the RPC — see #765.
     const horses = await getHorsesByBarn(barn.id)
-    available = horses.filter((h) => h.is_available)
-    unavailable = horses.filter((h) => !h.is_available)
+    available = horses.filter((h) => h.is_available && !ownedIds.has(h.id))
+    unavailable = horses.filter((h) => !h.is_available && !ownedIds.has(h.id))
   } else {
     const today = new Date()
     const horses = await getHorseExertionSummary(barn.id, today)
 
+    // #1000: owned horses are excluded here, before the exhaustion RPC fan-out below, since the
+    // owned HorseCard variant never renders ExhaustionBar — same rationale as #765's rider skip.
     const availableFull = horses
-      .filter((h) => h.is_active && h.is_available)
+      .filter((h) => h.is_active && h.is_available && !ownedIds.has(h.id))
       .sort((a, b) => a.totalExertion - b.totalExertion)
-    const unavailableFull = horses.filter((h) => h.is_active && !h.is_available)
+    const unavailableFull = horses.filter((h) => h.is_active && !h.is_available && !ownedIds.has(h.id))
     available = availableFull
     unavailable = unavailableFull
-    inactive = horses.filter((h) => !h.is_active)
+    inactive = horses.filter((h) => !h.is_active && !ownedIds.has(h.id))
 
     const activeHorses = [...availableFull, ...unavailableFull]
     exhaustionByHorseId = new Map(
@@ -68,10 +70,6 @@ export default async function HorsesPage({
       )
     )
   }
-
-  available = available.filter((h) => !ownedIds.has(h.id))
-  unavailable = unavailable.filter((h) => !ownedIds.has(h.id))
-  inactive = inactive.filter((h) => !ownedIds.has(h.id))
 
   const allEmpty =
     ownedHorses.length === 0 && available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
