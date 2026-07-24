@@ -59,7 +59,7 @@ describe('updateProfileAction', () => {
 
     const result = await updateProfileAction(form)
 
-    expect(result).toEqual({ error: 'not authenticated' })
+    expect(result).toEqual({ error: 'demo account cannot be edited' })
   })
 
   it('should_not_call_updateProfile_when_user_is_demo_user', async () => {
