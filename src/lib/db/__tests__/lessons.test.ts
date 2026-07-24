@@ -995,7 +995,7 @@ describe('getLessonById', () => {
     expect(rpc).toHaveBeenCalledWith('get_lesson_rider_notes', { p_lesson_id: 'lesson-1', p_barn_id: 'barn-1' })
   })
 
-  it('should_merge_rider_notes_and_private_notes_from_rpc_onto_matching_rider', async () => {
+  it('should_merge_rider_notes_from_rpc_onto_matching_rider', async () => {
     const lessonData = {
       ...createMockLesson({ instructor_id: null }),
       lesson_horses: [],
@@ -1006,10 +1006,22 @@ describe('getLessonById', () => {
     const result = await getLessonById('lesson-1', 'barn-1', 'manager')
 
     expect(result?.lesson_riders[0].rider_notes).toBe('good position')
+  })
+
+  it('should_merge_private_notes_from_rpc_onto_matching_rider', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_id: 'mem-1', barn_memberships: { user_id: 'user-1' } }],
+    }
+    mockLessonsFrom(lessonData, null, [], [], [{ rider_id: 'mem-1', rider_notes: 'good position', private_notes: 'flaky payer' }])
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'manager')
+
     expect(result?.lesson_riders[0].private_notes).toBe('flaky payer')
   })
 
-  it('should_default_rider_notes_and_private_notes_to_null_when_rpc_returns_no_matching_row', async () => {
+  it('should_default_rider_notes_to_null_when_rpc_returns_no_matching_row', async () => {
     // Mirrors what the RPC itself does for a row it filters out (a non-staff caller's
     // view of a co-rider) -- getLessonById's own default matches that shape either way.
     const lessonData = {
@@ -1022,6 +1034,18 @@ describe('getLessonById', () => {
     const result = await getLessonById('lesson-1', 'barn-1', 'rider')
 
     expect(result?.lesson_riders[0].rider_notes).toBeNull()
+  })
+
+  it('should_default_private_notes_to_null_when_rpc_returns_no_matching_row', async () => {
+    const lessonData = {
+      ...createMockLesson({ instructor_id: null }),
+      lesson_horses: [],
+      lesson_riders: [{ rider_id: 'mem-1', barn_memberships: { user_id: 'user-1' } }],
+    }
+    mockLessonsFrom(lessonData)
+
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+
     expect(result?.lesson_riders[0].private_notes).toBeNull()
   })
 
