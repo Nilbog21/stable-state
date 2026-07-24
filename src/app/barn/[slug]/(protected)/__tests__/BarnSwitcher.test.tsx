@@ -57,6 +57,35 @@ describe('BarnSwitcher - barn name link', () => {
   })
 })
 
+describe('BarnSwitcher - demo mode', () => {
+  it('should_append_demo_suffix_to_barn_name_when_isDemo_true_single_barn', () => {
+    render(<BarnSwitcher {...singleBarnProps} isDemo />)
+    expect(screen.getByRole('link', { name: 'Sunset Stables (DEMO)' })).toBeDefined()
+  })
+
+  it('should_render_amber_link_class_when_isDemo_true_single_barn', () => {
+    render(<BarnSwitcher {...singleBarnProps} isDemo />)
+    const link = screen.getByRole('link', { name: 'Sunset Stables (DEMO)' })
+    expect(link.className).toContain('amber')
+  })
+
+  it('should_append_demo_suffix_to_barn_name_when_isDemo_true_multi_barn', () => {
+    render(<BarnSwitcher {...multiBarnProps} isDemo />)
+    expect(screen.getByRole('link', { name: 'Sunset Stables (DEMO)' })).toBeDefined()
+  })
+
+  it('should_render_amber_link_class_when_isDemo_true_multi_barn', () => {
+    render(<BarnSwitcher {...multiBarnProps} isDemo />)
+    const link = screen.getByRole('link', { name: 'Sunset Stables (DEMO)' })
+    expect(link.className).toContain('amber')
+  })
+
+  it('should_not_append_demo_suffix_when_isDemo_omitted', () => {
+    render(<BarnSwitcher {...singleBarnProps} />)
+    expect(screen.getByRole('link', { name: 'Sunset Stables' })).toBeDefined()
+  })
+})
+
 describe('BarnSwitcher - caret button visibility', () => {
   it('should_not_render_caret_for_single_barn_member', () => {
     render(<BarnSwitcher {...singleBarnProps} />)
