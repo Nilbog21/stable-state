@@ -14,6 +14,7 @@ export default async function ProfilePage({
   const { barn: barnSlug } = await searchParams
   const user = await getAuthenticatedUser()
   if (!user) redirect('/login')
+  if (process.env.DEMO_USER_EMAIL && user.email === process.env.DEMO_USER_EMAIL) redirect('/')
 
   const [profile, memberships] = await Promise.all([
     getProfileByUserId(user.id),
