@@ -68,6 +68,21 @@ describe('POST /api/cron/reset-demo', () => {
     expect(body).toEqual({ reaped: 0 })
   })
 
+  it('should_default_demo_barn_cap_to_20_when_env_var_unset', async () => {
+    vi.unstubAllEnvs()
+    vi.stubEnv('CRON_SECRET', 'test-secret')
+    vi.stubEnv('NEXT_PUBLIC_SUPABASE_URL', 'http://localhost')
+    vi.stubEnv('SUPABASE_SERVICE_ROLE_KEY', 'service-key')
+    vi.mocked(getOldestDemoBarn).mockResolvedValue(RECENT_BARN)
+    vi.mocked(countDemoBarns).mockResolvedValue(20)
+
+    const response = await POST(makeRequest({ authorization: 'Bearer test-secret' }) as any)
+    const body = await response.json()
+
+    expect(teardownBarnData).not.toHaveBeenCalled()
+    expect(body).toEqual({ reaped: 0 })
+  })
+
   it('should_reap_a_demo_barn_older_than_six_hours', async () => {
     vi.mocked(getOldestDemoBarn).mockResolvedValueOnce(OLD_BARN).mockResolvedValueOnce(null)
     vi.mocked(countDemoBarns).mockResolvedValue(1)
