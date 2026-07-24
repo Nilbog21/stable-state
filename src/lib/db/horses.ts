@@ -235,19 +235,6 @@ export async function getHorseProjectedExhaustion(
   }))
 }
 
-/**
- * Resolves a horse's effective exhaustion thresholds, falling back per-field to the
- * barn's defaults.
- *
- * The DB `CHECK (moderate < high)` only fires when both fields are set on the same
- * row, so it can't see across a horse/barn mix. Overriding only one field at the
- * horse level (e.g. lowering `high` below the barn's `moderate`, or raising
- * `moderate` above the barn's `high`) can produce an inverted pair that never
- * violated either row's own constraint. When both fields are overridden, or
- * neither is, the same-row CHECK already guarantees ordering and this is a no-op.
- * `Math.min(moderate, high - 1)` clamps the resolved pair back into order rather
- * than rejecting or throwing.
- */
 // Two-step lookup (link ids, then the lessons themselves) rather than an embedded
 // `lessons!inner` join -- mirrors getLessonsByBarn's rider branch, and avoids the
 // FK-embed ambiguity gotcha documented in agreement-finances.ts's outstanding-charges
@@ -280,6 +267,19 @@ export async function getUpcomingLessonsForHorse(
   return (data ?? []).map((row: { id: string; lesson_at: string }) => ({ id: row.id, lessonAt: row.lesson_at }))
 }
 
+/**
+ * Resolves a horse's effective exhaustion thresholds, falling back per-field to the
+ * barn's defaults.
+ *
+ * The DB `CHECK (moderate < high)` only fires when both fields are set on the same
+ * row, so it can't see across a horse/barn mix. Overriding only one field at the
+ * horse level (e.g. lowering `high` below the barn's `moderate`, or raising
+ * `moderate` above the barn's `high`) can produce an inverted pair that never
+ * violated either row's own constraint. When both fields are overridden, or
+ * neither is, the same-row CHECK already guarantees ordering and this is a no-op.
+ * `Math.min(moderate, high - 1)` clamps the resolved pair back into order rather
+ * than rejecting or throwing.
+ */
 export function resolveExhaustionThresholds(
   horse: Pick<Horse, 'exhaustion_threshold_high' | 'exhaustion_threshold_moderate'>,
   barn: Barn

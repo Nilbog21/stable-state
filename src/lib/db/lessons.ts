@@ -126,8 +126,9 @@ export async function getLessonById(lessonId: string, barnId: string, role: Role
   const riderSelect = role === 'rider'
     ? 'rider_id, rider_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
     : 'rider_id, rider_notes, private_notes, cancellation_notes, cancelled_at, barn_memberships ( user_id )'
-  // exertion_level is manager/trainer-only data (ARCHITECTURE.md) and is never selected
-  // here directly for any role -- see fetchExertionLevels above for why.
+  // exertion_level is never selected here directly for any role -- it's merged in
+  // separately via fetchExertionLevels above, which is the only column-safe way to
+  // read it (see that function's comment for why, and #999 for the privileged-rider case).
   const horseSelect = 'horse_notes, horses ( id, name, is_active, is_available, unavailability_reason )'
   const { data, error } = await supabase
     .from('lessons')
