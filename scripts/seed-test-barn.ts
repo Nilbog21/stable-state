@@ -160,8 +160,9 @@ async function run() {
   const future = (daysAhead: number) =>
     new Date(now.getTime() + daysAhead * 24 * 60 * 60 * 1000).toISOString()
   // DATE-only columns (horse_expenses.expense_date) must land on the barn's own
-  // calendar day, not UTC's — getUpcomingScheduledExpenses compares them against a
-  // barn-timezone wall-clock window (see barns.timezone in docs/architecture/schema.md).
+  // calendar day, not UTC's — the dashboard's Day view (getScheduleForRange) compares
+  // them against a barn-timezone wall-clock window (see barns.timezone in
+  // docs/architecture/schema.md).
   const futureBarnLocalDate = (daysAhead: number) =>
     instantToLocalWallClock(new Date(future(daysAhead)), barn.timezone).slice(0, 10)
 
