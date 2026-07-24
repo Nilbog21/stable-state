@@ -54,6 +54,19 @@ export async function getHorseExertionSummary(
   }))
 }
 
+export async function getOwnedHorses(barnId: string, membershipId: string): Promise<Horse[]> {
+  const supabase = await createClient()
+  const { data, error } = await supabase
+    .from('horses')
+    .select()
+    .eq('barn_id', barnId)
+    .eq('owning_member_id', membershipId)
+    .order('name')
+
+  if (error) throw error
+  return data
+}
+
 export async function getHorsesByIds(horseIds: string[], barnId: string): Promise<Horse[]> {
   if (!horseIds.length) return []
   const supabase = await createClient()

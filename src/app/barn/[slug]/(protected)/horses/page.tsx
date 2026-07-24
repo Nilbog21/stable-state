@@ -2,7 +2,7 @@ import { notFound } from 'next/navigation'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getUserMembership } from '@/lib/db/barn-memberships'
-import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, resolveExhaustionThresholds } from '@/lib/db/horses'
+import { getHorseExertionSummary, getHorseProjectedExhaustion, getHorsesByBarn, getOwnedHorses, resolveExhaustionThresholds } from '@/lib/db/horses'
 import type { HorseExertionSummary } from '@/lib/db/types'
 import { HorseCard } from './HorseCard'
 import { addHorseAction } from './actions'
@@ -28,6 +28,9 @@ export default async function HorsesPage({
 
   const isManager = membership.role === 'manager'
   const isRider = membership.role === 'rider'
+
+  const ownedHorses = await getOwnedHorses(barn.id, membership.id)
+  const ownedIds = new Set(ownedHorses.map((h) => h.id))
 
   let available: HorseCardData[]
   let unavailable: HorseCardData[]
@@ -66,7 +69,12 @@ export default async function HorsesPage({
     )
   }
 
-  const allEmpty = available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
+  available = available.filter((h) => !ownedIds.has(h.id))
+  unavailable = unavailable.filter((h) => !ownedIds.has(h.id))
+  inactive = inactive.filter((h) => !ownedIds.has(h.id))
+
+  const allEmpty =
+    ownedHorses.length === 0 && available.length === 0 && unavailable.length === 0 && (!isManager || inactive.length === 0)
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -82,6 +90,17 @@ export default async function HorsesPage({
           />
           <Button type="submit">Add</Button>
         </form>
+      )}
+
+      {ownedHorses.length > 0 && (
+        <section className="mb-8">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">My Horses</h2>
+          <div className="flex flex-col gap-2">
+            {ownedHorses.map((horse) => (
+              <HorseCard key={horse.id} horse={horse} barnSlug={slug} variant="owned" linkable />
+            ))}
+          </div>
+        </section>
       )}
 
       {available.length > 0 && (
