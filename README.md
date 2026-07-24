@@ -44,7 +44,7 @@ To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 a
 bash scripts/reset-db.sh
 ```
 
-Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment to claim the account (sign in with Google if you aren't already signed in — an already-authenticated session skips straight to an Accept Invite button), then `change-user.sh <barn-slug>` lets you select a dev role to sign in as.
+Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment to claim the account (sign in with Google if you aren't already signed in — an already-authenticated session skips straight to an Accept Invite button). You land as manager of the barn you claimed; run `change-user.sh <barn-slug>` yourself afterward if you want to switch to another seeded role.
 
 ## Database setup
 
