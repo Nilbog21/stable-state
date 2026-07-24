@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
 import { createClient } from '@supabase/supabase-js'
+import { getBarnBySlug } from '@/lib/db/barns'
 import { assertDevProject } from './script-utils'
 
 export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
@@ -14,10 +15,6 @@ export function formatProfileLine(
   index: number
 ): string {
   return `${index + 1}. ${profile.first_name} ${profile.last_name} <${profile.email}>`
-}
-
-export function formatBarnLine(barn: { name: string; slug: string }, index: number): string {
-  return `${index + 1}. ${barn.name} (${barn.slug})`
 }
 
 export function mergeMembersWithProfiles<M extends { profile_id: string }, P extends { id: string }>(
@@ -59,29 +56,25 @@ async function run() {
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   const DEV_EMAIL = process.env.DEV_EMAIL
   const DEV_NAME = process.env.DEV_NAME
+  const BARN_SLUG = process.env.CHANGE_USER_BARN_SLUG
 
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!DEV_EMAIL) throw new Error('DEV_EMAIL is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
-  assertDevProject(SUPABASE_URL)
+  if (!BARN_SLUG) throw new Error('CHANGE_USER_BARN_SLUG is required')
+  if (process.env.CHANGE_USER_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const barns = mustSucceed(
-    await supabase.from('barns').select('id, name, slug').order('name', { ascending: true }),
-    'fetch barns'
-  )
-  if (barns.length === 0) {
-    console.error('no barns found')
+  const barn = await getBarnBySlug(BARN_SLUG, supabase)
+  if (!barn) {
+    console.error(`no barn found for slug "${BARN_SLUG}"`)
     process.exit(1)
   }
-
-  barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))
-  const barnSelection = await promptSelection(barns.length)
-  const barnId: string = barns[barnSelection - 1].id
+  const barnId: string = barn.id
 
   const devProfile = mustSucceed<{ id: string; user_id: string | null }>(
     await supabase.from('profiles').select('id, user_id').eq('email', DEV_EMAIL).single(),
