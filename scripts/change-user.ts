@@ -21,6 +21,12 @@ export function formatBarnLine(barn: { name: string; slug: string }, index: numb
   return `${index + 1}. ${barn.name} (${barn.slug})`
 }
 
+export function assertSlugRequiredForProd(barnSlug: string | undefined, allowProd: boolean): void {
+  if (allowProd && !barnSlug) {
+    throw new Error('CHANGE_USER_BARN_SLUG is required when CHANGE_USER_ALLOW_PROD is true')
+  }
+}
+
 export function mergeMembersWithProfiles<M extends { profile_id: string }, P extends { id: string }>(
   memberships: M[],
   profiles: P[]
@@ -39,11 +45,11 @@ export function resolveRevertUserId(
   return currentRowProfileId === devProfileId ? null : ownerUserId
 }
 
-async function promptSelection(max: number): Promise<number> {
+async function promptSelection(max: number, label: string): Promise<number> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   return new Promise((resolve, reject) => {
     rl.once('close', () => reject(new Error('input closed before a selection was made')))
-    rl.question(`Select a profile [1-${max}]: `, (answer) => {
+    rl.question(`${label} [1-${max}]: `, (answer) => {
       const n = parseInt(answer, 10)
       if (isNaN(n) || n < 1 || n > max) {
         reject(new Error(`Invalid selection: "${answer}"`))
@@ -66,7 +72,9 @@ async function run() {
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!DEV_EMAIL) throw new Error('DEV_EMAIL is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
-  if (process.env.CHANGE_USER_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
+  const allowProd = process.env.CHANGE_USER_ALLOW_PROD === 'true'
+  assertSlugRequiredForProd(BARN_SLUG, allowProd)
+  if (!allowProd) assertDevProject(SUPABASE_URL)
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
@@ -90,7 +98,7 @@ async function run() {
       process.exit(1)
     }
     barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))
-    const barnSelection = await promptSelection(barns.length)
+    const barnSelection = await promptSelection(barns.length, 'Select a barn')
     barnId = barns[barnSelection - 1].id
   }
 
@@ -145,7 +153,7 @@ async function run() {
     console.log(formatProfileLine(p, i))
   })
 
-  const selection = await promptSelection(profiles.length)
+  const selection = await promptSelection(profiles.length, 'Select a profile')
   const target = profiles[selection - 1] as {
     id: string
     user_id: string | null

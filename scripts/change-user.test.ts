@@ -5,6 +5,7 @@ import {
   formatBarnLine,
   mergeMembersWithProfiles,
   resolveRevertUserId,
+  assertSlugRequiredForProd,
 } from './change-user'
 
 describe('mustSucceed', () => {
@@ -62,6 +63,20 @@ describe('mergeMembersWithProfiles', () => {
   it('should_drop_membership_whose_profile_is_missing', () => {
     const memberships = [{ profile_id: 'p1' }, { profile_id: 'missing' }]
     expect(mergeMembersWithProfiles(memberships, profiles)).toEqual([profiles[0]])
+  })
+})
+
+describe('assertSlugRequiredForProd', () => {
+  it('should_throw_when_allow_prod_true_and_slug_missing', () => {
+    expect(() => assertSlugRequiredForProd(undefined, true)).toThrow('CHANGE_USER_BARN_SLUG is required')
+  })
+
+  it('should_not_throw_when_allow_prod_true_and_slug_present', () => {
+    expect(() => assertSlugRequiredForProd('test-barn', true)).not.toThrow()
+  })
+
+  it('should_not_throw_when_allow_prod_false_and_slug_missing', () => {
+    expect(() => assertSlugRequiredForProd(undefined, false)).not.toThrow()
   })
 })
 
