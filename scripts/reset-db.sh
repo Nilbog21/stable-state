@@ -34,12 +34,3 @@ bash scripts/seed-account.sh
 
 echo ""
 echo "Open the invite path printed above on your Vercel preview to claim the manager account."
-printf "Press Enter when logged in, or Escape to skip role selection: "
-IFS= read -rsn1 key || true
-echo ""
-
-if [ "$key" = $'\e' ]; then
-  exit 0
-fi
-
-bash scripts/change-user.sh

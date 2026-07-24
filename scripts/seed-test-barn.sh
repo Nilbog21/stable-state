@@ -3,6 +3,12 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+ALLOW_PROD=false
+if [ "${1:-}" = "--allow-prod" ]; then
+  ALLOW_PROD=true
+  shift
+fi
+
 NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-}"
 SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
 DEV_SUPABASE_URL="${DEV_SUPABASE_URL:-}"
@@ -22,7 +28,11 @@ SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
 DEV_NAME="$(parse_var DEV_NAME || true)"
 
-for var_name in NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DEV_SUPABASE_URL DEV_NAME; do
+required_vars="NEXT_PUBLIC_SUPABASE_URL SUPABASE_SERVICE_ROLE_KEY DEV_NAME"
+if [ "$ALLOW_PROD" = false ]; then
+  required_vars="$required_vars DEV_SUPABASE_URL"
+fi
+for var_name in $required_vars; do
   if [ -z "${!var_name}" ]; then
     echo "Error: $var_name is not set" >&2
     exit 1
@@ -40,4 +50,5 @@ NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
   DEV_NAME="$DEV_NAME" \
   TEST_BARN_SLUG="$BARN_SLUG" \
+  SEED_TEST_BARN_ALLOW_PROD="$ALLOW_PROD" \
   npx tsx scripts/seed-test-barn.ts

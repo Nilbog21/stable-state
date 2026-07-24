@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
 import { createClient } from '@supabase/supabase-js'
+import { getBarnBySlug } from '@/lib/db/barns'
 import { assertDevProject } from './script-utils'
 
 export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
@@ -18,6 +19,12 @@ export function formatProfileLine(
 
 export function formatBarnLine(barn: { name: string; slug: string }, index: number): string {
   return `${index + 1}. ${barn.name} (${barn.slug})`
+}
+
+export function assertSlugRequiredForProd(barnSlug: string | undefined, allowProd: boolean): void {
+  if (allowProd && !barnSlug) {
+    throw new Error('CHANGE_USER_BARN_SLUG is required when CHANGE_USER_ALLOW_PROD is true')
+  }
 }
 
 export function mergeMembersWithProfiles<M extends { profile_id: string }, P extends { id: string }>(
@@ -38,11 +45,11 @@ export function resolveRevertUserId(
   return currentRowProfileId === devProfileId ? null : ownerUserId
 }
 
-async function promptSelection(max: number): Promise<number> {
+async function promptSelection(max: number, label: string): Promise<number> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout })
   return new Promise((resolve, reject) => {
     rl.once('close', () => reject(new Error('input closed before a selection was made')))
-    rl.question(`Select a profile [1-${max}]: `, (answer) => {
+    rl.question(`${label} [1-${max}]: `, (answer) => {
       const n = parseInt(answer, 10)
       if (isNaN(n) || n < 1 || n > max) {
         reject(new Error(`Invalid selection: "${answer}"`))
@@ -59,29 +66,41 @@ async function run() {
   const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
   const DEV_EMAIL = process.env.DEV_EMAIL
   const DEV_NAME = process.env.DEV_NAME
+  const BARN_SLUG = process.env.CHANGE_USER_BARN_SLUG
 
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!DEV_EMAIL) throw new Error('DEV_EMAIL is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
-  assertDevProject(SUPABASE_URL)
+  const allowProd = process.env.CHANGE_USER_ALLOW_PROD === 'true'
+  assertSlugRequiredForProd(BARN_SLUG, allowProd)
+  if (!allowProd) assertDevProject(SUPABASE_URL)
 
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
     auth: { autoRefreshToken: false, persistSession: false },
   })
 
-  const barns = mustSucceed(
-    await supabase.from('barns').select('id, name, slug').order('name', { ascending: true }),
-    'fetch barns'
-  )
-  if (barns.length === 0) {
-    console.error('no barns found')
-    process.exit(1)
+  let barnId: string
+  if (BARN_SLUG) {
+    const barn = await getBarnBySlug(BARN_SLUG, supabase)
+    if (!barn) {
+      console.error(`no barn found for slug "${BARN_SLUG}"`)
+      process.exit(1)
+    }
+    barnId = barn.id
+  } else {
+    const barns = mustSucceed(
+      await supabase.from('barns').select('id, name, slug').order('name', { ascending: true }),
+      'fetch barns'
+    )
+    if (barns.length === 0) {
+      console.error('no barns found')
+      process.exit(1)
+    }
+    barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))
+    const barnSelection = await promptSelection(barns.length, 'Select a barn')
+    barnId = barns[barnSelection - 1].id
   }
-
-  barns.forEach((b: { name: string; slug: string }, i: number) => console.log(formatBarnLine(b, i)))
-  const barnSelection = await promptSelection(barns.length)
-  const barnId: string = barns[barnSelection - 1].id
 
   const devProfile = mustSucceed<{ id: string; user_id: string | null }>(
     await supabase.from('profiles').select('id, user_id').eq('email', DEV_EMAIL).single(),
@@ -134,7 +153,7 @@ async function run() {
     console.log(formatProfileLine(p, i))
   })
 
-  const selection = await promptSelection(profiles.length)
+  const selection = await promptSelection(profiles.length, 'Select a profile')
   const target = profiles[selection - 1] as {
     id: string
     user_id: string | null

@@ -48,7 +48,7 @@ async function run() {
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
   if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
   if (!DEV_NAME) throw new Error('DEV_NAME is required')
-  assertDevProject(SUPABASE_URL)
+  if (process.env.SEED_TEST_BARN_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL!, SERVICE_ROLE_KEY!)
 
@@ -63,7 +63,7 @@ async function run() {
     .join(' ')
 
   mustSucceed(
-    await supabase.from('barns').insert({ name: barnName, slug: BARN_SLUG }),
+    await supabase.from('barns').insert({ name: barnName, slug: BARN_SLUG, is_test_barn: true }),
     'insert barn'
   )
 
@@ -338,7 +338,8 @@ async function run() {
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
   console.log(`  Lease:    1 unpaid (2 months backdated)`)
   console.log(`  Documents: 1 undated (Apollo, Coggins), 1 past-due reminder (Bella, Insurance Binder)`)
-  console.log(`  Dev invite (manager, for change-user.sh): ${buildInvitePath(BARN_SLUG, devInviteToken)}`)
+  console.log(`  Dev invite (manager, for change-user.sh):`)
+  console.log(`    ${buildInvitePath(BARN_SLUG, devInviteToken)}`)
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {

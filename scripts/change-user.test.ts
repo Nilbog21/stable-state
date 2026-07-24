@@ -5,6 +5,7 @@ import {
   formatBarnLine,
   mergeMembersWithProfiles,
   resolveRevertUserId,
+  assertSlugRequiredForProd,
 } from './change-user'
 
 describe('mustSucceed', () => {
@@ -32,14 +33,14 @@ describe('formatProfileLine', () => {
 })
 
 describe('formatBarnLine', () => {
-  const barn = { name: 'Willow Creek', slug: 'willow-creek' }
+  const barn = { name: 'Sunny Acres', slug: 'sunny-acres' }
 
   it('should_format_one_based_index_with_name_and_slug', () => {
-    expect(formatBarnLine(barn, 0)).toBe('1. Willow Creek (willow-creek)')
+    expect(formatBarnLine(barn, 0)).toBe('1. Sunny Acres (sunny-acres)')
   })
 
   it('should_increment_index_correctly', () => {
-    expect(formatBarnLine(barn, 1)).toBe('2. Willow Creek (willow-creek)')
+    expect(formatBarnLine(barn, 1)).toBe('2. Sunny Acres (sunny-acres)')
   })
 })
 
@@ -62,6 +63,20 @@ describe('mergeMembersWithProfiles', () => {
   it('should_drop_membership_whose_profile_is_missing', () => {
     const memberships = [{ profile_id: 'p1' }, { profile_id: 'missing' }]
     expect(mergeMembersWithProfiles(memberships, profiles)).toEqual([profiles[0]])
+  })
+})
+
+describe('assertSlugRequiredForProd', () => {
+  it('should_throw_when_allow_prod_true_and_slug_missing', () => {
+    expect(() => assertSlugRequiredForProd(undefined, true)).toThrow('CHANGE_USER_BARN_SLUG is required')
+  })
+
+  it('should_not_throw_when_allow_prod_true_and_slug_present', () => {
+    expect(() => assertSlugRequiredForProd('test-barn', true)).not.toThrow()
+  })
+
+  it('should_not_throw_when_allow_prod_false_and_slug_missing', () => {
+    expect(() => assertSlugRequiredForProd(undefined, false)).not.toThrow()
   })
 })
 

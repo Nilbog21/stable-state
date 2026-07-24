@@ -15,9 +15,12 @@ const BARN_SLUG = process.env.TEST_BARN_SLUG
 export const TEST_ROLES = ['manager', 'trainer', 'rider', 'rider2'] as const
 
 export async function teardown(barnSlug: string, supabase: SupabaseClient): Promise<void> {
-  const { data: barn } = await supabase.from('barns').select('id').eq('slug', barnSlug).maybeSingle()
+  const { data: barn } = await supabase.from('barns').select('id, is_test_barn').eq('slug', barnSlug).maybeSingle()
 
   if (barn) {
+    if (!barn.is_test_barn) {
+      throw new Error(`barn "${barnSlug}" is not marked as a test barn (is_test_barn=false) — refusing to delete`)
+    }
     await teardownBarnData(barn.id, supabase)
     mustSucceed(await supabase.from('barns').delete().eq('id', barn.id), 'delete barn')
   }
@@ -32,14 +35,33 @@ export async function teardown(barnSlug: string, supabase: SupabaseClient): Prom
   }
 }
 
+export async function teardownAllTestBarns(supabase: SupabaseClient): Promise<string[]> {
+  const barns = mustSucceed<{ slug: string }[]>(
+    await supabase.from('barns').select('slug').eq('is_test_barn', true),
+    'list test barns'
+  )
+  const slugs = barns.map((b) => b.slug)
+  for (const slug of slugs) {
+    await teardown(slug, supabase)
+  }
+  return slugs
+}
+
 async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
-  if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
-  assertDevProject(SUPABASE_URL)
+  if (process.env.TEARDOWN_TEST_BARN_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
+  if (process.env.TEARDOWN_ALL === 'true') {
+    console.log('Tearing down all test barns…')
+    const slugs = await teardownAllTestBarns(supabase)
+    console.log(slugs.length ? `Done. Removed: ${slugs.join(', ')}` : 'No test barns found.')
+    return
+  }
+
+  if (!BARN_SLUG) throw new Error('TEST_BARN_SLUG is required')
   console.log(`Tearing down test barn: ${BARN_SLUG}…`)
   await teardown(BARN_SLUG, supabase)
   console.log('Done.')
