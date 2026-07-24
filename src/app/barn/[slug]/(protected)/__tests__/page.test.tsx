@@ -708,13 +708,21 @@ describe('BarnDashboardPage', () => {
     expect(heading.textContent).toContain('Jul 25')
   })
 
-  it('should_render_the_calendar_weeks_full_span_in_the_heading_regardless_of_the_selected_date', async () => {
+  it('should_render_the_calendar_weeks_start_in_the_heading_regardless_of_the_selected_date', async () => {
     // 2026-07-23 is a Thursday inside the same Jul 19-25 calendar week
     const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
     render(jsx)
 
     const heading = screen.getByRole('heading', { level: 2 })
     expect(heading.textContent).toContain('Jul 19')
+  })
+
+  it('should_render_the_calendar_weeks_end_in_the_heading_regardless_of_the_selected_date', async () => {
+    // 2026-07-23 is a Thursday inside the same Jul 19-25 calendar week
+    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    render(jsx)
+
+    const heading = screen.getByRole('heading', { level: 2 })
     expect(heading.textContent).toContain('Jul 25')
   })
 

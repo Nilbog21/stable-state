@@ -159,8 +159,10 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
 - [ ] (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
 - [ ] (#1016) In Week view, a "Today" link appears only when today's date isn't already inside the visible week
-- [ ] (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in both light and dark mode
-- [ ] (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week, otherwise on the week's Sunday
+- [ ] (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in light mode
+- [ ] (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
+- [ ] (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
+- [ ] (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
 - [ ] (#1016) Switching to Week view as a trainer shows only lessons you instruct across all 7 days, matching Day view's role-scoping
 - [ ] (#1016) Switching to Week view as a rider shows only your enrolled lessons
 
