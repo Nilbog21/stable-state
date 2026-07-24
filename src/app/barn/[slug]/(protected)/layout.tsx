@@ -56,6 +56,7 @@ export default async function ProtectedBarnLayout({
   const activeMemberships = allMemberships.filter((m) => m.membership.status === 'active')
   const activeBarnMemberships = activeMemberships.map((m) => ({ slug: m.barn.slug, name: m.barn.name }))
   const email = user.email ?? ''
+  const isDemoUser = Boolean(process.env.DEMO_USER_EMAIL) && email === process.env.DEMO_USER_EMAIL
 
   const navLinks = buildNavLinks(slug, membership.role)
 
@@ -67,11 +68,18 @@ export default async function ProtectedBarnLayout({
           barnName={barn.name}
           barnSlug={slug}
           activeBarnMemberships={activeBarnMemberships}
+          isDemo={barn.is_demo}
         />
         <DesktopNavLinks navLinks={navLinks} />
         <div className="ml-auto flex items-center gap-2">
           <span className="order-2 md:order-1">
-            <UserMenu initials={initials} email={email} fullName={fullName} barnSlug={slug} />
+            <UserMenu
+              initials={initials}
+              email={email}
+              fullName={fullName}
+              barnSlug={slug}
+              isDemoUser={isDemoUser}
+            />
           </span>
           <span className="order-1 md:order-2">
             <NotificationBell notifications={notifications} barnSlug={slug} />
