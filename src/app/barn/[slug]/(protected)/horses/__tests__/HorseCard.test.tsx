@@ -63,6 +63,33 @@ const inactiveHorse = {
   jumpingCount: 0,
 }
 
+const ownedActiveHorse = {
+  id: 'horse-5',
+  name: 'Clover',
+  registered_name: null,
+  is_active: true,
+  is_available: true,
+  unavailability_reason: null,
+}
+
+const ownedUnavailableHorse = {
+  id: 'horse-6',
+  name: 'Hobbled',
+  registered_name: null,
+  is_active: true,
+  is_available: false,
+  unavailability_reason: 'Injury',
+}
+
+const ownedInactiveHorse = {
+  id: 'horse-7',
+  name: 'Retired',
+  registered_name: null,
+  is_active: false,
+  is_available: true,
+  unavailability_reason: null,
+}
+
 describe('HorseCard', () => {
   describe('available variant', () => {
     it('should_render_horse_name', () => {
@@ -172,6 +199,58 @@ describe('HorseCard', () => {
     it('should_render_registered_name_in_parentheses_when_set', () => {
       render(<HorseCard horse={{ ...inactiveHorse, registered_name: 'Old Timer' }} barnSlug="green-acres" variant="inactive" />)
       expect(screen.getByText('(Old Timer)')).toBeDefined()
+    })
+  })
+
+  describe('owned variant', () => {
+    it('should_render_horse_name', () => {
+      render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByText('Clover')).toBeDefined()
+    })
+
+    it('should_render_as_link_to_horse_detail', () => {
+      render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByRole('link').getAttribute('href')).toBe('/barn/green-acres/horses/horse-5')
+    })
+
+    it('should_render_registered_name_in_parentheses_when_set', () => {
+      render(<HorseCard horse={{ ...ownedActiveHorse, registered_name: 'Four-Leaf Clover' }} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByText('(Four-Leaf Clover)')).toBeDefined()
+    })
+
+    it('should_render_active_badge_when_active_and_available', () => {
+      render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByText('Active')).toBeDefined()
+    })
+
+    it('should_render_unavailable_badge_when_active_and_unavailable', () => {
+      render(<HorseCard horse={ownedUnavailableHorse} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByText('Unavailable')).toBeDefined()
+    })
+
+    it('should_render_inactive_badge_when_not_active_even_if_available', () => {
+      render(<HorseCard horse={ownedInactiveHorse} barnSlug="green-acres" variant="owned" />)
+      expect(screen.getByText('Inactive')).toBeDefined()
+    })
+
+    it('should_not_render_unavailability_reason', () => {
+      render(<HorseCard horse={ownedUnavailableHorse} barnSlug="green-acres" variant="owned" />)
+      expect(screen.queryByText(/Injury/)).toBeNull()
+    })
+
+    it('should_not_render_exhaustion_bar_even_when_exhaustion_provided', () => {
+      render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" exhaustion={exhaustion} />)
+      expect(screen.queryByRole('button', { name: /exhaustion/i })).toBeNull()
+    })
+
+    it('should_not_render_as_link_when_not_linkable', () => {
+      render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" linkable={false} />)
+      expect(screen.queryByRole('link')).toBeNull()
+    })
+
+    it('should_still_render_horse_name_when_not_linkable', () => {
+      render(<HorseCard horse={ownedActiveHorse} barnSlug="green-acres" variant="owned" linkable={false} />)
+      expect(screen.getByText('Clover')).toBeDefined()
     })
   })
 })
