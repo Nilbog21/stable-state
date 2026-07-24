@@ -37,7 +37,7 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   }, [])
 
   async function handleCopy() {
-    const url = `${window.location.origin}/barn/${barnSlug}/login?token=${inviteToken}`
+    const url = `${window.location.origin}/barn/${barnSlug}/register?token=${inviteToken}`
     try {
       await navigator.clipboard.writeText(url)
     } catch {

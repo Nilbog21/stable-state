@@ -4,7 +4,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
 export function buildInvitePath(slug: string, token: string): string {
-  return `/barn/${slug}/login?token=${token}`
+  return `/barn/${slug}/register?token=${token}`
 }
 
 async function run() {
