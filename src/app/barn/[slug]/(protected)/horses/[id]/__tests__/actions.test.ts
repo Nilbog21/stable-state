@@ -8,6 +8,7 @@ vi.mock('@/lib/auth/guard', () => ({
 vi.mock('@/lib/db/horses', () => ({
   getHorseById: vi.fn(),
   updateHorseDetails: vi.fn(),
+  updateHorseNotes: vi.fn(),
   replaceHorsePhoto: vi.fn(),
   removeHorsePhoto: vi.fn(),
 }))
@@ -42,7 +43,7 @@ const mockNotFound = vi.hoisted(() => vi.fn(() => {
 vi.mock('next/navigation', () => ({ redirect: mockRedirect, notFound: mockNotFound }))
 
 import { requireMembership } from '@/lib/auth/guard'
-import { getHorseById, updateHorseDetails, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
+import { getHorseById, updateHorseDetails, updateHorseNotes, replaceHorsePhoto, removeHorsePhoto } from '@/lib/db/horses'
 import {
   grantHorsePrivilege,
   updateHorsePrivilegeDocumentAccess,
@@ -63,6 +64,7 @@ import {
   updateHorseAccessLessonAction,
   revokeHorseAccessAction,
   setHorseOwnerAction,
+  updateHorseNotesAction,
 } from '../actions'
 
 const mockBarn = createMockBarn()
@@ -459,6 +461,70 @@ describe('updateHorseAction', () => {
     vi.mocked(getHorseById).mockResolvedValue(null)
     await updateHorseAction('green-acres', 'horse-1', { error: null }, validThresholdsFormData())
     expect(updateHorseDetails).not.toHaveBeenCalled()
+  })
+})
+
+describe('updateHorseNotesAction', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(updateHorseNotes).mockReset()
+    vi.mocked(revalidatePath).mockReset()
+    vi.mocked(updateHorseNotes).mockResolvedValue(undefined)
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: { id: 'user-1' } as any,
+      barn: mockBarn,
+      membership: createMockMembership({ id: 'mem-owner', role: 'rider' }),
+    })
+  })
+
+  function notesFormData(feedNotes = '2 flakes hay AM/PM', medicationNotes = 'Bute 1g daily'): FormData {
+    const fd = new FormData()
+    fd.set('feed_notes', feedNotes)
+    fd.set('medication_notes', medicationNotes)
+    return fd
+  }
+
+  it('should_call_requireMembership_with_all_roles', async () => {
+    await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer', 'rider'])
+  })
+
+  it('should_call_updateHorseNotes_with_barn_scoped_ids_and_notes', async () => {
+    await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
+    expect(updateHorseNotes).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      feed_notes: '2 flakes hay AM/PM',
+      medication_notes: 'Bute 1g daily',
+    })
+  })
+
+  it('should_treat_blank_notes_as_null', async () => {
+    await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData('   ', '   '))
+    expect(updateHorseNotes).toHaveBeenCalledWith('horse-1', mockBarn.id, {
+      feed_notes: null,
+      medication_notes: null,
+    })
+  })
+
+  it('should_revalidate_horse_detail_path_on_success', async () => {
+    await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
+    expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/horses/horse-1')
+  })
+
+  it('should_return_null_error_on_success', async () => {
+    const result = await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_updateHorseNotes_is_not_authorized', async () => {
+    vi.mocked(updateHorseNotes).mockRejectedValue(new Error('not_authorized'))
+    const result = await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
+    expect(result).toEqual({ error: 'not_authorized' })
+  })
+
+  it('should_not_revalidate_when_updateHorseNotes_fails', async () => {
+    vi.mocked(updateHorseNotes).mockRejectedValue(new Error('not_authorized'))
+    await updateHorseNotesAction('green-acres', 'horse-1', { error: null }, notesFormData())
+    expect(revalidatePath).not.toHaveBeenCalled()
   })
 })
 

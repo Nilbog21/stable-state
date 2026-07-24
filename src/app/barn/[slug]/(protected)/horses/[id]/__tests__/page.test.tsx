@@ -21,9 +21,13 @@ vi.mock('../actions', () => ({
   updateHorseAccessLessonAction: vi.fn(),
   revokeHorseAccessAction: vi.fn(),
   setHorseOwnerAction: vi.fn(),
+  updateHorseNotesAction: vi.fn(),
 }))
 vi.mock('../HorseManagerForm', () => ({
   HorseManagerForm: () => <div data-testid="horse-manager-form" />,
+}))
+vi.mock('../HorseNotesForm', () => ({
+  HorseNotesForm: () => <div data-testid="horse-notes-form" />,
 }))
 vi.mock('../HorseAccessSection', () => ({
   HorseAccessSection: (props: {
@@ -243,6 +247,47 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('2 flakes hay AM/PM')).toBeDefined()
+  })
+
+  it('should_render_horse_notes_form_for_owner_rider', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: riderMembership.id }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('horse-notes-form')).toBeDefined()
+  })
+
+  it('should_render_horse_notes_form_for_owner_trainer', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: trainerMembership.id }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByTestId('horse-notes-form')).toBeDefined()
+  })
+
+  it('should_not_render_horse_notes_form_for_non_owner_rider', async () => {
+    mockRequireMembershipAs(riderMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: 'mem-other' }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByTestId('horse-notes-form')).toBeNull()
+  })
+
+  it('should_not_render_horse_notes_form_for_non_owner_trainer', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ id: 'horse-1', name: 'Thunderbolt', owning_member_id: 'mem-other' }))
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.queryByTestId('horse-notes-form')).toBeNull()
+  })
+
+  it('should_still_render_read_only_feed_notes_for_non_owner_trainer_when_set', async () => {
+    mockRequireMembershipAs(trainerMembership)
+    vi.mocked(getHorseById).mockResolvedValue(horseWithNotes)
+    const jsx = await HorseDetailPage({ params: pageParams })
+    render(jsx)
+    expect(screen.getByText('2 flakes hay AM/PM')).toBeDefined()
+    expect(screen.queryByTestId('horse-notes-form')).toBeNull()
   })
 
   it('should_render_registered_name_for_trainer_when_set', async () => {
