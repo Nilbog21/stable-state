@@ -44,7 +44,7 @@ To wipe the dev database and re-seed a known fixture set (1 barn, 1 manager, 1 a
 bash scripts/reset-db.sh
 ```
 
-Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment and sign in with Google to claim the account, then `change-user.sh` lets you select a dev role to sign in as.
+Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment to claim the account (sign in with Google if you aren't already signed in — an already-authenticated session skips straight to an Accept Invite button), then `change-user.sh` lets you select a dev role to sign in as.
 
 ## Database setup
 
@@ -57,10 +57,10 @@ Run all migration files in `supabase/migrations/` against your Supabase project 
 Create an unclaimed managed-manager stub for a barn. The script inserts a stub profile (`is_managed=true`, no email) and an active manager membership with an invite token, then prints the invite path:
 
 ```
-Invite path: /barn/<slug>/login?token=<token>
+Invite path: /barn/<slug>/register?token=<token>
 ```
 
-Open that path in the app and sign in with Google to claim the account — `claim_managed_member` links your auth user to the stub and clears the token.
+Open that path in the app and sign in with Google to claim the account — `claim_managed_member` links your auth user to the stub and clears the token. If you're already signed in in that browser, the page skips Google and shows an Accept Invite button instead.
 
 **Prerequisites:**
 - The barn slug must already exist (create via the Supabase dashboard if needed)
@@ -97,7 +97,7 @@ bash scripts/seed-account.sh --allow-prod
 
 `--allow-prod` skips the `DEV_SUPABASE_URL` dev-project check — only pass it for this one-time production bootstrap step, never for routine dev seeding.
 
-The script prints an invite path (`/barn/<slug>/login?token=<token>`). Send the full URL (production domain + invite path) to the barn manager — they open it and sign in with Google to claim the account. A plain sign-in without the invite link will **not** activate the account.
+The script prints an invite path (`/barn/<slug>/register?token=<token>`). Send the full URL (production domain + invite path) to the barn manager — they open it and sign in with Google to claim the account. A plain sign-in without the invite link will **not** activate the account.
 
 ### 3. Set up the demo user
 
