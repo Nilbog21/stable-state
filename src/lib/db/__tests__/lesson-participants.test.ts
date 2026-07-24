@@ -386,63 +386,28 @@ describe('updateLessonWithParticipants', () => {
 })
 
 describe('updateLessonRiderNotes', () => {
-  const mockUpdatedRider = {
-    id: 'lr-1',
-    barn_id: 'barn-1',
-    lesson_id: 'lesson-1',
-    rider_id: 'rider-1',
-    rider_notes: 'Great progress today',
-    private_notes: 'Needs to work on posture',
-  }
-
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
   })
 
-  it('should_call_update_on_lesson_riders_with_rider_notes_and_private_notes', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedRider, error: null })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqRider = vi.fn().mockReturnValue({ eq: mockEqBarn })
-    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqRider })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqLesson })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
+  it('should_call_rpc_with_correct_arguments', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await updateLessonRiderNotes('lesson-1', 'rider-1', 'barn-1', 'Great progress today', 'Needs to work on posture')
 
-    expect(mockUpdate).toHaveBeenCalledWith({ rider_notes: 'Great progress today', private_notes: 'Needs to work on posture' })
+    expect(mockRpc).toHaveBeenCalledWith('update_lesson_rider_notes', {
+      p_lesson_id: 'lesson-1',
+      p_rider_id: 'rider-1',
+      p_barn_id: 'barn-1',
+      p_rider_notes: 'Great progress today',
+      p_private_notes: 'Needs to work on posture',
+    })
   })
 
-  it('should_return_updated_lesson_rider', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedRider, error: null })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqRider = vi.fn().mockReturnValue({ eq: mockEqBarn })
-    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqRider })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
-      }),
-    } as any)
-
-    const result = await updateLessonRiderNotes('lesson-1', 'rider-1', 'barn-1', 'Great progress today', 'Needs to work on posture')
-
-    expect(result).toEqual(mockUpdatedRider)
-  })
-
-  it('should_throw_when_supabase_returns_error', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqRider = vi.fn().mockReturnValue({ eq: mockEqBarn })
-    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqRider })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
-      }),
-    } as any)
+  it('should_throw_when_rpc_returns_an_error', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ error: new Error('db error') })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
     await expect(
       updateLessonRiderNotes('lesson-1', 'rider-1', 'barn-1', null, null)
