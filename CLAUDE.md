@@ -54,7 +54,7 @@ When a PR adds or modifies a UI route, workflow, or user-facing feature, update 
 
 `POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod, after the release tag is cut. It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of these bars:
 
-- **Cross-identity flows** — needs a genuinely separate real person: invite/claim by someone else, cross-user notification delivery, or a self-write by a non-manager role. A *fresh or unauthenticated* session does **not** clear this bar; incognito covers that locally, so those stay in PRE
+- **Cross-identity flows** — needs a genuinely separate real person: invite/claim by someone else, cross-user notification delivery, or a self-write by a claimed member who isn't you (`change-user.sh` never links `profiles.user_id`, so locally your own account is the only self-write you can test). A *fresh or unauthenticated* session does **not** clear this bar; incognito covers that locally, so those stay in PRE
 - **Auth/session behavior** only prod's real OAuth configuration exercises
 - **Payment or money-moving RPCs**
 - **Demo, cron, or prod-config behavior**

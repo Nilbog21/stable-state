@@ -43,7 +43,7 @@ Barn: `post-release-test`. The second person joins here as a **rider**.
 
 Barn: `post-release-test`, still as Casey Test.
 
-> PRE can't check this for an impersonated persona: `change-user.sh` reassigns `barn_memberships.user_id` but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona regardless of role. PRE covers self-upload only as *yourself*, a manager.
+> PRE can't check this for anyone but you: `change-user.sh` reassigns `barn_memberships.user_id` but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona — your own profile is the only locally-linked one PRE can cover. There is no role branch in this path (`documents/new/page.tsx` gates on `isOwnPage`, `profile_photos_self_write` on `profiles.user_id`), so what's new here is a *different person's* claimed profile, not a different role.
 
 - [ ] As Casey Test, on their own member detail page, tap **Set Photo** and choose a JPG or PNG → upload starts immediately and they land back on the member page with the photo displayed
 - [ ] Tap **Replace Photo** and choose a different image → the new photo displays
@@ -58,8 +58,9 @@ Barn: `post-release-test-2`. The second person joins here as a **trainer**, sinc
 
 - [ ] As manager in `post-release-test-2`, open `/barn/post-release-test-2/members` → inline **Add Trainer** form → create managed trainer **Riley Test**
 - [ ] **Copy Invite** on Riley Test's detail page → send the URL to the second person → they claim it with the same Google account → they land in `post-release-test-2` as trainer Riley Test
-- [ ] On Riley Test's detail page, the **Instructor Access** section shows a **Grant** button → click it → Riley Test becomes assignable as an instructor
-- [ ] On your own member detail page in this barn, **Grant** yourself Instructor Access too (the seeded dev-manager stub arrives with `can_instruct` false)
+- [ ] On Riley Test's detail page, the **Instructor Access** section reads "Cannot be assigned as an instructor." with a **Grant Instructor Access** button
+- [ ] Click **Grant Instructor Access** → the section now reads "Can be assigned as an instructor." and the button becomes **Revoke Instructor Access**
+- [ ] On your own member detail page in this barn, click **Grant Instructor Access** for yourself too (the seeded dev-manager stub arrives with `can_instruct` false)
 - [ ] As manager, create a future lesson via `/barn/post-release-test-2/lessons/new` with **Riley Test** as the instructor
 - [ ] Create a second lesson instructed by **yourself**, within 30 minutes of that first lesson's time → submission succeeds with no error
 - [ ] The second person reloads their screen → their notification bell shows an unread-count badge
@@ -67,7 +68,8 @@ Barn: `post-release-test-2`. The second person joins here as a **trainer**, sinc
 - [ ] Clicking that entry opens `/barn/post-release-test-2/lessons`
 - [ ] Now the reverse: as Riley Test, they create a lesson via `/barn/post-release-test-2/lessons/new` within 30 minutes of the lesson **you** instruct — the instructor field is locked to them
 - [ ] Reload **your** screen → your notification bell shows an unread-count badge
-- [ ] Open your bell → a **"1 new lesson scheduled nearby"** entry is listed, and clicking it opens `/barn/post-release-test-2/lessons`
+- [ ] Open your bell → a **"1 new lesson scheduled nearby"** entry is listed
+- [ ] Clicking that entry opens `/barn/post-release-test-2/lessons`
 
 ## Cleanup
 
