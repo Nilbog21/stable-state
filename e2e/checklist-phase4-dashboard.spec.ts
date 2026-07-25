@@ -4,7 +4,9 @@ const barnSlug = process.env.TEST_BARN_SLUG!
 
 // #1015 replaced the dashboard's old Today/This-Week split with a single-day
 // CalendarDayView — the day heading itself carries the "Today" indicator now.
-test('dashboard_today_indicator_visible_on_current_day @manager', async ({ page }) => {
+// @mobile rather than @manager: the mobile project runs on the manager storageState too,
+// so this doubles as the dashboard's small-viewport smoke test without running twice.
+test('dashboard_today_indicator_visible_on_current_day @mobile', async ({ page }) => {
   await page.goto(`/barn/${barnSlug}`)
   await expect(page.getByRole('heading', { name: /Today$/ })).toBeVisible()
 })
