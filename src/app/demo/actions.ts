@@ -71,7 +71,7 @@ export async function createOrResumeDemoBarn(): Promise<void> {
     if (barn) {
       const membership = await getUserMembership(user.id, barn.id, serviceClient)
       if (membership) {
-        cookieStore.set(`barn_session_${barn.slug}`, user.id, cookieOptions(`/barn/${barn.slug}/`))
+        cookieStore.set(`barn_session_${barn.slug}`, user.id, cookieOptions(`/barn/${barn.slug}`))
         redirect(`/barn/${barn.slug}/`)
       }
     }
@@ -101,7 +101,7 @@ export async function createOrResumeDemoBarn(): Promise<void> {
   await createActiveMembership(user.id, profile.id, barn.id, 'manager', serviceClient)
 
   cookieStore.set(DEMO_BARN_SLUG_COOKIE, barn.slug, cookieOptions('/'))
-  cookieStore.set(`barn_session_${barn.slug}`, user.id, cookieOptions(`/barn/${barn.slug}/`))
+  cookieStore.set(`barn_session_${barn.slug}`, user.id, cookieOptions(`/barn/${barn.slug}`))
 
   redirect(`/barn/${barn.slug}/`)
 }

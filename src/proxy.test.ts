@@ -131,6 +131,29 @@ describe('proxy', () => {
       expect(mockNextResponseRedirect).not.toHaveBeenCalled()
     })
 
+    it('should_redirect_to_barn_login_when_bare_barn_path_has_no_session_cookie', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+
+      const request = makeRequest('http://localhost:3000/barn/green-acres')
+      await proxy(request)
+
+      expect(mockNextResponseRedirect).toHaveBeenCalledWith(
+        expect.objectContaining({ href: expect.stringContaining('/barn/green-acres/login') })
+      )
+    })
+
+    it('should_pass_through_bare_barn_path_when_session_cookie_matches', async () => {
+      mockGetUser.mockResolvedValue({ data: { user: { id: 'user-1' } } })
+
+      const request = makeRequest(
+        'http://localhost:3000/barn/green-acres',
+        { 'barn_session_green-acres': 'user-1' }
+      )
+      await proxy(request)
+
+      expect(mockNextResponseRedirect).not.toHaveBeenCalled()
+    })
+
   })
 
   describe('config', () => {

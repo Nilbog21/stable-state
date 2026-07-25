@@ -2,7 +2,7 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { applyRememberMe } from '@/lib/supabase/cookie-options'
 
-const BARN_ROUTE = /^\/barn\/([^/]+)\//
+const BARN_ROUTE = /^\/barn\/([^/]+)(\/|$)/
 
 // request.cookies.set() mutates request.headers in place, so headers must be
 // re-read fresh (not from a snapshot taken before a refresh) or a mid-request

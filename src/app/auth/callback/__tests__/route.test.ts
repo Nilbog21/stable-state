@@ -193,7 +193,7 @@ describe('GET /auth/callback', () => {
       expect(mockCookiesSet).toHaveBeenCalledWith(
         'barn_session_green-acres',
         'user-1',
-        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres/' })
+        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres' })
       )
     })
 
@@ -209,7 +209,7 @@ describe('GET /auth/callback', () => {
       expect(mockCookiesSet).toHaveBeenCalledWith(
         'barn_session_barn-one',
         'user-1',
-        expect.objectContaining({ httpOnly: true, path: '/barn/barn-one/' })
+        expect.objectContaining({ httpOnly: true, path: '/barn/barn-one' })
       )
     })
 
@@ -225,7 +225,7 @@ describe('GET /auth/callback', () => {
       expect(mockCookiesSet).toHaveBeenCalledWith(
         'barn_session_barn-two',
         'user-1',
-        expect.objectContaining({ httpOnly: true, path: '/barn/barn-two/' })
+        expect.objectContaining({ httpOnly: true, path: '/barn/barn-two' })
       )
     })
 
@@ -332,7 +332,7 @@ describe('GET /auth/callback', () => {
         expect(mockCookiesSet).toHaveBeenCalledWith(
           'barn_session_green-acres',
           'user-1',
-          expect.objectContaining({ httpOnly: true, path: '/barn/green-acres/' })
+          expect.objectContaining({ httpOnly: true, path: '/barn/green-acres' })
         )
       })
 
@@ -351,7 +351,7 @@ describe('GET /auth/callback', () => {
         expect(mockCookiesSet).toHaveBeenCalledWith(
           'barn_session_barn-one',
           'user-1',
-          expect.objectContaining({ httpOnly: true, path: '/barn/barn-one/' })
+          expect.objectContaining({ httpOnly: true, path: '/barn/barn-one' })
         )
       })
 
@@ -370,7 +370,7 @@ describe('GET /auth/callback', () => {
         expect(mockCookiesSet).toHaveBeenCalledWith(
           'barn_session_barn-two',
           'user-1',
-          expect.objectContaining({ httpOnly: true, path: '/barn/barn-two/' })
+          expect.objectContaining({ httpOnly: true, path: '/barn/barn-two' })
         )
       })
     })
@@ -395,7 +395,7 @@ describe('GET /auth/callback', () => {
       expect(mockCookiesSet).toHaveBeenCalledWith(
         'barn_session_green-acres',
         'user-1',
-        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres/' })
+        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres' })
       )
     })
 
@@ -480,7 +480,7 @@ describe('GET /auth/callback', () => {
       expect(mockCookiesSet).toHaveBeenCalledWith(
         'barn_session_green-acres',
         'user-1',
-        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres/' })
+        expect.objectContaining({ httpOnly: true, path: '/barn/green-acres' })
       )
     })
 

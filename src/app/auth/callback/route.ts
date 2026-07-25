@@ -76,7 +76,7 @@ export async function GET(request: NextRequest) {
       httpOnly: true,
       sameSite: 'lax',
       secure: process.env.NODE_ENV === 'production',
-      path: `/barn/${slug}/`,
+      path: `/barn/${slug}`,
       ...(remember === '1' ? { maxAge: REMEMBER_ME_MAX_AGE } : {}),
     })
   }

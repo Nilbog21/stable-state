@@ -248,6 +248,6 @@ describe('createOrResumeDemoBarn', () => {
     await expect(createOrResumeDemoBarn()).rejects.toThrow('NEXT_REDIRECT')
 
     expect(set).toHaveBeenCalledWith('demo_barn_slug', 'demo-abc12345', expect.objectContaining({ path: '/' }))
-    expect(set).toHaveBeenCalledWith('barn_session_demo-abc12345', 'demo-user-1', expect.objectContaining({ path: '/barn/demo-abc12345/' }))
+    expect(set).toHaveBeenCalledWith('barn_session_demo-abc12345', 'demo-user-1', expect.objectContaining({ path: '/barn/demo-abc12345' }))
   })
 })
