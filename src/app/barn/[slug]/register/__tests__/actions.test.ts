@@ -10,8 +10,17 @@ const mockRedirect = vi.hoisted(() => vi.fn((url: string) => {
 }))
 vi.mock('next/navigation', () => ({ redirect: mockRedirect }))
 
+const mockCookies = vi.hoisted(() => vi.fn())
+vi.mock('next/headers', () => ({ cookies: mockCookies }))
+
 import { claimManagedMember } from '@/lib/db/member-invites'
 import { acceptInvite } from '../actions'
+
+function mockCookieStore() {
+  const set = vi.fn()
+  mockCookies.mockResolvedValue({ set })
+  return { set }
+}
 
 describe('acceptInvite', () => {
   beforeEach(() => {
@@ -19,6 +28,7 @@ describe('acceptInvite', () => {
     vi.mocked(claimManagedMember).mockReset()
     setupAuth(createMockUser({ id: 'user-1', email: 'jane@example.com' }))
     vi.mocked(claimManagedMember).mockResolvedValue(undefined)
+    mockCookieStore()
   })
 
   it('should_redirect_to_login_with_token_when_unauthenticated', async () => {
@@ -53,5 +63,30 @@ describe('acceptInvite', () => {
     vi.mocked(claimManagedMember).mockRejectedValue(new Error('token_not_found'))
     await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
     expect(mockRedirect).toHaveBeenCalledWith('/barn/green-acres/register?token=tok-1&error=1')
+  })
+
+  it('should_set_barn_session_cookie_after_successful_claim', async () => {
+    const { set } = mockCookieStore()
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(set).toHaveBeenCalledWith('barn_session_green-acres', 'user-1', {
+      httpOnly: true,
+      sameSite: 'lax',
+      secure: false,
+      path: '/barn/green-acres/',
+    })
+  })
+
+  it('should_not_set_barn_session_cookie_when_unauthenticated', async () => {
+    setupAuth(null)
+    const { set } = mockCookieStore()
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(set).not.toHaveBeenCalled()
+  })
+
+  it('should_not_set_barn_session_cookie_when_claim_fails', async () => {
+    vi.mocked(claimManagedMember).mockRejectedValue(new Error('token_not_found'))
+    const { set } = mockCookieStore()
+    await expect(acceptInvite('green-acres', 'tok-1')).rejects.toThrow('NEXT_REDIRECT')
+    expect(set).not.toHaveBeenCalled()
   })
 })
