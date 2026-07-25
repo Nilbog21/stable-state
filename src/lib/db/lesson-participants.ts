@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
 import { resolveHorseNames } from './horses'
-import type { Lesson, LessonHorse, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
+import type { Lesson, LessonHorse, LessonType, LessonWithDetails, PaymentType } from './types'
 
 interface LessonHorseJunctionRow {
   lesson_id: string
@@ -156,19 +156,17 @@ export async function updateLessonRiderNotes(
   barnId: string,
   riderNotes: string | null,
   privateNotes: string | null
-): Promise<LessonRider> {
+): Promise<void> {
   const supabase = await createClient()
-  const { data, error } = await supabase
-    .from('lesson_riders')
-    .update({ rider_notes: riderNotes, private_notes: privateNotes })
-    .eq('lesson_id', lessonId)
-    .eq('rider_id', riderId)
-    .eq('barn_id', barnId)
-    .select()
-    .single()
+  const { error } = await supabase.rpc('update_lesson_rider_notes', {
+    p_lesson_id: lessonId,
+    p_rider_id: riderId,
+    p_barn_id: barnId,
+    p_rider_notes: riderNotes,
+    p_private_notes: privateNotes,
+  })
 
   if (error) throw error
-  return data
 }
 
 export async function updateLessonHorseNotes(

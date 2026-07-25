@@ -1,11 +1,11 @@
 import { notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
-import { getHorseById } from '@/lib/db/horses'
+import { getHorseById, getHorseProjectedExhaustion, resolveExhaustionThresholds, getUpcomingLessonsForHorse } from '@/lib/db/horses'
 import { getDocumentsWithUrls } from '@/lib/db/documents'
 import { getSignedUrl } from '@/lib/db/document-storage'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
-import { getHorsePrivileges } from '@/lib/db/member-horse-privileges'
+import { getHorsePrivileges, getMyHorseDocumentPrivilege, getMyHorseLessonReadPrivilege } from '@/lib/db/member-horse-privileges'
 import { HorseManagerForm } from './HorseManagerForm'
 import { HorseNotesForm } from './HorseNotesForm'
 import { HorseAccessSection } from './HorseAccessSection'
@@ -13,7 +13,10 @@ import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
+import { Card, cardBaseClass } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
+import { ExhaustionBar } from '@/components/ExhaustionBar'
+import { LocalDateTime } from '@/components/LocalDateTime'
 import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 import {
   updateHorseAction,
@@ -41,13 +44,21 @@ export default async function HorseDetailPage({
 
   const role = membership.role
 
-  const canSeeDocuments = role === 'manager' || role === 'trainer'
+  const myDocumentPrivilege = role === 'rider' ? await getMyHorseDocumentPrivilege(horse.id, barn.id) : null
+  const myLessonReadPrivilege = role === 'rider' ? await getMyHorseLessonReadPrivilege(horse.id, barn.id) : false
+
+  const canSeeDocuments = role === 'manager' || role === 'trainer' || myDocumentPrivilege !== 'none'
+  const canWriteDocuments = role === 'manager' || role === 'trainer' || myDocumentPrivilege === 'write'
+  const canSeeExhaustion = role === 'manager' || role === 'trainer' || myLessonReadPrivilege
   const isManager = role === 'manager'
   const isOwner = horse.owning_member_id === membership.id
   const isPhotoLockedToOwner = horse.owning_member_id !== null && horse.photo_uploaded_by === horse.owning_member_id
   const canWritePhoto = isOwner || (isManager && !isPhotoLockedToOwner)
 
   const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
+  const exhaustionThresholds = canSeeExhaustion ? resolveExhaustionThresholds(horse, barn) : null
+  const exhaustionRows = canSeeExhaustion ? await getHorseProjectedExhaustion(horse.id, barn.id, new Date()) : []
+  const upcomingLessons = canSeeExhaustion ? await getUpcomingLessonsForHorse(horse.id, barn.id) : []
   const photoUrl = horse.photo_path ? await getSignedUrl(horse.photo_path) : null
 
   const ownerName = horse.owning_member_id
@@ -202,13 +213,24 @@ export default async function HorseDetailPage({
         </section>
       )}
 
+      {canSeeExhaustion && exhaustionThresholds && (
+        <section className="mt-10">
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Exhaustion
+          </h2>
+          <ExhaustionBar existingRows={exhaustionRows} thresholds={exhaustionThresholds} />
+        </section>
+      )}
+
       {canSeeDocuments && (
         <section className="mt-10">
           <div className="mb-3 flex items-center justify-between">
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
               Documents
             </h2>
-            <Button href={`/barn/${slug}/documents/new?entity=horse&id=${horse.id}`}>Add Document</Button>
+            {canWriteDocuments && (
+              <Button href={`/barn/${slug}/documents/new?entity=horse&id=${horse.id}`}>Add Document</Button>
+            )}
           </div>
           {docsWithUrls.length > 0 ? (
             <div className="overflow-x-auto">
@@ -264,6 +286,35 @@ export default async function HorseDetailPage({
           ) : (
             <EmptyState heading="No documents yet" subtext="Documents you upload will appear here." />
           )}
+        </section>
+      )}
+
+      {canSeeExhaustion && (
+        <section className="mt-10">
+          <details className={`relative ${cardBaseClass}`}>
+            <summary className="flex min-h-11 cursor-pointer items-center px-4 py-3">
+              <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+                Upcoming Lessons
+              </h2>
+            </summary>
+            <div className="border-t border-zinc-200 px-4 py-4 dark:border-zinc-700">
+              {upcomingLessons.length > 0 ? (
+                <ul className="flex flex-col gap-2">
+                  {upcomingLessons.map((l) => (
+                    <li key={l.id}>
+                      <Card href={`/barn/${slug}/lessons/${l.id}`} className="p-4">
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                          <LocalDateTime iso={l.lessonAt} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
+                        </span>
+                      </Card>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <EmptyState heading="No upcoming lessons" subtext="Scheduled lessons for this horse will appear here." />
+              )}
+            </div>
+          </details>
         </section>
       )}
     </main>

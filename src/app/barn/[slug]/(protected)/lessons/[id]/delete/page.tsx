@@ -10,9 +10,9 @@ export default async function DeleteLessonPage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
-  const { user, barn, membership } = await requireMembership(slug, ['manager'])
+  const { barn, membership } = await requireMembership(slug, ['manager'])
 
-  const lesson = await getLessonById(id, barn.id, membership.role, user.id)
+  const lesson = await getLessonById(id, barn.id, membership.role)
   if (!lesson) notFound()
 
   const deleteLesson = deleteLessonAction.bind(null, barn.id, slug, lesson.id)
