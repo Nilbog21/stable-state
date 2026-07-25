@@ -37,7 +37,7 @@ Barn: `post-release-test`. The second person joins here as a **rider**.
 - [ ] They fill the contact fields and save → they land in the `post-release-test` barn as rider Casey Test
 - [ ] As Casey Test, they open their own member detail page → the document you uploaded **before** they claimed still opens via its signed-URL link (regression check: a claimed member's pre-claim documents must stay readable, not just the manager's — and a rider is read-only on their own documents since #864, so this exercises `rider_documents` RLS specifically)
 - [ ] Back as manager, Casey Test's row on `/barn/post-release-test/members` no longer shows the amber **Unlinked** badge
-- [ ] Casey Test's detail page no longer shows the **Manage member** section
+- [ ] Casey Test's detail page no longer shows the **Manage Member** section
 
 ### Self photo upload as a second real person
 
