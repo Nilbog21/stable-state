@@ -7,14 +7,11 @@ if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 
-test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @manager', async ({ page }, testInfo) => {
+test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @manager', async ({ page }) => {
   // Chosen to land well outside seed-test-barn.ts's seeded lessons (past(10)..future(5)
-  // days), so the direct-read query below can't collide with fixture data. Offset by
-  // project so 'manager' and 'mobile' (both @manager-tagged, same storageState) target
-  // distinct days instead of racing to insert the identical row.
-  const projectOffset = testInfo.project.name === 'mobile' ? 1 : 0
+  // days), so the direct-read query below can't collide with fixture data.
   const target = new Date()
-  target.setDate(target.getDate() + 30 + projectOffset)
+  target.setDate(target.getDate() + 30)
   const year = target.getFullYear()
   const month = target.getMonth() + 1
   const day = target.getDate()
