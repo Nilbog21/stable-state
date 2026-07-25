@@ -53,6 +53,16 @@ export async function updateHorsePrivilegeLessonAccess(
   if (error) throw error
 }
 
+export async function setHorseOwner(horseId: string, barnId: string, memberId: string | null): Promise<void> {
+  const supabase = await createClient()
+  const { error } = await supabase.rpc('set_horse_owner', {
+    p_horse_id: horseId,
+    p_barn_id: barnId,
+    p_member_id: memberId,
+  })
+  if (error) throw error
+}
+
 export async function getMyHorseDocumentPrivilege(horseId: string, barnId: string): Promise<'none' | 'read' | 'write'> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('auth_get_horse_document_privilege', {
