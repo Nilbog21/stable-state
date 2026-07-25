@@ -703,7 +703,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await renderPage({ view: 'week', date: '2026-07-20' })
     render(jsx)
 
-    const heading = screen.getByRole('heading', { level: 2 })
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
     expect(heading.textContent).toContain('Jul 19')
     expect(heading.textContent).toContain('Jul 25')
   })
@@ -713,7 +713,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
     render(jsx)
 
-    const heading = screen.getByRole('heading', { level: 2 })
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
     expect(heading.textContent).toContain('Jul 19')
   })
 
@@ -722,7 +722,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
     render(jsx)
 
-    const heading = screen.getByRole('heading', { level: 2 })
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
     expect(heading.textContent).toContain('Jul 25')
   })
 
@@ -745,7 +745,7 @@ describe('BarnDashboardPage', () => {
     const jsx = await renderPage({ view: 'week' })
     render(jsx)
 
-    const heading = screen.getByRole('heading', { level: 2 })
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
     expect(heading.textContent).toContain('This Week')
   })
 

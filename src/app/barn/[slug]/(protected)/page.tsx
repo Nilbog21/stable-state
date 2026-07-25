@@ -155,6 +155,9 @@ export default async function BarnDashboardPage({
       )}
       {userRole !== null && (
         <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Calendar
+          </h2>
           <div className="mb-3 flex gap-2">
             <Pill href={`/barn/${slug}?date=${dayPillDate}`} active={view === 'day'}>
               Day
