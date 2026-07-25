@@ -9,6 +9,7 @@ import {
   updateHorsePrivilegeDocumentAccess,
   updateHorsePrivilegeLessonAccess,
   revokeHorsePrivilege,
+  setHorseOwner,
 } from '@/lib/db/member-horse-privileges'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile, validateFile, PHOTO_MIME_TYPES, PHOTO_EXTENSIONS } from '@/lib/db/document-storage'
@@ -176,8 +177,8 @@ export async function revokeHorseAccessAction(
 }
 
 // Owner is now set exclusively from the Access table (a member must already
-// have a privilege row to be selected), so this always passes through the
-// horse's other current fields unchanged, changing only owning_member_id.
+// have a privilege row to be selected). setHorseOwner atomically sets
+// owning_member_id and elevates the new owner's privileges in one RPC call.
 export async function setHorseOwnerAction(
   barnSlug: string,
   horseId: string,
@@ -187,19 +188,7 @@ export async function setHorseOwnerAction(
   const horse = await getHorseById(horseId, barn.id)
   if (!horse) notFound()
 
-  await updateHorseDetails(horseId, barn.id, {
-    name: horse.name,
-    is_active: horse.is_active,
-    is_available: horse.is_available,
-    unavailability_reason: horse.unavailability_reason,
-    exhaustion_thresholds: horse.exhaustion_threshold_moderate != null && horse.exhaustion_threshold_high != null
-      ? { moderate: horse.exhaustion_threshold_moderate, high: horse.exhaustion_threshold_high }
-      : null,
-    feed_notes: horse.feed_notes,
-    medication_notes: horse.medication_notes,
-    registered_name: horse.registered_name,
-    owning_member_id: memberId,
-  })
+  await setHorseOwner(horseId, barn.id, memberId)
   revalidatePath(`/barn/${barnSlug}/horses/${horseId}`)
 }
 

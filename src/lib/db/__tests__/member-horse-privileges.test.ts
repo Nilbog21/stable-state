@@ -12,6 +12,7 @@ import {
   updateHorsePrivilegeDocumentAccess,
   updateHorsePrivilegeLessonAccess,
   revokeHorsePrivilege,
+  setHorseOwner,
   getMyHorseDocumentPrivilege,
   getMyHorseLessonReadPrivilege,
 } from '../member-horse-privileges'
@@ -159,6 +160,46 @@ describe('updateHorsePrivilegeLessonAccess', () => {
     } as any)
 
     await expect(updateHorsePrivilegeLessonAccess('privilege-1', 'barn-1', false)).rejects.toThrow('update error')
+  })
+})
+
+describe('setHorseOwner', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_the_set_horse_owner_rpc', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+
+    await setHorseOwner('horse-1', 'barn-1', 'mem-3')
+
+    expect(rpc).toHaveBeenCalledWith('set_horse_owner', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_member_id: 'mem-3',
+    })
+  })
+
+  it('should_call_the_rpc_with_null_member_id_when_clearing_ownership', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+
+    await setHorseOwner('horse-1', 'barn-1', null)
+
+    expect(rpc).toHaveBeenCalledWith('set_horse_owner', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_member_id: null,
+    })
+  })
+
+  it('should_throw_on_supabase_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ error: new Error('rpc error') }),
+    } as any)
+
+    await expect(setHorseOwner('horse-1', 'barn-1', 'mem-3')).rejects.toThrow('rpc error')
   })
 })
 
