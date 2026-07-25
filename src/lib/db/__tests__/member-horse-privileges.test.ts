@@ -13,6 +13,8 @@ import {
   updateHorsePrivilegeLessonAccess,
   revokeHorsePrivilege,
   setHorseOwner,
+  getMyHorseDocumentPrivilege,
+  getMyHorseLessonReadPrivilege,
 } from '../member-horse-privileges'
 
 describe('getHorsePrivileges', () => {
@@ -198,6 +200,76 @@ describe('setHorseOwner', () => {
     } as any)
 
     await expect(setHorseOwner('horse-1', 'barn-1', 'mem-3')).rejects.toThrow('rpc error')
+  })
+})
+
+describe('getMyHorseDocumentPrivilege', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_the_auth_get_horse_document_privilege_rpc', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: 'read', error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+
+    await getMyHorseDocumentPrivilege('horse-1', 'barn-1')
+
+    expect(rpc).toHaveBeenCalledWith('auth_get_horse_document_privilege', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+    })
+  })
+
+  it('should_return_the_rpc_result', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: 'write', error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+
+    const result = await getMyHorseDocumentPrivilege('horse-1', 'barn-1')
+
+    expect(result).toBe('write')
+  })
+
+  it('should_throw_on_supabase_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: new Error('rpc error') }),
+    } as any)
+
+    await expect(getMyHorseDocumentPrivilege('horse-1', 'barn-1')).rejects.toThrow('rpc error')
+  })
+})
+
+describe('getMyHorseLessonReadPrivilege', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_call_the_auth_has_horse_lesson_read_privilege_rpc', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: true, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+
+    await getMyHorseLessonReadPrivilege('horse-1', 'barn-1')
+
+    expect(rpc).toHaveBeenCalledWith('auth_has_horse_lesson_read_privilege', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+    })
+  })
+
+  it('should_return_the_rpc_result', async () => {
+    const rpc = vi.fn().mockResolvedValue({ data: false, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
+
+    const result = await getMyHorseLessonReadPrivilege('horse-1', 'barn-1')
+
+    expect(result).toBe(false)
+  })
+
+  it('should_throw_on_supabase_error', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: null, error: new Error('rpc error') }),
+    } as any)
+
+    await expect(getMyHorseLessonReadPrivilege('horse-1', 'barn-1')).rejects.toThrow('rpc error')
   })
 })
 

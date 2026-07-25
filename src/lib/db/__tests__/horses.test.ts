@@ -13,7 +13,7 @@ vi.mock('../document-storage', () => ({
 import { createClient } from '@/lib/supabase/server'
 import { uploadFile, removeFile } from '../document-storage'
 import { createMockBarn } from '@/test/fixtures'
-import { getHorsesByBarn, getHorsesByIds, getOwnedHorses, createHorse, getHorseExertionSummary, getHorseById, resolveHorseNames, updateHorseDetails, updateHorseNotes, updateHorsePhotoPath, replaceHorsePhoto, removeHorsePhoto, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '../horses'
+import { getHorsesByBarn, getHorsesByIds, getOwnedHorses, createHorse, getHorseExertionSummary, getHorseById, resolveHorseNames, updateHorseDetails, updateHorseNotes, updateHorsePhotoPath, replaceHorsePhoto, removeHorsePhoto, getHorseProjectedExhaustion, resolveExhaustionThresholds, getUpcomingLessonsForHorse } from '../horses'
 
 const mockHorses = [
   createMockHorse({ id: 'horse-1', name: 'Thunderbolt', created_at: '2026-01-01', updated_at: '2026-01-01' }),
@@ -1189,5 +1189,179 @@ describe('getOwnedHorses', () => {
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue(chain) } as any)
 
     await expect(getOwnedHorses('barn-1', 'mem-1')).rejects.toThrow('db error')
+  })
+})
+
+describe('getUpcomingLessonsForHorse', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  function makeLinksChain(data: { lesson_id: string }[] | null, error: Error | null = null) {
+    const mockEqBarnId = vi.fn().mockResolvedValue({ data, error })
+    const mockEqHorseId = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    return { select: vi.fn().mockReturnValue({ eq: mockEqHorseId }), mockEqHorseId, mockEqBarnId }
+  }
+
+  function makeLessonsChain(data: { id: string; lesson_at: string }[] | null, error: Error | null = null) {
+    const mockOrder = vi.fn().mockResolvedValue({ data, error })
+    const mockGte = vi.fn().mockReturnValue({ order: mockOrder })
+    const mockIs = vi.fn().mockReturnValue({ gte: mockGte })
+    const mockEqBarnId = vi.fn().mockReturnValue({ is: mockIs })
+    const mockIn = vi.fn().mockReturnValue({ eq: mockEqBarnId })
+    return { select: vi.fn().mockReturnValue({ in: mockIn }), mockIn, mockEqBarnId, mockIs, mockGte, mockOrder }
+  }
+
+  it('should_return_empty_array_when_horse_has_no_lesson_links', async () => {
+    const links = makeLinksChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(links),
+    } as any)
+
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_scope_the_link_lookup_to_the_horse_id', async () => {
+    const links = makeLinksChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(links),
+    } as any)
+
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(links.mockEqHorseId).toHaveBeenCalledWith('horse_id', 'horse-1')
+  })
+
+  it('should_scope_the_link_lookup_to_the_barn_id', async () => {
+    const links = makeLinksChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(links),
+    } as any)
+
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(links.mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_treat_null_link_lookup_data_as_empty_array', async () => {
+    const links = makeLinksChain(null)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(links),
+    } as any)
+
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_the_link_lookup_errors', async () => {
+    const links = makeLinksChain(null, new Error('link error'))
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue(links),
+    } as any)
+
+    await expect(getUpcomingLessonsForHorse('horse-1', 'barn-1')).rejects.toThrow('link error')
+  })
+
+  it('should_return_upcoming_non_cancelled_lessons_ordered_ascending', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }, { lesson_id: 'lesson-2' }])
+    const lessons = makeLessonsChain([
+      { id: 'lesson-1', lesson_at: '2026-08-01T10:00:00Z' },
+      { id: 'lesson-2', lesson_at: '2026-08-08T10:00:00Z' },
+    ])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(result).toEqual([
+      { id: 'lesson-1', lessonAt: '2026-08-01T10:00:00Z' },
+      { id: 'lesson-2', lessonAt: '2026-08-08T10:00:00Z' },
+    ])
+  })
+
+  it('should_scope_the_lessons_lookup_to_the_linked_lesson_ids', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(lessons.mockIn).toHaveBeenCalledWith('id', ['lesson-1'])
+  })
+
+  it('should_scope_the_lessons_lookup_to_the_barn_id', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(lessons.mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
+  })
+
+  it('should_scope_the_lessons_lookup_to_uncancelled_only', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(lessons.mockIs).toHaveBeenCalledWith('cancelled_at', null)
+  })
+
+  it('should_scope_the_lessons_lookup_to_future_lessons_only', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(lessons.mockGte).toHaveBeenCalledWith('lesson_at', expect.any(String))
+  })
+
+  it('should_order_the_lessons_lookup_ascending', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain([])
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(lessons.mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
+  })
+
+  it('should_treat_null_lessons_lookup_data_as_empty_array', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain(null)
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+
+    expect(result).toEqual([])
+  })
+
+  it('should_throw_when_the_lessons_lookup_errors', async () => {
+    const links = makeLinksChain([{ lesson_id: 'lesson-1' }])
+    const lessons = makeLessonsChain(null, new Error('lessons error'))
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
+    } as any)
+
+    await expect(getUpcomingLessonsForHorse('horse-1', 'barn-1')).rejects.toThrow('lessons error')
   })
 })

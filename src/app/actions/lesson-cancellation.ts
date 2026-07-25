@@ -60,7 +60,7 @@ export async function cancelLessonAction(
 ): Promise<void> {
   const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -118,7 +118,7 @@ export async function cancelRiderParticipationAction(
 ): Promise<void> {
   const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role, membership.id)
+  const lesson = await getLessonById(lessonId, barnId, membership.role)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return
