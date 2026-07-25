@@ -72,7 +72,7 @@ describe('acceptInvite', () => {
       httpOnly: true,
       sameSite: 'lax',
       secure: false,
-      path: '/barn/green-acres/',
+      path: '/barn/green-acres',
     })
   })
 

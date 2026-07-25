@@ -24,7 +24,7 @@ export async function acceptInvite(slug: string, token: string): Promise<void> {
     httpOnly: true,
     sameSite: 'lax',
     secure: process.env.NODE_ENV === 'production',
-    path: `/barn/${slug}/`,
+    path: `/barn/${slug}`,
   })
 
   redirect(`/barn/${slug}/`)
