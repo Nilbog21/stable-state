@@ -4,9 +4,14 @@
 -- function still returned success, leaving a horse "owned" by a member whose
 -- privileges were never elevated, with nothing surfaced to the caller.
 -- Raising (rather than upserting the missing row) preserves #998's invariant
--- that ownership is assigned from an *existing* Access grant -- the horse detail
--- page's Access table only offers members who already hold one, so reaching this
--- branch means a caller bug or a direct RPC call, which should be loud.
+-- that ownership *reassignment* is done from an existing Access grant -- the
+-- horse detail page's Access table only offers members who already hold one and
+-- is this function's only caller, so reaching this branch means a caller bug or
+-- a direct RPC call, which should be loud. Scoped to reassignment deliberately:
+-- createHorse still auto-assigns the creating member as owner at insert time
+-- with no privileges row (see schema.md's owning_member_id note), so "owner
+-- implies Access grant" is not a whole-table invariant -- it holds only for the
+-- path that reaches this function.
 -- The RAISE aborts the whole function body, so the horses UPDATE above rolls
 -- back too: the caller gets both writes or neither, as before.
 -- The horses UPDATE stays unguarded -- setHorseOwnerAction already does
@@ -30,7 +35,10 @@ BEGIN
     RETURNING id INTO v_privilege_id;
 
     IF v_privilege_id IS NULL THEN
-      RAISE EXCEPTION 'member % has no privilege grant for horse %', p_member_id, p_horse_id;
+      -- Static token, matching update_horse_notes/update_horse_photo's
+      -- 'horse_not_found': callers surface an RPC error's message verbatim via
+      -- getErrorMessage, so ids must not be interpolated into it.
+      RAISE EXCEPTION 'privilege_grant_not_found';
     END IF;
   END IF;
 END;
