@@ -618,6 +618,15 @@ describe('BarnDashboardPage', () => {
     expect(new Date(to as string).getTime() - new Date(from as string).getTime()).toBe(7 * 24 * 60 * 60 * 1000)
   })
 
+  it('should_anchor_the_week_view_range_to_the_calendar_weeks_sunday_for_a_mid_week_date', async () => {
+    // 2026-07-23 is a Thursday; the calendar week containing it starts Sunday 2026-07-19
+    await renderPage({ view: 'week', date: '2026-07-23' })
+
+    const [, from] = vi.mocked(getScheduleForRange).mock.calls[0]
+    // 2026-07-19 America/New_York (EDT, UTC-4) midnight => 2026-07-19T04:00:00.000Z
+    expect(from).toBe('2026-07-19T04:00:00.000Z')
+  })
+
   it('should_scope_schedule_items_for_the_callers_role_in_week_view', async () => {
     vi.mocked(getUserMembership).mockResolvedValue(mockTrainerMembership)
     vi.mocked(getScheduleForRange).mockResolvedValue([lessonItem])
@@ -643,6 +652,24 @@ describe('BarnDashboardPage', () => {
     const link = screen.getByRole('link', { name: 'Week' }) as HTMLAnchorElement
     expect(link.href).toContain('view=week')
     expect(link.href).toContain('date=2026-07-20')
+  })
+
+  it('should_land_the_day_pill_on_today_when_switching_from_a_week_view_that_includes_today', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Day' }) as HTMLAnchorElement
+    const todayStr = screen.getByTestId('calendar-week-view').getAttribute('data-today-str')
+    expect(link.href).toContain(`date=${todayStr}`)
+  })
+
+  it('should_land_the_day_pill_on_the_weeks_sunday_when_switching_from_a_week_view_that_does_not_include_today', async () => {
+    // 2026-01-01 is a Thursday; the calendar week containing it starts Sunday 2025-12-28
+    const jsx = await renderPage({ view: 'week', date: '2026-01-01' })
+    render(jsx)
+
+    const link = screen.getByRole('link', { name: 'Day' }) as HTMLAnchorElement
+    expect(link.href).toContain('date=2025-12-28')
   })
 
   it('should_mark_the_week_pill_active_in_week_view', async () => {
@@ -672,27 +699,54 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_render_a_date_range_heading_in_week_view', async () => {
+    // 2026-07-20 is a Monday; the calendar week containing it is Jul 19 (Sun) - Jul 25 (Sat)
     const jsx = await renderPage({ view: 'week', date: '2026-07-20' })
     render(jsx)
 
-    const heading = screen.getByRole('heading', { level: 2 })
-    expect(heading.textContent).toContain('Jul 20')
-    expect(heading.textContent).toContain('Jul 26')
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
+    expect(heading.textContent).toContain('Jul 19')
+    expect(heading.textContent).toContain('Jul 25')
   })
 
-  it('should_show_a_today_link_in_week_view_when_the_visible_week_does_not_include_today', async () => {
+  it('should_render_the_calendar_weeks_start_in_the_heading_regardless_of_the_selected_date', async () => {
+    // 2026-07-23 is a Thursday inside the same Jul 19-25 calendar week
+    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    render(jsx)
+
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
+    expect(heading.textContent).toContain('Jul 19')
+  })
+
+  it('should_render_the_calendar_weeks_end_in_the_heading_regardless_of_the_selected_date', async () => {
+    // 2026-07-23 is a Thursday inside the same Jul 19-25 calendar week
+    const jsx = await renderPage({ view: 'week', date: '2026-07-23' })
+    render(jsx)
+
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
+    expect(heading.textContent).toContain('Jul 25')
+  })
+
+  it('should_show_a_this_week_link_in_week_view_when_the_visible_week_does_not_include_today', async () => {
     const jsx = await renderPage({ view: 'week', date: '2026-01-01' })
     render(jsx)
 
-    const link = screen.getByRole('link', { name: 'Today' }) as HTMLAnchorElement
+    const link = screen.getByRole('link', { name: 'This Week' }) as HTMLAnchorElement
     expect(link.href).toBe('http://localhost:3000/barn/green-acres?view=week')
   })
 
-  it('should_hide_the_today_link_in_week_view_when_the_visible_week_includes_today', async () => {
+  it('should_hide_the_this_week_link_in_week_view_when_the_visible_week_includes_today', async () => {
     const jsx = await renderPage({ view: 'week' })
     render(jsx)
 
-    expect(screen.queryByRole('link', { name: 'Today' })).toBeNull()
+    expect(screen.queryByRole('link', { name: 'This Week' })).toBeNull()
+  })
+
+  it('should_render_this_week_suffix_in_the_heading_when_the_visible_week_includes_today', async () => {
+    const jsx = await renderPage({ view: 'week' })
+    render(jsx)
+
+    const heading = screen.getAllByRole('heading', { level: 2 }).find((h) => h.textContent !== 'Calendar')!
+    expect(heading.textContent).toContain('This Week')
   })
 
   describe('demo mode banner', () => {

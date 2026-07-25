@@ -67,8 +67,9 @@ export default async function BarnDashboardPage({
       view = requestedView === 'week' ? 'week' : 'day'
       weekDates = getWeekDates(selectedDate)
 
-      const rangeStart = wallClockToInstant(`${selectedDate}T00:00:00`, barn.timezone).toISOString()
-      const rangeEnd = wallClockToInstant(`${addDays(selectedDate, view === 'week' ? 7 : 1)}T00:00:00`, barn.timezone).toISOString()
+      const rangeStartDate = view === 'week' ? weekDates[0] : selectedDate
+      const rangeStart = wallClockToInstant(`${rangeStartDate}T00:00:00`, barn.timezone).toISOString()
+      const rangeEnd = wallClockToInstant(`${addDays(rangeStartDate, view === 'week' ? 7 : 1)}T00:00:00`, barn.timezone).toISOString()
 
       const [scheduleItems, due, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
         getScheduleForRange(barn.id, rangeStart, rangeEnd, barn.timezone),
@@ -109,11 +110,13 @@ export default async function BarnDashboardPage({
   const navLabel = view === 'week' ? 'week' : 'day'
   const viewQuery = view === 'week' ? 'view=week&' : ''
   const todayHref = `/barn/${slug}${view === 'week' ? '?view=week' : ''}`
+  const currentPeriodLabel = view === 'week' ? 'This Week' : 'Today'
 
   const hasReminders = dueDocuments.length > 0 || unpaidLessonsCount > 0 || unpaidChargesCount > 0
   const demoResetAt = barn.is_demo
     ? new Date(new Date(barn.created_at).getTime() + 7 * 60 * 60 * 1000).toISOString()
     : null
+  const dayPillDate = view === 'week' ? (weekIncludesToday ? todayStr : weekDates[0]) : selectedDate
 
   return (
     <main className="mx-auto max-w-3xl px-4 py-12">
@@ -152,8 +155,11 @@ export default async function BarnDashboardPage({
       )}
       {userRole !== null && (
         <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            Calendar
+          </h2>
           <div className="mb-3 flex gap-2">
-            <Pill href={`/barn/${slug}?date=${selectedDate}`} active={view === 'day'}>
+            <Pill href={`/barn/${slug}?date=${dayPillDate}`} active={view === 'day'}>
               Day
             </Pill>
             <Pill href={`/barn/${slug}?view=week&date=${selectedDate}`} active={view === 'week'}>
@@ -169,8 +175,8 @@ export default async function BarnDashboardPage({
               &lt;
             </Link>
             <h2 className="text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
-              {view === 'week' ? `${formatCalendarDate(selectedDate)} – ${formatCalendarDate(addDays(selectedDate, 6))}` : formatCalendarDate(selectedDate)}
-              {isViewingCurrentPeriod && ' · Today'}
+              {view === 'week' ? `${formatCalendarDate(weekDates[0])} – ${formatCalendarDate(weekDates[6])}` : formatCalendarDate(selectedDate)}
+              {isViewingCurrentPeriod && ` · ${currentPeriodLabel}`}
             </h2>
             <Link
               href={`/barn/${slug}?${viewQuery}date=${addDays(selectedDate, stepDays)}`}
@@ -183,7 +189,7 @@ export default async function BarnDashboardPage({
           {!isViewingCurrentPeriod && (
             <div className="mb-4">
               <Button href={todayHref} variant="primary" size="sm">
-                Today
+                {currentPeriodLabel}
               </Button>
             </div>
           )}

@@ -34,7 +34,14 @@ export function CalendarWeekView({
   return (
     <div className="space-y-6">
       {days.map((day) => (
-        <section key={day.date}>
+        <section
+          key={day.date}
+          className={
+            day.date === todayStr
+              ? 'rounded-lg border border-blue-200 bg-blue-50/60 p-3 dark:border-blue-800/50 dark:bg-blue-950/30'
+              : undefined
+          }
+        >
           <h3 className="mb-2 text-sm font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
             {formatCalendarDate(day.date)}
             {day.date === todayStr && ' · Today'}

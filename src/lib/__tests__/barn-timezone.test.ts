@@ -80,25 +80,25 @@ describe('week-range day boundaries across a DST transition (#1016)', () => {
   })
 
   it('should_produce_seven_strictly_increasing_day_boundary_instants_spanning_the_spring_forward_transition', () => {
-    const weekDates = getWeekDates('2026-03-05') // Thu Mar 5 -> Wed Mar 11, includes the Mar 8 transition
+    const weekDates = getWeekDates('2026-03-08') // Sun Mar 8 -> Sat Mar 14, week starts on the transition day itself
     const instants = weekDates.map((d) => wallClockToInstant(`${d}T00:00:00`, 'America/New_York').getTime())
 
     for (let i = 1; i < instants.length; i++) {
       expect(instants[i]).toBeGreaterThan(instants[i - 1])
     }
-    // Mar 7 (idx 2->3) is a normal 24h day; Mar 8 (idx 3->4) is the short 23h transition day.
-    expect(instants[3] - instants[2]).toBe(24 * 60 * 60 * 1000)
-    expect(instants[4] - instants[3]).toBe(23 * 60 * 60 * 1000)
+    // Mar 8 (idx 0->1) is the short 23h transition day; Mar 9 (idx 1->2) is a normal 24h day.
+    expect(instants[1] - instants[0]).toBe(23 * 60 * 60 * 1000)
+    expect(instants[2] - instants[1]).toBe(24 * 60 * 60 * 1000)
   })
 
   it('should_produce_seven_strictly_increasing_day_boundary_instants_spanning_the_fall_back_transition', () => {
-    const weekDates = getWeekDates('2026-10-29') // Thu Oct 29 -> Wed Nov 4, includes the Nov 1 transition
+    const weekDates = getWeekDates('2026-11-01') // Sun Nov 1 -> Sat Nov 7, week starts on the transition day itself
     const instants = weekDates.map((d) => wallClockToInstant(`${d}T00:00:00`, 'America/New_York').getTime())
 
     for (let i = 1; i < instants.length; i++) {
       expect(instants[i]).toBeGreaterThan(instants[i - 1])
     }
-    // Nov 1 (idx 3->4) is the long 25h transition day.
-    expect(instants[4] - instants[3]).toBe(25 * 60 * 60 * 1000)
+    // Nov 1 (idx 0->1) is the long 25h transition day.
+    expect(instants[1] - instants[0]).toBe(25 * 60 * 60 * 1000)
   })
 })
