@@ -8,7 +8,13 @@ Check Supabase migration status, rename pending migrations to the current timest
    - Migrations that exist **remotely but not locally** (remote-only)
    - Migrations that exist **locally but not remotely** (pending)
 
-3. If there are any **remote-only** migrations (exist in the remote DB but have no corresponding local file), display them clearly as an error and **stop immediately**. Tell the user they need to reconcile the remote-only migrations before proceeding.
+3. If there are any **remote-only** migrations (exist in the remote DB but have no corresponding local file), check the base branch before reporting anything — all worktrees share one dev DB, so the usual cause is that this branch is simply behind its base, not genuine drift:
+   ```
+   git ls-tree --name-only origin/{base} supabase/migrations/
+   ```
+   ({base} is the PR's base branch — `release/release-N` for a feature, `main` for a patch.)
+   - **If every remote-only name is present there:** say so, and offer `git merge origin/{base}` as the fix (a merge, not a rebase, so no force-push is needed). Expect conflicts wherever both branches touched the same file — typically `ARCHITECTURE.md`, `docs/architecture/*.md`, and any shared DAL module plus its test; parallel issues usually *add* sibling functions/table rows rather than editing the same one, so resolve by keeping both sides' additions. Run the full `npx vitest run` and `npm run lint` before committing the merge, then re-run step 1 from the top — the pending migrations will now sort *before* the remote tip, so they still need step 5's rename.
+   - **If any remote-only name is absent from the base branch:** that's real drift. Display them clearly as an error and **stop immediately**. Tell the user they need to reconcile before proceeding.
 
 4. If there are **no pending** local migrations, report that the remote is already up to date and exit.
 
