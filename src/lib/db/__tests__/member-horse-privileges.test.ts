@@ -12,7 +12,7 @@ import {
   updateHorsePrivilegeDocumentAccess,
   updateHorsePrivilegeLessonAccess,
   revokeHorsePrivilege,
-  elevateOwnerPrivileges,
+  setHorseOwner,
 } from '../member-horse-privileges'
 
 describe('getHorsePrivileges', () => {
@@ -161,70 +161,43 @@ describe('updateHorsePrivilegeLessonAccess', () => {
   })
 })
 
-describe('elevateOwnerPrivileges', () => {
+describe('setHorseOwner', () => {
   beforeEach(() => {
     vi.mocked(createClient).mockReset()
   })
 
-  it('should_set_document_privileges_to_write_and_lesson_read_privileges_to_true', async () => {
-    const mockEq3 = vi.fn().mockResolvedValue({ error: null })
-    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
-    const update = vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: mockEq2 }) })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_call_the_set_horse_owner_rpc', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
 
-    await elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')
+    await setHorseOwner('horse-1', 'barn-1', 'mem-3')
 
-    expect(update).toHaveBeenCalledWith({ document_privileges: 'write', lesson_read_privileges: true })
+    expect(rpc).toHaveBeenCalledWith('set_horse_owner', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_member_id: 'mem-3',
+    })
   })
 
-  it('should_scope_update_to_barn_id', async () => {
-    const mockEq3 = vi.fn().mockResolvedValue({ error: null })
-    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const update = vi.fn().mockReturnValue({ eq: mockEq1 })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
+  it('should_call_the_rpc_with_null_member_id_when_clearing_ownership', async () => {
+    const rpc = vi.fn().mockResolvedValue({ error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc } as any)
 
-    await elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')
+    await setHorseOwner('horse-1', 'barn-1', null)
 
-    expect(mockEq1).toHaveBeenCalledWith('barn_id', 'barn-1')
-  })
-
-  it('should_scope_update_to_horse_id', async () => {
-    const mockEq3 = vi.fn().mockResolvedValue({ error: null })
-    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const update = vi.fn().mockReturnValue({ eq: mockEq1 })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
-
-    await elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')
-
-    expect(mockEq2).toHaveBeenCalledWith('horse_id', 'horse-1')
-  })
-
-  it('should_scope_update_to_member_id', async () => {
-    const mockEq3 = vi.fn().mockResolvedValue({ error: null })
-    const mockEq2 = vi.fn().mockReturnValue({ eq: mockEq3 })
-    const mockEq1 = vi.fn().mockReturnValue({ eq: mockEq2 })
-    const update = vi.fn().mockReturnValue({ eq: mockEq1 })
-    vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ update }) } as any)
-
-    await elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')
-
-    expect(mockEq3).toHaveBeenCalledWith('member_id', 'mem-3')
+    expect(rpc).toHaveBeenCalledWith('set_horse_owner', {
+      p_horse_id: 'horse-1',
+      p_barn_id: 'barn-1',
+      p_member_id: null,
+    })
   })
 
   it('should_throw_on_supabase_error', async () => {
     vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({
-          eq: vi.fn().mockReturnValue({
-            eq: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ error: new Error('update error') }) }),
-          }),
-        }),
-      }),
+      rpc: vi.fn().mockResolvedValue({ error: new Error('rpc error') }),
     } as any)
 
-    await expect(elevateOwnerPrivileges('horse-1', 'barn-1', 'mem-3')).rejects.toThrow('update error')
+    await expect(setHorseOwner('horse-1', 'barn-1', 'mem-3')).rejects.toThrow('rpc error')
   })
 })
 

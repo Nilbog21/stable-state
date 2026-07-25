@@ -18,7 +18,7 @@ vi.mock('@/lib/db/member-horse-privileges', () => ({
   updateHorsePrivilegeDocumentAccess: vi.fn(),
   updateHorsePrivilegeLessonAccess: vi.fn(),
   revokeHorsePrivilege: vi.fn(),
-  elevateOwnerPrivileges: vi.fn(),
+  setHorseOwner: vi.fn(),
 }))
 
 vi.mock('@/lib/db/documents', () => ({
@@ -50,7 +50,7 @@ import {
   updateHorsePrivilegeDocumentAccess,
   updateHorsePrivilegeLessonAccess,
   revokeHorsePrivilege,
-  elevateOwnerPrivileges,
+  setHorseOwner,
 } from '@/lib/db/member-horse-privileges'
 import { deleteDocument, updateDocumentReminderDate } from '@/lib/db/documents'
 import { removeFile } from '@/lib/db/document-storage'
@@ -850,26 +850,13 @@ describe('revokeHorseAccessAction', () => {
 })
 
 describe('setHorseOwnerAction', () => {
-  const existingHorse = createMockHorse({
-    id: 'horse-1',
-    name: 'Stormy',
-    is_active: true,
-    is_available: true,
-    unavailability_reason: null,
-    exhaustion_threshold_moderate: 4,
-    exhaustion_threshold_high: 10,
-    feed_notes: 'hay',
-    medication_notes: 'bute',
-    registered_name: 'Four-Leaf Clover',
-    owning_member_id: null,
-  })
+  const existingHorse = createMockHorse({ id: 'horse-1', owning_member_id: null })
 
   beforeEach(() => {
     vi.mocked(requireMembership).mockReset()
     vi.mocked(getHorseById).mockReset()
-    vi.mocked(updateHorseDetails).mockReset()
+    vi.mocked(setHorseOwner).mockReset()
     vi.mocked(revalidatePath).mockReset()
-    vi.mocked(elevateOwnerPrivileges).mockReset()
     mockNotFound.mockClear()
 
     vi.mocked(requireMembership).mockResolvedValue({
@@ -878,8 +865,7 @@ describe('setHorseOwnerAction', () => {
       membership: managerMembership,
     })
     vi.mocked(getHorseById).mockResolvedValue(existingHorse)
-    vi.mocked(updateHorseDetails).mockResolvedValue(undefined)
-    vi.mocked(elevateOwnerPrivileges).mockResolvedValue(undefined)
+    vi.mocked(setHorseOwner).mockResolvedValue(undefined)
   })
 
   it('should_call_requireMembership_with_manager_role_only', async () => {
@@ -887,38 +873,14 @@ describe('setHorseOwnerAction', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
-  it('should_call_updateHorseDetails_with_the_new_owner_and_all_other_fields_preserved', async () => {
+  it('should_call_setHorseOwner_with_the_new_owner', async () => {
     await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
-    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, {
-      name: 'Stormy',
-      is_active: true,
-      is_available: true,
-      unavailability_reason: null,
-      exhaustion_thresholds: { moderate: 4, high: 10 },
-      feed_notes: 'hay',
-      medication_notes: 'bute',
-      registered_name: 'Four-Leaf Clover',
-      owning_member_id: 'mem-rider-1',
-    })
+    expect(setHorseOwner).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-rider-1')
   })
 
-  it('should_call_updateHorseDetails_with_null_owner_when_clearing_ownership', async () => {
+  it('should_call_setHorseOwner_with_null_when_clearing_ownership', async () => {
     await setHorseOwnerAction('green-acres', 'horse-1', null)
-    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, expect.objectContaining({
-      owning_member_id: null,
-    }))
-  })
-
-  it('should_pass_null_thresholds_when_horse_has_no_custom_thresholds', async () => {
-    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({
-      id: 'horse-1',
-      exhaustion_threshold_moderate: null,
-      exhaustion_threshold_high: null,
-    }))
-    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
-    expect(updateHorseDetails).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, expect.objectContaining({
-      exhaustion_thresholds: null,
-    }))
+    expect(setHorseOwner).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, null)
   })
 
   it('should_revalidate_horse_detail_path', async () => {
@@ -930,27 +892,5 @@ describe('setHorseOwnerAction', () => {
     vi.mocked(getHorseById).mockResolvedValue(null)
     await expect(setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')).rejects.toThrow('NEXT_NOT_FOUND')
     expect(mockNotFound).toHaveBeenCalled()
-  })
-
-  it('should_elevate_the_new_owners_privileges_when_setting_an_owner', async () => {
-    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-rider-1')
-    expect(elevateOwnerPrivileges).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-rider-1')
-  })
-
-  it('should_not_elevate_privileges_when_clearing_ownership', async () => {
-    await setHorseOwnerAction('green-acres', 'horse-1', null)
-    expect(elevateOwnerPrivileges).not.toHaveBeenCalled()
-  })
-
-  it('should_elevate_the_new_owner_when_reassigning_ownership', async () => {
-    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ ...existingHorse, owning_member_id: 'mem-old-owner' }))
-    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-new-owner')
-    expect(elevateOwnerPrivileges).toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-new-owner')
-  })
-
-  it('should_not_elevate_the_old_owner_when_reassigning_ownership', async () => {
-    vi.mocked(getHorseById).mockResolvedValue(createMockHorse({ ...existingHorse, owning_member_id: 'mem-old-owner' }))
-    await setHorseOwnerAction('green-acres', 'horse-1', 'mem-new-owner')
-    expect(elevateOwnerPrivileges).not.toHaveBeenCalledWith('horse-1', mockBarnForDocs.id, 'mem-old-owner')
   })
 })
