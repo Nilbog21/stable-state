@@ -6,12 +6,16 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getOrCreateCalendarFeedToken, regenerateCalendarFeedToken } from '@/lib/db/calendar-feed'
 
 // Not barn-scoped — no barnSlug/role dimension, every authenticated user
-// edits only their own profile, so requireMembership doesn't apply.
+// edits only their own profile, so requireMembership doesn't apply. The demo
+// user is the one exception, blocked below since demo data must stay static.
 export async function updateProfileAction(
   formData: FormData
 ): Promise<{ error: string | null }> {
   const user = await getAuthenticatedUser()
   if (!user) return { error: 'not authenticated' }
+  if (process.env.DEMO_USER_EMAIL && user.email === process.env.DEMO_USER_EMAIL) {
+    return { error: 'demo account cannot be edited' }
+  }
 
   const firstName = (formData.get('first_name') as string ?? '').trim()
   const lastName = (formData.get('last_name') as string ?? '').trim()

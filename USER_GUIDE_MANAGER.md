@@ -138,6 +138,8 @@ Tap your avatar (your initials) in the top-right corner to open the account menu
 
 If you are a member of more than one barn, a **▾** caret appears next to the barn name in the nav bar. Tap the caret to open a barn-switcher dropdown and jump directly to any of your barns. If you tried our demo barn, it won't appear in this dropdown — that's intended, since most people already managing a real barn won't need it. It's still there: visiting `/demo` again takes you straight back to it.
 
+Inside a demo barn, the barn name in the nav is shown in amber with a **(DEMO)** label, and the dashboard displays a banner noting approximately when the demo barn's data will reset — so it's always clear you're in a temporary sandbox, not a real barn. Because the demo barn shares one account across everyone trying it, the Profile page isn't available while you're using it.
+
 From your Profile page (opened from a specific barn), a **Calendar Feed** section lets you subscribe to your barn schedule from your phone's calendar app (Google, Apple, Outlook). Tap **Get my calendar link** to generate a personal link, then add it to your calendar app as a URL subscription ("Add calendar → From URL"). Your calendar app checks for updates on its own schedule, typically every few hours — this isn't instant sync. Tap **Regenerate** if you ever want to invalidate the old link (e.g. it was shared by accident) and get a new one.
 
 ## Notifications

@@ -89,6 +89,15 @@ describe('ProfilePage', () => {
 
     expect(screen.getByRole('heading', { name: /edit profile/i })).toBeDefined()
   })
+
+  it('should_redirect_to_home_when_current_user_is_the_demo_user', async () => {
+    vi.stubEnv('DEMO_USER_EMAIL', 'demo@stable-state.app')
+    mockAuth({ id: 'user-1', email: 'demo@stable-state.app' })
+
+    await expect(ProfilePage()).rejects.toMatchObject({ digest: 'NEXT_REDIRECT;replace;/' })
+
+    vi.unstubAllEnvs()
+  })
 })
 
 describe('ProfilePage - redirectAfterSave', () => {

@@ -57,6 +57,20 @@ describe('UserMenu - initials button', () => {
   })
 })
 
+describe('UserMenu - demo mode', () => {
+  it('should_hide_profile_link_when_isDemoUser_true', () => {
+    render(<UserMenu {...baseProps} isDemoUser />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.queryByRole('link', { name: 'Profile' })).toBeNull()
+  })
+
+  it('should_show_profile_link_when_isDemoUser_omitted', () => {
+    render(<UserMenu {...baseProps} />)
+    fireEvent.click(screen.getByRole('button', { name: /user menu/i }))
+    expect(screen.getByRole('link', { name: 'Profile' })).toBeDefined()
+  })
+})
+
 describe('UserMenu - dropdown open state', () => {
   beforeEach(() => {
     render(<UserMenu {...baseProps} />)

@@ -10,9 +10,10 @@ interface Props {
   fullName: string | null
   barnSlug: string
   showSwitchBarn?: boolean
+  isDemoUser?: boolean
 }
 
-export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }: Props) {
+export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn, isDemoUser }: Props) {
   const { open, setOpen, ref } = useOutsideDismiss()
   const { dirty, setPendingNav } = useNavigationBlocker()
 
@@ -36,20 +37,22 @@ export function UserMenu({ initials, email, fullName, barnSlug, showSwitchBarn }
             )}
             <p className="text-xs text-zinc-500">{email}</p>
           </div>
-          <Link
-            href={`/profile?barn=${barnSlug}`}
-            onClick={() => setOpen(false)}
-            onNavigate={(e) => {
-              if (dirty) {
-                e.preventDefault()
-                setOpen(false)
-                setPendingNav({ type: 'push', href: `/profile?barn=${barnSlug}` })
-              }
-            }}
-            className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
-          >
-            Profile
-          </Link>
+          {!isDemoUser && (
+            <Link
+              href={`/profile?barn=${barnSlug}`}
+              onClick={() => setOpen(false)}
+              onNavigate={(e) => {
+                if (dirty) {
+                  e.preventDefault()
+                  setOpen(false)
+                  setPendingNav({ type: 'push', href: `/profile?barn=${barnSlug}` })
+                }
+              }}
+              className="block px-4 py-2 text-sm text-zinc-700 hover:bg-zinc-50 dark:text-zinc-300 dark:hover:bg-zinc-800"
+            >
+              Profile
+            </Link>
+          )}
           {showSwitchBarn && (
             <Link
               href="/barns"
