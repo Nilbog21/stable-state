@@ -1,4 +1,3 @@
-import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorseById, getHorseProjectedExhaustion, resolveExhaustionThresholds, getUpcomingLessonsForHorse } from '@/lib/db/horses'
@@ -14,7 +13,7 @@ import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { Button } from '@/components/ui/Button'
-import { cardBaseClass } from '@/components/ui/Card'
+import { Card, cardBaseClass } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
 import { ExhaustionBar } from '@/components/ExhaustionBar'
 import { LocalDateTime } from '@/components/LocalDateTime'
@@ -303,12 +302,11 @@ export default async function HorseDetailPage({
                 <ul className="flex flex-col gap-2">
                   {upcomingLessons.map((l) => (
                     <li key={l.id}>
-                      <Link
-                        href={`/barn/${slug}/lessons/${l.id}`}
-                        className="underline text-zinc-900 hover:text-zinc-600 dark:text-zinc-50 dark:hover:text-zinc-300"
-                      >
-                        <LocalDateTime iso={l.lessonAt} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
-                      </Link>
+                      <Card href={`/barn/${slug}/lessons/${l.id}`} className="p-4">
+                        <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
+                          <LocalDateTime iso={l.lessonAt} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
+                        </span>
+                      </Card>
                     </li>
                   ))}
                 </ul>
