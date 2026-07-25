@@ -273,7 +273,10 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (manual) The Finances page as a whole — Outstanding sections, tab pills, and every tab's table/footer — looks clean and visually consistent (spacing, alignment, typography) with the rest of the app
 - [ ] (e2e-candidate) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons
 - [ ] (e2e-candidate) Set a payment type on one **Outstanding Income** row via the inline dropdown → it leaves the list
-- [ ] (e2e-candidate) A lesson row's date in **Outstanding Income** and in the By Horse/By Rider/By Instructor drill-downs matches the wall-clock time you entered for that lesson, not shifted by your UTC offset
+- [ ] (e2e-candidate) A lesson row's date in **Outstanding Income** matches the wall-clock time you entered for that lesson, not shifted by your UTC offset
+- [ ] (e2e-candidate) That same lesson's date in the **By Horse** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
+- [ ] (e2e-candidate) That same lesson's date in the **By Rider** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
+- [ ] (e2e-candidate) That same lesson's date in the **By Instructor** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
 - [ ] (e2e-candidate) A lease/boarding charge row's date, in contrast, is unaffected by timezone (it's a plain calendar date, not a time-of-day instant)
 - [ ] (e2e-candidate) Late-cancel a normal lesson that was already marked paid (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding Income** with a **Type** of "Cancellation Fee"
 - [ ] (e2e-candidate) Mark that cancellation fee paid via the inline dropdown → it leaves the list
@@ -282,7 +285,8 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e-candidate) That past-due planned expense does **not** appear inside the Outstanding Income table itself
 - [ ] (e2e-candidate) Tap the ⓘ info icon on **Outstanding Expenses** → shows explanatory text that an entry is listed for a missing amount, a missing payment type, or both
 - [ ] (e2e-candidate) Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page
-- [ ] (e2e-candidate) Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**, now contributing its amount to the bold total instead of $0
+- [ ] (e2e-candidate) Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**
+- [ ] (e2e-candidate) That same expense now contributes its amount to the **Outstanding Expenses** bold total instead of $0
 - [ ] (e2e-candidate) That same expense contributes its amount to every tab's footer Total for Expenses that month
 - [ ] (e2e-candidate) That same expense also contributes to the By Horse tab's own Expenses column for its horse
 - [ ] (e2e-candidate) Now set a Payment Type on that same expense and save → it disappears from **Outstanding Expenses** entirely
@@ -398,7 +402,8 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e-candidate) Reconciliation, same five tabs: each one's footer **Total** row shows the identical Net figure
 - [ ] (e2e-candidate) **Unattributed-expense check** (#971): delete a paid expense from `/barn/dev-barn/expenses/[id]/delete` **without** checking "Also delete the collected record from Finances" (its `transactions` row survives with no `horse_expenses` row behind it) → back on Finances, that amount appears under **Unattributed** in the By Horse footer instead of silently disappearing
 - [ ] (e2e-candidate) That same amount appears under **Unattributed** in the By Paid To footer
-- [ ] (e2e-candidate) Tap the ⓘ on either tab's **Unattributed** row → the explanation covers an expense record whose original entry was deleted after being marked paid
+- [ ] (e2e-candidate) Tap the ⓘ on **By Horse**'s **Unattributed** row → the explanation covers a paid lesson with no horse recorded, or an expense record whose original entry was deleted after being marked paid, and states that a barn-wide expense split across horses is never counted here (it appears in each horse's own row instead)
+- [ ] (e2e-candidate) Tap the ⓘ on **By Paid To**'s **Unattributed** row → the explanation covers an expense record whose original entry was deleted after being marked paid
 
 Manage Barn (`/barn/dev-barn/settings`):
 
