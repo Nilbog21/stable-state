@@ -50,6 +50,18 @@ When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE
 
 When a PR adds or modifies a UI route, workflow, or user-facing feature, update `PRE_RELEASE_TEST_CHECKLIST.md` — add or adjust a step in the relevant phase: Phase 1 (Setup), Phases 2–4 (Manager), Phase 5 (Trainer), Phase 6 (Rider), or Phase 7 (Multi-barn).
 
+## Post-Release Checklist
+
+`POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod, after the release tag is cut. It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of these bars:
+
+- **Cross-identity flows** — needs a genuinely separate real person: invite/claim by someone else, cross-user notification delivery, or a self-write by a claimed member who isn't you (`change-user.sh` never links `profiles.user_id`, so locally your own account is the only self-write you can test). A *fresh or unauthenticated* session does **not** clear this bar; incognito covers that locally, so those stay in PRE
+- **Auth/session behavior** only prod's real OAuth configuration exercises
+- **Payment or money-moving RPCs**
+- **Demo, cron, or prod-config behavior**
+- **A class of prior production incident** worth re-checking every release
+
+When a PR adds or modifies a feature clearing one of those bars, update the relevant section of `POST_RELEASE_TEST_CHECKLIST.md` in the same PR. The first bar is served by that file's "Cross-identity checks" section; the remaining four are served by its smoke-test section, landing in #1080.
+
 ## Working Directory
 
 `specs/` is a personal, gitignored working directory. Ignore its contents.
