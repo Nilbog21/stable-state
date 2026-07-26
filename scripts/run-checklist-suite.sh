@@ -81,21 +81,24 @@ for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
   fi
 done
 
-# Inverted vs. seed-test-barn.sh/teardown-test-barn.sh, where --allow-prod merely bypasses
-# assertDevProject: here it is an assertion of its own. The operator has declared "I am
-# targeting a non-dev project", so a still-dev-pointed .env.local means the run would seed
-# somewhere other than the origin under test.
+# Same meaning as in seed-test-barn.sh/teardown-test-barn.sh/change-user.sh/seed-account.sh:
+# it bypasses their assertDevProject check. This script has no dev-project check of its own —
+# .env.local alone picks the Supabase project (those scripts re-read it and ignore any env
+# override), so without this flag the seed/teardown calls below stay fail-closed on non-dev.
 PROD_FLAG=()
 if [ "$ALLOW_PROD" = true ]; then
   PROD_FLAG=(--allow-prod)
+  # Without an origin this seeds the target project and then drives localhost:3000 — your own
+  # server, reading that same target-pointed .env.local — running mutating specs against it.
   if [ -z "$BASE_URL" ]; then
-    echo "Error: --allow-prod requires --base-url (a non-dev project with a localhost origin is always a mistake)" >&2
+    echo "Error: --allow-prod requires --base-url (otherwise the run seeds the target project but drives localhost)" >&2
     exit 1
   fi
+  # Not fatal: the flag is simply redundant on dev. Worth saying, because if --base-url points
+  # somewhere this project doesn't back, global-setup.ts mints cookies named for the wrong
+  # project ref and every spec fails on auth with no hint as to why.
   if [ "$NEXT_PUBLIC_SUPABASE_URL" = "$DEV_SUPABASE_URL" ]; then
-    echo "Error: --allow-prod passed, but .env.local's NEXT_PUBLIC_SUPABASE_URL is still the dev project ($DEV_SUPABASE_URL)." >&2
-    echo "       Point .env.local at the target project, or drop --allow-prod." >&2
-    exit 1
+    echo "Note: --allow-prod is a no-op here — .env.local points at the dev project ($DEV_SUPABASE_URL)." >&2
   fi
 fi
 
