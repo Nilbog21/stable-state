@@ -58,5 +58,3 @@ Check Supabase migration status, rename pending migrations to the current timest
 
 8. If the user types `sync`, run `npx supabase db push`.
    Otherwise abort — do not undo the renames (the user should commit or revert manually).
-
-**Note:** This skill does not commit the renamed files. The git commit is made by `/reviewIssue` after sync completes, so it carries the correct `[#N]` prefix. The one exception is step 3's merge commit — a merge can't be left uncommitted for `/reviewIssue` to pick up later, so this skill commits it itself.
