@@ -342,8 +342,10 @@ kill -- -$PGID
 
 Check `specs/issue-{N}.md`. If it doesn't exist, skip this step (legacy branch).
 
-Otherwise check `## Follow-ups (needs own issue)`:
-- **Empty:** the file has no further reason to exist — `## Open items` was already confirmed empty back in Step 0.5, and the issue itself is now closed. Delete `specs/issue-{N}.md`.
+**Before deciding anything, re-read `## Open items` and copy any surviving `- [ ]` entries verbatim into your context — you are about to delete the only copy.** Step 0.5 does not guarantee this section is empty: it also passes when the user chose to finish *despite* unresolved entries, and `/testIssue` deliberately leaves non-gating post-merge reminders standing (an AC can require an action be left undone until after merge). Such an entry often contains a literal command the user must run, and Step 0.5's prompt may be many minutes and a full CI wait behind us by now. Carry these into Step 7's print regardless of which branch below applies.
+
+Then check `## Follow-ups (needs own issue)`:
+- **Empty:** the file has no further reason to exist — the issue itself is now closed. Delete `specs/issue-{N}.md`, having first captured any surviving `## Open items` entries per the paragraph above.
 - **Non-empty:** keep the file (don't delete it), and record its count/list for Step 7's print below.
 
 ---
@@ -360,3 +362,11 @@ If Step 6.5 found unresolved `## Follow-ups`, append:
 ```
 {count} follow-up(s) flagged during this issue but not yet filed. Run /grillMe specs/issue-{N}.md to turn them into issues.
 ```
+
+If Step 6.5 captured any surviving `## Open items` entries, append them last, under this heading, reproducing each entry **verbatim** — including any command, exactly as written, since the work log that held it is now gone and this print is the user's only remaining copy:
+```
+STILL TO DO BY HAND (was in specs/issue-{N}.md, now deleted):
+
+{each surviving entry, verbatim}
+```
+Do not paraphrase, summarize, or reformat these, and do not offer to run them yourself unless the entry says it is safe to — a post-merge step is typically left manual precisely because it is destructive or has timing constraints (e.g. deleting files that branches predating the merge still depend on).
