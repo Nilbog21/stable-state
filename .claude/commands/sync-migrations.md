@@ -25,9 +25,8 @@ Check Supabase migration status, rename pending migrations to the current timest
    - **If every remote-only version is present there:** say so, then ask: **"Type 'merge' to merge `origin/{base}` into this branch, or anything else to abort:"**. On anything other than `merge`, stop. On `merge`:
      1. `git merge origin/{base}` (a merge, not a rebase, so no force-push is needed).
      2. Resolve conflicts. Expect them wherever both branches touched the same file — typically `ARCHITECTURE.md`, `docs/architecture/*.md`, and any shared DAL module plus its test; parallel issues usually *add* sibling functions/table rows rather than editing the same one, so resolve by keeping both sides' additions.
-     3. Run `npx vitest run`, `bash scripts/check-coverage.sh`, and `npm run lint`. All three must pass before the merge is committed — a hand-resolved conflict in a DAL module can drop branch coverage without failing a single test.
-     4. Commit the merge (`git commit --no-edit`, or `git commit` with the resolved conflicts staged).
-     5. Re-run step 1 from the top — the pending migrations will now sort *before* the remote tip, so they still need step 5's rename.
+     3. Commit the merge (`git commit --no-edit`, or `git commit` with the resolved conflicts staged). Don't gate the commit on local `npx vitest run` / `bash scripts/check-coverage.sh` / `npm run lint` runs — CI runs all three on the next push, and for a conflict resolution that wait is cheaper than re-running the suite locally.
+     4. Re-run step 1 from the top — the pending migrations will now sort *before* the remote tip, so they still need step 5's rename.
    - **If any remote-only version is absent from the base branch:** **stop immediately** and report the two sets separately, so the user can see how much of it a merge would have handled:
      ```
      Covered by merging origin/{base}:
