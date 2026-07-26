@@ -99,10 +99,11 @@ Checks that are **initiated** during this pass but whose result lands on an exte
 Initiate now:
 
 - [ ] On `/profile?barn=<slug>` for that barn, tap **Get my calendar link** → a link containing `/calendar.ics?token=...` is revealed
-- [ ] Copy that link and add it in a real calendar app via **Add calendar → From URL** (Google Calendar, Apple Calendar, or Outlook) → the app accepts the URL without an error
+- [ ] Tap **Copy Link** — the revealed text is a path only, and Copy Link is what prepends the origin — then add the copied URL in a real calendar app via **Add calendar → From URL** (Google Calendar, Apple Calendar, or Outlook) → the app accepts the URL without an error
 
 Confirm later — none of these block sign-off:
 
 - [ ] The calendar app's event list matches that barn's actual lessons
 - [ ] Add a lesson to that barn, then wait for the calendar app's next poll → the new lesson appears (the poll interval is the client's, not ours — Google is typically several hours — which is why this check is deferred rather than run inline above)
-- [ ] Delete that lesson again → it disappears from the calendar app on the following poll, and the real barn is left as it was
+- [ ] Delete that lesson again → it disappears from the calendar app on the following poll
+- [ ] The real barn is left as it was → its lesson list holds exactly what it held before this check
