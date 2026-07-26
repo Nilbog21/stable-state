@@ -229,7 +229,8 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
 - [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
 - [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
-- [ ] As manager, set a photo on a horse with no owning member yet (Apple — ownership is assigned further down this phase) → succeeds; replace it again as manager → still succeeds (manager-set photos never lock out other managers)
+- [ ] As manager, set a photo on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
+- [ ] Replace Apple's photo again as manager → still succeeds (manager-set photos never lock out other managers)
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
 - [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
 - [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
