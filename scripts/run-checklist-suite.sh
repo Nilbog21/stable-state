@@ -3,6 +3,64 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+usage() {
+  cat >&2 <<'EOF'
+Usage: run-checklist-suite.sh [--interactive] [--base-url <origin>] [--spec <path>] [--allow-prod] [--hold-open]
+
+  --interactive     Headed run including @visual specs (default: headless, @visual excluded)
+  --base-url URL    Origin under test (default: http://localhost:3000)
+  --spec PATH       Playwright spec path or glob; repeatable (default: full suite)
+  --allow-prod      Target a non-dev Supabase project; requires --base-url
+  --hold-open       Prompt before teardown, so the seeded barn survives manual checklist steps
+EOF
+}
+
+MODE=auto
+BASE_URL=""
+ALLOW_PROD=false
+HOLD_OPEN=false
+SPEC_ARGS=()
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --interactive)
+      MODE=interactive
+      shift
+      ;;
+    --base-url)
+      BASE_URL="${2:-}"
+      if [ -z "$BASE_URL" ]; then
+        echo "Error: --base-url requires an origin (e.g. http://localhost:3001)" >&2
+        usage
+        exit 1
+      fi
+      shift 2
+      ;;
+    --spec)
+      if [ -z "${2:-}" ]; then
+        echo "Error: --spec requires a spec path or glob" >&2
+        usage
+        exit 1
+      fi
+      SPEC_ARGS+=("$2")
+      shift 2
+      ;;
+    --allow-prod)
+      ALLOW_PROD=true
+      shift
+      ;;
+    --hold-open)
+      HOLD_OPEN=true
+      shift
+      ;;
+    *)
+      echo "Error: unknown argument '$1'" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
+
 if [ ! -f ".env.local" ]; then
   echo "Error: .env.local not found. Copy .env.example to .env.local and fill in values." >&2
   exit 1
@@ -14,6 +72,7 @@ parse_var() {
 
 NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$(parse_var NEXT_PUBLIC_SUPABASE_ANON_KEY || true)"
+DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
 
 for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
   if [ -z "${!var_name}" ]; then
@@ -22,23 +81,41 @@ for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
   fi
 done
 
-MODE="${1:-auto}"
-if [ "$MODE" != "interactive" ] && [ "$MODE" != "auto" ]; then
-  echo "Error: unknown mode '$MODE' (expected 'interactive', 'auto', or no argument)" >&2
-  exit 1
+# Inverted vs. seed-test-barn.sh/teardown-test-barn.sh, where --allow-prod merely bypasses
+# assertDevProject: here it is an assertion of its own. The operator has declared "I am
+# targeting a non-dev project", so a still-dev-pointed .env.local means the run would seed
+# somewhere other than the origin under test.
+PROD_FLAG=()
+if [ "$ALLOW_PROD" = true ]; then
+  PROD_FLAG=(--allow-prod)
+  if [ -z "$BASE_URL" ]; then
+    echo "Error: --allow-prod requires --base-url (a non-dev project with a localhost origin is always a mistake)" >&2
+    exit 1
+  fi
+  if [ "$NEXT_PUBLIC_SUPABASE_URL" = "$DEV_SUPABASE_URL" ]; then
+    echo "Error: --allow-prod passed, but .env.local's NEXT_PUBLIC_SUPABASE_URL is still the dev project ($DEV_SUPABASE_URL)." >&2
+    echo "       Point .env.local at the target project, or drop --allow-prod." >&2
+    exit 1
+  fi
 fi
 
-PORT="${2:-3000}"
+E2E_BASE_URL="${BASE_URL:-http://localhost:3000}"
 
 BARN_SLUG="e2e-$(date +%s)-$RANDOM"
 
 cleanup() {
-  bash scripts/teardown-test-barn.sh "$BARN_SLUG"
+  bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" "$BARN_SLUG"
 }
 trap cleanup EXIT
+# Bash already runs an EXIT trap when the shell dies of SIGINT, so teardown would survive
+# Ctrl-C without this. It's here to make that a property of the script rather than of bash's
+# default signal handling, and to pin the exit status at 130 — the seeded barn outliving a
+# Ctrl-C is exactly the leak this script exists to prevent.
+trap 'exit 130' INT
 
 echo "Seeding test barn $BARN_SLUG..."
-bash scripts/seed-test-barn.sh "$BARN_SLUG"
+echo "  If this run is killed, clean up with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} $BARN_SLUG"
+bash scripts/seed-test-barn.sh "${PROD_FLAG[@]}" "$BARN_SLUG"
 
 echo "Checking Playwright system dependencies..."
 if ! npx playwright install-deps chromium --dry-run; then
@@ -55,9 +132,21 @@ if [ "$MODE" = "auto" ]; then
 else
   PLAYWRIGHT_ARGS+=(--headed)
 fi
+PLAYWRIGHT_ARGS+=("${SPEC_ARGS[@]}")
 
+# Captured rather than left to `set -e` so --hold-open still prompts on a failing run — which
+# is when holding the barn open to inspect it matters most.
+PW_EXIT=0
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
-E2E_BASE_URL="http://localhost:$PORT" \
+E2E_BASE_URL="$E2E_BASE_URL" \
 TEST_BARN_SLUG="$BARN_SLUG" \
-  npx playwright test "${PLAYWRIGHT_ARGS[@]}"
+  npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
+
+if [ "$HOLD_OPEN" = true ]; then
+  echo
+  echo "Test barn $BARN_SLUG is still up at $E2E_BASE_URL — run your manual checklist steps now."
+  read -r -p "Press Enter to tear it down: " _
+fi
+
+exit "$PW_EXIT"
