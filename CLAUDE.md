@@ -50,6 +50,8 @@ When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE
 
 When a PR adds or modifies a UI route, workflow, or user-facing feature, update `PRE_RELEASE_TEST_CHECKLIST.md` — add or adjust a step in the relevant phase: Phase 1 (Setup), Phases 2–4 (Manager), Phase 5 (Trainer), Phase 6 (Rider), or Phase 7 (Multi-barn).
 
+A checklist note that asserts a capability *doesn't exist yet* — "until #N lands", "#N-blocked", "not yet assignable via UI" — is a hedge, and it goes stale the moment #N merges, silently suppressing coverage of a feature that now works. **The PR closing #N removes every hedge on #N from `PRE_RELEASE_TEST_CHECKLIST.md` and `POST_RELEASE_TEST_CHECKLIST.md` in that same PR**, and replaces each one with the check the hedge was standing in for. Grep both files for the issue number before opening the PR. This is a convention, not a CI check — both checklists legitimately cite closed issues as history ("since #864", "#969 — a manager can no longer…"), and no grep separates those from a hedge reliably.
+
 ## Post-Release Checklist
 
 `POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod, after the release tag is cut. It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of these bars:

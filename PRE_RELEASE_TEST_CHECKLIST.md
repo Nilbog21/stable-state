@@ -7,8 +7,6 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 > **Convention:** each checkbox verifies one independent assertion, so a partial failure can be marked cleanly. Split any checkbox that bundles multiple clauses — with one exception:
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
->
-> See #934 for the backlog of any remaining bundled checkboxes not yet split.
 
 ## Prerequisites
 
@@ -231,7 +229,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
 - [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
 - [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
-- [ ] As manager, set a photo on a horse with no `owning_member_id` (all seeded horses, until #998 ships owner assignment) → succeeds; replace it again as manager → still succeeds (manager-set photos never lock out other managers)
+- [ ] As manager, set a photo on a horse with no owning member yet (Apple — ownership is assigned further down this phase) → succeeds; replace it again as manager → still succeeds (manager-set photos never lock out other managers)
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
 - [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
 - [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
@@ -491,7 +489,8 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#1006) As manager, grant this trainer a horse-privileges row on a horse (Access section) then make them that horse's owning member; reopen the horse as this trainer — **Feed Notes**/**Medication Notes** are now editable textareas with a **Save** button
 - [ ] (#1006) Edit and save both Feed Notes and Medication Notes as this trainer, then reload — the new text persists
 - [ ] (#1000) Back on the Horses list as this trainer, a **My Horses** section appears at the top showing the horse they now own with a status badge, and that horse no longer appears under Available/Unavailable
-- [ ] Butter's horse detail page: her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (unless this trainer is Butter's `owning_member_id` — not yet assignable via UI until #998 lands, so not manually verifiable here)
+- [ ] Butter's horse detail page (this trainer does **not** own her): her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
+- [ ] (#1003) On the horse this trainer now owns (from the #1006 step above), a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a non-manager
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage Member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
@@ -514,10 +513,12 @@ bash scripts/change-user.sh dev-barn
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
 - [ ] Tap an Available or Unavailable card → navigates to that horse's detail page (#1002 — cards became linkable so a rider can view the horse's photo)
-- [ ] On Butter's detail page, her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control** (same #998-blocked caveat as the trainer phase above — owner-write can't be manually verified until ownership is UI-assignable)
+- [ ] On Butter's detail page (Dana does **not** own her), her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] (#1006) As manager, make Dana the owning member of a horse she has no privileges on yet (Access section); reopen that horse as Dana — **Feed Notes**/**Medication Notes** are editable textareas with a **Save** button
 - [ ] (#1006) On a horse Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (#1000) Back on the Horses list as Dana, a **My Horses** section appears at the top showing the horse she now owns with a status badge, and that horse no longer appears under Available/Unavailable
+- [ ] (#1003) On the horse Dana now owns, a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a rider; use it to set a photo as Dana
+- [ ] (#1003) As manager, reopen that same horse → **no Replace Photo / Remove control** (an owner-set photo locks managers out, the converse of the manager-set case in the manager phase)
 - [ ] (#999) As manager, grant Dana `document_privileges='read'` on a horse via its Access section; reopen that horse as Dana — a **Documents** section now appears, with no **Add Document** button
 - [ ] (#999) Change that same grant to `document_privileges='write'`; reopen the horse as Dana — the **Add Document** button now appears in the Documents section
 - [ ] (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
