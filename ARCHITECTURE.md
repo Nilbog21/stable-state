@@ -138,6 +138,6 @@ The main sequence, one issue from selection to merge:
 
 `/continueIssue {N}` is the router — it inspects an in-flight issue's state and names the right next step, so the sequence above never has to be remembered.
 
-Adjuncts: `/grillMe` (interview a plan or a work log's findings to shared understanding — the only path from a finding to a filed GitHub issue), `/backlogReview` (triage after a batch issue dump), `/estimateRelease` (velocity and cut planning), `/sync-migrations` (rename and push pending Supabase migrations), `/overnightRefactor` (unattended structure-only refactor loop).
+Adjuncts: `/grillMe` (interview a plan or a work log's findings to shared understanding — the only path from a finding to a filed GitHub issue), `/backlogReview` (triage after a batch issue dump), `/estimateRelease` (velocity and cut planning), `/sync-migrations` (rename and push pending Supabase migrations).
 
 `specs/` is per-developer scratch, gitignored and never committed — the skills create and consume it. It holds `issue-{N}.md` work logs (status marker, log, accepted deviations, open items, follow-ups) that carry state between skills within one developer's session chain, and `batch_{release-label}.md`. It is **not** shared state: another developer's clone has a different `specs/`, or none, and deleting it loses nothing but in-flight session bookkeeping.
