@@ -40,7 +40,7 @@ If you encounter ambiguity that only the user can resolve — an assumption you 
 
 **Stale assumptions** — an issue's premise contradicts a known completed decision (e.g. a closed issue, or a role/schema change already merged). Proposed action: edit the issue body to correct the assumption, or close the issue if it is fully invalidated.
 
-**Mislabeled or unlabeled issues** — issues missing a semantic label that would help `/createIssueBatch` make better selection decisions. Fetch the label list with descriptions to calibrate:
+**Mislabeled or unlabeled issues** — issues missing a semantic label that would help `/issueBatch` make better selection decisions. Fetch the label list with descriptions to calibrate:
 ```bash
 gh label list --json name,description
 ```

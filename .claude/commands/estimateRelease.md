@@ -55,7 +55,7 @@ git tag -l 'vN.0.0'   # N = target release number
 
 ## Step 4 — Slice breakdown
 
-Cluster the fetched open backlog issues into logical feature slices by user-facing capability (same judgment as `/createIssueBatch`'s vertical-slice grouping — read titles/bodies, group by what the customer would recognize as one capability, not by architectural layer). There's no `slice:` label to rely on; this is a fresh read each run.
+Cluster the fetched open backlog issues into logical feature slices by user-facing capability (same judgment as `/issueBatch`'s vertical-slice grouping — read titles/bodies, group by what the customer would recognize as one capability, not by architectural layer). There's no `slice:` label to rely on; this is a fresh read each run.
 
 For each slice, report: issue count, and a proportional day estimate = (slice count / backlog count) × estimated total days from Step 3.
 

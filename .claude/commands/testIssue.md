@@ -6,7 +6,7 @@ You are testing a pull request that has already passed `/reviewIssue`'s automate
 
 ## Step 0 — Worktree and issue/PR detection
 
-**Kill lingering loops from `/reviewIssue`:** that skill schedules `ScheduleWakeup` heartbeats while polling background review agents, and one can be left pending if `/testIssue` starts before it naturally winds down. Before anything else, call `ScheduleWakeup` with `stop: true` to cancel any pending wakeup. This is a no-op if none is pending — don't announce it either way, just do it.
+**Kill lingering loops:** a `/loop` or `ScheduleWakeup` from earlier work in the session can still be pending when `/testIssue` starts. Before anything else, call `ScheduleWakeup` with `stop: true` to cancel it. This is a no-op if none is pending — don't announce it either way, just do it. (`/reviewIssue` is not a source of these: it runs its review agents in the foreground and forbids wrapping that wait in a wakeup poll.)
 
 **Detect worktree:**
 Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.

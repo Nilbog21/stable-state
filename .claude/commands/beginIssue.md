@@ -186,7 +186,7 @@ After plan approval, do the following in order:
 
 1. **Write failing tests first** — following the project's TDD convention. Run the tests to confirm they are red before committing:
    ```
-   cd /absolute/path/to/worktree && npx jest --testPathPattern={test-file}
+   cd /absolute/path/to/worktree && npx vitest run {test-file}
    ```
    Once confirmed red, commit:
    ```
@@ -195,7 +195,7 @@ After plan approval, do the following in order:
 
 2. **Implement** the issue by making the failing tests pass. Run the tests to confirm they are green before committing:
    ```
-   cd /absolute/path/to/worktree && npx jest --testPathPattern={test-file}
+   cd /absolute/path/to/worktree && npx vitest run {test-file}
    ```
    Once confirmed green, commit:
    ```
@@ -225,11 +225,11 @@ After plan approval, do the following in order:
    - New or changed architectural patterns, abstractions, or dependencies
    - Removed or deprecated features
 
-   If any of the above apply, update `README.md` and/or `ARCHITECTURE.md` (whichever is relevant) from within the worktree to reflect the current state. Stage and commit the documentation changes:
+   If any of the above apply, re-read `CLAUDE.md`'s documentation rules and update every doc they mandate for this change — do not assume `README.md` and `ARCHITECTURE.md` are the only two. `CLAUDE.md` is the authority; the sections that can be triggered are Architecture Docs (schema/RPC/route/DAL detail goes in `docs/architecture/*.md`, with only a one-line index entry in `ARCHITECTURE.md`), Barn Data Backup (`src/lib/db/backup.ts`), Privacy Policy, User Guides, Pre-Release Checklist, and Post-Release Checklist. Stage and commit whatever you changed:
    ```
-   cd /absolute/path/to/worktree && git add README.md ARCHITECTURE.md && git commit --amend --no-edit
+   cd /absolute/path/to/worktree && git add {changed-doc-files} && git commit --amend --no-edit
    ```
-   If neither file needs changes, skip this step without creating a commit.
+   If no doc needs changes, skip this step without creating a commit.
 
 5. **Open a PR:**
    Push the branch from within the worktree:
