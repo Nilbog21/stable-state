@@ -123,3 +123,21 @@ Canonical file-touch sequence for any new feature:
 ## Coverage + null safety
 
 CI enforces 100% branch coverage via `scripts/check-coverage.sh`. Handle all branches during implementation; do not leave gaps for the coverage script to catch. Null-check at all runtime boundaries (user input, Supabase responses, external API results).
+
+## Workflow skills
+
+`.claude/commands/*.md` — the Claude Code skills this project's development process runs on, each invoked as a slash command named after its filename. They are tracked in this repo rather than in a personal `~/.claude` directory because they encode *this project's* conventions (release labels, migration handling, review rules, worktree layout), so a convention change and the skill text that encodes it land in the same reviewed PR. Editing rules: see `CLAUDE.md`'s Workflow Skills section.
+
+The main sequence, one issue from selection to merge:
+
+1. `/issueBatch create|pick|prune` — maintain the release's candidate-issue file and pick what to work on next
+2. `/beginIssue {N}` — assign, branch, design review in plan mode, TDD implementation, draft PR
+3. `/reviewIssue {N}` — automated code review of the PR; substantial findings go back to `/beginIssue`'s revise mode
+4. `/testIssue {N}` — sync migrations, run the app, walk the acceptance criteria manually, mark the PR ready
+5. `/finishIssue {N}` — merge the PR, delete the branch, close the issue
+
+`/continueIssue {N}` is the router — it inspects an in-flight issue's state and names the right next step, so the sequence above never has to be remembered.
+
+Adjuncts: `/grillMe` (interview a plan or a work log's findings to shared understanding — the only path from a finding to a filed GitHub issue), `/backlogReview` (triage after a batch issue dump), `/estimateRelease` (velocity and cut planning), `/sync-migrations` (rename and push pending Supabase migrations), `/overnightRefactor` (unattended structure-only refactor loop).
+
+`specs/` is per-developer scratch, gitignored and never committed — the skills create and consume it. It holds `issue-{N}.md` work logs (status marker, log, accepted deviations, open items, follow-ups) that carry state between skills within one developer's session chain, and `batch_{release-label}.md`. It is **not** shared state: another developer's clone has a different `specs/`, or none, and deleting it loses nothing but in-flight session bookkeeping.

@@ -113,3 +113,10 @@ Patches land on `main` without waiting for the next release.
 - After merge, tag is auto-incremented: `vN.0.1`, `vN.0.2`, etc.
 - `CHANGELOG.md` is updated at tag time (same as release ceremony)
 - `release/release-(N+1)` is rebased onto the new `main` HEAD after merge so it picks up the patch
+
+## Workflow Skills
+
+The workflow skills in `.claude/commands/` are repo files and follow the repo's rules (see `ARCHITECTURE.md`'s Workflow skills section for what they are and how they chain).
+
+- A skill edit **prompted by in-flight work** rides along in that work's PR. The convention change and the skill text encoding it belong in one reviewable diff — splitting them is how the skills drifted out of sync in the first place.
+- A **standalone** skill change gets its own issue and PR, like any other repo file.
