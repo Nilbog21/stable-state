@@ -416,13 +416,17 @@ describe('updateLessonRiderNotes', () => {
 })
 
 describe('updateLessonHorseNotes', () => {
-  const mockUpdatedHorse = {
-    id: 'lh-1',
-    barn_id: 'barn-1',
-    lesson_id: 'lesson-1',
-    horse_id: 'horse-1',
-    exertion_level: 3,
-    horse_notes: 'Moved well today',
+  // #1082: no `.select()` anywhere in these chains — a bare `.select()` makes PostgREST
+  // emit `RETURNING *`, which trips the column-restricted SELECT grant on lesson_horses.
+  function mockUpdateChain(result: { error: Error | null }) {
+    const mockEqBarn = vi.fn().mockResolvedValue(result)
+    const mockEqHorse = vi.fn().mockReturnValue({ eq: mockEqBarn })
+    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqHorse })
+    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqLesson })
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({ update: mockUpdate }),
+    } as any)
+    return mockUpdate
   }
 
   beforeEach(() => {
@@ -430,49 +434,23 @@ describe('updateLessonHorseNotes', () => {
   })
 
   it('should_call_update_on_lesson_horses_with_horse_notes', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedHorse, error: null })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqHorse = vi.fn().mockReturnValue({ eq: mockEqBarn })
-    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqHorse })
-    const mockUpdate = vi.fn().mockReturnValue({ eq: mockEqLesson })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({ update: mockUpdate }),
-    } as any)
+    const mockUpdate = mockUpdateChain({ error: null })
 
     await updateLessonHorseNotes('lesson-1', 'horse-1', 'barn-1', 'Moved well today')
 
     expect(mockUpdate).toHaveBeenCalledWith({ horse_notes: 'Moved well today' })
   })
 
-  it('should_return_updated_lesson_horse', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({ data: mockUpdatedHorse, error: null })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqHorse = vi.fn().mockReturnValue({ eq: mockEqBarn })
-    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqHorse })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
-      }),
-    } as any)
+  it('should_resolve_without_returning_a_row', async () => {
+    mockUpdateChain({ error: null })
 
     const result = await updateLessonHorseNotes('lesson-1', 'horse-1', 'barn-1', 'Moved well today')
 
-    expect(result).toEqual(mockUpdatedHorse)
+    expect(result).toBeUndefined()
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
-    const mockSingle = vi.fn().mockResolvedValue({ data: null, error: new Error('db error') })
-    const mockSelect = vi.fn().mockReturnValue({ single: mockSingle })
-    const mockEqBarn = vi.fn().mockReturnValue({ select: mockSelect })
-    const mockEqHorse = vi.fn().mockReturnValue({ eq: mockEqBarn })
-    const mockEqLesson = vi.fn().mockReturnValue({ eq: mockEqHorse })
-    vi.mocked(createClient).mockResolvedValue({
-      from: vi.fn().mockReturnValue({
-        update: vi.fn().mockReturnValue({ eq: mockEqLesson }),
-      }),
-    } as any)
+    mockUpdateChain({ error: new Error('db error') })
 
     await expect(
       updateLessonHorseNotes('lesson-1', 'horse-1', 'barn-1', null)

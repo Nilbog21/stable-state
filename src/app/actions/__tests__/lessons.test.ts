@@ -1208,6 +1208,52 @@ describe('updateLessonAction', () => {
     expect(updateLesson).not.toHaveBeenCalled()
   })
 
+  it('should_not_call_updateLessonWithParticipants_when_lesson_is_not_cancelled', async () => {
+    vi.mocked(getLessonById).mockResolvedValue(makeLessonDetail({ cancelled_at: null }))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.set('cancellation_notes', 'weather')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(updateLessonWithParticipants).not.toHaveBeenCalled()
+  })
+
+  it('should_return_error_when_notes_phase_fails', async () => {
+    vi.mocked(updateLessonHorseNotes).mockRejectedValue(new Error('notes db error'))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteHorseId', 'horse-1')
+    fd.set('horse_notes_horse-1', 'watch left lead')
+    const result = await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(result).toEqual({ error: 'Lesson updated, but notes could not be saved' })
+  })
+
+  it('should_not_redirect_when_notes_phase_fails', async () => {
+    vi.mocked(updateLessonHorseNotes).mockRejectedValue(new Error('notes db error'))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteHorseId', 'horse-1')
+    fd.set('horse_notes_horse-1', 'watch left lead')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(redirect).not.toHaveBeenCalled()
+  })
+
+  it('should_log_the_underlying_error_when_participants_phase_fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(updateLessonWithParticipants).mockRejectedValue(new Error('db error'))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to update lesson:', 'db error')
+    consoleSpy.mockRestore()
+  })
+
+  it('should_log_the_underlying_error_when_notes_phase_fails', async () => {
+    const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    vi.mocked(updateLessonHorseNotes).mockRejectedValue(new Error('notes db error'))
+    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })
+    fd.append('noteHorseId', 'horse-1')
+    fd.set('horse_notes_horse-1', 'watch left lead')
+    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
+    expect(consoleSpy).toHaveBeenCalledWith('Failed to save lesson notes:', 'notes db error')
+    consoleSpy.mockRestore()
+  })
+
 })
 
 describe('updatePaymentTypeAction', () => {
