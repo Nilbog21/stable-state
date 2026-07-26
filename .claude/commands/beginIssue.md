@@ -153,7 +153,7 @@ Check `{worktree-path}/specs/issue-{N}.md`. If it doesn't exist, or exists but i
 - **If it already exists** (rare outside revise mode, e.g. a re-run after an interrupted session), read it for context and leave it as-is for now — the Step 5 append below still applies.
 
 **Assign the issue before entering Plan mode:**
-- Run: `gh api repos/{owner}/{repo}/issues/{N}/assignees -X POST -f 'assignees[]=Nilbog21'`
+- Run: `gh api repos/{owner}/{repo}/issues/{N}/assignees -X POST -f "assignees[]=$(gh api user --jq .login)"`
 - (`gh issue edit --add-assignee` fails with exit code 1 due to Projects classic deprecation.)
 - Confirm the assignment succeeded before proceeding.
 
@@ -249,7 +249,7 @@ After plan approval, do the following in order:
 
    Then assign the PR via REST (capture PR number from the URL returned above):
    ```
-   gh api repos/{owner}/{repo}/issues/{pr}/assignees -X POST -f 'assignees[]=Nilbog21'
+   gh api repos/{owner}/{repo}/issues/{pr}/assignees -X POST -f "assignees[]=$(gh api user --jq .login)"
    ```
 
    Return the PR URL to the user.

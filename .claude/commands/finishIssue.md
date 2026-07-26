@@ -193,7 +193,7 @@ Once all required checks pass (and any optional warnings are acknowledged), cont
 ## Step 3 — Set assignee
 
 ```
-gh api repos/{owner}/{repo}/issues/{pr}/assignees -X POST -f 'assignees[]=Nilbog21'
+gh api repos/{owner}/{repo}/issues/{pr}/assignees -X POST -f "assignees[]=$(gh api user --jq .login)"
 ```
 
 (`gh pr edit --add-assignee` fails with exit code 1 due to Projects classic deprecation.)
