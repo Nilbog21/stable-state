@@ -25,17 +25,19 @@ Check Supabase migration status, rename pending migrations to the current timest
    - **If every remote-only version is present there:** say so, then ask: **"Type 'merge' to merge `origin/{base}` into this branch, or anything else to abort:"**. On anything other than `merge`, stop. On `merge`:
      1. `git merge origin/{base}` (a merge, not a rebase, so no force-push is needed).
      2. Resolve conflicts. Expect them wherever both branches touched the same file — typically `ARCHITECTURE.md`, `docs/architecture/*.md`, and any shared DAL module plus its test; parallel issues usually *add* sibling functions/table rows rather than editing the same one, so resolve by keeping both sides' additions.
-     3. Run `npx vitest run` and `npm run lint`. Both must pass before the merge is committed.
+     3. Run `npx vitest run`, `bash scripts/check-coverage.sh`, and `npm run lint`. All three must pass before the merge is committed — a hand-resolved conflict in a DAL module can drop branch coverage without failing a single test.
      4. Commit the merge (`git commit --no-edit`, or `git commit` with the resolved conflicts staged).
      5. Re-run step 1 from the top — the pending migrations will now sort *before* the remote tip, so they still need step 5's rename.
    - **If any remote-only version is absent from the base branch:** **stop immediately** and report the two sets separately, so the user can see how much of it a merge would have handled:
      ```
      Covered by merging origin/{base}:
        20260725005002_add_thing.sql
-     Genuine drift (not on {base}):
+     Not on {base}:
        20260725005099_unknown.sql
      ```
-     Tell the user to reconcile the genuine-drift entries with `scripts/repair-migration-history.sh` before re-running this skill.
+     Don't call the second set drift outright — the shared dev DB means it has two very different causes, and only the user can say which:
+     - **A sibling worktree's branch that hasn't merged to `{base}` yet.** Benign and common; nothing to repair. `git log --all --oneline -- supabase/migrations/{version}_*.sql` (after a `git fetch origin`) finds the branch that owns it. The fix is to wait for that branch to merge, then re-run this skill.
+     - **Genuine drift** — no branch anywhere owns the file. This is the case `scripts/repair-migration-history.sh` addresses; note it's a runbook hardcoded to one past incident's versions, so it needs editing for the versions at hand rather than running as-is.
 
 4. If there are **no pending** local migrations, report that the remote is already up to date and exit.
 
