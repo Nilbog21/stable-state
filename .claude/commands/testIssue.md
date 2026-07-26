@@ -189,6 +189,12 @@ Once every item has been confirmed, deferred, or blocked, ask: "Anything else to
 
 Check whether `specs/issue-{N}.md`'s `## Open items` section has any unresolved (`- [ ]`) entries.
 
+**First, separate deferred concerns from operational reminders.** Not every `- [ ]` entry is a gap in the work. An entry can also be a *deliberate post-merge action* — something an AC explicitly requires be left undone in this PR (e.g. "remove the originals from `~/.claude/commands/` after merge, because worktrees on older branches still need them"). Such an entry is the AC's *satisfaction*, not a blocker, and is normally marked as such inline. Treat it as non-gating: it does not count toward the unresolved tally below, does not trigger the three-way prompt, and does not hold the PR in draft. Leave it in the file verbatim — do not resolve it, and do not move it to `## Follow-ups`, which is for findings needing their own issue.
+
+You do not need to read `finishIssue.md` to confirm such an entry survives to be acted on — it does. `/finishIssue`'s Step 0.5 reads `## Open items` before merging and lists any unresolved entries in a confirmation prompt, so the reminder reaches the user at merge time. (Its Step 6.5 then deletes the work log when `## Follow-ups` is empty, on the assumption Step 0.5 left `## Open items` clear. For a deliberately-retained reminder that assumption is false and the file is deleted with the entry still in it — harmless, since Step 0.5 surfaced it moments earlier in the same session.)
+
+**If the only entries are non-gating reminders of that kind, treat the section as empty** for the purposes of the branch below — mark the PR ready, and note in the `## Log` line which entry was left standing and why.
+
 **If it has none:** mark the PR ready and finish as before:
 ```
 gh pr ready
