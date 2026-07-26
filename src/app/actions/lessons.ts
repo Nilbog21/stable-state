@@ -122,7 +122,19 @@ export async function updateLessonAction(
   let { horseIds } = parsed.data
   const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId, instructorCut } = parsed.data
 
+  const cancellationNotesRaw = formData.get('cancellation_notes') as string | null
+
   try {
+    // Checked before the write, not after: update_lesson_with_participants never touches
+    // cancelled_at, so hoisting is behaviour-preserving and stops a rejected save from
+    // having already committed participant edits.
+    if (cancellationNotesRaw !== null) {
+      const currentLesson = await getLessonById(lessonId, barnId, membership.role)
+      if (!currentLesson || currentLesson.cancelled_at === null) {
+        return { error: 'lesson is not cancelled' }
+      }
+    }
+
     if (newHorseName) {
       if (membership.role !== 'manager') return { error: 'not authorized to add horses' }
       const horse = await createHorse(barnId, newHorseName, membership.id)
@@ -145,18 +157,20 @@ export async function updateLessonAction(
       riderIds,
       instructorCut,
     })
+  } catch (err) {
+    console.error('Failed to update lesson:', (err as Error).message)
+    return { error: 'Failed to update lesson' }
+  }
 
+  // Not atomic with the phase above: update_lesson_with_participants has already committed,
+  // so a failure here leaves participant edits applied and notes unsaved — hence the distinct
+  // message rather than claiming the whole save failed. Upgrade path if that ever matters:
+  // fold the note writes into update_lesson_with_participants so the save is one transaction.
+  try {
     const horseIdSet = new Set(horseIds)
     const riderIdSet = new Set(riderIds)
     const noteHorseIds = (formData.getAll('noteHorseId') as string[]).filter(id => horseIdSet.has(id))
     const noteRiderIds = (formData.getAll('noteRiderId') as string[]).filter(id => riderIdSet.has(id))
-    const cancellationNotesRaw = formData.get('cancellation_notes') as string | null
-    if (cancellationNotesRaw !== null) {
-      const currentLesson = await getLessonById(lessonId, barnId, membership.role)
-      if (!currentLesson || currentLesson.cancelled_at === null) {
-        return { error: 'lesson is not cancelled' }
-      }
-    }
     await Promise.all([
       ...noteHorseIds.map(hId =>
         updateLessonHorseNotes(lessonId, hId, barnId, (formData.get(`horse_notes_${hId}`) as string) || null)
@@ -172,8 +186,9 @@ export async function updateLessonAction(
         ? [updateLesson(lessonId, barnId, { cancellation_notes: cancellationNotesRaw.trim() || null })]
         : []),
     ])
-  } catch {
-    return { error: 'Failed to update lesson' }
+  } catch (err) {
+    console.error('Failed to save lesson notes:', (err as Error).message)
+    return { error: 'Lesson updated, but notes could not be saved' }
   }
 
   redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
