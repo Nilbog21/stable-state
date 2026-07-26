@@ -10,7 +10,7 @@
       "Bash(gh issue close *)",
       "Bash(gh issue edit *)",
       "Bash(gh pr view *)",
-      "Bash(gh api repos/Nilbog21/stable-state/*)"
+      "Bash(gh api repos/*/stable-state/*)"
     ]
   },
   "hooks": {
