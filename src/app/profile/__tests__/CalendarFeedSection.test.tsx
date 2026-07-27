@@ -42,6 +42,24 @@ async function copyThenRegenerate() {
   })
 }
 
+async function copyThenFailedRegenerate() {
+  render(
+    <CalendarFeedSection
+      initialToken="tok-abc"
+      getLinkAction={vi.fn()}
+      regenerateAction={vi.fn().mockRejectedValue(new Error('network error'))}
+    />
+  )
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }))
+    await Promise.resolve()
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /regenerate/i }))
+    await Promise.resolve()
+  })
+}
+
 async function renderRegenerateThenCopy() {
   render(
     <CalendarFeedSection
@@ -247,6 +265,26 @@ describe('CalendarFeedSection', () => {
       await Promise.resolve()
     })
     expect(screen.queryByRole('button', { name: /^copied!$/i })).toBeNull()
+  })
+
+  it('should_show_copied_when_copy_settles_after_failed_regenerate', async () => {
+    const settle = deferredWriteText()
+    await copyThenFailedRegenerate()
+    await act(async () => {
+      settle.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.getByRole('button', { name: /^copied!$/i })).toBeDefined()
+  })
+
+  it('should_show_error_when_copy_fails_after_failed_regenerate', async () => {
+    const settle = deferredWriteText()
+    await copyThenFailedRegenerate()
+    await act(async () => {
+      settle.reject(new Error('denied'))
+      await Promise.resolve()
+    })
+    expect(screen.getByText(/could not copy your calendar link/i)).toBeDefined()
   })
 
   it('should_copy_new_token_after_regenerate', async () => {
