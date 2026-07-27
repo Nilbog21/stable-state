@@ -65,7 +65,7 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 
 **`CI: pass`** — proceed directly to the review, do not ask for confirmation.
 
-**`CI: conflict — rebase needed`** — the PR is `CONFLICTING`, so GitHub will not trigger a workflow run for this branch at all until it's resolved. This is *not* a stuck runner and waiting longer will never help. Rebase onto the base branch (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base-branch}`, resolving conflicts per Step 1's rules), push (`git -C {worktree-path} push --force-with-lease`), then re-run the script.
+**`CI: conflict — rebase needed`** — the PR is `CONFLICTING`, so GitHub will not trigger a workflow run for this branch at all until it's resolved. This is *not* a stuck runner and waiting longer will never help. Rebase onto the base branch (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base}`, resolving conflicts per Step 1's rules), push (`git -C {worktree-path} push --force-with-lease`), then re-run the script.
 
 **`CI: timeout after 5m — {checks}`** — stop and ask the user: "CI hasn't completed after 5 minutes — could you check the Actions tab / PR checks and let me know what's going on? (e.g. stuck runner, workflow didn't trigger, etc.)" Wait for their answer before re-running the script or taking further action.
 
