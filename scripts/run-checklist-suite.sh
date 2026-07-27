@@ -28,20 +28,26 @@ while [ $# -gt 0 ]; do
       shift
       ;;
     --base-url)
-      BASE_URL="${2:-}"
-      if [ -z "$BASE_URL" ]; then
-        echo "Error: --base-url requires an origin (e.g. http://localhost:3001)" >&2
-        usage
-        exit 1
-      fi
+      # A flag-shaped value means the origin was omitted, not that it's named "--hold-open" —
+      # silently absorbing the next flag would drop it and run against a bogus origin.
+      case "${2:-}" in
+        ""|--*)
+          echo "Error: --base-url requires an origin (e.g. http://localhost:3001)" >&2
+          usage
+          exit 1
+          ;;
+      esac
+      BASE_URL="$2"
       shift 2
       ;;
     --spec)
-      if [ -z "${2:-}" ]; then
-        echo "Error: --spec requires a spec path or glob" >&2
-        usage
-        exit 1
-      fi
+      case "${2:-}" in
+        ""|--*)
+          echo "Error: --spec requires a spec path or glob" >&2
+          usage
+          exit 1
+          ;;
+      esac
       SPEC_ARGS+=("$2")
       shift 2
       ;;
@@ -149,7 +155,10 @@ TEST_BARN_SLUG="$BARN_SLUG" \
 if [ "$HOLD_OPEN" = true ]; then
   echo
   echo "Test barn $BARN_SLUG is still up at $E2E_BASE_URL — run your manual checklist steps now."
-  read -r -p "Press Enter to tear it down: " _
+  # `|| true` because `read` returns non-zero on EOF (no tty / stdin closed), which under
+  # `set -e` would abort the script before the `exit "$PW_EXIT"` below — reporting a failure
+  # for a suite that passed.
+  read -r -p "Press Enter to tear it down: " _ || true
 fi
 
 exit "$PW_EXIT"
