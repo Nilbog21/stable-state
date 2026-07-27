@@ -188,12 +188,18 @@ injection — reuses the same invite-claim + `change-user.sh` dance as local dev
 pointed elsewhere via `--allow-prod`:
 
 ```bash
+bash scripts/e2e-auth-users.sh --allow-prod create   # once per project
 bash scripts/seed-test-barn.sh --allow-prod <slug>
 ```
 
-This seeds a throwaway test barn (with `manager`/`trainer`/`rider` fixtures) and prints
-a dev-manager invite path. Open that path on the target deployment and sign in with
-Google to claim a real manager membership in the barn.
+The three e2e logins (`manager@e2e.test`, `trainer@e2e.test`, `rider@e2e.test`) are a
+one-time per-project bootstrap, not part of any barn seed — `reset-db.sh` creates them
+on the dev project, and `e2e-auth-users.sh create` is how any other project gets them.
+`seed-test-barn.sh` verifies they exist and stops if they don't.
+
+`seed-test-barn.sh` then seeds a throwaway test barn (giving those three logins a
+membership in it) and prints a dev-manager invite path. Open that path on the target
+deployment and sign in with Google to claim a real manager membership in the barn.
 
 ```bash
 bash scripts/change-user.sh --allow-prod <slug>
