@@ -4,6 +4,12 @@ All notable changes to Stable State are documented here. Written for barn manage
 
 ---
 
+## v3.0.4 — July 2026
+
+**Fixed: saving changes to a lesson could report a failure even though part of the change had already been saved.** Editing a lesson that had a horse attached would show "Failed to update lesson", leaving you unsure whether to redo the edit. Your changes now save reliably, and if anything does go wrong the message tells you exactly which part didn't save.
+
+---
+
 ## v3.0.3 — July 2026
 
 **A Privacy Policy page is now available.** Read it any time from a link on the login page — it explains what information we collect and confirms we never sell your data.
