@@ -14,10 +14,10 @@ bash scripts/workflow-context.sh
 
 Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it.
 
-- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory.
+- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
 - `issue` empty → tell the user no issue branch was detected here and stop. `/continueIssue` only operates on an existing issue branch; there's no argument form, cd into the right worktree/branch first.
 
-Record `worktree`, `worktree_path`, and `issue` as `{N}`.
+Record `worktree`, `worktree_path`, `issue` as `{N}`, and `pr` — Step 2 rule 3 reads it.
 
 ---
 

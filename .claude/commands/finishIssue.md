@@ -17,7 +17,7 @@ Parse the `key=value` lines it prints. It never fails — a field it couldn't de
 - `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
 - `issue` empty → ask "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer, then re-run the script with that number as its argument so `base` is derived too.
 
-Record `worktree`, `worktree_path`, `port`, `issue` as `{N}`, and `base` as the expected base branch.
+Record `worktree`, `worktree_path`, `port`, `issue` as `{N}`, `base` as the expected base branch, and `base_from_label` — Step 1 uses it.
 
 ---
 
@@ -84,7 +84,11 @@ PR #{pr}: {title}
 
 **Reconcile the `in-progress` label.** Whether or not the PR was in draft above, check `gh issue view {N} --json labels`. If `specs/issue-{N}.md` exists (work is or was active on this issue) but `in-progress` is missing — e.g. a `/clear` interrupted an earlier skill before its label call landed — silently re-add it: `gh issue edit {N} --add-label 'in-progress'`. No need to ask; it's removed again at Step 5 as normal.
 
-**Try to auto-verify the target instead of asking.** Step 0's `base` is the expected base branch — derived from the issue's labels by `scripts/workflow-context.sh`, the one place that rule lives. Confirm both:
+**Try to auto-verify the target instead of asking.** Step 0's `base` is the expected base branch — derived from the issue's labels by `scripts/workflow-context.sh`, the one place that rule lives.
+
+If Step 0's `base_from_label` is `no`, no label actually decided that base — `main` is just the fallback. Skip straight to asking below rather than auto-confirming: this is the merge, and an issue that reached it untriaged is exactly the case worth a human glance.
+
+Otherwise confirm both:
 1. `{baseRefName}` equals `base`.
 2. The branch is properly rooted on it, not stale:
    ```
@@ -98,7 +102,7 @@ If both hold, skip the confirmation prompt — print:
 
 and continue straight to Step 1.5.
 
-Otherwise (base mismatch, or the branch isn't rooted on the expected base's current tip), ask: "PR #{pr} targets branch '{baseRefName}' — is that correct?"
+Otherwise (`base_from_label` is `no`, base mismatch, or the branch isn't rooted on the expected base's current tip), ask: "PR #{pr} targets branch '{baseRefName}' — is that correct?"
 
 Wait for confirmation before proceeding. If the user says no, stop and tell them to fix the PR target manually using `gh pr edit --base {correct-branch}`, then re-run `/finishIssue`.
 

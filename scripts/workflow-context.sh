@@ -23,17 +23,23 @@ port_for() {
   done
 }
 
-# The one definition of the label -> base branch rule.
+# The one definition of the label -> base branch rule. Sets `base`, and `base_from_label`
+# to yes/no — /finishIssue needs to know whether a label actually decided this or whether
+# it's just the fallback, because it asks for confirmation before merging an untriaged
+# issue rather than trusting the default. Sets rather than echoes so both survive: a
+# `$(...)` call would run this in a subshell and drop `base_from_label`.
 # process-for-release is checked first: those are release close-out steps that land on
 # main even when the issue also carries a release-N label.
 base_for_labels() {
   local labels=" $1 "
-  if [[ $labels == *" process-for-release "* ]]; then echo "main"; return; fi
-  if [[ $labels =~ [[:space:]]patch-[0-9]+[[:space:]] ]]; then echo "main"; return; fi
+  base_from_label=yes
+  if [[ $labels == *" process-for-release "* ]]; then base="main"; return; fi
+  if [[ $labels =~ [[:space:]]patch-[0-9]+[[:space:]] ]]; then base="main"; return; fi
   if [[ $labels =~ [[:space:]]release-([0-9]+)[[:space:]] ]]; then
-    echo "release/release-${BASH_REMATCH[1]}"; return
+    base="release/release-${BASH_REMATCH[1]}"; return
   fi
-  echo "main"
+  base="main"
+  base_from_label=no
 }
 
 worktree=""
@@ -56,9 +62,10 @@ if [[ -z $issue && $branch =~ ^([0-9]+)- ]]; then
 fi
 
 base=""
+base_from_label=""
 if [[ -n $issue ]]; then
   if labels=$(gh issue view "$issue" --json labels -q '[.labels[].name] | join(" ")' 2>/dev/null); then
-    base=$(base_for_labels "$labels")
+    base_for_labels "$labels"
   else
     issue=""  # no such issue — don't report one we couldn't confirm
   fi
@@ -78,6 +85,7 @@ echo "port=$port"
 echo "branch=$branch"
 echo "issue=$issue"
 echo "base=$base"
+echo "base_from_label=$base_from_label"
 echo "pr=$pr"
 echo "pr_state=$pr_state"
 
