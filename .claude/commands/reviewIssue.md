@@ -65,34 +65,25 @@ Find the open PR for the current branch:
 gh pr view --json number,title,state,isDraft,headRefName
 ```
 
-**Check for merge conflicts before polling CI:**
+Wait for CI in a single blocking call — do **not** poll `gh pr checks` yourself:
 ```
-gh pr view --json mergeable,mergeStateStatus
+cd {worktree-path} && bash scripts/workflow-ci-wait.sh {pr}
 ```
-If `mergeable` is `CONFLICTING`, GitHub will not trigger new workflow runs for pushes to this branch until the conflict is resolved — this looks identical to "CI never starts" or a stuck runner, but polling will never find a run. Rebase onto the base branch again (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base-branch}`, resolving conflicts per Step 1's rules) and push (`git -C {worktree-path} push --force-with-lease`) before polling CI.
+Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the script blocks for up to 5 minutes). The `cd` matters — the script resolves the repo from the working directory. It handles the merge-conflict case, the `gh pr checks`-lags-real-CI-state case, and the 5-minute cap internally, and prints exactly one verdict line. Branch on that line:
 
-Poll CI status until it completes:
-```
-gh pr checks
-```
+**`CI: pass`** — proceed directly to the review, do not ask for confirmation.
 
-Run this in a loop, displaying the current status, until all checks have a terminal result (passed, failed, or skipped). Do not proceed until CI has finished. `gh pr checks` can lag behind actual CI state (e.g. after a fresh push it may only show unrelated checks like Vercel for a while) — cross-check against the real workflow runs for the current head SHA before trusting it:
-```
-gh pr view --json headRefOid -q .headRefOid
-gh api repos/{owner}/{repo}/actions/runs --jq '.workflow_runs[] | select(.head_sha=="{headRefOid}") | {name, status, conclusion}'
-```
+**`CI: conflict — rebase needed`** — the PR is `CONFLICTING`, so GitHub will not trigger a workflow run for this branch at all until it's resolved. This is *not* a stuck runner and waiting longer will never help. Rebase onto the base branch (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base-branch}`, resolving conflicts per Step 1's rules), push (`git -C {worktree-path} push --force-with-lease`), then re-run the script.
 
-**5-minute stall check:** track how long you've been polling since the start of this step (or since the last push, if you pushed a fix mid-step). If 5 minutes elapse without a terminal result for every required check — including no workflow run yet appearing for the current head SHA — first re-check `gh pr view --json mergeable,mergeStateStatus`: a stall with zero workflow runs is often a merge conflict that appeared after the last push (e.g. the base branch moved), not a stuck runner. If `mergeable` is `CONFLICTING`, rebase and push per the check above instead of continuing to poll. Otherwise, stop polling and ask the user: "CI hasn't completed after 5 minutes — could you check the Actions tab / PR checks and let me know what's going on? (e.g. stuck runner, workflow didn't trigger, etc.)" Wait for their answer before resuming the poll or taking further action.
+**`CI: timeout after 5m — {checks}`** — stop and ask the user: "CI hasn't completed after 5 minutes — could you check the Actions tab / PR checks and let me know what's going on? (e.g. stuck runner, workflow didn't trigger, etc.)" Wait for their answer before re-running the script or taking further action.
 
-Once CI completes, display the results.
+**`CI: fail — {checks}`** — handle per check below.
 
 **If the Vercel check failed:** Do NOT attempt `npx vercel inspect` or `npx vercel logs` — the Vercel CLI is not available. Instead:
-1. Run `npm run build` locally to check for TypeScript/build errors. If errors are found, fix them, commit, push, and re-poll CI.
+1. Run `npm run build` locally to check for TypeScript/build errors. If errors are found, fix them, commit, push, and re-run the script.
 2. If the local build passes but Vercel still fails, ask the user to paste the Vercel error from the dashboard.
 
 **If `Verify Migrations` failed:** diagnose the root cause (read the failure logs, identify which migration needs to sort later and why) and explain it to the user — but do NOT rename/reorder/`git mv`/commit the fix yourself, and do not auto-invoke `sync-migrations`. Surface it and stop; let the user decide whether to hand off to `/testIssue` or explicitly authorize a one-off fix in this session.
-
-**If all checks pass:** display the results and proceed directly to the review — do not ask for confirmation.
 
 ---
 
