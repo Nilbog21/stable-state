@@ -83,3 +83,27 @@ Barn: `post-release-test-2`. The second person joins here as a **trainer**, sinc
 - [ ] Open `/barns` as yourself → neither `post-release-test` nor `post-release-test-2` is listed
 
 > The second person's own Google account is deliberately left untouched by teardown — it's a real account, not seeded test data. They keep it; it simply no longer has a membership anywhere.
+
+## Deferred checks
+
+Checks that are **initiated** during this pass but whose result lands on an external system's own schedule rather than ours. Mark the initiation steps, sign off, and come back for the confirmation steps whenever the external system gets around to it.
+
+> **An unconfirmed deferred check does not block POST sign-off.** The release is signed off on the sections above. A failure found later is filed as a patch against the released version (see `CLAUDE.md`'s Patch Workflow), not as a hold on a release that has already shipped.
+
+### Calendar subscription from a real calendar app
+
+> **Why this is prod-only:** `/calendar.ics` (#1018) is polled by an external calendar service, so it needs an externally-reachable URL — localhost isn't reachable off-machine and a Vercel preview auth-gates non-team viewers, so neither can be subscribed from. That URL requirement is the whole reason this check is here: it fits **none** of the five bars in `CLAUDE.md`'s Post-Release Checklist section, and is the deliberate exception to them. Everything verified before release covers `?token=` handling, `Content-Type`, and VEVENT body content only — never a real client's parse-and-poll behavior.
+
+> **Which barn:** a prod barn you manage that outlives this pass — **not** `post-release-test` or `post-release-test-2`, which Cleanup above has already torn down. The poll step below lands hours or days after sign-off, so the barn has to still exist then. Its lesson data is real, hence the revert step at the end.
+
+Initiate now:
+
+- [ ] On `/profile?barn=<slug>` for that barn, tap **Get my calendar link** → a link containing `/calendar.ics?token=...` is revealed
+- [ ] Tap **Copy Link** — the revealed text is a path only, and Copy Link is what prepends the origin — then add the copied URL in a real calendar app via **Add calendar → From URL** (Google Calendar, Apple Calendar, or Outlook) → the app accepts the URL without an error
+
+Confirm later — none of these block sign-off:
+
+- [ ] The calendar app's event list matches that barn's actual lessons
+- [ ] Add a lesson to that barn, then wait for the calendar app's next poll → the new lesson appears (the poll interval is the client's, not ours — Google is typically several hours — which is why this check is deferred rather than run inline above)
+- [ ] Delete that lesson again → it disappears from the calendar app on the following poll
+- [ ] The real barn is left as it was → its lesson list holds exactly what it held before this check
