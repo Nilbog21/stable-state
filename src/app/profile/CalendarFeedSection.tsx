@@ -22,11 +22,6 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
     }
   }, [])
 
-  // Path only — the full origin is only ever read inside handleCopy (an event handler,
-  // guaranteed client-side), same as ManageMemberSection.tsx's invite-link copy, so this
-  // component never touches `window` during a server render.
-  const path = token ? `/calendar.ics?token=${token}` : ''
-
   async function handleGetLink() {
     setPending(true)
     setError(null)
@@ -52,12 +47,21 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
     }
   }
 
+  // The URL is never rendered — it's built here, inside an event handler (guaranteed
+  // client-side), so the component never touches `window` during a server render. Same as
+  // ManageMemberSection.tsx's invite-link copy. Since there's no on-screen copy to fall back
+  // on, a failed write has to say so: writeText needs a secure context, so it does fail when
+  // hitting the dev server over LAN HTTP from a phone.
   async function handleCopy() {
     try {
-      await navigator.clipboard.writeText(`${window.location.origin}${path}`)
+      await navigator.clipboard.writeText(
+        `${window.location.origin}/calendar.ics?token=${token}`
+      )
     } catch {
+      setError('Could not copy your calendar link. Please try again.')
       return
     }
+    setError(null)
     setCopied(true)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setCopied(false), 2000)
@@ -79,7 +83,6 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
         </Button>
       ) : (
         <div className="flex flex-wrap items-center gap-2">
-          <code className="break-all rounded bg-zinc-100 px-2 py-1 text-xs dark:bg-zinc-800">{path}</code>
           <Button type="button" variant="ghost" onClick={handleCopy} disabled={pending}>
             {copied ? 'Copied!' : 'Copy Link'}
           </Button>
