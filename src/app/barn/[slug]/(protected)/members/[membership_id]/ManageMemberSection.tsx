@@ -13,6 +13,11 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Nothing disables either button while writeText is awaiting — `busy` only goes true
+  // once Revoke is submitted — so a copy can still be in flight when Revoke supersedes
+  // its token. Bump on Revoke and drop a copy that resumes on the far side of it, or it
+  // re-sets error/copied for a token that no longer exists.
+  const copyGenerationRef = useRef(0)
 
   // Revoke regenerates the invite token server-side; Copy Invite must never read the
   // stale prop mid-flight. `pending` alone isn't enough (Next resolves the action's
@@ -31,6 +36,7 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
     // handleRegenerate clears.
     setError(null)
     setCopied(false)
+    copyGenerationRef.current += 1
     setTokenBeforeRevoke(inviteToken)
     await revokeAction()
     return null
@@ -49,12 +55,15 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   // server over LAN HTTP from a phone. Same reasoning as CalendarFeedSection (#1116).
   async function handleCopy() {
     const url = `${window.location.origin}/barn/${barnSlug}/register?token=${inviteToken}`
+    const generation = copyGenerationRef.current
     try {
       await navigator.clipboard.writeText(url)
     } catch {
+      if (copyGenerationRef.current !== generation) return
       setError('Could not copy the invite link. Please try again.')
       return
     }
+    if (copyGenerationRef.current !== generation) return
     setError(null)
     setCopied(true)
     if (timerRef.current) clearTimeout(timerRef.current)

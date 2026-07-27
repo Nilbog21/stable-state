@@ -15,6 +15,12 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
   const [copied, setCopied] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Nothing disables either button while writeText is awaiting — `pending` only goes true
+  // once Regenerate is clicked — so a copy can still be in flight when Regenerate
+  // supersedes its token. Bump on Regenerate and drop a copy that resumes on the far side
+  // of it, or it re-sets error/copied for a token that no longer exists. Same guard as
+  // ManageMemberSection.tsx's Revoke.
+  const copyGenerationRef = useRef(0)
 
   useEffect(() => {
     return () => {
@@ -38,6 +44,7 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
     setPending(true)
     setCopied(false)
     setError(null)
+    copyGenerationRef.current += 1
     try {
       setToken(await regenerateAction())
     } catch {
@@ -53,14 +60,17 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
   // on, a failed write has to say so: writeText needs a secure context, so it does fail when
   // hitting the dev server over LAN HTTP from a phone.
   async function handleCopy() {
+    const generation = copyGenerationRef.current
     try {
       await navigator.clipboard.writeText(
         `${window.location.origin}/calendar.ics?token=${token}`
       )
     } catch {
+      if (copyGenerationRef.current !== generation) return
       setError('Could not copy your calendar link. Please try again.')
       return
     }
+    if (copyGenerationRef.current !== generation) return
     setError(null)
     setCopied(true)
     if (timerRef.current) clearTimeout(timerRef.current)
