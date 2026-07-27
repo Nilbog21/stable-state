@@ -3,6 +3,23 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
+BARN_SLUG="e2e-$(date +%s)-$RANDOM"
+# `git rev-parse --show-toplevel` resolves to *this* worktree's root, so the path is
+# per-worktree isolated for free. Not under test-results/ — Playwright wipes that directory
+# at the start of every run, which would leave tee writing to a deleted inode.
+LOG_PATH="$PWD/checklist-suite.log"
+
+# Truncated with `>` before anything else runs, so a log left behind by a dead run can never
+# be mistaken for this one's; the header says which barn and when.
+echo "=== run-checklist-suite.sh — barn $BARN_SLUG — started $(date) ===" > "$LOG_PATH"
+# Send this script's stdout and stderr — and that of everything it runs — through `tee`, so
+# the log gets the whole run, including the early bails that kill it under `set -e` before
+# Playwright writes a line. Costs the `list` reporter its live in-place progress (stdout is
+# no longer a TTY); one static line per test is the better trade for a file read afterwards.
+exec > >(tee -a "$LOG_PATH") 2>&1
+
+echo "Logging to $LOG_PATH"
+
 usage() {
   cat >&2 <<'EOF'
 Usage: run-checklist-suite.sh [--interactive] [--base-url <origin>] [--spec <path>] [--allow-prod] [--hold-open]
@@ -20,6 +37,29 @@ BASE_URL=""
 ALLOW_PROD=false
 HOLD_OPEN=false
 SPEC_ARGS=()
+PROD_FLAG=()
+# Flipped just before seeding, so an early bail (bad flag, missing .env.local, unreadable
+# Supabase vars) doesn't call teardown for a barn that was never created.
+SEEDED=false
+
+cleanup() {
+  # Captured first: teardown-test-barn.sh's own status would otherwise replace the status
+  # the script is actually exiting with.
+  local code=$?
+  if [ "$SEEDED" = true ]; then
+    bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" "$BARN_SLUG" || code=$?
+  fi
+  echo "=== run-checklist-suite.sh exited $code — full log: $LOG_PATH ==="
+  exit "$code"
+}
+# Installed before the .env.local/env-var checks below so those early bails get the same
+# exit-code terminator in the log as a completed run.
+trap cleanup EXIT
+# Bash already runs an EXIT trap when the shell dies of SIGINT, so teardown would survive
+# Ctrl-C without this. It's here to make that a property of the script rather than of bash's
+# default signal handling, and to pin the exit status at 130 — the seeded barn outliving a
+# Ctrl-C is exactly the leak this script exists to prevent.
+trap 'exit 130' INT
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -91,7 +131,6 @@ done
 # it bypasses their assertDevProject check. This script has no dev-project check of its own —
 # .env.local alone picks the Supabase project (those scripts re-read it and ignore any env
 # override), so without this flag the seed/teardown calls below stay fail-closed on non-dev.
-PROD_FLAG=()
 if [ "$ALLOW_PROD" = true ]; then
   PROD_FLAG=(--allow-prod)
   # Without an origin this seeds the target project and then drives localhost:3000 — your own
@@ -110,20 +149,9 @@ fi
 
 E2E_BASE_URL="${BASE_URL:-http://localhost:3000}"
 
-BARN_SLUG="e2e-$(date +%s)-$RANDOM"
-
-cleanup() {
-  bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" "$BARN_SLUG"
-}
-trap cleanup EXIT
-# Bash already runs an EXIT trap when the shell dies of SIGINT, so teardown would survive
-# Ctrl-C without this. It's here to make that a property of the script rather than of bash's
-# default signal handling, and to pin the exit status at 130 — the seeded barn outliving a
-# Ctrl-C is exactly the leak this script exists to prevent.
-trap 'exit 130' INT
-
 echo "Seeding test barn $BARN_SLUG..."
 echo "  If this run is killed, clean up with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} $BARN_SLUG"
+SEEDED=true
 bash scripts/seed-test-barn.sh "${PROD_FLAG[@]}" "$BARN_SLUG"
 
 echo "Checking Playwright system dependencies..."
