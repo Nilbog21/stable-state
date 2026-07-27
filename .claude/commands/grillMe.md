@@ -5,6 +5,8 @@ description: Interview the user relentlessly about a plan or design until reachi
 
 > **Recommended model: Opus** (Fable for a genuinely hard architecture call). The quality of the interrogation *is* the deliverable; there is no later step that catches a shallow one. Set with `/model` before invoking.
 
+Below the frontmatter, this skill is written in the first person: "me"/"I"/"my" means the developer who invoked it, and "you" means Claude.
+
 **Special mode — filing follow-ups from a work log:** if invoked with a `specs/issue-*.md` path as an argument (e.g. `/grillMe specs/issue-42.md`), skip everything below down through the choice-of-session-type question and go straight to the interview:
 
 - Skip **Branch setup** entirely — this mode never touches project files besides the spec file itself (which is gitignored scratch, not tracked by git), so there's no branch to protect.
@@ -47,7 +49,7 @@ gh label list --json name,description
 
 Evaluate the dependency tree: identify which existing issues must land before the new ones. Use the label descriptions to understand ordering signals — `rearchitecture` and `data-migration` issues impose structural ordering even when not listed as explicit dependencies; `high-priority` is a manual override that always lands first. Report the blocking dependencies and recommended sequencing before proceeding.
 
-When presenting the new issues for creation, suggest appropriate labels for each one based on their nature and the label descriptions. Ask the user to confirm or adjust before proceeding. Then ask if I'd like you to create these issues with `gh issue create`.
+When presenting the new issues for creation, suggest appropriate labels for each one based on their nature and the label descriptions. Ask me to confirm or adjust before proceeding. Then ask if I'd like you to create these issues with `gh issue create`.
 
 **After creating the issues**, check whether `specs/batch_{release-label}.md` already exists. If it doesn't, skip silently — the batch file gets built whenever `/issueBatch create` is next run manually. If it does exist, append each new issue to the appropriate section (Ready or Blocked, using the same dependency-phrasing rules `/issueBatch create` uses) with `unblocks: 0` and a `(newly added by grillMe — run /issueBatch create to rescore)` note in place of a real score, rather than recomputing the whole graph.
 

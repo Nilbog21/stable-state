@@ -15,6 +15,14 @@ Stable State is a multi-tenant lesson-tracking application for equestrian barns.
 - Node 20+
 - A Supabase project (cloud) or the [Supabase CLI](https://supabase.com/docs/guides/cli) for local development
 
+Running the app needs only the above. The dev scripts in `scripts/` and the workflow skills in `.claude/commands/` additionally assume:
+
+- **The Supabase CLI linked to the project you're targeting** (`npx supabase link --project-ref <ref>`) — required by the migration scripts and by the `/sync-migrations` workflow skill.
+- **A POSIX shell** — Linux or macOS. On Windows, use WSL: `scripts/*.sh` are bash, and the skills background a dev server, write logs under `/tmp`, and kill process groups, none of which have a native Windows equivalent.
+- **GNU coreutils** — the skills use GNU-only flags (`date -d`, `sort -V`). `brew install coreutils` covers both on macOS; where a plain BSD equivalent exists the skill text notes it inline (`date`), and where none does (`sort -V`) coreutils is the only option.
+- **The [`gh` CLI](https://cli.github.com/), installed and authenticated** (`gh auth login`) — nearly every step of every workflow skill shells out to it for issues, PRs, labels, and checks.
+- **`jq`, `curl`, and `lsof`** — used for label lookups, dev-server readiness polling, and stopping a worktree's dev server respectively.
+
 ## Development setup
 
 1. `npm install`
@@ -45,6 +53,55 @@ bash scripts/reset-db.sh
 ```
 
 Requires `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_EMAIL`, and `DEV_NAME` in `.env.local`. The script is idempotent — safe to re-run between branches. After the DB reset, it calls `seed-account.sh` to create a managed manager stub and print an invite path; open that path on your deployment to claim the account (sign in with Google if you aren't already signed in — an already-authenticated session skips straight to an Accept Invite button). You land as manager of the barn you claimed; run `change-user.sh <barn-slug>` yourself afterward if you want to switch to another seeded role.
+
+## Development worktrees
+
+Development runs across several [git worktrees](https://git-scm.com/docs/git-worktree) so more than one issue can be in flight at once — each worktree holds a different issue branch and its own dev server, and the primary checkout stays free on `main` or the current release branch. This is a convention, not a requirement: a single checkout works fine, and the workflow skills in `.claude/commands/` fall back to asking which worktree to use when they can't detect one.
+
+The worktree directory is a **sibling** of the primary checkout:
+
+```
+projects/
+  stable-state/                 # primary checkout
+  stable-state-worktrees/
+    alpha/  beta/  gamma/  delta/  epsilon/
+```
+
+Names are arbitrary and ordered — the fleet grows by adding the next Greek letter. Nothing in the application depends on the count; the five workflow skills that detect a worktree (`beginIssue`, `reviewIssue`, `testIssue`, `finishIssue`, `continueIssue`) enumerate the names, so those are the files to update when one is added or removed.
+
+Create one with:
+
+```bash
+git -C stable-state worktree add ../stable-state-worktrees/zeta -b some-branch
+```
+
+### Dev server ports
+
+Each worktree owns a fixed port so several dev servers can run side by side. This table is the canonical mapping — `testIssue.md` and `finishIssue.md` both restate it:
+
+| Worktree | Port |
+|---|---|
+| `alpha` | 3001 |
+| `beta` | 3002 |
+| `gamma` | 3003 |
+| `delta` | 3004 |
+| `epsilon` | 3005 |
+
+```bash
+npm run dev -- -p 3001
+```
+
+Landing on the wrong `localhost:{port}` while testing is a common source of confusion — `/testIssue` checks the dev-server log for the request before it starts diagnosing a reported problem.
+
+### `.env.local` across worktrees
+
+`.env.local` is gitignored, so each worktree needs its own. The convention is to **symlink** it back to the primary checkout rather than keep independent copies:
+
+```bash
+ln -s ../../stable-state/.env.local .env.local
+```
+
+One consequence worth knowing: every worktree then points at the **same** dev Supabase project. Branches in different worktrees share one database, so migrations can't truly be developed in parallel — two worktrees pushing migrations at once will collide, and a worktree's schema may be ahead of or behind the branch it has checked out.
 
 ## Database setup
 

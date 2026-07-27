@@ -117,7 +117,7 @@ The batch file itself is only updated by `prune`/`rollingPick`'s verified sync o
 
 ## `rollingPick`
 
-A single check-and-replace pass over a persisted 3-issue "Active Picks" list — designed to be re-run on an interval via the built-in `/loop` skill (e.g. `/loop 5m /issueBatch rollingPick`) rather than driving its own scheduling. Each pass is cheap: it only checks the 3 active picks (plus, when refilling, candidate replacements) via targeted `gh issue view` calls — it does not run a full `prune` sweep.
+A single check-and-replace pass over a persisted 3-issue "Active Picks" list — designed to be re-run on an interval via `/loop` (a Claude Code harness feature for scheduling repeat work, not project tooling — e.g. `/loop 5m /issueBatch rollingPick`) rather than driving its own scheduling. Each pass is cheap: it only checks the 3 active picks (plus, when refilling, candidate replacements) via targeted `gh issue view` calls — it does not run a full `prune` sweep.
 
 If `{batch-file}` doesn't exist, stop and tell the user to run `/issueBatch create` first.
 

@@ -126,7 +126,7 @@ CI enforces 100% branch coverage via `scripts/check-coverage.sh`. Handle all bra
 
 ## Workflow skills
 
-`.claude/commands/*.md` — the Claude Code skills this project's development process runs on, each invoked as a slash command named after its filename. They are tracked in this repo rather than in a personal `~/.claude` directory because they encode *this project's* conventions (release labels, migration handling, review rules, worktree layout), so a convention change and the skill text that encodes it land in the same reviewed PR. Editing rules: see `CLAUDE.md`'s Workflow Skills section.
+`.claude/commands/*.md` — the Claude Code skills this project's development process runs on, each invoked as a slash command named after its filename. They are tracked in this repo rather than in a personal `~/.claude` directory because they encode *this project's* conventions (release labels, migration handling, review rules, worktree layout), so a convention change and the skill text that encodes it land in the same reviewed PR. Editing rules: see `CLAUDE.md`'s Workflow Skills section. The developer-setup they assume — a POSIX shell, GNU coreutils, an authenticated `gh` CLI — plus the parallel-worktree layout, port assignments, and `.env.local` arrangement five of them detect, are documented in `README.md`'s Prerequisites and "Development worktrees" sections.
 
 The main sequence, one issue from selection to merge:
 

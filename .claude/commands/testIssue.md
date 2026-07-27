@@ -6,9 +6,12 @@ You are testing a pull request that has already passed `/reviewIssue`'s automate
 
 ## Step 0 — Worktree and issue/PR detection
 
-**Kill lingering loops:** a `/loop` or `ScheduleWakeup` from earlier work in the session can still be pending when `/testIssue` starts. Before anything else, call `ScheduleWakeup` with `stop: true` to cancel it. This is a no-op if none is pending — don't announce it either way, just do it. (`/reviewIssue` is not a source of these: it runs its review agents in the foreground and forbids wrapping that wait in a wakeup poll.)
+**Kill lingering loops:** a `/loop` or `ScheduleWakeup` from earlier work in the session can still be pending when `/testIssue` starts. (Both are Claude Code harness features for scheduling repeat work, not project tooling — nothing in this repo depends on them.) Before anything else, call `ScheduleWakeup` with `stop: true` to cancel it. This is a no-op if none is pending — don't announce it either way, just do it. (`/reviewIssue` is not a source of these: it runs its review agents in the foreground and forbids wrapping that wait in a wakeup poll.)
 
 **Detect worktree:**
+
+This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
+
 Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
 
 If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.
@@ -85,7 +88,7 @@ Continue immediately to Step 3.
 
 ## Step 3 — Start (or reuse) the local dev server
 
-PR previews are no longer auto-deployed on Vercel for issue/patch branches, so testing happens against a local dev server instead. Each worktree has a fixed port:
+PR previews are no longer auto-deployed on Vercel for issue/patch branches, so testing happens against a local dev server instead. Each worktree has a fixed port (canonical list: README.md's "Development worktrees" section):
 
 - alpha → 3001
 - beta → 3002
@@ -147,7 +150,7 @@ For each item, one at a time:
 3. **If the user confirms it's correct:** if this item came from the carried-over deferred list, remove its entry from `specs/issue-{N}.md` (it's resolved). Move to the next item. Treat a bare `c` or `y` (case-insensitive) as confirmation, same as an explicit "yes"/"confirmed"/"looks good".
 4. **If the user reports a problem:** first check they were actually looking at this worktree's server, *then* classify it.
 
-   **Traffic check (do this first, before any diagnosis):** `tail -20 /tmp/testissue-{worktree}.log` and look for a request line matching the path you just asked them to visit. Next.js dev logs every request (`GET /barn/{slug}/... 200 in 123ms`). No matching hit means they're on a different port — the user runs several worktrees at once and landing on the wrong `localhost:{port}` is a recurring cause of "it's not working". Say so plainly and re-print the correct URL rather than starting to debug the code. Don't wait for two or three confusing rounds to try this. (If the server was reused rather than started here, the log may be missing or stale — say the check was inconclusive and fall through to normal diagnosis.)
+   **Traffic check (do this first, before any diagnosis):** `tail -20 /tmp/testissue-{worktree}.log` and look for a request line matching the path you just asked them to visit. Next.js dev logs every request (`GET /barn/{slug}/... 200 in 123ms`). No matching hit means they're on a different port — several worktrees are typically running dev servers at once, and landing on the wrong `localhost:{port}` is a recurring cause of "it's not working". Say so plainly and re-print the correct URL rather than starting to debug the code. Don't wait for two or three confusing rounds to try this. (If the server was reused rather than started here, the log may be missing or stale — say the check was inconclusive and fall through to normal diagnosis.)
 
    **Classify minor vs. substantial** and state the classification with a one-line reason (e.g. "Minor — single existing assertion needs updating." / "Substantial — this needs new test coverage for a state transition that doesn't exist yet."). The user can override in the moment ("actually just fix it" / "actually defer that") — treat that as final.
 

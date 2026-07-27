@@ -7,6 +7,9 @@ You are reviewing a pull request for a completed `/beginIssue` session. This ski
 ## Step 0 — Worktree and issue detection
 
 **Detect worktree:**
+
+This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
+
 Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
 
 If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.
@@ -119,7 +122,7 @@ Use a Haiku agent to fetch `gh pr view --json state,isDraft` and check completio
 - **If `isDraft` is `false`:** this PR was already marked ready (Step 7 already ran for it). Print "PR #{pr} is already marked ready for review — nothing new to review. Stopping." and **stop**. Do not run any further steps.
 - **Otherwise:** the PR is open and still a draft — proceed to the review below.
 
-Then launch **6 parallel Sonnet agents in the foreground** (`run_in_background: false` on each) — Step 5 needs every agent's findings before it can score anything, so block on them directly. Never wrap this wait in a `/loop`/`ScheduleWakeup` poll: background agents already auto-notify on completion, and a polling loop here just burns wakeups re-asking whether they're done. Give each agent the issue body (including acceptance criteria), the PR body, and the full PR diff. Each agent should return a list of issues with a reason for each finding.
+Then launch **6 parallel Sonnet agents in the foreground** (`run_in_background: false` on each) — Step 5 needs every agent's findings before it can score anything, so block on them directly. Never wrap this wait in a `/loop`/`ScheduleWakeup` poll (both are Claude Code harness features for scheduling repeat work, not project tooling): background agents already auto-notify on completion, and a polling loop here just burns wakeups re-asking whether they're done. Give each agent the issue body (including acceptance criteria), the PR body, and the full PR diff. Each agent should return a list of issues with a reason for each finding.
 
 - **Agent 1:** Audit the changes for CLAUDE.md compliance. Use the root CLAUDE.md and any CLAUDE.md files in directories the PR modifies.
 - **Agent 2:** Shallow scan for obvious bugs in the changed lines only. Focus on large bugs; ignore nitpicks and things a linter/typechecker would catch.
