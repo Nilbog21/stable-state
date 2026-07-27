@@ -31,6 +31,13 @@ while :; do
     echo "CI: conflict — rebase needed"
     exit 2
   fi
+  # UNKNOWN means GitHub hasn't finished computing mergeability yet — it does so
+  # lazily, and every push or base-branch move reopens that window. Treating it
+  # as "not conflicting" lets a green rollup print "CI: pass" on a PR that is in
+  # fact conflicting, which is the exact misdiagnosis this gate exists to stop.
+  # Counted as pending instead, so we poll until it settles (or time out saying so).
+  unknown_mergeability=""
+  [ "$mergeable" = "MERGEABLE" ] || unknown_mergeability="mergeability not yet computed"
 
   # Cross-check the rollup against the real workflow runs for this exact SHA on
   # every poll, not once — the rollup lags for a minute or two after a push and
@@ -60,6 +67,8 @@ while :; do
     echo "CI: fail — ${fails//,/, }"
     exit 1
   fi
+
+  [ -n "$unknown_mergeability" ] && status=$(printf '%s\nPENDING\t%s' "$status" "$unknown_mergeability")
 
   pending=$(awk -F'\t' '$1=="PENDING"{print $2}' <<<"$status" | sort -u | paste -sd, -)
   if [ -z "$pending" ]; then
