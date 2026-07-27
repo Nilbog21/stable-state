@@ -2,7 +2,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'
 import { resolveHorseNames } from './horses'
-import type { Lesson, LessonHorse, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
+import type { Lesson, LessonRider, LessonType, LessonWithDetails, PaymentType } from './types'
 
 interface LessonHorseJunctionRow {
   lesson_id: string
@@ -171,24 +171,26 @@ export async function updateLessonRiderNotes(
   return data
 }
 
+// #1082: deliberately no `.select()` — PostgREST turns a bare `.select()` into an implicit
+// `RETURNING *`, and Postgres then demands SELECT on every returned column, including
+// `exertion_level`, which `authenticated` no longer holds (#937 made the lesson_horses
+// SELECT grant column-restricted). UPDATE itself is still table-wide granted and all three
+// WHERE columns are inside the granted list, so a plain update needs no RPC.
 export async function updateLessonHorseNotes(
   lessonId: string,
   horseId: string,
   barnId: string,
   horseNotes: string | null
-): Promise<LessonHorse> {
+): Promise<void> {
   const supabase = await createClient()
-  const { data, error } = await supabase
+  const { error } = await supabase
     .from('lesson_horses')
     .update({ horse_notes: horseNotes })
     .eq('lesson_id', lessonId)
     .eq('horse_id', horseId)
     .eq('barn_id', barnId)
-    .select()
-    .single()
 
   if (error) throw error
-  return data
 }
 
 export async function cancelRiderParticipation(
