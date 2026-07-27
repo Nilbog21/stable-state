@@ -1,6 +1,11 @@
 # Post-Release Test Checklist
 
-Manual verification of the checks that **cannot** be run before release. Run against **prod** after the release tag is cut, in throwaway prod test barns seeded for the purpose.
+Manual verification of the checks that **cannot** be run before release. Run against **prod**, in throwaway prod test barns seeded for the purpose.
+
+**When to run it** — [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md) is the invocation point:
+
+- **Release:** once the release merge has deployed and **before** the `vN.0.0` tag is cut. This is the release's production smoke test, and the tag waits on it.
+- **Patch:** **after** the `vN.0.x` tag, since a patch auto-tags on merge and so has no pre-tag window.
 
 Everything else lives in [`PRE_RELEASE_TEST_CHECKLIST.md`](PRE_RELEASE_TEST_CHECKLIST.md). A check belongs here only if no local or Vercel-preview setup can produce it — Vercel preview auth-gates non-team viewers, localhost isn't reachable off-machine, and a second personal Google account isn't a genuinely different user. A check that only needs a *fresh or unauthenticated* session is **not** one of these: incognito covers that, and those stay in PRE.
 

@@ -54,7 +54,7 @@ A checklist note that asserts a capability *doesn't exist yet* — "until #N lan
 
 ## Post-Release Checklist
 
-`POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod, after the release tag is cut. It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of these bars:
+`POST_RELEASE_TEST_CHECKLIST.md` (repo root) holds the checks that can only be run against prod — run once the release merge has deployed and before the `vN.0.0` tag is cut (see [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md)). It is the exception, not the default — a check goes there instead of `PRE_RELEASE_TEST_CHECKLIST.md` only if it clears one of these bars:
 
 - **Cross-identity flows** — needs a genuinely separate real person: invite/claim by someone else, cross-user notification delivery, or a self-write by a claimed member who isn't you (`change-user.sh` never links `profiles.user_id`, so locally your own account is the only self-write you can test). A *fresh or unauthenticated* session does **not** clear this bar; incognito covers that locally, so those stay in PRE
 - **Auth/session behavior** only prod's real OAuth configuration exercises
@@ -98,12 +98,8 @@ Placement rules:
 - Features branch off `release/release-N`
 - Feature PRs target the release branch
 - Release merges to `main` via **merge commit only** — never squash or rebase; the release branch is deleted after merge, so squashing would destroy history
-- After integration-bug fixes land and before the release ceremony (tag + branch cleanup + cut next release branch): **migration refactor** — squash whatever migrations the release branch has accumulated since the last squash into a clean consolidated set (mirrors #657/#658), so they merge to `main` already clean instead of carrying iterative "add → fix → fix again" history forward indefinitely
-- `CHANGELOG.md`'s new-version entry and the full documentation review (`ARCHITECTURE.md`/`docs/architecture/*.md`/`README.md`/`USER_GUIDE_*.md`/`PRE_RELEASE_TEST_CHECKLIST.md` cross-checked against the release's closed issues) both land on the release branch **before** the merge-to-main step, as their own PRs — not as separate post-merge follow-ups. Both then ride into `main` on the release's own merge commit (mirrors #978/#979 for release-3)
-- `vN.0.0` tag is created at the merge commit on `main`
-- Release branch is deleted after the tag is confirmed
-- `release/release-(N+1)` is cut from the new `main` HEAD immediately after merge
-- `patch-N` label is created (N = the just-released series) so patches can be tied to that release
+
+Everything from the pre-release checklist audit through cutting the next release branch is an ordered runbook: [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md). Follow it there — don't restate its steps here.
 
 ## Patch Workflow
 
@@ -112,9 +108,8 @@ Patches land on `main` without waiting for the next release.
 - Patches branch off `main` HEAD (same branch naming as features: `{issue-number}-{slug}`)
 - PRs use the `patch-N` label (N = the release series being patched, e.g. `patch-2` for v2.0.0)
 - PRs target `main` directly
-- After merge, tag is auto-incremented: `vN.0.1`, `vN.0.2`, etc.
-- `CHANGELOG.md` is updated at tag time (same as release ceremony)
-- `release/release-(N+1)` is rebased onto the new `main` HEAD after merge so it picks up the patch
+
+Close-out — tagging, `CHANGELOG.md`, picking the patch up on the next release branch, and when to run the post-release checklist — is [`RELEASE_CEREMONY.md`](RELEASE_CEREMONY.md)'s Patches section.
 
 ## Workflow Skills
 
