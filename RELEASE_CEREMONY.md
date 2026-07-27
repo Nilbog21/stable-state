@@ -45,7 +45,8 @@ Acceptance criteria to paste into that issue:
 ### 3. Run `PRE_RELEASE_TEST_CHECKLIST.md`
 
 - [ ] The checklist is run end to end against dev or a Vercel preview
-- [ ] Everything it finds is fixed on `release/release-N` — issue → branch → PR, as normal. These are not "integration bugs"; they're ordinary release work, found before the merge where they're cheap
+- [ ] Everything it finds is written up as an issue labeled `release-N`. These are not "integration bugs"; they're ordinary release work, found before the merge where they're cheap
+- [ ] Every one of those issues is worked to merge on `release/release-N` — issue → branch → PR, as normal — **before moving to step 4**. Do not carry findings forward as open work: step 4's squash gate is "zero open `release-N` issues touching `supabase/migrations/**`", and a fix that needs a migration has to land before the squash starts or it gets folded in by hand afterwards
 - [ ] Note any follow-on checklist edits the run itself surfaces (a step that was wrong, ambiguous, or missing) — step 6's documentation review lands them
 
 ### 4. Squash the release's migrations
