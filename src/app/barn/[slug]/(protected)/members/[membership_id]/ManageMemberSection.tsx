@@ -11,6 +11,7 @@ interface Props {
 
 export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Props) {
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Revoke regenerates the invite token server-side; Copy Invite must never read the
@@ -36,13 +37,18 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
     }
   }, [])
 
+  // The invite URL is never rendered, so a failed write leaves nothing to fall back on and
+  // has to say so: writeText needs a secure context, so it does fail when hitting the dev
+  // server over LAN HTTP from a phone. Same reasoning as CalendarFeedSection (#1116).
   async function handleCopy() {
     const url = `${window.location.origin}/barn/${barnSlug}/register?token=${inviteToken}`
     try {
       await navigator.clipboard.writeText(url)
     } catch {
+      setError('Could not copy the invite link. Please try again.')
       return
     }
+    setError(null)
     setCopied(true)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setCopied(false), 2000)
@@ -66,6 +72,7 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
           </Button>
         </form>
       </div>
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </section>
   )
 }
