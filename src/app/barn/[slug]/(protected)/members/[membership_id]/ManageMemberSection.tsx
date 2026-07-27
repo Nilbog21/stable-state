@@ -24,7 +24,9 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   // revoke is still in flight and about to supersede it.
   const [tokenBeforeRevoke, setTokenBeforeRevoke] = useState<string | null>(null)
   const [, formAction, pending] = useActionState(async () => {
-    // A copy failure describes the token being revoked here, so it can't outlive it.
+    // Revoke supersedes whatever the last copy attempt was for, so a stale failure
+    // shouldn't ride along into the new token's state. `error` has no auto-clear of
+    // its own (unlike `copied`'s 2s timer), so it has to be cleared explicitly.
     setError(null)
     setTokenBeforeRevoke(inviteToken)
     await revokeAction()
