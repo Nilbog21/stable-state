@@ -70,14 +70,23 @@ Then:
 
 ### 5. CHANGELOG entry
 
-Its own PR onto `release/release-N`, so it rides into `main` on the release's merge commit rather than trailing behind as a follow-up (mirrors #978).
+Its own issue and PR onto `release/release-N`, so it rides into `main` on the release's merge commit rather than trailing behind as a follow-up (mirrors #978).
+
+- [ ] An issue is filed, labeled `release-N`, titled something like "CHANGELOG entry for vN.0.0", with the bullet below as its acceptance criteria
+- [ ] It is worked through the normal pipeline and its PR is merged into `release/release-N`
+
+Acceptance criteria to paste into that issue:
 
 - [ ] `CHANGELOG.md` has a `## vN.0.0 — {Month YYYY}` section at the top, written for barn managers and riders: no jargon, no branch names, no issue numbers
-- [ ] It is merged into `release/release-N`
 
 ### 6. Documentation review
 
-Its own PR onto `release/release-N`, same reasoning (mirrors #979). A full per-file audit — per-issue doc updates during the release don't substitute for it, because what they miss is exactly what a cross-check catches.
+Its own issue and PR onto `release/release-N`, same reasoning (mirrors #979). A full per-file audit — per-issue doc updates during the release don't substitute for it, because what they miss is exactly what a cross-check catches. Like step 1, that's hours of mechanical cross-referencing rather than a checkbox you tick in passing.
+
+- [ ] An issue is filed, labeled `release-N`, titled something like "Documentation review for release N", with the six bullets below as its acceptance criteria
+- [ ] It is worked through the normal pipeline and its PR is merged into `release/release-N`
+
+Acceptance criteria to paste into that issue:
 
 - [ ] `ARCHITECTURE.md` and `docs/architecture/*.md` cross-checked against the release's closed issues
 - [ ] `README.md` cross-checked the same way
@@ -85,7 +94,6 @@ Its own PR onto `release/release-N`, same reasoning (mirrors #979). A full per-f
 - [ ] `PRIVACY_POLICY.md` reviewed if the release added personal/financial columns, a third party, or an export flow
 - [ ] The follow-on `PRE_RELEASE_TEST_CHECKLIST.md` edits noted while running it in step 3 are applied
 - [ ] Any `POST_RELEASE_TEST_CHECKLIST.md` additions identified during the release — a feature that clears one of that file's bars but never got a POST step at the time — are applied. Closeout runs POST as-is; this is the last chance to add to it
-- [ ] It is merged into `release/release-N`
 
 ### 7. Assert no migration files landed after the squash
 
