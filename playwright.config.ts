@@ -2,7 +2,17 @@ import { defineConfig, devices } from '@playwright/test';
 
 export default defineConfig({
   testDir: './e2e',
+  // *.spec.ts only. e2e/support holds vitest *.test.ts files for the pure fixture helpers,
+  // and Playwright's default testMatch would otherwise try to run them as browser tests.
+  testMatch: '**/*.spec.ts',
   globalSetup: './e2e/global-setup.ts',
+  // fullyParallel must stay false. Each spec file seeds its own barn (see e2e/support/test.ts),
+  // so isolation is per *file*; the tests inside a file share that barn and must run serially
+  // or a mutating test would race a reading one in the same file.
+  fullyParallel: false,
+  // retries must stay 0. A retry re-runs a mutating test against the state its first attempt
+  // already changed, so the second attempt asserts against a barn that no longer matches the
+  // fixture — a false pass or a misleading failure either way.
   retries: 0,
   use: {
     baseURL: process.env.E2E_BASE_URL,

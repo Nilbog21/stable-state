@@ -1,30 +1,44 @@
-import { test, expect, type Page } from '@playwright/test'
+import { test, expect, withBarn, type Page } from './support/test'
+import { addHorse, addPaidLesson, addTier, daysFromNow } from './support/fixtures'
 
-const barnSlug = process.env.TEST_BARN_SLUG!
+// One recent lesson enrolling the rider login — every role's lesson-detail assertion below
+// reads the first link on /lessons, and a rider only sees lessons they're enrolled in.
+const barn = withBarn('smoke', async ({ supabase, barn, members }) => {
+  const tier = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
+  const horse = await addHorse(supabase, barn.id, 'Apollo')
+  await addPaidLesson(supabase, barn, {
+    at: daysFromNow(-2),
+    instructorId: members.trainer.membershipId,
+    horseIds: [horse.id],
+    riderIds: [members.rider.membershipId],
+    fee: tier.price,
+    tierName: tier.name,
+  })
+})
 
 const STATIC_ROUTES: Record<string, string[]> = {
   manager: [
-    `/barn/${barnSlug}`,
-    `/barn/${barnSlug}/lessons`,
-    `/barn/${barnSlug}/lessons/new`,
-    `/barn/${barnSlug}/horses`,
-    `/barn/${barnSlug}/members`,
-    `/barn/${barnSlug}/finances`,
-    `/barn/${barnSlug}/settings`,
+    `/barn/${barn.slug}`,
+    `/barn/${barn.slug}/lessons`,
+    `/barn/${barn.slug}/lessons/new`,
+    `/barn/${barn.slug}/horses`,
+    `/barn/${barn.slug}/members`,
+    `/barn/${barn.slug}/finances`,
+    `/barn/${barn.slug}/settings`,
     `/profile`,
   ],
   trainer: [
-    `/barn/${barnSlug}`,
-    `/barn/${barnSlug}/lessons`,
-    `/barn/${barnSlug}/lessons/new`,
-    `/barn/${barnSlug}/horses`,
-    `/barn/${barnSlug}/members`,
+    `/barn/${barn.slug}`,
+    `/barn/${barn.slug}/lessons`,
+    `/barn/${barn.slug}/lessons/new`,
+    `/barn/${barn.slug}/horses`,
+    `/barn/${barn.slug}/members`,
     `/profile`,
   ],
   rider: [
-    `/barn/${barnSlug}`,
-    `/barn/${barnSlug}/lessons`,
-    `/barn/${barnSlug}/horses`,
+    `/barn/${barn.slug}`,
+    `/barn/${barn.slug}/lessons`,
+    `/barn/${barn.slug}/horses`,
     `/profile`,
   ],
 }
@@ -41,26 +55,29 @@ async function assertPageClean(page: Page, url: string) {
 
 for (const [role, routes] of Object.entries(STATIC_ROUTES)) {
   for (const route of routes) {
-    const name = `${role}_no_error_on_${route.replace(/^\//, '').replace(/[\/-]/g, '_')} @${role}`
+    // The slug is run-scoped, so it's stripped out of the test name — otherwise every run
+    // reports differently-named tests and --grep can't target one.
+    const label = route.replace(barn.slug, 'barn').replace(/^\//, '').replace(/[\/-]/g, '_')
+    const name = `${role}_no_error_on_${label} @${role}`
     test(name, async ({ page }) => {
       await assertPageClean(page, route)
     })
   }
 
   test(`${role}_no_error_on_lesson_detail @${role}`, async ({ page }) => {
-    await page.goto(`/barn/${barnSlug}/lessons`)
+    await page.goto(`/barn/${barn.slug}/lessons`)
     const firstLesson = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`).first()
     const href = await firstLesson.getAttribute('href')
-    if (!href) throw new Error(`no lesson link found on /barn/${barnSlug}/lessons — is seed data present?`)
+    if (!href) throw new Error(`no lesson link found on /barn/${barn.slug}/lessons — is seed data present?`)
     await assertPageClean(page, href)
   })
 
   if (role === 'manager') {
     test(`${role}_no_error_on_lesson_edit @${role}`, async ({ page }) => {
-      await page.goto(`/barn/${barnSlug}/lessons`)
+      await page.goto(`/barn/${barn.slug}/lessons`)
       const firstLesson = page.locator(`a[href*="/lessons/"]:not([href$="/new"])`).first()
       const href = await firstLesson.getAttribute('href')
-      if (!href) throw new Error(`no lesson link found on /barn/${barnSlug}/lessons — is seed data present?`)
+      if (!href) throw new Error(`no lesson link found on /barn/${barn.slug}/lessons — is seed data present?`)
       await assertPageClean(page, `${href}/edit`)
     })
   }

@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'url'
 import { mustSucceed, createServiceClient, teardownAllData, assertDevProject } from './script-utils'
+import { createE2eAuthUsers } from './e2e-auth-users'
+import { E2E_USERS } from '../e2e/support/fixtures'
 import {
   seedBarn,
   isGroupLesson,
@@ -36,6 +38,12 @@ async function run() {
 
   await teardownAllData(supabase)
 
+  // The checklist e2e suite's three logins are per project, not per barn, and the teardown
+  // above removes them along with everything else — so they're recreated here rather than by
+  // any barn seed.
+  console.log('Recreating e2e auth users…')
+  await createE2eAuthUsers(supabase)
+
   console.log('Re-seeding dev fixtures…')
 
   const now = new Date()
@@ -64,6 +72,7 @@ async function run() {
 
   console.log('Done. Dev database reset to known state:')
   console.log(`  Barn:     ${DEV_BARN_NAME} (slug: ${DEV_BARN_SLUG})`)
+  console.log(`  e2e logins: ${Object.values(E2E_USERS).map((u) => u.email).join(', ')} (checklist suite only — no Dev Barn membership)`)
   console.log(`  Manager2: ${DEV_MANAGER_2.email} (can_instruct=true — appears in instructor dropdown)`)
   console.log(`  Trainers: ${DEV_TRAINERS.map((t) => t.email).join(', ')}`)
   console.log(`  Riders:   ${DEV_RIDERS.map((r) => r.email).join(', ')} (${DEV_RIDERS[1].firstName} has a profile photo set)`)

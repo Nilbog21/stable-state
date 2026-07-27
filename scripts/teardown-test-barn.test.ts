@@ -1,27 +1,9 @@
 import { describe, it, expect, vi } from 'vitest'
-import { TEST_ROLES, teardown, teardownAllTestBarns } from './teardown-test-barn'
-
-describe('TEST_ROLES', () => {
-  it('should_include_manager', () => {
-    expect(TEST_ROLES).toContain('manager')
-  })
-
-  it('should_include_trainer', () => {
-    expect(TEST_ROLES).toContain('trainer')
-  })
-
-  it('should_include_rider', () => {
-    expect(TEST_ROLES).toContain('rider')
-  })
-
-  it('should_include_rider2', () => {
-    expect(TEST_ROLES).toContain('rider2')
-  })
-})
+import { teardown, teardownAllTestBarns, teardownTestBarnsByPrefix } from './teardown-test-barn'
 
 function chain(result: { data: unknown; error: unknown }) {
   const builder: Record<string, unknown> = {}
-  const methods = ['select', 'delete', 'eq', 'in']
+  const methods = ['select', 'delete', 'eq', 'in', 'like']
   for (const m of methods) builder[m] = vi.fn(() => builder)
   builder.maybeSingle = vi.fn(() => Promise.resolve(result))
   builder.then = (resolve: (v: unknown) => void) => resolve(result)
@@ -96,6 +78,26 @@ describe('teardownAllTestBarns', () => {
   it('should_return_empty_array_when_no_test_barns_exist', async () => {
     const client = buildClient({ barns: {}, testBarnSlugs: [] })
     const slugs = await teardownAllTestBarns(client)
+    expect(slugs).toEqual([])
+  })
+})
+
+describe('teardownTestBarnsByPrefix', () => {
+  it('should_tear_down_every_test_barn_the_prefix_query_returns', async () => {
+    const client = buildClient({
+      barns: {
+        'e2e-1-2-smoke': { id: 'b1', is_test_barn: true },
+        'e2e-1-2-dashboard': { id: 'b2', is_test_barn: true },
+      },
+      testBarnSlugs: ['e2e-1-2-smoke', 'e2e-1-2-dashboard'],
+    })
+    const slugs = await teardownTestBarnsByPrefix(client, 'e2e-1-2')
+    expect(slugs).toEqual(['e2e-1-2-smoke', 'e2e-1-2-dashboard'])
+  })
+
+  it('should_return_empty_array_when_no_barn_matches_the_prefix', async () => {
+    const client = buildClient({ barns: {}, testBarnSlugs: [] })
+    const slugs = await teardownTestBarnsByPrefix(client, 'e2e-9-9')
     expect(slugs).toEqual([])
   })
 })

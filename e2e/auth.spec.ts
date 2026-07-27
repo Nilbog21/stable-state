@@ -1,8 +1,8 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, withBarn } from './support/test'
 
-const barnSlug = process.env.TEST_BARN_SLUG!
+const barn = withBarn('auth')
 
 test('should_land_on_barn_dashboard_when_authenticated @manager @trainer @rider', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}`)
-  await expect(page).toHaveURL(new RegExp('/barn/' + barnSlug + '$'))
+  await page.goto(`/barn/${barn.slug}`)
+  await expect(page).toHaveURL(new RegExp('/barn/' + barn.slug + '$'))
 })

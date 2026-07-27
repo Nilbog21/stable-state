@@ -1,15 +1,22 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, withBarn } from './support/test'
 import { createClient } from '@supabase/supabase-js'
+import { addHorse, addTier, E2E_USERS, E2E_PASSWORD } from './support/fixtures'
 
-const barnSlug = process.env.TEST_BARN_SLUG!
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 if (!anonKey) throw new Error('NEXT_PUBLIC_SUPABASE_ANON_KEY is required')
 
+// The lesson form needs a horse to check and a default tier to price against; the rider it
+// selects is the `rider` login, whose profile name is fixed by E2E_USERS.
+const barn = withBarn('timezone', async ({ supabase, barn }) => {
+  await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
+  await addHorse(supabase, barn.id, 'Apollo')
+})
+
 test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @manager', async ({ page }) => {
-  // Chosen to land well outside seed-test-barn.ts's seeded lessons (past(10)..future(5)
-  // days), so the direct-read query below can't collide with fixture data.
+  // The barn is seeded with no lessons at all, so the direct-read query below can only match
+  // the one this test creates.
   const target = new Date()
   target.setDate(target.getDate() + 30)
   const year = target.getFullYear()
@@ -18,10 +25,10 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   const hour = 14 // 2:00 PM local
   const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
 
-  await page.goto(`/barn/${barnSlug}/lessons/new`)
+  await page.goto(`/barn/${barn.slug}/lessons/new`)
 
   await page.getByRole('checkbox', { name: 'Apollo' }).check()
-  await page.locator('#rider_id').selectOption({ label: 'Test Rider' })
+  await page.locator('#rider_id').selectOption({ label: `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}` })
   await page.locator('#dh-date').fill(dateStr)
   await page.locator('#dh-hour').selectOption(String(hour))
 
@@ -36,7 +43,7 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   // Next dev-mode compile pressure the full load event can lag well past the
   // redirect itself actually completing. 15s budget for the action's first,
   // uncompiled invocation.
-  await page.waitForURL(new RegExp(`/barn/${barnSlug}/lessons$`), { timeout: 15000, waitUntil: 'commit' })
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { timeout: 15000, waitUntil: 'commit' })
 
   // Mirrors DateHourPicker.tsx's own conversion — this checks the real
   // UI -> server action -> RPC -> storage pipeline against it, not a
@@ -48,22 +55,15 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
 
   const supabase = createClient(supabaseUrl, anonKey)
   const { error: authError } = await supabase.auth.signInWithPassword({
-    email: `manager@${barnSlug}.e2e`,
-    password: 'TestPass123!',
+    email: E2E_USERS.manager.email,
+    password: E2E_PASSWORD,
   })
   if (authError) throw authError
-
-  const { data: barn, error: barnError } = await supabase
-    .from('barns')
-    .select('id')
-    .eq('slug', barnSlug)
-    .single()
-  if (barnError) throw barnError
 
   const { data: lessons, error: lessonsError } = await supabase
     .from('lessons')
     .select('lesson_at')
-    .eq('barn_id', barn.id)
+    .eq('barn_id', barn.data.barn.id)
     .eq('lesson_at', expectedIso)
   if (lessonsError) throw lessonsError
 
