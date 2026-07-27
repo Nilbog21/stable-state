@@ -14,12 +14,12 @@ Stable State is a multi-tenant lesson-tracking application for equestrian barns.
 
 - Node 20+
 - A Supabase project (cloud) or the [Supabase CLI](https://supabase.com/docs/guides/cli) for local development
-- The Supabase CLI linked to the project you're targeting (`npx supabase link --project-ref <ref>`) — required by the migration scripts and by the `/sync-migrations` workflow skill
 
 Running the app needs only the above. The dev scripts in `scripts/` and the workflow skills in `.claude/commands/` additionally assume:
 
+- **The Supabase CLI linked to the project you're targeting** (`npx supabase link --project-ref <ref>`) — required by the migration scripts and by the `/sync-migrations` workflow skill.
 - **A POSIX shell** — Linux or macOS. On Windows, use WSL: `scripts/*.sh` are bash, and the skills background a dev server, write logs under `/tmp`, and kill process groups, none of which have a native Windows equivalent.
-- **GNU coreutils** — the skills use GNU-only flags (`date -d`, `sort -V`). On macOS either `brew install coreutils` or use the BSD equivalents noted inline in the skill text.
+- **GNU coreutils** — the skills use GNU-only flags (`date -d`, `sort -V`). `brew install coreutils` covers both on macOS; where a plain BSD equivalent exists the skill text notes it inline (`date`), and where none does (`sort -V`) coreutils is the only option.
 - **The [`gh` CLI](https://cli.github.com/), installed and authenticated** (`gh auth login`) — nearly every step of every workflow skill shells out to it for issues, PRs, labels, and checks.
 - **`jq`, `curl`, and `lsof`** — used for label lookups, dev-server readiness polling, and stopping a worktree's dev server respectively.
 
