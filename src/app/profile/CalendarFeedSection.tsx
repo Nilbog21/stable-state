@@ -48,6 +48,11 @@ export function CalendarFeedSection({ initialToken, getLinkAction, regenerateAct
     try {
       setToken(await regenerateAction())
     } catch {
+      // Nothing was superseded — hand the generation back so a copy still in flight is
+      // still allowed to report its own outcome. Safe to decrement rather than track a
+      // snapshot: both buttons are `pending`-disabled for the whole regenerate flight, so
+      // nothing else can bump concurrently.
+      copyGenerationRef.current -= 1
       setError('Could not regenerate your calendar link. Please try again.')
     } finally {
       setPending(false)
