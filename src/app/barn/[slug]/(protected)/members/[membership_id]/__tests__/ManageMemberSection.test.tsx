@@ -134,6 +134,24 @@ describe('ManageMemberSection', () => {
     expect(screen.queryByText(/could not copy the invite link/i)).toBeNull()
   })
 
+  it('should_clear_error_message_when_revoke_is_submitted', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      writable: true,
+      configurable: true,
+    })
+    render(<ManageMemberSection {...defaultProps} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/could not copy the invite link/i)).toBeNull()
+  })
+
   it('should_reset_timer_on_rapid_second_click', async () => {
     vi.useFakeTimers()
     render(<ManageMemberSection {...defaultProps} />)
