@@ -141,11 +141,15 @@ Stop. Do not proceed to Step 2 until the user confirms the sync is done and this
 
 ## Step 2 — Wait for CI and Vercel checks
 
-**Check for merge conflicts first:**
+Wait for CI in a single blocking call — do **not** poll `gh pr checks` yourself:
 ```
-gh pr view --json mergeable,mergeStateStatus
+cd {worktree-path} && bash scripts/workflow-ci-wait.sh {pr}
 ```
-If `mergeable` is `CONFLICTING`, no new workflow run will ever appear for the current head SHA — polling will time out looking like a stuck runner. Resolve the conflict inline rather than stopping and deferring to `/reviewIssue`:
+Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the script blocks for up to 5 minutes). The `cd` matters — the script resolves the repo from the working directory. It handles the merge-conflict check, the head-SHA cross-check against the real workflow runs, and the 5-minute cap internally, and prints exactly one verdict line (except on exit 4, which prints nothing — last branch below). Branch on that line:
+
+**`CI: pass`** — continue to Step 3.
+
+**`CI: conflict — rebase needed`** — no new workflow run will ever appear for the current head SHA while the PR is `CONFLICTING`, so this is not a stuck runner. Resolve the conflict inline rather than stopping and deferring to `/reviewIssue`:
 
 1. Confirm the worktree is clean (`git status`) before touching history.
 2. `git fetch origin {baseRefName}`, then `git rebase origin/{baseRefName}`.
@@ -157,36 +161,19 @@ If `mergeable` is `CONFLICTING`, no new workflow run will ever appear for the cu
 4. `git add` each resolved file, `git rebase --continue`, and repeat for any further conflicting commits in the series.
 5. Once the rebase finishes, run the affected test files and a full typecheck (`npx tsc --noEmit`) — a clean rebase can still hide a semantic conflict (e.g. two features editing the same function's behavior) that no `<<<<<<<` marker would catch.
 6. `git push --force-with-lease origin {headRefName}` (rebase rewrites history, so this is a real force-push — call it out to the user as such before running it, per the standing force-push safety norm).
-7. Re-check `gh pr view --json mergeable,mergeStateStatus` to confirm `MERGEABLE` before moving on to the CI-check polling below.
+7. Re-run the script to confirm the conflict is gone and to pick the CI wait back up.
 
 Only fall back to telling the user to resolve it themselves (e.g. via `/reviewIssue`) if the conflict is large/ambiguous enough that guessing intent would be reckless — a docs-table or generated-file conflict is normally safe to resolve inline; a genuine logic conflict between two features' behavior is not.
 
-Run:
-```
-gh pr checks {pr} --json name,state,required
-```
+**`CI: timeout after 5m — {checks}`** — a conflict can also appear mid-wait if the base branch moved, but the script re-checks `mergeable` on every poll, so a timeout here really is a slow or stuck runner. Stop, print which checks are still running, and tell the user to re-run `/finishIssue` when they complete.
 
-Poll every 30 seconds, up to 10 times (5-minute total timeout). On each poll:
+**`CI: fail — {checks}`** —
 
-- **Any required check still pending/in_progress:** wait 30 seconds and retry.
-- **All required checks settled:** proceed to evaluate results.
-- **Timeout reached with checks still pending:** re-check `gh pr view --json mergeable,mergeStateStatus` — a conflict can appear mid-poll if the base branch moved. If `CONFLICTING`, report that instead of a generic timeout. Otherwise stop and print which checks are still running. Tell the user to re-run `/finishIssue` when checks complete.
+> "The following checks did not pass: {list}. Fix these before merging."
 
-**Once all required checks have settled, evaluate:**
+Stop. Do not continue. (A `skipping` e2e check is *not* a failure — the script counts `SKIPPED` as passing, which is expected when the PR doesn't touch e2e-relevant paths.)
 
-If any required check has a non-success state (`failure`, `error`, `cancelled`, `action_required`, `timed_out`):
-
-> "The following required checks did not pass: {list}. Fix these before merging."
-
-Stop. Do not continue.
-
-If any optional (non-required) check has a non-success state:
-
-> "Warning: the following optional checks did not pass: {list}. Continue anyway? (yes/no)"
-
-Wait for confirmation. If no, stop. **Exception:** an `e2e` check in `skipping` state does not need this prompt — it's expected when the PR doesn't touch e2e-relevant paths; treat it as passing and continue without asking.
-
-Once all required checks pass (and any optional warnings are acknowledged), continue.
+**No verdict line at all (exit 4)** — the script's own `gh` or `jq` call failed (network blip, rate limit, expired auth), not CI. Silence is never a pass, and hand-polling `gh pr checks` is not the fallback — that's the loop this script exists to replace. Re-run the script once; if it exits silently again, stop and ask the user to check `gh auth status` and their network. Never merge without a `CI: pass`.
 
 ---
 

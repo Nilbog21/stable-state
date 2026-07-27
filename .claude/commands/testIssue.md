@@ -104,7 +104,11 @@ curl -sf http://localhost:{port} -o /dev/null
 ```
 cd {worktree-path} && npm run dev -- -p {port} > /tmp/testissue-{worktree}.log 2>&1 &
 ```
-Poll `curl -sf http://localhost:{port} -o /dev/null` every 2 seconds, up to 30 times (1-minute timeout). If it never responds, print the tail of `/tmp/testissue-{worktree}.log` and **stop**.
+Then wait for it in one blocking call rather than polling yourself:
+```
+timeout 60 bash -c 'until curl -sf http://localhost:{port} -o /dev/null; do sleep 2; done'
+```
+If that exits non-zero (the server never came up within a minute), print the tail of `/tmp/testissue-{worktree}.log` and **stop**.
 
 (Nice-to-have, not built: the browser tab title reflecting the worktree, e.g. "test-alpha" — `next dev` has no flag for this since it's the page's own `<title>` metadata, not a server option. Would need a small conditional in the root layout keyed off an env var if ever wanted.)
 
