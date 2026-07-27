@@ -1,11 +1,13 @@
 #!/usr/bin/env bash
 # Blocking CI gate for /reviewIssue and /finishIssue (#1117). Polls internally
-# and prints exactly one verdict line:
-#   0  CI: pass                                (nothing else on this path)
-#   1  CI: fail — {names}
-#   2  CI: conflict — rebase needed
-#   3  CI: timeout after {N}m — {pending names}
-#   4  a gh call itself failed
+# and exits with exactly one of:
+#   0  prints "CI: pass"                       (nothing else on this path)
+#   1  prints "CI: fail — {names}"
+#   2  prints "CI: conflict — rebase needed"
+#   3  prints "CI: timeout after {N}m — {pending names}"
+#   4  prints NOTHING — a gh call or the jq verdict computation failed
+# Omitting <pr> also exits 1, via the ${1:?} expansion below, printing a usage
+# line to stderr rather than a verdict — callers always pass one.
 set -uo pipefail
 
 PR="${1:?usage: workflow-ci-wait.sh <pr-number> [timeout-minutes]}"
@@ -21,7 +23,11 @@ deadline=$(( SECONDS + TIMEOUT_MIN * 60 ))
 while :; do
   pr_json=$(gh pr view "$PR" --json mergeable,headRefOid,statusCheckRollup) || exit 4
 
-  if [ "$(jq -r .mergeable <<<"$pr_json")" = "CONFLICTING" ]; then
+  # -e so a null/absent field or unparseable payload exits 4 rather than
+  # sailing on: an empty $sha below makes gh return the *entire* repo's run
+  # history unfiltered, which would then be scored as this PR's checks.
+  mergeable=$(jq -er .mergeable <<<"$pr_json") || exit 4
+  if [ "$mergeable" = "CONFLICTING" ]; then
     echo "CI: conflict — rebase needed"
     exit 2
   fi
@@ -29,12 +35,14 @@ while :; do
   # Cross-check the rollup against the real workflow runs for this exact SHA on
   # every poll, not once — the rollup lags for a minute or two after a push and
   # can briefly show only an unrelated passing check.
-  sha=$(jq -r .headRefOid <<<"$pr_json")
+  sha=$(jq -er .headRefOid <<<"$pr_json") || exit 4
   runs_json=$(gh api "repos/{owner}/{repo}/actions/runs?head_sha=$sha") || exit 4
 
   status=$(jq -rn --argjson pr "$pr_json" --argjson runs "$runs_json" '
+    # EXPECTED means "not reported yet" on the legacy commit-status API —
+    # unreachable while every check is CheckRun-typed, but pending, not failed.
     def verdict($n; $s; $c):
-      if $s != "COMPLETED" or $c == "PENDING" then "PENDING\t\($n)"
+      if $s != "COMPLETED" or (["PENDING","EXPECTED"] | index($c)) then "PENDING\t\($n)"
       elif ["SUCCESS","SKIPPED","NEUTRAL"] | index($c) then empty
       else "FAIL\t\($n)" end;
     ( $pr.statusCheckRollup[]?

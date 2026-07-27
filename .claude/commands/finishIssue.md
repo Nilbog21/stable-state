@@ -145,7 +145,7 @@ Wait for CI in a single blocking call — do **not** poll `gh pr checks` yoursel
 ```
 cd {worktree-path} && bash scripts/workflow-ci-wait.sh {pr}
 ```
-Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the script blocks for up to 5 minutes). The `cd` matters — the script resolves the repo from the working directory. It handles the merge-conflict check, the head-SHA cross-check against the real workflow runs, and the 5-minute cap internally, and prints exactly one verdict line. Branch on that line:
+Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the script blocks for up to 5 minutes). The `cd` matters — the script resolves the repo from the working directory. It handles the merge-conflict check, the head-SHA cross-check against the real workflow runs, and the 5-minute cap internally, and prints exactly one verdict line (except on exit 4, which prints nothing — last branch below). Branch on that line:
 
 **`CI: pass`** — continue to Step 3.
 
@@ -172,6 +172,8 @@ Only fall back to telling the user to resolve it themselves (e.g. via `/reviewIs
 > "The following checks did not pass: {list}. Fix these before merging."
 
 Stop. Do not continue. (A `skipping` e2e check is *not* a failure — the script counts `SKIPPED` as passing, which is expected when the PR doesn't touch e2e-relevant paths.)
+
+**No verdict line at all (exit 4)** — the script's own `gh` or `jq` call failed (network blip, rate limit, expired auth), not CI. Silence is never a pass, and hand-polling `gh pr checks` is not the fallback — that's the loop this script exists to replace. Re-run the script once; if it exits silently again, stop and ask the user to check `gh auth status` and their network. Never merge without a `CI: pass`.
 
 ---
 

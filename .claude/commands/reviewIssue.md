@@ -69,7 +69,7 @@ Wait for CI in a single blocking call — do **not** poll `gh pr checks` yoursel
 ```
 cd {worktree-path} && bash scripts/workflow-ci-wait.sh {pr}
 ```
-Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the script blocks for up to 5 minutes). The `cd` matters — the script resolves the repo from the working directory. It handles the merge-conflict case, the `gh pr checks`-lags-real-CI-state case, and the 5-minute cap internally, and prints exactly one verdict line. Branch on that line:
+Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the script blocks for up to 5 minutes). The `cd` matters — the script resolves the repo from the working directory. It handles the merge-conflict case, the `gh pr checks`-lags-real-CI-state case, and the 5-minute cap internally, and prints exactly one verdict line (except on exit 4, which prints nothing — last branch below). Branch on that line:
 
 **`CI: pass`** — proceed directly to the review, do not ask for confirmation.
 
@@ -78,6 +78,8 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 **`CI: timeout after 5m — {checks}`** — stop and ask the user: "CI hasn't completed after 5 minutes — could you check the Actions tab / PR checks and let me know what's going on? (e.g. stuck runner, workflow didn't trigger, etc.)" Wait for their answer before re-running the script or taking further action.
 
 **`CI: fail — {checks}`** — handle per check below.
+
+**No verdict line at all (exit 4)** — the script's own `gh` or `jq` call failed (network blip, rate limit, expired auth), not CI. Silence is never a pass, and hand-polling `gh pr checks` is not the fallback — that's the loop this script exists to replace. Re-run the script once; if it exits silently again, stop and ask the user to check `gh auth status` and their network.
 
 **If the Vercel check failed:** Do NOT attempt `npx vercel inspect` or `npx vercel logs` — the Vercel CLI is not available. Instead:
 1. Run `npm run build` locally to check for TypeScript/build errors. If errors are found, fix them, commit, push, and re-run the script.
