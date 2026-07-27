@@ -140,4 +140,6 @@ The main sequence, one issue from selection to merge:
 
 Adjuncts: `/grillMe` (interview a plan or a work log's findings to shared understanding — the only path from a finding to a filed GitHub issue), `/backlogReview` (triage after a batch issue dump), `/estimateRelease` (velocity and cut planning), `/sync-migrations` (rename and push pending Supabase migrations).
 
+All five main-sequence skills open by running `scripts/workflow-context.sh` (#1118), which owns the worktree→port map and the label→base-branch rule and prints them as `key=value` lines — those two rules were previously restated in each skill, and had already diverged. See `scripts/CLAUDE.md` for the emitted keys.
+
 `specs/` is per-developer scratch, gitignored and never committed — the skills create and consume it. It holds `issue-{N}.md` work logs (status marker, log, accepted deviations, open items, follow-ups) that carry state between skills within one developer's session chain, and `batch_{release-label}.md`. It is **not** shared state: another developer's clone has a different `specs/`, or none, and deleting it loses nothing but in-flight session bookkeeping.
