@@ -84,7 +84,7 @@ Ask: "Shall I proceed with this plan, or are there items you want to skip or mod
 
 After the user confirms, implement each item in plan order using `gh` CLI commands:
 
-- **Body edits:** `gh api repos/OWNER/REPO/issues/N -X PATCH -f body="..."` (not `gh issue edit` — silent deprecation failures)
+- **Body edits:** `gh api repos/{owner}/{repo}/issues/N -X PATCH -f body="..."` (not `gh issue edit` — silent deprecation failures). Derive `{owner}` and `{repo}` from `gh repo view --json owner,name`.
 - **New issues:** `gh issue create`
 - **Label changes:** `gh issue edit --add-label` or `--remove-label`
 - **Close with comment:** post the comment first, then close

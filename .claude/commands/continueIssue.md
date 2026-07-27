@@ -7,6 +7,9 @@ You are determining the next step in an issue's `/beginIssue` → `/reviewIssue`
 ## Step 0 — Detect worktree, branch, and issue
 
 **Detect worktree:**
+
+This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
+
 Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
 
 If not inside one of these worktrees, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer.

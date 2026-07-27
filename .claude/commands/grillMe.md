@@ -5,6 +5,8 @@ description: Interview the user relentlessly about a plan or design until reachi
 
 > **Recommended model: Opus** (Fable for a genuinely hard architecture call). The quality of the interrogation *is* the deliverable; there is no later step that catches a shallow one. Set with `/model` before invoking.
 
+This skill is written in the first person: "me"/"I"/"my" throughout means the developer who invoked it, and "you" means Claude.
+
 **Special mode — filing follow-ups from a work log:** if invoked with a `specs/issue-*.md` path as an argument (e.g. `/grillMe specs/issue-42.md`), skip everything below down through the choice-of-session-type question and go straight to the interview:
 
 - Skip **Branch setup** entirely — this mode never touches project files besides the spec file itself (which is gitignored scratch, not tracked by git), so there's no branch to protect.

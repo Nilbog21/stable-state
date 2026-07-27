@@ -7,6 +7,9 @@ You are reviewing a pull request for a completed `/beginIssue` session. This ski
 ## Step 0 — Worktree and issue detection
 
 **Detect worktree:**
+
+This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
+
 Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
 
 If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.

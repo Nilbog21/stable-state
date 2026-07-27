@@ -7,6 +7,9 @@ You are finishing a completed issue: merging its PR, deleting the branch, and cl
 ## Step 0 — Detect worktree and issue
 
 **Detect worktree:**
+
+This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
+
 Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
 
 If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.
@@ -43,6 +46,8 @@ Wait for confirmation. If no, stop — tell the user to run `/beginIssue {N}` to
 ---
 
 ## Known friction: Auto Mode classifier blocks on Step 4 / Step 5
+
+Auto Mode is a Claude Code harness setting that auto-approves tool calls a safety classifier judges routine, rather than prompting a human for each one. It is not project tooling, and nothing in this repo configures it — but it interacts badly with how this workflow reviews PRs, as follows.
 
 `/reviewIssue` and `/testIssue` never post an actual GitHub PR review (no `gh pr review` call anywhere in either skill) — they do a real review (multi-agent audit, acceptance-criteria walkthrough) entirely inside the session, so every PR this skill merges has zero native review evidence (`reviews: []`, empty `reviewDecision`), and the PR author and the account doing the merge are the same GitHub identity. When Auto Mode is active, its classifier can intermittently (confirmed non-deterministic — same repo state, different verdict run to run) block the Step 4 merge or the Step 5 issue-close, citing "merge without review."
 
@@ -236,6 +241,7 @@ If the issue does **not** have a `patch-N` label, skip this step entirely and go
    git fetch --tags
    git tag --list "v{N}.0.*" | sort -V | tail -1
    ```
+   (`sort -V` is a GNU coreutils flag — see README.md's Prerequisites.)
    Increment the patch number by 1 (e.g. `v3.0.0` → `v3.0.1`). Call this `{new-tag}`.
 
 2. **Pull main.** Operate from the repo root (not the worktree) for the post-merge steps:
@@ -323,7 +329,7 @@ This is a targeted, O(1) update — it only touches entries that referenced #{N}
 
 ## Step 6 — Stop the worktree's dev server
 
-Each worktree runs its dev server on a fixed port: alpha=3001, beta=3002, gamma=3003, delta=3004, epsilon=3005.
+Each worktree runs its dev server on a fixed port: alpha=3001, beta=3002, gamma=3003, delta=3004, epsilon=3005 (canonical list: README.md's "Development worktrees" section).
 
 ```
 PID=$(lsof -ti:{port} -sTCP:LISTEN | head -1)

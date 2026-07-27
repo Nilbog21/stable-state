@@ -5,6 +5,9 @@ You are helping the user pick the next GitHub issue to work on and begin impleme
 ## Step 0 — Check worktree and issue
 
 **Detect worktree first:**
+
+This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
+
 - Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree and skip any worktree prompt later.
 - Otherwise, note that worktree selection is pending (will happen after issue confirmation).
 
@@ -256,6 +259,6 @@ After plan approval, do the following in order:
 
 **Append to the work log:** append `- {date} {time} — /beginIssue: plan approved, PR #{pr} opened.` to `specs/issue-{N}.md`'s `## Log`. `specs/` is gitignored, so this is just a file write — no git add/commit. Status marker stays `in-progress`.
 
-**Never push Supabase migrations.** Do not run `npx supabase db push`, `supabase db push`, or `/sync-migrations` at any point. The user will review and push migrations manually.
+**Never push Supabase migrations.** Do not run `npx supabase db push`, `supabase db push`, or `/sync-migrations` at any point. The developer running this skill reviews and pushes migrations by hand, in a separate step.
 
 **Migration file naming:** Use `date +%Y%m%d00%M%S` for the timestamp prefix (real minutes+seconds, HH fixed to `00`). Never use a sequential counter.

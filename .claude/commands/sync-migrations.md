@@ -44,7 +44,7 @@ Check Supabase migration status, rename pending migrations to the current timest
    - Get the current epoch seconds: `date +%s`
    - Sort the pending migrations by their current filename (ascending)
    - For the first migration, use epoch seconds as-is; for each subsequent one, add 1 second
-   - Format each timestamp in UTC (existing migration filenames are UTC-based): `date -u -d @{epoch} +%Y%m%d%H%M%S`
+   - Format each timestamp in UTC (existing migration filenames are UTC-based): `date -u -d @{epoch} +%Y%m%d%H%M%S` — this is GNU date; the BSD/macOS equivalent is `date -u -r {epoch} +%Y%m%d%H%M%S`
    - Rename: `mv supabase/migrations/{old} supabase/migrations/{new_timestamp}_{rest_of_name}`
 
 6. Display the planned renames clearly:
@@ -57,4 +57,4 @@ Check Supabase migration status, rename pending migrations to the current timest
 7. Ask: **"Type 'sync' to push these migrations to remote, or anything else to abort:"**
 
 8. If the user types `sync`, run `npx supabase db push`.
-   Otherwise abort — do not undo the renames (the user should commit or revert manually).
+   Otherwise abort — do not undo the renames; leave them in the working tree for the developer running this skill to commit or revert by hand.
