@@ -3,7 +3,7 @@
 The ordered runbook for shipping a release. Two parts, run in order:
 
 - **Part 1 — Wrapup** happens on `release/release-N`, before the merge to `main`.
-- **Part 2 — Closeout** happens on `main` and against **prod**, and ends with the `vN.0.0` tag and the next release branch.
+- **Part 2 — Closeout** happens against **prod** and then on `main`, and ends with the `vN.0.0` tag and the next release branch.
 
 Tick through it. Do not reorder — several steps exist only because doing them out of order has broken prod before (migrations pushed after the code deploy, a squash landing while another PR still had a migration in flight).
 
@@ -30,8 +30,10 @@ The checklist is only as good as its last update, and a release's worth of PRs i
 
 `POST_RELEASE_TEST_CHECKLIST.md`'s cross-identity checks need a genuinely different human, with their own Google account, on their own device, reachable while you run it. That is a scheduling dependency, not a task — arrange it days ahead, not on the day.
 
-- [ ] A second person is confirmed for a specific window, and that window is after the merge deploys
-- [ ] They know they'll need to sign in with their own Google account and stay reachable by call or chat for the duration
+- [ ] A second person is confirmed for a specific window
+- [ ] That window falls after the merge deploys
+- [ ] They know they'll need to sign in with their own Google account
+- [ ] They know to stay reachable by call or chat for the duration
 
 ### 3. Run `PRE_RELEASE_TEST_CHECKLIST.md`
 
@@ -96,7 +98,9 @@ Its own PR onto `release/release-N`, same reasoning (mirrors #979). A full per-f
 
 ## Part 2 — Closeout
 
-On `main` and against prod. Migrations first, then code, then POST, then the tag.
+Against prod, and then on `main` from step 3 onwards. Migrations first, then code, then POST, then the tag.
+
+Steps 1–2 run **from a `release/release-N` checkout**, not `main` — the consolidated migration files don't reach `main` until step 3 merges them. Run them from `main` and `supabase db push` finds nothing to push while every check in this step still reports success.
 
 ### 1. Link the Supabase CLI to prod
 
@@ -107,20 +111,28 @@ On `main` and against prod. Migrations first, then code, then POST, then the tag
 
 Code that expects a column the prod database doesn't have yet is a live outage. Migrations land first, always. This is the step that isn't in the old prose and is the one that bit us.
 
-**Post-squash reconciliation.** Wrapup step 4 rewrote migration history, but prod's `supabase_migrations` table still lists the pre-squash versions. Left alone, the CLI sees the archived files as *missing* and the new consolidated files as *pending*, and tries to replay history that is already live. Reconcile first:
+**Why by hand, when `Migrate` exists.** The `Migrate` workflow (`.github/workflows/migrate.yml`) already runs `supabase db push` against prod on every push to `main`, so step 3's merge would migrate prod on its own. It is not enough: Vercel deploys `main` through its own Git integration (`vercel.json`), outside GitHub Actions, so the merge fires both systems at once and nothing sequences them. Pushing here makes the ordering deterministic and leaves `Migrate` a no-op. Don't delete this step as redundant — it stops being necessary only once Vercel's `main` deploy is triggered *by* `Migrate` rather than alongside it.
 
-- [ ] Prod's migration list is compared against `supabase/migrations/` — archived versions still marked applied, consolidated versions not yet present
-- [ ] A reconciliation branch is prepared from `scripts/repair-migration-history.sh`. That script is **pinned to #657's baseline** — `APPLIED_VERSIONS` hardcodes the three `20260629004610/11/12` versions and `REVERTED_VERSIONS` derives from everything in `supabase/migrations_archive/`. Copy it and swap `APPLIED_VERSIONS` for this release's consolidated versions; the archive-derived revert list needs no change
-- [ ] It is run dry (the default) first, and the printed `migration repair` calls are read and match expectation
+**Post-squash reconciliation — only after a baseline-style squash, and before the push.** Skip this whole block unless Wrapup step 4 consolidated migrations that are **already applied on prod**. A normal release squash doesn't: the release's migrations reach prod for the first time in this very step, so prod's `supabase_migrations` table has never heard of them and there is nothing to reconcile. That held for both #658 and #972 — see `supabase/migrations_archive/README.md`. Only #657's from-scratch baseline, which re-expressed history that was already live, needed it.
+
+Reconciling when you didn't need to is worse than skipping it when you did: `supabase migration repair --status applied` writes bookkeeping and never runs SQL, so marking a release's brand-new consolidated versions "applied" turns both the push below and `Migrate` into no-ops, and prod silently never gets the schema.
+
+If the squash *did* re-express live history:
+
+- [ ] Prod's migration list still marks the archived versions applied
+- [ ] Prod's migration list does not yet contain the consolidated versions
+- [ ] A reconciliation branch is prepared from `scripts/repair-migration-history.sh`. That script is **pinned to #657's baseline** — `APPLIED_VERSIONS` hardcodes the three `20260629004610/11/12` versions and `REVERTED_VERSIONS` derives from everything in `supabase/migrations_archive/`. Copy it and swap `APPLIED_VERSIONS` for the consolidated versions that replaced the live ones; the archive-derived revert list needs no change. Its header comment describes #657's own post-merge run — the ordering here supersedes it
+- [ ] It is run dry (the default) first, and the printed `migration repair` calls match expectation
 - [ ] The `Migrate` GitHub Actions workflow is disabled so it cannot race the repair
 - [ ] The script is re-run with `--yes` and completes
-- [ ] `npx supabase migration list` afterwards shows the consolidated versions applied and nothing pending
+- [ ] `npx supabase migration list` afterwards shows the consolidated versions applied
+- [ ] `npx supabase migration list` afterwards shows nothing pending
 
 Then the push itself:
 
 - [ ] `npx supabase db push` — never with `--include-all`
 - [ ] `npx supabase migration list` shows nothing pending
-- [ ] The `Migrate` workflow is re-enabled
+- [ ] The `Migrate` workflow is re-enabled, if the reconciliation above disabled it
 
 ### 3. Merge the PR
 
@@ -148,7 +160,8 @@ Immediately after POST passes. The tag marks the release that shipped, so it goe
 
 - [ ] `git tag vN.0.0 <merge-commit-sha>` using the SHA from step 3
 - [ ] `git push origin vN.0.0`
-- [ ] The tag is visible on GitHub and points at the merge commit
+- [ ] The tag is visible on GitHub
+- [ ] It points at the merge commit
 
 ### 7. Delete `release/release-N`
 
@@ -175,5 +188,5 @@ Patches land on `main` without waiting for the next release.
 - Branch off `main` HEAD, named `{issue-number}-{slug}` like any feature branch
 - The PR carries the `patch-N` label and targets `main`
 - `/finishIssue`'s Step 4.5 handles the close-out automatically once the PR merges: it auto-increments the tag (`vN.0.1`, `vN.0.2`, …), adds the `CHANGELOG.md` entry at tag time, pushes the tag, and merges `main` into `release/release-(N+1)` so the next release picks the patch up
-- If the patch includes a migration, push it to prod before the merge deploys, exactly as in Closeout step 2 — minus the reconciliation, which only applies after a squash
+- If the patch includes a migration, push it to prod from the patch branch before merging, exactly as in Closeout step 2 — minus the reconciliation, which a patch never needs. `Migrate` would push it on merge anyway, but that races the Vercel deploy; pushing first makes the order deterministic
 - Run [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) **after** the `vN.0.x` tag, not before. Unlike a release, a patch auto-tags on merge, so there is no pre-tag window to run it in
