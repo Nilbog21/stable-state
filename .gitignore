@@ -39,6 +39,7 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 test.log
+checklist-suite.log
 
 # env files (can opt-in for committing if needed)
 .env*
