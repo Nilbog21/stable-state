@@ -12,6 +12,24 @@ function deferred<T>() {
   return { promise, resolve }
 }
 
+async function renderRegenerateThenCopy() {
+  render(
+    <CalendarFeedSection
+      initialToken="tok-abc"
+      getLinkAction={vi.fn()}
+      regenerateAction={vi.fn().mockResolvedValue('fresh-tok')}
+    />
+  )
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /regenerate/i }))
+    await Promise.resolve()
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }))
+    await Promise.resolve()
+  })
+}
+
 describe('CalendarFeedSection', () => {
   beforeEach(() => {
     Object.defineProperty(navigator, 'clipboard', {
@@ -42,14 +60,21 @@ describe('CalendarFeedSection', () => {
     expect(screen.queryByRole('button', { name: /get my calendar link/i })).toBeNull()
   })
 
-  it('should_show_url_containing_token_when_initial_token_present', () => {
+  it('should_show_copy_link_button_when_initial_token_present', () => {
     render(
       <CalendarFeedSection initialToken="tok-abc" getLinkAction={vi.fn()} regenerateAction={vi.fn()} />
     )
-    expect(screen.getByText(/\/calendar\.ics\?token=tok-abc/)).toBeDefined()
+    expect(screen.getByRole('button', { name: /^copy link$/i })).toBeDefined()
   })
 
-  it('should_reveal_url_after_clicking_get_link', async () => {
+  it('should_not_render_url_text_when_initial_token_present', () => {
+    render(
+      <CalendarFeedSection initialToken="tok-abc" getLinkAction={vi.fn()} regenerateAction={vi.fn()} />
+    )
+    expect(screen.queryByText(/\/calendar\.ics\?token=/)).toBeNull()
+  })
+
+  it('should_show_copy_link_button_after_clicking_get_link', async () => {
     const getLinkAction = vi.fn().mockResolvedValue('new-tok')
     render(
       <CalendarFeedSection initialToken={null} getLinkAction={getLinkAction} regenerateAction={vi.fn()} />
@@ -58,7 +83,7 @@ describe('CalendarFeedSection', () => {
       fireEvent.click(screen.getByRole('button', { name: /get my calendar link/i }))
       await Promise.resolve()
     })
-    expect(screen.getByText(/\/calendar\.ics\?token=new-tok/)).toBeDefined()
+    expect(screen.getByRole('button', { name: /^copy link$/i })).toBeDefined()
   })
 
   it('should_show_loading_state_while_getting_link', async () => {
@@ -134,17 +159,34 @@ describe('CalendarFeedSection', () => {
     expect(screen.queryByRole('button', { name: /^copied!$/i })).toBeNull()
   })
 
-  it('should_replace_url_after_regenerate', async () => {
-    const regenerateAction = vi.fn().mockResolvedValue('fresh-tok')
+  it('should_show_error_message_when_clipboard_write_fails', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      writable: true,
+      configurable: true,
+    })
     render(
-      <CalendarFeedSection initialToken="tok-abc" getLinkAction={vi.fn()} regenerateAction={regenerateAction} />
+      <CalendarFeedSection initialToken="tok-abc" getLinkAction={vi.fn()} regenerateAction={vi.fn()} />
     )
     await act(async () => {
-      fireEvent.click(screen.getByRole('button', { name: /regenerate/i }))
+      fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }))
       await Promise.resolve()
     })
-    expect(screen.getByText(/\/calendar\.ics\?token=fresh-tok/)).toBeDefined()
-    expect(screen.queryByText(/\/calendar\.ics\?token=tok-abc/)).toBeNull()
+    expect(screen.getByText(/could not copy your calendar link/i)).toBeDefined()
+  })
+
+  it('should_copy_new_token_after_regenerate', async () => {
+    await renderRegenerateThenCopy()
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith(
+      expect.stringContaining('/calendar.ics?token=fresh-tok')
+    )
+  })
+
+  it('should_not_copy_pre_regenerate_token', async () => {
+    await renderRegenerateThenCopy()
+    expect(navigator.clipboard.writeText).not.toHaveBeenCalledWith(
+      expect.stringContaining('/calendar.ics?token=tok-abc')
+    )
   })
 
   it('should_reset_timer_on_rapid_second_copy_click', async () => {
