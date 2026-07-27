@@ -30,6 +30,8 @@ Fetch the PR URL for the printouts below:
 gh pr view --json url -q .url
 ```
 
+**If `{base}` is `main` (a `patch-N` issue), say so before going further.** The shared dev Supabase project always sits at the *current release branch's* schema, never prod's — so a patch branch runs `main`'s code against migrations `main` has never seen, and fails locally for reasons that don't exist on prod (#1114 hit `42501` on `lesson_riders` from a release-4 column restriction the patch's code predates). Compare `mcp__supabase__list_migrations` against the branch's own `supabase/migrations/` and tell the user what's ahead. If the dev DB is ahead, a local walkthrough isn't a meaningful gate: the real verification is CI plus unit tests before merge, then a live check on prod once the tag deploys. Ask whether to continue locally anyway or skip straight to Step 5.
+
 **Kick off Step 4's analysis now, in parallel:** fetch `gh issue view {N} --json body` and `gh pr diff`, and derive the ordered acceptance-criteria verification-item list exactly as described in Step 4 below. Do this work alongside Steps 1–3 — it doesn't depend on the preview being live. Hold the result silently; nothing from this gets printed until Step 4 is reached. When Step 4 is reached, use this pre-derived list rather than re-fetching or re-deriving it.
 
 ---
@@ -79,6 +81,8 @@ Print, as an FYI — do not wait for a response, this doesn't gate the next step
 Optional: if you want a clean dev DB with fresh seed data before testing, run
 `bash scripts/reset-db.sh` in another terminal.
 ```
+
+**Print it — never run it via the Bash tool**, not even when an acceptance criterion says something like "`./scripts/reset-db.sh` runs to completion without error". It ends in a `read` prompt gating a manual step (opening a printed invite link to claim the manager account); with no TTY that prompt takes EOF, falls through to auto-invoking `change-user.sh`, and silently reassigns the dev user without anyone ever seeing the invite link. The same holds for `change-user.sh`/`seed-account.sh`, and for `.test.sh` files generally — those are the developer's to run. `scripts/run-checklist-suite.sh` is **not** in this class: it's a non-interactive e2e runner, fine to run directly via Bash (backgrounded, waiting on the process), except where Step 4 below explicitly says to print the command for the user instead.
 
 Continue immediately to Step 3.
 
@@ -151,6 +155,8 @@ For each item, one at a time:
 4. **If the user reports a problem:** first check they were actually looking at this worktree's server, *then* classify it.
 
    **Traffic check (do this first, before any diagnosis):** `tail -20 /tmp/testissue-{worktree}.log` and look for a request line matching the path you just asked them to visit. Next.js dev logs every request (`GET /barn/{slug}/... 200 in 123ms`). No matching hit means they're on a different port — several worktrees are typically running dev servers at once, and landing on the wrong `localhost:{port}` is a recurring cause of "it's not working". Say so plainly and re-print the correct URL rather than starting to debug the code. Don't wait for two or three confusing rounds to try this. (If the server was reused rather than started here, the log may be missing or stale — say the check was inconclusive and fall through to normal diagnosis.)
+
+   **Notification check?** If the item involves a notification whose recipient is someone *other* than the persona currently being impersonated, don't expect it in that person's bell at all — verify the row directly with `mcp__supabase__execute_sql` against `notifications` (correct `user_id`, title, body, link). `change-user.ts` keeps exactly one physical auth account: switching to a persona rewrites their `barn_memberships.user_id` to the shared dev user and reverts the previous persona to their own permanent `profiles.user_id`, so the recipient's row is permanently disconnected from the id the notification was keyed to the moment you switch to them. One persona always kicks the other out of the seat; this is not an app bug and shouldn't be debugged as one unless the DB row itself is wrong.
 
    **Classify minor vs. substantial** and state the classification with a one-line reason (e.g. "Minor — single existing assertion needs updating." / "Substantial — this needs new test coverage for a state transition that doesn't exist yet."). The user can override in the moment ("actually just fix it" / "actually defer that") — treat that as final.
 
