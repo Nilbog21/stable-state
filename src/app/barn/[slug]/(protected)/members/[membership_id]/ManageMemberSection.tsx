@@ -24,6 +24,8 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   // revoke is still in flight and about to supersede it.
   const [tokenBeforeRevoke, setTokenBeforeRevoke] = useState<string | null>(null)
   const [, formAction, pending] = useActionState(async () => {
+    // A copy failure describes the token being revoked here, so it can't outlive it.
+    setError(null)
     setTokenBeforeRevoke(inviteToken)
     await revokeAction()
     return null
