@@ -34,7 +34,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `DEV_EMAIL` | Reset script only | Your Google email — used by change-user.sh; must match the Google account you claim the seed invite with |
 | `DEV_NAME` | Reset script only | Your full name (first last) — split on first space for first/last name defaults in seed-account.sh |
 | `DEV_BARN` | Reset script only (optional) | Default barn slug for seed-account.sh (defaults to `dev-barn`) |
-| `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them. `seed-test-barn`, `teardown-test-barn`, and `change-user` accept a `--allow-prod` flag to deliberately bypass this check — see [Manual smoke-testing against a target project](#manual-smoke-testing-against-a-target-project) |
+| `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them. `seed-test-barn`, `teardown-test-barn`, and `change-user` accept a `--allow-prod` flag to deliberately bypass this check — see [Manual smoke-testing against a target project](#manual-smoke-testing-against-a-target-project). `run-checklist-suite` accepts the same flag with the same meaning, forwarding it to the `seed-test-barn`/`teardown-test-barn` calls it makes |
 
 ### Dev database reset
 
@@ -164,3 +164,34 @@ bash scripts/teardown-test-barn.sh --allow-prod --all
 
 This tears down every barn marked `is_test_barn` on the target project — still scoped
 by that same marker, never a blanket "every barn" wipe.
+
+### Running the checklist e2e suite against a target project
+
+`run-checklist-suite.sh` seeds its own throwaway barn, runs the Playwright checklist
+suite against it, and tears it back down. To point that whole cycle at a deployment
+instead of local dev, give it the origin and opt in with `--allow-prod`:
+
+```bash
+bash scripts/run-checklist-suite.sh --base-url https://<your-domain> --allow-prod --hold-open
+```
+
+`--allow-prod` means the same thing here as in the scripts above — it bypasses the
+`DEV_SUPABASE_URL` check — and is simply forwarded to the `seed-test-barn.sh` and
+`teardown-test-barn.sh` calls this script makes. Without it those calls stay fail-closed,
+so a run can only ever touch a non-dev project deliberately. It does require `--base-url`,
+since otherwise the run would seed the target project and then drive `localhost:3000`,
+which reads that same target-pointed `.env.local`.
+
+Note that `.env.local` is what selects the Supabase project — `--base-url` only says which
+origin to drive. Point `.env.local` at the target project before running, or the seeded
+barn and the login cookies land on a different backend than the one serving `--base-url`
+and every spec fails on auth.
+
+`--hold-open` prompts after the automated specs finish (pass or fail) and defers teardown
+until you press Enter, so you can work the manual checklist steps in that same seeded
+barn. Teardown still runs on Enter, on Ctrl-C, and on a failing suite. If the run is
+`SIGKILL`ed outright, the barn slug printed before Playwright starts is the name to hand
+to `teardown-test-barn.sh`.
+
+Other flags: `--interactive` for a headed run including `@visual` specs, and `--spec
+<path>` (repeatable) to scope the run to particular spec files instead of the full suite.
