@@ -175,6 +175,30 @@ describe('CalendarFeedSection', () => {
     expect(screen.getByText(/could not copy your calendar link/i)).toBeDefined()
   })
 
+  it('should_clear_copy_error_after_a_later_successful_copy', async () => {
+    const writeText = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('denied'))
+      .mockResolvedValueOnce(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      writable: true,
+      configurable: true,
+    })
+    render(
+      <CalendarFeedSection initialToken="tok-abc" getLinkAction={vi.fn()} regenerateAction={vi.fn()} />
+    )
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/could not copy your calendar link/i)).toBeNull()
+  })
+
   it('should_copy_new_token_after_regenerate', async () => {
     await renderRegenerateThenCopy()
     expect(navigator.clipboard.writeText).toHaveBeenCalledWith(

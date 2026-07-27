@@ -97,6 +97,43 @@ describe('ManageMemberSection', () => {
     expect(screen.queryByRole('button', { name: /^copied!$/i })).toBeNull()
   })
 
+  it('should_show_error_message_when_clipboard_write_fails', async () => {
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText: vi.fn().mockRejectedValue(new Error('denied')) },
+      writable: true,
+      configurable: true,
+    })
+    render(<ManageMemberSection {...defaultProps} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    expect(screen.getByText(/could not copy the invite link/i)).toBeDefined()
+  })
+
+  it('should_clear_error_message_after_a_later_successful_copy', async () => {
+    const writeText = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('denied'))
+      .mockResolvedValueOnce(undefined)
+    Object.defineProperty(navigator, 'clipboard', {
+      value: { writeText },
+      writable: true,
+      configurable: true,
+    })
+    render(<ManageMemberSection {...defaultProps} />)
+    const button = screen.getByRole('button', { name: /copy invite/i })
+    await act(async () => {
+      fireEvent.click(button)
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(button)
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/could not copy the invite link/i)).toBeNull()
+  })
+
   it('should_reset_timer_on_rapid_second_click', async () => {
     vi.useFakeTimers()
     render(<ManageMemberSection {...defaultProps} />)
