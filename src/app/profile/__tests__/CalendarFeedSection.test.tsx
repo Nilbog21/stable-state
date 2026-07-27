@@ -6,10 +6,40 @@ afterEach(cleanup)
 
 function deferred<T>() {
   let resolve!: (value: T) => void
-  const promise = new Promise<T>((r) => {
-    resolve = r
+  let reject!: (reason: Error) => void
+  const promise = new Promise<T>((res, rej) => {
+    resolve = res
+    reject = rej
   })
-  return { promise, resolve }
+  return { promise, resolve, reject }
+}
+
+function deferredWriteText() {
+  const { promise, resolve, reject } = deferred<void>()
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn(() => promise) },
+    writable: true,
+    configurable: true,
+  })
+  return { resolve, reject }
+}
+
+async function copyThenRegenerate() {
+  render(
+    <CalendarFeedSection
+      initialToken="tok-abc"
+      getLinkAction={vi.fn()}
+      regenerateAction={vi.fn().mockResolvedValue('fresh-tok')}
+    />
+  )
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /^copy link$/i }))
+    await Promise.resolve()
+  })
+  await act(async () => {
+    fireEvent.click(screen.getByRole('button', { name: /regenerate/i }))
+    await Promise.resolve()
+  })
 }
 
 async function renderRegenerateThenCopy() {
@@ -197,6 +227,26 @@ describe('CalendarFeedSection', () => {
       await Promise.resolve()
     })
     expect(screen.queryByText(/could not copy your calendar link/i)).toBeNull()
+  })
+
+  it('should_not_show_error_when_copy_fails_after_regenerate_started', async () => {
+    const settle = deferredWriteText()
+    await copyThenRegenerate()
+    await act(async () => {
+      settle.reject(new Error('denied'))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/could not copy your calendar link/i)).toBeNull()
+  })
+
+  it('should_not_show_copied_when_copy_settles_after_regenerate_started', async () => {
+    const settle = deferredWriteText()
+    await copyThenRegenerate()
+    await act(async () => {
+      settle.resolve()
+      await Promise.resolve()
+    })
+    expect(screen.queryByRole('button', { name: /^copied!$/i })).toBeNull()
   })
 
   it('should_copy_new_token_after_regenerate', async () => {

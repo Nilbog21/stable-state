@@ -19,6 +19,19 @@ function deferredRevoke() {
   return { revokeAction, resolve }
 }
 
+function deferredWriteText() {
+  let settle!: { resolve: () => void; reject: (reason: Error) => void }
+  const promise = new Promise<void>((resolve, reject) => {
+    settle = { resolve, reject }
+  })
+  Object.defineProperty(navigator, 'clipboard', {
+    value: { writeText: vi.fn(() => promise) },
+    writable: true,
+    configurable: true,
+  })
+  return settle
+}
+
 function isDisabled(name: RegExp) {
   return (screen.getByRole('button', { name }) as HTMLButtonElement).disabled
 }
@@ -160,6 +173,42 @@ describe('ManageMemberSection', () => {
     })
     await act(async () => {
       fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    expect(screen.queryByRole('button', { name: /^copied!$/i })).toBeNull()
+  })
+
+  it('should_not_show_error_when_copy_fails_after_revoke_submitted', async () => {
+    const settle = deferredWriteText()
+    render(<ManageMemberSection {...defaultProps} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      settle.reject(new Error('denied'))
+      await Promise.resolve()
+    })
+    expect(screen.queryByText(/could not copy the invite link/i)).toBeNull()
+  })
+
+  it('should_not_show_copied_when_copy_settles_after_revoke_submitted', async () => {
+    const settle = deferredWriteText()
+    render(<ManageMemberSection {...defaultProps} />)
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /copy invite/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /revoke/i }))
+      await Promise.resolve()
+    })
+    await act(async () => {
+      settle.resolve()
       await Promise.resolve()
     })
     expect(screen.queryByRole('button', { name: /^copied!$/i })).toBeNull()
