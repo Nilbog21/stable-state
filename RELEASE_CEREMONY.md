@@ -104,6 +104,7 @@ Steps 1–2 run **from a `release/release-N` checkout**, not `main` — the cons
 
 ### 1. Link the Supabase CLI to prod
 
+- [ ] Record the ref currently in `supabase/.temp/project-ref` — that's the dev project, and step 10 links back to it. The link is machine-local state, not a repo file, so nothing restores it for you
 - [ ] `npx supabase link --project-ref <prod-project-ref>` (the ref is the string in the dashboard URL, `https://supabase.com/dashboard/project/<project-ref>`)
 - [ ] `npx supabase migration list` — capture this before-snapshot. You need it to tell a successful push from a partial one
 
@@ -179,6 +180,15 @@ Immediately after POST passes. The tag marks the release that shipped, so it goe
 
 They are **not** `release-N`-labeled integration bugs, and they never hold the tag. The tag was cut in step 6 and stays where it is; a fix ships as `vN.0.1`.
 
+### 10. Relink the Supabase CLI to dev
+
+Step 1 pointed the CLI at prod and nothing points it back. Leave it there and the next routine `npx supabase db push` — or `/sync-migrations`, which runs one — pushes an unreviewed dev migration straight to production.
+
+- [ ] `npx supabase link --project-ref <dev-project-ref>`, using the ref recorded in step 1
+- [ ] `cat supabase/.temp/project-ref` shows the dev ref
+
+Prefer relinking over `npx supabase unlink`: unlinked, the next `db push` fails on a missing project rather than doing the wrong thing, but you'll be re-linking under time pressure at the worst moment instead of calmly here.
+
 ---
 
 ## Patches
@@ -188,5 +198,5 @@ Patches land on `main` without waiting for the next release.
 - Branch off `main` HEAD, named `{issue-number}-{slug}` like any feature branch
 - The PR carries the `patch-N` label and targets `main`
 - `/finishIssue`'s Step 4.5 handles the close-out automatically once the PR merges: it auto-increments the tag (`vN.0.1`, `vN.0.2`, …), adds the `CHANGELOG.md` entry at tag time, pushes the tag, and merges `main` into `release/release-(N+1)` so the next release picks the patch up
-- If the patch includes a migration, push it to prod from the patch branch before merging, exactly as in Closeout step 2 — minus the reconciliation, which a patch never needs. `Migrate` would push it on merge anyway, but that races the Vercel deploy; pushing first makes the order deterministic
+- If the patch includes a migration, push it to prod from the patch branch before merging, exactly as in Closeout step 2 — minus the reconciliation, which a patch never needs. `Migrate` would push it on merge anyway, but that races the Vercel deploy; pushing first makes the order deterministic. Relink to dev afterwards, as in Closeout step 10 — the hazard is the same here
 - Run [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) **after** the `vN.0.x` tag, not before. Unlike a release, a patch auto-tags on merge, so there is no pre-tag window to run it in
