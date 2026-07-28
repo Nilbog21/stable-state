@@ -10,6 +10,59 @@ npx tsx scripts/my-script.ts
 
 Each script's shell wrapper (`.sh`) validates required env vars from `.env.local`, then invokes tsx. The 4 nightly cron scripts (below) are the exception — they have no `.env.local`/interactive flow, so they share one wrapper, `run-cron.sh <script-name>`, and push env validation into the TS layer instead (see `runCronJob`).
 
+## Test assets
+
+`scripts/data/` is a normal tracked directory (#1135 — it was gitignored, so every developer hand-placed the two JPEGs into their own checkout and a fresh `reset-db` seeded no photos until they did). One shared set that `seed-barn.ts`, `seed-test-barn.ts`, the e2e suite, and a human walking `PRE_RELEASE_TEST_CHECKLIST.md` all draw from — add new fixtures here rather than force-adding them elsewhere.
+
+| File | Size | Role |
+|---|---|---|
+| `butter-photo.jpg` | ~8KB | seeded on Butter by `seed-barn.ts` |
+| `emery-photo.jpg` | ~8KB | seeded on Emery's profile by `seed-barn.ts` |
+| `clover-photo.png` | ~8KB | upload source — Clover is the horse with no photo seeded |
+| `harper-photo.png` | ~7KB | upload source — Harper Test is the managed rider the member-photo steps use |
+| `test_1_kb.pdf` | 1,024 B | default upload fixture; `seed-test-barn.ts` uploads it as Bella's past-due `insurance_binder` |
+| `test_4_4_mb.pdf` | 4,400,000 B | largest accepted upload — exercises the upload progress bar |
+| `test_4_6_mb.pdf` | 4,600,000 B | over `document-storage.ts`'s `MAX_FILE_SIZE` (4,500,000) — exercises the rejection path |
+
+Two JPEGs and two PNGs deliberately: the upload paths accept both (`PHOTO_EXTENSIONS` in `src/lib/db/document-storage.ts`), and the **Replace Photo** checklist steps need two *different* images on the same entity — upload the PNG, replace with the JPEG, and both formats are exercised without a fifth file.
+
+Each image is a 900×260 (deliberately non-square) black-on-white word bracketed by edge markers, `|------- butter -------|`. The checklist asserts an uploaded photo displays *"scaled to a fixed height with its aspect ratio preserved (not cropped to a square)"* — with edge bars, a square crop visibly eats them, so a regression is obvious instead of needing a proportion judgment. The word does the same job for the **Replace Photo** steps: the assertion is that the displayed word changes, not that "a new photo" appeared.
+
+Every `PRE_RELEASE_TEST_CHECKLIST.md` step that uploads a file names the specific asset it wants, so keep the two in sync when adding or renaming one. `POST_RELEASE_TEST_CHECKLIST.md`'s self-photo steps deliberately stay generic — they're performed by a second real person on their own device, who has no checkout.
+
+The PDFs are structurally valid, not zero-filled blobs. Nothing in the app reads the bytes (`validateFile` checks size, MIME type, and extension, never magic bytes), but the checklist opens an uploaded document via its signed URL, and a browser PDF viewer errors on a headerless blob — which reads as an app bug during a manual pass. A real header and object graph wrapping zero padding costs ~40 bytes and still deflates to a few KB, so the git pack barely grows; the multi-MB size is paid only in each working-tree checkout.
+
+There is no generator script — these files never change. `scripts/data.test.ts` asserts the manifest (presence, magic bytes, the 4.5 MB boundary) so a missing or mistyped asset fails in CI rather than in someone's clone. If `MAX_FILE_SIZE` ever moves, regenerate the two multi-MB PDFs with this recipe (the padding loop converges in 2–3 passes because changing the pad length also changes the `/Length` and `xref` digit counts):
+
+```python
+def build(title, pad):
+    content = b"BT /F1 24 Tf 72 700 Td (" + title.encode() + b") Tj ET\n%" + b"0" * pad + b"\n"
+    objs = [
+        b"<< /Type /Catalog /Pages 2 0 R >>",
+        b"<< /Type /Pages /Kids [3 0 R] /Count 1 >>",
+        b"<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R "
+        b"/Resources << /Font << /F1 5 0 R >> >> >>",
+        b"<< /Length %d >>\nstream\n" % len(content) + content + b"endstream",
+        b"<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>",
+    ]
+    out, offsets = b"%PDF-1.4\n", []
+    for i, body in enumerate(objs):
+        offsets.append(len(out))
+        out += b"%d 0 obj\n" % (i + 1) + body + b"\nendobj\n"
+    xref = len(out)
+    out += b"xref\n0 %d\n0000000000 65535 f \n" % (len(objs) + 1)
+    for off in offsets:
+        out += b"%010d 00000 n \n" % off
+    return out + b"trailer\n<< /Size %d /Root 1 0 R >>\nstartxref\n%d\n%%%%EOF\n" % (len(objs) + 1, xref)
+
+pad = 0
+while len(data := build("stable-state test fixture (4.4 MB)", pad)) != 4_400_000:
+    pad += 4_400_000 - len(data)
+open("scripts/data/test_4_4_mb.pdf", "wb").write(data)
+```
+
+Verify the result with `gs -q -dNOPAUSE -dBATCH -sDEVICE=nullpage scripts/data/*.pdf` — silent output means every PDF parses. The images come from Pillow: a 900×260 white canvas, `ImageFont.load_default(size=…)` grown until the bracketed text nearly fills the width, drawn centred with `anchor="mm"`.
+
 ## DB layer usage
 
 Scripts use db layer functions from `src/lib/db/` wherever an equivalent function exists. A service-role Supabase client is created in the script and injected into db layer calls via the optional `client` parameter added in issue #252:

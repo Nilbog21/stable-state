@@ -22,6 +22,8 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
 - [ ] Email provider enabled in the Supabase dashboard (required by the e2e auth logins `reset-db.sh` creates in Phase 1, which `seed-test-barn.sh` in Phase 7 then verifies exist)
 
+Every step below that uploads a file names one from `scripts/data/` (#1135 — a tracked directory, nothing to place by hand). The images are deliberately non-square and bracketed by `|------- word -------|` edge markers, so a square-crop regression visibly eats the bars instead of needing a proportion judgment, and the word tells you at a glance which file is displayed. See `scripts/CLAUDE.md`'s Test assets section for the full manifest.
+
 ## Phase 1 — Setup
 
 - [ ] Visit `/login` — a **Terms of Service** link is present
@@ -115,7 +117,7 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 
 - [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row is a normal card link to its member detail page, alongside an inline amber **Unlinked** badge next to the name (no Copy Invite/Revoke buttons on this list)
 - [ ] Open Gale Test's member detail page as manager — a **Manage Member** section appears right after the name with an amber notice and **Copy Invite**/**Revoke** buttons
-- [ ] While Gale Test is still unclaimed, upload a document on their detail page — confirms manager can upload/delete documents for a managed/unclaimed rider
+- [ ] While Gale Test is still unclaimed, upload `scripts/data/test_1_kb.pdf` on their detail page — confirms manager can upload/delete documents for a managed/unclaimed rider
 - [ ] Click **Copy Invite** on Gale Test's detail page → button briefly reads **Copied!** → the copied URL matches `/barn/dev-barn/register?token=<uuid>` (a well-formed UUID token)
 
 > Actually claiming that invite — and the pre-claim-document-readability regression check that goes with it — needs a genuinely different person, which no local or preview setup produces. It's verified against prod in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) instead.
@@ -340,17 +342,17 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e-candidate) On that screen Document Type is locked to "Photo" with no dropdown
 - [ ] (e2e-candidate) That screen has no Notes field
 - [ ] (e2e-candidate) That screen has no Expiration reminder date field
-- [ ] (e2e-candidate) Tap **Choose File** and select a non-square JPG or PNG → the upload starts immediately, with no separate Upload button to click
+- [ ] (e2e-candidate) Tap **Choose File** and select `scripts/data/clover-photo.png` (non-square) → the upload starts immediately, with no separate Upload button to click
 - [ ] (e2e-candidate) You land back on the horse detail page with the photo displayed
-- [ ] (e2e-candidate) That photo is scaled to a fixed height with its aspect ratio preserved, not cropped to a square
-- [ ] (e2e-candidate) With a photo set, tap **Replace Photo** and choose a different image → the upload starts immediately
-- [ ] (e2e-candidate) The new photo displays
+- [ ] (e2e-candidate) That photo is scaled to a fixed height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square
+- [ ] (e2e-candidate) With a photo set, tap **Replace Photo** and choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → the upload starts immediately
+- [ ] (e2e-candidate) The displayed word changes from `clover` to `butter`
 - [ ] (e2e-candidate) Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
 - [ ] (e2e-candidate) With a photo set, tap **Remove** → the placeholder icon returns
 - [ ] (e2e-candidate) The **Set Photo** button returns with it
-- [ ] (e2e-candidate) On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
-- [ ] (e2e-candidate) As manager, set a photo on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
-- [ ] (e2e-candidate) Replace Apple's photo again as manager → still succeeds (manager-set photos never lock out other managers)
+- [ ] (e2e-candidate) On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
+- [ ] (e2e-candidate) As manager, set `scripts/data/harper-photo.png` on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
+- [ ] (e2e-candidate) Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
 - [ ] (e2e-candidate) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
 - [ ] (e2e-candidate) Rename Apple, uncheck "Use barn defaults", set Moderate/High and Save → the name updates
 - [ ] (e2e-candidate) The thresholds update from that same Save
@@ -377,14 +379,15 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e-candidate) Fill in **Feed Notes** → Save → it persists on reload
 - [ ] (e2e-candidate) Fill in **Medication Notes** → Save → it persists on reload
 - [ ] (e2e-candidate) Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
-- [ ] (e2e-candidate) Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page
+- [ ] (e2e-candidate) Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
 - [ ] (e2e-candidate) That document is listed in the horse's Documents section
 - [ ] (e2e-candidate) Open the document via its link (signed URL)
+- [ ] (e2e-candidate) The PDF renders in the browser's viewer, with no "failed to load" error
 - [ ] (e2e-candidate) Delete it → row disappears
-- [ ] (e2e-candidate) On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
-- [ ] (e2e-candidate) On the Add Document page, the Upload button disables while the upload is pending
-- [ ] (e2e-candidate) An indeterminate progress bar shows while the upload is pending
-- [ ] (e2e-candidate) Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column
+- [ ] (e2e-candidate) On the Add Document page, attempt to upload `scripts/data/test_4_6_mb.pdf` (4,600,000 bytes, over the 4.5MB limit) — rejected with an inline error, not a crash
+- [ ] (e2e-candidate) On the Add Document page, upload `scripts/data/test_4_4_mb.pdf` (4,400,000 bytes, the largest accepted size) — the Upload button disables while the upload is pending
+- [ ] (e2e-candidate) An indeterminate progress bar shows while that upload is pending
+- [ ] (e2e-candidate) Upload `scripts/data/test_1_kb.pdf` again with an **Expiration reminder date** set → the date persists in the Reminder Date column
 - [ ] (e2e-candidate) Edit that date inline (tap the field, change the date, tap away) → the new date saves
 - [ ] (e2e-candidate) That inline edit saves without a page reload
 - [ ] (e2e-candidate) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
@@ -408,16 +411,16 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] (e2e-candidate) That Documents section has an **Add Document** button
 - [ ] (e2e-candidate) On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member)
 - [ ] (e2e-candidate) Set Phone, Emergency Contact Name and Emergency Contact Phone there and tap **Save** → the values persist on reload
-- [ ] (e2e-candidate) On Harper Test's member detail page, tap **Set Photo** and choose a JPG or PNG → the upload starts immediately
+- [ ] (e2e-candidate) On Harper Test's member detail page, tap **Set Photo** and choose `scripts/data/harper-photo.png` → the upload starts immediately
 - [ ] (e2e-candidate) You land back on the member page
 - [ ] (e2e-candidate) The photo displays there
-- [ ] (e2e-candidate) With Harper Test's photo set, tap **Replace Photo** and choose a different image → the new photo displays
+- [ ] (e2e-candidate) With Harper Test's photo set, tap **Replace Photo** and choose `scripts/data/emery-photo.jpg` (a different file *and* a different format) → the displayed word changes from `harper` to `emery`
 - [ ] (e2e-candidate) With Harper Test's photo set, tap **Remove** → the placeholder returns
 - [ ] (e2e-candidate) The **Set Photo** button returns with it
 - [ ] (e2e-candidate) A claimed trainer's member detail page shows no **Set Photo**/**Replace Photo**/**Remove** control (manager can't edit a claimed member's photo)
-- [ ] (e2e-candidate) On your own manager member detail page, tap **Set Photo** and upload one → the photo displays
+- [ ] (e2e-candidate) On your own manager member detail page, tap **Set Photo** and upload `scripts/data/clover-photo.png` → the photo displays
 - [ ] (e2e-candidate) That photo persists on reload
-- [ ] (e2e-candidate) Tap **Add Document** on Harper Test's page and upload a document → redirects back to the member page
+- [ ] (e2e-candidate) Tap **Add Document** on Harper Test's page and upload `scripts/data/test_1_kb.pdf` → redirects back to the member page
 - [ ] (e2e-candidate) The document is listed there
 - [ ] (e2e-candidate) Its signed-URL link opens the document
 - [ ] (e2e-candidate) Delete it → row disappears
@@ -573,28 +576,29 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e-candidate) Back on Finances, that lesson's fee is still counted, now folded into **By Instructor**'s footer **Unattributed** row
 - [ ] (e2e-candidate) By Instructor no longer shows a "No instructor" body row for that lesson
 - [ ] (e2e-candidate) Tap the **Unattributed** row's ⓘ on By Instructor → the explanation covers a removed instructor
-- [ ] (e2e-candidate) **By Paid To** tab shows **Recipient | Gross | Expenses | Net** columns
-- [ ] (e2e-candidate) By Paid To's Gross and Net are always `—` (a recipient has no revenue concept)
-- [ ] (e2e-candidate) By Paid To's Expenses column (renamed from "Expense Amount") is the recipient's total
-- [ ] (e2e-candidate) By Paid To's recipient name is an underlined link (not just underlined on hover)
-- [ ] (e2e-candidate) On page load, By Paid To rows are sorted by **Recipient** name ascending
-- [ ] (e2e-candidate) On page load, a ▲ appears next to By Paid To's **Recipient** header
-- [ ] (e2e-candidate) Tap the **Expenses** header on By Paid To → rows re-sort by that column ascending
-- [ ] (e2e-candidate) After tapping **Expenses** on By Paid To, a ▲ appears on the Expenses header (and disappears from Recipient)
-- [ ] (e2e-candidate) Tap the **Expenses** header on By Paid To again → order reverses
-- [ ] (e2e-candidate) After that second tap on By Paid To, the indicator flips to ▼
-- [ ] (e2e-candidate) Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
-- [ ] (e2e-candidate) Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month with Date, Type, Amount columns
-- [ ] (e2e-candidate) The recipient drill-down's Date column links to the expense's edit page
-- [ ] (e2e-candidate) The recipient drill-down's bottom **Total** matches the By Paid To summary
-- [ ] (e2e-candidate) A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL
-- [ ] (e2e-candidate) **Reconciliation check** (#971): open all five tabs for the same month → each one's footer **Total** row shows the identical Gross figure
-- [ ] (e2e-candidate) Reconciliation, same five tabs: each one's footer **Total** row shows the identical Expenses figure
-- [ ] (e2e-candidate) Reconciliation, same five tabs: each one's footer **Total** row shows the identical Net figure
-- [ ] (e2e-candidate) **Unattributed-expense check** (#971): delete a paid expense from `/barn/dev-barn/expenses/[id]/delete` **without** checking "Also delete the collected record from Finances" (its `transactions` row survives with no `horse_expenses` row behind it) → back on Finances, that amount appears under **Unattributed** in the By Horse footer instead of silently disappearing
-- [ ] (e2e-candidate) That same amount appears under **Unattributed** in the By Paid To footer
-- [ ] (e2e-candidate) Tap the ⓘ on **By Horse**'s **Unattributed** row → the explanation covers a paid lesson with no horse recorded, or an expense record whose original entry was deleted after being marked paid, and states that a barn-wide expense split across horses is never counted here (it appears in each horse's own row instead)
-- [ ] (e2e-candidate) Tap the ⓘ on **By Paid To**'s **Unattributed** row → the explanation covers an expense record whose original entry was deleted after being marked paid
+- [ ] (e2e: by_paid_to_tab_shows_recipient_gross_expenses_net_columns) **By Paid To** tab shows **Recipient | Gross | Expenses | Net** columns
+- [ ] (e2e: by_paid_to_gross_and_net_are_always_a_dash) By Paid To's Gross and Net are always `—` (a recipient has no revenue concept)
+- [ ] (e2e: by_paid_to_expenses_column_is_the_recipients_combined_total) By Paid To's Expenses column (renamed from "Expense Amount") is the recipient's total
+- [ ] (e2e: by_paid_to_recipient_name_is_an_underlined_link) By Paid To's recipient name is an underlined link (not just underlined on hover)
+- [ ] (e2e: by_paid_to_rows_load_sorted_by_recipient_name_ascending) On page load, By Paid To rows are sorted by **Recipient** name ascending
+- [ ] (e2e: by_paid_to_recipient_header_shows_an_ascending_indicator_on_load) On page load, a ▲ appears next to By Paid To's **Recipient** header
+- [ ] (e2e: by_paid_to_expenses_header_tap_re_sorts_rows_ascending) Tap the **Expenses** header on By Paid To → rows re-sort by that column ascending
+- [ ] (e2e: by_paid_to_expenses_header_tap_moves_the_ascending_indicator_off_recipient) After tapping **Expenses** on By Paid To, a ▲ appears on the Expenses header (and disappears from Recipient)
+- [ ] (e2e: by_paid_to_second_expenses_header_tap_reverses_the_row_order) Tap the **Expenses** header on By Paid To again → order reverses
+- [ ] (e2e: by_paid_to_second_expenses_header_tap_flips_the_indicator_to_descending) After that second tap on By Paid To, the indicator flips to ▼
+- [ ] (e2e: by_paid_to_total_combines_a_second_expense_for_the_same_recipient) Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
+- [ ] (e2e: recipient_drilldown_lists_only_that_recipients_expenses_for_the_month) Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month
+- [ ] (e2e: recipient_drilldown_shows_date_type_amount_columns) The recipient drill-down table shows **Date | Type | Amount** columns
+- [ ] (e2e: recipient_drilldown_date_links_to_the_expense_edit_page) The recipient drill-down's Date column links to the expense's edit page
+- [ ] (e2e: recipient_drilldown_total_matches_the_by_paid_to_expenses_cell) The recipient drill-down's bottom **Total** matches the By Paid To summary
+- [ ] (e2e: recipient_name_with_ampersand_round_trips_through_the_drilldown_link) A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL
+- [ ] (e2e: every_tab_footer_total_shows_the_same_gross_figure) **Reconciliation check** (#971): open all five tabs for the same month → each of the four tabs that has a Gross column (every tab but **By Paid To**, whose Gross is `—` by design) shows the identical Gross figure in its footer **Total** row
+- [ ] (e2e: every_tab_footer_total_shows_the_same_expenses_figure) Reconciliation, all five tabs: each one's footer **Total** row shows the identical Expenses figure
+- [ ] (e2e: every_tab_footer_total_shows_the_same_net_figure) Reconciliation, the same four tabs as the Gross check: each one's footer **Total** row shows the identical Net figure
+- [ ] (e2e: orphaned_expense_amount_appears_in_the_by_horse_unattributed_row) **Unattributed-expense check** (#971): delete a paid expense from `/barn/dev-barn/expenses/[id]/delete` **without** checking "Also delete the collected record from Finances" (its `transactions` row survives with no `horse_expenses` row behind it) → back on Finances, that amount appears under **Unattributed** in the By Horse footer instead of silently disappearing
+- [ ] (e2e: orphaned_expense_amount_appears_in_the_by_paid_to_unattributed_row) That same amount appears under **Unattributed** in the By Paid To footer
+- [ ] (e2e: by_horse_unattributed_info_icon_explains_where_the_amount_came_from) Tap the ⓘ on **By Horse**'s **Unattributed** row → the explanation covers a paid lesson with no horse recorded, or an expense record whose original entry was deleted after being marked paid, and states that a barn-wide expense split across horses is never counted here (it appears in each horse's own row instead)
+- [ ] (e2e: by_paid_to_unattributed_info_icon_explains_where_the_amount_came_from) Tap the ⓘ on **By Paid To**'s **Unattributed** row → the explanation covers an expense record whose original entry was deleted after being marked paid
 
 Manage Barn (`/barn/dev-barn/settings`):
 
@@ -721,14 +725,14 @@ bash scripts/change-user.sh dev-barn
 - [ ] On one of your own lessons, click **Cancel** in the header and cancel a rider's spot (or the whole lesson) — works the same as manager; open Blake's lesson — no header **Cancel** button is shown
 - [ ] The recurring lesson created in Phase 3 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
-- [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
+- [ ] Horse detail page: documents are listed with working links, uploading `scripts/data/test_1_kb.pdf` works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Horse detail page shows the Feed Notes/Medication Notes entered as manager, read-only (no textareas, no Save button); clear one as manager and confirm its row disappears here on reload instead of showing blank
 - [ ] (#1006) As manager, grant this trainer a horse-privileges row on **Clover** (Access section) then make them Clover's owning member; reopen Clover as this trainer — **Feed Notes**/**Medication Notes** are now editable textareas with a **Save** button
 - [ ] (#1006) Edit and save both Feed Notes and Medication Notes as this trainer, then reload — the new text persists
 - [ ] (#1000) Back on the Horses list as this trainer, a **My Horses** section appears at the top showing **Clover** with a status badge, and Clover no longer appears under Available/Unavailable
 - [ ] Butter's horse detail page (this trainer does **not** own her): her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] (#1003) On **Clover**'s detail page (the horse this trainer now owns), a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a non-manager
-- [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
+- [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload `scripts/data/test_1_kb.pdf`, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage Member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **Contact Info** section (#863 — a trainer can view any member's Contact Info), but **no Documents section**; open Blake's (a rider's) detail page — same: Contact Info shown, Documents hidden (#779 narrowed rider-document access to manager/self only)
@@ -754,7 +758,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#1006) As manager, make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks); reopen Clover as Dana — **Feed Notes**/**Medication Notes** are editable textareas with a **Save** button
 - [ ] (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (#1000) Back on the Horses list as Dana, a **My Horses** section appears at the top showing **Clover** with a status badge, and Clover no longer appears under Available/Unavailable
-- [ ] (#1003) On **Clover**'s detail page, a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a rider; use it to set a photo as Dana
+- [ ] (#1003) On **Clover**'s detail page, a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a rider; use it to set `scripts/data/clover-photo.png` as Dana
 - [ ] (#1003) As manager, reopen **Clover** → **no Replace Photo / Remove control** (an owner-set photo locks managers out, the converse of the manager-set case in the manager phase)
 - [ ] (#999) As manager, grant Dana `document_privileges='read'` on a horse via its Access section; reopen that horse as Dana — a **Documents** section now appears, with no **Add Document** button
 - [ ] (#999) Change that same grant to `document_privileges='write'`; reopen the horse as Dana — the **Add Document** button now appears in the Documents section
