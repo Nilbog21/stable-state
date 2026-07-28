@@ -411,6 +411,14 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockIn }
   }
 
+  // lesson_riders junction: select → eq(barn_id) → in(lesson_id) → resolves
+  function makeLessonRidersChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockIn }
+  }
+
   // expenses query: select → eq(barn_id) → not(expense_time) → gte(expense_date) → lte(expense_date) → resolves
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
     const mockLte = vi.fn().mockResolvedValue({ data, error })
@@ -441,29 +449,34 @@ describe('getScheduleForRange', () => {
   function makeFrom({
     lessons = [],
     lessonHorses = [],
+    lessonRiders = [],
     expenses = [],
     expenseHorses = [],
     events = [],
     lessonsError = null,
     expensesError = null,
     lessonHorsesError = null,
+    lessonRidersError = null,
     expenseHorsesError = null,
     eventsError = null,
   }: {
     lessons?: unknown[] | null
     lessonHorses?: unknown[] | null
+    lessonRiders?: unknown[] | null
     expenses?: unknown[] | null
     expenseHorses?: unknown[] | null
     events?: unknown[] | null
     lessonsError?: Error | null
     expensesError?: Error | null
     lessonHorsesError?: Error | null
+    lessonRidersError?: Error | null
     expenseHorsesError?: Error | null
     eventsError?: Error | null
   } = {}) {
     return vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain(lessons, lessonsError)
       if (table === 'lesson_horses') return makeLessonHorsesChain(lessonHorses, lessonHorsesError)
+      if (table === 'lesson_riders') return makeLessonRidersChain(lessonRiders, lessonRidersError)
       if (table === 'horse_expenses') return makeExpensesChain(expenses, expensesError)
       if (table === 'expense_horses') return makeExpenseHorsesChain(expenseHorses, expenseHorsesError)
       if (table === 'barn_events') return makeEventsChain(events, eventsError)
@@ -716,5 +729,123 @@ describe('getScheduleForRange', () => {
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
     expect(result.map((r) => r.id)).toEqual(['lesson-1', 'expense-1'])
+  })
+
+  // #1019 — the month conflict picker needs rider ids, per-horse exertion, and a display
+  // label that the dashboard views get from their own separately hydrated rows.
+  it('should_include_lesson_rider_ids_resolved_from_the_junction_table', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ lessons: [lesson], lessonRiders: [{ lesson_id: 'lesson-1', rider_id: 'mem-9', cancelled_at: null }] }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual(['mem-9'])
+  })
+
+  it('should_exclude_a_cancelled_rider_from_lesson_rider_ids', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({
+        lessons: [lesson],
+        lessonRiders: [{ lesson_id: 'lesson-1', rider_id: 'mem-9', cancelled_at: '2026-07-02T00:00:00Z' }],
+      }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual([])
+  })
+
+  it('should_throw_when_the_lesson_rider_junction_query_rejects', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ lessons: [lesson], lessonRiders: null, lessonRidersError: new Error('rider junction error') }),
+    } as any)
+
+    await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('rider junction error')
+  })
+
+  it('should_treat_null_lesson_rider_junction_data_as_empty', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ lessons: [lesson], lessonRiders: null }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual([])
+  })
+
+  it('should_not_fetch_lesson_rider_junction_rows_when_no_lesson_rows', async () => {
+    const fromFn = makeFrom()
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+
+    await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(fromFn).not.toHaveBeenCalledWith('lesson_riders')
+  })
+
+  it('should_include_per_horse_exertion_levels_from_the_lesson_horse_junction', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ lessons: [lesson], lessonHorses: [{ lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 4 }] }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].exertionByHorseId).toEqual({ 'horse-1': 4 })
+  })
+
+  it('should_set_an_empty_exertion_map_on_an_expense_item', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ expenses: [expense] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].exertionByHorseId).toEqual({})
+  })
+
+  it('should_set_a_null_label_on_a_lesson_item', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: [lesson] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].label).toBeNull()
+  })
+
+  it('should_label_an_expense_item_with_its_type_and_recipient', async () => {
+    const expense = createMockHorseExpense({
+      id: 'expense-1',
+      expense_date: '2026-07-03',
+      expense_time: '10:00:00',
+      expense_type: 'Veterinary',
+      recipient: 'Dr. Smith',
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ expenses: [expense] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].label).toBe('Veterinary — Dr. Smith')
+  })
+
+  it('should_label_an_event_item_with_its_title', async () => {
+    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z', title: 'Costume Party' })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: [event] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].label).toBe('Costume Party')
+  })
+
+  it('should_set_empty_rider_ids_on_an_event_item', async () => {
+    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
+    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: [event] }) } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual([])
   })
 })
