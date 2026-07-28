@@ -131,13 +131,25 @@ async function forEachTab(page: Page, read: (page: Page) => Promise<string[]>): 
 // The Pending income line and the summary boxes #971 removed
 // ---------------------------------------------------------------------------
 
-// One assertion covering all three of the checkbox's claims at once: the ordering (Pending
-// income sits below both Outstanding sections), the singularity (one entry, not one per
-// month), and the label text (no month/year suffix — the month picker above already shows
-// it).
+// Prefix-matched on purpose: whether the label carries a month/year suffix is the next
+// checkbox's claim, so this one asserts position (Pending income sits below both
+// Outstanding sections) and singularity (one entry, not one per month) and nothing else.
 test('pending_income_line_appears_once_below_the_outstanding_sections @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  expect(await summaryBlockLabels(page)).toEqual(['Outstanding Income', 'Outstanding Expenses', 'Pending income'])
+  expect(await summaryBlockLabels(page)).toEqual([
+    expect.stringMatching(/^Outstanding Income/),
+    expect.stringMatching(/^Outstanding Expenses/),
+    expect.stringMatching(/^Pending income/),
+  ])
+})
+
+// The month picker directly above the line already names the month, so the label must not
+// repeat it. Positional destructuring rather than a fresh locator: the test above owns the
+// claim that the third block is the Pending income one.
+test('pending_income_line_has_no_month_year_suffix @manager', async ({ page }) => {
+  await page.goto(financesUrl())
+  const [, , pendingIncome] = await summaryBlockLabels(page)
+  expect(pendingIncome).toBe('Pending income')
 })
 
 // Deliberately a page-wide absence claim rather than a restatement of the block list above:
