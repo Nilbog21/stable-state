@@ -28,10 +28,11 @@ const LEASE_FEE = 150
 const STANDARD_TIER = 'Standard'
 const COMPED_TIER = 'Comped'
 
-// lesson-finances.ts's NO_INSTRUCTOR_LABEL, copied rather than imported: that module pulls
-// in the request-scoped Supabase client (and with it next/headers), which a Playwright spec
-// can't load. The assertion below is that this string is *absent* from the table.
-const NO_INSTRUCTOR_LABEL = 'No instructor'
+// resolveMemberNames renders each login's profile. `Test Rider` is matched exactly so it
+// can't also match the managed stub `Test Rider2`.
+const MANAGER_NAME = 'Test Manager'
+const TRAINER_NAME = 'Test Trainer'
+const RIDER_NAME = 'Test Rider'
 
 // The clause of ByInstructorTable's Unattributed InfoPopover text that this slice's
 // checkbox is about — the other clauses are other tabs' / other slices' concerns.
@@ -54,7 +55,6 @@ const TOTAL_ROW = /^Total/
 type Seeded = {
   compedTier: LessonTier
   apple: Horse
-  birch: Horse
   comet: Horse
   lease: Agreement
 }
@@ -62,10 +62,16 @@ type Seeded = {
 let seeded: Seeded
 
 const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, members }) => {
-  // resolveFinancesMonth clamps any requested month up to the barn's own creation month,
-  // and withBarn creates this barn now — which sits in the *UTC* month, while the fixtures
-  // below are placed by local-calendar anchor. In the hours where those two months differ,
-  // an unbackdated barn would clamp MONTH away and every table below would read empty.
+  // resolveFinancesMonth clamps a requested month *up* to the barn's own creation month,
+  // and withBarn creates this barn now — in UTC, while MONTH below is a local-calendar
+  // month. Where local sits behind UTC across a month boundary, an unbackdated barn would
+  // clamp MONTH away and every table below would read empty.
+  //
+  // The backdate fixes only that direction. The mirror window — local *ahead* of UTC, in
+  // the first hours of a month — trips resolveFinancesMonth's other clamp, down to the
+  // current UTC month, which no created_at can affect. That's the suite-wide
+  // monthAnchor-vs-UTC skew already tracked as a follow-up; it hits the sibling Finances
+  // specs identically, and is not something this file can close on its own.
   mustSucceed(
     await supabase.from('barns').update({ created_at: monthAnchor(1).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
@@ -125,7 +131,7 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
     fee: LEASE_FEE,
   })
 
-  seeded = { compedTier, apple, birch, comet, lease }
+  seeded = { compedTier, apple, comet, lease }
 })
 
 // ---------------------------------------------------------------------------
@@ -138,14 +144,17 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
  * from the server clock, so a spec must always pass `?month=` — and passing the *UTC*
  * current month would disagree with a `monthAnchor(0)` fixture during the hours when the
  * local and UTC months differ. Day 15 is far enough from either boundary that the anchor's
- * own UTC month is never in doubt.
+ * own UTC month is never in doubt; see the seed's note above for the separate window where
+ * resolveFinancesMonth clamps this value away regardless of what it says.
  */
 const MONTH = formatMonthParam(monthAnchor(0))
 
 type Tab = (typeof NET_TABS)[number]
 
-function financesUrl(tab?: Tab): string {
-  return `/barn/${barn.slug}/finances?month=${MONTH}${tab ? `&tab=${tab}` : ''}`
+// Required, not optional: every caller names a tab, and a defaulted one would silently
+// assert against whichever tab the page happens to open on.
+function financesUrl(tab: Tab): string {
+  return `/barn/${barn.slug}/finances?month=${MONTH}&tab=${tab}`
 }
 
 function horseDrilldownUrl(horseId: string): string {
@@ -165,7 +174,12 @@ function footerRow(page: Page, label: RegExp): Locator {
   return breakdownTable(page).locator('tfoot tr').filter({ hasText: label })
 }
 
-/** A body row identified by its own first-column label, which is a plain cell or a link. */
+/**
+ * A breakdown body row, identified by a cell holding `label`. `filter({ has })` matches any
+ * cell in the row, not specifically the first one — which is safe here only because every
+ * other cell on these tables is a currency figure or a dash, none of which can collide with
+ * an entity name.
+ */
 function bodyRow(page: Page, label: string): Locator {
   return breakdownTable(page)
     .locator('tbody tr')
@@ -241,8 +255,13 @@ test.describe.serial('booking a comped lesson', () => {
   // exact rendering covers both halves of the claim at once.
   test('comped_lesson_tier_row_net_renders_in_parentheses @manager', async ({ page }) => {
     await page.goto(financesUrl('tier'))
+    // Matched against a pattern, not against formatCurrency's own output. The claim here is
+    // about which notation formatCurrency picks for a negative, so deriving the expected
+    // string from that same function would move expected and actual together through
+    // exactly the regression this checkbox exists to catch. The leading `^\(` is what rules
+    // out a minus sign; the magnitude is the previous test's and the next one's business.
     await expect(bodyRow(page, COMPED_TIER).locator('td').nth(NET_COL)).toHaveText(
-      formatCurrency(-seeded.compedTier.instructor_cut)
+      /^\(\$[\d,]+\.\d{2}\)$/
     )
   })
 
@@ -278,10 +297,6 @@ test.describe.serial('collecting a lease charge', () => {
   let baselineInstructorOutside: number
   let baselineHorseGross: number
   let baselineRiderGross: number
-
-  // resolveMemberNames renders the rider login's profile; exact so it can't also match the
-  // managed stub "Test Rider2".
-  const RIDER_NAME = 'Test Rider'
 
   test('paid_lease_charge_raises_by_tier_outside_this_view_gross @manager', async ({ page }) => {
     await page.goto(financesUrl('tier'))
@@ -322,14 +337,18 @@ test.describe.serial('collecting a lease charge', () => {
     )
   })
 
-  // Split from the checkbox above: the row rendering and the row linking anywhere useful
-  // are independently regressable. The heading wait is what makes "working" load-bearing —
-  // a link to a dead agreement id would reach the same URL and render a 404 instead.
+  // Split from the checkbox above: the row rendering and the row linking somewhere useful
+  // are independently regressable.
+  //
+  // URL first as the navigation wait, heading second as the sole assertion — the inverse of
+  // the obvious order, and deliberate. A link carrying a dead agreement id lands on exactly
+  // this URL and renders a 404, so matching the URL is what proves the link points at the
+  // right agreement, while the rendered heading is what "working" actually means.
   test('horse_drilldown_charge_row_links_back_to_its_agreement @manager', async ({ page }) => {
     await page.goto(horseDrilldownUrl(seeded.apple.id))
     await leaseDrilldownRow(page).getByRole('link').click()
-    await page.getByRole('heading', { name: 'Lease Detail' }).waitFor()
-    await expect(page).toHaveURL(new RegExp(`/barn/${barn.slug}/agreements/${seeded.lease.id}\\?kind=lease$`))
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/agreements/${seeded.lease.id}\\?kind=lease$`))
+    await expect(page.getByRole('heading', { name: 'Lease Detail' })).toBeVisible()
   })
 
   test('paid_lease_charge_raises_the_leasing_riders_by_rider_gross @manager', async ({ page }) => {
@@ -349,8 +368,6 @@ test.describe.serial('collecting a lease charge', () => {
  * checkboxes below.
  */
 test.describe.serial('removing a trainer who has instructed a paid lesson', () => {
-  const TRAINER_NAME = 'Test Trainer'
-
   let baselineUnattributedGross: number
   let removedTrainerGross: number
 
@@ -363,8 +380,11 @@ test.describe.serial('removing a trainer who has instructed a paid lesson', () =
 
     page.on('dialog', (dialog) => dialog.accept())
     await page.goto(`/barn/${barn.slug}/members/${barn.data.members.trainer.membershipId}`)
-    // Scoped to the page header rather than taken barn-wide: the Photo section renders a
-    // second "Remove" whenever the member has a photo.
+    // Scoped to the page header rather than taken barn-wide. The Photo section can render a
+    // second "Remove" — but not in this scenario: canEditPhoto gates it on the page being
+    // your own or the target profile being a managed stub, and this trainer is a claimed,
+    // non-managed login, so it could never appear here however many photos it had. Scoped
+    // anyway, so the locator doesn't quietly depend on that gating staying where it is.
     await page
       .locator('main > div')
       .filter({ has: page.getByRole('heading', { level: 1 }) })
@@ -374,13 +394,21 @@ test.describe.serial('removing a trainer who has instructed a paid lesson', () =
     await expect(page).toHaveURL(new RegExp(`/barn/${barn.slug}/members$`))
   })
 
-  // By membership id, not by name: an id can't be matched by some other member who happens
-  // to share a first or last name with the removed one.
+  // The whole remaining roster, not `toHaveCount(0)` on the removed one: a bare absence
+  // check also passes when the page errors, redirects, or changes its link shape, none of
+  // which mean the trainer was removed. Membership ids rather than names, so a member who
+  // happens to share a first or last name can't stand in for the removed one.
   test('removed_trainer_no_longer_appears_on_the_members_list @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/members`)
-    await expect(
-      page.locator(`a[href="/barn/${barn.slug}/members/${barn.data.members.trainer.membershipId}"]`)
-    ).toHaveCount(0)
+    const { manager, rider, rider2 } = barn.data.members
+    const memberHrefs = await page
+      .locator(`a[href^="/barn/${barn.slug}/members/"]`)
+      .evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+    // Deduplicated: the page links your own membership twice, once from the "you" card and
+    // once from the managers list.
+    expect([...new Set(memberHrefs)].sort()).toEqual(
+      [manager, rider, rider2].map((m) => `/barn/${barn.slug}/members/${m.membershipId}`).sort()
+    )
   })
 
   test('removed_instructors_lesson_fee_folds_into_by_instructor_unattributed @manager', async ({ page }) => {
@@ -390,14 +418,25 @@ test.describe.serial('removing a trainer who has instructed a paid lesson', () =
     )
   })
 
-  // finances/page.tsx filters the NO_INSTRUCTOR_LABEL row out of the body and folds it into
-  // the footer instead, so the fee reappearing as a "No instructor" row would mean it had
-  // been counted twice over — once in the body and once in Unattributed.
+  // finances/page.tsx filters the synthetic "No instructor" row out of the body and folds it
+  // into the footer instead, so that row reappearing would mean the fee had been counted
+  // twice over — once in the body and once in Unattributed.
+  //
+  // Asserted as the exact remaining roster rather than as the absence of "No instructor":
+  // an absence check passes just as well when the table renders nothing at all, which is
+  // what an EmptyState, a 500, or a wrong-month URL would each produce. The manager is the
+  // only instructor left, having taught Apple's lesson and the comped one.
   test('by_instructor_has_no_no_instructor_body_row_after_the_removal @manager', async ({ page }) => {
     await page.goto(financesUrl('trainer'))
-    await expect(breakdownTable(page).locator('tbody tr').filter({ hasText: NO_INSTRUCTOR_LABEL })).toHaveCount(0)
+    const names = await breakdownTable(page).locator('tbody tr td:first-child').allInnerTexts()
+    expect(names.map((name) => name.trim())).toEqual([MANAGER_NAME])
   })
 
+  // Unlike the three above, this asserts nothing downstream of the removal:
+  // unattributedInfoText is a static prop on ByInstructorTable and renders whenever the tab
+  // has any activity at all, so this would pass byte-for-byte before the removal too. It
+  // sits here to keep the file in checklist order, and its claim is about the copy covering
+  // a removed instructor — the fold itself is the previous test's business.
   test('by_instructor_unattributed_info_icon_explains_a_removed_instructor @manager', async ({ page }) => {
     await page.goto(financesUrl('trainer'))
     await footerRow(page, UNATTRIBUTED_ROW).getByRole('button', { name: 'Info' }).click()
