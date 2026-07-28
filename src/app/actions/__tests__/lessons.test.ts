@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockHorse, createMockLesson, createMockLessonDetail, createMockLessonSeries, createMockMembership, makeLessonDetail } from '@/test/fixtures'
+import { createMockBarn, createMockHorse, createMockLesson, createMockLessonDetail, createMockLessonSeries, createMockMembership, createMockScheduleItem, makeLessonDetail } from '@/test/fixtures'
 import { makeFormData } from '@/test/utils/forms'
 import { guardAs } from '@/test/mocks/guard'
 
@@ -39,6 +39,7 @@ vi.mock('@/lib/db/barn-memberships', () => ({
 
 vi.mock('@/lib/db/schedule', () => ({
   getNearbyInstructorMembershipIds: vi.fn(),
+  getScheduleForRange: vi.fn(),
 }))
 
 vi.mock('@/lib/db/notifications', async (importOriginal) => ({
@@ -68,12 +69,12 @@ import { collectLessonPayment, deleteLesson, getLessonById, updateLesson } from 
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, updateCancellationFeePaymentType } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getInstructorsByBarn, getActiveMembersWithProfiles, getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
-import { getNearbyInstructorMembershipIds } from '@/lib/db/schedule'
+import { getNearbyInstructorMembershipIds, getScheduleForRange } from '@/lib/db/schedule'
 import { createNotification, getUnreadNotificationCount } from '@/lib/db/notifications'
 import { createClient } from '@/lib/supabase/server'
 import { createHorse, getHorsesByBarn, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
-import { submitLesson, deleteLessonAction, updateLessonAction, updatePaymentTypeAction, updateCancellationFeePaymentTypeAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '../lessons'
+import { submitLesson, deleteLessonAction, updateLessonAction, updatePaymentTypeAction, updateCancellationFeePaymentTypeAction, stopLessonSeriesAction, getProjectedExhaustionForBarn, getScheduleRangeForBarn } from '../lessons'
 
 const mockBarn = createMockBarn()
 const mockLesson = createMockLesson({ fee: 100, lesson_at: '2026-05-17T10:00', submitted_at: '2026-05-17T10:05:00Z' })
@@ -1469,5 +1470,48 @@ describe('getProjectedExhaustionForBarn', () => {
     ])
     const result = await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', ['horse-3'])
     expect(result['horse-3']).toEqual({ existingRows: mockRows, thresholds: mockThresholds })
+  })
+})
+
+describe('getScheduleRangeForBarn', () => {
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getScheduleForRange).mockReset()
+    guardAs(mockTrainerMembership)
+    vi.mocked(getScheduleForRange).mockResolvedValue([])
+  })
+
+  it('should_require_manager_or_trainer_membership', async () => {
+    await getScheduleRangeForBarn('barn-slug', '2026-03-01', '2026-04-12')
+    expect(requireMembership).toHaveBeenCalledWith('barn-slug', ['manager', 'trainer'])
+  })
+
+  it('should_scope_the_read_to_the_resolved_barn', async () => {
+    await getScheduleRangeForBarn('barn-slug', '2026-03-01', '2026-04-12')
+    expect(vi.mocked(getScheduleForRange).mock.calls[0][0]).toBe(mockBarn.id)
+  })
+
+  it('should_convert_the_from_date_to_a_barn_local_midnight_instant', async () => {
+    // createMockBarn's timezone is America/New_York — 2026-03-01T00:00 EST is 05:00Z.
+    await getScheduleRangeForBarn('barn-slug', '2026-03-01', '2026-04-12')
+    expect(vi.mocked(getScheduleForRange).mock.calls[0][1]).toBe('2026-03-01T05:00:00.000Z')
+  })
+
+  it('should_convert_the_to_date_to_a_barn_local_midnight_instant', async () => {
+    // 2026-04-12T00:00 EDT (post spring-forward) is 04:00Z, not 05:00Z.
+    await getScheduleRangeForBarn('barn-slug', '2026-03-01', '2026-04-12')
+    expect(vi.mocked(getScheduleForRange).mock.calls[0][2]).toBe('2026-04-12T04:00:00.000Z')
+  })
+
+  it('should_pass_the_barn_timezone_through', async () => {
+    await getScheduleRangeForBarn('barn-slug', '2026-03-01', '2026-04-12')
+    expect(vi.mocked(getScheduleForRange).mock.calls[0][3]).toBe(mockBarn.timezone)
+  })
+
+  it('should_return_the_schedule_items_it_read', async () => {
+    const items = [createMockScheduleItem({ id: 'l1' })]
+    vi.mocked(getScheduleForRange).mockResolvedValue(items)
+
+    expect(await getScheduleRangeForBarn('barn-slug', '2026-03-01', '2026-04-12')).toBe(items)
   })
 })
