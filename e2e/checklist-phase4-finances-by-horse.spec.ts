@@ -368,11 +368,17 @@ test('horse_drilldown_expense_split_renders_in_parentheses @manager', async ({ p
  * HORSE_INCOME_DESCRIPTOR sets `splitsGrossFee`, so getEntityIncomeSummary zeroes each
  * lesson's cut and the tab's Gross/Net are pre-cut, while getEntityIncomeDetail has no
  * such branch and runs every row through splitNetFee — #971 changed summary mode only.
- * The real invariant is the difference: this horse's lessons' snapshotted instructor cuts,
- * which create_lesson_with_participants copies from the tier matched on tier_name. Bella
- * has exactly one lesson this month, on the Standard tier.
+ *
+ * The real invariant is the difference: this horse's *share* of each of its lessons'
+ * snapshotted cuts. Both sides divide by the lesson's horse count — computeGroupedIncome
+ * splits the cut-zeroed fee across participants, computeDetailRows splits fee-minus-cut
+ * across the same participants — so a lesson contributes cut/horseCount to the gap, not
+ * the whole cut. Bella has exactly one lesson this month, she is its only horse, and it
+ * was booked on the Standard tier whose instructor_cut create_lesson_with_participants
+ * snapshots onto it; her share is therefore the entire cut, which is what makes the
+ * expected value expressible without a horse-count divisor here.
  */
-test('horse_drilldown_net_is_the_by_horse_net_less_the_horses_lessons_instructor_cuts @manager', async ({ page }) => {
+test('horse_drilldown_net_is_the_by_horse_net_less_the_horses_share_of_its_lessons_instructor_cuts @manager', async ({ page }) => {
   await page.goto(financesUrl())
   const tabNet = parseMoney(await cellText(horseRow(page, seeded.bella), NET_COL))
 
