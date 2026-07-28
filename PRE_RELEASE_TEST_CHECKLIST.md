@@ -344,20 +344,20 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e-candidate) After tapping **Net** on By Tier, a ▲ appears on the Net header (and disappears from Tier)
 - [ ] (e2e-candidate) Tap the **Net** header on By Tier again → order reverses
 - [ ] (e2e-candidate) After that second tap on By Tier, the indicator flips to ▼
-- [ ] (e2e-candidate) **By Rider** tab shows **Rider | Gross | Expenses | Net** columns
-- [ ] (e2e-candidate) By Rider's Expenses column is always `—` (no rider-level expense concept)
-- [ ] (e2e-candidate) By Rider's Expenses header isn't clickable/sortable
-- [ ] (e2e-candidate) By Rider's Net always equals Gross
-- [ ] (e2e-candidate) By Rider's rider name is an underlined link to drill-down `/barn/dev-barn/finances/riders/[id]`
-- [ ] (e2e-candidate) The rider drill-down shows one combined table of lessons and leases/boarding charges, matching the By Horse drill-down's layout
-- [ ] (e2e-candidate) The rider drill-down's combined table is ordered by date ascending
-- [ ] (e2e-candidate) The rider drill-down's combined table has a **Type** column
-- [ ] (e2e-candidate) The rider drill-down's bottom **Total** matches the By Rider summary
-- [ ] (e2e-candidate) The rider drill-down preserves the month param
-- [ ] (e2e-candidate) On page load, By Rider rows are sorted by **Rider** name ascending
-- [ ] (e2e-candidate) On page load, a ▲ appears next to By Rider's **Rider** header
-- [ ] (e2e-candidate) Tap the **Gross** header on By Rider → rows re-sort ascending
-- [ ] (e2e-candidate) Tap the **Net** header on By Rider instead → identical resulting order to sorting by Gross (both share a sort key, since the two columns are always equal for this tab)
+- [ ] (e2e: by_rider_tab_shows_rider_gross_expenses_net_columns) **By Rider** tab shows **Rider | Gross | Expenses | Net** columns
+- [ ] (e2e: by_rider_expenses_column_is_always_a_dash) By Rider's Expenses column is always `—` (no rider-level expense concept)
+- [ ] (e2e: by_rider_expenses_header_is_not_sortable) By Rider's Expenses header isn't clickable/sortable
+- [ ] (e2e: by_rider_net_column_equals_gross_in_every_row) By Rider's Net always equals Gross
+- [ ] (e2e: by_rider_name_is_an_underlined_link_to_the_rider_drilldown) By Rider's rider name is an underlined link to drill-down `/barn/dev-barn/finances/riders/[id]`
+- [ ] (e2e: rider_drilldown_combines_lessons_and_agreement_charges_in_one_table) The rider drill-down shows one combined table of lessons and leases/boarding charges, matching the By Horse drill-down's layout
+- [ ] (e2e: rider_drilldown_rows_are_ordered_by_date_ascending) The rider drill-down's combined table is ordered by date ascending
+- [ ] (e2e: rider_drilldown_table_has_a_type_column) The rider drill-down's combined table has a **Type** column
+- [ ] (e2e: rider_drilldown_total_is_the_by_rider_gross_less_the_instructor_cut) The rider drill-down's bottom **Total** equals that rider's **Gross** on the By Rider tab less the instructor cut snapshotted on their lessons this month — the tab is pre-cut since #971, the drill-down is net-of-cut
+- [ ] (e2e: rider_drilldown_preserves_the_month_param) The rider drill-down preserves the month param
+- [ ] (e2e: by_rider_rows_load_sorted_by_rider_name_ascending) On page load, By Rider rows are sorted by **Rider** name ascending
+- [ ] (e2e: by_rider_rider_header_shows_an_ascending_indicator_on_load) On page load, a ▲ appears next to By Rider's **Rider** header
+- [ ] (e2e: by_rider_gross_header_tap_re_sorts_rows_ascending) Tap the **Gross** header on By Rider → rows re-sort ascending
+- [ ] (e2e: by_rider_net_header_tap_produces_the_same_order_as_gross) Tap the **Net** header on By Rider instead → identical resulting order to sorting by Gross (both share a sort key, since the two columns are always equal for this tab)
 - [ ] (e2e-candidate) **By Instructor** tab shows **Trainer | Gross | Expenses | Net** columns
 - [ ] (e2e-candidate) By Instructor's Gross is the trainer's pre-cut lesson fees
 - [ ] (e2e-candidate) By Instructor's Expenses column (renamed from "Instructor Cut") is the deducted amount, parenthesized

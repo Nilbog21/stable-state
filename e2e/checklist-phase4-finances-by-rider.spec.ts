@@ -1,0 +1,344 @@
+import { test, expect, withBarn, type Page } from './support/test'
+import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
+import { mustSucceed } from '@/lib/db/service-role'
+import { formatMonthParam } from '@/lib/finances-month'
+import type { SupabaseClient } from '@supabase/supabase-js'
+
+// Seed constants. Every figure this file asserts is built from these, from a builder return
+// value, or from another figure read off the DOM — never from a query against the same
+// aggregation the page under test uses.
+//
+// INSTRUCTOR_CUT is flat per-lesson dollars, snapshotted onto `lessons.instructor_cut` at
+// creation from the tier named by the lesson. It is deliberately *not* the barn's
+// default_instructor_cut (25): create_lesson_with_participants falls back to that default
+// whenever the tier name doesn't resolve, so a distinct value here makes the drill-down check
+// below fail loudly if the tier lookup ever stops matching, instead of silently agreeing.
+const INSTRUCTOR_CUT = 20
+const RIDER_LESSON_FEE = 60
+const RIDER_LEASE_FEE = 90
+const RIDER_BOARD_FEE = 50
+const RIDER2_LESSON_FEE = 300
+const TRAINER_LESSON_FEE = 100
+const PREVIOUS_MONTH_LESSON_FEE = 75
+
+// Display names of the three seeded members addMemberships creates, as the By Rider tab
+// renders them. "Test Rider" is a substring of "Test Rider2", so every locator that picks a
+// single rider out of the table matches on the exact name.
+const RIDER_NAME = 'Test Rider'
+const RIDER2_NAME = 'Test Rider2'
+const TRAINER_NAME = 'Test Trainer'
+
+const SEEDED_RIDER_COUNT = 3
+
+// Three riders, not two. With two rows, "rows load sorted by Rider name ascending" and "tap
+// Gross re-sorts ascending" cannot both have teeth: the server already hands the table its
+// rows in gross-descending order (toSortedIncomeRows), so with two rows any name ordering
+// that differs from the server's necessarily agrees with the gross ordering, or vice versa.
+// The trainer login rides as the third — a trainer taking lessons is ordinary, and it costs
+// neither a fourth auth account nor a stub member the shared fixtures don't build.
+//
+//   this month's Gross          Test Rider 200, Test Rider2 300, Test Trainer 100
+//   name ascending              Test Rider,  Test Rider2,  Test Trainer
+//   Gross ascending             Test Trainer, Test Rider,  Test Rider2
+//   server order (Gross desc)   Test Rider2, Test Rider,   Test Trainer
+//
+// All three orderings differ, so no sort assertion below can pass by accident.
+//
+// Test Rider's 200 is the pre-cut figure the By Rider tab shows: its lesson contributes the
+// full RIDER_LESSON_FEE (#971 — the tab's Gross zeroes the instructor cut before splitting),
+// plus both agreement charges unsplit.
+
+type Seeded = { riderMembershipId: string }
+
+let seeded: Seeded
+
+/**
+ * getPaidCharges reads collected `transactions` rows only, so an unpaid agreement charge
+ * reaches neither the By Rider tab nor the drill-down. addLeaseCharge deliberately leaves its
+ * charges unpaid — its Outstanding callers need that — so collection is a follow-up update
+ * here rather than a new flag on the shared builder. `agreement_charges` carries no
+ * payment_type column of its own (#827 moved payment state onto `transactions`), so the
+ * ledger row is the only thing to update.
+ */
+async function collectCharges(supabase: SupabaseClient, barnId: string, agreementIds: string[]) {
+  const charges = mustSucceed<{ id: string }[]>(
+    await supabase.from('agreement_charges').select('id').eq('barn_id', barnId).in('agreement_id', agreementIds),
+    'fetch agreement charges to collect'
+  )
+  mustSucceed(
+    await supabase
+      .from('transactions')
+      .update({ collected: true, payment_type: 'venmo' })
+      .eq('barn_id', barnId)
+      .in('agreement_charge_id', charges.map((c) => c.id)),
+    'mark agreement charges paid'
+  )
+}
+
+const barn = withBarn('phase4-finances-by-rider', async ({ supabase, barn, members }) => {
+  // resolveFinancesMonth clamps the viewable range to the barn's creation month, and withBarn
+  // creates this barn *now* — without backdating, the previous month the month-param check
+  // navigates to isn't reachable at all.
+  mustSucceed(
+    await supabase.from('barns').update({ created_at: monthAnchor(2).toISOString() }).eq('id', barn.id),
+    'backdate barn created_at'
+  )
+
+  const tier = await addTier(supabase, barn.id, {
+    name: 'Rider Slice',
+    price: RIDER_LESSON_FEE,
+    isDefault: true,
+    instructorCut: INSTRUCTOR_CUT,
+  })
+  const apollo = await addHorse(supabase, barn.id, 'Apollo')
+  const bella = await addHorse(supabase, barn.id, 'Bella')
+
+  // The manager instructs every lesson, so no rider is ever their own lesson's instructor.
+  const lessonDefaults = { instructorId: members.manager.membershipId, tierName: tier.name }
+
+  // Day 15 rather than pastInstantInMonth(0): agreement charges always pin to the 1st of
+  // their month, so a day-15 lesson is what gives the drill-down's date-ascending check its
+  // teeth — that page concatenates its lesson rows *before* its charge rows and sorts after,
+  // so an unsorted table would come out 15th, 1st, 1st. Nothing here is filtered on `< now`,
+  // so a day-15 anchor still in the future is fine.
+  const thisMonth = { at: monthAnchor(0) }
+
+  await addPaidLesson(supabase, barn, {
+    ...lessonDefaults,
+    ...thisMonth,
+    fee: RIDER_LESSON_FEE,
+    horseIds: [apollo.id],
+    riderIds: [members.rider.membershipId],
+  })
+  await addPaidLesson(supabase, barn, {
+    ...lessonDefaults,
+    ...thisMonth,
+    fee: RIDER2_LESSON_FEE,
+    horseIds: [bella.id],
+    riderIds: [members.rider2.membershipId],
+  })
+  await addPaidLesson(supabase, barn, {
+    ...lessonDefaults,
+    ...thisMonth,
+    fee: TRAINER_LESSON_FEE,
+    horseIds: [apollo.id],
+    riderIds: [members.trainer.membershipId],
+  })
+
+  // Both charges sit on the drill-down's subject, so its one combined table carries all three
+  // Type values — Lesson, Lease and Boarding.
+  const lease = await addLeaseCharge(supabase, barn, {
+    ...thisMonth,
+    riderId: members.rider.membershipId,
+    horseId: apollo.id,
+    fee: RIDER_LEASE_FEE,
+  })
+  const board = await addLeaseCharge(supabase, barn, {
+    ...thisMonth,
+    kind: 'board',
+    riderId: members.rider.membershipId,
+    horseId: bella.id,
+    fee: RIDER_BOARD_FEE,
+  })
+  await collectCharges(supabase, barn.id, [lease.id, board.id])
+
+  // Gives the previous month a By Rider row to click through, so the month-param check runs
+  // against a month that is not the page's own server-clock default.
+  await addPaidLesson(supabase, barn, {
+    ...lessonDefaults,
+    monthsAgo: 1,
+    fee: PREVIOUS_MONTH_LESSON_FEE,
+    horseIds: [apollo.id],
+    riderIds: [members.rider.membershipId],
+  })
+
+  seeded = { riderMembershipId: members.rider.membershipId }
+})
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Both month params are derived from the same monthAnchor the fixtures are placed by, rather
+ * than from `new Date()` — a param computed from the raw clock can disagree with the month a
+ * fixture actually landed in when the suite runs within a UTC offset of a month boundary.
+ */
+function currentMonth(): string {
+  return formatMonthParam(monthAnchor(0))
+}
+
+function previousMonth(): string {
+  return formatMonthParam(monthAnchor(1))
+}
+
+/** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
+function byRiderUrl(month = currentMonth()): string {
+  return `/barn/${barn.slug}/finances?month=${month}&tab=rider`
+}
+
+function drilldownUrl(month = currentMonth()): string {
+  return `/barn/${barn.slug}/finances/riders/${seeded.riderMembershipId}?month=${month}`
+}
+
+/**
+ * The breakdown table, isolated from the Outstanding Income/Expenses tables rendered above it
+ * on the same page: only BreakdownTable renders a <tfoot> (ReconciliationFoot).
+ */
+function breakdownTable(page: Page) {
+  return page.locator('table').filter({ has: page.locator('tfoot') })
+}
+
+function breakdownRows(page: Page) {
+  return breakdownTable(page).locator('tbody tr')
+}
+
+/** 1-based, matching CSS: 1 Rider, 2 Gross, 3 Expenses, 4 Net. */
+function columnCells(page: Page, index: number) {
+  return breakdownRows(page).locator(`td:nth-child(${index})`)
+}
+
+function headerCell(page: Page, index: number) {
+  return breakdownTable(page).locator('thead th').nth(index)
+}
+
+/**
+ * Each header's own label text — the first button (sortable column) or span (not) inside the
+ * th, which is the label element in both SortableTh modes. Excludes InfoPopover's trailing ⓘ
+ * trigger, and strips the ▲/▼ sort indicator the active column's label carries.
+ */
+async function columnLabels(page: Page): Promise<string[]> {
+  return breakdownTable(page)
+    .locator('thead th')
+    .evaluateAll((ths) =>
+      ths.map((th) => (th.querySelector('button, span')?.textContent ?? '').replace(/[▲▼]/g, '').trim())
+    )
+}
+
+/** Every breakdown figure is a formatted currency string; magnitude is what's compared. */
+function parseMoney(text: string): number {
+  return Math.abs(Number(text.replace(/[^0-9.]/g, '')))
+}
+
+function riderRow(page: Page, name: string) {
+  return breakdownRows(page).filter({ has: page.getByRole('link', { name, exact: true }) })
+}
+
+/** The drill-down's bottom Total is a two-span flex row beneath the table, not a <tfoot>. */
+function drilldownTotal(page: Page) {
+  return page.getByText('Total', { exact: true }).locator('xpath=following-sibling::span')
+}
+
+// ---------------------------------------------------------------------------
+// Columns
+// ---------------------------------------------------------------------------
+
+test('by_rider_tab_shows_rider_gross_expenses_net_columns @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  expect(await columnLabels(page)).toEqual(['Rider', 'Gross', 'Expenses', 'Net'])
+})
+
+test('by_rider_expenses_column_is_always_a_dash @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  await expect(columnCells(page, 3)).toHaveText(Array(SEEDED_RIDER_COUNT).fill('—'))
+})
+
+test('by_rider_expenses_header_is_not_sortable @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  // SortableTh sets aria-sort on every sortable header — "ascending"/"descending" when it's
+  // the active key, "none" when it isn't — and omits the attribute entirely otherwise, so its
+  // absence is what distinguishes a column with no sort key from an inactive sortable one.
+  await expect(headerCell(page, 2)).not.toHaveAttribute('aria-sort', /.*/)
+})
+
+test('by_rider_net_column_equals_gross_in_every_row @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  expect(await columnCells(page, 4).allInnerTexts()).toEqual(await columnCells(page, 2).allInnerTexts())
+})
+
+test('by_rider_name_is_an_underlined_link_to_the_rider_drilldown @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  await expect(
+    breakdownTable(page).locator(
+      `a.underline[href="/barn/${barn.slug}/finances/riders/${seeded.riderMembershipId}?month=${currentMonth()}"]`
+    )
+  ).toHaveCount(1)
+})
+
+// ---------------------------------------------------------------------------
+// Drill-down
+// ---------------------------------------------------------------------------
+
+test('rider_drilldown_combines_lessons_and_agreement_charges_in_one_table @manager', async ({ page }) => {
+  await page.goto(drilldownUrl())
+  const types = await page.locator('tbody tr td:nth-child(2)').allInnerTexts()
+  expect([...new Set(types)].sort()).toEqual(['Boarding', 'Lease', 'Lesson'])
+})
+
+test('rider_drilldown_rows_are_ordered_by_date_ascending @manager', async ({ page }) => {
+  await page.goto(drilldownUrl())
+  const dates = (await page.locator('tbody tr td:nth-child(1)').allInnerTexts()).map((t) => new Date(t).getTime())
+  expect(dates).toEqual([...dates].sort((a, b) => a - b))
+})
+
+test('rider_drilldown_table_has_a_type_column @manager', async ({ page }) => {
+  await page.goto(drilldownUrl())
+  await expect(page.getByRole('columnheader', { name: 'Type', exact: true })).toHaveCount(1)
+})
+
+// #971 made the By Rider tab's Gross pre-cut (RIDER_INCOME_DESCRIPTOR.splitsGrossFee) but
+// left the drill-down net-of-cut, so the two figures differ by exactly the snapshotted cut on
+// the rider's lessons in view — one lesson this month, hence one INSTRUCTOR_CUT. The Gross is
+// read off the tab rather than computed, so this asserts the *relationship* between the two
+// pages and not a total either of them derives.
+test('rider_drilldown_total_is_the_by_rider_gross_less_the_instructor_cut @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  const gross = parseMoney(await riderRow(page, RIDER_NAME).locator('td').nth(1).innerText())
+  await page.goto(drilldownUrl())
+  expect(parseMoney(await drilldownTotal(page).innerText())).toBe(gross - INSTRUCTOR_CUT)
+})
+
+test('rider_drilldown_preserves_the_month_param @manager', async ({ page }) => {
+  await page.goto(byRiderUrl(previousMonth()))
+  await breakdownTable(page).getByRole('link', { name: RIDER_NAME, exact: true }).click()
+  await expect(page).toHaveURL(
+    new RegExp(`/finances/riders/${seeded.riderMembershipId}\\?month=${previousMonth()}$`)
+  )
+})
+
+// ---------------------------------------------------------------------------
+// Sorting
+// ---------------------------------------------------------------------------
+
+test('by_rider_rows_load_sorted_by_rider_name_ascending @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  await expect(columnCells(page, 1)).toHaveText([RIDER_NAME, RIDER2_NAME, TRAINER_NAME])
+})
+
+test('by_rider_rider_header_shows_an_ascending_indicator_on_load @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  await expect(headerCell(page, 0)).toContainText('▲')
+})
+
+test('by_rider_gross_header_tap_re_sorts_rows_ascending @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  await breakdownTable(page).getByRole('button', { name: 'Gross', exact: true }).click()
+  await expect(columnCells(page, 1)).toHaveText([TRAINER_NAME, RIDER_NAME, RIDER2_NAME])
+})
+
+// Gross and Net share one sort key (they're always equal on this tab), so sorting by either
+// must land on the same order. Compared DOM-to-DOM across two loads rather than against a
+// written-out expectation, so the check is about the two columns agreeing with each other.
+test('by_rider_net_header_tap_produces_the_same_order_as_gross @manager', async ({ page }) => {
+  await page.goto(byRiderUrl())
+  await breakdownTable(page).getByRole('button', { name: 'Gross', exact: true }).click()
+  // A wait, not an assertion: the indicator lands on the clicked header once React has
+  // re-rendered the sorted rows, which is what makes the read below safe.
+  await expect(headerCell(page, 1)).toContainText('▲')
+  const orderByGross = await columnCells(page, 1).allInnerTexts()
+
+  await page.goto(byRiderUrl())
+  await breakdownTable(page).getByRole('button', { name: 'Net', exact: true }).click()
+  await expect(headerCell(page, 3)).toContainText('▲')
+  expect(await columnCells(page, 1).allInnerTexts()).toEqual(orderByGross)
+})
