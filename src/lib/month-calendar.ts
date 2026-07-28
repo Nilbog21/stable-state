@@ -41,7 +41,14 @@ export interface DayDecorationOptions {
    *  on midnight, so the heatmap tracks the Hour dropdown the way ExhaustionBar does. */
   hour: number
   thresholdsByHorseId: Record<string, { high: number; moderate: number }>
-  /** "YYYY-MM-DD" for today, viewer-local (see local-day.ts's localToday). */
+  // ponytail: known limitation — this is the viewer's own day (local-day.ts's localToday),
+  // while every other date here is a barn-local day, so a viewer whose device timezone differs
+  // from barns.timezone can see the past/future cutoff land a day off near midnight. Accepted
+  // for now on the assumption that users are in the barn's timezone; the app makes the same
+  // viewer-local assumption in several other places, so the fix is a cross-app audit rather
+  // than a one-line change here. Upgrade path: pass a barn-local todayStr computed server-side
+  // with instantToLocalWallClock(new Date(), barn.timezone), as the dashboard Day view does.
+  /** "YYYY-MM-DD" for today, viewer-local. */
   todayStr: string
   /** In edit mode, the lesson being edited — it must not count against itself. */
   excludeLessonId?: string | null

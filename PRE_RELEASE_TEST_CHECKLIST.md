@@ -142,12 +142,17 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
 - [ ] (#1019) Change the Hour dropdown from an early hour to a late one — at least one day's shading shifts
 - [ ] (#1019) Schedule a vet/farrier expense for Apple on a future day, then reopen this form with Apple selected — that day shows a dot
-- [ ] (#1019) A greyed-out past day shows no shading and no dot even with Apple selected
-- [ ] (#1019) Tap a day that has a lesson on it — a popup lists that day's items with 12-hour times and horse/rider names
+- [ ] (#1019) With Apple selected, a greyed-out past day shows no shading
+- [ ] (#1019) With Apple selected, a greyed-out past day shows no dot
+- [ ] (#1019) Tap a day that has a lesson on it — a popup lists that day's items
+- [ ] (#1019) That popup shows each item's time in 12-hour AM/PM format
+- [ ] (#1019) That popup shows each item's horse and rider names
 - [ ] (#1019) Tap a day with nothing on it — the popup reads "Nothing scheduled for this day."
 - [ ] (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
-- [ ] (#1019) Tap **›** — the grid advances one month and its shading refreshes
-- [ ] (#1019) A day carried in from the neighbouring month renders dimmed but is still selectable
+- [ ] (#1019) Tap **›** — the grid advances one month
+- [ ] (#1019) After advancing a month, the new grid's shading reflects that month's lessons
+- [ ] (#1019) A day carried in from the neighbouring month renders dimmed
+- [ ] (#1019) That dimmed neighbouring-month day is still selectable
 - [ ] (#1019) Check **Recurring (weekly)** — the calendar's field label changes to "Starting Date"
 - [ ] (#1019) Manage Barn → Events → Add Event still uses a plain native date box, not the month calendar
 - [ ] Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)

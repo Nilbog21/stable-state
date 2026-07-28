@@ -143,7 +143,10 @@ export function MonthCalendarPicker({
           <div className="absolute inset-x-2 top-14 z-10 rounded-md border border-zinc-200 bg-white p-3 text-sm shadow-md dark:border-zinc-700 dark:bg-zinc-900">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="font-semibold text-zinc-900 dark:text-zinc-50">{formatCalendarDate(popupDate)}</span>
-              <Button variant="ghost" onClick={() => setOpen(false)} aria-label="Close" className="shrink-0 px-3 py-1">
+              {/* `primary`, not `ghost`, even though Close is logically the secondary action here:
+                  CLAUDE.md's rule is that ghost's subtle border reads as non-interactive when it is
+                  the only button in view, and this popup has no other control to defer to. */}
+              <Button onClick={() => setOpen(false)} aria-label="Close" className="shrink-0 px-3 py-1">
                 ×
               </Button>
             </div>
