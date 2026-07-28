@@ -330,22 +330,22 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: by_horse_second_gross_header_tap_flips_the_indicator_to_descending) After that second tap, the indicator flips to ▼
 - [ ] (e2e: gross_header_info_icon_reveals_its_explanation) Tap the ⓘ next to a **Gross**/**Expenses**/**Net** header on any tab → shows explanatory text
 - [ ] (e2e: gross_header_info_icon_tap_does_not_trigger_a_sort) Tapping that ⓘ does **not** trigger a sort (the icon sits beside, not inside, the sort button)
-- [ ] (e2e-candidate) **By Tier** tab (no longer default, still reachable via the pill) lists your new tiers and seeded tiers
-- [ ] (e2e-candidate) By Tier's column order is **Tier | Gross | Expenses | Net** — no Price column, no Lessons count column
-- [ ] (e2e-candidate) By Tier's Expenses column (renamed from "Instructor Cut") sums that tier's lessons' own snapshotted cuts
-- [ ] (e2e-candidate) By Tier's Expenses column shows `—` for a tier whose snapshotted cuts total zero
-- [ ] (e2e-candidate) For a tier's row, Gross equals Net plus Expenses
-- [ ] (e2e-candidate) A tier with no paid lessons this month still appears (alongside at least one tier that did collect something), with `$0.00` Gross/Net (not omitted from the list)
-- [ ] (e2e-candidate) Edit a tier's instructor cut, book a new lesson under it, and confirm the tier's Expenses column reflects a mix of the old and new per-lesson rates rather than the new rate × total count
-- [ ] (e2e-candidate) **By Tier empty-state check** (#971): navigate to a month where **no** tier collected any lesson income and no lease/boarding charge was collected either → **By Tier** shows its `EmptyState` instead of a table full of `$0.00` rows (the #771 per-active-tier backfill alone must not keep the table visible)
-- [ ] (e2e-candidate) **By Tier charge-only check**: navigate to a month with **no** lesson income but **one** collected lease/boarding charge → **By Tier** shows its table, not `EmptyState`
-- [ ] (e2e-candidate) In that charge-only month, the charge amount is reflected in By Tier's footer **Outside this view** row for Gross
-- [ ] (e2e-candidate) On page load, By Tier rows are sorted by **Tier** name ascending
-- [ ] (e2e-candidate) On page load, a ▲ appears next to By Tier's **Tier** header
-- [ ] (e2e-candidate) Tap the **Net** header on By Tier → rows re-sort by that column ascending
-- [ ] (e2e-candidate) After tapping **Net** on By Tier, a ▲ appears on the Net header (and disappears from Tier)
-- [ ] (e2e-candidate) Tap the **Net** header on By Tier again → order reverses
-- [ ] (e2e-candidate) After that second tap on By Tier, the indicator flips to ▼
+- [ ] (e2e: by_tier_tab_lists_every_barn_tier) **By Tier** tab (no longer default, still reachable via the pill) lists your new tiers and seeded tiers
+- [ ] (e2e: by_tier_column_order_is_tier_gross_expenses_net) By Tier's column order is **Tier | Gross | Expenses | Net** — no Price column, no Lessons count column
+- [ ] (e2e: by_tier_expenses_column_sums_the_tiers_snapshotted_cuts) By Tier's Expenses column (renamed from "Instructor Cut") sums that tier's lessons' own snapshotted cuts
+- [ ] (e2e: by_tier_expenses_column_shows_a_dash_when_snapshotted_cuts_total_zero) By Tier's Expenses column shows `—` for a tier whose snapshotted cuts total zero
+- [ ] (e2e: by_tier_row_gross_equals_net_plus_expenses) For a tier's row, Gross equals Net plus Expenses
+- [ ] (e2e: tier_with_no_paid_lessons_still_appears_with_zero_gross_and_net) A tier with no paid lessons this month still appears (alongside at least one tier that did collect something), with `$0.00` Gross/Net (not omitted from the list)
+- [ ] (e2e: by_tier_expenses_column_mixes_old_and_new_instructor_cut_rates) Edit a tier's instructor cut, book a new lesson under it, and confirm the tier's Expenses column reflects a mix of the old and new per-lesson rates rather than the new rate × total count
+- [ ] (e2e: by_tier_shows_empty_state_in_a_month_with_no_collected_income) **By Tier empty-state check** (#971): navigate to a month where **no** tier collected any lesson income and no lease/boarding charge was collected either → **By Tier** shows its `EmptyState` instead of a table full of `$0.00` rows (the #771 per-active-tier backfill alone must not keep the table visible)
+- [ ] (e2e: by_tier_shows_its_table_in_a_charge_only_month) **By Tier charge-only check**: navigate to a month with **no** lesson income but **one** collected lease/boarding charge → **By Tier** shows its table, not `EmptyState`
+- [ ] (e2e: charge_only_month_gross_appears_in_the_outside_this_view_footer_row) In that charge-only month, the charge amount is reflected in By Tier's footer **Outside this view** row for Gross
+- [ ] (e2e: by_tier_rows_load_sorted_by_tier_name_ascending) On page load, By Tier rows are sorted by **Tier** name ascending
+- [ ] (e2e: by_tier_tier_header_carries_the_ascending_indicator_on_load) On page load, a ▲ appears next to By Tier's **Tier** header
+- [ ] (e2e: tapping_the_net_header_sorts_by_net_ascending) Tap the **Net** header on By Tier → rows re-sort by that column ascending
+- [ ] (e2e: tapping_the_net_header_moves_the_ascending_indicator_to_net) After tapping **Net** on By Tier, a ▲ appears on the Net header (and disappears from Tier)
+- [ ] (e2e: tapping_the_net_header_twice_reverses_the_order) Tap the **Net** header on By Tier again → order reverses
+- [ ] (e2e: tapping_the_net_header_twice_flips_the_indicator_to_descending) After that second tap on By Tier, the indicator flips to ▼
 - [ ] (e2e: by_rider_tab_shows_rider_gross_expenses_net_columns) **By Rider** tab shows **Rider | Gross | Expenses | Net** columns
 - [ ] (e2e: by_rider_expenses_column_is_always_a_dash) By Rider's Expenses column is always `—` (no rider-level expense concept)
 - [ ] (e2e: by_rider_expenses_header_is_not_sortable) By Rider's Expenses header isn't clickable/sortable
