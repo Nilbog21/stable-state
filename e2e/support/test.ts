@@ -44,9 +44,14 @@ export type BarnHandle = {
   readonly data: SeedContext
 }
 
+// `created` is set the moment the barn row exists and tracks what afterAll must clean up;
+// `ctx` is set only once seeding finished and is what tests read. They are separate so a
+// failure between the two still tears the barn down.
+type BarnState = { slug: string; created: SupabaseClient | null; ctx: SeedContext | null }
+
 // One barn is active per worker process at a time (a worker runs a single file at a time),
 // so the page fixture below can read the current file's barn from here.
-let active: { slug: string; ctx: SeedContext | null } | null = null
+let active: BarnState | null = null
 
 // The mobile project runs on the manager storage state, so it authenticates as the manager.
 const ROLE_BY_PROJECT: Record<string, E2eRole> = {
@@ -69,7 +74,7 @@ function serviceClient(): SupabaseClient {
 
 export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>): BarnHandle {
   const slug = barnSlugFor(runPrefix(), key)
-  const state: { slug: string; ctx: SeedContext | null } = { slug, ctx: null }
+  const state: BarnState = { slug, created: null, ctx: null }
   active = state
 
   // Registered from the spec file's own module evaluation, so both hooks attach to that
@@ -77,6 +82,11 @@ export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>
   base.beforeAll(async () => {
     const supabase = serviceClient()
     const barn = await createBarn(supabase, slug)
+    // Marked owed-for-teardown as soon as the row exists, before the steps that can throw:
+    // addMemberships fails whenever the per-project logins are missing, and gating teardown
+    // on the fully-seeded context instead would strand this barn. A bare
+    // `npx playwright test` has no exit trap sweeping up behind it.
+    state.created = supabase
     const members = await addMemberships(supabase, barn.id)
     state.ctx = { supabase, barn, members }
     active = state
@@ -84,11 +94,12 @@ export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>
   })
 
   base.afterAll(async () => {
-    if (!state.ctx) return
+    if (!state.created) return
     // --hold-open keeps the barns up for manual checklist steps; run-checklist-suite.sh's
     // exit trap sweeps them by run prefix once the operator is done.
     if (process.env.E2E_HOLD_OPEN === 'true') return
-    await teardownBarn(state.ctx.supabase, slug)
+    await teardownBarn(state.created, slug)
+    state.created = null
     state.ctx = null
   })
 

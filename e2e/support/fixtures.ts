@@ -130,7 +130,14 @@ export async function createBarn(supabase: SupabaseClient, slug: string): Promis
  * script wraps this instead.
  */
 export async function teardownBarn(supabase: SupabaseClient, slug: string): Promise<void> {
-  const { data: barn } = await supabase.from('barns').select('id, is_test_barn').eq('slug', slug).maybeSingle()
+  // The error is checked, not discarded: a failed lookup and a missing barn are both falsy
+  // `data`, and swallowing the former would report a successful teardown while leaking the barn.
+  const { data: barn, error } = await supabase
+    .from('barns')
+    .select('id, is_test_barn')
+    .eq('slug', slug)
+    .maybeSingle()
+  if (error) throw new Error(`look up barn "${slug}": ${error.message}`)
   if (!barn) return
 
   if (!barn.is_test_barn) {
@@ -188,11 +195,11 @@ export async function addMemberships(supabase: SupabaseClient, barnId: string): 
     'insert memberships'
   )
 
-  const memberFor = (profileId: string, userId: string | null): SeededMember => ({
-    membershipId: inserted.find((m) => m.profile_id === profileId)!.id,
-    userId,
-    profileId,
-  })
+  const memberFor = (profileId: string, userId: string | null): SeededMember => {
+    const membership = inserted.find((m) => m.profile_id === profileId)
+    if (!membership) throw new Error(`insert memberships returned no row for profile ${profileId}`)
+    return { membershipId: membership.id, userId, profileId }
+  }
 
   return {
     manager: memberFor(rows[0].profile_id, rows[0].user_id),

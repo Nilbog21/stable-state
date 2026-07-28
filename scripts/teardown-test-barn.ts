@@ -22,7 +22,10 @@ export async function teardown(barnSlug: string, supabase: SupabaseClient): Prom
  */
 export async function teardownTestBarnsByPrefix(supabase: SupabaseClient, prefix: string): Promise<string[]> {
   const barns = mustSucceed<{ slug: string }[]>(
-    await supabase.from('barns').select('slug').eq('is_test_barn', true).like('slug', `${prefix}%`),
+    // The trailing `-` matches how barnSlugFor builds slugs (`${prefix}-${key}`). Without it,
+    // `$RANDOM` being unpadded means one run's prefix can be a string-prefix of a concurrent
+    // run's — e2e-<t>-482 would match e2e-<t>-4821-smoke and delete that run's live barns.
+    await supabase.from('barns').select('slug').eq('is_test_barn', true).like('slug', `${prefix}-%`),
     'list test barns by prefix'
   )
   const slugs = barns.map((b) => b.slug)

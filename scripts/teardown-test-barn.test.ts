@@ -100,4 +100,13 @@ describe('teardownTestBarnsByPrefix', () => {
     const slugs = await teardownTestBarnsByPrefix(client, 'e2e-9-9')
     expect(slugs).toEqual([])
   })
+
+  // Without the trailing delimiter, an unpadded $RANDOM makes one run's prefix a string-prefix
+  // of a concurrent run's — e2e-1-482 would match e2e-1-4821-smoke and delete that run's barns.
+  it('should_match_the_prefix_with_a_trailing_delimiter', async () => {
+    const like = vi.fn(() => ({ then: (resolve: (v: unknown) => void) => resolve({ data: [], error: null }) }))
+    const client = { from: vi.fn(() => ({ select: vi.fn(() => ({ eq: vi.fn(() => ({ like })) })) })) } as any
+    await teardownTestBarnsByPrefix(client, 'e2e-1-482')
+    expect(like).toHaveBeenCalledWith('slug', 'e2e-1-482-%')
+  })
 })
