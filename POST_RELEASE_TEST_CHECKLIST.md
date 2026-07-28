@@ -19,6 +19,12 @@ Paths below are relative — prepend the prod origin.
 
 - [ ] A second real person lined up, with their own Google account, on their own device, reachable by call or chat while you run this
 - [ ] `.env.local` at repo root pointed at **prod** — `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `DEV_NAME`
+- [ ] The three e2e auth logins created on prod — a one-time per-project bootstrap `seed-test-barn.sh` verifies before it will seed, and they're deleted again in Cleanup below:
+
+  ```bash
+  bash scripts/e2e-auth-users.sh --allow-prod create
+  ```
+
 - [ ] Both throwaway prod test barns seeded — each run prints a dev-manager invite link at the end, so keep both:
 
   ```bash
@@ -86,6 +92,14 @@ Barn: `post-release-test-2`. The second person joins here as a **trainer**, sinc
   ```
 
 - [ ] Open `/barns` as yourself → neither `post-release-test` nor `post-release-test-2` is listed
+- [ ] Delete the three e2e auth logins from prod — they're per project, so barn teardown doesn't touch them, and their password is published in this repo:
+
+  ```bash
+  bash scripts/e2e-auth-users.sh --allow-prod delete
+  ```
+
+  This refuses to delete anything while a barn still lists the logins as members, naming the
+  barns to tear down — so run it after the teardown step above, not before.
 
 > The second person's own Google account is deliberately left untouched by teardown — it's a real account, not seeded test data. They keep it; it simply no longer has a membership anywhere.
 

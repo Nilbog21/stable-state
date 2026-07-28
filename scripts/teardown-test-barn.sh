@@ -15,6 +15,20 @@ if [ "${1:-}" = "--all" ]; then
   shift
 fi
 
+# --prefix scopes teardown to one suite run's barns. run-checklist-suite.sh's exit trap uses
+# it instead of --all, which would delete a concurrent run's barns out from under it.
+TEARDOWN_PREFIX=""
+if [ "${1:-}" = "--prefix" ]; then
+  case "${2:-}" in
+    ""|--*)
+      echo "Error: --prefix requires a slug prefix (e.g. e2e-1753631000-4821)" >&2
+      exit 1
+      ;;
+  esac
+  TEARDOWN_PREFIX="$2"
+  shift 2
+fi
+
 NEXT_PUBLIC_SUPABASE_URL="${NEXT_PUBLIC_SUPABASE_URL:-}"
 SUPABASE_SERVICE_ROLE_KEY="${SUPABASE_SERVICE_ROLE_KEY:-}"
 DEV_SUPABASE_URL="${DEV_SUPABASE_URL:-}"
@@ -44,10 +58,10 @@ for var_name in $required_vars; do
 done
 
 BARN_SLUG=""
-if [ "$TEARDOWN_ALL" = false ]; then
+if [ "$TEARDOWN_ALL" = false ] && [ -z "$TEARDOWN_PREFIX" ]; then
   BARN_SLUG="${1:-}"
   if [ -z "$BARN_SLUG" ]; then
-    echo "Error: barn slug argument is required (e.g. test-barn-pr-99), or pass --all to tear down every test barn" >&2
+    echo "Error: barn slug argument is required (e.g. test-barn-pr-99), or pass --prefix <p> / --all" >&2
     exit 1
   fi
 fi
@@ -56,6 +70,7 @@ NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
   SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
   DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
   TEST_BARN_SLUG="$BARN_SLUG" \
+  TEARDOWN_PREFIX="$TEARDOWN_PREFIX" \
   TEARDOWN_TEST_BARN_ALLOW_PROD="$ALLOW_PROD" \
   TEARDOWN_ALL="$TEARDOWN_ALL" \
   npx tsx scripts/teardown-test-barn.ts

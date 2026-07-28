@@ -1,13 +1,86 @@
-import { test, expect } from '@playwright/test'
+import { test, expect, withBarn, type Page } from './support/test'
+import {
+  addExpense,
+  addHorse,
+  addHorseDocument,
+  addLeaseCharge,
+  addPaidLesson,
+  addTier,
+  addUnpaidLesson,
+  daysFromNow,
+} from './support/fixtures'
 
-const barnSlug = process.env.TEST_BARN_SLUG!
+const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) => {
+  const tier = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
+  const apollo = await addHorse(supabase, barn.id, 'Apollo')
+  const bella = await addHorse(supabase, barn.id, 'Bella')
+
+  // Day +2 carries exactly one lesson and one expense — the interleave assertion below
+  // depends on nothing else landing there. The expense is pinned to 23:00 while the lesson
+  // inherits the seed's own time of day, making "lesson card, then expense card" a
+  // deterministic DOM order.
+  await addUnpaidLesson(supabase, barn, {
+    at: daysFromNow(2),
+    instructorId: members.trainer.membershipId,
+    horseIds: [apollo.id],
+    riderIds: [members.rider.membershipId],
+    fee: tier.price,
+    tierName: tier.name,
+  })
+  await addExpense(supabase, barn, {
+    at: daysFromNow(2),
+    time: '23:00',
+    recipient: 'Valley Farrier',
+    expenseType: 'Farrier',
+    horseIds: [apollo.id],
+  })
+
+  // Date-only planned expense (no time) — must stay off the dashboard, which shows only
+  // scheduled expenses that have a time set. Asserted on its own day, not an unrelated one.
+  await addExpense(supabase, barn, {
+    at: daysFromNow(4),
+    recipient: 'Feed Supplier',
+    expenseType: 'Feed',
+  })
+
+  // Both unpaid fixtures enrol the stub rider, not the `rider` login, so the manager sees a
+  // barn-wide reminder while the rider still has none — the shown/hidden pair the Reminders
+  // assertions below need.
+  await addUnpaidLesson(supabase, barn, {
+    at: daysFromNow(-1),
+    instructorId: members.trainer.membershipId,
+    horseIds: [bella.id],
+    riderIds: [members.rider2.membershipId],
+    fee: tier.price,
+    tierName: tier.name,
+  })
+  await addLeaseCharge(supabase, barn, {
+    monthsAgo: 2,
+    riderId: members.rider2.membershipId,
+    horseId: bella.id,
+    fee: 150,
+  })
+
+  // A paid past lesson so the day view and lesson list aren't empty behind the reminders.
+  await addPaidLesson(supabase, barn, {
+    at: daysFromNow(-3),
+    instructorId: members.trainer.membershipId,
+    horseIds: [apollo.id],
+    riderIds: [members.rider.membershipId],
+    fee: tier.price,
+    tierName: tier.name,
+  })
+
+  // Undated on purpose — the spec sets its reminder date through the horse page's own form.
+  await addHorseDocument(supabase, barn, apollo.id, { recordType: 'coggins', fileName: 'coggins.pdf' })
+})
 
 // #1015 replaced the dashboard's old Today/This-Week split with a single-day
 // CalendarDayView — the day heading itself carries the "Today" indicator now.
 // @mobile rather than @manager: the mobile project runs on the manager storageState too,
 // so this doubles as the dashboard's small-viewport smoke test without running twice.
 test('dashboard_today_indicator_visible_on_current_day @mobile', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}`)
+  await page.goto(`/barn/${barn.slug}`)
   await expect(page.getByRole('heading', { name: /Today$/ })).toBeVisible()
 })
 
@@ -15,8 +88,8 @@ test('dashboard_today_indicator_visible_on_current_day @mobile', async ({ page }
 // actually advance before clicking again — it's a client-side transition on a server-rendered
 // Link, so its href (and the page underneath it) don't update synchronously with the click.
 // Firing clicks back-to-back races the same stale link and nets zero navigation.
-async function goToDaysAhead(page: import('@playwright/test').Page, days: number) {
-  await page.goto(`/barn/${barnSlug}`)
+async function goToDaysAhead(page: Page, days: number) {
+  await page.goto(`/barn/${barn.slug}`)
   for (let i = 0; i < days; i++) {
     const next = page.getByRole('link', { name: 'Next day' })
     const targetDate = new URL((await next.getAttribute('href'))!, page.url()).searchParams.get('date')
@@ -25,12 +98,6 @@ async function goToDaysAhead(page: import('@playwright/test').Page, days: number
   }
 }
 
-// The Valley Farrier expense is seeded at 23:00 on the same barn-local day as a lesson
-// whose own time-of-day isn't controlled (it's "2 days from whenever the suite seeded
-// the barn") — pinning the expense to near end-of-day makes "lesson card, then expense
-// card" a deterministic DOM order regardless. A single-day view only ever shows these
-// two items on that day (the old third item, a lesson 3 days further out, belongs to a
-// different day entirely now).
 test('dashboard_expense_interleaved_with_lesson_by_time_on_shared_day @manager', async ({ page }) => {
   await goToDaysAhead(page, 2)
   const cardLinks = page.locator('a[href*="/lessons/"], a[href*="/expenses/"]')
@@ -73,19 +140,19 @@ test('dashboard_expense_card_shows_horse @manager', async ({ page }) => {
 })
 
 test('dashboard_reminders_header_visible_for_manager @manager', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}`)
+  await page.goto(`/barn/${barn.slug}`)
   await expect(page.getByRole('heading', { name: 'Reminders' })).toBeVisible()
 })
 
 test('dashboard_reminders_header_hidden_for_rider_with_no_reminders @rider', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}`)
+  await page.goto(`/barn/${barn.slug}`)
   await expect(page.getByRole('heading', { name: 'Reminders' })).toHaveCount(0)
 })
 
 test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manager', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}/horses`)
+  await page.goto(`/barn/${barn.slug}/horses`)
   await page.getByRole('link', { name: /Apollo/ }).first().click()
-  await expect(page).toHaveURL(new RegExp(`/barn/${barnSlug}/horses/`))
+  await expect(page).toHaveURL(new RegExp(`/barn/${barn.slug}/horses/`))
 
   const pastDate = new Date()
   pastDate.setUTCDate(pastDate.getUTCDate() - 1)
@@ -96,7 +163,7 @@ test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manage
   await dateInput.blur()
   await page.waitForLoadState('networkidle')
 
-  await page.goto(`/barn/${barnSlug}`)
+  await page.goto(`/barn/${barn.slug}`)
   const expectedDate = new Date(pastDateStr).toLocaleDateString('en-US', {
     month: 'short',
     day: 'numeric',
@@ -107,13 +174,13 @@ test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manage
 })
 
 test('dashboard_unpaid_lesson_reminder_links_to_outstanding @manager', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}`)
+  await page.goto(`/barn/${barn.slug}`)
   const unpaidLessons = page.getByRole('link', { name: /unpaid lesson/ })
-  await expect(unpaidLessons).toHaveAttribute('href', `/barn/${barnSlug}/finances/outstanding`)
+  await expect(unpaidLessons).toHaveAttribute('href', `/barn/${barn.slug}/finances/outstanding`)
 })
 
 test('dashboard_unpaid_lease_reminder_links_to_outstanding @manager', async ({ page }) => {
-  await page.goto(`/barn/${barnSlug}`)
+  await page.goto(`/barn/${barn.slug}`)
   const unpaidLease = page.getByRole('link', { name: /unpaid lease/ })
-  await expect(unpaidLease).toHaveAttribute('href', `/barn/${barnSlug}/finances/outstanding`)
+  await expect(unpaidLease).toHaveAttribute('href', `/barn/${barn.slug}/finances/outstanding`)
 })

@@ -3,15 +3,18 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-BARN_SLUG="e2e-$(date +%s)-$RANDOM"
+# Every barn this run creates is slugged "$RUN_PREFIX-<spec key>-<playwright project>" (see
+# e2e/support/test.ts), so the exit trap can tear down exactly this run's barns and a concurrent
+# run in another worktree is unaffected.
+RUN_PREFIX="e2e-$(date +%s)-$RANDOM"
 # `git rev-parse --show-toplevel` resolves to *this* worktree's root, so the path is
 # per-worktree isolated for free. Not under test-results/ — Playwright wipes that directory
 # at the start of every run, which would leave tee writing to a deleted inode.
 LOG_PATH="$PWD/checklist-suite.log"
 
 # Truncated with `>` before anything else runs, so a log left behind by a dead run can never
-# be mistaken for this one's; the header says which barn and when.
-echo "=== run-checklist-suite.sh — barn $BARN_SLUG — started $(date) ===" > "$LOG_PATH"
+# be mistaken for this one's; the header says which barns and when.
+echo "=== run-checklist-suite.sh — barn prefix $RUN_PREFIX — started $(date) ===" > "$LOG_PATH"
 # Send this script's stdout and stderr — and that of everything it runs — through `tee`, so
 # the log gets the whole run, including the early bails that kill it under `set -e` before
 # Playwright writes a line. Costs the `list` reporter its live in-place progress (stdout is
@@ -28,7 +31,7 @@ Usage: run-checklist-suite.sh [--interactive] [--base-url <origin>] [--spec <pat
   --base-url URL    Origin under test (default: http://localhost:3000)
   --spec PATH       Playwright spec path or glob; repeatable (default: full suite)
   --allow-prod      Target a non-dev Supabase project; requires --base-url
-  --hold-open       Prompt before teardown, so the seeded barn survives manual checklist steps
+  --hold-open       Prompt before teardown, so the seeded barns survive manual checklist steps
 EOF
 }
 
@@ -38,8 +41,8 @@ ALLOW_PROD=false
 HOLD_OPEN=false
 SPEC_ARGS=()
 PROD_FLAG=()
-# Flipped just before seeding, so an early bail (bad flag, missing .env.local, unreadable
-# Supabase vars) doesn't call teardown for a barn that was never created.
+# Flipped just before Playwright starts, so an early bail (bad flag, missing .env.local,
+# unreadable Supabase vars) doesn't call teardown before any barn could exist.
 SEEDED=false
 
 cleanup() {
@@ -47,7 +50,8 @@ cleanup() {
   # the script is actually exiting with.
   local code=$?
   if [ "$SEEDED" = true ]; then
-    bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" "$BARN_SLUG" || code=$?
+    # --prefix, not --all: --all would delete a concurrent run's barns too.
+    bash scripts/teardown-test-barn.sh "${PROD_FLAG[@]}" --prefix "$RUN_PREFIX" || code=$?
   fi
   echo "=== run-checklist-suite.sh exited $code — full log: $LOG_PATH ==="
   exit "$code"
@@ -118,19 +122,23 @@ parse_var() {
 
 NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$(parse_var NEXT_PUBLIC_SUPABASE_ANON_KEY || true)"
+# Seeding now happens inside the Playwright process (one barn per spec file per project), so the test
+# process needs the service-role key the seed script used to hold on its own.
+SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
 
-for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY; do
+for var_name in NEXT_PUBLIC_SUPABASE_URL NEXT_PUBLIC_SUPABASE_ANON_KEY SUPABASE_SERVICE_ROLE_KEY; do
   if [ -z "${!var_name}" ]; then
     echo "Error: $var_name is not set in .env.local" >&2
     exit 1
   fi
 done
 
-# Same meaning as in seed-test-barn.sh/teardown-test-barn.sh/change-user.sh/seed-account.sh:
+# Same meaning as in e2e-auth-users.sh/teardown-test-barn.sh/change-user.sh/seed-account.sh:
 # it bypasses their assertDevProject check. This script has no dev-project check of its own —
 # .env.local alone picks the Supabase project (those scripts re-read it and ignore any env
-# override), so without this flag the seed/teardown calls below stay fail-closed on non-dev.
+# override), so without this flag the teardown call and the suite's own in-process
+# assertDevProject (e2e/support/test.ts) both stay fail-closed on non-dev.
 if [ "$ALLOW_PROD" = true ]; then
   PROD_FLAG=(--allow-prod)
   # Without an origin this seeds the target project and then drives localhost:3000 — your own
@@ -149,11 +157,6 @@ fi
 
 E2E_BASE_URL="${BASE_URL:-http://localhost:3000}"
 
-echo "Seeding test barn $BARN_SLUG..."
-echo "  If this run is killed, clean up with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} $BARN_SLUG"
-SEEDED=true
-bash scripts/seed-test-barn.sh "${PROD_FLAG[@]}" "$BARN_SLUG"
-
 echo "Checking Playwright system dependencies..."
 if ! npx playwright install-deps chromium --dry-run; then
   echo "Error: missing Playwright system dependencies (see above). Run 'sudo npx playwright install-deps chromium' yourself, then re-run this script." >&2
@@ -171,18 +174,26 @@ else
 fi
 PLAYWRIGHT_ARGS+=("${SPEC_ARGS[@]}")
 
+echo "Seeding one barn per spec file per Playwright project, prefixed $RUN_PREFIX..."
+echo "  If this run is killed, clean up with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} --prefix $RUN_PREFIX"
+SEEDED=true
+
 # Captured rather than left to `set -e` so --hold-open still prompts on a failing run — which
-# is when holding the barn open to inspect it matters most.
+# is when holding the barns open to inspect them matters most.
 PW_EXIT=0
 NEXT_PUBLIC_SUPABASE_URL="$NEXT_PUBLIC_SUPABASE_URL" \
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$NEXT_PUBLIC_SUPABASE_ANON_KEY" \
+SUPABASE_SERVICE_ROLE_KEY="$SUPABASE_SERVICE_ROLE_KEY" \
+DEV_SUPABASE_URL="$DEV_SUPABASE_URL" \
 E2E_BASE_URL="$E2E_BASE_URL" \
-TEST_BARN_SLUG="$BARN_SLUG" \
+E2E_RUN_PREFIX="$RUN_PREFIX" \
+E2E_ALLOW_PROD="$ALLOW_PROD" \
+E2E_HOLD_OPEN="$HOLD_OPEN" \
   npx playwright test "${PLAYWRIGHT_ARGS[@]}" || PW_EXIT=$?
 
 if [ "$HOLD_OPEN" = true ]; then
   echo
-  echo "Test barn $BARN_SLUG is still up at $E2E_BASE_URL — run your manual checklist steps now."
+  echo "Test barns prefixed $RUN_PREFIX are still up at $E2E_BASE_URL — run your manual checklist steps now."
   # `|| true` because `read` returns non-zero on EOF (no tty / stdin closed), which under
   # `set -e` would abort the script before the `exit "$PW_EXIT"` below — reporting a failure
   # for a suite that passed.
