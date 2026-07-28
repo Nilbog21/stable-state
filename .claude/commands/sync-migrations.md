@@ -40,7 +40,7 @@ Check Supabase migration status, rename pending migrations to the current timest
 
 4. If there are **no pending** local migrations, report that the remote is already up to date and exit.
 
-5. Rename every pending migration to a fresh timestamp, preserving relative order:
+5. Rename every pending migration to a fresh timestamp, preserving relative order. **This rename is the fix — never reach for `supabase db push --include-all`.** When the CLI reports "local migration files to be inserted before the last migration on remote database" and suggests that flag, it is refusing on purpose; the flag bypasses the check rather than correcting the ordering, so the migration lands in the remote's recorded history out of sequence instead of the rename putting it where it belongs.
    - Get the current epoch seconds: `date +%s`
    - Sort the pending migrations by their current filename (ascending)
    - For the first migration, use epoch seconds as-is; for each subsequent one, add 1 second

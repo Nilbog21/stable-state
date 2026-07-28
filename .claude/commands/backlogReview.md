@@ -55,13 +55,13 @@ Proposed action: apply the appropriate label(s); note any issues where the right
 
 **Orphaned issues** — issues with no connection to any spec, any other issue, or any discernible current direction. May be forgotten experiments or ideas that no longer fit. Proposed action: flag for the user to close, park with a comment, or confirm they are still intentional.
 
-**Scope / size** — issues that are clearly too large for a single PR, independent of dependencies. Proposed action: suggest a split for reviewability.
+**Scope / size** — issues that are clearly too large for a single PR, independent of dependencies. Proposed action: suggest a split for reviewability — **by user-facing capability, not by layer**. Each resulting issue should still span the full file-touch sequence from `ARCHITECTURE.md`'s Feature anatomy section (schema → RLS → RPC → DAL → action → component → tests) as one vertical slice; a split into a schema issue plus an RLS issue plus a UI issue is the anti-pattern. Layer-only splits are fine when the layer is genuinely reusable across several unrelated future capabilities.
 
 **`pending-review` candidates** — issues waiting on an external decision (client input, open barn manager question) that are not actionable until resolved. Proposed action: apply `pending-review` label so they don't clutter the active queue.
 
 **Unprocessed specs** — files in `specs/` that have no corresponding open or closed issue and appear ready to be formalized. Proposed action: flag for the user to run `/grillMe` on them, or note that they are intentionally parked.
 
-**Parallelization opportunities** — an issue has deep sequential dependencies that could be split so parts run in parallel. Lower priority than the above; only flag if the split is clean and materially reduces wall-clock time.
+**Parallelization opportunities** — an issue has deep sequential dependencies that could be split so parts run in parallel. Lower priority than the above; only flag if the split is clean and materially reduces wall-clock time. This never licenses a layer split: the canonical file-touch sequence is a sequential dependency chain by design, and slicing an issue along it is the anti-pattern Scope / size names above. What parallelizes here is *independent capabilities* bundled into one issue, not the layers of a single one.
 
 ## Step 4 — Produce a plan
 
