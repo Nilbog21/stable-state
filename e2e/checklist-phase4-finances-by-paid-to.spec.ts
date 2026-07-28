@@ -172,18 +172,14 @@ async function columnLabels(page: Page): Promise<string[]> {
     )
 }
 
-/** The labels of every header currently carrying the given sort indicator, in column order. */
-async function headersWithIndicator(page: Page, indicator: '▲' | '▼'): Promise<string[]> {
-  const labels = await breakdownTable(page)
-    .locator('thead th')
-    .evaluateAll((ths, mark) =>
-      ths.map((th) => {
-        const label = th.querySelector('button, span')?.textContent ?? ''
-        return label.includes(mark) ? label.replace(/[▲▼]/g, '').trim() : ''
-      }),
-      indicator
-    )
-  return labels.filter((label) => label !== '')
+/**
+ * The sort controls currently carrying `indicator`, as a locator rather than as text already
+ * read out — so a test whose claim *is* where the indicator sits asserts it with a retrying
+ * `toHaveText` and needs no wait of its own to settle the re-render. The ⓘ triggers share
+ * these header cells, hence the aria-label exclusion.
+ */
+function headersShowing(page: Page, indicator: '▲' | '▼'): Locator {
+  return breakdownTable(page).locator('thead th button:not([aria-label="Info"])').filter({ hasText: indicator })
 }
 
 function header(page: Page, label: RegExp): Locator {
@@ -262,13 +258,14 @@ test('by_paid_to_expenses_header_tap_re_sorts_rows_ascending @manager', async ({
 })
 
 // "…and disappears from Recipient" is the same claim as "…appears on Expenses" — one
-// indicator, one place — so it is asserted as the exclusive list of marked headers rather
-// than as a present-here/absent-there pair.
+// indicator, one place — so it is asserted as the exclusive match set rather than as a
+// present-here/absent-there pair. Tapped bare, with no awaitSortIndicator: that helper waits
+// for exactly what this test claims, so calling it here would leave the assertion with
+// nothing left to catch (the shape #1089/#1090/#1091 each landed a fix for).
 test('by_paid_to_expenses_header_tap_moves_the_ascending_indicator_off_recipient @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
   await sortButton(page, /^expenses/i).click()
-  await awaitSortIndicator(page, /^expenses/i, '▲')
-  expect(await headersWithIndicator(page, '▲')).toEqual(['Expenses'])
+  await expect(headersShowing(page, '▲')).toHaveText(['Expenses ▲'])
 })
 
 // Compared against the ascending order this same test just read off the page, rather than
@@ -335,9 +332,14 @@ test('recipient_drilldown_total_matches_the_by_paid_to_expenses_cell @manager', 
 // The heading, not the URL: the link's href only proves the name was encoded, while the
 // heading is rendered from the page's own decodeURIComponent of the route segment, so it is
 // the half of the round-trip that a broken or garbled URL actually breaks.
+// The waitForURL is synchronisation, not part of the claim: it only settles the cross-route
+// navigation, whose default 5s assertion timeout flakes under full-suite load (#1140), and
+// deliberately matches the drill-down route without naming the recipient — the encode/decode
+// round-trip stays entirely the heading assertion's to catch.
 test('recipient_name_with_ampersand_round_trips_through_the_drilldown_link @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
   await breakdownTable(page).getByRole('link', { name: SMITH, exact: true }).click()
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/finances/expenses/`), { timeout: 15000, waitUntil: 'commit' })
   await expect(page.getByRole('heading', { name: SMITH, exact: true })).toBeVisible()
 })
 
