@@ -325,11 +325,20 @@ export async function addExpense(
  * An unpaid lease charge. `one_time` cadence backdates the charge to the given month — a
  * monthly agreement's first charge is always for the *current* month (see
  * create_agreement_with_first_charge), so it would never read as outstanding.
+ *
+ * `kind` defaults to `'lease'`; pass `'board'` for a boarding charge. The two are the same
+ * `agreement_charges` row shape and differ only in the parent agreement's `kind`, which is
+ * what the Outstanding tables render as the row's Type — so a spec that has to distinguish
+ * "leases/boarding charges" needs both, and doesn't need a second builder to get one.
+ *
+ * Note for callers placing one of these in Outstanding: `getOutstandingCharges` filters
+ * `period < firstOfCurrentMonth`, so a `monthsAgo: 0` charge never reads as outstanding
+ * however unpaid it is — use `monthsAgo: 1` or `2`.
  */
 export async function addLeaseCharge(
   supabase: SupabaseClient,
   barn: SeededBarn,
-  opts: When & { riderId: string; horseId: string; fee: number }
+  opts: When & { riderId: string; horseId: string; fee: number; kind?: 'lease' | 'board' }
 ): Promise<Agreement> {
   return createAgreement(
     {
@@ -337,7 +346,7 @@ export async function addLeaseCharge(
       riderId: opts.riderId,
       horseId: opts.horseId,
       fee: opts.fee,
-      kind: 'lease',
+      kind: opts.kind ?? 'lease',
       cadence: 'one_time',
       startDate: resolveWhen(opts).toISOString().slice(0, 10),
     },
