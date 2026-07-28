@@ -326,55 +326,132 @@ Expenses (`/barn/dev-barn/expenses`):
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
-- [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
-- [ ] Open Clover's detail page (no photo seeded) → placeholder icon and **Set Photo** button show
-- [ ] Tap **Set Photo** → navigates to the same upload screen used for horse documents, with Document Type locked to "Photo" (no dropdown) and no Notes/Expiration reminder date fields
-- [ ] Tap **Choose File** and select a non-square JPG or PNG → upload starts immediately with no separate Upload button click, and you land back on the horse detail page with the photo displayed, scaled to a fixed height with its aspect ratio preserved (not cropped to a square)
-- [ ] With a photo set, tap **Replace Photo**, choose a different image → upload starts immediately and the new photo displays
-- [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
-- [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
-- [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
-- [ ] As manager, set a photo on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
-- [ ] Replace Apple's photo again as manager → still succeeds (manager-set photos never lock out other managers)
-- [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
-- [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
-- [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
-- [ ] (#1000) As manager, make yourself the owning member of Clover (Access section) → the Horses list shows a **My Horses** section at the top with Clover showing a green **Active** badge, and Clover no longer appears under Available
-- [ ] Clear **Registered Name** back to blank and Save → the card's parenthetical and the non-manager detail row are both gone on reload
-- [ ] Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
-- [ ] With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
-- [ ] Fill in **Feed Notes** and **Medication Notes** → Save → both persist on reload
-- [ ] Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
-- [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page
-- [ ] Open the document via its link (signed URL)
-- [ ] Delete it → row disappears
-- [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
-- [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
-- [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
-- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and a card shows up under the Dashboard's Reminders section, linking back to this horse
+- [ ] (e2e-candidate) The Available section is sorted by total exertion (±3 days) ascending
+- [ ] (e2e-candidate) Apple/Butter/Clover each show an exhaustion bar
+- [ ] (e2e-candidate) Those bars land in different color bands from one another
+- [ ] (e2e-candidate) Tapping a bar expands the ±3-day lesson breakdown
+- [ ] (e2e-candidate) Tapping the bar again dismisses the breakdown
+- [ ] (e2e-candidate) Tapping elsewhere dismisses the breakdown
+- [ ] (e2e-candidate) Tapping the bar does not navigate to the horse detail page
+- [ ] (e2e-candidate) Clover's detail page (no photo seeded) shows a placeholder icon
+- [ ] (e2e-candidate) It also shows a **Set Photo** button
+- [ ] (e2e-candidate) Tapping **Set Photo** navigates to the same upload screen used for horse documents
+- [ ] (e2e-candidate) On that screen Document Type is locked to "Photo" with no dropdown
+- [ ] (e2e-candidate) That screen has no Notes field
+- [ ] (e2e-candidate) That screen has no Expiration reminder date field
+- [ ] (e2e-candidate) Tap **Choose File** and select a non-square JPG or PNG → the upload starts immediately, with no separate Upload button to click
+- [ ] (e2e-candidate) You land back on the horse detail page with the photo displayed
+- [ ] (e2e-candidate) That photo is scaled to a fixed height with its aspect ratio preserved, not cropped to a square
+- [ ] (e2e-candidate) With a photo set, tap **Replace Photo** and choose a different image → the upload starts immediately
+- [ ] (e2e-candidate) The new photo displays
+- [ ] (e2e-candidate) Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
+- [ ] (e2e-candidate) With a photo set, tap **Remove** → the placeholder icon returns
+- [ ] (e2e-candidate) The **Set Photo** button returns with it
+- [ ] (e2e-candidate) On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
+- [ ] (e2e-candidate) As manager, set a photo on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
+- [ ] (e2e-candidate) Replace Apple's photo again as manager → still succeeds (manager-set photos never lock out other managers)
+- [ ] (e2e-candidate) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
+- [ ] (e2e-candidate) Rename Apple, uncheck "Use barn defaults", set Moderate/High and Save → the name updates
+- [ ] (e2e-candidate) The thresholds update from that same Save
+- [ ] (e2e-candidate) A brief "✓ Saved" confirmation appears next to the Save button
+- [ ] (e2e-candidate) Both values persist on reload
+- [ ] (e2e-candidate) The "Use barn defaults" toggle is still unchecked on reload
+- [ ] (e2e-candidate) The manager form's name field is labeled **Barn Name**
+- [ ] (e2e-candidate) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
+- [ ] (e2e-candidate) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
+- [ ] (e2e-candidate) As a trainer, a horse seeded with a registered name shows a **Registered Name** row below Status on its detail page
+- [ ] (e2e-candidate) As a rider, that same horse shows the **Registered Name** row below Status
+- [ ] (e2e-candidate) (#1000) As manager, make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
+- [ ] (e2e-candidate) (#1000) Clover appears under **My Horses**
+- [ ] (e2e-candidate) (#1000) Clover shows a green **Active** badge there
+- [ ] (e2e-candidate) (#1000) Clover no longer appears under Available
+- [ ] (e2e-candidate) Clear **Registered Name** back to blank and Save → the card's parenthetical is gone on reload
+- [ ] (e2e-candidate) As a trainer, a horse seeded with no registered name shows no **Registered Name** row on its detail page
+- [ ] (e2e-candidate) As a rider, that same horse shows no **Registered Name** row
+- [ ] (e2e-candidate) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
+- [ ] (e2e-candidate) With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error
+- [ ] (e2e-candidate) No "✓ Saved" confirmation appears for that rejected save
+- [ ] (e2e-candidate) The horse's name and status are unchanged by it
+- [ ] (e2e-candidate) The thresholds are unchanged by it
+- [ ] (e2e-candidate) Fill in **Feed Notes** → Save → it persists on reload
+- [ ] (e2e-candidate) Fill in **Medication Notes** → Save → it persists on reload
+- [ ] (e2e-candidate) Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
+- [ ] (e2e-candidate) Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page
+- [ ] (e2e-candidate) That document is listed in the horse's Documents section
+- [ ] (e2e-candidate) Open the document via its link (signed URL)
+- [ ] (e2e-candidate) Delete it → row disappears
+- [ ] (e2e-candidate) On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
+- [ ] (e2e-candidate) On the Add Document page, the Upload button disables while the upload is pending
+- [ ] (e2e-candidate) An indeterminate progress bar shows while the upload is pending
+- [ ] (e2e-candidate) Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column
+- [ ] (e2e-candidate) Edit that date inline (tap the field, change the date, tap away) → the new date saves
+- [ ] (e2e-candidate) That inline edit saves without a page reload
+- [ ] (e2e-candidate) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
+- [ ] (e2e-candidate) A card for it shows up under the Dashboard's Reminders section
+- [ ] (e2e-candidate) That card links back to this horse
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
-- [ ] "You" card plus Managers (Morgan, own entry excluded), Trainers, and Riders sections all render
-- [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
-- [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render even though the account has no linked `user_id`; Documents section renders normally (not blocked) with an **Add Document** button
-- [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload
-- [ ] On Harper Test's member detail page, tap **Set Photo**, choose a JPG or PNG → upload starts immediately and you land back on the member page with the photo displayed
-- [ ] With Harper Test's photo set, tap **Replace Photo** and choose a different image → new photo displays
-- [ ] With Harper Test's photo set, tap **Remove** → placeholder and **Set Photo** button return
-- [ ] Open a claimed trainer's member detail page → no **Set Photo**/**Replace Photo**/**Remove** control is shown (manager can't edit a claimed member's photo)
-- [ ] Open your own manager member detail page → tap **Set Photo** and upload one → photo displays and persists on reload
-- [ ] Tap **Add Document** on Harper Test's page, upload a document → redirects back to the member page and the document lists with a working signed-URL link
-- [ ] Delete it → row disappears
-- [ ] Open a trainer's member detail page → **Add Document** button is present and links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
-- [ ] Open rider Gale Test's member detail page — **Add Document** button present, links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
-- [ ] As manager, rider Emery's member detail page shows an **Active Agreements** header with one card each for her seeded lease and boarding agreements (kind, horse, fee), each linking to its agreement detail page; a rider with no active agreements shows **No active agreements** with no add-boarding link; a managed (unclaimed) rider's detail page shows the same section
-- [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → a browser confirm prompt appears naming the trainer and warning they'll no longer be assignable to future lessons; **Cancel** it → access is unchanged; tap **Revoke Instructor Access** again and confirm → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it (no confirm prompt on grant) → trainer reappears in the instructor select
-- [ ] Open your own manager member detail page → **Instructor Access** section shows **Grant Instructor Access** → tap it (no confirm prompt) → you now appear in the instructor select on the new-lesson form; tap **Revoke Instructor Access** to undo (confirm prompt appears)
-- [ ] Open rider Gale Test's member detail page — no **Instructor Access** section is shown
-- [ ] Open Indigo Test's member detail page → a **Remove** button appears top-right of the header, next to the member's name → tap it and confirm the browser prompt → redirected to the Members list and Indigo Test no longer appears there
-- [ ] Open your own manager member detail page → no **Remove** button is shown
-- [ ] Open second manager Morgan Manager's member detail page → no **Remove** button is shown either (managers can't remove other managers)
+- [ ] (e2e-candidate) A "You" card renders at the top of the Members list
+- [ ] (e2e-candidate) A **Managers** section renders, listing Morgan
+- [ ] (e2e-candidate) Your own entry is excluded from that Managers section
+- [ ] (e2e-candidate) A **Trainers** section renders
+- [ ] (e2e-candidate) A **Riders** section renders
+- [ ] (e2e-candidate) A trainer's member detail page shows a Phone row under **Contact Info**
+- [ ] (e2e-candidate) It shows an Emergency Contact Name row
+- [ ] (e2e-candidate) It shows an Emergency Contact Phone row
+- [ ] (e2e-candidate) Any of those three left blank renders as "—"
+- [ ] (e2e-candidate) Managed/unclaimed rider Harper Test's member detail page renders their name even though the account has no linked `user_id`
+- [ ] (e2e-candidate) That page renders **Contact Info** too
+- [ ] (e2e-candidate) Its Documents section renders normally, not blocked
+- [ ] (e2e-candidate) That Documents section has an **Add Document** button
+- [ ] (e2e-candidate) On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member)
+- [ ] (e2e-candidate) Set Phone, Emergency Contact Name and Emergency Contact Phone there and tap **Save** → the values persist on reload
+- [ ] (e2e-candidate) On Harper Test's member detail page, tap **Set Photo** and choose a JPG or PNG → the upload starts immediately
+- [ ] (e2e-candidate) You land back on the member page
+- [ ] (e2e-candidate) The photo displays there
+- [ ] (e2e-candidate) With Harper Test's photo set, tap **Replace Photo** and choose a different image → the new photo displays
+- [ ] (e2e-candidate) With Harper Test's photo set, tap **Remove** → the placeholder returns
+- [ ] (e2e-candidate) The **Set Photo** button returns with it
+- [ ] (e2e-candidate) A claimed trainer's member detail page shows no **Set Photo**/**Replace Photo**/**Remove** control (manager can't edit a claimed member's photo)
+- [ ] (e2e-candidate) On your own manager member detail page, tap **Set Photo** and upload one → the photo displays
+- [ ] (e2e-candidate) That photo persists on reload
+- [ ] (e2e-candidate) Tap **Add Document** on Harper Test's page and upload a document → redirects back to the member page
+- [ ] (e2e-candidate) The document is listed there
+- [ ] (e2e-candidate) Its signed-URL link opens the document
+- [ ] (e2e-candidate) Delete it → row disappears
+- [ ] (e2e-candidate) A trainer's member detail page has an **Add Document** button
+- [ ] (e2e-candidate) That button links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
+- [ ] (e2e-candidate) Rider Gale Test's member detail page has an **Add Document** button
+- [ ] (e2e-candidate) That button links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
+- [ ] (e2e-candidate) As manager, rider Emery's member detail page shows an **Active Agreements** header
+- [ ] (e2e-candidate) It shows a card for her seeded lease agreement
+- [ ] (e2e-candidate) It shows a card for her seeded boarding agreement
+- [ ] (e2e-candidate) Each of those cards names its kind (lease or boarding)
+- [ ] (e2e-candidate) Each names its horse
+- [ ] (e2e-candidate) Each shows its fee
+- [ ] (e2e-candidate) Each links to its agreement detail page
+- [ ] (e2e-candidate) A rider with no active agreements shows **No active agreements** instead
+- [ ] (e2e-candidate) That empty state carries no add-boarding link
+- [ ] (e2e-candidate) A managed (unclaimed) rider's detail page shows the same **Active Agreements** section
+- [ ] (e2e-candidate) A trainer's member detail page shows an **Instructor Access** section reading **Revoke Instructor Access** (trainers default to `can_instruct=true`)
+- [ ] (e2e-candidate) Tapping it raises a browser confirm prompt naming the trainer
+- [ ] (e2e-candidate) That prompt warns they'll no longer be assignable to future lessons
+- [ ] (e2e-candidate) **Cancel** it → access is unchanged
+- [ ] (e2e-candidate) Tap **Revoke Instructor Access** again and confirm → the button now reads **Grant Instructor Access**
+- [ ] (e2e-candidate) That trainer no longer appears in the instructor select on the new-lesson form
+- [ ] (e2e-candidate) Tapping **Grant Instructor Access** raises no confirm prompt
+- [ ] (e2e-candidate) The trainer reappears in the instructor select afterwards
+- [ ] (e2e-candidate) Your own manager member detail page shows an **Instructor Access** section reading **Grant Instructor Access**
+- [ ] (e2e-candidate) Tapping it raises no confirm prompt
+- [ ] (e2e-candidate) You then appear in the instructor select on the new-lesson form
+- [ ] (e2e-candidate) Tapping **Revoke Instructor Access** to undo does raise a confirm prompt
+- [ ] (e2e-candidate) Rider Gale Test's member detail page shows no **Instructor Access** section
+- [ ] (e2e-candidate) Indigo Test's member detail page shows a **Remove** button top-right of the header, next to the member's name
+- [ ] (e2e-candidate) Tap it and confirm the browser prompt → you're redirected to the Members list
+- [ ] (e2e-candidate) Indigo Test no longer appears on that list
+- [ ] (e2e-candidate) Your own manager member detail page shows no **Remove** button
+- [ ] (e2e-candidate) Second manager Morgan Manager's member detail page shows no **Remove** button either (managers can't remove other managers)
 
 Finances (`/barn/dev-barn/finances`):
 
