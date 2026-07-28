@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/Button'
 interface Props {
   barnSlug: string
   inviteToken: string
-  revokeAction: () => Promise<void>
+  revokeAction: () => Promise<{ error: string | null }>
 }
 
 export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Props) {
@@ -38,7 +38,17 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
     setCopied(false)
     copyGenerationRef.current += 1
     setTokenBeforeRevoke(inviteToken)
-    await revokeAction()
+    const { error: revokeError } = await revokeAction()
+    if (revokeError) {
+      // Nothing was rotated, so undo both things the optimistic path set up: the
+      // fresh-token gate has no fresh token coming and would leave both buttons disabled
+      // until a reload, and the generation bump would discard an in-flight copy whose
+      // token is in fact still current. Same rollback CalendarFeedSection.handleRegenerate
+      // performs when regenerateAction rejects.
+      setTokenBeforeRevoke(null)
+      copyGenerationRef.current -= 1
+      setError(revokeError)
+    }
     return null
   }, null)
   const awaitingFreshToken = tokenBeforeRevoke !== null && inviteToken === tokenBeforeRevoke

@@ -60,7 +60,7 @@ Tap any member card to open their detail page. Next to their name, a **Remove** 
 
 For an unlinked member, a **Manage member** section appears right after their name with an amber notice and two controls:
 - **Copy Invite** — copies a personal invite link to the clipboard; a brief "Copied!" confirms it, and a red message appears instead if your browser blocked the copy. The link is never shown on screen, so use the button rather than trying to read it off the page. Share the copied link with them; when they tap the link, they sign in with Google and confirm — or, if they're already signed in on that device, they just tap **Accept Invite** — and their account is automatically linked to the existing record and lesson history. This is the only way new members join a barn — there is no general "request access" flow.
-- **Revoke** — invalidates the current invite link and generates a new one. Use this if a link is shared with the wrong person. The previous link stops working immediately.
+- **Revoke** — invalidates the current invite link and generates a new one. Use this if a link is shared with the wrong person. The previous link stops working immediately. If the revoke can't go through, a message appears below the buttons and the old link is still valid — try again.
 
 Once someone claims their invite, the **Unlinked** badge and **Manage member** section both disappear.
 
