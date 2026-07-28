@@ -152,7 +152,9 @@ test('dashboard_reminders_header_hidden_for_rider_with_no_reminders @rider', asy
 test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
   await page.getByRole('link', { name: /Apollo/ }).first().click()
-  await expect(page).toHaveURL(new RegExp(`/barn/${barn.slug}/horses/`))
+  // waitForURL with an explicit timeout, not a bare expect(page).toHaveURL — the 5s expect
+  // default times out under full-suite load while the dev server cold-compiles this route (#1140).
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/horses/`), { timeout: 15000, waitUntil: 'commit' })
 
   const pastDate = new Date()
   pastDate.setUTCDate(pastDate.getUTCDate() - 1)
