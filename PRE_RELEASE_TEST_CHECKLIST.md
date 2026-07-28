@@ -456,9 +456,11 @@ Mobile spot-check (resize the browser to ~390px wide, or use your browser's devi
 
 Calendar feed (#1018):
 
-- [ ] On `/profile?barn=dev-barn`, a **Calendar Feed** section appears; tap **Get my calendar link** — a link is revealed containing `/calendar.ics?token=...`
-- [ ] Open that link directly (or `curl` it) — returns `Content-Type: text/calendar` and includes VEVENT entries for lessons across the whole barn (manager sees everything), not just your own
-- [ ] Tap **Regenerate** — the displayed link changes to a new token, and the old link now 404s
+- [ ] On `/profile?barn=dev-barn`, a **Calendar Feed** section appears; tap **Get my calendar link** — **Copy Link** and **Regenerate** appear
+- [ ] Tap **Copy Link** — the copied URL contains `/calendar.ics?token=...`
+- [ ] Open that URL directly (or `curl` it) — returns `Content-Type: text/calendar` and includes VEVENT entries for lessons across the whole barn (manager sees everything), not just your own
+- [ ] Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
+- [ ] Open the pre-regenerate URL — it now 404s
 
 ## Phase 5 — Trainer
 

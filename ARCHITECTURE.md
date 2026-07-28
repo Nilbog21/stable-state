@@ -115,10 +115,11 @@ Canonical file-touch sequence for any new feature:
 
 1. Schema migration (`supabase/migrations/`)
 2. RLS migration (separate file in `supabase/migrations/`)
-3. `src/lib/db/<domain>.ts` — data access function(s)
-4. Action (`src/app/actions/` or co-located `actions.ts`)
-5. Component / page
-6. Tests (written first — TDD)
+3. RPC migration, if the feature needs one (separate file again — no migration in this repo both creates a table and defines a function)
+4. `src/lib/db/<domain>.ts` — data access function(s)
+5. Action (`src/app/actions/` or co-located `actions.ts`)
+6. Component / page
+7. Tests (written first — TDD)
 
 ## Coverage + null safety
 
@@ -139,5 +140,7 @@ The main sequence, one issue from selection to merge:
 `/continueIssue {N}` is the router — it inspects an in-flight issue's state and names the right next step, so the sequence above never has to be remembered.
 
 Adjuncts: `/grillMe` (interview a plan or a work log's findings to shared understanding — the only path from a finding to a filed GitHub issue), `/backlogReview` (triage after a batch issue dump), `/estimateRelease` (velocity and cut planning), `/sync-migrations` (rename and push pending Supabase migrations).
+
+The five skills that detect a worktree — `/beginIssue`, `/reviewIssue`, `/testIssue`, `/finishIssue`, `/continueIssue` — open by running `scripts/workflow-context.sh` (#1118), which owns the worktree→port map and the label→base-branch rule and prints them as `key=value` lines — those two rules were previously restated in each skill, and had already diverged. See `scripts/CLAUDE.md` for the emitted keys.
 
 `specs/` is per-developer scratch, gitignored and never committed — the skills create and consume it. It holds `issue-{N}.md` work logs (status marker, log, accepted deviations, open items, follow-ups) that carry state between skills within one developer's session chain, and `batch_{release-label}.md`. It is **not** shared state: another developer's clone has a different `specs/`, or none, and deleting it loses nothing but in-flight session bookkeeping.

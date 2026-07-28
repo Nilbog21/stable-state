@@ -6,23 +6,18 @@ You are finishing a completed issue: merging its PR, deleting the branch, and cl
 
 ## Step 0 — Detect worktree and issue
 
-**Detect worktree:**
-
 This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
 
-Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
-
-If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.
-
-**Detect issue number from branch:**
-Run:
 ```
-git -C {worktree-path} rev-parse --abbrev-ref HEAD
+bash scripts/workflow-context.sh
 ```
 
-If the branch name matches the format `{N}-{slug}` (leading digits followed by a hyphen), extract `N` as the issue number.
+Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it.
 
-If the branch does not match this format, ask: "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer.
+- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
+- `issue` empty → ask "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer, then re-run the script with that number as its argument so `base` is derived too.
+
+Record `worktree`, `worktree_path`, `port`, `issue` as `{N}`, `base` as the expected base branch, and `base_from_label` — Step 1 uses it.
 
 ---
 
@@ -89,30 +84,25 @@ PR #{pr}: {title}
 
 **Reconcile the `in-progress` label.** Whether or not the PR was in draft above, check `gh issue view {N} --json labels`. If `specs/issue-{N}.md` exists (work is or was active on this issue) but `in-progress` is missing — e.g. a `/clear` interrupted an earlier skill before its label call landed — silently re-add it: `gh issue edit {N} --add-label 'in-progress'`. No need to ask; it's removed again at Step 5 as normal.
 
-**Try to auto-verify the target instead of asking.** Fetch the issue's labels:
-```
-gh issue view {N} --json labels
-```
-Derive an expected base branch from whichever of these labels is present:
-- `release-N` label → expected base is `release/release-{N}`
-- `patch-N` label → expected base is `main`
-- neither → no expected base; skip straight to asking below.
+**Try to auto-verify the target instead of asking.** Step 0's `base` is the expected base branch — derived from the issue's labels by `scripts/workflow-context.sh`, the one place that rule lives.
 
-If an expected base was derived, confirm both:
-1. `{baseRefName}` equals the expected base.
+If Step 0's `base_from_label` is `no`, no label actually decided that base — `main` is just the fallback. Skip straight to asking below rather than auto-confirming: this is the merge, and an issue that reached it untriaged is exactly the case worth a human glance.
+
+Otherwise confirm both:
+1. `{baseRefName}` equals `base`.
 2. The branch is properly rooted on it, not stale:
    ```
-   git -C {worktree-path} fetch origin {expected-base}
-   git -C {worktree-path} merge-base --is-ancestor origin/{expected-base} {headRefName}
+   git -C {worktree-path} fetch origin {base}
+   git -C {worktree-path} merge-base --is-ancestor origin/{base} {headRefName}
    ```
    (exit code 0 = head branch already contains that base's current tip)
 
 If both hold, skip the confirmation prompt — print:
-> "PR #{pr} targets '{baseRefName}', matching the issue's `{label}` label and correctly rooted on it — skipping confirmation."
+> "PR #{pr} targets '{baseRefName}', matching the base expected from the issue's labels and correctly rooted on it — skipping confirmation."
 
 and continue straight to Step 1.5.
 
-Otherwise (no matching label, base mismatch, or the branch isn't rooted on the expected base's current tip), ask: "PR #{pr} targets branch '{baseRefName}' — is that correct?"
+Otherwise (`base_from_label` is `no`, base mismatch, or the branch isn't rooted on the expected base's current tip), ask: "PR #{pr} targets branch '{baseRefName}' — is that correct?"
 
 Wait for confirmation before proceeding. If the user says no, stop and tell them to fix the PR target manually using `gh pr edit --base {correct-branch}`, then re-run `/finishIssue`.
 
@@ -316,7 +306,7 @@ This is a targeted, O(1) update — it only touches entries that referenced #{N}
 
 ## Step 6 — Stop the worktree's dev server
 
-Each worktree runs its dev server on a fixed port: alpha=3001, beta=3002, gamma=3003, delta=3004, epsilon=3005 (canonical list: README.md's "Development worktrees" section).
+Use Step 0's `port` — the worktree's fixed dev-server port.
 
 ```
 PID=$(lsof -ti:{port} -sTCP:LISTEN | head -1)

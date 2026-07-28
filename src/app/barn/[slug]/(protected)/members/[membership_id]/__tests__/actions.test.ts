@@ -584,6 +584,23 @@ describe('revokeInviteTokenAction', () => {
     await revokeInviteTokenAction('green-acres', 'mem-target-trn')
     expect(revalidatePath).toHaveBeenCalledWith('/barn/green-acres/members/mem-target-trn')
   })
+
+  it('should_return_null_error_when_revoke_succeeds', async () => {
+    const result = await revokeInviteTokenAction('green-acres', 'mem-target-trn')
+    expect(result).toEqual({ error: null })
+  })
+
+  it('should_return_error_when_revoke_fails', async () => {
+    vi.mocked(revokeInviteToken).mockRejectedValue(new Error('permission denied'))
+    const result = await revokeInviteTokenAction('green-acres', 'mem-target-trn')
+    expect(result).toEqual({ error: 'permission denied' })
+  })
+
+  it('should_not_revalidate_when_revoke_fails', async () => {
+    vi.mocked(revokeInviteToken).mockRejectedValue(new Error('permission denied'))
+    await revokeInviteTokenAction('green-acres', 'mem-target-trn')
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
 })
 
 describe('removeMemberAction', () => {

@@ -140,11 +140,21 @@ export async function removeMemberAction(
 export async function revokeInviteTokenAction(
   barnSlug: string,
   membershipId: string
-): Promise<void> {
+): Promise<{ error: string | null }> {
   const { barn } = await requireMembership(barnSlug, ['manager'])
-  await revokeInviteToken(membershipId, barn.id)
+
+  // Returns the failure rather than throwing (#1116): a throw here is rethrown during
+  // render as a rejected action state, and error.tsx swaps out the whole member detail
+  // page — the manager loses the page instead of seeing why the revoke failed.
+  try {
+    await revokeInviteToken(membershipId, barn.id)
+  } catch (dbError) {
+    return { error: getErrorMessage(dbError) }
+  }
+
   revalidatePath(`/barn/${barnSlug}/members`)
   revalidatePath(`/barn/${barnSlug}/members/${membershipId}`)
+  return { error: null }
 }
 
 // Self can always upload/replace/delete their own photo; a manager may do so only for a

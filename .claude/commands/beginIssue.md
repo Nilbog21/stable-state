@@ -4,22 +4,20 @@ You are helping the user pick the next GitHub issue to work on and begin impleme
 
 ## Step 0 — Check worktree and issue
 
-**Detect worktree first:**
+**Detect context first:**
 
 This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
 
-- Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree and skip any worktree prompt later.
-- Otherwise, note that worktree selection is pending (will happen after issue confirmation).
+```bash
+bash scripts/workflow-context.sh
+```
+Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it. Record `worktree`, `worktree_path`, `port`, `branch`, and `issue`. If `worktree` is empty, note that worktree selection is pending (it happens after issue confirmation).
 
 **Check for an issue number.** If the user provided one when invoking the skill (e.g. `/beginIssue 42`), use it and skip to **Issue confirmation** below. Otherwise:
 
-**If a worktree was detected** (already inside alpha/beta/gamma/delta/epsilon), check whether the current branch is already mid-revise before doing anything else:
-```bash
-git branch --show-current
-```
-If the branch name starts with a number (`{issue-number}-{slug}` format), check for a matching specs file: `ls specs/issue-{N}.md`. If it exists, work has already started on this issue — treat `{N}` as if the user had typed it (skip the batch-file/Ready-list flow entirely) and go straight to **Issue confirmation** below. Worktree Setup will then recognize the branch already exists and continue on it (no new branch, no base-branch checkout). (Whether this is specifically a revise-mode resume (deferred concerns from `/testIssue` or `/reviewIssue`), vs. just picking a normal in-progress session back up, is decided by the **Revise mode** section below based on the file's `## Open items` contents — the file's mere existence isn't a strong enough signal on its own, since every issue gets one from its first `/beginIssue` touch onward.)
+**If `worktree` is non-empty**, check whether the current branch is already mid-revise before doing anything else. If the script reported an `issue` (i.e. the branch is in `{issue-number}-{slug}` format), check for a matching specs file: `ls specs/issue-{N}.md`. If it exists, work has already started on this issue — treat `{N}` as if the user had typed it (skip the batch-file/Ready-list flow entirely) and go straight to **Issue confirmation** below. Worktree Setup will then recognize the branch already exists and continue on it (no new branch, no base-branch checkout). (Whether this is specifically a revise-mode resume (deferred concerns from `/testIssue` or `/reviewIssue`), vs. just picking a normal in-progress session back up, is decided by the **Revise mode** section below based on the file's `## Open items` contents — the file's mere existence isn't a strong enough signal on its own, since every issue gets one from its first `/beginIssue` touch onward.)
 
-If there's no current branch number, or no matching specs file, fall through to the normal flow: determine the current release and read the batch file:
+If the script reported no `issue`, or there's no matching specs file, fall through to the normal flow: determine the current release and read the batch file:
 
 ```bash
 git fetch --all -p
@@ -67,18 +65,18 @@ Ask: "Which issue do you want to work on?" Wait for their answer.
 
 Run this after issue confirmation (Step 0), before entering Plan mode.
 
-**Determine the base branch** from the issue's labels:
-- If the issue has a `process-for-release` label, the base branch is **always `main`** — these are release close-out steps that land on main regardless of any `release-N` label also present.
-- If the issue has a `patch-N` label (e.g. `patch-3`), the base branch is **always `main`** — patches land directly on main.
-- Otherwise, if the issue has a `release-N` label (e.g. `release-1`), the base branch is `release/release-N` (e.g. `release/release-1`). Record `release-N` as `{release-label}` if not already set from Step 0 — Step 4 uses it to update the batch file.
-  - Check if this branch exists on the remote: `git fetch origin release/release-N 2>&1`.
-  - If it does **not** exist, tell the user: "The release branch `release/release-N` doesn't exist yet. Should I create it from `main` now?" Wait for confirmation before running: `git checkout -b release/release-N main && git push -u origin release/release-N`
-- If the issue has no `release-*` label, the base branch is `main`.
+**Determine the base branch:**
+```bash
+bash scripts/workflow-context.sh {N}
+```
+Re-run with the chosen issue number as the argument — the branch may not exist yet, so the labels of `{N}` are what the base has to come from. `base` is the answer; `scripts/workflow-context.sh` is the one place that label rule lives.
+
+- If `base` is a `release/release-N` branch, record `release-N` as `{release-label}` if not already set from Step 0 — Step 4 uses it to update the batch file.
+- Check that branch exists on the remote: `git fetch origin {base} 2>&1`. If it does **not** exist, tell the user: "The release branch `{base}` doesn't exist yet. Should I create it from `main` now?" Wait for confirmation before running: `git checkout -b {base} main && git push -u origin {base}`
 
 **Select the worktree:**
-- If already inside `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon` (detected in Step 0), use that path.
-- Otherwise, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer.
-- The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` (resolve absolute path from `git rev-parse --show-toplevel`).
+- If Step 0's `worktree` is non-empty, use `worktree_path`.
+- Otherwise, ask: "Which worktree do you want to use — {one of Step 0's `worktrees`}?" and wait for the answer. The worktree path is that name under the `stable-state-worktrees` directory. Don't re-run the script here — unlike the other four skills, this one selects a worktree *after* Step 0 and after `base` is settled, and every command below passes `{worktree-path}` explicitly, so a re-run would only surface the leftover branch/PR of whatever was last checked out there.
 
 **Pull latest and create issue branch:**
 
@@ -92,13 +90,13 @@ git -C {worktree-path} branch --list {branch-name}
 
 - If the branch **does not exist**, create it:
   ```
-  git -C {worktree-path} checkout {base-branch}
-  git -C {worktree-path} pull --ff-only origin {base-branch}
+  git -C {worktree-path} checkout {base}
+  git -C {worktree-path} pull --ff-only origin {base}
   git -C {worktree-path} checkout -b {branch-name}
   ```
-- If the branch **already exists**, check `{worktree-path}/specs/issue-{N}.md`'s `## Open items` section first. If it has unresolved entries, this is a resumed `/testIssue` session with deferred concerns to resolve — always continue on the existing branch (`git -C {worktree-path} checkout {branch-name}`), never ask about recreating it; recreating would destroy the work already on it. Otherwise (no unresolved entries, or no file at all), ask the user: "Branch `{branch-name}` already exists — continue on it, or delete and recreate from `{base-branch}`?" Then:
+- If the branch **already exists**, check `{worktree-path}/specs/issue-{N}.md`'s `## Open items` section first. If it has unresolved entries, this is a resumed `/testIssue` session with deferred concerns to resolve — always continue on the existing branch (`git -C {worktree-path} checkout {branch-name}`), never ask about recreating it; recreating would destroy the work already on it. Otherwise (no unresolved entries, or no file at all), ask the user: "Branch `{branch-name}` already exists — continue on it, or delete and recreate from `{base}`?" Then:
   - **Continue:** `git -C {worktree-path} checkout {branch-name}`
-  - **Recreate:** `git -C {worktree-path} branch -D {branch-name} && git -C {worktree-path} checkout {base-branch} && git -C {worktree-path} pull --ff-only origin {base-branch} && git -C {worktree-path} checkout -b {branch-name}`
+  - **Recreate:** `git -C {worktree-path} branch -D {branch-name} && git -C {worktree-path} checkout {base} && git -C {worktree-path} pull --ff-only origin {base} && git -C {worktree-path} checkout -b {branch-name}`
 
 All subsequent commands must run inside this worktree. Use `cd /absolute/path/to/worktree && ...` for every command.
 
@@ -218,7 +216,7 @@ After plan approval, do the following in order:
 4. **Update documentation if relevant:**
    After all tests pass and coverage is satisfied, review the changes in the worktree:
    ```
-   cd /absolute/path/to/worktree && git diff {base-branch}...HEAD -- src/
+   cd /absolute/path/to/worktree && git diff {base}...HEAD -- src/
    ```
    Check whether any of the following changed in a way that affects the project's documentation:
    - New or renamed routes, pages, or API endpoints
@@ -241,7 +239,7 @@ After plan approval, do the following in order:
    ```
    Then create the PR:
    ```
-   gh pr create --draft --base {base-branch} --title "#{number} — {title}" --body "$(cat <<'EOF'
+   gh pr create --draft --base {base} --title "#{number} — {title}" --body "$(cat <<'EOF'
    Closes #{number}
 
    {deviations — omit this section entirely if there are none}
@@ -260,5 +258,7 @@ After plan approval, do the following in order:
 **Append to the work log:** append `- {date} {time} — /beginIssue: plan approved, PR #{pr} opened.` to `specs/issue-{N}.md`'s `## Log`. `specs/` is gitignored, so this is just a file write — no git add/commit. Status marker stays `in-progress`.
 
 **Never push Supabase migrations.** Do not run `npx supabase db push`, `supabase db push`, or `/sync-migrations` at any point. The developer running this skill reviews and pushes migrations by hand, in a separate step.
+
+Don't mention that in the summary you return to the user either (this is about your chat reply, not the PR body — that's covered above) — no closing "not pushed: the migration, you'll push it manually" remark. Migrations are *always* left unpushed here by design, and deciding what to do about them is `/reviewIssue`/`/testIssue`'s step, not a decision point for the user at this moment. Repeating it is noise.
 
 **Migration file naming:** Use `date +%Y%m%d00%M%S` for the timestamp prefix (real minutes+seconds, HH fixed to `00`). Never use a sequential counter.

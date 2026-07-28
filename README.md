@@ -67,7 +67,7 @@ projects/
     alpha/  beta/  gamma/  delta/  epsilon/
 ```
 
-Names are arbitrary and ordered — the fleet grows by adding the next Greek letter. Nothing in the application depends on the count; the five workflow skills that detect a worktree (`beginIssue`, `reviewIssue`, `testIssue`, `finishIssue`, `continueIssue`) enumerate the names, so those are the files to update when one is added or removed.
+Names are arbitrary and ordered — the fleet grows by adding the next Greek letter. Nothing in the application depends on the count; `scripts/workflow-context.sh` holds the list, and the five workflow skills that detect a worktree (`beginIssue`, `reviewIssue`, `testIssue`, `finishIssue`, `continueIssue`) read it from there, so that script is the one file to update when a worktree is added or removed.
 
 Create one with:
 
@@ -77,7 +77,7 @@ git -C stable-state worktree add ../stable-state-worktrees/zeta -b some-branch
 
 ### Dev server ports
 
-Each worktree owns a fixed port so several dev servers can run side by side. This table is the canonical mapping — `testIssue.md` and `finishIssue.md` both restate it:
+Each worktree owns a fixed port so several dev servers can run side by side. `scripts/workflow-context.sh` holds the canonical mapping and the workflow skills read it from there; this table mirrors it for a human reader:
 
 | Worktree | Port |
 |---|---|

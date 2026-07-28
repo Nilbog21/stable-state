@@ -6,42 +6,31 @@ You are reviewing a pull request for a completed `/beginIssue` session. This ski
 
 ## Step 0 — Worktree and issue detection
 
-**Detect worktree:**
-
 This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
 
-Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
+```
+bash scripts/workflow-context.sh
+```
 
-If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.
+Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it.
+
+- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
+- `issue` empty → ask "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer, then re-run the script with that number as its argument so `base` is derived too.
+
+Record `worktree`, `worktree_path`, `issue` as `{N}`, and `base` as the base branch.
 
 All subsequent commands must run inside this worktree using absolute paths.
 
-**Detect issue number from branch:**
-Run:
-```
-git -C {worktree-path} rev-parse --abbrev-ref HEAD
-```
-
-If the branch name matches the format `{N}-{slug}` (leading digits followed by a hyphen), extract `N` as the issue number.
-
-If the branch does not match this format, ask: "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer.
-
 ---
 
-## Step 1 — Determine base branch and rebase
+## Step 1 — Rebase onto the base branch
 
-**Determine base branch:**
-Fetch the issue:
-```
-gh issue view {N} --json number,title,labels,body
-```
-
-If the issue has a `patch-N` label (e.g. `patch-3`), the base branch is `main`. Otherwise, if the issue has a `release-N` label (e.g. `release-1`), the base branch is `release/release-N`. Otherwise the base branch is `main`.
+Step 0's `base` is the base branch, derived from the issue's labels by `scripts/workflow-context.sh` — the one place that rule lives.
 
 **Fetch and rebase:**
 ```
 git -C {worktree-path} fetch origin
-git -C {worktree-path} rebase origin/{base-branch}
+git -C {worktree-path} rebase origin/{base}
 ```
 
 If the rebase completes cleanly, continue.
@@ -58,6 +47,12 @@ If any conflict cannot be confidently resolved without guessing at intent, run:
 git -C {worktree-path} rebase --abort
 ```
 Then tell the user exactly which files and hunks could not be resolved and stop. Ask them to resolve those conflicts manually and re-run `/reviewIssue`.
+
+**After any successful rebase, verify the target was right before pushing:**
+```
+git -C {worktree-path} log --oneline origin/{base}..HEAD
+```
+This must show only this issue's own commits. A release-labeled branch rebased onto `origin/main` by mistake looks fine locally but shows a hundred-plus spurious commits on the PR, and unwinding it costs a hard reset plus cherry-picks.
 
 ---
 
@@ -76,7 +71,7 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 
 **`CI: pass`** — proceed directly to the review, do not ask for confirmation.
 
-**`CI: conflict — rebase needed`** — the PR is `CONFLICTING`, so GitHub will not trigger a workflow run for this branch at all until it's resolved. This is *not* a stuck runner and waiting longer will never help. Rebase onto the base branch (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base-branch}`, resolving conflicts per Step 1's rules), push (`git -C {worktree-path} push --force-with-lease`), then re-run the script.
+**`CI: conflict — rebase needed`** — the PR is `CONFLICTING`, so GitHub will not trigger a workflow run for this branch at all until it's resolved. This is *not* a stuck runner and waiting longer will never help. Rebase onto the base branch (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base}`, resolving conflicts per Step 1's rules), push (`git -C {worktree-path} push --force-with-lease`), then re-run the script.
 
 **`CI: timeout after 5m — {checks}`** — stop and ask the user: "CI hasn't completed after 5 minutes — could you check the Actions tab / PR checks and let me know what's going on? (e.g. stuck runner, workflow didn't trigger, etc.)" Wait for their answer before re-running the script or taking further action.
 
@@ -87,6 +82,12 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 **If the Vercel check failed:** Do NOT attempt `npx vercel inspect` or `npx vercel logs` — the Vercel CLI is not available. Instead:
 1. Run `npm run build` locally to check for TypeScript/build errors. If errors are found, fix them, commit, push, and re-run the script.
 2. If the local build passes but Vercel still fails, ask the user to paste the Vercel error from the dashboard.
+
+**If the e2e check failed:** don't re-run it and don't wave it through. Work out whether this PR plausibly caused it — if the diff doesn't touch anything related to the failure, the likeliest cause is a stale base, not flake:
+```
+git -C {worktree-path} rev-list --left-right --count origin/{base}...HEAD
+```
+A branch well behind a fast-moving release branch fails e2e on fixes that already landed on the base. Present the reasoning (diff scope, how far behind the branch is, whether sibling PRs on the same base are passing), then ask: "Want me to rebase and re-run, or do you want to investigate first?" Wait for an explicit answer — the user may know about an unpushed migration or another cause that looks like flake from here.
 
 **If `Verify Migrations` failed:** diagnose the root cause (read the failure logs, identify which migration needs to sort later and why) and explain it to the user — but do NOT rename/reorder/`git mv`/commit the fix yourself, and do not auto-invoke `sync-migrations`. Surface it and stop; let the user decide whether to hand off to `/testIssue` or explicitly authorize a one-off fix in this session.
 
@@ -124,6 +125,8 @@ Use a Haiku agent to fetch `gh pr view --json state,isDraft` and check completio
 
 Then launch **6 parallel Sonnet agents in the foreground** (`run_in_background: false` on each) — Step 5 needs every agent's findings before it can score anything, so block on them directly. Never wrap this wait in a `/loop`/`ScheduleWakeup` poll (both are Claude Code harness features for scheduling repeat work, not project tooling): background agents already auto-notify on completion, and a polling loop here just burns wakeups re-asking whether they're done. Give each agent the issue body (including acceptance criteria), the PR body, and the full PR diff. Each agent should return a list of issues with a reason for each finding.
 
+Findings only — no praise. In particular, never affirm or compliment the test-first approach, test coverage, or TDD discipline anywhere in this skill's output: it's the project baseline, not an achievement. Only deviations from it get reported.
+
 - **Agent 1:** Audit the changes for CLAUDE.md compliance. Use the root CLAUDE.md and any CLAUDE.md files in directories the PR modifies.
 - **Agent 2:** Shallow scan for obvious bugs in the changed lines only. Focus on large bugs; ignore nitpicks and things a linter/typechecker would catch.
 - **Agent 3:** Read the git blame and commit history of modified files. Flag any bugs that only make sense in light of that historical context.
@@ -136,6 +139,7 @@ Then launch **6 parallel Sonnet agents in the foreground** (`run_in_background: 
   - No reference to an `admin` role anywhere — the only roles are `manager`, `trainer`, and `rider`
   - Null guards must be present at all runtime boundaries (user input, external API responses)
   - Existing migration files must not be edited — any database change requires a new migration file
+  - A doc update that `CLAUDE.md` mandates (`ARCHITECTURE.md`, `docs/architecture/*`, a checklist, a user guide) may land in its **own commit** on the branch rather than alongside the change that prompted it — that's acceptable commit hygiene, not a violation. Only flag when the mandated update is missing from the PR entirely.
   - Check whether the implementation *attempts* to satisfy the issue's acceptance criteria (code exists that addresses each AC). AC *verification* — running the app, running named e2e/checklist tests, confirming behavior end-to-end — is always `/testIssue`'s job, never `/reviewIssue`'s; do not flag an AC as a finding just because it hasn't been verified yet (e.g. `npm run test:checklist:auto` not run). Only flag here if the diff itself shows no attempt to address an AC at all.
   - **Never flag migration file timestamp/ordering** (e.g. a new migration's filename sorting before another migration it references, depends on, or is a "follow-up" to) as a finding of any kind — not as a blocking issue, not as a low-confidence nitpick, not as an "accepted deviation" aside. If `Verify Migrations` passed in Step 2, the ordering is non-blocking by definition, and `/testIssue`'s `sync-migrations` step renames every migration into correct order automatically before merge regardless of what order they were created in during review — surfacing it here is pure noise the user has to re-dismiss every round. This applies to every agent's output, not just this one; drop any such finding before it reaches Step 5's output.
   - If the PR diff includes any file under `supabase/migrations/`, add a low-confidence suggestion (score 25 by default): "This PR changes schema — verify whether `reset-db.ts` needs to reflect the change (new required columns, renamed tables, new RPC signatures, or removed columns it references)." Raise to score 50 only if the diff clearly adds a NOT NULL column or modifies a table/RPC that `reset-db.ts` writes to.
@@ -201,7 +205,7 @@ Wait for the user's response.
 
 **If the user dismisses a finding instead of asking for a fix** (e.g. "that one's fine, leave it" / "that's a separate issue, not this PR's problem"): don't silently drop it — classify and log it, same as any other input:
 - **Accepted as-is:** append to `## Accepted deviations`: `- {date} {time} — {finding summary}. {one-line reason it's fine}.`
-- **Real but out of scope, needs its own issue:** append to `## Follow-ups (needs own issue)`: `- {date} {time} — {2-4 sentence paragraph: what it is, why it's out of scope for #{N}}.`
+- **Real but out of scope, needs its own issue:** append to `## Follow-ups (needs own issue)`: `- {date} {time} — {2-4 sentence paragraph: what it is, why it's out of scope for #{N}}.` **Never run `gh issue create`/`mcp__github__issue_write` from this skill**, even once the user has agreed the finding deserves an issue — filing it is `/grillMe`'s job, in its own session, because that's where scoping, labeling, and dependency checks actually happen. Log it here and say it's logged.
 
 Then move to the next finding, or re-ask "anything else?" if that was the last one — this doesn't require the coverage/doc/commit/push steps below since no code changed.
 
@@ -218,7 +222,7 @@ Then move to the next finding, or re-ask "anything else?" if that was the last o
      If coverage fails, read the output to identify uncovered lines. Write tests to cover those lines. Re-run coverage until it passes.
   3. Run the documentation check. Inspect the diff between the base branch and HEAD:
      ```
-     git -C {worktree-path} diff {base-branch}...HEAD -- src/
+     git -C {worktree-path} diff {base}...HEAD -- src/
      ```
      Check whether any of the following changed in a way that affects documentation:
      - New or renamed routes, pages, or API endpoints

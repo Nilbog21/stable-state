@@ -99,6 +99,8 @@ Display:
 3. #N — Title — {reason}
 ```
 
+**Migration collision note:** if more than one of the presented picks would touch `supabase/migrations/`, say so in one line beneath the list. All worktrees share a single dev Supabase project, so two migration-bearing issues can't actually be worked in parallel — their pushes collide on ordering — and the user should know that before choosing two of them at once. This is advisory; don't drop or reorder picks over it.
+
 Ask: "Which issue do you want to work on?" If this was invoked standalone, tell the user to run `/beginIssue {N}` with their choice. If it was invoked from within `/beginIssue`'s own flow, take the answer and continue directly into that skill's Worktree Setup step.
 
 `pick` itself is purely ephemeral — it never reads or writes the `## Active Picks` section below. That state belongs exclusively to `rollingPick`.
@@ -156,6 +158,8 @@ Current:
 - #N3 — Title [labels] — unblocks: {K} — {reason}
 ```
 listing one `−`/`+` pair per slot that changed (a slot that couldn't be refilled shows only the `−` line and is omitted from `Current`). `Current` reproduces each surviving/replacement pick's full entry line — title, labels, unblocks, reason — copied straight from the just-rewritten `## Active Picks` section, not just its issue number.
+
+Report the changes plainly and stop there. **Never append a "run `/issueBatch create` to rescore" nudge**, even when entries carry stale `unblocks: 0` values or a `(newly added by grillMe — run /issueBatch create to rescore)` annotation. This runs on a loop, so the nag repeats every pass, and late in a release — when the Ready pool is small and thinning — a rescore wouldn't change the picks anyway. Recommend `create` only if asked, or if the batch is clearly early/mid-release with a large Ready pool where rescoring would genuinely move something.
 
 ---
 
