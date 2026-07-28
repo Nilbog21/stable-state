@@ -77,7 +77,19 @@ When a worker ends its turn, read the status block. Answer routine questions via
 
 **Standing precedent:** once the user rules on a decision category (e.g. "a checklist line whose claim is false against deliberate code behavior gets rewritten to the true invariant"), later instances of the same category are yours to decide by citing that ruling — record the citation in the worker's log and surface it in the batch-close report. Re-escalate only when the new instance differs in a way the ruling didn't cover. Your own decide-alone rulings are reversible on better evidence (a reviewer's finding, a sibling's contradicting read) without asking the user; log the reversal and reasoning.
 
-Do not report status to the user unprompted — they only want to hear from you when you need them.
+**Reporting cadence** (the user watches via tmux flashes — only three kinds of output warrant their attention):
+
+1. **The fleet table, every 5 minutes.** Keep a background timer armed (`sleep 300` as a background Bash task — its exit re-invokes you). Each time it fires: first run the lock-holder heartbeat (probe the log of any worker silent past its operation's normal duration), then print the table and re-arm the timer. One row per batch issue:
+
+   | Issue | Worktree | Status | Elapsed |
+   |---|---|---|---|
+   | #N | fable-K | the skill/step the worker is in (skill name is fine), or `queued` / `waiting: <lock/slot/answer>` / `merged` | time since the current skill started — only for actively-running work |
+
+   Track skill start times from your dispatch and the workers' status blocks. Don't spawn a subagent to render this — subagents can't print to the user; the table is your own turn output from state you already hold.
+2. **Escalation prompts** — the questions you need the user to settle, one at a time, as defined above.
+3. **Abandonments** — anything you had to give up on (a worker stopped and not re-dispatched, an issue pulled from the batch, a task dropped). Never bury these in the table; report them prominently when they happen.
+
+Every other turn (worker acks, interim bookkeeping) ends with a single short line prefixed `[fleet]` so its tmux flash is recognizable as ignorable at a glance.
 
 ## Step 5 — Fleet-wide serialization
 
