@@ -50,7 +50,7 @@ Then tell the user exactly which files and hunks could not be resolved and stop.
 
 **After any successful rebase, verify the target was right before pushing:**
 ```
-git -C {worktree-path} log --oneline origin/{base-branch}..HEAD
+git -C {worktree-path} log --oneline origin/{base}..HEAD
 ```
 This must show only this issue's own commits. A release-labeled branch rebased onto `origin/main` by mistake looks fine locally but shows a hundred-plus spurious commits on the PR, and unwinding it costs a hard reset plus cherry-picks.
 
@@ -85,7 +85,7 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 
 **If the e2e check failed:** don't re-run it and don't wave it through. Work out whether this PR plausibly caused it — if the diff doesn't touch anything related to the failure, the likeliest cause is a stale base, not flake:
 ```
-git -C {worktree-path} rev-list --left-right --count origin/{base-branch}...HEAD
+git -C {worktree-path} rev-list --left-right --count origin/{base}...HEAD
 ```
 A branch well behind a fast-moving release branch fails e2e on fixes that already landed on the base. Present the reasoning (diff scope, how far behind the branch is, whether sibling PRs on the same base are passing), then ask: "Want me to rebase and re-run, or do you want to investigate first?" Wait for an explicit answer — the user may know about an unpushed migration or another cause that looks like flake from here.
 
