@@ -519,6 +519,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#1019) With a horse selected there, the exertion shading reflects the whole barn's lessons for that horse — not just the ones you instruct
 - [ ] (#1019) With Apple selected there, the day carrying Apple's vet/farrier expense (scheduled back in Phase 3) shows a dot — the conflict dot fires on expenses for a trainer, not just lessons
 - [ ] (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
+- [ ] (#1019) That appointment's card on the Dashboard is not tappable — it renders as plain text, not a link (the expense detail page is manager-only)
 - [ ] Create one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) — submission succeeds with no error
 
 > This notification's recipient (Blake) isn't the persona you're currently acting as, so it can't be observed by switching personas with `change-user.sh` — the swap reassigns `barn_memberships.user_id` away from whichever persona you leave, permanently disconnecting it from the id the notification was written against. Verify the row directly instead (Supabase Studio or a `supabase db` query). The live bell UI these rows feed is exercised on a genuinely different account, in both directions, in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — that supplements these row checks rather than replacing them.

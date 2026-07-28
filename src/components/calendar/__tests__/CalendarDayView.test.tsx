@@ -10,8 +10,8 @@ vi.mock('../CalendarLessonCard', () => ({
 }))
 
 vi.mock('../CalendarExpenseCard', () => ({
-  CalendarExpenseCard: ({ expense, slug }: { expense: { id: string }; slug: string }) => (
-    <div data-testid="expense-card" data-expense-id={expense.id} data-slug={slug} />
+  CalendarExpenseCard: ({ expense, slug, role }: { expense: { id: string }; slug: string; role: string }) => (
+    <div data-testid="expense-card" data-expense-id={expense.id} data-slug={slug} data-role={role} />
   ),
 }))
 
@@ -36,8 +36,13 @@ describe('CalendarDayView', () => {
     expect(screen.getByText(/lessons, expenses, or events/)).toBeDefined()
   })
 
-  it('should_show_generic_empty_subtext_for_trainer', () => {
+  it('should_show_expense_mentioning_empty_subtext_for_trainer', () => {
     render(<CalendarDayView items={[]} role="trainer" slug="green-acres" />)
+    expect(screen.getByText(/lessons, expenses, or events/)).toBeDefined()
+  })
+
+  it('should_show_generic_empty_subtext_for_rider', () => {
+    render(<CalendarDayView items={[]} role="rider" slug="green-acres" />)
     expect(screen.getByText('Nothing scheduled for this day.')).toBeDefined()
   })
 
@@ -55,6 +60,14 @@ describe('CalendarDayView', () => {
     render(<CalendarDayView items={items} role="manager" slug="green-acres" />)
 
     expect(screen.getByTestId('expense-card').getAttribute('data-expense-id')).toBe('expense-1')
+  })
+
+  it('should_pass_role_to_the_expense_card', () => {
+    const expense = makeExpense({ id: 'expense-1' })
+    const items: DayScheduleDisplayItem[] = [{ itemType: 'expense', id: 'expense-1', expense }]
+    render(<CalendarDayView items={items} role="trainer" slug="green-acres" />)
+
+    expect(screen.getByTestId('expense-card').getAttribute('data-role')).toBe('trainer')
   })
 
   it('should_render_an_event_card_for_an_event_item', () => {
