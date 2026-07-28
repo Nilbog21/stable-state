@@ -235,11 +235,13 @@ its own barns rather than a concurrent run's.
 
 ### Running the checklist e2e suite against a target project
 
-`run-checklist-suite.sh` seeds a throwaway barn **per spec file** under a shared run
-prefix (`e2e-{epoch}-{RANDOM}`), runs the Playwright checklist suite against them, and
-tears every barn carrying that prefix back down. Seeding is the reset — a spec that
-mutates barn-wide state can't pollute or race another spec, because they never share a
-barn. To point that whole cycle at a deployment instead of local dev, give it the origin
+`run-checklist-suite.sh` seeds a throwaway barn **per spec file, per Playwright project**
+under a shared run prefix (`e2e-{epoch}-{RANDOM}`), runs the Playwright checklist suite
+against them, and tears every barn carrying that prefix back down. Seeding is the reset —
+a spec that mutates barn-wide state can't pollute or race another spec, because they never
+share a barn. The project (`manager`/`trainer`/`rider`/`mobile`) is part of the slug rather
+than just the spec file because Playwright dispatches one job per file *and* project, and
+most specs are greped by several roles — so two jobs would otherwise contend for one barn. To point that whole cycle at a deployment instead of local dev, give it the origin
 and opt in with `--allow-prod`:
 
 ```bash

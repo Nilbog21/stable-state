@@ -8,10 +8,13 @@
 //     await page.goto(`/barn/${barn.slug}`)
 //   })
 //
-// Isolation comes from the file axis: Playwright parallelises across spec *files* and runs
-// the tests within one file serially (fullyParallel stays false — see playwright.config.ts),
-// so a mutating spec can neither race nor pollute a reading spec in another file. Seeding is
-// the reset; there is no undo path to maintain.
+// Isolation comes from Playwright's dispatch axis, which is (spec file × *project*), not spec
+// file — four of the five specs are greped by more than one project, and each pairing is its
+// own job with its own beforeAll/afterAll. The slug therefore carries the project name too
+// (see barnSlugFor), or those jobs would race one another's barn insert and tear each other's
+// barn down mid-run. Tests within one job run serially (fullyParallel stays false — see
+// playwright.config.ts), so a mutating spec can neither race nor pollute a reading spec.
+// Seeding is the reset; there is no undo path to maintain.
 //
 // withBarn is a plain registration helper rather than a Playwright fixture because Playwright
 // has no file scope — only test and worker — and a worker-scoped fixture would leak one barn
@@ -38,7 +41,7 @@ export type SeedContext = {
   members: SeededMembers
 }
 
-/** Slug is known at module load; the rest is filled in by beforeAll. */
+/** Both members are filled in by beforeAll and throw if read at module scope. */
 export type BarnHandle = {
   readonly slug: string
   readonly data: SeedContext
@@ -47,7 +50,7 @@ export type BarnHandle = {
 // `created` is set the moment the barn row exists and tracks what afterAll must clean up;
 // `ctx` is set only once seeding finished and is what tests read. They are separate so a
 // failure between the two still tears the barn down.
-type BarnState = { slug: string; created: SupabaseClient | null; ctx: SeedContext | null }
+type BarnState = { slug: string | null; created: SupabaseClient | null; ctx: SeedContext | null }
 
 // One barn is active per worker process at a time (a worker runs a single file at a time),
 // so the page fixture below can read the current file's barn from here.
@@ -73,13 +76,16 @@ function serviceClient(): SupabaseClient {
 }
 
 export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>): BarnHandle {
-  const slug = barnSlugFor(runPrefix(), key)
-  const state: BarnState = { slug, created: null, ctx: null }
+  const state: BarnState = { slug: null, created: null, ctx: null }
   active = state
 
   // Registered from the spec file's own module evaluation, so both hooks attach to that
   // file's suite rather than to whichever file first imported this module.
-  base.beforeAll(async () => {
+  base.beforeAll(async ({}, testInfo) => {
+    // The project name is only knowable here, not at module load — which is why the handle's
+    // slug getter below refuses a module-scope read.
+    const slug = barnSlugFor(runPrefix(), key, testInfo.project.name)
+    state.slug = slug
     const supabase = serviceClient()
     const barn = await createBarn(supabase, slug)
     // Marked owed-for-teardown as soon as the row exists, before the steps that can throw:
@@ -94,21 +100,25 @@ export function withBarn(key: string, seed?: (ctx: SeedContext) => Promise<void>
   })
 
   base.afterAll(async () => {
-    if (!state.created) return
+    if (!state.created || !state.slug) return
     // --hold-open keeps the barns up for manual checklist steps; run-checklist-suite.sh's
     // exit trap sweeps them by run prefix once the operator is done.
     if (process.env.E2E_HOLD_OPEN === 'true') return
-    await teardownBarn(state.created, slug)
+    await teardownBarn(state.created, state.slug)
     state.created = null
     state.ctx = null
   })
 
+  const notSeeded = (what: string) =>
+    new Error(`barn "${key}" ${what} is not resolved yet — read it inside a test, not at module scope`)
+
   return {
     get slug() {
-      return slug
+      if (!state.slug) throw notSeeded('slug')
+      return state.slug
     },
     get data() {
-      if (!state.ctx) throw new Error(`barn "${slug}" is not seeded yet — read it inside a test, not at module scope`)
+      if (!state.ctx) throw notSeeded('seed data')
       return state.ctx
     },
   }
@@ -123,7 +133,7 @@ export const test = base.extend({
   // `runTest` is Playwright's `use` callback, renamed only so the React hooks lint rule
   // doesn't read this fixture as a misplaced hook call.
   page: async ({ page, context }, runTest, testInfo) => {
-    if (!active?.ctx) throw new Error('no seeded barn — the spec file must call withBarn() at module scope')
+    if (!active?.ctx || !active.slug) throw new Error('no seeded barn — the spec file must call withBarn() at module scope')
     const role = ROLE_BY_PROJECT[testInfo.project.name]
     if (!role) throw new Error(`no e2e role mapped for Playwright project "${testInfo.project.name}"`)
     const userId = active.ctx.members[role].userId

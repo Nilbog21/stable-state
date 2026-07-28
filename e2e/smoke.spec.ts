@@ -16,31 +16,13 @@ const barn = withBarn('smoke', async ({ supabase, barn, members }) => {
   })
 })
 
-const STATIC_ROUTES: Record<string, string[]> = {
-  manager: [
-    `/barn/${barn.slug}`,
-    `/barn/${barn.slug}/lessons`,
-    `/barn/${barn.slug}/lessons/new`,
-    `/barn/${barn.slug}/horses`,
-    `/barn/${barn.slug}/members`,
-    `/barn/${barn.slug}/finances`,
-    `/barn/${barn.slug}/settings`,
-    `/profile`,
-  ],
-  trainer: [
-    `/barn/${barn.slug}`,
-    `/barn/${barn.slug}/lessons`,
-    `/barn/${barn.slug}/lessons/new`,
-    `/barn/${barn.slug}/horses`,
-    `/barn/${barn.slug}/members`,
-    `/profile`,
-  ],
-  rider: [
-    `/barn/${barn.slug}`,
-    `/barn/${barn.slug}/lessons`,
-    `/barn/${barn.slug}/horses`,
-    `/profile`,
-  ],
+// Suffixes onto /barn/<slug>, not absolute paths: the slug isn't resolved until beforeAll
+// runs (it carries the Playwright project name — see support/test.ts), so it can't be baked
+// into a module-scope table. `''` is the barn dashboard itself.
+const BARN_ROUTES: Record<string, string[]> = {
+  manager: ['', '/lessons', '/lessons/new', '/horses', '/members', '/finances', '/settings'],
+  trainer: ['', '/lessons', '/lessons/new', '/horses', '/members'],
+  rider: ['', '/lessons', '/horses'],
 }
 
 async function assertPageClean(page: Page, url: string) {
@@ -53,16 +35,19 @@ async function assertPageClean(page: Page, url: string) {
   expect(fivexx, `5xx on ${url}: ${fivexx.join(', ')}`).toHaveLength(0)
 }
 
-for (const [role, routes] of Object.entries(STATIC_ROUTES)) {
-  for (const route of routes) {
-    // The slug is run-scoped, so it's stripped out of the test name — otherwise every run
-    // reports differently-named tests and --grep can't target one.
-    const label = route.replace(barn.slug, 'barn').replace(/^\//, '').replace(/[\/-]/g, '_')
-    const name = `${role}_no_error_on_${label} @${role}`
-    test(name, async ({ page }) => {
-      await assertPageClean(page, route)
+for (const [role, suffixes] of Object.entries(BARN_ROUTES)) {
+  for (const suffix of suffixes) {
+    // Named off the suffix, so the run-scoped slug never reaches a test name — otherwise every
+    // run reports differently-named tests and --grep can't target one.
+    const label = ('barn' + suffix).replace(/[\/-]/g, '_')
+    test(`${role}_no_error_on_${label} @${role}`, async ({ page }) => {
+      await assertPageClean(page, `/barn/${barn.slug}${suffix}`)
     })
   }
+
+  test(`${role}_no_error_on_profile @${role}`, async ({ page }) => {
+    await assertPageClean(page, '/profile')
+  })
 
   test(`${role}_no_error_on_lesson_detail @${role}`, async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/lessons`)

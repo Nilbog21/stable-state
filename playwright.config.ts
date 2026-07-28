@@ -6,9 +6,10 @@ export default defineConfig({
   // and Playwright's default testMatch would otherwise try to run them as browser tests.
   testMatch: '**/*.spec.ts',
   globalSetup: './e2e/global-setup.ts',
-  // fullyParallel must stay false. Each spec file seeds its own barn (see e2e/support/test.ts),
-  // so isolation is per *file*; the tests inside a file share that barn and must run serially
-  // or a mutating test would race a reading one in the same file.
+  // fullyParallel must stay false. Each job seeds its own barn (see e2e/support/test.ts), so
+  // isolation is per (spec file × project) — the unit Playwright dispatches, and the reason
+  // the barn slug carries the project name. The tests inside one job share that barn and must
+  // run serially, or a mutating test would race a reading one against the same data.
   fullyParallel: false,
   // retries must stay 0. A retry re-runs a mutating test against the state its first attempt
   // already changed, so the second attempt asserts against a barn that no longer matches the

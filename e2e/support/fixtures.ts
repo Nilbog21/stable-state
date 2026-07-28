@@ -23,7 +23,7 @@ export const E2E_PASSWORD = 'TestPass123!'
 /**
  * The three long-lived auth logins the suite runs as — created once per Supabase project by
  * scripts/e2e-auth-users.ts, never per barn. Per-barn auth users would mean 3+
- * auth.admin.createUser calls per spec file per run (the operation most likely to trip
+ * auth.admin.createUser calls per seeded barn per run (the operation most likely to trip
  * Supabase's auth rate limits), and Playwright resolves each project's storageState from a
  * static path before any beforeAll hook runs, so the emails have to be knowable up front.
  */
@@ -95,8 +95,14 @@ export function runPrefix(): string {
   return process.env.E2E_RUN_PREFIX || `e2e-${process.pid}`
 }
 
-export function barnSlugFor(prefix: string, key: string): string {
-  return `${prefix}-${key}`
+/**
+ * Playwright's unit of parallel dispatch is (spec file × project), not spec file — four of the
+ * five specs are greped by more than one project — so the project name has to be part of the
+ * slug or two jobs race the same `barns_slug_key` insert. `prefix` stays leading so
+ * teardown-test-barn.ts's `${prefix}-%` sweep still matches.
+ */
+export function barnSlugFor(prefix: string, key: string, project: string): string {
+  return `${prefix}-${key}-${project}`
 }
 
 // ---------------------------------------------------------------------------

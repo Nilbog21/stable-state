@@ -122,7 +122,7 @@ parse_var() {
 
 NEXT_PUBLIC_SUPABASE_URL="$(parse_var NEXT_PUBLIC_SUPABASE_URL || true)"
 NEXT_PUBLIC_SUPABASE_ANON_KEY="$(parse_var NEXT_PUBLIC_SUPABASE_ANON_KEY || true)"
-# Seeding now happens inside the Playwright process (one barn per spec file), so the test
+# Seeding now happens inside the Playwright process (one barn per spec file per project), so the test
 # process needs the service-role key the seed script used to hold on its own.
 SUPABASE_SERVICE_ROLE_KEY="$(parse_var SUPABASE_SERVICE_ROLE_KEY || true)"
 DEV_SUPABASE_URL="$(parse_var DEV_SUPABASE_URL || true)"
@@ -174,7 +174,7 @@ else
 fi
 PLAYWRIGHT_ARGS+=("${SPEC_ARGS[@]}")
 
-echo "Seeding one barn per spec file, prefixed $RUN_PREFIX..."
+echo "Seeding one barn per spec file per Playwright project, prefixed $RUN_PREFIX..."
 echo "  If this run is killed, clean up with: bash scripts/teardown-test-barn.sh ${PROD_FLAG[*]} --prefix $RUN_PREFIX"
 SEEDED=true
 
