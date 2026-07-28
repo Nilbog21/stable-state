@@ -2,7 +2,6 @@ import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
-import type { SupabaseClient } from '@supabase/supabase-js'
 
 // Seed constants. Every figure this file asserts is built from these, from a builder return
 // value, or from another figure read off the DOM — never from a query against the same
@@ -51,29 +50,6 @@ const SEEDED_RIDER_COUNT = 3
 type Seeded = { riderMembershipId: string }
 
 let seeded: Seeded
-
-/**
- * getPaidCharges reads collected `transactions` rows only, so an unpaid agreement charge
- * reaches neither the By Rider tab nor the drill-down. addLeaseCharge deliberately leaves its
- * charges unpaid — its Outstanding callers need that — so collection is a follow-up update
- * here rather than a new flag on the shared builder. `agreement_charges` carries no
- * payment_type column of its own (#827 moved payment state onto `transactions`), so the
- * ledger row is the only thing to update.
- */
-async function collectCharges(supabase: SupabaseClient, barnId: string, agreementIds: string[]) {
-  const charges = mustSucceed<{ id: string }[]>(
-    await supabase.from('agreement_charges').select('id').eq('barn_id', barnId).in('agreement_id', agreementIds),
-    'fetch agreement charges to collect'
-  )
-  mustSucceed(
-    await supabase
-      .from('transactions')
-      .update({ collected: true, payment_type: 'venmo' })
-      .eq('barn_id', barnId)
-      .in('agreement_charge_id', charges.map((c) => c.id)),
-    'mark agreement charges paid'
-  )
-}
 
 const barn = withBarn('phase4-finances-by-rider', async ({ supabase, barn, members }) => {
   // resolveFinancesMonth clamps the viewable range to the barn's creation month, and withBarn
@@ -126,21 +102,24 @@ const barn = withBarn('phase4-finances-by-rider', async ({ supabase, barn, membe
   })
 
   // Both charges sit on the drill-down's subject, so its one combined table carries all three
-  // Type values — Lesson, Lease and Boarding.
-  const lease = await addLeaseCharge(supabase, barn, {
+  // Type values — Lesson, Lease and Boarding. `paid` is required, not incidental:
+  // getPaidCharges filters `collected = true`, so an unpaid charge is invisible to both the
+  // By Rider tab and the drill-down.
+  await addLeaseCharge(supabase, barn, {
     ...thisMonth,
+    paid: true,
     riderId: members.rider.membershipId,
     horseId: apollo.id,
     fee: RIDER_LEASE_FEE,
   })
-  const board = await addLeaseCharge(supabase, barn, {
+  await addLeaseCharge(supabase, barn, {
     ...thisMonth,
     kind: 'board',
+    paid: true,
     riderId: members.rider.membershipId,
     horseId: bella.id,
     fee: RIDER_BOARD_FEE,
   })
-  await collectCharges(supabase, barn.id, [lease.id, board.id])
 
   // Gives the previous month a By Rider row to click through, so the month-param check runs
   // against a month that is not the page's own server-clock default.
