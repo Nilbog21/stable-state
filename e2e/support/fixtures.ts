@@ -325,24 +325,66 @@ export async function addExpense(
  * An unpaid lease charge. `one_time` cadence backdates the charge to the given month — a
  * monthly agreement's first charge is always for the *current* month (see
  * create_agreement_with_first_charge), so it would never read as outstanding.
+ *
+ * `kind` defaults to `'lease'`; pass `'board'` for a boarding charge. The two are the same
+ * `agreement_charges` row shape and differ only in the parent agreement's `kind`, which is
+ * what the Outstanding tables render as the row's Type — so a spec that has to distinguish
+ * "leases/boarding charges" needs both, and doesn't need a second builder to get one.
+ * `'board'` takes a different route to the same place: `CHECK(kind <> 'board' OR cadence =
+ * 'monthly')` rules out the `one_time` backdating trick, so the charge is generated for the
+ * current month as usual and then has its `period` moved back afterwards.
+ *
+ * Note for callers placing one of these in Outstanding: `getOutstandingCharges` filters
+ * `period < firstOfCurrentMonth`, so a `monthsAgo: 0` charge never reads as outstanding
+ * however unpaid it is — use `monthsAgo: 1` or `2`.
  */
 export async function addLeaseCharge(
   supabase: SupabaseClient,
   barn: SeededBarn,
-  opts: When & { riderId: string; horseId: string; fee: number }
+  opts: When & { riderId: string; horseId: string; fee: number; kind?: 'lease' | 'board' }
 ): Promise<Agreement> {
-  return createAgreement(
+  const isBoard = opts.kind === 'board'
+  const when = resolveWhen(opts)
+  const agreement = await createAgreement(
     {
       barnId: barn.id,
       riderId: opts.riderId,
       horseId: opts.horseId,
       fee: opts.fee,
-      kind: 'lease',
-      cadence: 'one_time',
-      startDate: resolveWhen(opts).toISOString().slice(0, 10),
+      kind: opts.kind ?? 'lease',
+      cadence: isBoard ? 'monthly' : 'one_time',
+      startDate: when.toISOString().slice(0, 10),
     },
     supabase
   )
+
+  if (isBoard) {
+    // agreement_charges.period is CHECK-pinned to the 1st of its month.
+    const period = `${when.toISOString().slice(0, 7)}-01`
+    const charge = mustSucceed<{ id: string }>(
+      await supabase
+        .from('agreement_charges')
+        .update({ period })
+        .eq('agreement_id', agreement.id)
+        .select('id')
+        .single(),
+      'backdate board charge period'
+    )
+    // The paired ledger row has to move with it. create_agreement_with_first_charge derives
+    // both the charge's period and the transaction's occurred_at from one value, and the
+    // income breakdowns bucket by occurred_at while getOutstandingCharges filters on period
+    // — leaving occurred_at behind would make this charge read as outstanding in the month
+    // it was backdated to but land in the *current* month's income once collected.
+    mustSucceed(
+      await supabase
+        .from('transactions')
+        .update({ occurred_at: `${period}T00:00:00Z` })
+        .eq('agreement_charge_id', charge.id),
+      'backdate board charge transaction'
+    )
+  }
+
+  return agreement
 }
 
 export type HorseDocumentOptions = {

@@ -276,30 +276,31 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 Finances (`/barn/dev-barn/finances`):
 
 - [ ] (manual) The Finances page as a whole — Outstanding sections, tab pills, and every tab's table/footer — looks clean and visually consistent (spacing, alignment, typography) with the rest of the app
-- [ ] (e2e-candidate) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons
-- [ ] (e2e-candidate) Set a payment type on one **Outstanding Income** row via the inline dropdown → it leaves the list
-- [ ] (e2e-candidate) A lesson row's date in **Outstanding Income** matches the wall-clock time you entered for that lesson, not shifted by your UTC offset
-- [ ] (e2e-candidate) That same lesson's date in the **By Horse** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
-- [ ] (e2e-candidate) That same lesson's date in the **By Rider** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
-- [ ] (e2e-candidate) That same lesson's date in the **By Instructor** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
-- [ ] (e2e-candidate) A lease/boarding charge row's date, in contrast, is unaffected by timezone (it's a plain calendar date, not a time-of-day instant)
-- [ ] (e2e-candidate) Late-cancel a normal lesson that was already marked paid (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding Income** with a **Type** of "Cancellation Fee"
-- [ ] (e2e-candidate) Mark that cancellation fee paid via the inline dropdown → it leaves the list
-- [ ] (e2e-candidate) The **Outstanding Expenses** section (renamed from "Needs an amount", below Outstanding Income) shows a bold total above the list, summing only the expenses in it that have a known amount
-- [ ] (e2e-candidate) **Outstanding Expenses** lists the seeded past-due planned expense as a single line (date — recipient — expense type)
-- [ ] (e2e-candidate) That past-due planned expense does **not** appear inside the Outstanding Income table itself
-- [ ] (e2e-candidate) Tap the ⓘ info icon on **Outstanding Expenses** → shows explanatory text that an entry is listed for a missing amount, a missing payment type, or both
-- [ ] (e2e-candidate) Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page
-- [ ] (e2e-candidate) Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**
-- [ ] (e2e-candidate) That same expense now contributes its amount to the **Outstanding Expenses** bold total instead of $0
-- [ ] (e2e-candidate) That same expense contributes its amount to every tab's footer Total for Expenses that month
-- [ ] (e2e-candidate) That same expense also contributes to the By Horse tab's own Expenses column for its horse
-- [ ] (e2e-candidate) Now set a Payment Type on that same expense and save → it disappears from **Outstanding Expenses** entirely
-- [ ] (e2e-candidate) "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, leases/boarding charges, and cancellation fees
-- [ ] (e2e-candidate) On that page, each lesson/cancellation-fee row links to its lesson
-- [ ] (e2e-candidate) Outstanding expenses do **not** appear on that page (no Outstanding Expenses equivalent there)
-- [ ] (e2e-candidate) Month navigation `←`/`→` works and updates `?month=YYYY-MM`
-- [ ] (e2e-candidate) Navigate to the previous month → the past lesson from Phase 3 (and seeded past-month data) is reflected
+- [ ] (e2e: outstanding_income_lists_past_unpaid_lesson) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons
+- [ ] (e2e: outstanding_income_row_leaves_list_once_payment_type_set) Set a payment type on one **Outstanding Income** row via the inline dropdown → it leaves the list
+- [ ] (e2e: outstanding_income_lesson_date_renders_in_viewer_timezone) A lesson row's date in **Outstanding Income** matches the wall-clock time you entered for that lesson, not shifted by your UTC offset
+- [ ] (e2e: by_horse_drilldown_lesson_date_renders_in_viewer_timezone) That same lesson's date in the **By Horse** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
+- [ ] (e2e: by_rider_drilldown_lesson_date_renders_in_viewer_timezone) That same lesson's date in the **By Rider** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
+- [ ] (e2e: by_instructor_drilldown_lesson_date_renders_in_viewer_timezone) That same lesson's date in the **By Instructor** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
+- [ ] (e2e: outstanding_income_lease_charge_date_renders_as_plain_calendar_date) A lease/boarding charge row's date, in contrast, is unaffected by timezone (it's a plain calendar date, not a time-of-day instant)
+- [ ] (e2e: late_cancelled_unpaid_lesson_raises_an_outstanding_cancellation_fee) Late-cancel an **unpaid** normal lesson (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding Income** with a **Type** of "Cancellation Fee"
+- [ ] (e2e: late_cancelled_paid_lesson_raises_no_cancellation_fee) The same late cancellation on a lesson that was **already marked paid** raises **no** Cancellation Fee row — the rider has already paid for that lesson and must not be billed twice
+- [ ] (e2e: cancellation_fee_leaves_the_list_once_payment_type_set) Mark that cancellation fee paid via the inline dropdown → it leaves the list
+- [ ] (e2e: outstanding_expenses_total_sums_only_entries_with_a_known_amount) The **Outstanding Expenses** section (renamed from "Needs an amount", below Outstanding Income) shows a bold total above the list, summing only the expenses in it that have a known amount
+- [ ] (e2e: outstanding_expenses_lists_past_due_planned_expense_as_one_line) **Outstanding Expenses** lists the seeded past-due planned expense as a single line (date — recipient — expense type)
+- [ ] (e2e: past_due_planned_expense_absent_from_outstanding_income_table) That past-due planned expense does **not** appear inside the Outstanding Income table itself
+- [ ] (e2e: outstanding_expenses_info_icon_explains_why_an_entry_is_listed) Tap the ⓘ info icon on **Outstanding Expenses** → shows explanatory text that an entry is listed for a missing amount, a missing payment type, or both
+- [ ] (e2e: past_due_expense_line_links_to_its_edit_page) Tap the past-due expense's line in **Outstanding Expenses** → lands on its edit page
+- [ ] (e2e: past_due_expense_still_outstanding_after_amount_entered_without_payment_type) Enter an amount on it (leave Payment Type unset) and save → back on Finances, it still appears under **Outstanding Expenses**
+- [ ] (e2e: past_due_expense_amount_now_counts_toward_the_outstanding_expenses_total) That same expense now contributes its amount to the **Outstanding Expenses** bold total instead of $0
+- [ ] (e2e: past_due_expense_amount_added_to_every_tab_expenses_total) That same expense contributes its amount to every tab's footer Total for Expenses that month
+- [ ] (e2e: past_due_expense_amount_added_to_its_horses_expenses_column) That same expense also contributes to the By Horse tab's own Expenses column for its horse
+- [ ] (e2e: past_due_expense_leaves_outstanding_expenses_once_payment_type_set) Now set a Payment Type on that same expense and save → it disappears from **Outstanding Expenses** entirely
+- [ ] (e2e: outstanding_page_lists_every_type_of_outstanding_item) "View all outstanding" → `/barn/dev-barn/finances/outstanding` lists all barn outstanding lessons, leases/boarding charges, and cancellation fees
+- [ ] (e2e: outstanding_page_lesson_and_cancellation_fee_rows_link_to_their_lesson) On that page, each lesson/cancellation-fee row links to its lesson
+- [ ] (e2e: outstanding_page_omits_outstanding_expenses) Outstanding expenses do **not** appear on that page (no Outstanding Expenses equivalent there)
+- [ ] (e2e: month_navigation_arrows_update_the_month_query_param) Month navigation `←`/`→` works and updates `?month=YYYY-MM`
+- [ ] (e2e: previous_month_reflects_its_own_seeded_lesson) Navigate to the previous month → the previous month's seeded lesson is reflected
 - [ ] (e2e-candidate) Below the Outstanding sections, only a single **Pending income** line appears for the current month, with no month/year suffix (the month picker above already shows it)
 - [ ] (e2e-candidate) No Gross Income / Total Expenses / Net Income summary boxes appear above the Pending income line (#971 removed them, since their numbers didn't reconcile with any one breakdown table below)
 - [ ] (e2e-candidate) Every tab shows uniform **Gross | Expenses | Net** columns (`—` for a column a tab has no concept of)
