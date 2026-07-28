@@ -301,10 +301,11 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: outstanding_page_omits_outstanding_expenses) Outstanding expenses do **not** appear on that page (no Outstanding Expenses equivalent there)
 - [ ] (e2e: month_navigation_arrows_update_the_month_query_param) Month navigation `←`/`→` works and updates `?month=YYYY-MM`
 - [ ] (e2e: previous_month_reflects_its_own_seeded_lesson) Navigate to the previous month → the previous month's seeded lesson is reflected
-- [ ] (e2e-candidate) Below the Outstanding sections, only a single **Pending income** line appears for the current month, with no month/year suffix (the month picker above already shows it)
-- [ ] (e2e-candidate) No Gross Income / Total Expenses / Net Income summary boxes appear above the Pending income line (#971 removed them, since their numbers didn't reconcile with any one breakdown table below)
-- [ ] (e2e-candidate) Every tab shows uniform **Gross | Expenses | Net** columns (`—` for a column a tab has no concept of)
-- [ ] (e2e-candidate) Every tab ends in a footer with **Subtotal / Unattributed / Outside this view / Total** rows, in that order
+- [ ] (e2e: pending_income_line_appears_once_below_the_outstanding_sections) Below the Outstanding sections, only a single **Pending income** line appears for the current month
+- [ ] (e2e: pending_income_line_has_no_month_year_suffix) That **Pending income** line carries no month/year suffix (the month picker above already shows it)
+- [ ] (e2e: no_gross_expenses_net_summary_boxes_remain_on_the_page) No Gross Income / Total Expenses / Net Income summary boxes appear above the Pending income line (#971 removed them, since their numbers didn't reconcile with any one breakdown table below)
+- [ ] (e2e: every_tab_shows_the_same_gross_expenses_net_columns) Every tab shows uniform **Gross | Expenses | Net** columns (`—` for a column a tab has no concept of)
+- [ ] (e2e: every_tab_footer_lists_the_reconciliation_rows_in_order) Every tab ends in a footer with **Subtotal / Unattributed / Outside this view / Total** rows, in that order
 - [ ] (e2e-candidate) **By Horse** is the default tab on page load (no `?tab=` needed)
 - [ ] (e2e-candidate) **By Horse** tab shows **Horse | Gross | Expenses | Net** columns
 - [ ] (e2e-candidate) By Horse's horse name is an underlined link (not just underlined on hover)
