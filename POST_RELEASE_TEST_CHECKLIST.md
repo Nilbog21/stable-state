@@ -42,7 +42,7 @@ Paths below are relative — prepend the prod origin.
 Barn: `post-release-test`. The second person joins here as a **rider**.
 
 - [ ] As manager, open `/barn/post-release-test/members` → inline **Add Rider** form → create managed rider **Casey Test**
-- [ ] Open Casey Test's member detail page → **Add Document** → upload any PDF → it lists with a working signed-URL link
+- [ ] Open Casey Test's member detail page → **Add Document** → upload `scripts/data/test_1_kb.pdf` → it lists with a working signed-URL link
 - [ ] Click **Copy Invite** on Casey Test's detail page → button briefly reads **Copied!** → send the copied URL to the second person
 - [ ] The second person opens that URL in their own browser and signs in with their own Google account → they land on `/profile/complete`
 - [ ] They fill the contact fields and save → they land in the `post-release-test` barn as rider Casey Test
@@ -54,7 +54,7 @@ Barn: `post-release-test`. The second person joins here as a **rider**.
 
 Barn: `post-release-test`, still as Casey Test.
 
-> PRE can't check this for anyone but you: `change-user.sh` reassigns `barn_memberships.user_id` but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona — your own profile is the only locally-linked one PRE can cover. There is no role branch in this path (`documents/new/page.tsx` gates on `isOwnPage`, `profile_photos_self_write` on `profiles.user_id`), so what's new here is a *different person's* claimed profile, not a different role.
+> PRE can't check this for anyone but you: `change-user.sh` reassigns `barn_memberships.user_id` but leaves `profiles.user_id` untouched, so the storage RLS self-write check (keyed on `profiles.user_id`) fails for any impersonated persona — your own profile is the only locally-linked one PRE can cover. There is no role branch in this path (`documents/new/page.tsx` gates on `isOwnPage`, `profile_photos_self_write` on `profiles.user_id`), so what's new here is a *different person's* claimed profile, not a different role. The photo steps below stay generic where PRE's equivalents name a `scripts/data/` file (#1135) — Casey Test is on their own device, with no repo checkout to pull a fixture from.
 
 - [ ] As Casey Test, on their own member detail page, tap **Set Photo** and choose a JPG or PNG → upload starts immediately and they land back on the member page with the photo displayed
 - [ ] Tap **Replace Photo** and choose a different image → the new photo displays

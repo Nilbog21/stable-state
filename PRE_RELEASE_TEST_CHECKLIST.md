@@ -14,6 +14,8 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
 - [ ] Email provider enabled in the Supabase dashboard (required by the e2e auth logins `reset-db.sh` creates in Phase 1, which `seed-test-barn.sh` in Phase 7 then verifies exist)
 
+Every step below that uploads a file names one from `scripts/data/` (#1135 — a tracked directory, nothing to place by hand). The images are deliberately non-square and bracketed by `|------- word -------|` edge markers, so a square-crop regression visibly eats the bars instead of needing a proportion judgment, and the word tells you at a glance which file is displayed. See `scripts/CLAUDE.md`'s Test assets section for the full manifest.
+
 ## Phase 1 — Setup
 
 - [ ] Visit `/login` — a **Terms of Service** link is present
@@ -107,7 +109,7 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 
 - [ ] Create managed riders **Gale Test**, **Harper Test**, and **Indigo Test** — each row is a normal card link to its member detail page, alongside an inline amber **Unlinked** badge next to the name (no Copy Invite/Revoke buttons on this list)
 - [ ] Open Gale Test's member detail page as manager — a **Manage Member** section appears right after the name with an amber notice and **Copy Invite**/**Revoke** buttons
-- [ ] While Gale Test is still unclaimed, upload a document on their detail page — confirms manager can upload/delete documents for a managed/unclaimed rider
+- [ ] While Gale Test is still unclaimed, upload `scripts/data/test_1_kb.pdf` on their detail page — confirms manager can upload/delete documents for a managed/unclaimed rider
 - [ ] Click **Copy Invite** on Gale Test's detail page → button briefly reads **Copied!** → the copied URL matches `/barn/dev-barn/register?token=<uuid>` (a well-formed UUID token)
 
 > Actually claiming that invite — and the pre-claim-document-readability regression check that goes with it — needs a genuinely different person, which no local or preview setup produces. It's verified against prod in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) instead.
@@ -226,13 +228,13 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
 - [ ] Open Clover's detail page (no photo seeded) → placeholder icon and **Set Photo** button show
 - [ ] Tap **Set Photo** → navigates to the same upload screen used for horse documents, with Document Type locked to "Photo" (no dropdown) and no Notes/Expiration reminder date fields
-- [ ] Tap **Choose File** and select a non-square JPG or PNG → upload starts immediately with no separate Upload button click, and you land back on the horse detail page with the photo displayed, scaled to a fixed height with its aspect ratio preserved (not cropped to a square)
-- [ ] With a photo set, tap **Replace Photo**, choose a different image → upload starts immediately and the new photo displays
+- [ ] Tap **Choose File** and select `scripts/data/clover-photo.png` → upload starts immediately with no separate Upload button click, and you land back on the horse detail page with the photo displayed, scaled to a fixed height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square
+- [ ] With a photo set, tap **Replace Photo**, choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → upload starts immediately and the displayed word changes from `clover` to `butter`
 - [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
 - [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
-- [ ] On the photo upload screen, attempt to select a PDF → rejected with an inline error, not a crash
-- [ ] As manager, set a photo on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
-- [ ] Replace Apple's photo again as manager → still succeeds (manager-set photos never lock out other managers)
+- [ ] On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
+- [ ] As manager, set `scripts/data/harper-photo.png` on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
+- [ ] Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
 - [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
 - [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
 - [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
@@ -242,12 +244,12 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
 - [ ] Fill in **Feed Notes** and **Medication Notes** → Save → both persist on reload
 - [ ] Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
-- [ ] Documents section: tap **Add Document**, upload a PDF → redirects back to this horse's page
-- [ ] Open the document via its link (signed URL)
+- [ ] Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
+- [ ] Open the document via its link (signed URL) → the PDF renders in the browser's viewer, no "failed to load" error
 - [ ] Delete it → row disappears
-- [ ] On the Add Document page, attempt to upload a document over 4.5MB — rejected with an inline error, not a crash
-- [ ] On the Add Document page, the Upload button disables and an indeterminate progress bar shows while the upload is pending
-- [ ] Upload another document with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
+- [ ] On the Add Document page, attempt to upload `scripts/data/test_4_6_mb.pdf` (4,600,000 bytes, over the 4.5MB limit) — rejected with an inline error, not a crash
+- [ ] On the Add Document page, upload `scripts/data/test_4_4_mb.pdf` (4,400,000 bytes, the largest accepted size) — the Upload button disables and an indeterminate progress bar shows while the upload is pending
+- [ ] Upload `scripts/data/test_1_kb.pdf` again with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
 - [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and a card shows up under the Dashboard's Reminders section, linking back to this horse
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
@@ -256,12 +258,12 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
 - [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render even though the account has no linked `user_id`; Documents section renders normally (not blocked) with an **Add Document** button
 - [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload
-- [ ] On Harper Test's member detail page, tap **Set Photo**, choose a JPG or PNG → upload starts immediately and you land back on the member page with the photo displayed
-- [ ] With Harper Test's photo set, tap **Replace Photo** and choose a different image → new photo displays
+- [ ] On Harper Test's member detail page, tap **Set Photo**, choose `scripts/data/harper-photo.png` → upload starts immediately and you land back on the member page with the photo displayed
+- [ ] With Harper Test's photo set, tap **Replace Photo** and choose `scripts/data/emery-photo.jpg` (a different file *and* a different format) → the displayed word changes from `harper` to `emery`
 - [ ] With Harper Test's photo set, tap **Remove** → placeholder and **Set Photo** button return
 - [ ] Open a claimed trainer's member detail page → no **Set Photo**/**Replace Photo**/**Remove** control is shown (manager can't edit a claimed member's photo)
-- [ ] Open your own manager member detail page → tap **Set Photo** and upload one → photo displays and persists on reload
-- [ ] Tap **Add Document** on Harper Test's page, upload a document → redirects back to the member page and the document lists with a working signed-URL link
+- [ ] Open your own manager member detail page → tap **Set Photo** and upload `scripts/data/clover-photo.png` → photo displays and persists on reload
+- [ ] Tap **Add Document** on Harper Test's page, upload `scripts/data/test_1_kb.pdf` → redirects back to the member page and the document lists with a working signed-URL link
 - [ ] Delete it → row disappears
 - [ ] Open a trainer's member detail page → **Add Document** button is present and links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
 - [ ] Open rider Gale Test's member detail page — **Add Document** button present, links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
@@ -492,14 +494,14 @@ bash scripts/change-user.sh dev-barn
 - [ ] On one of your own lessons, click **Cancel** in the header and cancel a rider's spot (or the whole lesson) — works the same as manager; open Blake's lesson — no header **Cancel** button is shown
 - [ ] The recurring lesson created in Phase 3 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
-- [ ] Horse detail page: documents are listed with working links, upload works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
+- [ ] Horse detail page: documents are listed with working links, uploading `scripts/data/test_1_kb.pdf` works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
 - [ ] Horse detail page shows the Feed Notes/Medication Notes entered as manager, read-only (no textareas, no Save button); clear one as manager and confirm its row disappears here on reload instead of showing blank
 - [ ] (#1006) As manager, grant this trainer a horse-privileges row on **Clover** (Access section) then make them Clover's owning member; reopen Clover as this trainer — **Feed Notes**/**Medication Notes** are now editable textareas with a **Save** button
 - [ ] (#1006) Edit and save both Feed Notes and Medication Notes as this trainer, then reload — the new text persists
 - [ ] (#1000) Back on the Horses list as this trainer, a **My Horses** section appears at the top showing **Clover** with a status badge, and Clover no longer appears under Available/Unavailable
 - [ ] Butter's horse detail page (this trainer does **not** own her): her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] (#1003) On **Clover**'s detail page (the horse this trainer now owns), a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a non-manager
-- [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload a document, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
+- [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload `scripts/data/test_1_kb.pdf`, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage Member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **Contact Info** section (#863 — a trainer can view any member's Contact Info), but **no Documents section**; open Blake's (a rider's) detail page — same: Contact Info shown, Documents hidden (#779 narrowed rider-document access to manager/self only)
@@ -525,7 +527,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#1006) As manager, make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks); reopen Clover as Dana — **Feed Notes**/**Medication Notes** are editable textareas with a **Save** button
 - [ ] (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (#1000) Back on the Horses list as Dana, a **My Horses** section appears at the top showing **Clover** with a status badge, and Clover no longer appears under Available/Unavailable
-- [ ] (#1003) On **Clover**'s detail page, a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a rider; use it to set a photo as Dana
+- [ ] (#1003) On **Clover**'s detail page, a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a rider; use it to set `scripts/data/clover-photo.png` as Dana
 - [ ] (#1003) As manager, reopen **Clover** → **no Replace Photo / Remove control** (an owner-set photo locks managers out, the converse of the manager-set case in the manager phase)
 - [ ] (#999) As manager, grant Dana `document_privileges='read'` on a horse via its Access section; reopen that horse as Dana — a **Documents** section now appears, with no **Add Document** button
 - [ ] (#999) Change that same grant to `document_privileges='write'`; reopen the horse as Dana — the **Add Document** button now appears in the Documents section

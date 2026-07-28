@@ -26,7 +26,9 @@ Each script's shell wrapper (`.sh`) validates required env vars from `.env.local
 
 Two JPEGs and two PNGs deliberately: the upload paths accept both (`PHOTO_EXTENSIONS` in `src/lib/db/document-storage.ts`), and the **Replace Photo** checklist steps need two *different* images on the same entity — upload the PNG, replace with the JPEG, and both formats are exercised without a fifth file.
 
-Each image is a 900×260 (deliberately non-square) black-on-white word bracketed by edge markers, `|------- butter -------|`. The checklist asserts an uploaded photo displays *"scaled to a fixed height with its aspect ratio preserved (not cropped to a square)"* — with edge bars, a square crop visibly eats them, so a regression is obvious instead of needing a proportion judgment.
+Each image is a 900×260 (deliberately non-square) black-on-white word bracketed by edge markers, `|------- butter -------|`. The checklist asserts an uploaded photo displays *"scaled to a fixed height with its aspect ratio preserved (not cropped to a square)"* — with edge bars, a square crop visibly eats them, so a regression is obvious instead of needing a proportion judgment. The word does the same job for the **Replace Photo** steps: the assertion is that the displayed word changes, not that "a new photo" appeared.
+
+Every `PRE_RELEASE_TEST_CHECKLIST.md` step that uploads a file names the specific asset it wants, so keep the two in sync when adding or renaming one. `POST_RELEASE_TEST_CHECKLIST.md`'s self-photo steps deliberately stay generic — they're performed by a second real person on their own device, who has no checkout.
 
 The PDFs are structurally valid, not zero-filled blobs. Nothing in the app reads the bytes (`validateFile` checks size, MIME type, and extension, never magic bytes), but the checklist opens an uploaded document via its signed URL, and a browser PDF viewer errors on a headerless blob — which reads as an app bug during a manual pass. A real header and object graph wrapping zero padding costs ~40 bytes and still deflates to a few KB, so the git pack barely grows; the multi-MB size is paid only in each working-tree checkout.
 
