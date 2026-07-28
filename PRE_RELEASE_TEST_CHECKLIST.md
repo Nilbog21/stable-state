@@ -383,7 +383,7 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: tapping_net_header_twice_flips_the_indicator_to_descending) After that second tap on By Instructor, the indicator flips to ▼
 - [ ] (e2e: comped_lesson_tier_row_net_is_negative) Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it)
 - [ ] (e2e: comped_lesson_tier_row_net_renders_in_parentheses) That comped lesson's negative net renders in parentheses, e.g. `($25.00)`, not with a leading minus sign
-- [ ] (e2e: comped_lesson_reduces_every_tabs_total_net_by_its_instructor_cut) That comped lesson is still included in every tab's Gross/Net totals (not dropped or clamped to zero)
+- [ ] (e2e: comped_lesson_reduces_every_tabs_total_net_by_its_instructor_cut) That comped lesson's instructor cut still reaches the barn-wide Net total (not dropped or clamped to zero)
 - [ ] (e2e: paid_lease_charge_raises_by_tier_outside_this_view_gross) Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, **By Tier**'s footer **Outside this view** row for Gross increases by the charge amount (a charge has no tier)
 - [ ] (e2e: paid_lease_charge_raises_by_instructor_outside_this_view_gross) Same charge: **By Instructor**'s footer **Outside this view** row for Gross also increases by the charge amount (a charge has no instructor)
 - [ ] (e2e: paid_lease_charge_raises_the_leased_horses_by_horse_gross) Same charge: **By Horse** (Apple)'s Gross total includes the full charge amount directly (a charge is horse-tied)
