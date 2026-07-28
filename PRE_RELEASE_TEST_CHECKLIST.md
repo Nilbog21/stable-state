@@ -147,87 +147,182 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 
 ## Phase 4 — Manager verification
 
-- [ ] Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — confirms UTC storage round-trips correctly for your local timezone, not just that the created time displays back the same way it was entered
-- [ ] On the Lessons list and a lesson's detail page, confirm the displayed time matches the wall-clock time you entered (not shifted by your UTC offset) — if your system/browser clock is set to a non-UTC timezone, this also proves the display isn't silently forcing UTC
+- [ ] (e2e: lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock) Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — confirms UTC storage round-trips correctly for your local timezone, not just that the created time displays back the same way it was entered
+- [ ] (e2e-candidate) On the Lessons list, a lesson's displayed time matches the wall-clock time you entered (not shifted by your UTC offset) — if your system/browser clock is set to a non-UTC timezone, this also proves the display isn't silently forcing UTC
+- [ ] (e2e-candidate) On that lesson's detail page, its displayed time matches the same wall-clock time
 
 Dashboard (`/barn/dev-barn`):
 
-- [ ] Dashboard shows a single-day calendar defaulting to today, with Prev/Next links and today's date in the heading
-- [ ] Today's seeded lessons and any planned expense scheduled for today (future date+time, no amount yet) appear together, sorted by time
-- [ ] Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for, and it appears there, interleaved by time with that day's lessons
-- [ ] A "Today" link appears only while viewing a day other than today, and returns to today's calendar when clicked
-- [ ] A date-only planned expense (no time set) does **not** appear on the calendar for its date
-- [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
-- [ ] A "Reminders" section header appears above the document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
-- [ ] No document-reminder cards appear under Reminders when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders (no separate "Document Reminders" heading) and links to that horse's or member's detail page
-- [ ] If any lessons/charges are unpaid, "N unpaid lessons" and/or "N unpaid leases/boarding" cards appear under Reminders, each linking to `/barn/dev-barn/finances/outstanding`; each is hidden individually when its own count is zero
-- [ ] (#1016) A "Day"/"Week" pill switcher appears above the calendar
-- [ ] (#1016) The Day view is active by default
-- [ ] (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
-- [ ] (#1016) In Week view, each of the 7 days shows its own date heading and that day's lessons/expenses/events, or "Nothing scheduled for this day." when empty
-- [ ] (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
-- [ ] (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
-- [ ] (#1016) In Week view, a "Today" link appears only when today's date isn't already inside the visible week
-- [ ] (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in light mode
-- [ ] (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
-- [ ] (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
-- [ ] (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
-- [ ] (#1016) Switching to Week view as a trainer shows only lessons you instruct across all 7 days, matching Day view's role-scoping
-- [ ] (#1016) Switching to Week view as a rider shows only your enrolled lessons
+- [ ] (e2e-candidate) Dashboard shows a single-day calendar (one date's entries, not a week or a flat list)
+- [ ] (e2e: dashboard_today_indicator_visible_on_current_day) The calendar defaults to today, with today's date in the heading
+- [ ] (e2e-candidate) Prev/Next links appear alongside the calendar heading
+- [ ] (e2e-candidate) Today's seeded lessons appear on the calendar
+- [ ] (e2e-candidate) A planned expense scheduled for today (future date+time, no amount yet) appears on the same calendar alongside those lessons
+- [ ] (e2e-candidate) Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for
+- [ ] (e2e: dashboard_expense_interleaved_with_lesson_by_time_on_shared_day) That expense appears on that day interleaved by time with the day's lessons, not grouped into a separate expenses block
+- [ ] (e2e-candidate) A "Today" link appears while viewing a day other than today
+- [ ] (e2e-candidate) That "Today" link returns to today's calendar when clicked
+- [ ] (e2e-candidate) No "Today" link appears while already viewing today
+- [ ] (e2e: dashboard_date_only_planned_expense_not_shown) A date-only planned expense (no time set) does **not** appear on the calendar for its date
+- [ ] (e2e: dashboard_expense_card_shows_scheduled_time) An expense entry on the calendar shows its scheduled date/time
+- [ ] (e2e: dashboard_expense_card_shows_recipient) That expense entry shows its recipient
+- [ ] (e2e: dashboard_expense_card_shows_type) That expense entry shows its expense type
+- [ ] (e2e: dashboard_expense_card_shows_horse) A horse-specific expense entry shows its horse(s)
+- [ ] (e2e-candidate) An **Entire Barn** expense entry shows "Entire Barn" in place of horse names
+- [ ] (e2e-candidate) Tapping an expense entry opens that expense's detail page
+- [ ] (e2e: dashboard_reminders_header_visible_for_manager) A "Reminders" section header appears above the document-reminders/unpaid-income cards
+- [ ] (e2e: dashboard_reminders_header_hidden_for_rider_with_no_reminders) That header is hidden entirely when none of those cards have anything to show
+- [ ] (e2e-candidate) No document-reminder cards appear under Reminders when no documents are past their reminder date
+- [ ] (e2e: dashboard_document_reminder_card_shown_after_setting_reminder_date) After setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders
+- [ ] (e2e-candidate) That card appears directly under Reminders with no separate "Document Reminders" heading above it
+- [ ] (e2e-candidate) That card links to the horse's or member's detail page
+- [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
+- [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
+- [ ] (e2e-candidate) Each of those two cards is hidden individually when its own count is zero, without hiding the other
+- [ ] (e2e-candidate) (#1016) A "Day"/"Week" pill switcher appears above the calendar
+- [ ] (e2e-candidate) (#1016) The Day view is active by default
+- [ ] (e2e-candidate) (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
+- [ ] (e2e-candidate) (#1016) In Week view, each of the 7 days shows its own date heading
+- [ ] (e2e-candidate) (#1016) In Week view, each day section lists that day's own lessons/expenses/events
+- [ ] (e2e-candidate) (#1016) In Week view, a day with nothing scheduled shows "Nothing scheduled for this day."
+- [ ] (e2e-candidate) (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
+- [ ] (e2e-candidate) (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
+- [ ] (e2e-candidate) (#1016) In Week view, a "Today" link appears when today's date isn't inside the visible week
+- [ ] (e2e-candidate) (#1016) In Week view, no "Today" link appears when today's date is already inside the visible week
+- [ ] (e2e-candidate) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in light mode
+- [ ] (e2e-candidate) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
+- [ ] (e2e-candidate) (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
+- [ ] (e2e-candidate) (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
+- [ ] (e2e-candidate) (#1016) Switching to Week view as a trainer shows only lessons you instruct across all 7 days, matching Day view's role-scoping
+- [ ] (e2e-candidate) (#1016) Switching to Week view as a rider shows only your enrolled lessons
 
 Lessons (`/barn/dev-barn/lessons`):
 
-- [ ] Recent lessons (last 7 days) shown immediately; older lessons appear only after the older-lessons toggle
-- [ ] Each lesson renders as a full-width, uniformly-sized card link (whole row is tappable to the detail page) — no **Cancel** button on the list
-- [ ] Filter pills show `My Lessons | All | By Instructor | By Rider | By Horse | By Tier`, wrapping onto multiple lines at ~390px width instead of requiring horizontal scroll; **All** is active by default and shows every barn lesson; picking **My Lessons** filters to only lessons you instruct
-- [ ] Picking **All** shows every barn lesson regardless of instructor
-- [ ] Picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
-- [ ] **By Rider → Dana** filters correctly
-- [ ] **By Horse → Apple** filters correctly
-- [ ] **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
-- [ ] Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
-- [ ] Times display in 12-hour AM/PM format everywhere (no military time)
-- [ ] Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list and on the Dashboard's Day view (navigate to the lesson's date if it isn't today, Willow is seeded inactive); it does not appear on Willow's past lessons or on any cancelled lesson
-- [ ] Open Willow's flagged lesson's detail page — a **Needs Attention** banner at the top reads "Willow is inactive"; open the same lesson's edit page — the same banner appears there too; the banner does not block editing or saving
-- [ ] On Willow's flagged lesson's edit page, without changing any field, click a nav link (or hit browser back) — a confirm dialog warns about the unresolved horse issue, defaulting to Stay; swap Willow out for an active horse and save, then reopen the edit page and confirm navigating away no longer prompts
-- [ ] Open a lesson's detail page (`/barn/dev-barn/lessons/[id]`) — horse notes and rider notes render read-only; Edit link visible; open a lesson with no notes recorded at all and confirm every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
+- [ ] (e2e-candidate) Recent lessons (last 7 days) are shown immediately on page load
+- [ ] (e2e-candidate) Older lessons are not shown on page load
+- [ ] (e2e-candidate) Tapping the older-lessons toggle reveals them
+- [ ] (e2e-candidate) Each lesson renders as a full-width card of uniform height with its siblings
+- [ ] (e2e-candidate) The whole card is tappable and opens that lesson's detail page
+- [ ] (e2e-candidate) No **Cancel** button appears on any lesson in the list
+- [ ] (e2e-candidate) Filter pills show exactly `My Lessons | All | By Instructor | By Rider | By Horse | By Tier`
+- [ ] (e2e-candidate) At ~390px width those pills wrap onto multiple lines instead of requiring horizontal scroll
+- [ ] (e2e-candidate) **All** is the active pill on page load
+- [ ] (e2e-candidate) Picking **My Lessons** filters to only lessons you instruct
+- [ ] (e2e-candidate) Picking **All** shows every barn lesson regardless of instructor
+- [ ] (e2e-candidate) Picking **By Instructor → Alex** shows only Alex's lessons
+- [ ] (e2e-candidate) Picking **By Instructor → Alex** carries the URL `?filter=trainer&id=<uuid>`
+- [ ] (e2e-candidate) **By Rider → Dana** filters correctly
+- [ ] (e2e-candidate) **By Horse → Apple** filters correctly
+- [ ] (e2e-candidate) **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
+- [ ] (e2e-candidate) Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
+- [ ] (e2e-candidate) Times display in 12-hour AM/PM format everywhere (no military time)
+- [ ] (e2e-candidate) Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list (Willow is seeded inactive)
+- [ ] (e2e-candidate) That same lesson shows the badge on the Dashboard's Day view (navigate to the lesson's date if it isn't today)
+- [ ] (e2e-candidate) The badge does not appear on Willow's past lessons
+- [ ] (e2e-candidate) The badge does not appear on a cancelled lesson
+- [ ] (e2e-candidate) Willow's flagged lesson's detail page shows a **Needs Attention** banner at the top reading "Willow is inactive"
+- [ ] (e2e-candidate) The same banner appears on that lesson's edit page
+- [ ] (e2e-candidate) The banner does not block editing or saving that lesson
+- [ ] (e2e-candidate) On Willow's flagged lesson's edit page, without changing any field, clicking a nav link (or hitting browser back) raises a confirm dialog warning about the unresolved horse issue
+- [ ] (e2e-candidate) That dialog defaults to **Stay**
+- [ ] (e2e-candidate) Swap Willow out for an active horse and save, then reopen the edit page — navigating away no longer prompts
+- [ ] (e2e-candidate) On a lesson's detail page (`/barn/dev-barn/lessons/[id]`), horse notes render read-only
+- [ ] (e2e-candidate) On that same page, rider notes render read-only
+- [ ] (e2e-candidate) On that same page, the Edit link is visible
+- [ ] (e2e-candidate) On a lesson with no notes recorded at all, every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
 - [ ] Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
-- [ ] The fee change appears on the detail page
-- [ ] The horse notes and rider notes from that same save appear on the detail page
-- [ ] Edit the group lesson created in Phase 3 → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
-- [ ] Delete one seeded lesson — it disappears from the list
-- [ ] Open a lesson's detail page → a single **Cancel** button appears in the header next to **Edit**/**Delete**, shown to the manager regardless of who instructs the lesson
-- [ ] Click **Cancel** on a **normal** lesson → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle, defaulting to **Cancelled by Instructor** when you instruct the lesson, else **Cancelled by Rider**; confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes**
-- [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
-- [ ] On a **normal** lesson booked <24h away, select **Cancelled by Rider** → an amber "The rider will be due a late cancellation fee." label appears
-- [ ] On that same lesson, switch to **Cancelled by Instructor** → the label disappears
-- [ ] On a **normal** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
-- [ ] Click **Cancel** on a **group** lesson → the same toggle appears; choosing **Cancelled by Instructor** shows the count and names of enrolled riders who'll be affected and, on confirm, cancels the whole lesson (all riders, fee waived)
-- [ ] On that same group lesson's Cancel page, choose **Cancelled by Rider** instead → a rider picker reveals listing the still-active enrolled riders; select one and confirm → only that rider's row shows a **Cancelled** badge, the rest of the lesson (and other riders) is unaffected, and the standard 24-hour fee policy applies to that rider
-- [ ] On a **group** lesson booked <24h away, select **Cancelled by Rider** → an amber "Warning: No late cancellation fees are currently leveraged for group lessons." label appears
-- [ ] On that same lesson, switch to **Cancelled by Instructor** → the label disappears
-- [ ] On a **group** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
-- [ ] On a **normal** lesson, cancel it (there's only one rider) → the lesson itself shows a **Cancelled** badge on the list and detail page
-- [ ] (#1015) That same cancelled lesson no longer appears on the Dashboard's Day view for its date, even navigating directly to that day
-- [ ] On a **group** lesson, cancel riders one at a time via the picker → after the last active rider is cancelled, the lesson shows a **Cancelled** badge on the list and detail page; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
-- [ ] On an already-cancelled lesson, open **Edit Lesson** (manager and, separately, the instructing trainer) → the Notes section shows a **Cancellation Notes** textarea (confirm it does *not* appear when editing a non-cancelled lesson) → edit it and Save → the detail page shows the updated text read-only under **Cancellation Notes** for every role, including the instructing trainer and a rider; clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
-- [ ] As manager, open an **unpaid** lesson's detail page and click **Delete** → confirm the browser prompt → lesson disappears entirely from the Lessons list and Finances (no **Cancelled** badge, no notification to instructor/riders); repeat on an already-cancelled lesson to confirm Delete is reachable regardless of state; as trainer, confirm no **Delete** button is shown on any lesson
-- [ ] On a **paid** (or $0-fee) lesson's detail page, click **Delete** → lands on `/barn/dev-barn/lessons/[id]/delete` (not a browser prompt) showing the collected amount and an unchecked-by-default checkbox; confirm without checking it → lesson is gone but its income still shows up in Finances for that month; repeat on another paid lesson, this time checking the box → lesson's income is also gone from Finances
+- [ ] (e2e-candidate) The fee change appears on the detail page
+- [ ] (e2e-candidate) The horse notes from that same save appear on the detail page
+- [ ] (e2e-candidate) The rider notes from that same save appear on the detail page
+- [ ] (e2e-candidate) Edit the group lesson created in Phase 3 → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
+- [ ] (e2e-candidate) Delete one seeded lesson — it disappears from the list
+- [ ] (e2e-candidate) A lesson's detail page header shows a single **Cancel** button next to **Edit**/**Delete**
+- [ ] (e2e-candidate) That **Cancel** button is shown to the manager even on a lesson another trainer instructs
+- [ ] (e2e-candidate) Clicking **Cancel** on a **normal** lesson opens a confirmation page with a **Cancelled by Rider** / **Cancelled by Instructor** toggle
+- [ ] (e2e-candidate) That toggle defaults to **Cancelled by Instructor** on a lesson you instruct
+- [ ] (e2e-candidate) That toggle defaults to **Cancelled by Rider** on a lesson you don't instruct
+- [ ] (e2e-candidate) Confirming **Cancelled by Rider** on a **normal** lesson >24h out leaves its fee unaffected
+- [ ] (e2e-candidate) Confirming **Cancelled by Rider** on a **normal** lesson booked <24h away zeroes its fee
+- [ ] (e2e-candidate) A lesson cancelled that way shows a **Cancelled** badge
+- [ ] (e2e-candidate) The notes you entered on the confirmation page appear under **Cancellation Notes**
+- [ ] (e2e-candidate) Confirming **Cancelled by Instructor** on a lesson >24h out zeroes its fee
+- [ ] (e2e-candidate) Confirming **Cancelled by Instructor** on a lesson booked <24h away zeroes its fee too
+- [ ] (e2e-candidate) On a **normal** lesson booked <24h away, select **Cancelled by Rider** → an amber "The rider will be due a late cancellation fee." label appears
+- [ ] (e2e-candidate) On that same lesson, switch to **Cancelled by Instructor** → the label disappears
+- [ ] (e2e-candidate) On a **normal** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
+- [ ] (e2e-candidate) Clicking **Cancel** on a **group** lesson shows the same **Cancelled by Rider** / **Cancelled by Instructor** toggle
+- [ ] (e2e-candidate) Choosing **Cancelled by Instructor** there shows the count of enrolled riders who'll be affected
+- [ ] (e2e-candidate) It also lists those riders by name
+- [ ] (e2e-candidate) Confirming cancels the whole lesson, every enrolled rider included
+- [ ] (e2e-candidate) That whole-lesson cancellation waives the fee
+- [ ] (e2e-candidate) On that same group lesson's Cancel page, choosing **Cancelled by Rider** reveals a rider picker listing the still-active enrolled riders
+- [ ] (e2e-candidate) Select one and confirm → only that rider's row shows a **Cancelled** badge
+- [ ] (e2e-candidate) The rest of the lesson and its other riders are unaffected
+- [ ] (e2e-candidate) The standard 24-hour fee policy applies to that rider
+- [ ] (e2e-candidate) On a **group** lesson booked <24h away, select **Cancelled by Rider** → an amber "Warning: No late cancellation fees are currently leveraged for group lessons." label appears
+- [ ] (e2e-candidate) On that same lesson, switch to **Cancelled by Instructor** → the label disappears
+- [ ] (e2e-candidate) On a **group** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
+- [ ] (e2e-candidate) Cancel a **normal** lesson (there's only one rider) → the lesson shows a **Cancelled** badge on the Lessons list
+- [ ] (e2e-candidate) That same lesson shows the **Cancelled** badge on its detail page
+- [ ] (e2e-candidate) (#1015) That same cancelled lesson no longer appears on the Dashboard's Day view for its date, even navigating directly to that day
+- [ ] (e2e-candidate) On a **group** lesson, cancel riders one at a time via the picker → the lesson does *not* show a **Cancelled** badge while any rider is still active
+- [ ] (e2e-candidate) Once the final rider is cancelled, the lesson shows a **Cancelled** badge on the Lessons list
+- [ ] (e2e-candidate) That fully-cancelled group lesson shows the **Cancelled** badge on its detail page too
+- [ ] (e2e-candidate) As manager, open **Edit Lesson** on an already-cancelled lesson → the Notes section shows a **Cancellation Notes** textarea
+- [ ] (e2e-candidate) As the instructing trainer, open **Edit Lesson** on an already-cancelled lesson you instruct → the same **Cancellation Notes** textarea appears
+- [ ] (e2e-candidate) That textarea does *not* appear when editing a non-cancelled lesson
+- [ ] (e2e-candidate) As manager, edit that textarea and Save → the detail page shows the updated text read-only under **Cancellation Notes**
+- [ ] (e2e-candidate) As the instructing trainer, open a cancelled lesson that already has cancellation notes recorded → the same read-only **Cancellation Notes** row renders
+- [ ] (e2e-candidate) As a rider enrolled in a cancelled lesson that already has cancellation notes recorded → the same read-only **Cancellation Notes** row renders
+- [ ] (e2e-candidate) Clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
+- [ ] (e2e-candidate) As manager, open an **unpaid** lesson's detail page, click **Delete** and confirm the browser prompt → the lesson disappears from the Lessons list
+- [ ] (e2e-candidate) That deleted lesson also disappears from Finances
+- [ ] (e2e-candidate) It leaves no **Cancelled** badge behind (it's gone, not cancelled)
+- [ ] (e2e-candidate) No notification is sent to the instructor or riders for that delete
+- [ ] (e2e-candidate) **Delete** is reachable the same way on an already-cancelled lesson
+- [ ] (e2e-candidate) As trainer, no **Delete** button is shown on any lesson
+- [ ] (e2e-candidate) On a **paid** (or $0-fee) lesson's detail page, **Delete** lands on `/barn/dev-barn/lessons/[id]/delete` rather than raising a browser prompt
+- [ ] (e2e-candidate) That page shows the amount already collected for the lesson
+- [ ] (e2e-candidate) Its "also delete the collected record" checkbox is unchecked by default
+- [ ] (e2e-candidate) Confirm without checking it → the lesson is gone from the Lessons list
+- [ ] (e2e-candidate) Its income still shows up in Finances for that month
+- [ ] (e2e-candidate) Repeat on another paid lesson, this time checking the box → that lesson's income is also gone from Finances
 
 Expenses (`/barn/dev-barn/expenses`):
 
-- [ ] Nav shows **Expenses** between Lessons and Horses
-- [ ] Seeded expenses render as full-card links (date/time, recipient, expense type, horse(s)/Entire Barn, amount all visible on the card), split into recent and older (**Show older expenses** toggle), including at least one future-dated planned expense with no amount
-- [ ] Tapping anywhere on an expense card opens its edit page — there is no separate row-level Delete link on the list
-- [ ] Add a new expense (`/barn/dev-barn/expenses/new`): enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills and flashes; leave amount blank to save a planned expense, then re-open the form later and fill it in
-- [ ] Check **Entire Barn** on the new-expense form — horse checkboxes disable; save and verify the card shows "Entire Barn" instead of specific horses
-- [ ] On the new-expense form, set the date to yesterday — the Time field disappears; change it back to today or a future date — the Time field reappears
-- [ ] Edit a seeded expense (`/barn/dev-barn/expenses/[id]`) — form opens pre-filled including the correct Entire Barn / specific-horse checkbox state; change the recipient and amount, save, verify the card updates
-- [ ] On the new- and edit-expense forms, set a **Payment Type**, save, and confirm it persists on reload
-- [ ] From the edit page, click **Delete** on a seeded expense with **no amount set** — confirmation page shows a bare "Confirm Delete" with no checkbox; confirm → expense disappears from the list
-- [ ] Delete a seeded expense **with an amount** — confirmation page shows an unchecked-by-default "Also delete the collected record from Finances" checkbox
-- [ ] Confirm that delete without checking the box — expense is gone from the list but its record still shows up in Finances for that month
-- [ ] Delete another seeded expense with an amount, this time checking the box — its record is also gone from Finances
+- [ ] (e2e-candidate) Nav shows **Expenses** between Lessons and Horses
+- [ ] (e2e-candidate) A seeded expense renders as a full-card link showing its date/time
+- [ ] (e2e-candidate) That card shows its recipient
+- [ ] (e2e-candidate) That card shows its expense type
+- [ ] (e2e-candidate) That card shows its horse(s), or "Entire Barn"
+- [ ] (e2e-candidate) That card shows its amount
+- [ ] (e2e-candidate) The list is split into a recent and an older group
+- [ ] (e2e-candidate) The older group is revealed by the **Show older expenses** toggle
+- [ ] (e2e-candidate) At least one future-dated planned expense with no amount appears in the list
+- [ ] (e2e-candidate) Tapping anywhere on an expense card opens its edit page
+- [ ] (e2e-candidate) There is no separate row-level Delete link on the list
+- [ ] (e2e-candidate) On `/barn/dev-barn/expenses/new`, enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills
+- [ ] (e2e-candidate) That auto-filled Expense Type field flashes to draw attention to itself
+- [ ] (e2e-candidate) Leaving the amount blank saves a planned expense
+- [ ] (e2e-candidate) Re-opening that planned expense's form later lets you fill the amount in and save
+- [ ] (e2e-candidate) Checking **Entire Barn** on the new-expense form disables the horse checkboxes
+- [ ] (e2e-candidate) Saving that expense shows "Entire Barn" on its card instead of specific horses
+- [ ] (e2e-candidate) On the new-expense form, setting the date to yesterday hides the Time field
+- [ ] (e2e-candidate) Changing it back to today or a future date brings the Time field back
+- [ ] (e2e-candidate) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
+- [ ] (e2e-candidate) That form opens with the correct Entire Barn / specific-horse checkbox state
+- [ ] (e2e-candidate) Change the recipient and save → the card shows the new recipient
+- [ ] (e2e-candidate) Change the amount and save → the card shows the new amount
+- [ ] (e2e-candidate) On the new-expense form, set a **Payment Type**, save → it persists on reload
+- [ ] (e2e-candidate) On the edit-expense form, set a **Payment Type**, save → it persists on reload
+- [ ] (e2e-candidate) From the edit page, **Delete** on a seeded expense with **no amount set** opens a confirmation page headed "Confirm Delete"
+- [ ] (e2e-candidate) That confirmation page carries no checkbox
+- [ ] (e2e-candidate) Confirming it removes the expense from the list
+- [ ] (e2e-candidate) Deleting a seeded expense **with an amount** shows an "Also delete the collected record from Finances" checkbox on the confirmation page
+- [ ] (e2e-candidate) That checkbox is unchecked by default
+- [ ] (e2e-candidate) Confirm that delete without checking the box — the expense is gone from the list
+- [ ] (e2e-candidate) Its record still shows up in Finances for that month
+- [ ] (e2e-candidate) Delete another seeded expense with an amount, this time checking the box — its record is also gone from Finances
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
