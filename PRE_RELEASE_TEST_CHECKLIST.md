@@ -8,7 +8,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
 
-> **Automation tags:** each checkbox in an audited section carries exactly one of —
+> **Automation tags:** in an audited section, each checkbox that asserts something carries exactly one of — (a bundled setup step, per the exception above, asserts nothing and so carries no tag)
 >
 > - `(e2e: <test name>)` — covered by that Playwright test in `e2e/`; run via `scripts/run-checklist-suite.sh`
 > - `(e2e-candidate)` — automatable, spec not written yet
@@ -597,55 +597,100 @@ Finances (`/barn/dev-barn/finances`):
 
 Manage Barn (`/barn/dev-barn/settings`):
 
-- [ ] Sections render as collapsible accordions, collapsed by default; clicking a section's heading toggles it open/closed independently of the others; there is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
-- [ ] **Default Instructor Cut** field shows the current value (default `25`)
-- [ ] Change it and **Save** → value persists on reload; confirm the helper text says the change doesn't affect past lessons, not that it recalculates historical income
-- [ ] Try `0` — allowed
-- [ ] Try blank — rejected, field stays unchanged
-- [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected; revert to the original price → warning disappears → Save
-- [ ] On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons"); revert → warning disappears; **Add Tier** a new tier and confirm its Instructor Cut field pre-fills from the barn's Default Instructor Cut
-- [ ] Set a different tier as **default** → new-lesson form pre-selects it
-- [ ] **Deactivate** the Group Special tier → it no longer appears when creating a lesson; **reactivate** it
-- [ ] Edit **Default Board Fee**, confirm the non-retroactive helper text is visible → Save → a pre-existing boarding agreement's fee is unchanged, but a newly created boarding agreement pre-fills the new fee
-- [ ] **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
-- [ ] Change both and **Save** → values persist on reload
-- [ ] Try setting Moderate ≥ High → rejected with a field error and values unchanged
-- [ ] **Schedule Buffer** field shows the current value (default `30`)
-- [ ] Change it and **Save** → value persists on reload
-- [ ] **Barn Timezone** select shows the current value (default Eastern); change it and Save → persists on reload; add a planned expense due a few minutes from now, wait for its due time to pass, then confirm it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
-- [ ] **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
-- [ ] Create an event with a title, date/hour, and notes → it appears in the Barn Events list with the correct title, date, and "manager, trainer, rider" visible-to text
-- [ ] **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked and Manager/Trainer still checked
-- [ ] From the event's Edit page, tap **Delete** → confirm page shows the event's title → **Confirm Delete** → event no longer appears in the Barn Events list
-- [ ] **Data Backup** section shows a **Download All Documents** button, enabled (documents were already uploaded earlier in this phase)
-- [ ] Tap **Download All Documents** → a `.zip` downloads; open it and confirm it contains `horse/<name>/` and `member/<name>/` folders holding the documents uploaded earlier, each file named `<original>-<type>-<date>.<ext>`
-- [ ] **Data Backup** section also shows a **Download Data** button, always enabled (no "nothing to export" state)
-- [ ] Tap **Download Data** → an `.xlsx` downloads; open it and confirm it has 8 sheets (Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions) and a horse/lesson/member created earlier in this phase appears by name (not a raw id) on the expected sheet
+- [ ] (e2e-candidate) Sections render as collapsible accordions, all collapsed on page load
+- [ ] (e2e-candidate) Clicking a section's heading opens that section
+- [ ] (e2e-candidate) Clicking it again closes the section
+- [ ] (e2e-candidate) Opening one section leaves the other sections' open/closed state unchanged
+- [ ] (e2e-candidate) There is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
+- [ ] (e2e-candidate) **Default Instructor Cut** field shows the current value (default `25`)
+- [ ] (e2e-candidate) Change it and **Save** → the value persists on reload
+- [ ] (e2e-candidate) Its helper text says the change doesn't affect past lessons, not that it recalculates historical income
+- [ ] (e2e-candidate) Try `0` — allowed
+- [ ] (e2e-candidate) Try blank — rejected
+- [ ] (e2e-candidate) After that rejection the field's stored value is unchanged
+- [ ] (e2e-candidate) Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected
+- [ ] (e2e-candidate) Revert to the original price → that warning disappears
+- [ ] (e2e-candidate) On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons")
+- [ ] (e2e-candidate) Revert the Instructor Cut → that warning disappears
+- [ ] (e2e-candidate) **Add Tier** a new tier — its Instructor Cut field pre-fills from the barn's Default Instructor Cut
+- [ ] (e2e-candidate) Set a different tier as **default** → the new-lesson form pre-selects it
+- [ ] (e2e-candidate) **Deactivate** the Group Special tier → it no longer appears when creating a lesson
+- [ ] (e2e-candidate) **Reactivate** it → it appears again when creating a lesson
+- [ ] (e2e-candidate) The **Default Board Fee** field's non-retroactive helper text is visible
+- [ ] (e2e-candidate) Edit **Default Board Fee** and Save → a pre-existing boarding agreement's fee is unchanged
+- [ ] (e2e-candidate) A newly created boarding agreement pre-fills the new fee
+- [ ] (e2e-candidate) **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
+- [ ] (e2e-candidate) Change both and **Save** → values persist on reload
+- [ ] (e2e-candidate) Try setting Moderate ≥ High → rejected with a field error
+- [ ] (e2e-candidate) After that rejection the stored threshold values are unchanged
+- [ ] (e2e-candidate) **Schedule Buffer** field shows the current value (default `30`)
+- [ ] (e2e-candidate) Change it and **Save** → value persists on reload
+- [ ] (e2e-candidate) **Barn Timezone** select shows the current value (default Eastern)
+- [ ] (e2e-candidate) Change it and Save → it persists on reload
+- [ ] (e2e-candidate) A planned expense whose due time has passed *in the barn's configured timezone* surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
+- [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
+- [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
+- [ ] (e2e-candidate) That list entry shows the correct date
+- [ ] (e2e-candidate) That list entry shows "manager, trainer, rider" visible-to text
+- [ ] (e2e-candidate) **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked
+- [ ] (e2e-candidate) Manager and Trainer are still checked there
+- [ ] (e2e-candidate) From the event's Edit page, tap **Delete** → the confirm page shows the event's title
+- [ ] (e2e-candidate) **Confirm Delete** → the event no longer appears in the Barn Events list
+- [ ] (e2e-candidate) **Data Backup** section shows a **Download All Documents** button
+- [ ] (e2e-candidate) That button is enabled (documents were already uploaded earlier in this phase)
+- [ ] (e2e-candidate) Tap **Download All Documents** → a `.zip` downloads
+- [ ] (e2e-candidate) That zip contains a `horse/<name>/` folder holding the horse documents uploaded earlier
+- [ ] (e2e-candidate) It contains a `member/<name>/` folder holding the member documents uploaded earlier
+- [ ] (e2e-candidate) Each file inside is named `<original>-<type>-<date>.<ext>`
+- [ ] (e2e-candidate) **Data Backup** section also shows a **Download Data** button
+- [ ] (e2e-candidate) That button is always enabled (no "nothing to export" state)
+- [ ] (e2e-candidate) Tap **Download Data** → an `.xlsx` downloads
+- [ ] (e2e-candidate) It has exactly 8 sheets: Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions
+- [ ] (e2e-candidate) A horse created earlier in this phase appears by name (not a raw id) on the Horses sheet
+- [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet with its horse and rider by name
+- [ ] (e2e-candidate) A member created earlier in this phase appears by name on the Members sheet
 
 Notifications and profile:
 
-- [ ] Notification bell shows an unread-count badge; opening it lists notifications with title/body/timestamp
-- [ ] **Mark all read** clears the badge
-- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages; edit phone → Save → redirected back to the barn
-- [ ] Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
-- [ ] Avatar menu → **About** (`/about`) renders the app overview
-- [ ] The **Changelog** link on `/about` includes the current version and opens `/changelog`
-- [ ] The **Terms of Service** link on `/about` opens `/terms`
-- [ ] The **Privacy Policy** link on `/about` opens `/privacy`
-- [ ] The **← Back** link on `/about`, `/changelog`, `/terms`, and `/privacy` returns to `/barns`
+- [ ] (e2e-candidate) Notification bell shows an unread-count badge
+- [ ] (e2e-candidate) Opening the bell lists the notifications
+- [ ] (e2e-candidate) Each listed notification shows its title
+- [ ] (e2e-candidate) Each shows its body
+- [ ] (e2e-candidate) Each shows its timestamp
+- [ ] (e2e-candidate) **Mark all read** clears the badge
+- [ ] (e2e-candidate) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
+- [ ] (e2e-candidate) That nav bar carries the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages
+- [ ] (e2e-candidate) Edit phone on `/profile` → Save → you're redirected back to the barn
+- [ ] (e2e-candidate) Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
+- [ ] (e2e-candidate) Avatar menu → **About** (`/about`) renders the app overview
+- [ ] (e2e-candidate) The **Changelog** link on `/about` includes the current version
+- [ ] (e2e-candidate) That **Changelog** link opens `/changelog`
+- [ ] (e2e-candidate) The **Terms of Service** link on `/about` opens `/terms`
+- [ ] (e2e-candidate) The **Privacy Policy** link on `/about` opens `/privacy`
+- [ ] (e2e-candidate) The **← Back** link on `/about` returns to `/barns`
+- [ ] (e2e-candidate) The **← Back** link on `/changelog` returns to `/barns`
+- [ ] (e2e-candidate) The **← Back** link on `/terms` returns to `/barns`
+- [ ] (e2e-candidate) The **← Back** link on `/privacy` returns to `/barns`
 
 Mobile spot-check (resize the browser to ~390px wide, or use your browser's device toolbar):
 
-- [ ] Nav bar and its dropdowns (avatar menu, notification bell) remain usable — reachable and dismissible by tap, with no reliance on hover
-- [ ] Lessons and Horses lists stay readable without horizontal scrolling
+- [ ] (e2e-candidate) At this width the avatar menu opens and dismisses by tap
+- [ ] (e2e-candidate) At this width the notification bell dropdown opens and dismisses by tap
+- [ ] (manual) Nothing in the nav bar or its dropdowns relies on hover to be reachable or dismissible
+- [ ] (e2e-candidate) The Lessons list stays readable without horizontal scrolling
+- [ ] (e2e-candidate) The Horses list stays readable without horizontal scrolling
 
 Calendar feed (#1018):
 
-- [ ] On `/profile?barn=dev-barn`, a **Calendar Feed** section appears; tap **Get my calendar link** — **Copy Link** and **Regenerate** appear
-- [ ] Tap **Copy Link** — the copied URL contains `/calendar.ics?token=...`
-- [ ] Open that URL directly (or `curl` it) — returns `Content-Type: text/calendar` and includes VEVENT entries for lessons across the whole barn (manager sees everything), not just your own
-- [ ] Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
-- [ ] Open the pre-regenerate URL — it now 404s
+- [ ] (e2e-candidate) On `/profile?barn=dev-barn`, a **Calendar Feed** section appears
+- [ ] (e2e-candidate) Tap **Get my calendar link** → a **Copy Link** button appears
+- [ ] (e2e-candidate) A **Regenerate** button appears alongside it
+- [ ] (e2e-candidate) Tap **Copy Link** — the copied URL contains `/calendar.ics?token=...`
+- [ ] (e2e-candidate) Open that URL directly (or `curl` it) — it returns `Content-Type: text/calendar`
+- [ ] (e2e-candidate) Its body includes VEVENT entries for the barn's lessons
+- [ ] (e2e-candidate) Those entries cover lessons across the whole barn (manager sees everything), not just your own
+- [ ] (e2e-candidate) Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
+- [ ] (e2e-candidate) Open the pre-regenerate URL — it now 404s
 
 ## Phase 5 — Trainer
 
