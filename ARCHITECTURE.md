@@ -38,8 +38,8 @@ Three roles: `manager`, `trainer`, `rider`.
 | rider_documents | SELECT, INSERT, UPDATE, DELETE | — | SELECT own rows only |
 | agreements | SELECT, INSERT, UPDATE, DELETE (barn-scoped, both kinds) | — | SELECT own rows only (both kinds) |
 | agreement_charges | SELECT, INSERT, UPDATE, DELETE (barn-scoped, both kinds) | — | SELECT own rows only (via parent agreement, both kinds) |
-| horse_expenses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — |
-| expense_horses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — |
+| horse_expenses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped, #1019 — so the New Lesson form's month conflict calendar can mark a horse's vet/farrier days for a trainer too; RLS filters rows not columns, so this also exposes `amount`/`notes`/`payment_type`, which no trainer-reachable UI renders) | — |
+| expense_horses | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (barn-scoped, #1019 — see `horse_expenses`) | — |
 | transactions | SELECT (barn-scoped); no INSERT/UPDATE/DELETE grant to `authenticated` — writes only via `SECURITY DEFINER` RPCs (`sync_lesson_transactions`/`collect_lesson_payment`/`delete_lesson_with_transactions`, #827) | — | — |
 | member_horse_privileges | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | — | — (no direct read/write grant — a privileged rider's access is exercised only through the `auth_get_horse_document_privilege`/`auth_has_horse_lesson_read_privilege` helper functions and the policies they back on `horse_documents`/`lessons`/`lesson_horses`/`lesson_riders`, #997) |
 | barn_events | SELECT, INSERT, UPDATE, DELETE (barn-scoped) | SELECT (role-filtered via `visible_to_roles`) | SELECT (role-filtered via `visible_to_roles`) |

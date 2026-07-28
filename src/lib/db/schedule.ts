@@ -165,9 +165,11 @@ export function scopeScheduleItemsForRole(items: ScheduleItem[], role: Role, mem
  * so ScheduleItem.start normalizes everything down into that same barn-local frame rather
  * than inventing a wall-clock-to-instant conversion.
  *
- * RLS is respected as-is, no new grants: horse_expenses SELECT is manager-only, so a
- * trainer/rider caller gets lesson items back with no expense items, silently (zero rows,
- * not an error). barn_events SELECT (#1014) is role-filtered rather than manager-only —
+ * RLS is respected as-is, no DAL-level role check: horse_expenses/expense_horses SELECT is
+ * manager + trainer (#1019 added the trainer half so the lesson form's conflict calendar
+ * could mark vet/farrier days for a trainer), so a *rider* caller still gets lesson items
+ * back with no expense items, silently (zero rows, not an error). barn_events SELECT (#1014)
+ * is role-filtered rather than manager-only —
  * a trainer/rider caller gets back whatever events `visible_to_roles` includes their role
  * in, via RLS; no DAL-level role check needed here.
  */

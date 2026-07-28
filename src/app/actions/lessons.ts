@@ -287,9 +287,11 @@ export async function stopLessonSeriesAction(barnSlug: string, lessonId: string,
  *
  * Deliberately does NOT apply scopeScheduleItemsForRole, unlike the dashboard's Day/Week
  * views: a horse's exhaustion is barn-wide, so narrowing a trainer to their own lessons here
- * would under-report the load on a horse another instructor is already working. No new
+ * would under-report the load on a horse another instructor is already working. No new lesson
  * exposure either — `lessons_select_staff` already grants trainers barn-wide lesson SELECT,
- * which the Lessons list's "All" filter surfaces directly.
+ * which the Lessons list's "All" filter surfaces directly. Expenses did need a new grant:
+ * `trainer_select_horse_expenses`/`trainer_select_expense_horses` (#1019 review fix), without
+ * which the AC's "a lesson **or expense**" dot could only ever fire on a lesson for a trainer.
  */
 export async function getScheduleRangeForBarn(
   barnSlug: string,
