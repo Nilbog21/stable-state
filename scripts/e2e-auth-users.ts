@@ -75,11 +75,46 @@ export async function createE2eAuthUsers(supabase: SupabaseClient): Promise<void
   }
 }
 
+export function formatBlockingMembershipsError(slugs: string[]): string {
+  return (
+    `e2e auth users are still members of ${slugs.length} barn(s) (${slugs.join(', ')}) — ` +
+    'tear those down first: bash scripts/teardown-test-barn.sh --all'
+  )
+}
+
+/**
+ * Every barn slug the three logins still hold a membership in. Checked before any delete
+ * because `barn_memberships` FKs to `profiles`, and clearing the memberships instead isn't a
+ * fix: cascading `lesson_riders` leaves a lesson with zero riders and trips
+ * assert_lesson_participant_counts. Deleting the barns from here would be too blunt — this is
+ * a "remove three logins" command, not a "wipe barns" one — so it fail-closes and names them.
+ */
+async function blockingBarnSlugs(supabase: SupabaseClient, userIds: string[]): Promise<string[]> {
+  const res = await supabase.from('barn_memberships').select('barns(slug)').in('user_id', userIds)
+  mustSucceed(res, 'look up blocking barn memberships')
+  // The generated types call an embedded relation an array; PostgREST actually sends a bare
+  // object for a to-one FK like this one. Normalised rather than cast to either shape alone.
+  type Embed = { slug: string } | { slug: string }[] | null
+  const rows = (res.data ?? []) as unknown as { barns: Embed }[]
+  const slugs = rows.flatMap((r) => (Array.isArray(r.barns) ? r.barns : r.barns ? [r.barns] : []))
+  return [...new Set(slugs.map((b) => b.slug))]
+}
+
 /** Returns the emails that had an auth user to delete. */
 export async function deleteE2eAuthUsers(supabase: SupabaseClient): Promise<string[]> {
-  const deleted: string[] = []
+  // Resolved up front so the membership check covers all three before anything is mutated —
+  // a mid-loop throw used to leave some logins deleted and others live, with no report of which.
+  const ids = new Map<string, string>()
   for (const user of Object.values(E2E_USERS)) {
     const [userId] = await findAuthUserIdsByEmails([user.email], supabase)
+    if (userId) ids.set(user.email, userId)
+  }
+  const blocking = await blockingBarnSlugs(supabase, [...ids.values()])
+  if (blocking.length > 0) throw new Error(formatBlockingMembershipsError(blocking))
+
+  const deleted: string[] = []
+  for (const user of Object.values(E2E_USERS)) {
+    const userId = ids.get(user.email)
     if (!userId) continue
     mustSucceed(await supabase.from('profiles').delete().eq('user_id', userId), `delete ${user.email} profile`)
     const { error } = await supabase.auth.admin.deleteUser(userId)
