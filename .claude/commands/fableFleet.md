@@ -20,6 +20,7 @@ This skill is for batches that are **small, related, and migration-free**. Verif
 Before provisioning anything, interview the user grillMe-style — one question at a time, recommended answer attached — to settle the batch-specific unknowns:
 
 - The **concurrency cap** (default recommendation: 3–4; never more than the number of issues).
+- Whether to open with a **canary**: one issue dispatched alone through the entire pipeline — through merge — before fanning out to the cap. Recommend yes for this skill's first outing or any batch shape it hasn't run before; the first full run debugs every seam in the headless contract serially instead of concurrently.
 - Any risk the qualification pass surfaced (a stale-looking issue body, an unexpected shared file, a dependency merged but not yet on the base branch).
 - Anything about *this* batch that the escalation policy in Step 4 doesn't already cover.
 
@@ -40,6 +41,8 @@ ln -s ../../stable-state/.env.local ../stable-state-worktrees/fable-N/.env.local
 If `fable-N` already exists from a prior batch, reuse it: detach from any stale branch, fetch, and `npm install` to refresh.
 
 ## Step 3 — Dispatch workers
+
+If a canary was agreed in Step 1, dispatch it alone and hold the rest of the batch until it merges; then fan out.
 
 One background Opus subagent per active issue, working directory pinned to its fable worktree. The worker prompt must establish the headless contract, since the workflow skills assume an interactive user:
 
