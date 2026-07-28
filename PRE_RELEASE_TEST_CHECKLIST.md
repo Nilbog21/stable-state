@@ -394,21 +394,22 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e-candidate) Back on Finances, that lesson's fee is still counted, now folded into **By Instructor**'s footer **Unattributed** row
 - [ ] (e2e-candidate) By Instructor no longer shows a "No instructor" body row for that lesson
 - [ ] (e2e-candidate) Tap the **Unattributed** row's ⓘ on By Instructor → the explanation covers a removed instructor
-- [ ] (e2e-candidate) **By Paid To** tab shows **Recipient | Gross | Expenses | Net** columns
-- [ ] (e2e-candidate) By Paid To's Gross and Net are always `—` (a recipient has no revenue concept)
-- [ ] (e2e-candidate) By Paid To's Expenses column (renamed from "Expense Amount") is the recipient's total
-- [ ] (e2e-candidate) By Paid To's recipient name is an underlined link (not just underlined on hover)
-- [ ] (e2e-candidate) On page load, By Paid To rows are sorted by **Recipient** name ascending
-- [ ] (e2e-candidate) On page load, a ▲ appears next to By Paid To's **Recipient** header
-- [ ] (e2e-candidate) Tap the **Expenses** header on By Paid To → rows re-sort by that column ascending
-- [ ] (e2e-candidate) After tapping **Expenses** on By Paid To, a ▲ appears on the Expenses header (and disappears from Recipient)
-- [ ] (e2e-candidate) Tap the **Expenses** header on By Paid To again → order reverses
-- [ ] (e2e-candidate) After that second tap on By Paid To, the indicator flips to ▼
-- [ ] (e2e-candidate) Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
-- [ ] (e2e-candidate) Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month with Date, Type, Amount columns
-- [ ] (e2e-candidate) The recipient drill-down's Date column links to the expense's edit page
-- [ ] (e2e-candidate) The recipient drill-down's bottom **Total** matches the By Paid To summary
-- [ ] (e2e-candidate) A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL
+- [ ] (e2e: by_paid_to_tab_shows_recipient_gross_expenses_net_columns) **By Paid To** tab shows **Recipient | Gross | Expenses | Net** columns
+- [ ] (e2e: by_paid_to_gross_and_net_are_always_a_dash) By Paid To's Gross and Net are always `—` (a recipient has no revenue concept)
+- [ ] (e2e: by_paid_to_expenses_column_is_the_recipients_combined_total) By Paid To's Expenses column (renamed from "Expense Amount") is the recipient's total
+- [ ] (e2e: by_paid_to_recipient_name_is_an_underlined_link) By Paid To's recipient name is an underlined link (not just underlined on hover)
+- [ ] (e2e: by_paid_to_rows_load_sorted_by_recipient_name_ascending) On page load, By Paid To rows are sorted by **Recipient** name ascending
+- [ ] (e2e: by_paid_to_recipient_header_shows_an_ascending_indicator_on_load) On page load, a ▲ appears next to By Paid To's **Recipient** header
+- [ ] (e2e: by_paid_to_expenses_header_tap_re_sorts_rows_ascending) Tap the **Expenses** header on By Paid To → rows re-sort by that column ascending
+- [ ] (e2e: by_paid_to_expenses_header_tap_moves_the_ascending_indicator_off_recipient) After tapping **Expenses** on By Paid To, a ▲ appears on the Expenses header (and disappears from Recipient)
+- [ ] (e2e: by_paid_to_second_expenses_header_tap_reverses_the_row_order) Tap the **Expenses** header on By Paid To again → order reverses
+- [ ] (e2e: by_paid_to_second_expenses_header_tap_flips_the_indicator_to_descending) After that second tap on By Paid To, the indicator flips to ▼
+- [ ] (e2e: by_paid_to_total_combines_a_second_expense_for_the_same_recipient) Add a second expense for the same recipient this month → its **By Paid To** total updates to the combined amount
+- [ ] (e2e: recipient_drilldown_lists_only_that_recipients_expenses_for_the_month) Click a recipient → drill-down `/barn/dev-barn/finances/expenses/[recipient]` lists that recipient's expenses for the month
+- [ ] (e2e: recipient_drilldown_shows_date_type_amount_columns) The recipient drill-down table shows **Date | Type | Amount** columns
+- [ ] (e2e: recipient_drilldown_date_links_to_the_expense_edit_page) The recipient drill-down's Date column links to the expense's edit page
+- [ ] (e2e: recipient_drilldown_total_matches_the_by_paid_to_expenses_cell) The recipient drill-down's bottom **Total** matches the By Paid To summary
+- [ ] (e2e: recipient_name_with_ampersand_round_trips_through_the_drilldown_link) A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL
 - [ ] (e2e-candidate) **Reconciliation check** (#971): open all five tabs for the same month → each one's footer **Total** row shows the identical Gross figure
 - [ ] (e2e-candidate) Reconciliation, same five tabs: each one's footer **Total** row shows the identical Expenses figure
 - [ ] (e2e-candidate) Reconciliation, same five tabs: each one's footer **Total** row shows the identical Net figure
