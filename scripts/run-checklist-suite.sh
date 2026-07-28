@@ -3,9 +3,9 @@ set -euo pipefail
 
 cd "$(git rev-parse --show-toplevel)"
 
-# Every barn this run creates is slugged "$RUN_PREFIX-<spec key>" (see e2e/support/test.ts), so
-# the exit trap can tear down exactly this run's barns and a concurrent run in another worktree
-# is unaffected.
+# Every barn this run creates is slugged "$RUN_PREFIX-<spec key>-<playwright project>" (see
+# e2e/support/test.ts), so the exit trap can tear down exactly this run's barns and a concurrent
+# run in another worktree is unaffected.
 RUN_PREFIX="e2e-$(date +%s)-$RANDOM"
 # `git rev-parse --show-toplevel` resolves to *this* worktree's root, so the path is
 # per-worktree isolated for free. Not under test-results/ — Playwright wipes that directory

@@ -1,9 +1,10 @@
 // Shared fixture builders for the checklist e2e suite.
 //
-// Every domain table is barn_id-scoped under RLS, so a spec file gets total isolation by
-// seeding its own barn (see support/test.ts) rather than by coordinating access to a shared
-// one. These builders are the vocabulary those per-file seeds are written in, and are also
-// what scripts/seed-test-barn.ts calls — one implementation, two entry points.
+// Every domain table is barn_id-scoped under RLS, so each Playwright job — one (spec file ×
+// project) pairing — gets total isolation by seeding its own barn (see support/test.ts) rather
+// than by coordinating access to a shared one. These builders are the vocabulary those seeds are
+// written in, and are also what scripts/seed-test-barn.ts calls — one implementation, two entry
+// points.
 //
 // Every builder takes an injected service-role client, same convention as scripts/.
 
