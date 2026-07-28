@@ -103,8 +103,9 @@ Checks that are **initiated** during this pass but whose result lands on an exte
 
 Initiate now:
 
-- [ ] On `/profile?barn=<slug>` for that barn, tap **Get my calendar link** → a link containing `/calendar.ics?token=...` is revealed
-- [ ] Tap **Copy Link** — the revealed text is a path only, and Copy Link is what prepends the origin — then add the copied URL in a real calendar app via **Add calendar → From URL** (Google Calendar, Apple Calendar, or Outlook) → the app accepts the URL without an error
+- [ ] On `/profile?barn=<slug>` for that barn, tap **Get my calendar link** → **Copy Link** and **Regenerate** appear
+- [ ] Tap **Copy Link** → the button reads "Copied!"
+- [ ] Add the copied URL in a real calendar app via **Add calendar → From URL** (Google Calendar, Apple Calendar, or Outlook) → the app accepts the URL without an error
 
 Confirm later — none of these block sign-off:
 

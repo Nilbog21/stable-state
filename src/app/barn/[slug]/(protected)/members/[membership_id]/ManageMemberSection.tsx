@@ -6,12 +6,18 @@ import { Button } from '@/components/ui/Button'
 interface Props {
   barnSlug: string
   inviteToken: string
-  revokeAction: () => Promise<void>
+  revokeAction: () => Promise<{ error: string | null }>
 }
 
 export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Props) {
   const [copied, setCopied] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  // Nothing disables either button while writeText is awaiting — `busy` only goes true
+  // once Revoke is submitted — so a copy can still be in flight when Revoke supersedes
+  // its token. Bump on Revoke and drop a copy that resumes on the far side of it, or it
+  // re-sets error/copied for a token that no longer exists.
+  const copyGenerationRef = useRef(0)
 
   // Revoke regenerates the invite token server-side; Copy Invite must never read the
   // stale prop mid-flight. `pending` alone isn't enough (Next resolves the action's
@@ -23,8 +29,26 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
   // revoke is still in flight and about to supersede it.
   const [tokenBeforeRevoke, setTokenBeforeRevoke] = useState<string | null>(null)
   const [, formAction, pending] = useActionState(async () => {
+    // Revoke supersedes whatever the last copy attempt was for, so neither a stale
+    // failure nor a stale "Copied!" should ride along into the new token's state.
+    // `copied` does self-clear on its 2s timer, but until it fires the disabled button
+    // reads "Copied!" about a token being revoked. Same pair CalendarFeedSection's
+    // handleRegenerate clears.
+    setError(null)
+    setCopied(false)
+    copyGenerationRef.current += 1
     setTokenBeforeRevoke(inviteToken)
-    await revokeAction()
+    const { error: revokeError } = await revokeAction()
+    if (revokeError) {
+      // Nothing was rotated, so undo both things the optimistic path set up: the
+      // fresh-token gate has no fresh token coming and would leave both buttons disabled
+      // until a reload, and the generation bump would discard an in-flight copy whose
+      // token is in fact still current. Same rollback CalendarFeedSection.handleRegenerate
+      // performs when regenerateAction rejects.
+      setTokenBeforeRevoke(null)
+      copyGenerationRef.current -= 1
+      setError(revokeError)
+    }
     return null
   }, null)
   const awaitingFreshToken = tokenBeforeRevoke !== null && inviteToken === tokenBeforeRevoke
@@ -36,13 +60,21 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
     }
   }, [])
 
+  // The invite URL is never rendered, so a failed write leaves nothing to fall back on and
+  // has to say so: writeText needs a secure context, so it does fail when hitting the dev
+  // server over LAN HTTP from a phone. Same reasoning as CalendarFeedSection (#1116).
   async function handleCopy() {
     const url = `${window.location.origin}/barn/${barnSlug}/register?token=${inviteToken}`
+    const generation = copyGenerationRef.current
     try {
       await navigator.clipboard.writeText(url)
     } catch {
+      if (copyGenerationRef.current !== generation) return
+      setError('Could not copy the invite link. Please try again.')
       return
     }
+    if (copyGenerationRef.current !== generation) return
+    setError(null)
     setCopied(true)
     if (timerRef.current) clearTimeout(timerRef.current)
     timerRef.current = setTimeout(() => setCopied(false), 2000)
@@ -66,6 +98,7 @@ export function ManageMemberSection({ barnSlug, inviteToken, revokeAction }: Pro
           </Button>
         </form>
       </div>
+      {error && <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>}
     </section>
   )
 }

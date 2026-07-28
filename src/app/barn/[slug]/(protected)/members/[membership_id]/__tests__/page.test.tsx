@@ -934,7 +934,7 @@ describe('MemberDetailPage', () => {
     it('should_call_revokeInviteTokenAction_when_revoke_form_submits', async () => {
       vi.mocked(getMembershipByIdForBarn).mockResolvedValue(unclaimedTargetMembership)
       vi.mocked(getProfileById).mockResolvedValue(unclaimedTargetProfile)
-      vi.mocked(revokeInviteTokenAction).mockResolvedValue(undefined)
+      vi.mocked(revokeInviteTokenAction).mockResolvedValue({ error: null })
       const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
       render(jsx)
       fireEvent.click(screen.getByRole('button', { name: /^revoke$/i }))
