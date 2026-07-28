@@ -55,7 +55,7 @@ Proposed action: apply the appropriate label(s); note any issues where the right
 
 **Orphaned issues** — issues with no connection to any spec, any other issue, or any discernible current direction. May be forgotten experiments or ideas that no longer fit. Proposed action: flag for the user to close, park with a comment, or confirm they are still intentional.
 
-**Scope / size** — issues that are clearly too large for a single PR, independent of dependencies. Proposed action: suggest a split for reviewability — **by user-facing capability, not by layer**. Each resulting issue should still span the full file-touch sequence (schema → RLS → RPC → DAL → action → component → tests) as one vertical slice; a split into a schema issue plus an RLS issue plus a UI issue is the anti-pattern. Layer-only splits are fine when the layer is genuinely reusable across several unrelated future capabilities.
+**Scope / size** — issues that are clearly too large for a single PR, independent of dependencies. Proposed action: suggest a split for reviewability — **by user-facing capability, not by layer**. Each resulting issue should still span the full file-touch sequence from `ARCHITECTURE.md`'s Feature anatomy section (schema → RLS → RPC → DAL → action → component → tests) as one vertical slice; a split into a schema issue plus an RLS issue plus a UI issue is the anti-pattern. Layer-only splits are fine when the layer is genuinely reusable across several unrelated future capabilities.
 
 **`pending-review` candidates** — issues waiting on an external decision (client input, open barn manager question) that are not actionable until resolved. Proposed action: apply `pending-review` label so they don't clutter the active queue.
 
