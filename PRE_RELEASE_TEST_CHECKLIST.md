@@ -8,6 +8,14 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
 
+> **Automation tags:** each checkbox in an audited section carries exactly one of —
+>
+> - `(e2e: <test name>)` — covered by that Playwright test in `e2e/`; run via `scripts/run-checklist-suite.sh`
+> - `(e2e-candidate)` — automatable, spec not written yet
+> - `(manual)` — not automatable; always hand-verified
+>
+> Sections with no tags on their checkboxes have not been audited yet.
+
 ## Prerequisites
 
 - [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 takes the barn slug as a required argument, e.g. `bash scripts/change-user.sh dev-barn`)
