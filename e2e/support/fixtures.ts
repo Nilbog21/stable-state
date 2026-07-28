@@ -361,9 +361,26 @@ export async function addLeaseCharge(
   if (isBoard) {
     // agreement_charges.period is CHECK-pinned to the 1st of its month.
     const period = `${when.toISOString().slice(0, 7)}-01`
-    mustSucceed(
-      await supabase.from('agreement_charges').update({ period }).eq('agreement_id', agreement.id),
+    const charge = mustSucceed<{ id: string }>(
+      await supabase
+        .from('agreement_charges')
+        .update({ period })
+        .eq('agreement_id', agreement.id)
+        .select('id')
+        .single(),
       'backdate board charge period'
+    )
+    // The paired ledger row has to move with it. create_agreement_with_first_charge derives
+    // both the charge's period and the transaction's occurred_at from one value, and the
+    // income breakdowns bucket by occurred_at while getOutstandingCharges filters on period
+    // — leaving occurred_at behind would make this charge read as outstanding in the month
+    // it was backdated to but land in the *current* month's income once collected.
+    mustSucceed(
+      await supabase
+        .from('transactions')
+        .update({ occurred_at: `${period}T00:00:00Z` })
+        .eq('agreement_charge_id', charge.id),
+      'backdate board charge transaction'
     )
   }
 

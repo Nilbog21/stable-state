@@ -112,8 +112,9 @@ const barn = withBarn('phase4-finances-outstanding', async ({ supabase, barn, me
     riderIds: [members.rider.membershipId],
   })
 
-  // The prior-month fixture the month-navigation check reads. Comet is used by nothing else,
-  // so its presence in a month's By Horse table is entirely this lesson's doing.
+  // The prior-month fixture the month-navigation check reads. Comet's only other fixture is
+  // a boarding charge two months back, so its presence in the *previous* month's By Horse
+  // table is entirely this lesson's doing.
   await addPaidLesson(supabase, barn, {
     ...lessonDefaults,
     monthsAgo: 1,
@@ -383,7 +384,9 @@ test.describe.serial('cancellation fee', () => {
   test('outstanding_page_lists_every_type_of_outstanding_item @manager', async ({ page }) => {
     await page.goto(financesUrl())
     await page.getByRole('link', { name: /View all outstanding/ }).click()
-    await expect(page).toHaveURL(new RegExp(`/barn/${barn.slug}/finances/outstanding$`))
+    // A wait, not a second assertion: the checkbox's one claim is what the page lists, and
+    // this call still fails the test outright if the link doesn't land where it should.
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/finances/outstanding$`))
     const types = await page.locator('tbody tr td:nth-child(2)').allInnerTexts()
     expect([...new Set(types)].sort()).toEqual(['Boarding', 'Cancellation Fee', 'Lease', 'Lesson'])
   })
