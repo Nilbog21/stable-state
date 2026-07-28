@@ -360,23 +360,25 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: by_rider_rider_header_shows_an_ascending_indicator_on_load) On page load, a ▲ appears next to By Rider's **Rider** header
 - [ ] (e2e: by_rider_gross_header_tap_re_sorts_rows_ascending) Tap the **Gross** header on By Rider → rows re-sort ascending
 - [ ] (e2e: by_rider_net_header_tap_produces_the_same_order_as_gross) Tap the **Net** header on By Rider instead → identical resulting order to sorting by Gross (both share a sort key, since the two columns are always equal for this tab)
-- [ ] (e2e-candidate) **By Instructor** tab shows **Trainer | Gross | Expenses | Net** columns
-- [ ] (e2e-candidate) By Instructor's Gross is the trainer's pre-cut lesson fees
-- [ ] (e2e-candidate) By Instructor's Expenses column (renamed from "Instructor Cut") is the deducted amount, parenthesized
-- [ ] (e2e-candidate) By Instructor's Net is the take-home figure
-- [ ] (e2e-candidate) By Instructor's trainer name is an underlined link to drill-down `/barn/dev-barn/finances/trainers/[id]`
-- [ ] (e2e-candidate) The trainer drill-down shows one table of that trainer's paid lessons
-- [ ] (e2e-candidate) The trainer drill-down's date column links to the lesson
-- [ ] (e2e-candidate) The trainer drill-down's **Type** column is always "Lesson"
-- [ ] (e2e-candidate) The trainer drill-down's fee is net of the instructor cut
-- [ ] (e2e-candidate) The trainer drill-down's bottom **Total** matches the By Instructor summary's Net figure
-- [ ] (e2e-candidate) The trainer drill-down preserves the month param
-- [ ] (e2e-candidate) On page load, By Instructor rows are sorted by **Trainer** name ascending
-- [ ] (e2e-candidate) On page load, a ▲ appears next to By Instructor's **Trainer** header
-- [ ] (e2e-candidate) Tap the **Net** header on By Instructor → rows re-sort by that column ascending
-- [ ] (e2e-candidate) After tapping **Net** on By Instructor, a ▲ appears on the Net header (and disappears from Trainer)
-- [ ] (e2e-candidate) Tap the **Net** header on By Instructor again → order reverses
-- [ ] (e2e-candidate) After that second tap on By Instructor, the indicator flips to ▼
+- [ ] (e2e: by_instructor_tab_shows_trainer_gross_expenses_net_columns) **By Instructor** tab shows **Trainer | Gross | Expenses | Net** columns
+- [ ] (e2e: by_instructor_gross_is_the_trainers_pre_cut_lesson_fees) By Instructor's Gross is the trainer's pre-cut lesson fees
+- [ ] (e2e: by_instructor_expenses_column_is_the_deducted_instructor_cut) By Instructor's Expenses column (renamed from "Instructor Cut") is the deducted amount
+- [ ] (e2e: by_instructor_expenses_column_renders_the_cut_in_parentheses) That deducted amount renders in parentheses, e.g. `($25.00)`, not with a leading minus sign
+- [ ] (e2e: by_instructor_net_is_gross_minus_the_instructor_cut) By Instructor's Net is the take-home figure
+- [ ] (e2e: by_instructor_trainer_name_is_an_underlined_link) By Instructor's trainer name is an underlined link (not just underlined on hover)
+- [ ] (e2e: by_instructor_trainer_name_links_to_the_trainer_drilldown) By Instructor's trainer name links to drill-down `/barn/dev-barn/finances/trainers/[id]`
+- [ ] (e2e: trainer_drilldown_table_lists_only_that_trainers_paid_lessons) The trainer drill-down shows one table of that trainer's paid lessons
+- [ ] (e2e: trainer_drilldown_date_cell_links_to_its_lesson) The trainer drill-down's date column links to the lesson
+- [ ] (e2e: trainer_drilldown_type_column_is_always_lesson) The trainer drill-down's **Type** column is always "Lesson"
+- [ ] (e2e: trainer_drilldown_amount_is_net_of_the_instructor_cut) The trainer drill-down's fee is net of the instructor cut
+- [ ] (e2e: trainer_drilldown_total_matches_the_by_instructor_net_figure) The trainer drill-down's bottom **Total** matches the By Instructor summary's Net figure
+- [ ] (e2e: trainer_drilldown_preserves_the_month_param) The trainer drill-down preserves the month param
+- [ ] (e2e: by_instructor_rows_load_sorted_by_trainer_name_ascending) On page load, By Instructor rows are sorted by **Trainer** name ascending
+- [ ] (e2e: by_instructor_trainer_header_carries_the_ascending_indicator_on_load) On page load, a ▲ appears next to By Instructor's **Trainer** header
+- [ ] (e2e: tapping_net_header_re_sorts_by_net_ascending) Tap the **Net** header on By Instructor → rows re-sort by that column ascending
+- [ ] (e2e: tapping_net_header_moves_the_ascending_indicator_to_net) After tapping **Net** on By Instructor, a ▲ appears on the Net header (and disappears from Trainer)
+- [ ] (e2e: tapping_net_header_twice_reverses_the_row_order) Tap the **Net** header on By Instructor again → order reverses
+- [ ] (e2e: tapping_net_header_twice_flips_the_indicator_to_descending) After that second tap on By Instructor, the indicator flips to ▼
 - [ ] (e2e-candidate) Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it)
 - [ ] (e2e-candidate) That comped lesson's negative net renders in parentheses, e.g. `($25.00)`, not with a leading minus sign
 - [ ] (e2e-candidate) That comped lesson is still included in every tab's Gross/Net totals (not dropped or clamped to zero)
