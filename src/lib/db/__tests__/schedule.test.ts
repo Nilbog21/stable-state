@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockLesson, createMockHorseExpense, createMockBarnEvent } from '@/test/fixtures'
+import { createMockLesson, createMockHorseExpense, createMockBarnEvent, createMockScheduleItem } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -134,12 +134,8 @@ describe('mergeScheduleItems', () => {
 })
 
 describe('intervalsOverlap', () => {
-  const lesson = (start: string): Parameters<typeof intervalsOverlap>[0] => ({
-    id: 'lesson', itemType: 'lesson', start, durationMinutes: LESSON_DURATION_MINUTES, instructorId: null, horseIds: [],
-  })
-  const point = (start: string): Parameters<typeof intervalsOverlap>[0] => ({
-    id: 'expense', itemType: 'expense', start, durationMinutes: 0, instructorId: null, horseIds: [],
-  })
+  const lesson = (start: string) => createMockScheduleItem({ id: 'lesson', start, durationMinutes: LESSON_DURATION_MINUTES })
+  const point = (start: string) => createMockScheduleItem({ id: 'expense', itemType: 'expense', start, durationMinutes: 0 })
 
   it('should_return_true_when_two_lessons_fully_overlap', () => {
     expect(intervalsOverlap(lesson('2026-06-10T09:00:00'), lesson('2026-06-10T09:00:00'))).toBe(true)
@@ -345,12 +341,10 @@ describe('getNearbyInstructorMembershipIds', () => {
 })
 
 describe('scopeScheduleItemsForRole', () => {
-  const lessonItem = (id: string, instructorId: string | null): ScheduleItem => ({
-    id, itemType: 'lesson', start: '2026-06-10T09:00:00', durationMinutes: 60, instructorId, horseIds: [],
-  })
-  const expenseItem = (id: string): ScheduleItem => ({
-    id, itemType: 'expense', start: '2026-06-10T09:00:00', durationMinutes: 0, instructorId: null, horseIds: [],
-  })
+  const lessonItem = (id: string, instructorId: string | null): ScheduleItem =>
+    createMockScheduleItem({ id, start: '2026-06-10T09:00:00', instructorId })
+  const expenseItem = (id: string): ScheduleItem =>
+    createMockScheduleItem({ id, itemType: 'expense', start: '2026-06-10T09:00:00', durationMinutes: 0 })
 
   it('should_pass_through_all_items_unchanged_for_manager', () => {
     const items = [lessonItem('lesson-1', 'mem-other'), expenseItem('expense-1')]

@@ -1,4 +1,19 @@
-import type { Agreement, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledExpense } from '@/lib/db/types'
+import type { Agreement, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledExpense, ScheduleItem } from '@/lib/db/types'
+
+export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
+  return {
+    id: 'item-1',
+    itemType: 'lesson',
+    start: '2026-07-23T09:00:00',
+    durationMinutes: 60,
+    instructorId: null,
+    horseIds: [],
+    riderIds: [],
+    exertionByHorseId: {},
+    label: null,
+    ...overrides,
+  }
+}
 
 export function createMockBarn(overrides: Partial<Barn> = {}): Barn {
   return { id: 'barn-1', name: 'Green Acres', slug: 'green-acres', created_at: '', default_board_fee: 1000, default_instructor_cut: 25, exhaustion_threshold_high: 11, exhaustion_threshold_moderate: 5, timezone: 'America/New_York', is_demo: false, schedule_buffer_minutes: 30, is_test_barn: false, ...overrides }

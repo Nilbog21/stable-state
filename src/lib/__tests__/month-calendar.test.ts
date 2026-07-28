@@ -1,19 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import { getMonthGrid, shiftMonth, computeDayDecorations, type DayDecorationOptions } from '../month-calendar'
-import type { ScheduleItem } from '@/lib/db/types'
-
-function item(overrides: Partial<ScheduleItem> & Pick<ScheduleItem, 'id' | 'start'>): ScheduleItem {
-  return {
-    itemType: 'lesson',
-    durationMinutes: 60,
-    instructorId: null,
-    horseIds: [],
-    riderIds: [],
-    exertionByHorseId: {},
-    label: null,
-    ...overrides,
-  }
-}
+import { createMockScheduleItem as item } from '@/test/fixtures'
 
 const baseOpts: DayDecorationOptions = {
   selectedHorseIds: [],

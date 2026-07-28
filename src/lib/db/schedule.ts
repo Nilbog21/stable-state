@@ -1,7 +1,6 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
-import { getLessonJunctionRows } from './lesson-finance-queries'
 import type { Role, ScheduleItem } from './types'
 
 /**
@@ -19,17 +18,21 @@ interface ScheduleLessonRow {
   start: string // barn-local wall clock, see ScheduleItem.start
   instructor_id: string | null
   horse_ids: string[]
+  rider_ids?: string[]
+  exertion_by_horse_id?: Record<string, number>
 }
 
 interface ScheduleExpenseRow {
   id: string
   start: string // barn-local wall clock, see ScheduleItem.start
   horse_ids: string[]
+  label?: string | null
 }
 
 interface ScheduleEventRow {
   id: string
   start: string // barn-local wall clock, see ScheduleItem.start
+  label?: string | null
 }
 
 // Half-open interval [start, start + durationMinutes) — an item ending exactly when
@@ -108,6 +111,9 @@ export function mergeScheduleItems(
     durationMinutes: LESSON_DURATION_MINUTES,
     instructorId: l.instructor_id,
     horseIds: l.horse_ids,
+    riderIds: l.rider_ids ?? [],
+    exertionByHorseId: l.exertion_by_horse_id ?? {},
+    label: null,
   }))
   const expenseItems: ScheduleItem[] = expenses.map((e) => ({
     id: e.id,
@@ -116,6 +122,9 @@ export function mergeScheduleItems(
     durationMinutes: 0,
     instructorId: null,
     horseIds: e.horse_ids,
+    riderIds: [],
+    exertionByHorseId: {},
+    label: e.label ?? null,
   }))
   const eventItems: ScheduleItem[] = events.map((e) => ({
     id: e.id,
@@ -124,6 +133,9 @@ export function mergeScheduleItems(
     durationMinutes: 0,
     instructorId: null,
     horseIds: [],
+    riderIds: [],
+    exertionByHorseId: {},
+    label: e.label ?? null,
   }))
   // #523 fixed identical-timestamp non-determinism for the old dashboard's expense list
   // with a created_at tiebreaker; ScheduleItem carries no created_at, so id is the
@@ -179,14 +191,51 @@ export async function getScheduleForRange(
 
   const lessons = (lessonData ?? []) as { id: string; lesson_at: string; instructor_id: string | null }[]
   const lessonIds = lessons.map((l) => l.id)
-  const lessonHorseRows = lessonIds.length
-    ? await getLessonJunctionRows('lesson_horses', 'horse_id', barnId, lessonIds, supabase)
-    : []
+
+  // Not getLessonJunctionRows (lesson-finance-queries.ts): that helper's generic shape returns
+  // exactly `lesson_id` + one participant column, and #1019's exertion heatmap needs
+  // `exertion_level` alongside the horse id.
+  const lessonHorseRows: { lesson_id: string; horse_id: string; exertion_level: number | null }[] = []
+  const lessonRiderRows: { lesson_id: string; rider_id: string; cancelled_at: string | null }[] = []
+  if (lessonIds.length) {
+    const { data: horseData, error: horseError } = await supabase
+      .from('lesson_horses')
+      .select('lesson_id, horse_id, exertion_level')
+      .eq('barn_id', barnId)
+      .in('lesson_id', lessonIds)
+    if (horseError) throw horseError
+    lessonHorseRows.push(...((horseData ?? []) as typeof lessonHorseRows))
+
+    // cancelled_at is filtered here rather than at the query level so the rider list matches
+    // what lesson-participants.ts already treats as "still enrolled" — a cancelled rider is
+    // not a scheduling conflict.
+    const { data: riderData, error: riderError } = await supabase
+      .from('lesson_riders')
+      .select('lesson_id, rider_id, cancelled_at')
+      .eq('barn_id', barnId)
+      .in('lesson_id', lessonIds)
+    if (riderError) throw riderError
+    lessonRiderRows.push(...((riderData ?? []) as typeof lessonRiderRows))
+  }
+
   const lessonHorseIdsByLessonId = new Map<string, string[]>()
+  const exertionByLessonId = new Map<string, Record<string, number>>()
   for (const row of lessonHorseRows) {
     const list = lessonHorseIdsByLessonId.get(row.lesson_id) ?? []
     list.push(row.horse_id)
     lessonHorseIdsByLessonId.set(row.lesson_id, list)
+
+    const exertions = exertionByLessonId.get(row.lesson_id) ?? {}
+    exertions[row.horse_id] = Number(row.exertion_level ?? 0)
+    exertionByLessonId.set(row.lesson_id, exertions)
+  }
+
+  const lessonRiderIdsByLessonId = new Map<string, string[]>()
+  for (const row of lessonRiderRows) {
+    if (row.cancelled_at !== null) continue
+    const list = lessonRiderIdsByLessonId.get(row.lesson_id) ?? []
+    list.push(row.rider_id)
+    lessonRiderIdsByLessonId.set(row.lesson_id, list)
   }
 
   const scheduleLessonRows: ScheduleLessonRow[] = lessons.map((l) => ({
@@ -194,6 +243,8 @@ export async function getScheduleForRange(
     start: instantToLocalWallClock(new Date(l.lesson_at), timezone),
     instructor_id: l.instructor_id,
     horse_ids: lessonHorseIdsByLessonId.get(l.id) ?? [],
+    rider_ids: lessonRiderIdsByLessonId.get(l.id) ?? [],
+    exertion_by_horse_id: exertionByLessonId.get(l.id) ?? {},
   }))
 
   // Same coarse DB-level date bound + precise JS-side wall-clock comparison idiom
@@ -205,16 +256,16 @@ export async function getScheduleForRange(
 
   const { data: expenseData, error: expensesError } = await supabase
     .from('horse_expenses')
-    .select('id, expense_date, expense_time')
+    .select('id, expense_date, expense_time, expense_type, recipient')
     .eq('barn_id', barnId)
     .not('expense_time', 'is', null)
     .gte('expense_date', fromWall.slice(0, 10))
     .lte('expense_date', toWall.slice(0, 10))
   if (expensesError) throw expensesError
 
-  const expenseCandidates = ((expenseData ?? []) as { id: string; expense_date: string; expense_time: string | null }[])
+  const expenseCandidates = ((expenseData ?? []) as { id: string; expense_date: string; expense_time: string | null; expense_type: string; recipient: string }[])
     .filter((e) => e.expense_time !== null)
-    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time}` }))
+    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time}`, label: `${e.expense_type} — ${e.recipient}` }))
     .filter((e) => e.wallClock >= fromWall && e.wallClock < toWall)
 
   const expenseIds = expenseCandidates.map((e) => e.id)
@@ -239,21 +290,23 @@ export async function getScheduleForRange(
     id: e.id,
     start: e.wallClock,
     horse_ids: expenseHorseIdsByExpenseId.get(e.id) ?? [],
+    label: e.label,
   }))
 
   // event_at, like lesson_at, is a true UTC instant — same real-instant bound as lessons,
   // no wall-clock coarse/precise split needed (that's only for horse_expenses' zoneless digits).
   const { data: eventData, error: eventsError } = await supabase
     .from('barn_events')
-    .select('id, event_at')
+    .select('id, event_at, title')
     .eq('barn_id', barnId)
     .gte('event_at', from)
     .lt('event_at', to)
   if (eventsError) throw eventsError
 
-  const scheduleEventRows: ScheduleEventRow[] = ((eventData ?? []) as { id: string; event_at: string }[]).map((e) => ({
+  const scheduleEventRows: ScheduleEventRow[] = ((eventData ?? []) as { id: string; event_at: string; title: string }[]).map((e) => ({
     id: e.id,
     start: instantToLocalWallClock(new Date(e.event_at), timezone),
+    label: e.title,
   }))
 
   return mergeScheduleItems(scheduleLessonRows, scheduleExpenseRows, scheduleEventRows)

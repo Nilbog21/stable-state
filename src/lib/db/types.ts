@@ -267,6 +267,13 @@ export interface ScheduleItem {
   durationMinutes: number
   instructorId: string | null
   horseIds: string[]
+  /** Non-cancelled `lesson_riders` membership ids; always `[]` for expense/event items. */
+  riderIds: string[]
+  /** Per-horse `lesson_horses.exertion_level`; always `{}` for expense/event items. */
+  exertionByHorseId: Record<string, number>
+  /** Display text for expense/event items. `null` for lessons — their callers already
+   *  hold horse/rider names and compose their own label from those. */
+  label: string | null
 }
 
 export interface BarnEvent {
