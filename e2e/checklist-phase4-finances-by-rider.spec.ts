@@ -203,6 +203,16 @@ function headerCell(page: Page, index: number) {
 }
 
 /**
+ * Blocks until the sort indicator has landed on a header, which is how a test knows React has
+ * finished re-rendering the sorted rows and a plain (non-retrying) read of them is safe.
+ * Locator.waitFor(), deliberately, and not `expect(...).toContainText('▲')`: the latter is a
+ * real assertion and would put a second and third one into a test that makes a single claim.
+ */
+function awaitSortIndicator(page: Page, index: number) {
+  return headerCell(page, index).locator('button', { hasText: '▲' }).waitFor()
+}
+
+/**
  * Each header's own label text — the first button (sortable column) or span (not) inside the
  * th, which is the label element in both SortableTh modes. Excludes InfoPopover's trailing ⓘ
  * trigger, and strips the ▲/▼ sort indicator the active column's label carries.
@@ -332,13 +342,11 @@ test('by_rider_gross_header_tap_re_sorts_rows_ascending @manager', async ({ page
 test('by_rider_net_header_tap_produces_the_same_order_as_gross @manager', async ({ page }) => {
   await page.goto(byRiderUrl())
   await breakdownTable(page).getByRole('button', { name: 'Gross', exact: true }).click()
-  // A wait, not an assertion: the indicator lands on the clicked header once React has
-  // re-rendered the sorted rows, which is what makes the read below safe.
-  await expect(headerCell(page, 1)).toContainText('▲')
+  await awaitSortIndicator(page, 1)
   const orderByGross = await columnCells(page, 1).allInnerTexts()
 
   await page.goto(byRiderUrl())
   await breakdownTable(page).getByRole('button', { name: 'Net', exact: true }).click()
-  await expect(headerCell(page, 3)).toContainText('▲')
+  await awaitSortIndicator(page, 3)
   expect(await columnCells(page, 1).allInnerTexts()).toEqual(orderByGross)
 })
