@@ -410,13 +410,13 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: recipient_drilldown_date_links_to_the_expense_edit_page) The recipient drill-down's Date column links to the expense's edit page
 - [ ] (e2e: recipient_drilldown_total_matches_the_by_paid_to_expenses_cell) The recipient drill-down's bottom **Total** matches the By Paid To summary
 - [ ] (e2e: recipient_name_with_ampersand_round_trips_through_the_drilldown_link) A recipient name containing `&` or spaces (e.g. seed a "Dr. Smith & Sons" expense) round-trips correctly through the drill-down link — no broken/garbled URL
-- [ ] (e2e-candidate) **Reconciliation check** (#971): open all five tabs for the same month → each one's footer **Total** row shows the identical Gross figure
-- [ ] (e2e-candidate) Reconciliation, same five tabs: each one's footer **Total** row shows the identical Expenses figure
-- [ ] (e2e-candidate) Reconciliation, same five tabs: each one's footer **Total** row shows the identical Net figure
-- [ ] (e2e-candidate) **Unattributed-expense check** (#971): delete a paid expense from `/barn/dev-barn/expenses/[id]/delete` **without** checking "Also delete the collected record from Finances" (its `transactions` row survives with no `horse_expenses` row behind it) → back on Finances, that amount appears under **Unattributed** in the By Horse footer instead of silently disappearing
-- [ ] (e2e-candidate) That same amount appears under **Unattributed** in the By Paid To footer
-- [ ] (e2e-candidate) Tap the ⓘ on **By Horse**'s **Unattributed** row → the explanation covers a paid lesson with no horse recorded, or an expense record whose original entry was deleted after being marked paid, and states that a barn-wide expense split across horses is never counted here (it appears in each horse's own row instead)
-- [ ] (e2e-candidate) Tap the ⓘ on **By Paid To**'s **Unattributed** row → the explanation covers an expense record whose original entry was deleted after being marked paid
+- [ ] (e2e: every_tab_footer_total_shows_the_same_gross_figure) **Reconciliation check** (#971): open all five tabs for the same month → each of the four tabs that has a Gross column (every tab but **By Paid To**, whose Gross is `—` by design) shows the identical Gross figure in its footer **Total** row
+- [ ] (e2e: every_tab_footer_total_shows_the_same_expenses_figure) Reconciliation, all five tabs: each one's footer **Total** row shows the identical Expenses figure
+- [ ] (e2e: every_tab_footer_total_shows_the_same_net_figure) Reconciliation, the same four tabs as the Gross check: each one's footer **Total** row shows the identical Net figure
+- [ ] (e2e: orphaned_expense_amount_appears_in_the_by_horse_unattributed_row) **Unattributed-expense check** (#971): delete a paid expense from `/barn/dev-barn/expenses/[id]/delete` **without** checking "Also delete the collected record from Finances" (its `transactions` row survives with no `horse_expenses` row behind it) → back on Finances, that amount appears under **Unattributed** in the By Horse footer instead of silently disappearing
+- [ ] (e2e: orphaned_expense_amount_appears_in_the_by_paid_to_unattributed_row) That same amount appears under **Unattributed** in the By Paid To footer
+- [ ] (e2e: by_horse_unattributed_info_icon_explains_where_the_amount_came_from) Tap the ⓘ on **By Horse**'s **Unattributed** row → the explanation covers a paid lesson with no horse recorded, or an expense record whose original entry was deleted after being marked paid, and states that a barn-wide expense split across horses is never counted here (it appears in each horse's own row instead)
+- [ ] (e2e: by_paid_to_unattributed_info_icon_explains_where_the_amount_came_from) Tap the ⓘ on **By Paid To**'s **Unattributed** row → the explanation covers an expense record whose original entry was deleted after being marked paid
 
 Manage Barn (`/barn/dev-barn/settings`):
 
