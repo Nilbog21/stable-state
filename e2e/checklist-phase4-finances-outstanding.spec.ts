@@ -215,8 +215,12 @@ function sectionTotal(section: ReturnType<typeof outstandingIncome>) {
   return section.locator('p').nth(1)
 }
 
+/** rider2 also owns the two agreement charges, so the Type cell is what isolates the lesson. */
 function paidableLessonRow(page: Page) {
-  return outstandingIncome(page).locator('tbody tr').filter({ hasText: RIDER2_NAME })
+  return outstandingIncome(page)
+    .locator('tbody tr')
+    .filter({ hasText: RIDER2_NAME })
+    .filter({ has: page.getByRole('cell', { name: 'Lesson', exact: true }) })
 }
 
 /** Every breakdown table renders Expenses in accounting parens, so magnitude is the figure. */

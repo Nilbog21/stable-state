@@ -330,6 +330,9 @@ export async function addExpense(
  * `agreement_charges` row shape and differ only in the parent agreement's `kind`, which is
  * what the Outstanding tables render as the row's Type — so a spec that has to distinguish
  * "leases/boarding charges" needs both, and doesn't need a second builder to get one.
+ * `'board'` takes a different route to the same place: `CHECK(kind <> 'board' OR cadence =
+ * 'monthly')` rules out the `one_time` backdating trick, so the charge is generated for the
+ * current month as usual and then has its `period` moved back afterwards.
  *
  * Note for callers placing one of these in Outstanding: `getOutstandingCharges` filters
  * `period < firstOfCurrentMonth`, so a `monthsAgo: 0` charge never reads as outstanding
@@ -340,18 +343,31 @@ export async function addLeaseCharge(
   barn: SeededBarn,
   opts: When & { riderId: string; horseId: string; fee: number; kind?: 'lease' | 'board' }
 ): Promise<Agreement> {
-  return createAgreement(
+  const isBoard = opts.kind === 'board'
+  const when = resolveWhen(opts)
+  const agreement = await createAgreement(
     {
       barnId: barn.id,
       riderId: opts.riderId,
       horseId: opts.horseId,
       fee: opts.fee,
       kind: opts.kind ?? 'lease',
-      cadence: 'one_time',
-      startDate: resolveWhen(opts).toISOString().slice(0, 10),
+      cadence: isBoard ? 'monthly' : 'one_time',
+      startDate: when.toISOString().slice(0, 10),
     },
     supabase
   )
+
+  if (isBoard) {
+    // agreement_charges.period is CHECK-pinned to the 1st of its month.
+    const period = `${when.toISOString().slice(0, 7)}-01`
+    mustSucceed(
+      await supabase.from('agreement_charges').update({ period }).eq('agreement_id', agreement.id),
+      'backdate board charge period'
+    )
+  }
+
+  return agreement
 }
 
 export type HorseDocumentOptions = {
