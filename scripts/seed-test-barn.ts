@@ -140,7 +140,7 @@ async function run() {
   }
   console.log(`  Horses:   Apollo, Bella`)
   console.log(`  Tiers:    Standard ($80, default), Premium ($120)`)
-  console.log(`  Lessons:  9 (5 past, 1 today, 2 future; 1 group; all but 2 marked paid)`)
+  console.log(`  Lessons:  8 (5 past, 1 today, 2 future; 1 group; 4 marked paid)`)
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
   console.log(`  Lease:    1 unpaid (2 months backdated)`)
   console.log(`  Documents: 1 undated (Apollo, Coggins), 1 past-due reminder (Bella, Insurance Binder)`)

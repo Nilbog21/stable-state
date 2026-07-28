@@ -42,7 +42,7 @@ Open [http://localhost:3000](http://localhost:3000).
 | `DEV_EMAIL` | Reset script only | Your Google email — used by change-user.sh; must match the Google account you claim the seed invite with |
 | `DEV_NAME` | Reset script only | Your full name (first last) — split on first space for first/last name defaults in seed-account.sh |
 | `DEV_BARN` | Reset script only (optional) | Default barn slug for seed-account.sh (defaults to `dev-barn`) |
-| `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them. `seed-test-barn`, `teardown-test-barn`, and `change-user` accept a `--allow-prod` flag to deliberately bypass this check — see [Manual smoke-testing against a target project](#manual-smoke-testing-against-a-target-project). `run-checklist-suite` accepts the same flag with the same meaning, forwarding it to the `seed-test-barn`/`teardown-test-barn` calls it makes |
+| `DEV_SUPABASE_URL` | Reset script only | Must exactly match `NEXT_PUBLIC_SUPABASE_URL` — the destructive dev scripts (reset-db, seed-test-barn, teardown-test-barn, e2e-auth-users, seed-account, change-user) refuse to run otherwise, so `.env.local` can never be accidentally pointed at prod when running them. `seed-test-barn`, `teardown-test-barn`, `e2e-auth-users`, and `change-user` accept a `--allow-prod` flag to deliberately bypass this check — see [Manual smoke-testing against a target project](#manual-smoke-testing-against-a-target-project). `run-checklist-suite` accepts the same flag with the same meaning, applying it to its own in-process seeding and forwarding it to the `teardown-test-barn` call it makes |
 
 ### Dev database reset
 
@@ -212,7 +212,10 @@ Run it again anytime to switch roles or switch back to yourself.
 bash scripts/teardown-test-barn.sh --allow-prod <slug>
 ```
 
-Clean up the barn and its fixture auth users when you're done. `--allow-prod` only
+Clean up the barn when you're done. The three e2e logins are per project, not per barn,
+so they survive teardown — `bash scripts/e2e-auth-users.sh --allow-prod delete` removes
+those separately, and should be run once you're finished with the project entirely
+(their password is published in this repo). `--allow-prod` only
 skips the `DEV_SUPABASE_URL` dev-project check — it does not relax which barn or rows
 are touched: `teardown-test-barn.sh` refuses to delete any barn whose row isn't marked
 `is_test_barn` (only `seed-test-barn.sh` sets this), so a mistyped or misremembered
@@ -226,24 +229,29 @@ bash scripts/teardown-test-barn.sh --allow-prod --all
 ```
 
 This tears down every barn marked `is_test_barn` on the target project — still scoped
-by that same marker, never a blanket "every barn" wipe.
+by that same marker, never a blanket "every barn" wipe. `--prefix <p>` narrows that to
+test barns whose slug starts with `p`, which is how a checklist-suite run cleans up only
+its own barns rather than a concurrent run's.
 
 ### Running the checklist e2e suite against a target project
 
-`run-checklist-suite.sh` seeds its own throwaway barn, runs the Playwright checklist
-suite against it, and tears it back down. To point that whole cycle at a deployment
-instead of local dev, give it the origin and opt in with `--allow-prod`:
+`run-checklist-suite.sh` seeds a throwaway barn **per spec file** under a shared run
+prefix (`e2e-{epoch}-{RANDOM}`), runs the Playwright checklist suite against them, and
+tears every barn carrying that prefix back down. Seeding is the reset — a spec that
+mutates barn-wide state can't pollute or race another spec, because they never share a
+barn. To point that whole cycle at a deployment instead of local dev, give it the origin
+and opt in with `--allow-prod`:
 
 ```bash
+bash scripts/e2e-auth-users.sh --allow-prod create   # once per project, as above
 bash scripts/run-checklist-suite.sh --base-url https://<your-domain> --allow-prod --hold-open
 ```
 
 `--allow-prod` means the same thing here as in the scripts above — it bypasses the
-`DEV_SUPABASE_URL` check — and is simply forwarded to the `seed-test-barn.sh` and
-`teardown-test-barn.sh` calls this script makes. Without it those calls stay fail-closed,
-so a run can only ever touch a non-dev project deliberately. It does require `--base-url`,
-since otherwise the run would seed the target project and then drive `localhost:3000`,
-which reads that same target-pointed `.env.local`.
+`DEV_SUPABASE_URL` check. Without it the suite's own seeding and the teardown call stay
+fail-closed, so a run can only ever touch a non-dev project deliberately. It does require
+`--base-url`, since otherwise the run would seed the target project and then drive
+`localhost:3000`, which reads that same target-pointed `.env.local`.
 
 Note that `.env.local` is what selects the Supabase project — `--base-url` only says which
 origin to drive. Point `.env.local` at the target project before running, or the seeded
@@ -251,10 +259,10 @@ barn and the login cookies land on a different backend than the one serving `--b
 and every spec fails on auth.
 
 `--hold-open` prompts after the automated specs finish (pass or fail) and defers teardown
-until you press Enter, so you can work the manual checklist steps in that same seeded
-barn. Teardown still runs on Enter, on Ctrl-C, and on a failing suite. If the run is
-`SIGKILL`ed outright, the barn slug printed before Playwright starts is the name to hand
-to `teardown-test-barn.sh`.
+until you press Enter, so you can work the manual checklist steps in the seeded barns.
+Teardown still runs on Enter, on Ctrl-C, and on a failing suite. If the run is `SIGKILL`ed
+outright, the run prefix printed before Playwright starts is what to hand to
+`teardown-test-barn.sh --prefix <prefix>`.
 
 Other flags: `--interactive` for a headed run including `@visual` specs, and `--spec
 <path>` (repeatable) to scope the run to particular spec files instead of the full suite.

@@ -5,6 +5,8 @@
 // Modes:
 //   create  — idempotent; reset-db.ts calls this after wiping the dev project
 //   verify  — reports which are missing; seed-test-barn.ts calls this before seeding
+//   delete  — removes them again; the password is published in this repo, so a project that
+//             isn't dev (POST_RELEASE_TEST_CHECKLIST.md's prod run) must not keep them around
 //
 // Email/password provider must be enabled in the Supabase dashboard:
 // Authentication → Providers → Email (one-time manual step per project).
@@ -73,10 +75,26 @@ export async function createE2eAuthUsers(supabase: SupabaseClient): Promise<void
   }
 }
 
+/** Returns the emails that had an auth user to delete. */
+export async function deleteE2eAuthUsers(supabase: SupabaseClient): Promise<string[]> {
+  const deleted: string[] = []
+  for (const user of Object.values(E2E_USERS)) {
+    const [userId] = await findAuthUserIdsByEmails([user.email], supabase)
+    if (!userId) continue
+    mustSucceed(await supabase.from('profiles').delete().eq('user_id', userId), `delete ${user.email} profile`)
+    const { error } = await supabase.auth.admin.deleteUser(userId)
+    if (error) throw new Error(`delete auth user ${user.email}: ${error.message}`)
+    deleted.push(user.email)
+  }
+  return deleted
+}
+
 async function run() {
   if (!SUPABASE_URL) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
   if (!SERVICE_ROLE_KEY) throw new Error('SUPABASE_SERVICE_ROLE_KEY is required')
-  if (MODE !== 'create' && MODE !== 'verify') throw new Error('mode must be "create" or "verify"')
+  if (MODE !== 'create' && MODE !== 'verify' && MODE !== 'delete') {
+    throw new Error('mode must be "create", "verify", or "delete"')
+  }
   if (process.env.E2E_AUTH_USERS_ALLOW_PROD !== 'true') assertDevProject(SUPABASE_URL)
 
   const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
@@ -85,6 +103,12 @@ async function run() {
     const missing = await verifyE2eAuthUsers(supabase)
     if (missing.length > 0) throw new Error(formatMissingUsersError(missing))
     console.log(`All e2e auth users present: ${Object.values(E2E_USERS).map((u) => u.email).join(', ')}`)
+    return
+  }
+
+  if (MODE === 'delete') {
+    const deleted = await deleteE2eAuthUsers(supabase)
+    console.log(deleted.length ? `Done. Removed: ${deleted.join(', ')}` : 'No e2e auth users found.')
     return
   }
 

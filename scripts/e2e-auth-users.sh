@@ -5,10 +5,11 @@ cd "$(git rev-parse --show-toplevel)"
 
 usage() {
   cat >&2 <<'EOF'
-Usage: e2e-auth-users.sh <create|verify> [--allow-prod]
+Usage: e2e-auth-users.sh <create|verify|delete> [--allow-prod]
 
   create        Create (or password-reset) the three long-lived e2e auth logins
   verify        Exit non-zero naming any that are missing
+  delete        Remove them (and their profiles) again
   --allow-prod  Target a non-dev Supabase project
 EOF
 }
@@ -17,7 +18,7 @@ ALLOW_PROD=false
 MODE=""
 while [ $# -gt 0 ]; do
   case "$1" in
-    create|verify)
+    create|verify|delete)
       MODE="$1"
       shift
       ;;

@@ -12,7 +12,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 
 - [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 takes the barn slug as a required argument, e.g. `bash scripts/change-user.sh dev-barn`)
 - [ ] App running (dev server or Vercel preview) and reachable in a browser
-- [ ] Email provider enabled in the Supabase dashboard (required by `seed-test-barn.sh` in Phase 7)
+- [ ] Email provider enabled in the Supabase dashboard (required by the e2e auth logins `reset-db.sh` creates in Phase 1, which `seed-test-barn.sh` in Phase 7 then verifies exist)
 
 ## Phase 1 — Setup
 
