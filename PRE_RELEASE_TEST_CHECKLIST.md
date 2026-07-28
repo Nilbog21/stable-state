@@ -8,7 +8,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
 
-> **Automation tags:** in an audited section, each checkbox that asserts something carries exactly one of — (a bundled setup step, per the exception above, asserts nothing and so carries no tag)
+> **Automation tags:** in an audited section, every checkbox carries exactly one of — including a standalone setup step, which a spec automates alongside the assertions it sets up
 >
 > - `(e2e: <test name>)` — covered by that Playwright test in `e2e/`; run via `scripts/run-checklist-suite.sh`
 > - `(e2e-candidate)` — automatable, spec not written yet
@@ -231,7 +231,7 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e-candidate) On that same page, rider notes render read-only
 - [ ] (e2e-candidate) On that same page, the Edit link is visible
 - [ ] (e2e-candidate) On a lesson with no notes recorded at all, every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
-- [ ] Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
+- [ ] (e2e-candidate) Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
 - [ ] (e2e-candidate) The fee change appears on the detail page
 - [ ] (e2e-candidate) The horse notes from that same save appear on the detail page
 - [ ] (e2e-candidate) The rider notes from that same save appear on the detail page
