@@ -42,7 +42,7 @@ If `fable-N` already exists from a prior batch, reuse it: detach from any stale 
 
 ## Step 3 — Dispatch workers
 
-If a canary was agreed in Step 1, dispatch it alone and hold the rest of the batch until it merges; then fan out.
+If a canary was agreed in Step 1, dispatch it alone and hold the rest of the batch until it merges; then fan out. Fold what the canary teaches — batch-specific constraints, shared-fixture changes, corrected issue text — into the prompts of every subsequently dispatched worker.
 
 One background Opus subagent per active issue, working directory pinned to its fable worktree. The worker prompt must establish the headless contract, since the workflow skills assume an interactive user:
 
@@ -50,6 +50,7 @@ One background Opus subagent per active issue, working directory pinned to its f
 - The workflow skills will tell you to ask the user things. You have no user. When a skill needs an answer you can give from the issue text, the repo's conventions, or its own recommended default — give it and log it in the work log's accepted-deviations/log sections as usual. When it needs a judgment you cannot make, **end your turn** with a short question block: what you need decided, the options, your recommendation. Do not guess on: acceptance-criteria deviations, anything touching `supabase/migrations/`, scope mismatches between issue text and code.
 - Plan-mode and AskUserQuestion steps in the skills are not available to you — treat them as "end your turn with the plan/question and wait."
 - Full checklist-suite runs require the orchestrator's go-ahead first (Step 5's mutex) — end your turn and ask for the lock; single-spec runs need no lock.
+- `/finishIssue`'s merge is serialized fleet-wide (Step 5's merge slot) — before merging, end your turn and request the slot. Never merge on standing authorization alone, even when the chain was assigned end-to-end.
 - End every turn with a status block: current skill/step, outcome, and either `WAITING: <question>` or `DONE: <what completed>`.
 
 When a worker ends its turn, read the status block. Answer routine questions via SendMessage (the worker continues with context intact). When a worker finishes an issue, assign the next unstarted issue from the batch to its worktree.
