@@ -306,29 +306,30 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: no_gross_expenses_net_summary_boxes_remain_on_the_page) No Gross Income / Total Expenses / Net Income summary boxes appear above the Pending income line (#971 removed them, since their numbers didn't reconcile with any one breakdown table below)
 - [ ] (e2e: every_tab_shows_the_same_gross_expenses_net_columns) Every tab shows uniform **Gross | Expenses | Net** columns (`—` for a column a tab has no concept of)
 - [ ] (e2e: every_tab_footer_lists_the_reconciliation_rows_in_order) Every tab ends in a footer with **Subtotal / Unattributed / Outside this view / Total** rows, in that order
-- [ ] (e2e-candidate) **By Horse** is the default tab on page load (no `?tab=` needed)
-- [ ] (e2e-candidate) **By Horse** tab shows **Horse | Gross | Expenses | Net** columns
-- [ ] (e2e-candidate) By Horse's horse name is an underlined link (not just underlined on hover)
-- [ ] (e2e-candidate) Add an expense for a horse with a lesson this month → its Expenses column updates
-- [ ] (e2e-candidate) That same horse's Net column updates too
-- [ ] (e2e-candidate) A horse with `$0` expenses shows **—** (not `$0.00` or blank)
-- [ ] (e2e-candidate) A horse with expenses but no lessons this month still appears in the list, with `$0.00` Gross
-- [ ] (e2e-candidate) That same horse's Net is negative
-- [ ] (e2e-candidate) Click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` shows one combined table of lessons, leases/boarding charges, and expenses
-- [ ] (e2e-candidate) The horse drill-down's combined table is ordered by date ascending
-- [ ] (e2e-candidate) The horse drill-down's combined table has a **Type** column
-- [ ] (e2e-candidate) The horse drill-down's expense Amount/Split renders in parentheses (e.g. `($25.00)`)
-- [ ] (e2e-candidate) The horse drill-down's bottom **Net** figure matches this horse's Net on the By Horse tab
-- [ ] (e2e-candidate) The horse drill-down preserves the month param
-- [ ] (e2e-candidate) On page load, By Horse rows are sorted by **Horse** name ascending (A→Z)
-- [ ] (e2e-candidate) On page load, a ▲ appears next to By Horse's **Horse** header
-- [ ] (e2e-candidate) Tap the **Gross** header on By Horse → rows re-sort by that column ascending
-- [ ] (e2e-candidate) After tapping **Gross**, a ▲ appears on the Gross header (and disappears from Horse)
-- [ ] (e2e-candidate) Tapping a sort header does not change the URL (no `?sort=` param, no page reload)
-- [ ] (e2e-candidate) Tap the **Gross** header again → order reverses
-- [ ] (e2e-candidate) After that second tap, the indicator flips to ▼
-- [ ] (e2e-candidate) Tap the ⓘ next to a **Gross**/**Expenses**/**Net** header on any tab → shows explanatory text
-- [ ] (e2e-candidate) Tapping that ⓘ does **not** trigger a sort (the icon sits beside, not inside, the sort button)
+- [ ] (e2e: by_horse_is_the_default_tab_on_page_load) **By Horse** is the default tab on page load (no `?tab=` needed)
+- [ ] (e2e: by_horse_tab_shows_horse_gross_expenses_net_columns) **By Horse** tab shows **Horse | Gross | Expenses | Net** columns
+- [ ] (e2e: by_horse_horse_name_is_underlined_without_hovering) By Horse's horse name is an underlined link (not just underlined on hover)
+- [ ] (e2e: by_horse_expenses_column_grows_by_the_new_expense_amount) Add an expense for a horse with a lesson this month → its Expenses column updates
+- [ ] (e2e: by_horse_net_column_shrinks_by_the_new_expense_amount) That same horse's Net column updates too
+- [ ] (e2e: by_horse_shows_a_dash_for_a_horse_with_no_expenses) A horse with `$0` expenses shows **—** (not `$0.00` or blank)
+- [ ] (e2e: by_horse_lists_a_horse_with_expenses_and_no_lessons_at_zero_gross) A horse with expenses but no lessons this month still appears in the list, with `$0.00` Gross
+- [ ] (e2e: by_horse_net_is_negative_for_a_horse_with_expenses_and_no_lessons) That same horse's Net is negative
+- [ ] (e2e: horse_drilldown_combines_lessons_charges_and_expenses_in_one_table) Click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` shows one combined table of lessons, leases/boarding charges, and expenses
+- [ ] (e2e: horse_drilldown_rows_are_ordered_by_date_ascending) The horse drill-down's combined table is ordered by date ascending
+- [ ] (e2e: horse_drilldown_table_has_a_type_column) The horse drill-down's combined table has a **Type** column
+- [ ] (e2e: horse_drilldown_expense_amount_renders_in_parentheses) The horse drill-down's expense **Amount** renders in parentheses (e.g. `($25.00)`)
+- [ ] (e2e: horse_drilldown_expense_split_renders_in_parentheses) The horse drill-down's expense **Split** renders in parentheses too
+- [ ] (e2e: horse_drilldown_net_is_the_by_horse_net_less_the_horses_share_of_its_lessons_instructor_cuts) The horse drill-down's bottom **Net** figure equals this horse's Net on the By Horse tab **minus this horse's share of the instructor cut on each of its lessons that month** — a lesson's cut is split across its horses exactly as its fee is, so on a two-horse lesson the gap is half that lesson's cut, not all of it. The two figures are deliberately not the same number: #971 made the By Horse/By Rider summary figures pre-cut gross (`splitsGrossFee`), but left the drill-down's per-lesson rows net of each lesson's own snapshotted cut
+- [ ] (e2e: horse_drilldown_link_preserves_the_month_param) The horse drill-down preserves the month param
+- [ ] (e2e: by_horse_rows_load_sorted_by_horse_name_ascending) On page load, By Horse rows are sorted by **Horse** name ascending (A→Z)
+- [ ] (e2e: by_horse_horse_header_shows_an_ascending_indicator_on_load) On page load, a ▲ appears next to By Horse's **Horse** header
+- [ ] (e2e: by_horse_gross_header_tap_sorts_rows_by_gross_ascending) Tap the **Gross** header on By Horse → rows re-sort by that column ascending
+- [ ] (e2e: by_horse_gross_header_tap_moves_the_ascending_indicator_to_gross) After tapping **Gross**, a ▲ appears on the Gross header (and disappears from Horse)
+- [ ] (e2e: by_horse_gross_header_tap_does_not_change_the_url) Tapping a sort header does not change the URL (no `?sort=` param, no page reload)
+- [ ] (e2e: by_horse_second_gross_header_tap_reverses_the_order) Tap the **Gross** header again → order reverses
+- [ ] (e2e: by_horse_second_gross_header_tap_flips_the_indicator_to_descending) After that second tap, the indicator flips to ▼
+- [ ] (e2e: gross_header_info_icon_reveals_its_explanation) Tap the ⓘ next to a **Gross**/**Expenses**/**Net** header on any tab → shows explanatory text
+- [ ] (e2e: gross_header_info_icon_tap_does_not_trigger_a_sort) Tapping that ⓘ does **not** trigger a sort (the icon sits beside, not inside, the sort button)
 - [ ] (e2e-candidate) **By Tier** tab (no longer default, still reachable via the pill) lists your new tiers and seeded tiers
 - [ ] (e2e-candidate) By Tier's column order is **Tier | Gross | Expenses | Net** — no Price column, no Lessons count column
 - [ ] (e2e-candidate) By Tier's Expenses column (renamed from "Instructor Cut") sums that tier's lessons' own snapshotted cuts

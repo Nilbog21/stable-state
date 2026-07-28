@@ -337,11 +337,17 @@ export async function addExpense(
  * Note for callers placing one of these in Outstanding: `getOutstandingCharges` filters
  * `period < firstOfCurrentMonth`, so a `monthsAgo: 0` charge never reads as outstanding
  * however unpaid it is — use `monthsAgo: 1` or `2`.
+ *
+ * `paid` marks the charge collected, the mirror of the above: `getPaidCharges` filters
+ * `collected = true`, so an unpaid charge is invisible to every income breakdown and
+ * drill-down. Marked after creation rather than at it, and by updating the ledger row
+ * directly, for the same reasons `addPaidLesson` does — the creating RPC owns transaction
+ * creation, and `updateChargePaymentType` takes no injectable client.
  */
 export async function addLeaseCharge(
   supabase: SupabaseClient,
   barn: SeededBarn,
-  opts: When & { riderId: string; horseId: string; fee: number; kind?: 'lease' | 'board' }
+  opts: When & { riderId: string; horseId: string; fee: number; kind?: 'lease' | 'board'; paid?: boolean }
 ): Promise<Agreement> {
   const isBoard = opts.kind === 'board'
   const when = resolveWhen(opts)
@@ -381,6 +387,22 @@ export async function addLeaseCharge(
         .update({ occurred_at: `${period}T00:00:00Z` })
         .eq('agreement_charge_id', charge.id),
       'backdate board charge transaction'
+    )
+  }
+
+  if (opts.paid) {
+    // Looked up rather than threaded out of the board branch above, so this block reads
+    // the same for both kinds and stays independent of that branch's own update.
+    const charge = mustSucceed<{ id: string }>(
+      await supabase.from('agreement_charges').select('id').eq('agreement_id', agreement.id).single(),
+      'look up agreement charge to mark paid'
+    )
+    mustSucceed(
+      await supabase
+        .from('transactions')
+        .update({ collected: true, payment_type: 'venmo' })
+        .eq('agreement_charge_id', charge.id),
+      'mark agreement charge paid'
     )
   }
 
