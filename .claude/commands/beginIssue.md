@@ -76,7 +76,7 @@ Re-run with the chosen issue number as the argument — the branch may not exist
 
 **Select the worktree:**
 - If Step 0's `worktree` is non-empty, use `worktree_path`.
-- Otherwise, ask: "Which worktree do you want to use — {one of Step 0's `worktrees`}?" and wait for the answer. The worktree path is that name under the `stable-state-worktrees` directory.
+- Otherwise, ask: "Which worktree do you want to use — {one of Step 0's `worktrees`}?" and wait for the answer. The worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
 
 **Pull latest and create issue branch:**
 
