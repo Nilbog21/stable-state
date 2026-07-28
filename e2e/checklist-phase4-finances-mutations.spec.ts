@@ -15,8 +15,11 @@ import type { Agreement, Horse, LessonTier } from '@/lib/db/types'
 // pre-mutation baselines off the page, so no test knows an absolute figure it didn't read.
 // The blocks themselves are ordered: the trainer removal is destructive and runs last.
 
-const STANDARD_CUT = 25
-// Deliberately unequal to STANDARD_CUT: the comped lesson's whole signature is that its
+// Not 25, which is barns.default_instructor_cut. create_lesson_with_participants falls back
+// to that default whenever the tier name fails to resolve, so a value distinct from it makes
+// a tier-name typo fail loudly instead of silently producing the right number anyway.
+const STANDARD_CUT = 30
+// Deliberately unequal to STANDARD_CUT too: the comped lesson's whole signature is that its
 // tier's own cut lands with no fee to offset it, and equal cuts would let a test pass
 // against the wrong tier's number.
 const COMPED_CUT = 40
@@ -270,6 +273,14 @@ test.describe.serial('booking a comped lesson', () => {
    * tab and no Gross assertion could tell inclusion from omission. Its cut, however, lands
    * in every tab's barn-wide Expenses total, so each tab's Total Net drops by exactly the
    * cut — which is precisely "not dropped, and not clamped to zero".
+   *
+   * Worth knowing about the "every tab" part: finances/page.tsx derives one barn-wide
+   * totalGross/totalExpenses and hands the same `total` to every tab's
+   * buildReconciliationColumn, so the four Total Net figures are equal by construction, not
+   * by coincidence. Reading all four therefore re-reads one number four times rather than
+   * cross-checking four independent computations — that identity is the #971 reconciliation
+   * check's own claim, and a separate checkbox. What this test does establish is that the
+   * comped lesson reaches that shared total at its full cut.
    */
   test('comped_lesson_reduces_every_tabs_total_net_by_its_instructor_cut @manager', async ({ page }) => {
     expect(await totalNetPerTab(page)).toEqual(
@@ -285,6 +296,7 @@ test.describe.serial('booking a comped lesson', () => {
 /** Sets the charge's Payment Type on its own agreement page, as the checklist step does. */
 async function collectLeaseCharge(page: Page): Promise<void> {
   await page.goto(`/barn/${barn.slug}/agreements/${seeded.lease.id}?kind=lease`)
+  // `.first()` is unambiguous here: a one_time lease agreement carries exactly one charge.
   const chargeRow = page.locator('main table tbody tr').first()
   await chargeRow.getByRole('combobox').selectOption('venmo')
   // A wait, not an assertion: SavedIndicator renders only once the server action has
@@ -341,9 +353,10 @@ test.describe.serial('collecting a lease charge', () => {
   // are independently regressable.
   //
   // URL first as the navigation wait, heading second as the sole assertion — the inverse of
-  // the obvious order, and deliberate. A link carrying a dead agreement id lands on exactly
-  // this URL and renders a 404, so matching the URL is what proves the link points at the
-  // right agreement, while the rendered heading is what "working" actually means.
+  // the obvious order, and deliberate. The href is built from the charge row's own
+  // agreementId, so a *wrong* id lands on a different URL and the URL match catches it;
+  // a *right* id whose record no longer resolves reaches this very URL and renders a 404,
+  // which only the heading catches. The URL pins which agreement, the heading pins working.
   test('horse_drilldown_charge_row_links_back_to_its_agreement @manager', async ({ page }) => {
     await page.goto(horseDrilldownUrl(seeded.apple.id))
     await leaseDrilldownRow(page).getByRole('link').click()
