@@ -6,42 +6,31 @@ You are reviewing a pull request for a completed `/beginIssue` session. This ski
 
 ## Step 0 — Worktree and issue detection
 
-**Detect worktree:**
-
 This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
 
-Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
+```
+bash scripts/workflow-context.sh
+```
 
-If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.
+Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it.
+
+- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
+- `issue` empty → ask "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer, then re-run the script with that number as its argument so `base` is derived too.
+
+Record `worktree`, `worktree_path`, `issue` as `{N}`, and `base` as the base branch.
 
 All subsequent commands must run inside this worktree using absolute paths.
 
-**Detect issue number from branch:**
-Run:
-```
-git -C {worktree-path} rev-parse --abbrev-ref HEAD
-```
-
-If the branch name matches the format `{N}-{slug}` (leading digits followed by a hyphen), extract `N` as the issue number.
-
-If the branch does not match this format, ask: "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer.
-
 ---
 
-## Step 1 — Determine base branch and rebase
+## Step 1 — Rebase onto the base branch
 
-**Determine base branch:**
-Fetch the issue:
-```
-gh issue view {N} --json number,title,labels,body
-```
-
-If the issue has a `patch-N` label (e.g. `patch-3`), the base branch is `main`. Otherwise, if the issue has a `release-N` label (e.g. `release-1`), the base branch is `release/release-N`. Otherwise the base branch is `main`.
+Step 0's `base` is the base branch, derived from the issue's labels by `scripts/workflow-context.sh` — the one place that rule lives.
 
 **Fetch and rebase:**
 ```
 git -C {worktree-path} fetch origin
-git -C {worktree-path} rebase origin/{base-branch}
+git -C {worktree-path} rebase origin/{base}
 ```
 
 If the rebase completes cleanly, continue.
@@ -76,7 +65,7 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 
 **`CI: pass`** — proceed directly to the review, do not ask for confirmation.
 
-**`CI: conflict — rebase needed`** — the PR is `CONFLICTING`, so GitHub will not trigger a workflow run for this branch at all until it's resolved. This is *not* a stuck runner and waiting longer will never help. Rebase onto the base branch (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base-branch}`, resolving conflicts per Step 1's rules), push (`git -C {worktree-path} push --force-with-lease`), then re-run the script.
+**`CI: conflict — rebase needed`** — the PR is `CONFLICTING`, so GitHub will not trigger a workflow run for this branch at all until it's resolved. This is *not* a stuck runner and waiting longer will never help. Rebase onto the base branch (`git -C {worktree-path} fetch origin && git -C {worktree-path} rebase origin/{base}`, resolving conflicts per Step 1's rules), push (`git -C {worktree-path} push --force-with-lease`), then re-run the script.
 
 **`CI: timeout after 5m — {checks}`** — stop and ask the user: "CI hasn't completed after 5 minutes — could you check the Actions tab / PR checks and let me know what's going on? (e.g. stuck runner, workflow didn't trigger, etc.)" Wait for their answer before re-running the script or taking further action.
 
@@ -218,7 +207,7 @@ Then move to the next finding, or re-ask "anything else?" if that was the last o
      If coverage fails, read the output to identify uncovered lines. Write tests to cover those lines. Re-run coverage until it passes.
   3. Run the documentation check. Inspect the diff between the base branch and HEAD:
      ```
-     git -C {worktree-path} diff {base-branch}...HEAD -- src/
+     git -C {worktree-path} diff {base}...HEAD -- src/
      ```
      Check whether any of the following changed in a way that affects documentation:
      - New or renamed routes, pages, or API endpoints

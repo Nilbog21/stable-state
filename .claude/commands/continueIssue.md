@@ -6,19 +6,18 @@ You are determining the next step in an issue's `/beginIssue` → `/reviewIssue`
 
 ## Step 0 — Detect worktree, branch, and issue
 
-**Detect worktree:**
-
 This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
 
-Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
-
-If not inside one of these worktrees, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer.
-
-**Detect issue number from branch:**
 ```
-git rev-parse --abbrev-ref HEAD
+bash scripts/workflow-context.sh
 ```
-If the branch name matches `{N}-{slug}` (leading digits followed by a hyphen), record `N`. If it doesn't, tell the user no issue branch was detected here and stop — `/continueIssue` only operates on an existing issue branch; there's no argument form, cd into the right worktree/branch first.
+
+Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it.
+
+- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
+- `issue` empty → tell the user no issue branch was detected here and stop. `/continueIssue` only operates on an existing issue branch; there's no argument form, cd into the right worktree/branch first.
+
+Record `worktree`, `worktree_path`, `issue` as `{N}`, and `pr` — Step 2 rule 3 reads it.
 
 ---
 
@@ -45,9 +44,9 @@ Evaluate in this order — stop at the first rule that matches:
    - If `state` is `CLOSED`: `/finishIssue` already merged and closed this issue and only kept the file around for its Follow-ups → next step is `/grillMe specs/issue-{N}.md`. Reason: "Issue closed, {count} follow-up(s) unfiled → grillMe."
    - If `state` is `OPEN`: Follow-ups are just accumulating for later and don't affect routing — fall through to the status-marker check below.
 
-3. **Status marker `in-progress`:** check for an existing PR — `gh pr view --json number,isDraft`.
-   - PR exists → next step is `/reviewIssue`. Reason: "in-progress, PR #{pr} open → review."
-   - No PR exists → next step is `/beginIssue` (no arguments). Reason: "in-progress, no PR yet → resume plan/implementation." `/beginIssue`'s own Step 0 resume logic (existing branch, no unresolved Open items) picks this up correctly.
+3. **Status marker `in-progress`:** check Step 0's `pr`.
+   - Non-empty → next step is `/reviewIssue`. Reason: "in-progress, PR #{pr} open → review."
+   - Empty → next step is `/beginIssue` (no arguments). Reason: "in-progress, no PR yet → resume plan/implementation." `/beginIssue`'s own Step 0 resume logic (existing branch, no unresolved Open items) picks this up correctly.
 
 4. **Status marker `in-review`:** next step is `/testIssue`. Reason: "in-review, review round clean → testIssue."
 

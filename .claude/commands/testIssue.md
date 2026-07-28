@@ -8,29 +8,27 @@ You are testing a pull request that has already passed `/reviewIssue`'s automate
 
 **Kill lingering loops:** a `/loop` or `ScheduleWakeup` from earlier work in the session can still be pending when `/testIssue` starts. (Both are Claude Code harness features for scheduling repeat work, not project tooling — nothing in this repo depends on them.) Before anything else, call `ScheduleWakeup` with `stop: true` to cancel it. This is a no-op if none is pending — don't announce it either way, just do it. (`/reviewIssue` is not a source of these: it runs its review agents in the foreground and forbids wrapping that wait in a wakeup poll.)
 
-**Detect worktree:**
+**Detect worktree, issue, and PR:**
 
 This project is developed across parallel git worktrees — see README.md's "Development worktrees" section for what they are, where they live, how their `.env.local` is arranged, and the port each one uses.
 
-Check `pwd`. If the path contains `stable-state-worktrees/alpha`, `stable-state-worktrees/beta`, `stable-state-worktrees/gamma`, `stable-state-worktrees/delta`, or `stable-state-worktrees/epsilon`, record that as the active worktree.
+```
+bash scripts/workflow-context.sh
+```
 
-If not inside a worktree, ask: "Which worktree do you want to use — **alpha**, **beta**, **gamma**, **delta**, or **epsilon**?" and wait for the answer. The worktree path is `../stable-state-worktrees/{alpha|beta|gamma|delta|epsilon}` resolved from `git rev-parse --show-toplevel`.
+Parse the `key=value` lines it prints. It never fails — a field it couldn't determine comes back empty, because only this session can prompt for it.
+
+- `worktree` empty → ask "Which worktree do you want to use — {one of `worktrees`}?" and wait for the answer; the worktree path is that name under the `stable-state-worktrees` directory. Re-run the script from there.
+- `issue` empty → ask "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer, then re-run the script with that number as its argument so `base` is derived too.
+
+Record `worktree`, `worktree_path`, `port`, `issue` as `{N}`, `pr` as `{pr}`, and `base` — `{base}` is used later by Step 4's staleness check and mechanical e2e check.
 
 All subsequent commands must run inside this worktree using absolute paths.
 
-**Detect issue number from branch:**
-Run:
+Fetch the PR URL for the printouts below:
 ```
-git -C {worktree-path} rev-parse --abbrev-ref HEAD
+gh pr view --json url -q .url
 ```
-
-If the branch name matches the format `{N}-{slug}` (leading digits followed by a hyphen), extract `N` as the issue number. If it doesn't, ask: "I couldn't detect an issue number from the branch name. What issue number is this work for?" Wait for the answer.
-
-**Fetch PR context:**
-```
-gh pr view --json number,url,headRefName,baseRefName
-```
-Record `{pr}` (PR number), `{PR URL}`, and `{base}` (`baseRefName`) — `{base}` is used later by Step 4's staleness check and mechanical e2e check.
 
 **Kick off Step 4's analysis now, in parallel:** fetch `gh issue view {N} --json body` and `gh pr diff`, and derive the ordered acceptance-criteria verification-item list exactly as described in Step 4 below. Do this work alongside Steps 1–3 — it doesn't depend on the preview being live. Hold the result silently; nothing from this gets printed until Step 4 is reached. When Step 4 is reached, use this pre-derived list rather than re-fetching or re-deriving it.
 
@@ -88,15 +86,9 @@ Continue immediately to Step 3.
 
 ## Step 3 — Start (or reuse) the local dev server
 
-PR previews are no longer auto-deployed on Vercel for issue/patch branches, so testing happens against a local dev server instead. Each worktree has a fixed port (canonical list: README.md's "Development worktrees" section):
+PR previews are no longer auto-deployed on Vercel for issue/patch branches, so testing happens against a local dev server instead. Each worktree has a fixed port — Step 0's `port`.
 
-- alpha → 3001
-- beta → 3002
-- gamma → 3003
-- delta → 3004
-- epsilon → 3005
-
-Check whether a server is already responding on the active worktree's port:
+Check whether a server is already responding on it:
 ```
 curl -sf http://localhost:{port} -o /dev/null
 ```
@@ -113,7 +105,7 @@ timeout 60 bash -c 'until curl -sf http://localhost:{port} -o /dev/null; do slee
 ```
 If that exits non-zero (the server never came up within a minute), print the tail of `/tmp/testissue-{worktree}.log` and **stop**.
 
-(Nice-to-have, not built: the browser tab title reflecting the worktree, e.g. "test-alpha" — `next dev` has no flag for this since it's the page's own `<title>` metadata, not a server option. Would need a small conditional in the root layout keyed off an env var if ever wanted.)
+(Nice-to-have, not built: the browser tab title reflecting the worktree, e.g. "test-{worktree}" — `next dev` has no flag for this since it's the page's own `<title>` metadata, not a server option. Would need a small conditional in the root layout keyed off an env var if ever wanted.)
 
 Print:
 ```
@@ -133,7 +125,7 @@ Use the verification-item list already derived back in Step 0. (If for any reaso
 
 Derivation rule: from the issue body's acceptance-criteria checklist, identify the items that specifically require **visual or manual verification** — things a human needs to eyeball in the running preview (UI rendering, interactive states, computed values shown on screen) — and skip items that are purely backend/logic and already covered by the automated test suite. Additionally, scan the PR diff for user-facing changes not explicitly called out in the acceptance criteria (new components, changed copy, new UI states, altered layouts) and add those as extra verification items. Combine both into a single ordered list.
 
-If an item recommends running the local checklist e2e suite (`npm run test:checklist:auto` / `scripts/run-checklist-suite.sh`), print the worktree-specific command instead of the bare npm alias: `bash scripts/run-checklist-suite.sh --base-url http://localhost:{port}`, using the port from Step 3's table. The npm alias defaults to `localhost:3000`, so it silently fails to reach the server on any worktree but the one assigned to port 3000.
+If an item recommends running the local checklist e2e suite (`npm run test:checklist:auto` / `scripts/run-checklist-suite.sh`), print the worktree-specific command instead of the bare npm alias: `bash scripts/run-checklist-suite.sh --base-url http://localhost:{port}`, using Step 0's `port`. The npm alias defaults to `localhost:3000`, so it silently fails to reach the server on any worktree but the one assigned to port 3000.
 
 **Stale-branch check before running the checklist suite:** whenever the checklist suite command above is about to be printed, first run `git -C {worktree-path} fetch origin {base} && git -C {worktree-path} rev-list HEAD..origin/{base} --count`. If the count is nonzero, print a warning before the command: "This branch is {N} commits behind `origin/{base}` — checklist-suite failures may be stale fixes from `{base}` reappearing as noise, not new regressions. Consider `git -C {worktree-path} merge origin/{base}` before trusting the results (a merge, not a rebase, so no force-push is needed)." This is advisory only — print the checklist-suite command either way and let the user decide whether to catch up first.
 
@@ -153,7 +145,7 @@ If it passes, just note in the printed summary that it ran clean — no user pro
 
 For each item, one at a time:
 
-1. Print a short, specific prompt describing exactly what to check and where. When the check involves visiting a page, include the full URL (`http://localhost:{port}{path}`, using the port recorded in Step 3), not just the page name — e.g. "Visit http://localhost:{port}/barn/{slug}/settings/tiers — edit a tier's price and confirm the amber warning appears when the price changes and disappears when it matches the original." Print this as plain text, never via `AskUserQuestion` — its selection UI doesn't let the user click the URL, and these prompts always need a live browser check, not a choice among fixed options.
+1. Print a short, specific prompt describing exactly what to check and where. When the check involves visiting a page, include the full URL (`http://localhost:{port}{path}`, using Step 0's `port`), not just the page name — e.g. "Visit http://localhost:{port}/barn/{slug}/settings/tiers — edit a tier's price and confirm the amber warning appears when the price changes and disappears when it matches the original." Print this as plain text, never via `AskUserQuestion` — its selection UI doesn't let the user click the URL, and these prompts always need a live browser check, not a choice among fixed options.
 2. Wait for the user's freeform response.
 3. **If the user confirms it's correct:** if this item came from the carried-over deferred list, remove its entry from `specs/issue-{N}.md` (it's resolved). Move to the next item. Treat a bare `c` or `y` (case-insensitive) as confirmation, same as an explicit "yes"/"confirmed"/"looks good".
 4. **If the user reports a problem:** first check they were actually looking at this worktree's server, *then* classify it.
