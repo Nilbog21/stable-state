@@ -381,19 +381,20 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: tapping_net_header_moves_the_ascending_indicator_to_net) After tapping **Net** on By Instructor, a ▲ appears on the Net header (and disappears from Trainer)
 - [ ] (e2e: tapping_net_header_twice_reverses_the_row_order) Tap the **Net** header on By Instructor again → order reverses
 - [ ] (e2e: tapping_net_header_twice_flips_the_indicator_to_descending) After that second tap on By Instructor, the indicator flips to ▼
-- [ ] (e2e-candidate) Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it)
-- [ ] (e2e-candidate) That comped lesson's negative net renders in parentheses, e.g. `($25.00)`, not with a leading minus sign
-- [ ] (e2e-candidate) That comped lesson is still included in every tab's Gross/Net totals (not dropped or clamped to zero)
-- [ ] (e2e-candidate) Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, **By Tier**'s footer **Outside this view** row for Gross increases by the charge amount (a charge has no tier)
-- [ ] (e2e-candidate) Same charge: **By Instructor**'s footer **Outside this view** row for Gross also increases by the charge amount (a charge has no instructor)
-- [ ] (e2e-candidate) Same charge: **By Horse** (Apple)'s Gross total includes the full charge amount directly (a charge is horse-tied)
-- [ ] (e2e-candidate) Drilling into Apple's row shows the charge as a row in the combined table with a working link back to the agreement
-- [ ] (e2e-candidate) Same charge: **By Rider** (Dana)'s Gross total includes the full charge amount directly (a charge is rider-tied)
-- [ ] (e2e-candidate) On that trainer's member detail page, tap **Remove** and confirm the browser prompt after they've instructed a paid lesson → you're redirected to the Members list
-- [ ] (e2e-candidate) The removed trainer no longer appears on the Members list
-- [ ] (e2e-candidate) Back on Finances, that lesson's fee is still counted, now folded into **By Instructor**'s footer **Unattributed** row
-- [ ] (e2e-candidate) By Instructor no longer shows a "No instructor" body row for that lesson
-- [ ] (e2e-candidate) Tap the **Unattributed** row's ⓘ on By Instructor → the explanation covers a removed instructor
+- [ ] (e2e: comped_lesson_tier_row_net_is_negative) Mark a $0 (comped) lesson paid → its net contribution is negative (cut with no fee to offset it)
+- [ ] (e2e: comped_lesson_tier_row_net_renders_in_parentheses) That comped lesson's negative net renders in parentheses, e.g. `($25.00)`, not with a leading minus sign
+- [ ] (e2e: comped_lesson_reduces_every_tabs_total_net_by_its_instructor_cut) That comped lesson is still included in every tab's Gross/Net totals (not dropped or clamped to zero)
+- [ ] (e2e: paid_lease_charge_raises_by_tier_outside_this_view_gross) Mark the lease's first charge as paid (`/barn/dev-barn/agreements/[id]` → set Payment Type) → back on Finances, **By Tier**'s footer **Outside this view** row for Gross increases by the charge amount (a charge has no tier)
+- [ ] (e2e: paid_lease_charge_raises_by_instructor_outside_this_view_gross) Same charge: **By Instructor**'s footer **Outside this view** row for Gross also increases by the charge amount (a charge has no instructor)
+- [ ] (e2e: paid_lease_charge_raises_the_leased_horses_by_horse_gross) Same charge: **By Horse** (Apple)'s Gross total includes the full charge amount directly (a charge is horse-tied)
+- [ ] (e2e: horse_drilldown_shows_the_paid_charge_as_a_row) Drilling into Apple's row shows the charge as a row in the combined table
+- [ ] (e2e: horse_drilldown_charge_row_links_back_to_its_agreement) That same charge row carries a working link back to the agreement
+- [ ] (e2e: paid_lease_charge_raises_the_leasing_riders_by_rider_gross) Same charge: **By Rider** (Dana)'s Gross total includes the full charge amount directly (a charge is rider-tied)
+- [ ] (e2e: removing_a_trainer_redirects_to_the_members_list) On that trainer's member detail page, tap **Remove** and confirm the browser prompt after they've instructed a paid lesson → you're redirected to the Members list
+- [ ] (e2e: removed_trainer_no_longer_appears_on_the_members_list) The removed trainer no longer appears on the Members list
+- [ ] (e2e: removed_instructors_lesson_fee_folds_into_by_instructor_unattributed) Back on Finances, that lesson's fee is still counted, now folded into **By Instructor**'s footer **Unattributed** row
+- [ ] (e2e: by_instructor_has_no_no_instructor_body_row_after_the_removal) By Instructor no longer shows a "No instructor" body row for that lesson
+- [ ] (e2e: by_instructor_unattributed_info_icon_explains_a_removed_instructor) Tap the **Unattributed** row's ⓘ on By Instructor → the explanation covers a removed instructor
 - [ ] (e2e: by_paid_to_tab_shows_recipient_gross_expenses_net_columns) **By Paid To** tab shows **Recipient | Gross | Expenses | Net** columns
 - [ ] (e2e: by_paid_to_gross_and_net_are_always_a_dash) By Paid To's Gross and Net are always `—` (a recipient has no revenue concept)
 - [ ] (e2e: by_paid_to_expenses_column_is_the_recipients_combined_total) By Paid To's Expenses column (renamed from "Expense Amount") is the recipient's total
