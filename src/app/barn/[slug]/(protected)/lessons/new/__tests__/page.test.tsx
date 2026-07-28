@@ -10,6 +10,7 @@ vi.mock('@/lib/db/barns', () => ({
 
 vi.mock('@/lib/db/horses', () => ({
   getHorsesByBarn: vi.fn(),
+  resolveExhaustionThresholds: vi.fn().mockReturnValue({ high: 11, moderate: 5 }),
 }))
 
 vi.mock('@/lib/db/barn-memberships', () => ({
@@ -30,6 +31,7 @@ vi.mock('next/navigation', () => ({
 vi.mock('@/app/actions/lessons', () => ({
   submitLesson: vi.fn(),
   getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}),
+  getScheduleRangeForBarn: vi.fn().mockResolvedValue([]),
 }))
 
 vi.mock('@/lib/db/lesson-tiers', () => ({

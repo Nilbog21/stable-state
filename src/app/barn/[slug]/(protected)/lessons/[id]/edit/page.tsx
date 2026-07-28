@@ -3,10 +3,10 @@ import { getAuthenticatedUser } from '@/lib/db/auth'
 import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getInstructorsByBarn, getUserMembership, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
-import { getHorsesByBarn } from '@/lib/db/horses'
+import { getHorsesByBarn, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getSeriesById } from '@/lib/db/lesson-series'
-import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn } from '@/app/actions/lessons'
+import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn, getScheduleRangeForBarn } from '@/app/actions/lessons'
 import { getHorseAttentionReasons } from '@/lib/lesson-authorization'
 import { LessonForm } from '../../LessonForm'
 import { StopSeriesButton } from '../../StopSeriesButton'
@@ -78,6 +78,8 @@ export default async function EditLessonPage({
 
   const update = updateLessonAction.bind(null, lesson.id, barn.slug, barn.id)
   const getProjectedExhaustion = getProjectedExhaustionForBarn.bind(null, barn.slug, lesson.id)
+  const getScheduleRange = getScheduleRangeForBarn.bind(null, barn.slug)
+  const thresholdsByHorseId = Object.fromEntries(horsesForForm.map((h) => [h.id, resolveExhaustionThresholds(h, barn)]))
 
   const initialNotes = {
     horses: lesson.lesson_horses
@@ -115,6 +117,8 @@ export default async function EditLessonPage({
         action={update}
         initialNotes={initialNotes}
         getProjectedExhaustion={getProjectedExhaustion}
+        getScheduleRange={getScheduleRange}
+        thresholdsByHorseId={thresholdsByHorseId}
         hasHorseIssue={attentionReasons.length > 0}
       />
     </main>

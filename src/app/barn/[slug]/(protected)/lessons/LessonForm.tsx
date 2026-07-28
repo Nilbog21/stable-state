@@ -1,10 +1,13 @@
 'use client'
 
 import { useActionState, useState, useEffect } from 'react'
-import type { Horse, LessonDetail, LessonTier, LessonType } from '@/lib/db/types'
+import type { Horse, LessonDetail, LessonTier, LessonType, ScheduleItem } from '@/lib/db/types'
 import { DateHourPicker } from './DateHourPicker'
 import { useNavigationBlocker } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
+import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
+import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
+import { addDays, localToday } from '@/lib/local-day'
 import { Button } from '@/components/ui/Button'
 
 type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>
@@ -53,6 +56,8 @@ export function LessonForm({
   initialLesson,
   initialNotes,
   getProjectedExhaustion,
+  getScheduleRange,
+  thresholdsByHorseId = {},
   hasHorseIssue = false,
 }: {
   mode: 'new' | 'edit'
@@ -70,6 +75,10 @@ export function LessonForm({
     riders: Array<{ membershipId: string; name: string; rider_notes: string | null; private_notes: string | null }>
   }
   getProjectedExhaustion?: (targetDateIso: string, horseIds: string[]) => Promise<ExhaustionByHorseId>
+  /** #1019 — one read per displayed month, feeding the date field's conflict calendar.
+   *  Omitted (as in existing tests) leaves the plain native date input in place. */
+  getScheduleRange?: (fromDate: string, toDate: string) => Promise<ScheduleItem[]>
+  thresholdsByHorseId?: Record<string, { high: number; moderate: number }>
   hasHorseIssue?: boolean
 }) {
   const defaultTier = tiers.find(t => t.is_default) ?? tiers[0] ?? null
@@ -138,6 +147,10 @@ export function LessonForm({
   const [notesDirty, setNotesDirty] = useState(false)
   const [lessonAt, setLessonAt] = useState('')
   const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
+  const [calendarMonth, setCalendarMonth] = useState(
+    (initialLesson ? parseInitialDate(initialLesson.lesson_at) : localToday()).slice(0, 7)
+  )
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
 
   const { setDirty, setMessage } = useNavigationBlocker()
   const feeIsZero = fee !== '' && Number(fee) === 0
@@ -180,6 +193,18 @@ export function LessonForm({
     })
     return () => { cancelled = true }
   }, [lessonAt, getProjectedExhaustion, horses])
+
+  // One fetch per displayed month, widened by the exertion window's 3 days at each end so
+  // the grid's spill-over cells still get a correct ±3-day sum. `to` is exclusive.
+  useEffect(() => {
+    if (!getScheduleRange) return
+    const grid = getMonthGrid(calendarMonth)
+    let cancelled = false
+    getScheduleRange(addDays(grid[0], -3), addDays(grid[41], 4)).then((items) => {
+      if (!cancelled) setScheduleItems(items)
+    })
+    return () => { cancelled = true }
+  }, [calendarMonth, getScheduleRange])
 
   function flash(keys: string[]) {
     if (keys.length === 0) return
@@ -237,6 +262,35 @@ export function LessonForm({
   const selectedTier = tiers.find(t => t.id === selectedId) ?? null
   const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
   const isPastLesson = isPastLessonAt(lessonAt)
+
+  const selectedRiderIds = lessonType === 'normal'
+    ? (normalRiderId ? [normalRiderId] : [])
+    : [...checkedRiderIds]
+  // Falls back to midnight only for the first render, before DateHourPicker's mount effect
+  // reports a lessonAt — by the time a horse is selected the real hour is in hand.
+  const selectedHour = lessonAt ? new Date(lessonAt).getHours() : 0
+  const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
+    selectedHorseIds: [...checkedHorseIds],
+    selectedRiderIds,
+    hour: selectedHour,
+    thresholdsByHorseId,
+    todayStr: localToday(),
+    excludeLessonId: initialLesson?.id ?? null,
+  })
+
+  const horseNameById = new Map(horses.map(h => [h.id, h.name]))
+  const riderNameById = new Map(riders.map(r => [r.id, r.name]))
+
+  // Expenses and events carry a server-built label; lessons don't, because this form already
+  // holds the horse and rider names their ids resolve to.
+  function describeScheduleItem(scheduleItem: ScheduleItem): string {
+    if (scheduleItem.label) return scheduleItem.label
+    const names = [
+      ...scheduleItem.horseIds.map(id => horseNameById.get(id)),
+      ...scheduleItem.riderIds.map(id => riderNameById.get(id)),
+    ].filter((name): name is string => name !== undefined)
+    return names.length ? `Lesson — ${names.join(', ')}` : 'Lesson'
+  }
 
   function horseTotalExertion(h: Horse): number {
     return (exhaustionByHorseId?.[h.id]?.existingRows ?? []).reduce((sum, row) => sum + row.exertionLevel, 0)
@@ -588,6 +642,18 @@ export function LessonForm({
         initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
         onChange={setLessonAt}
         dateLabel={isRecurring ? 'Starting Date' : 'Date'}
+        renderDate={getScheduleRange && ((value, setValue) => (
+          <MonthCalendarPicker
+            value={value}
+            onChange={setValue}
+            month={calendarMonth}
+            onMonthChange={setCalendarMonth}
+            decorations={dayDecorations}
+            items={scheduleItems}
+            describeItem={describeScheduleItem}
+            label={isRecurring ? 'Starting Date' : 'Date'}
+          />
+        ))}
       />
 
       <div className="flex flex-col gap-1">

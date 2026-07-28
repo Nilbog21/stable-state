@@ -834,6 +834,28 @@ describe('getScheduleForRange', () => {
     expect(result[0].label).toBe('Costume Party')
   })
 
+  it('should_treat_null_lesson_horse_junction_data_as_empty', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ lessons: [lesson], lessonHorses: null }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].horseIds).toEqual([])
+  })
+
+  it('should_default_a_null_exertion_level_to_zero', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue({
+      from: makeFrom({ lessons: [lesson], lessonHorses: [{ lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: null }] }),
+    } as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].exertionByHorseId).toEqual({ 'horse-1': 0 })
+  })
+
   it('should_set_empty_rider_ids_on_an_event_item', async () => {
     const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
     vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: [event] }) } as any)
