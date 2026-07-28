@@ -98,6 +98,9 @@ Barn: `post-release-test-2`. The second person joins here as a **trainer**, sinc
   bash scripts/e2e-auth-users.sh --allow-prod delete
   ```
 
+  This refuses to delete anything while a barn still lists the logins as members, naming the
+  barns to tear down — so run it after the teardown step above, not before.
+
 > The second person's own Google account is deliberately left untouched by teardown — it's a real account, not seeded test data. They keep it; it simply no longer has a membership anywhere.
 
 ## Deferred checks
