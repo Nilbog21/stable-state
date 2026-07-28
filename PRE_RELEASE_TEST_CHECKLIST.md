@@ -317,7 +317,8 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (e2e: horse_drilldown_combines_lessons_charges_and_expenses_in_one_table) Click a horse → drill-down `/barn/dev-barn/finances/horses/[id]` shows one combined table of lessons, leases/boarding charges, and expenses
 - [ ] (e2e: horse_drilldown_rows_are_ordered_by_date_ascending) The horse drill-down's combined table is ordered by date ascending
 - [ ] (e2e: horse_drilldown_table_has_a_type_column) The horse drill-down's combined table has a **Type** column
-- [ ] (e2e: horse_drilldown_expense_amount_and_split_render_in_parentheses) The horse drill-down's expense Amount/Split renders in parentheses (e.g. `($25.00)`)
+- [ ] (e2e: horse_drilldown_expense_amount_renders_in_parentheses) The horse drill-down's expense **Amount** renders in parentheses (e.g. `($25.00)`)
+- [ ] (e2e: horse_drilldown_expense_split_renders_in_parentheses) The horse drill-down's expense **Split** renders in parentheses too
 - [ ] (e2e: horse_drilldown_net_is_the_by_horse_net_less_the_horses_lessons_instructor_cuts) The horse drill-down's bottom **Net** figure equals this horse's Net on the By Horse tab **minus the instructor cuts on that horse's lessons for the month** — the two are deliberately not the same number: #971 made the By Horse/By Rider summary figures pre-cut gross (`splitsGrossFee`), but left the drill-down's per-lesson rows net of each lesson's own snapshotted cut
 - [ ] (e2e: horse_drilldown_link_preserves_the_month_param) The horse drill-down preserves the month param
 - [ ] (e2e: by_horse_rows_load_sorted_by_horse_name_ascending) On page load, By Horse rows are sorted by **Horse** name ascending (A→Z)

@@ -100,8 +100,11 @@ const barn = withBarn('phase4-finances-by-horse', async ({ supabase, barn, membe
     paid: true,
   })
 
-  // No `time`, so these stay date-only planned expenses and never surface in Outstanding
-  // Expenses — the By Horse table is then the page's only table on every load below.
+  // No `time`: getOutstandingExpenses reads a time-less expense as due at 23:59:59 on its
+  // own date, so from the 16th onward these are past due and — having no payment type —
+  // do surface under Outstanding Expenses. That costs the assertions below nothing, since
+  // the section renders as a <ul> and breakdownTable() scopes by the Horse header rather
+  // than by being the page's only table.
   await addExpense(supabase, barn, {
     at: thisMonth,
     recipient: 'Valley Farrier',
@@ -221,6 +224,14 @@ async function tapGrossHeader(page: Page, indicator: '▲' | '▼'): Promise<voi
   await grossHeader(page).locator(`button:has-text("${indicator}")`).waitFor()
 }
 
+/** The drill-down's combined table: Date, Type, Amount, Horses, Split. */
+const DETAIL_AMOUNT_COL = 2
+const DETAIL_SPLIT_COL = 4
+
+function drilldownExpenseRow(page: Page): Locator {
+  return page.locator('tbody tr').filter({ has: page.getByRole('cell', { name: 'Expense', exact: true }) })
+}
+
 /** The bottom Net line under a drill-down table — a label span followed by its figure. */
 function drilldownNetFigure(page: Page): Locator {
   return page.locator('main span', { hasText: /^Net$/ }).locator('xpath=following-sibling::span[1]')
@@ -335,12 +346,21 @@ test('horse_drilldown_table_has_a_type_column @manager', async ({ page }) => {
   await expect(page.getByRole('columnheader', { name: 'Type' })).toHaveCount(1)
 })
 
-test('horse_drilldown_expense_amount_and_split_render_in_parentheses @manager', async ({ page }) => {
+test('horse_drilldown_expense_amount_renders_in_parentheses @manager', async ({ page }) => {
   await page.goto(horseDrilldownUrl(seeded.bella.id))
-  const row = page.locator('tbody tr').filter({ has: page.getByRole('cell', { name: 'Expense', exact: true }) })
+  await expect(drilldownExpenseRow(page).locator('td').nth(DETAIL_AMOUNT_COL)).toHaveText(
+    formatCurrency(seeded.bellaExpense.amount!, { forceParens: true })
+  )
+})
+
+// Its own checkbox rather than a clause on the one above: Amount and Split are separate
+// cells rendered from separate values, and either can regress while the other holds.
+test('horse_drilldown_expense_split_renders_in_parentheses @manager', async ({ page }) => {
+  await page.goto(horseDrilldownUrl(seeded.bella.id))
   // Bella is that expense's only horse, so its Split is the whole Amount.
-  const expected = formatCurrency(seeded.bellaExpense.amount!, { forceParens: true })
-  expect([await cellText(row, 2), await cellText(row, 4)]).toEqual([expected, expected])
+  await expect(drilldownExpenseRow(page).locator('td').nth(DETAIL_SPLIT_COL)).toHaveText(
+    formatCurrency(seeded.bellaExpense.amount!, { forceParens: true })
+  )
 })
 
 /**
