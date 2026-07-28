@@ -158,20 +158,21 @@ Dashboard (`/barn/dev-barn`):
 - [ ] (e2e-candidate) Prev/Next links appear alongside the calendar heading
 - [ ] (e2e-candidate) Today's seeded lessons appear on the calendar
 - [ ] (e2e-candidate) A planned expense scheduled for today (future date+time, no amount yet) appears on the same calendar alongside those lessons
+- [ ] (e2e-candidate) Today's lessons and that expense are ordered by time together, not grouped into separate blocks by type
 - [ ] (e2e-candidate) Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for
 - [ ] (e2e: dashboard_expense_interleaved_with_lesson_by_time_on_shared_day) That expense appears on that day interleaved by time with the day's lessons, not grouped into a separate expenses block
 - [ ] (e2e-candidate) A "Today" link appears while viewing a day other than today
 - [ ] (e2e-candidate) That "Today" link returns to today's calendar when clicked
 - [ ] (e2e-candidate) No "Today" link appears while already viewing today
 - [ ] (e2e: dashboard_date_only_planned_expense_not_shown) A date-only planned expense (no time set) does **not** appear on the calendar for its date
-- [ ] (e2e: dashboard_expense_card_shows_scheduled_time) An expense entry on the calendar shows its scheduled date/time
+- [ ] (e2e: dashboard_expense_card_shows_scheduled_time) An expense entry on the calendar shows its scheduled time (no per-entry date — the day heading already carries it)
 - [ ] (e2e: dashboard_expense_card_shows_recipient) That expense entry shows its recipient
 - [ ] (e2e: dashboard_expense_card_shows_type) That expense entry shows its expense type
 - [ ] (e2e: dashboard_expense_card_shows_horse) A horse-specific expense entry shows its horse(s)
 - [ ] (e2e-candidate) An **Entire Barn** expense entry shows "Entire Barn" in place of horse names
 - [ ] (e2e-candidate) Tapping an expense entry opens that expense's detail page
 - [ ] (e2e: dashboard_reminders_header_visible_for_manager) A "Reminders" section header appears above the document-reminders/unpaid-income cards
-- [ ] (e2e: dashboard_reminders_header_hidden_for_rider_with_no_reminders) That header is hidden entirely when none of those cards have anything to show
+- [ ] (e2e: dashboard_reminders_header_hidden_for_rider_with_no_reminders) As a rider with nothing to be reminded about, that header is hidden entirely (the manager's barn always has unpaid income, so this state is only reachable from a rider's dashboard)
 - [ ] (e2e-candidate) No document-reminder cards appear under Reminders when no documents are past their reminder date
 - [ ] (e2e: dashboard_document_reminder_card_shown_after_setting_reminder_date) After setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders
 - [ ] (e2e-candidate) That card appears directly under Reminders with no separate "Document Reminders" heading above it
@@ -359,14 +360,14 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e-candidate) The manager form's name field is labeled **Barn Name**
 - [ ] (e2e-candidate) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
 - [ ] (e2e-candidate) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
-- [ ] (e2e-candidate) As a trainer, a horse seeded with a registered name shows a **Registered Name** row below Status on its detail page
+- [ ] (e2e-candidate) As a trainer, Apple's detail page shows a **Registered Name** row below Status (an e2e run seeds a registered name in the trainer's own barn — a trainer spec gets a different barn than the manager one)
 - [ ] (e2e-candidate) As a rider, that same horse shows the **Registered Name** row below Status
 - [ ] (e2e-candidate) (#1000) As manager, make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
 - [ ] (e2e-candidate) (#1000) Clover appears under **My Horses**
 - [ ] (e2e-candidate) (#1000) Clover shows a green **Active** badge there
 - [ ] (e2e-candidate) (#1000) Clover no longer appears under Available
 - [ ] (e2e-candidate) Clear **Registered Name** back to blank and Save → the card's parenthetical is gone on reload
-- [ ] (e2e-candidate) As a trainer, a horse seeded with no registered name shows no **Registered Name** row on its detail page
+- [ ] (e2e-candidate) As a trainer, Apple's detail page now shows no **Registered Name** row (an e2e run reads a horse seeded without one in the trainer's own barn)
 - [ ] (e2e-candidate) As a rider, that same horse shows no **Registered Name** row
 - [ ] (e2e-candidate) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
 - [ ] (e2e-candidate) With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error
@@ -627,7 +628,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Change it and **Save** → value persists on reload
 - [ ] (e2e-candidate) **Barn Timezone** select shows the current value (default Eastern)
 - [ ] (e2e-candidate) Change it and Save → it persists on reload
-- [ ] (e2e-candidate) A planned expense whose due time has passed *in the barn's configured timezone* surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
+- [ ] (e2e-candidate) With the timezone changed above, add a planned expense due a few minutes from now, wait for its due time to pass *in the barn's configured timezone* → it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
 - [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
 - [ ] (e2e-candidate) That list entry shows the correct date
@@ -647,8 +648,9 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Tap **Download Data** → an `.xlsx` downloads
 - [ ] (e2e-candidate) It has exactly 8 sheets: Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions
 - [ ] (e2e-candidate) A horse created earlier in this phase appears by name (not a raw id) on the Horses sheet
-- [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet with its horse and rider by name
-- [ ] (e2e-candidate) A member created earlier in this phase appears by name on the Members sheet
+- [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet
+- [ ] (e2e-candidate) That lesson's row names its horse and rider (not raw ids)
+- [ ] (e2e-candidate) A member created earlier in this phase appears by name (not a raw id) on the Members sheet
 
 Notifications and profile:
 
