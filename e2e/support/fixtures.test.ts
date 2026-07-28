@@ -45,8 +45,14 @@ describe('pastInstantInMonth', () => {
 })
 
 describe('barnSlugFor', () => {
-  it('should_join_prefix_and_key_with_a_hyphen', () => {
-    expect(barnSlugFor('e2e-123-456', 'dashboard')).toBe('e2e-123-456-dashboard')
+  it('should_join_prefix_key_and_project_with_hyphens', () => {
+    expect(barnSlugFor('e2e-123-456', 'dashboard', 'manager')).toBe('e2e-123-456-dashboard-manager')
+  })
+
+  // Playwright dispatches one job per (spec file × project), so a slug keyed only on the file
+  // collides whenever two projects grep the same spec — see e2e/support/test.ts.
+  it('should_produce_distinct_slugs_for_one_key_across_projects', () => {
+    expect(barnSlugFor('e2e-123-456', 'smoke', 'manager')).not.toBe(barnSlugFor('e2e-123-456', 'smoke', 'rider'))
   })
 })
 
