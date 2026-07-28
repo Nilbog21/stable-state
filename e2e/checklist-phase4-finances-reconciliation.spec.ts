@@ -33,6 +33,24 @@ const BELLA_LEASE_FEE = 150
 const APOLLO_EXPENSE = 40
 const ORPHAN_EXPENSE = 35
 
+/**
+ * The month this file works in, and the `?month=` param naming it — both derived from one
+ * Date on purpose. `monthAnchor` selects its month with local calendar getters while
+ * `formatMonthParam` reads UTC ones, so deriving the two independently from `new Date()` lets
+ * them name *different* months for the |UTC offset| hours either side of a month boundary:
+ * the seed would land in one month while every navigation asked for another, and each tab
+ * would render its EmptyState instead of a table. Re-encoding the anchor's own local
+ * year/month as UTC keeps them consistent by construction.
+ *
+ * A past month rather than the current one, per the same anchor's doc: day 15 of a finished
+ * month is unambiguously inside it however the barn's timezone decodes the instant, whereas
+ * `monthsAgo: 0` is placed relative to "now" and can decode to the previous calendar day.
+ */
+const WORKING_MONTH_ANCHOR = monthAnchor(1)
+const WORKING_MONTH = formatMonthParam(
+  new Date(Date.UTC(WORKING_MONTH_ANCHOR.getFullYear(), WORKING_MONTH_ANCHOR.getMonth(), 1))
+)
+
 // Footer cells sit to the right of the label cell, which spans one column (labelColSpan={1}).
 const GROSS_COL = 1
 const EXPENSES_COL = 2
@@ -68,10 +86,7 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
   const apollo = await addHorse(supabase, barn.id, 'Apollo')
   const bella = await addHorse(supabase, barn.id, 'Bella')
 
-  // The whole file works in the previous month rather than the current one: a current-month
-  // fixture placed by wall clock can decode to a different calendar month than the ?month=
-  // param computed in UTC, in the hours either side of a month boundary.
-  const lastMonth = monthAnchor(1)
+  const lastMonth = WORKING_MONTH_ANCHOR
   const lessonDefaults = { at: lastMonth, instructorId: members.trainer.membershipId, tierName: tier.name }
 
   // Paid, not merely booked: every income breakdown counts collected rows only. Seeding
@@ -98,9 +113,12 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
     paid: true,
   })
 
-  // Two paid expenses so that orphaning one below still leaves a real per-horse and
-  // per-recipient row behind it — By Horse and By Paid To both gate on having something to
-  // show, and a footer with no table above it would prove nothing about attribution.
+  // Two paid expenses, so that orphaning one below still leaves a non-zero Subtotal behind it
+  // on both tabs. The checks are that an amount *moves* from Subtotal into Unattributed; with
+  // a single expense there'd be nothing left in Subtotal to tell that apart from the whole
+  // Expenses column emptying. Not needed to keep either tab rendering — page.tsx's
+  // horseHasActivity/recipientHasActivity already count unattributedExpenses on their own,
+  // which is precisely what its #971 review-fix comment guarantees.
   await markExpensePaid(
     supabase,
     barn,
@@ -195,13 +213,8 @@ async function requireLedgerRow(state: 'attached' | 'orphaned'): Promise<void> {
 // ---------------------------------------------------------------------------
 
 /** finances/page.tsx resolves its default month from the server clock, so never rely on it. */
-function workingMonth(): string {
-  const now = new Date()
-  return formatMonthParam(new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1)))
-}
-
 function financesUrl(tab: Tab): string {
-  return `/barn/${barn.slug}/finances?month=${workingMonth()}&tab=${tab}`
+  return `/barn/${barn.slug}/finances?month=${WORKING_MONTH}&tab=${tab}`
 }
 
 /**
@@ -301,7 +314,11 @@ test.describe.serial('deleting a paid expense but keeping its collected record',
     // let its expense_id go NULL as the horse_expenses row goes away.
     await page.goto(`/barn/${barn.slug}/expenses/${seeded.orphanExpense.id}/delete`)
     await page.getByRole('button', { name: 'Confirm Delete' }).click()
-    await page.waitForURL(`**/barn/${barn.slug}/expenses`)
+    // waitForURL with an explicit timeout, and commit rather than load — the repo's
+    // established pattern for a post-form-submit redirect that can land on a route the dev
+    // server is still cold-compiling under full-suite load (#1009, #1140, and
+    // checklist-phase4-finances-outstanding.spec.ts's saveExpenseForm on this same route).
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/expenses$`), { timeout: 15000, waitUntil: 'commit' })
     await requireLedgerRow('orphaned')
 
     await page.goto(financesUrl('horse'))
