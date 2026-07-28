@@ -284,6 +284,12 @@ export async function stopLessonSeriesAction(barnSlug: string, lessonId: string,
  *
  * `fromDate`/`toDate` are "YYYY-MM-DD" barn-local calendar days; `toDate` is exclusive,
  * matching getScheduleForRange's own half-open range.
+ *
+ * Deliberately does NOT apply scopeScheduleItemsForRole, unlike the dashboard's Day/Week
+ * views: a horse's exhaustion is barn-wide, so narrowing a trainer to their own lessons here
+ * would under-report the load on a horse another instructor is already working. No new
+ * exposure either — `lessons_select_staff` already grants trainers barn-wide lesson SELECT,
+ * which the Lessons list's "All" filter surfaces directly.
  */
 export async function getScheduleRangeForBarn(
   barnSlug: string,
