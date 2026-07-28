@@ -259,6 +259,6 @@ After plan approval, do the following in order:
 
 **Never push Supabase migrations.** Do not run `npx supabase db push`, `supabase db push`, or `/sync-migrations` at any point. The developer running this skill reviews and pushes migrations by hand, in a separate step.
 
-Don't mention that in the PR-creation summary either — no closing "not pushed: the migration, you'll push it manually" remark. Migrations are *always* left unpushed here by design, and deciding what to do about them is `/reviewIssue`/`/testIssue`'s step, not a decision point for the user at this moment. Repeating it is noise.
+Don't mention that in the summary you return to the user either (this is about your chat reply, not the PR body — that's covered above) — no closing "not pushed: the migration, you'll push it manually" remark. Migrations are *always* left unpushed here by design, and deciding what to do about them is `/reviewIssue`/`/testIssue`'s step, not a decision point for the user at this moment. Repeating it is noise.
 
 **Migration file naming:** Use `date +%Y%m%d00%M%S` for the timestamp prefix (real minutes+seconds, HH fixed to `00`). Never use a sequential counter.

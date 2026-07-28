@@ -115,10 +115,11 @@ Canonical file-touch sequence for any new feature:
 
 1. Schema migration (`supabase/migrations/`)
 2. RLS migration (separate file in `supabase/migrations/`)
-3. `src/lib/db/<domain>.ts` — data access function(s)
-4. Action (`src/app/actions/` or co-located `actions.ts`)
-5. Component / page
-6. Tests (written first — TDD)
+3. RPC migration, if the feature needs one (separate file again — no migration in this repo both creates a table and defines a function)
+4. `src/lib/db/<domain>.ts` — data access function(s)
+5. Action (`src/app/actions/` or co-located `actions.ts`)
+6. Component / page
+7. Tests (written first — TDD)
 
 ## Coverage + null safety
 
