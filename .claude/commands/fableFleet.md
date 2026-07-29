@@ -81,6 +81,7 @@ When a worker ends its turn, read the status block. Answer routine questions via
 - An issue's text contradicting what the code shows (wrong scope, stale assumption).
 - The same failure surviving **two** fix attempts (test, build, or CI).
 - A `/reviewIssue` → revise → re-review loop still producing substantial findings after **one** revise cycle.
+- An issue still unmerged **30 minutes after you dispatched it**, however healthy the worker looks. Check this at each fleet-table firing (Step 4's 5-minute timer) — you already hold the dispatch times. This is a wall-clock backstop for the failure the event-based triggers above miss entirely: a worker that never stalls, never fails twice, and never asks anything, but is grinding. Raise it **once per issue**, not every firing, and say what it's been doing; the user's answer is keep going / re-scope / abandon.
 - Non-mechanical merge conflicts — anything requiring a choice between two behaviors.
 - Anything destructive beyond the workflow's norms (force-push, deleting things that aren't merged issue branches, repair scripts).
 
