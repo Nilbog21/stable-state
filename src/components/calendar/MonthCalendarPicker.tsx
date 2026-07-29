@@ -113,6 +113,11 @@ export function MonthCalendarPicker({
               {initial}
             </span>
           ))}
+          {/* An outside-month day is de-emphasised by one step only (zinc-600/zinc-300, not
+              zinc-400/zinc-500): a spill-over day can still carry a band tint, and dimmer grey
+              on those tints falls to ~1.6:1 -- the dark tints sit at almost exactly zinc-500's
+              luminance, so the number vanishes. Keep any future change above 4.5:1 on
+              BAND_CLASS's darkest tint, not just on the page background. */}
           {days.map((date) => {
             const decoration = decorations[date] ?? NEUTRAL_DAY
             const outside = date.slice(0, 7) !== month
@@ -135,7 +140,7 @@ export function MonthCalendarPicker({
                 data-outside={String(outside)}
                 onClick={() => handleDayTap(date)}
                 className={`relative flex min-h-[44px] items-center justify-center rounded text-sm ${tint} ${
-                  decoration.past ? 'text-zinc-300 dark:text-zinc-600' : outside ? 'text-zinc-400 dark:text-zinc-500' : 'text-zinc-900 dark:text-zinc-50'
+                  decoration.past ? 'text-zinc-300 dark:text-zinc-600' : outside ? 'text-zinc-600 dark:text-zinc-300' : 'text-zinc-900 dark:text-zinc-50'
                 } ${date === value ? 'ring-2 ring-blue-500' : ''}`}
               >
                 {Number(date.slice(8, 10))}
