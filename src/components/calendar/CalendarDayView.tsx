@@ -1,5 +1,5 @@
 import { CalendarLessonCard } from './CalendarLessonCard'
-import { CalendarExpenseCard } from './CalendarExpenseCard'
+import { CalendarAppointmentCard } from './CalendarAppointmentCard'
 import { CalendarEventCard } from './CalendarEventCard'
 import { EmptyState } from '@/components/EmptyState'
 import type { DayScheduleDisplayItem } from './dayScheduleItems'
@@ -21,9 +21,12 @@ export function CalendarDayView({
   viewerMembershipId?: string
 }) {
   if (items.length === 0) {
-    // Trainers see expenses too since #1019, so the split is rider-vs-rest, not manager-vs-rest.
+    // Trainers see appointments too since #1019, so the split is rider-vs-rest, not
+    // manager-vs-rest. "appointments" rather than "expenses" (#1148) -- a trainer has no
+    // business thinking of a farrier visit as an expense, and the manager's own expense
+    // record is reached from the Expenses nav, not from here.
     const subtext =
-      role === 'rider' ? 'Nothing scheduled for this day.' : 'No lessons, expenses, or events scheduled for this day.'
+      role === 'rider' ? 'Nothing scheduled for this day.' : 'No lessons, appointments, or events scheduled for this day.'
     return (
       <EmptyState
         heading="You're all clear"
@@ -47,7 +50,7 @@ export function CalendarDayView({
           )
         }
         if (item.itemType === 'expense') {
-          return <CalendarExpenseCard key={`expense-${item.id}`} expense={item.expense} slug={slug} role={role} />
+          return <CalendarAppointmentCard key={`expense-${item.id}`} appointment={item.expense} slug={slug} />
         }
         return <CalendarEventCard key={`event-${item.id}`} event={item.event} />
       })}

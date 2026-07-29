@@ -5,6 +5,7 @@ import { getExpenseById, getRecentRecipients, getRecentExpenseTypes } from '@/li
 import { updateExpenseAction } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
 import { ExpenseForm } from '../ExpenseForm'
+import { AppointmentDetail } from './AppointmentDetail'
 
 export default async function EditExpensePage({
   params,
@@ -12,10 +13,17 @@ export default async function EditExpensePage({
   params: Promise<{ slug: string; id: string }>
 }) {
   const { slug, id } = await params
-  const { barn } = await requireMembership(slug, ['manager'])
+  // #1148: a trainer reads the same record as an *appointment* — no cost, no edit. Opened up
+  // from manager-only so the dashboard's appointment card has a real destination for them;
+  // /delete and the /expenses list stay manager-only.
+  const { barn, membership } = await requireMembership(slug, ['manager', 'trainer'])
 
   const expense = await getExpenseById(id, barn.id)
   if (!expense) notFound()
+
+  // Returned before the three manager-only form lookups below, which a trainer's view has
+  // no field to put to use.
+  if (membership.role === 'trainer') return <AppointmentDetail appointment={expense} />
 
   const [horses, recentRecipients, recentExpenseTypes] = await Promise.all([
     getHorsesByBarn(barn.id),

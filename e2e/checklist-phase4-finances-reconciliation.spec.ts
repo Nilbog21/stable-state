@@ -5,9 +5,8 @@ import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
-import type { Appointment } from '@/lib/db/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { SeededBarn } from './support/fixtures'
+import type { SeededAppointment, SeededBarn } from './support/fixtures'
 
 // The two #971 cross-tab integrity checks: every breakdown table's footer Total reconciles to
 // the same barn-wide figures, and money whose per-entity attribution was destroyed surfaces
@@ -62,7 +61,7 @@ const BY_HORSE_UNATTRIBUTED_INFO_TEXT =
 const BY_PAID_TO_UNATTRIBUTED_INFO_TEXT =
   'An expense record whose original entry was deleted after being marked paid.'
 
-type Seeded = { orphanExpense: Appointment }
+type Seeded = { orphanExpense: SeededAppointment }
 
 let seeded: Seeded
 
@@ -163,8 +162,8 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
 async function markExpensePaid(
   supabase: SupabaseClient,
   barn: SeededBarn,
-  expense: Appointment
-): Promise<Appointment> {
+  expense: SeededAppointment
+): Promise<SeededAppointment> {
   mustSucceed(
     await supabase.from('appointment_costs').update({ payment_type: 'venmo' }).eq('appointment_id', expense.id),
     'mark expense paid'

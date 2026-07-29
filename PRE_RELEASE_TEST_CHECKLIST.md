@@ -162,7 +162,7 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
 - [ ] (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
 - [ ] (#1019) Change the Hour dropdown from an early hour to a late one — at least one day's shading shifts
-- [ ] (#1019) Schedule a vet/farrier expense for Apple on a future day, then reopen this form with Apple selected — that day shows a dot
+- [ ] (#1019) Schedule a vet/farrier expense for Apple on a future day — **set a time and an amount on it** (#1148's Phase 5 checks below need both) — then reopen this form with Apple selected — that day shows a dot
 - [ ] (#1147) Schedule a farrier expense on another future day with **Applies to all horses** checked, then reopen this form with Apple selected — that day shows a dot even though the expense names no horse
 - [ ] (#1147) That barn-wide day's exertion shading is unchanged from before the expense was booked (an appointment is not a workload)
 - [ ] (#1019) With Apple selected, a greyed-out past day shows no shading
@@ -759,9 +759,17 @@ bash scripts/change-user.sh dev-barn
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] (#1019) The trainer's New Lesson form shows the same month conflict calendar on the Date field as the manager view
 - [ ] (#1019) With a horse selected there, the exertion shading reflects the whole barn's lessons for that horse — not just the ones you instruct
-- [ ] (#1019) With Apple selected there, the day carrying Apple's vet/farrier expense (scheduled back in Phase 3) shows a dot — the conflict dot fires on expenses for a trainer, not just lessons
+- [ ] (#1019) With Apple selected there, the day carrying Apple's vet/farrier appointment (scheduled back in Phase 2) shows a dot — the conflict dot fires on appointments for a trainer, not just lessons
 - [ ] (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
-- [ ] (#1019) That appointment's card on the Dashboard is not tappable — it renders as plain text, not a link (the expense detail page is manager-only)
+- [ ] (#1148) That appointment's card on the Dashboard is a tappable link, not plain text
+- [ ] (#1148) Tapping it opens a page headed **Appointment**
+- [ ] (#1148) That page shows the appointment's recipient
+- [ ] (#1148) That page shows the appointment's horse
+- [ ] (#1148) That page shows no amount anywhere — the figure entered on it in Phase 2 appears nowhere on the page
+- [ ] (#1148) That page shows no **Save Changes** button — it is read-only, not the manager's edit form
+- [ ] (#1148) That page shows no **Delete** button
+- [ ] (#1148) The Dashboard's empty-state subtext on a day with nothing on it reads "No lessons, appointments, or events scheduled for this day." — "appointments", not "expenses"
+- [ ] (#1148) Switch to the **Week** view — its empty-state subtext likewise says "appointments", not "expenses"
 - [ ] Create one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) — submission succeeds with no error
 
 > This notification's recipient (Blake) isn't the persona you're currently acting as, so it can't be observed by switching personas with `change-user.sh` — the swap reassigns `barn_memberships.user_id` away from whichever persona you leave, permanently disconnecting it from the id the notification was written against. Verify the row directly instead (Supabase Studio or a `supabase db` query). The live bell UI these rows feed is exercised on a genuinely different account, in both directions, in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — that supplements these row checks rather than replacing them.
@@ -825,7 +833,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#999) Same horse — a collapsed **Upcoming Lessons** section appears at the bottom of the page, listing its scheduled lessons
 - [ ] (#999) Tap a lesson in that Upcoming Lessons list that Dana is **not** enrolled in — the lesson detail page loads (no 404)
 - [ ] (#999) On a horse Dana has no lesson-read privilege on, neither the Exhaustion bar nor the Upcoming Lessons section appears
-- [ ] Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day, and no expenses (manager-only) or events outside her role's `visible_to_roles`
+- [ ] Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day, and no appointments (#1148 — manager and trainer only; riders gained no appointment visibility) or events outside her role's `visible_to_roles`
 - [ ] (e2e-candidate) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown

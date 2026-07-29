@@ -10,12 +10,13 @@ import {
   addTier,
   addUnpaidLesson,
   monthAnchor,
+  type SeededAppointment,
 } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
-import type { Agreement, HorseExpense, Horse, Lesson } from '@/lib/db/types'
+import type { Agreement, Horse, Lesson } from '@/lib/db/types'
 
 // The stub rider addMemberships seeds (first_name 'Test', last_name 'Rider2'). Used instead
 // of the `rider` login for the lesson this file marks paid, because "Test Rider" is a
@@ -37,8 +38,8 @@ type Seeded = {
   unpaidLateCancelLesson: Lesson
   paidLateCancelLesson: Lesson
   lease: Agreement
-  plannedExpense: HorseExpense
-  pricedExpense: HorseExpense
+  plannedExpense: SeededAppointment
+  pricedExpense: SeededAppointment
   riderMembershipId: string
   rider2MembershipId: string
   trainerMembershipId: string

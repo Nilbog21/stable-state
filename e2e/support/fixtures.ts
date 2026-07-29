@@ -580,16 +580,24 @@ export type ExpenseOptions = When & {
   notes?: string
 }
 
+/**
+ * What addExpense hands back: the `appointments` row the RPC returned, plus the amount the
+ * caller asked for. The amount is echoed rather than read back, because #1148 moved it off
+ * the appointment onto `appointment_costs` — and a spec asserting against a seeded figure
+ * wants the figure it seeded, not a second round-trip that could only ever agree.
+ */
+export type SeededAppointment = Appointment & { amount: number | null }
+
 export async function addExpense(
   supabase: SupabaseClient,
   barn: SeededBarn,
   opts: ExpenseOptions
-): Promise<Appointment> {
+): Promise<SeededAppointment> {
   // appointments.expense_date is DATE-only and is compared against a barn-timezone
   // wall-clock window (see barns.timezone in docs/architecture/schema.md), so it has to land
   // on the barn's own calendar day, not UTC's.
   const expenseDate = instantToLocalWallClock(resolveWhen(opts), barn.timezone).slice(0, 10)
-  return createExpense(
+  const appointment = await createExpense(
     barn.id,
     {
       expenseDate,
@@ -603,6 +611,7 @@ export async function addExpense(
     },
     supabase
   )
+  return { ...appointment, amount: opts.amount ?? null }
 }
 
 /**

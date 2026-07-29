@@ -62,7 +62,7 @@ export default async function FinancesPage({
   const totalCut = breakdown.reduce((sum, t) => sum + t.instructorCut, 0)
   const totalExpenses = totalCut + expenseSummary.totalExpenses
   const attributableHorseExpenses = expenseSummary.breakdown.reduce((sum, h) => sum + h.totalExpenses, 0)
-  // An expense whose horse_expenses record was deleted but whose collected transaction
+  // An expense whose appointments record was deleted but whose collected transaction
   // survives (deleteExpense's default) — counted in totalExpenses but absent from every
   // per-horse/per-recipient breakdown. Surfaced as "Unattributed" everywhere instead of
   // silently dropped.

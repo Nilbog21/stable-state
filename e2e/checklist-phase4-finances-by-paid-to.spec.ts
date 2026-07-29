@@ -1,9 +1,9 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
-import { addExpense, addHorse, monthAnchor } from './support/fixtures'
+import { addExpense, addHorse, monthAnchor, type SeededAppointment } from './support/fixtures'
 import { formatMonthParam } from '@/lib/finances-month'
-import type { Horse, Appointment } from '@/lib/db/types'
+import type { Horse } from '@/lib/db/types'
 
 // By Paid To is a pure expense breakdown — no lesson, tier or agreement is seeded here,
 // because none of them can ever contribute a row to it (a recipient is only ever the payee
@@ -52,8 +52,8 @@ const NET_COL = 4
 
 type Seeded = {
   horse: Horse
-  smithFarrier: Appointment
-  smithVet: Appointment
+  smithFarrier: SeededAppointment
+  smithVet: SeededAppointment
 }
 
 let seeded: Seeded

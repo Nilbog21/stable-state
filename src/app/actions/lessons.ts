@@ -305,7 +305,7 @@ export async function stopLessonSeriesAction(barnSlug: string, lessonId: string,
  * would under-report the load on a horse another instructor is already working. No new lesson
  * exposure either — `lessons_select_staff` already grants trainers barn-wide lesson SELECT,
  * which the Lessons list's "All" filter surfaces directly. Expenses did need a new grant:
- * `trainer_select_horse_expenses`/`trainer_select_expense_horses` (#1019 review fix), without
+ * `trainer_select_appointments`/`trainer_select_appointment_horses` (#1019 review fix), without
  * which the AC's "a lesson **or expense**" dot could only ever fire on a lesson for a trainer.
  */
 export async function getScheduleRangeForBarn(

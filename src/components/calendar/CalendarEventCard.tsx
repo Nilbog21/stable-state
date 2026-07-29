@@ -9,7 +9,7 @@ export function formatEventTime(iso: string): string {
 }
 
 // No event detail page exists (only manager-only settings/events/[id] editing) -- unlike
-// CalendarLessonCard/CalendarExpenseCard, this renders as a plain (non-link) Card.
+// CalendarLessonCard/CalendarAppointmentCard, this renders as a plain (non-link) Card.
 export function CalendarEventCard({ event }: { event: BarnEvent }) {
   const display = formatEventTime(event.event_at)
 
