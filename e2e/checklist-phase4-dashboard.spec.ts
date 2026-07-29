@@ -105,6 +105,11 @@ async function goToDaysAhead(page: Page, days: number) {
 test('dashboard_expense_interleaved_with_lesson_by_time_on_shared_day @manager', async ({ page }) => {
   await goToDaysAhead(page, 2)
   const cardLinks = page.locator('a[href*="/lessons/"], a[href*="/expenses/"]')
+  // A wait, not an assertion: evaluateAll is a one-shot read with no auto-wait, so on its own
+  // it can sample whichever document is mounted when it runs. The other goToDaysAhead callers
+  // below all follow with a retrying expect() and self-heal; this one has to wait explicitly.
+  // Day +2 is the only day seeded with a rendered expense card, so that card is the signal.
+  await page.locator('a[href*="/expenses/"]').first().waitFor()
   const hrefs = await cardLinks.evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''))
   expect(hrefs.map((h) => h.includes('/expenses/'))).toEqual([false, true])
 })
