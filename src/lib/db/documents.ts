@@ -1,3 +1,9 @@
+/**
+ * Unified horse/trainer/rider document CRUD keyed by an `entity` discriminator with one
+ * TS overload per entity: fetch-then-sign reads (`getDocumentsWithUrls`, pairing each
+ * row with a 300s signed URL via `document-storage.ts`), create, delete, reminder-date
+ * update, and the dashboard's due-reminder read `getDueDocuments`.
+ */
 import { createClient } from '@/lib/supabase/server'
 import { getSignedUrl } from './document-storage'
 import { resolveHorseNames } from './horses'

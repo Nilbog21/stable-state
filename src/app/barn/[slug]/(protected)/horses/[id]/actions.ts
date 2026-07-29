@@ -1,5 +1,21 @@
 'use server'
 
+/**
+ * Horse detail page Server Actions: the manager-only detail save (`updateHorseAction` —
+ * maps the status radio to `is_active`/`is_available`/`unavailability_reason`,
+ * validates threshold overrides, and forwards everything through the atomic
+ * `updateHorseDetails` RPC wrapper, preserving the current owner), the owner notes save
+ * (`updateHorseNotesAction` — any active role may call; the `update_horse_notes` RPC
+ * authorizes the actual owning member), photo upload/delete
+ * (`uploadHorsePhotoAction`/`deleteHorsePhotoAction` — photo-only file validation here,
+ * owner-vs-manager write arbitration inside the `update_horse_photo` RPC; delete
+ * swallows the stale-page lock race and revalidates), manager-only Access-table
+ * privilege CRUD (`grantHorseAccessAction`,
+ * `updateHorseAccessDocumentAction`/`updateHorseAccessLessonAction`,
+ * `revokeHorseAccessAction`, and `setHorseOwnerAction` — owner picked from existing
+ * privilege rows, set atomically via `setHorseOwner`), and manager-only horse-document
+ * row actions (`deleteHorseDocumentAction`, `updateHorseDocumentReminderDateAction`).
+ */
 import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'

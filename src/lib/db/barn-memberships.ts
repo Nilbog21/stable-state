@@ -1,3 +1,9 @@
+/**
+ * Membership CRUD and reads: per-user/per-barn lookups, instructor and active-member
+ * rosters via the shared `joinMembershipsWithProfiles` helper, `setCanInstruct`, and
+ * the cross-barn `getBarnMembershipsForUser` (excludes demo barns, #504 — the sole
+ * source feeding `/` redirect logic, `/barns`, and `BarnSwitcher`).
+ */
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'

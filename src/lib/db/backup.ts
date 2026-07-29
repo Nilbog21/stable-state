@@ -1,3 +1,11 @@
+/**
+ * Barn-wide data spreadsheet export — the "Download Data" xlsx in Manage Barn → Data
+ * Backup (#994). `getBarnBackupData` fetches and joins every covered table into eight
+ * flat row shapes, `buildBarnDataWorkbook` renders them as sheets, and
+ * `buildBarnDataBackupBuffer` composes the two. Hand-maps a fixed table set rather than
+ * introspecting the schema — a migration touching a covered table must update the
+ * matching sheet here (see CLAUDE.md's Barn Data Backup section).
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import ExcelJS from 'exceljs'

@@ -1,3 +1,12 @@
+/**
+ * RFC 5545 renderer behind the `/calendar.ics` feed: `buildIcsFeed` (the sole export)
+ * renders a barn name plus already-fetched `CalendarFeedItem[]` into a VCALENDAR string —
+ * UTC `DTSTART`/`DTEND` (end = start + `durationMinutes`), a per-item `UID`, RFC-escaped
+ * text (`escapeIcsText` normalizes CRLF/bare-CR line endings first), and 75-octet
+ * content-line folding that never splits a UTF-16 surrogate pair. Pure string building —
+ * the fetch and token check live in `calendar-feed.ts:getCalendarFeedData`, and
+ * `src/app/calendar.ics/route.ts` composes the two.
+ */
 import type { CalendarFeedItem } from './db/types'
 
 const CRLF = '\r\n'
@@ -11,7 +20,7 @@ function toIcsDateTime(instant: string | Date): string {
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
 }
 
-export function escapeIcsText(text: string): string {
+function escapeIcsText(text: string): string {
   return text
     // Normalize CRLF/bare-CR line endings to \n first — RFC 5545 has no separate escape
     // for a raw carriage return, and leaving one unescaped can read as a stray line

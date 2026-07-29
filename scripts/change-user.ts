@@ -1,14 +1,20 @@
+/**
+ * Interactive dev tool (the `change-user.sh`-wrapped half): reassigns the developer's
+ * own auth `user_id` between a barn's `barn_memberships` rows so a local session can
+ * act as any member. Resolves the barn (`CHANGE_USER_BARN_SLUG` via `getBarnBySlug`,
+ * else a numbered prompt over all barns), refuses unless the developer already holds a
+ * membership row there, lists the barn's active members, then vacates the
+ * currently-inhabited row — restoring its rightful owner's `user_id`, or `null` for the
+ * dev's own row (see `resolveRevertUserId`'s UNIQUE-constraint note) — before taking
+ * over the selected member's row. Gated by `assertDevProject` unless
+ * `CHANGE_USER_ALLOW_PROD` is set, which in turn requires an explicit barn slug (#986).
+ * The pure formatters and resolvers are the module's test surface
+ * (`change-user.test.ts`).
+ */
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
-import { createClient } from '@supabase/supabase-js'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { assertDevProject } from './script-utils'
-
-export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
-  const err = result.error as { message?: string } | null
-  if (err) throw new Error(`${label}: ${err.message}`)
-  return result.data as T
-}
+import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
 export function formatProfileLine(
   profile: { first_name: string; last_name: string; email: string },
@@ -76,9 +82,7 @@ async function run() {
   assertSlugRequiredForProd(BARN_SLUG, allowProd)
   if (!allowProd) assertDevProject(SUPABASE_URL)
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
   let barnId: string
   if (BARN_SLUG) {

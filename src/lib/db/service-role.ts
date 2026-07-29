@@ -1,3 +1,14 @@
+/**
+ * Service-role utilities for scripts and `/demo` seeding, built directly on
+ * `@supabase/supabase-js` with no request-scoped SSR fallback anywhere:
+ * `createServiceClient` (no session persistence/refresh), the `mustSucceed` unwrap
+ * helper, auth-admin lookups with a race-safe find-or-create
+ * (`findAuthUserIdsByEmails`/`findOrCreateAuthUser` — a concurrent `/demo` request may
+ * win the create race and is re-checked), and `teardownBarnData`/`teardownAllData`,
+ * which delete rows and their backing storage objects (document files and photo paths)
+ * — the one module that touches the `documents` bucket without going through
+ * `document-storage.ts`.
+ */
 import { createClient, type SupabaseClient } from '@supabase/supabase-js'
 
 export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {

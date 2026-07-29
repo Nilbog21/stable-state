@@ -1,3 +1,12 @@
+/**
+ * Profile CRUD: `upsertProfile` keyed on `user_id`, reads by user id / profile id /
+ * batched user ids, the field-limited `updateProfile`/`updateContactInfo` writes,
+ * `updateProfilePhotoPath`, and photo orchestration over `document-storage.ts`:
+ * `replaceProfilePhoto` re-fetches the current `photo_path` (so a stale caller can't
+ * clobber a concurrent change), uploads, repoints, removes the just-uploaded file if
+ * the DB write fails, then best-effort deletes the old file; `removeProfilePhoto`
+ * repoints to `null` before its best-effort delete.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Profile } from './types'

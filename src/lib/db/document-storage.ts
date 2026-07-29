@@ -1,3 +1,10 @@
+/**
+ * Adapter at the Supabase Storage seam for the `documents` bucket: `validateFile`
+ * (MIME/extension allowlists, photo-only variants, and the 4.5 MB cap Vercel enforces
+ * at the edge), `uploadFile`/`removeFile`/`downloadFile`, and the 300-second
+ * `getSignedUrl`. Every app-runtime storage access goes through here; only
+ * `service-role.ts`'s teardown helpers touch the bucket directly.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 

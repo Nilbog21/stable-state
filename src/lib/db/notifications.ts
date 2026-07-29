@@ -1,3 +1,11 @@
+/**
+ * Notification CRUD and fan-out: `createNotification` (the
+ * `create_or_update_notification` RPC, upserting on `user_id,barn_id,type`), the
+ * required-client `upsertNotification` variant for service-role callers with no
+ * `auth.uid()`, batch `upsertNotificationsForRecipients`, cancellation-recipient
+ * resolution and nearby-instructor formatting, unread count, list, delete-by-type, and
+ * mark-all-read.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Notification, NotificationType, Role } from './types'

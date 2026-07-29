@@ -1,5 +1,15 @@
 'use server'
 
+/**
+ * Agreement Server Actions, all manager-only via `requireMembership`: create
+ * (`createAgreementAction` — a board agreement is always monthly, a lease's cadence
+ * comes from the form), fee-only edit (`updateAgreementAction`), end
+ * (`endAgreementAction`), and the charge-row edits the agreement detail page's table
+ * binds (`updateChargeFeeAction`, `updateChargePaymentTypeAction` — both delegated to
+ * `agreements.ts`'s RPC-backed charge mutations so the linked `transactions` row stays
+ * in sync; `updateChargePaymentTypeAction` is also bound by the finances Outstanding
+ * table, so it has a second caller outside this route).
+ */
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import {

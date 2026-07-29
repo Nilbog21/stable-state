@@ -1,3 +1,17 @@
+/**
+ * Nightly cron (GHA-only, invoked via `run-cron.sh`; env/client ceremony owned by
+ * `runCronJob`): for every active `lesson_series`, generates the next weekly lesson via
+ * `generateNextLessonForSeries` when the series' latest lesson falls inside the 28-day
+ * horizon, and stops the series via `stopLessonSeries` when its anchor lesson was
+ * hard-deleted (#744) or a rider is no longer an active member. Three batched
+ * notification fan-outs through `upsertNotificationsForRecipients`: series-stopped
+ * (instructor + managers), unavailable/inactive-horse warnings (instructor only), and
+ * nearby-instructor alerts (`getNearbyInstructorMembershipIds`, each recipient's
+ * payload first merged with their existing unread count so a same-day `submitLesson`
+ * upsert isn't overwritten). Per-series errors are counted and logged rather than
+ * aborting the run, surfacing as `hadErrors`. The pure schedule/roster predicates and
+ * formatters are the module's test surface (`generate-recurring-lessons.test.ts`).
+ */
 import { fileURLToPath } from 'url'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { generateNextLessonForSeries, stopLessonSeries } from '@/lib/db/lesson-series'

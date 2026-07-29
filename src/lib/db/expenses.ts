@@ -1,3 +1,11 @@
+/**
+ * Horse expense CRUD: barn/ID reads with resolved horse names, RPC-backed create/update
+ * (`create_expense_with_horses`/`update_expense_with_horses`, both syncing a matching
+ * `expense`-kind `transactions` row, #829) and delete
+ * (`delete_expense_with_transactions`), outstanding-expense reads, and the
+ * recent-recipient/type lookups feeding the expense form. Reporting reads live in
+ * `expense-finances.ts`.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveHorseNames } from './horses'

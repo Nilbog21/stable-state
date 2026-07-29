@@ -1,3 +1,12 @@
+/**
+ * Lesson participant management over `lesson_horses`/`lesson_riders`: RPC-backed
+ * lesson-with-participants create/update, per-rider and per-horse notes writes (each
+ * deliberately avoiding an implicit `RETURNING *` outside the caller's column grants —
+ * the rider path through the `update_lesson_rider_notes` RPC, the horse path through a
+ * bare update; see `updateLessonHorseNotes`' comment), rider cancellation and
+ * cancellation-fee collection,
+ * `hydrateParticipants`, and a rider's enrolled-lesson ID read.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'

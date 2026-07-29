@@ -1,3 +1,10 @@
+/**
+ * Lease/board agreement and charge CRUD: RPC-backed `createAgreement`
+ * (`create_agreement_with_first_charge`), barn/ID/rider reads, fee update and
+ * `endAgreement`, the pure `getAgreementStatusLabel`, and charge reads/mutations —
+ * `getChargesForAgreement` overlays each charge's `payment_type` from the
+ * `transactions` ledger (#885). Reporting reads live in `agreement-finances.ts`.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getTransactionRows } from './transactions'

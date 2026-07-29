@@ -3,6 +3,7 @@
 import { useActionState, useState } from 'react'
 import type { BarnEvent, Role } from '@/lib/db/types'
 import { DateHourPicker } from '../../lessons/DateHourPicker'
+import { localToday } from '@/lib/local-day'
 import { Button } from '@/components/ui/Button'
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
@@ -10,17 +11,6 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
   { value: 'trainer', label: 'Trainer' },
   { value: 'rider', label: 'Rider' },
 ]
-
-function parseInitialDate(eventAt: string): string {
-  const d = new Date(eventAt)
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${month}-${day}`
-}
-
-function parseInitialHour(eventAt: string): number {
-  return new Date(eventAt).getHours()
-}
 
 type EventFormProps = {
   mode: 'new' | 'edit'
@@ -68,8 +58,8 @@ export function EventForm({ mode, initialEvent, action, deleteHref }: EventFormP
         </div>
 
         <DateHourPicker
-          initialDate={mode === 'edit' && initialEvent ? parseInitialDate(initialEvent.event_at) : undefined}
-          initialHour={mode === 'edit' && initialEvent ? parseInitialHour(initialEvent.event_at) : undefined}
+          initialDate={mode === 'edit' && initialEvent ? localToday(new Date(initialEvent.event_at)) : undefined}
+          initialHour={mode === 'edit' && initialEvent ? new Date(initialEvent.event_at).getHours() : undefined}
           onChange={setEventAt}
         />
         <input type="hidden" name="event_at" value={eventAt} />

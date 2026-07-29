@@ -1,3 +1,9 @@
+/**
+ * Shared domain and reporting types crossed by the DAL's modules and their callers:
+ * role/payment/kind unions, entity row shapes (barns, memberships, horses, lessons,
+ * agreements, expenses, documents, notifications, barn events), finance/reporting rows,
+ * and schedule/calendar item shapes. No runtime code.
+ */
 export type Role = 'manager' | 'trainer' | 'rider'
 export type NotificationType =
   | 'outstanding_payment'
@@ -158,26 +164,6 @@ export interface LessonDetail extends Lesson {
   instructor_user_id: string | null
   lesson_horses: { exertion_level?: number; horse_notes: string | null; horses: { id: string; name: string; is_active?: boolean; is_available?: boolean; unavailability_reason?: string | null } | null }[]
   lesson_riders: { rider_notes: string | null; private_notes: string | null; cancellation_notes: string | null; cancelled_at: string | null; barn_membership: { id: string; name: string; user_id: string | null } | null }[]
-}
-
-export interface LessonHorse {
-  id: string
-  barn_id: string
-  lesson_id: string
-  horse_id: string
-  exertion_level: number
-  horse_notes: string | null
-}
-
-export interface LessonRider {
-  id: string
-  barn_id: string
-  lesson_id: string
-  rider_id: string
-  rider_notes: string | null
-  private_notes: string | null
-  cancellation_notes: string | null
-  cancelled_at: string | null
 }
 
 export interface OutstandingLesson {

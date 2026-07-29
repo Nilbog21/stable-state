@@ -1,3 +1,11 @@
+/**
+ * Lesson CRUD: `createLesson`, RPC-backed cancel/delete/collect-payment mutations,
+ * `updateLesson`, list reads (`getLessonsByBarn`, role-scoped; `getLessonsByIds`, whose
+ * id list the caller has already scoped), and single-lesson hydration (`getLessonById`).
+ * Every lesson those three reads return has its `payment_type` overlaid from the
+ * `get_lesson_payment_info` RPC (#885) rather than read off the stale `lessons` column;
+ * participant writes live in `lesson-participants.ts`.
+ */
 import { createClient } from '@/lib/supabase/server'
 import { getRiderEnrolledLessonIds, hydrateParticipants } from './lesson-participants'
 import { getMembershipByIdForBarn } from './barn-memberships'

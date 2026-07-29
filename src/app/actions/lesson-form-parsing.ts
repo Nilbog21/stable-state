@@ -1,3 +1,13 @@
+/**
+ * Shared parse/validate step for `submitLesson` and `updateLessonAction` (mirroring
+ * `expenses.ts`'s `parseExpenseFormData`): field extraction, participant-count and
+ * cross-field rules, instructor resolution (a non-manager caller is pinned to their own
+ * membership; a manager-supplied instructor id is validated against
+ * `getInstructorsByBarn`), and DB-backed existence checks that every submitted
+ * horse/rider id belongs to the barn. Deliberately has no `'use server'` directive —
+ * `parseLessonFormData` must never be independently reachable as a Server Action, or it
+ * would skip the `requireMembership` check its callers perform.
+ */
 import type { PaymentType } from '@/lib/db/types'
 import { getInstructorsByBarn, getActiveMembersWithProfiles } from '@/lib/db/barn-memberships'
 import { getHorsesByBarn } from '@/lib/db/horses'
