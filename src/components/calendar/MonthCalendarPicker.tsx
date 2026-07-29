@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { getMonthGrid, shiftMonth, type DayDecoration } from '@/lib/month-calendar'
 import { formatCalendarDate } from '@/lib/local-day'
+import { BAND_TINT_CLASS } from '@/lib/band-colors'
 import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { Button } from '@/components/ui/Button'
 import type { ScheduleItem } from '@/lib/db/types'
@@ -21,25 +22,6 @@ import type { ScheduleItem } from '@/lib/db/types'
 // font size.
 const navButtonClass =
   'flex min-h-[44px] min-w-[44px] shrink-0 items-center justify-center rounded-full border border-zinc-300 text-zinc-600 hover:border-zinc-500 hover:text-zinc-900 dark:border-zinc-600 dark:text-zinc-400 dark:hover:border-zinc-300 dark:hover:text-zinc-50'
-
-// 'low' deliberately gets no background: with a horse selected most of the month is low, and
-// painting all of it green drowns out the moderate/high cells that actually need attention
-// (Refactoring UI's "emphasize by de-emphasizing"). Same hues as ExhaustionBar's bands.
-//
-// Dark mode uses solid colours rather than a tint at alpha. The page is #0a0a0a, so any hue
-// composited at low alpha lands in the same dark brown -- orange-500/30 and red-500/30 differ
-// by 14 in one channel, which is why moderate read as "high". Picking the dark values directly
-// sidesteps the compositing entirely, and separates the two bands in lightness as well as hue
-// (both are required: hue alone fails for red-green colour vision deficiency, and with 'low'
-// untinted there is no third colour to calibrate against).
-//
-// The two dark hexes are arbitrary values, not tokens, because no Tailwind pair holds the
-// separation: amber-900/red-900 differ by only 24 in green where these differ by 48.
-const BAND_CLASS: Record<NonNullable<DayDecoration['band']>, string> = {
-  low: '',
-  moderate: 'bg-amber-200 dark:bg-[#6b4d10]',
-  high: 'bg-red-300 dark:bg-[#8c1d18]',
-}
 
 const SCHEDULED_CLASS = 'bg-blue-100 dark:bg-blue-900/40'
 
@@ -117,14 +99,14 @@ export function MonthCalendarPicker({
               zinc-400/zinc-500): a spill-over day can still carry a band tint, and dimmer grey
               on those tints falls to ~1.6:1 -- the dark tints sit at almost exactly zinc-500's
               luminance, so the number vanishes. Keep any future change above 4.5:1 on
-              BAND_CLASS's darkest tint, not just on the page background. */}
+              BAND_TINT_CLASS's darkest tint, not just on the page background. */}
           {days.map((date) => {
             const decoration = decorations[date] ?? NEUTRAL_DAY
             const outside = date.slice(0, 7) !== month
             const tint = decoration.past
               ? ''
               : decoration.band
-                ? BAND_CLASS[decoration.band]
+                ? BAND_TINT_CLASS[decoration.band]
                 : decoration.scheduled
                   ? SCHEDULED_CLASS
                   : ''

@@ -1,6 +1,7 @@
 'use client'
 import { useOutsideDismiss } from '@/components/useOutsideDismiss'
-import { getExhaustionBand, type ExhaustionBand } from '@/lib/exhaustion-band'
+import { getExhaustionBand } from '@/lib/exhaustion-band'
+import { BAND_FILL_CLASS } from '@/lib/band-colors'
 import { Button } from '@/components/ui/Button'
 
 export interface ExhaustionBarRow {
@@ -12,12 +13,6 @@ interface Props {
   existingRows: ExhaustionBarRow[]
   ghostValue?: number
   thresholds: { high: number; moderate: number }
-}
-
-const BAND_COLOR: Record<ExhaustionBand, string> = {
-  low: 'bg-green-500',
-  moderate: 'bg-orange-500',
-  high: 'bg-red-500',
 }
 
 const GHOST_STRIPE = {
@@ -61,7 +56,7 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
         className="block w-full py-2"
       >
         <div className="flex h-3 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
-          <div data-testid="exhaustion-bar-solid" className={`h-full ${BAND_COLOR[band]}`} style={{ width: `${existingPct}%` }} />
+          <div data-testid="exhaustion-bar-solid" className={`h-full ${BAND_FILL_CLASS[band]}`} style={{ width: `${existingPct}%` }} />
           {hasGhost && ghostPct > 0 && (
             <div
               data-testid="exhaustion-bar-ghost"
