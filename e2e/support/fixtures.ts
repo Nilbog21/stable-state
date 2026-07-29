@@ -9,15 +9,32 @@
 // Every builder takes an injected service-role client, same convention as scripts/.
 
 import { randomUUID } from 'crypto'
+import { existsSync, readFileSync } from 'fs'
+import { join } from 'path'
 import { type SupabaseClient } from '@supabase/supabase-js'
 import { mustSucceed, teardownBarnData } from '@/lib/db/service-role'
 import { createTier } from '@/lib/db/lesson-tiers'
-import { createHorse } from '@/lib/db/horses'
+import { createHorse, replaceHorsePhoto } from '@/lib/db/horses'
+import { replaceProfilePhoto } from '@/lib/db/profiles'
+import { upsertNotification } from '@/lib/db/notifications'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createExpense } from '@/lib/db/expenses'
 import { createAgreement } from '@/lib/db/agreements'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
-import type { Horse, Lesson, LessonTier, HorseExpense, Agreement } from '@/lib/db/types'
+import type {
+  Agreement,
+  Barn,
+  BarnEvent,
+  Horse,
+  HorseDocumentType,
+  HorseExpense,
+  Lesson,
+  LessonTier,
+  NotificationType,
+  RiderDocumentType,
+  Role,
+  TrainerDocumentType,
+} from '@/lib/db/types'
 
 export const E2E_PASSWORD = 'TestPass123!'
 
@@ -81,6 +98,29 @@ export type When = { at: Date; monthsAgo?: never } | { monthsAgo: 0 | 1 | 2; at?
 
 export function resolveWhen(when: When): Date {
   return when.at ?? pastInstantInMonth(when.monthsAgo!)
+}
+
+// ---------------------------------------------------------------------------
+// Committed test assets
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves one of the shared test files committed in scripts/data/ (#1135).
+ *
+ * Module-relative rather than cwd-relative: a spec's cwd is whatever the runner was invoked
+ * from, and `__dirname` (not `import.meta.url`, which Playwright's CJS transform rejects —
+ * see teardownBarn's note below) is the only anchor all three consumers agree on.
+ *
+ * Throws rather than skipping, deliberately unlike seed-barn.ts's existsSync guard — that
+ * script runs in production via /demo, where a skipped photo is cosmetic; here a silently
+ * skipped upload assertion is a false green, which is strictly worse than no test.
+ */
+export function assetPath(name: string): string {
+  const path = join(__dirname, '..', '..', 'scripts', 'data', name)
+  if (!existsSync(path)) {
+    throw new Error(`missing test asset scripts/data/${name} — it should be committed; see scripts/data.test.ts`)
+  }
+  return path
 }
 
 // ---------------------------------------------------------------------------
@@ -228,8 +268,90 @@ export async function addTier(
   return createTier(barnId, opts.name, opts.price, opts.isDefault ?? false, null, null, opts.instructorCut ?? 25, supabase)
 }
 
-export async function addHorse(supabase: SupabaseClient, barnId: string, name: string): Promise<Horse> {
-  return createHorse(barnId, name, undefined, supabase)
+export type HorseOptions = {
+  registeredName?: string
+  /** false plants the inactive-horse "Needs Attention" path; pair it with a reason. */
+  isAvailable?: boolean
+  unavailabilityReason?: string
+  owningMemberId?: string
+  /** Per-horse overrides of the barn defaults — set both or neither (DB CHECK: moderate < high). */
+  exhaustionThresholdHigh?: number
+  exhaustionThresholdModerate?: number
+  feedNotes?: string
+  medicationNotes?: string
+}
+
+/**
+ * `opts` is applied as a second write rather than folded into the insert — createHorse owns
+ * the insert (and #997's owner handling), so this stays a thin layer over it rather than a
+ * parallel implementation that drifts.
+ */
+export async function addHorse(
+  supabase: SupabaseClient,
+  barnId: string,
+  name: string,
+  opts: HorseOptions = {}
+): Promise<Horse> {
+  const horse = await createHorse(barnId, name, opts.owningMemberId, supabase)
+
+  const updates: Record<string, unknown> = {}
+  if (opts.registeredName !== undefined) updates.registered_name = opts.registeredName
+  if (opts.isAvailable !== undefined) updates.is_available = opts.isAvailable
+  if (opts.unavailabilityReason !== undefined) updates.unavailability_reason = opts.unavailabilityReason
+  if (opts.exhaustionThresholdHigh !== undefined) updates.exhaustion_threshold_high = opts.exhaustionThresholdHigh
+  if (opts.exhaustionThresholdModerate !== undefined) updates.exhaustion_threshold_moderate = opts.exhaustionThresholdModerate
+  if (opts.feedNotes !== undefined) updates.feed_notes = opts.feedNotes
+  if (opts.medicationNotes !== undefined) updates.medication_notes = opts.medicationNotes
+  if (Object.keys(updates).length === 0) return horse
+
+  return mustSucceed<Horse>(
+    await supabase.from('horses').update(updates).eq('id', horse.id).select().single(),
+    'update horse details'
+  )
+}
+
+/**
+ * Pre-seeds a horse's identification photo from a committed asset, so the read-only and
+ * replace/remove flows start from real state. Real bytes through the same DAL path the UI
+ * uses, so the resulting photo_path survives a createSignedUrl call.
+ */
+export async function setHorsePhoto(
+  supabase: SupabaseClient,
+  barn: SeededBarn,
+  horseId: string,
+  assetName: string
+): Promise<{ photoPath: string }> {
+  await replaceHorsePhoto(horseId, barn.id, assetFile(assetName), assetExtension(assetName), supabase)
+  const horse = mustSucceed<{ photo_path: string }>(
+    await supabase.from('horses').select('photo_path').eq('id', horseId).single(),
+    'read back horse photo path'
+  )
+  return { photoPath: horse.photo_path }
+}
+
+/** The member-photo mirror of setHorsePhoto — profiles.photo_path, same asset source. */
+export async function setMemberPhoto(
+  supabase: SupabaseClient,
+  barn: SeededBarn,
+  profileId: string,
+  assetName: string
+): Promise<{ photoPath: string }> {
+  await replaceProfilePhoto(profileId, barn.id, assetFile(assetName), assetExtension(assetName), supabase)
+  const profile = mustSucceed<{ photo_path: string }>(
+    await supabase.from('profiles').select('photo_path').eq('id', profileId).single(),
+    'read back profile photo path'
+  )
+  return { photoPath: profile.photo_path }
+}
+
+function assetExtension(assetName: string): string {
+  return assetName.slice(assetName.lastIndexOf('.') + 1).toLowerCase()
+}
+
+function assetFile(assetName: string): File {
+  const ext = assetExtension(assetName)
+  const type = ext === 'png' ? 'image/png' : ext === 'pdf' ? 'application/pdf' : 'image/jpeg'
+  return new File([readFileSync(assetPath(assetName))], assetName, { type })
 }
 
 export type LessonOptions = When & {
@@ -286,6 +408,113 @@ export async function addPaidLesson(
     'mark lesson paid'
   )
   return lesson
+}
+
+/**
+ * Cancelled state, planted rather than driven through the UI, so a spec can start from it.
+ *
+ * The table writes are replayed here rather than delegated to cancel_lesson_with_transactions
+ * / cancel_rider_participation: both RPCs authorize inline as manager / instructing trainer /
+ * self and raise `not_authorized` for a service-role caller, whose auth.uid() is NULL — they
+ * have no service-role exception (unlike sync_rider_cancellation_fee, which does, and which
+ * still owns the ledger half below so the fee policy isn't reimplemented here).
+ */
+export async function cancelLesson(
+  supabase: SupabaseClient,
+  barn: SeededBarn,
+  opts: { lessonId: string; notes?: string; isLate?: boolean }
+): Promise<void> {
+  const isLate = opts.isLate ?? false
+  const lesson = mustSucceed<{ lesson_type: string }>(
+    await supabase.from('lessons').select('lesson_type').eq('id', opts.lessonId).eq('barn_id', barn.id).single(),
+    'look up lesson to cancel'
+  )
+
+  const lessonUpdate: Record<string, unknown> = { cancelled_at: new Date().toISOString(), cancellation_notes: opts.notes ?? null }
+  if (!isLate) lessonUpdate.fee = 0
+  mustSucceed(
+    await supabase.from('lessons').update(lessonUpdate).eq('id', opts.lessonId).eq('barn_id', barn.id),
+    'cancel lesson'
+  )
+  mustSucceed(
+    await supabase
+      .from('lesson_riders')
+      .update({ cancelled_at: new Date().toISOString(), cancellation_notes: opts.notes ?? null })
+      .eq('lesson_id', opts.lessonId)
+      .eq('barn_id', barn.id)
+      .is('cancelled_at', null),
+    'cancel lesson riders'
+  )
+  await syncCancellationFee(supabase, barn.id, opts.lessonId, lesson.lesson_type, isLate)
+}
+
+/**
+ * One rider's participation, for the per-rider cancel and group-lesson flows. Returns whether
+ * cancelling this rider cascaded the whole lesson to Cancelled — the #741 behavior
+ * cancel_rider_participation implements when no active rider is left.
+ */
+export async function cancelLessonRider(
+  supabase: SupabaseClient,
+  barn: SeededBarn,
+  opts: { lessonId: string; riderId: string; notes?: string; isLate?: boolean }
+): Promise<{ cascaded: boolean }> {
+  const isLate = opts.isLate ?? false
+  const lesson = mustSucceed<{ lesson_type: string }>(
+    await supabase.from('lessons').select('lesson_type').eq('id', opts.lessonId).eq('barn_id', barn.id).single(),
+    'look up lesson for rider cancellation'
+  )
+
+  mustSucceed(
+    await supabase
+      .from('lesson_riders')
+      .update({ cancelled_at: new Date().toISOString(), cancellation_notes: opts.notes ?? null })
+      .eq('lesson_id', opts.lessonId)
+      .eq('barn_id', barn.id)
+      .eq('rider_id', opts.riderId)
+      .is('cancelled_at', null)
+      .select('id')
+      .single(),
+    'cancel rider participation'
+  )
+  if (!isLate) {
+    mustSucceed(await supabase.from('lessons').update({ fee: 0 }).eq('id', opts.lessonId), 'zero cancelled lesson fee')
+  }
+
+  const remaining = mustSucceed<{ id: string }[]>(
+    await supabase
+      .from('lesson_riders')
+      .select('id')
+      .eq('lesson_id', opts.lessonId)
+      .eq('barn_id', barn.id)
+      .is('cancelled_at', null),
+    'count remaining active riders'
+  )
+  const cascaded = remaining.length === 0
+  if (cascaded) {
+    mustSucceed(
+      await supabase.from('lessons').update({ cancelled_at: new Date().toISOString() }).eq('id', opts.lessonId),
+      'cascade lesson cancellation'
+    )
+  }
+
+  await syncCancellationFee(supabase, barn.id, opts.lessonId, lesson.lesson_type, isLate)
+  return { cascaded }
+}
+
+async function syncCancellationFee(
+  supabase: SupabaseClient,
+  barnId: string,
+  lessonId: string,
+  lessonType: string,
+  isLate: boolean
+): Promise<void> {
+  const { error } = await supabase.rpc('sync_rider_cancellation_fee', {
+    p_barn_id: barnId,
+    p_lesson_id: lessonId,
+    p_lesson_type: lessonType,
+    p_is_late: isLate,
+  })
+  if (error) throw new Error(`sync cancellation fee: ${error.message}`)
 }
 
 export type ExpenseOptions = When & {
@@ -417,28 +646,38 @@ export type HorseDocumentOptions = {
   content?: Buffer
 }
 
+/** Mirrors documents.ts's own CONFIG, plus the folder segment documents/new/actions.ts uses. */
+const DOCUMENT_ENTITIES = {
+  horse: { table: 'horse_documents', idColumn: 'horse_id', folder: 'horses' },
+  rider: { table: 'rider_documents', idColumn: 'rider_id', folder: 'riders' },
+  trainer: { table: 'staff_documents', idColumn: 'trainer_id', folder: 'trainers' },
+} as const
+
 /**
- * The storage object is a real (if tiny) upload, not just a DB row: the horse detail page
- * signs a URL for every document row it renders, and createSignedUrl errors on a path with
- * nothing stored there. The path shape mirrors documents/new/actions.ts's
+ * The storage object is a real (if tiny) upload, not just a DB row: the detail pages sign a
+ * URL for every document row they render, and createSignedUrl errors on a path with nothing
+ * stored there. The path shape mirrors documents/new/actions.ts's
  * `${barn_id}/${folder}/${entityId}/…` convention, which storage RLS keys off.
  */
-export async function addHorseDocument(
+async function addDocument(
   supabase: SupabaseClient,
   barn: SeededBarn,
-  horseId: string,
+  entity: keyof typeof DOCUMENT_ENTITIES,
+  dbEntityId: string,
+  storageEntityId: string,
   opts: HorseDocumentOptions
 ): Promise<{ storagePath: string }> {
-  const storagePath = `${barn.id}/horses/${horseId}/${opts.fileName}`
+  const { table, idColumn, folder } = DOCUMENT_ENTITIES[entity]
+  const storagePath = `${barn.id}/${folder}/${storageEntityId}/${opts.fileName}`
   const content = opts.content ?? Buffer.from('test document')
   mustSucceed(
     await supabase.storage.from('documents').upload(storagePath, content, { contentType: 'application/pdf' }),
-    'upload horse document file'
+    `upload ${entity} document file`
   )
   mustSucceed(
-    await supabase.from('horse_documents').insert({
+    await supabase.from(table).insert({
       barn_id: barn.id,
-      horse_id: horseId,
+      [idColumn]: dbEntityId,
       record_type: opts.recordType,
       storage_path: storagePath,
       file_name: opts.fileName,
@@ -446,37 +685,150 @@ export async function addHorseDocument(
       notes: null,
       reminder_date: opts.reminderDate ?? null,
     }),
-    'insert horse document'
+    `insert ${entity} document`
   )
   return { storagePath }
 }
 
-/** A managed-manager stub plus its invite token, for the clickable barn seed-test-barn makes. */
-export async function addManagedManagerInvite(
+export async function addHorseDocument(
+  supabase: SupabaseClient,
+  barn: SeededBarn,
+  horseId: string,
+  opts: HorseDocumentOptions & { recordType: HorseDocumentType }
+): Promise<{ storagePath: string }> {
+  return addDocument(supabase, barn, 'horse', horseId, horseId, opts)
+}
+
+/**
+ * A staff (trainer) document, for Members' Documents section. The DB row keys on the
+ * membership id while the storage path keys on the member's own user_id when they have one
+ * — the split documents/new/actions.ts makes, so a claimed member's files stay reachable
+ * under the self-service storage RLS that checks auth.uid().
+ */
+export async function addStaffDocument(
+  supabase: SupabaseClient,
+  barn: SeededBarn,
+  member: SeededMember,
+  opts: HorseDocumentOptions & { recordType: TrainerDocumentType }
+): Promise<{ storagePath: string }> {
+  return addDocument(supabase, barn, 'trainer', member.membershipId, member.userId ?? member.membershipId, opts)
+}
+
+/** The rider_documents mirror of addStaffDocument. */
+export async function addRiderDocument(
+  supabase: SupabaseClient,
+  barn: SeededBarn,
+  member: SeededMember,
+  opts: HorseDocumentOptions & { recordType: RiderDocumentType }
+): Promise<{ storagePath: string }> {
+  return addDocument(supabase, barn, 'rider', member.membershipId, member.userId ?? member.membershipId, opts)
+}
+
+/**
+ * A managed member stub (a profile with no auth user) plus its invite token — the
+ * unclaimed-member pages, and the clickable invite link seed-test-barn makes.
+ */
+export async function addManagedMember(
   supabase: SupabaseClient,
   barnId: string,
-  firstName: string,
-  lastName: string
-): Promise<string> {
+  opts: { firstName: string; lastName: string; role: Role; canInstruct?: boolean }
+): Promise<{ membershipId: string; profileId: string; inviteToken: string }> {
   const profile = mustSucceed<{ id: string }>(
     await supabase
       .from('profiles')
-      .insert({ first_name: firstName, last_name: lastName, is_managed: true })
+      .insert({ first_name: opts.firstName, last_name: opts.lastName, is_managed: true })
       .select('id')
       .single(),
-    'insert managed-manager stub profile'
+    'insert managed stub profile'
   )
   const inviteToken = randomUUID()
-  mustSucceed(
-    await supabase.from('barn_memberships').insert({
-      barn_id: barnId,
-      profile_id: profile.id,
-      role: 'manager',
-      status: 'active',
-      can_instruct: false,
-      invite_token: inviteToken,
-    }),
-    'insert managed-manager stub membership'
+  const membership = mustSucceed<{ id: string }>(
+    await supabase
+      .from('barn_memberships')
+      .insert({
+        barn_id: barnId,
+        profile_id: profile.id,
+        role: opts.role,
+        status: 'active',
+        can_instruct: opts.canInstruct ?? false,
+        invite_token: inviteToken,
+      })
+      .select('id')
+      .single(),
+    'insert managed stub membership'
   )
-  return inviteToken
+  return { membershipId: membership.id, profileId: profile.id, inviteToken }
+}
+
+/**
+ * A barn event, for Manage Barn's Barn Events list and the dashboard calendar's interleaving
+ * of events with lessons and expenses. Inserted directly rather than through
+ * barn-events.ts's createEvent, which takes no injectable client.
+ */
+export async function addBarnEvent(
+  supabase: SupabaseClient,
+  barnId: string,
+  opts: When & { title: string; notes?: string; visibleToRoles?: Role[] }
+): Promise<BarnEvent> {
+  return mustSucceed<BarnEvent>(
+    await supabase
+      .from('barn_events')
+      .insert({
+        barn_id: barnId,
+        title: opts.title,
+        event_at: resolveWhen(opts).toISOString(),
+        notes: opts.notes ?? null,
+        visible_to_roles: opts.visibleToRoles ?? ['manager', 'trainer', 'rider'],
+      })
+      .select()
+      .single(),
+    'insert barn event'
+  )
+}
+
+/**
+ * An already-read-or-unread in-app notification, for the Notifications subsection's badge
+ * and list. upsertNotification is the service-role write path — the
+ * create_or_update_notification RPC checks auth.uid(), which a service-role client doesn't
+ * have (see its entry in docs/architecture/rpc.md).
+ */
+export async function addNotification(
+  supabase: SupabaseClient,
+  opts: { userId: string; barnId: string; type: NotificationType; title: string; body?: string; link?: string }
+): Promise<void> {
+  await upsertNotification(supabase, {
+    userId: opts.userId,
+    barnId: opts.barnId,
+    type: opts.type,
+    title: opts.title,
+    body: opts.body ?? '',
+    link: opts.link ?? '',
+  })
+}
+
+/** Manage Barn's settings form, planted rather than driven through the UI. */
+export async function updateBarnSettings(
+  supabase: SupabaseClient,
+  barnId: string,
+  opts: {
+    defaultInstructorCut?: number
+    defaultBoardFee?: number
+    exhaustionThresholdHigh?: number
+    exhaustionThresholdModerate?: number
+    scheduleBufferMinutes?: number
+    timezone?: string
+  }
+): Promise<Barn> {
+  const updates: Record<string, unknown> = {}
+  if (opts.defaultInstructorCut !== undefined) updates.default_instructor_cut = opts.defaultInstructorCut
+  if (opts.defaultBoardFee !== undefined) updates.default_board_fee = opts.defaultBoardFee
+  if (opts.exhaustionThresholdHigh !== undefined) updates.exhaustion_threshold_high = opts.exhaustionThresholdHigh
+  if (opts.exhaustionThresholdModerate !== undefined) updates.exhaustion_threshold_moderate = opts.exhaustionThresholdModerate
+  if (opts.scheduleBufferMinutes !== undefined) updates.schedule_buffer_minutes = opts.scheduleBufferMinutes
+  if (opts.timezone !== undefined) updates.timezone = opts.timezone
+
+  return mustSucceed<Barn>(
+    await supabase.from('barns').update(updates).eq('id', barnId).select().single(),
+    'update barn settings'
+  )
 }
