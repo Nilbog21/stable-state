@@ -64,10 +64,13 @@ The worktree directory is a **sibling** of the primary checkout:
 projects/
   stable-state/                 # primary checkout
   stable-state-worktrees/
-    alpha/  beta/  gamma/  delta/  epsilon/
+    alpha/  beta/  gamma/  delta/  epsilon/     # yours
+    fable-1/  fable-2/  …                       # /fableFleet's, never used interactively
 ```
 
 Names are arbitrary and ordered — the fleet grows by adding the next Greek letter. Nothing in the application depends on the count; `scripts/workflow-context.sh` holds the list, and the five workflow skills that detect a worktree (`beginIssue`, `reviewIssue`, `testIssue`, `finishIssue`, `continueIssue`) read it from there, so that script is the one file to update when a worktree is added or removed.
+
+The `fable-N` worktrees are separate: `/fableFleet` provisions them for its headless workers, sizes the fleet to a batch's concurrency cap, and leaves them in place between batches as standing infrastructure — the same way the Greek-letter ones persist. Don't work in them interactively. They're a **rule** in `workflow-context.sh` rather than list entries (port `3100+N`, unbounded), so adding one needs no edit there; they're also deliberately absent from the `worktrees=` list the skills offer when they have to ask a human which worktree to use.
 
 Create one with:
 
@@ -86,6 +89,7 @@ Each worktree owns a fixed port so several dev servers can run side by side. `sc
 | `gamma` | 3003 |
 | `delta` | 3004 |
 | `epsilon` | 3005 |
+| `fable-N` | 3100 + N (`fable-1` → 3101) |
 
 ```bash
 npm run dev -- -p 3001
