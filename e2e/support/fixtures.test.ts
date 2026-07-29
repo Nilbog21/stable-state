@@ -16,45 +16,48 @@ import {
 
 vi.mock('@/lib/db/lesson-participants', () => ({ createLessonWithParticipants: vi.fn() }))
 
+// Both `now` inputs and assertions are UTC-framed throughout, matching what the helpers
+// promise (see their docs) — a local `new Date(2026, 6, 27)` here would make every case below
+// mean something different depending on the runner's zone, which is the very bug under test.
 describe('monthAnchor', () => {
   it('should_land_on_day_15', () => {
-    expect(monthAnchor(0, new Date(2026, 6, 27)).getDate()).toBe(15)
+    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 27))).getUTCDate()).toBe(15)
   })
 
   it('should_stay_in_the_current_month_for_zero', () => {
-    expect(monthAnchor(0, new Date(2026, 6, 27)).getMonth()).toBe(6)
+    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 27))).getUTCMonth()).toBe(6)
   })
 
   it('should_step_back_one_month_for_one', () => {
-    expect(monthAnchor(1, new Date(2026, 6, 27)).getMonth()).toBe(5)
+    expect(monthAnchor(1, new Date(Date.UTC(2026, 6, 27))).getUTCMonth()).toBe(5)
   })
 
   it('should_step_back_two_months_for_two', () => {
-    expect(monthAnchor(2, new Date(2026, 6, 27)).getMonth()).toBe(4)
+    expect(monthAnchor(2, new Date(Date.UTC(2026, 6, 27))).getUTCMonth()).toBe(4)
   })
 
   it('should_roll_the_year_back_when_stepping_past_january', () => {
-    expect(monthAnchor(2, new Date(2026, 0, 10)).getFullYear()).toBe(2025)
+    expect(monthAnchor(2, new Date(Date.UTC(2026, 0, 10))).getUTCFullYear()).toBe(2025)
   })
 
   it('should_wrap_to_november_when_stepping_two_months_back_from_january', () => {
-    expect(monthAnchor(2, new Date(2026, 0, 10)).getMonth()).toBe(10)
+    expect(monthAnchor(2, new Date(Date.UTC(2026, 0, 10))).getUTCMonth()).toBe(10)
   })
 })
 
 describe('pastInstantInMonth', () => {
   it('should_return_one_hour_ago_when_mid_month', () => {
-    const now = new Date(2026, 6, 27, 14, 0, 0)
+    const now = new Date(Date.UTC(2026, 6, 27, 14, 0, 0))
     expect(pastInstantInMonth(0, now).getTime()).toBe(now.getTime() - 60 * 60 * 1000)
   })
 
   it('should_clamp_to_start_of_month_within_the_first_hour_of_a_month', () => {
-    const now = new Date(2026, 6, 1, 0, 20, 0)
-    expect(pastInstantInMonth(0, now).getTime()).toBe(new Date(2026, 6, 1).getTime())
+    const now = new Date(Date.UTC(2026, 6, 1, 0, 20, 0))
+    expect(pastInstantInMonth(0, now).getTime()).toBe(Date.UTC(2026, 6, 1))
   })
 
   it('should_delegate_to_month_anchor_for_a_prior_month', () => {
-    const now = new Date(2026, 6, 27, 14, 0, 0)
+    const now = new Date(Date.UTC(2026, 6, 27, 14, 0, 0))
     expect(pastInstantInMonth(1, now).getTime()).toBe(monthAnchor(1, now).getTime())
   })
 })
@@ -84,6 +87,46 @@ describe('addUnpaidLesson', () => {
     const at = new Date('2026-07-22T23:30:00Z')
     await addUnpaidLesson(supabase, barn, { ...opts, at })
     expect(lessonAtOfLastCall()).toBe(at.toISOString())
+  })
+})
+
+/**
+ * #1151: the app buckets Finances by UTC month (resolveFinancesMonth, formatMonthParam), so
+ * these anchors have to as well — a local-calendar anchor lands in a different bucket than the
+ * `?month=` a spec navigates to for the |UTC offset| hours either side of a month boundary.
+ *
+ * The runner's own zone is whatever the developer's machine says, so each case pins TZ rather
+ * than depending on it: `Pacific/Niue` (UTC−11) is still in the previous month at 00:30 UTC on
+ * the 1st, and `Pacific/Kiritimati` (UTC+14) is already in the next one at 23:30 UTC on the
+ * last day. Mutating process.env.TZ mid-process does repoint Date's local getters on Node —
+ * the same save/restore shape the runPrefix block below uses for its own env var.
+ */
+describe('UTC month framing across a zone-skewed month boundary', () => {
+  const originalTZ = process.env.TZ
+
+  afterEach(() => {
+    if (originalTZ === undefined) delete process.env.TZ
+    else process.env.TZ = originalTZ
+  })
+
+  it('should_anchor_in_the_utc_month_when_the_runner_is_behind_utc', () => {
+    process.env.TZ = 'Pacific/Niue'
+    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 1, 0, 30))).getUTCMonth()).toBe(6)
+  })
+
+  it('should_anchor_in_the_utc_month_when_the_runner_is_ahead_of_utc', () => {
+    process.env.TZ = 'Pacific/Kiritimati'
+    expect(monthAnchor(0, new Date(Date.UTC(2026, 6, 31, 23, 30))).getUTCMonth()).toBe(6)
+  })
+
+  it('should_clamp_to_the_utc_month_start_when_the_runner_is_behind_utc', () => {
+    process.env.TZ = 'Pacific/Niue'
+    expect(pastInstantInMonth(0, new Date(Date.UTC(2026, 6, 1, 0, 30))).getTime()).toBe(Date.UTC(2026, 6, 1))
+  })
+
+  it('should_clamp_to_the_utc_month_start_when_the_runner_is_ahead_of_utc', () => {
+    process.env.TZ = 'Pacific/Kiritimati'
+    expect(pastInstantInMonth(0, new Date(Date.UTC(2026, 7, 1, 0, 30))).getTime()).toBe(Date.UTC(2026, 7, 1))
   })
 })
 
