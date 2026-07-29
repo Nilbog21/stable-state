@@ -74,12 +74,12 @@ export type SeededMembers = Record<E2eRole, SeededMember> & { rider2: SeededMemb
  * *different* months for the |UTC offset| hours either side of a month boundary, so the seed
  * lands in one bucket while every navigation asks for another.
  *
- * Not fixed by pinning the runner's timezone, and don't retry that: playwright.config.ts's
- * `timezoneId` sets the *browser context's* zone, while these helpers run in the Node runner
- * process during beforeAll seeding — which reads process.env.TZ, settable only before Node
- * starts (i.e. in scripts/run-checklist-suite.sh). TZ=UTC there would fix the month buckets
- * but simultaneously repoint `daysFromNow` below, which is deliberately runner-relative,
- * trading a once-a-month month-edge flake for a nightly day-edge one.
+ * Don't retry fixing this by pinning a timezone instead. Playwright's `timezoneId` isn't even
+ * a candidate — it sets the *browser context's* zone, while these helpers run in the Node
+ * runner process during beforeAll seeding, off process.env.TZ. Exporting TZ=UTC from
+ * scripts/run-checklist-suite.sh would work, but only for runs that go through that script: a
+ * bare `npx playwright test` or an IDE runner would silently get the skew back. Framing the
+ * anchors in UTC fixes it at the source, for every caller and every entry point.
  */
 export function monthAnchor(monthsAgo: 0 | 1 | 2, now: Date = new Date()): Date {
   return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 15))
