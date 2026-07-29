@@ -290,10 +290,7 @@ test('rider_drilldown_total_is_the_by_rider_gross_less_the_instructor_cut @manag
 test('rider_drilldown_preserves_the_month_param @manager', async ({ page }) => {
   await page.goto(byRiderUrl(previousMonth()))
   await breakdownTable(page).getByRole('link', { name: RIDER_NAME, exact: true }).click()
-  await page.waitForURL(new RegExp(`/finances/riders/${seeded.riderMembershipId}\\?month=${previousMonth()}$`), {
-    timeout: 15000,
-    waitUntil: 'commit',
-  })
+  await page.waitForURL(new RegExp(`/finances/riders/${seeded.riderMembershipId}\\?month=${previousMonth()}$`), { waitUntil: 'commit' })
 })
 
 // ---------------------------------------------------------------------------

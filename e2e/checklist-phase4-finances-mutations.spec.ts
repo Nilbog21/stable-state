@@ -404,7 +404,7 @@ test.describe.serial('removing a trainer who has instructed a paid lesson', () =
       .getByRole('button', { name: 'Remove' })
       .click()
 
-    await page.waitForURL(new RegExp(`/barn/${barn.slug}/members$`), { timeout: 15000, waitUntil: 'commit' })
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/members$`), { waitUntil: 'commit' })
   })
 
   // The whole remaining roster, not `toHaveCount(0)` on the removed one: a bare absence

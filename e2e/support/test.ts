@@ -17,13 +17,15 @@
 // Seeding is the reset; there is no undo path to maintain.
 //
 // Asserting on the URL, suite-wide (#1009, #1140, #1152). After a *click*, use
-// page.waitForURL(pattern, { timeout: 15000, waitUntil: 'commit' }) — expect(page).toHaveURL
-// carries expect's 5s default, which the dev server can exceed cold-compiling the target route
-// under full-suite load, and 'commit' is enough because the claim is that the URL changed, not
-// that the new document finished loading. waitForURL still fails the test outright if the URL
-// never lands, so the claim survives the swap. After a page.goto, plain toHaveURL is correct
-// and stays: goto already resolves after redirects, so there is nothing left to wait for (see
-// auth.spec.ts and behaviors.spec.ts's rider-redirect test).
+// page.waitForURL(pattern, { waitUntil: 'commit' }) — expect(page).toHaveURL carries expect's
+// 5s default, which the dev server can exceed cold-compiling the target route under full-suite
+// load, and 'commit' is enough because the claim is that the URL changed, not that the new
+// document finished loading. waitForURL still fails the test outright if the URL never lands,
+// so the claim survives the swap. Pass no explicit `timeout`: navigationTimeout defaults to 0
+// (no timeout), so the wait is bounded by the test's own 30s budget, and any number written
+// here could only *tighten* that — the opposite of the point. After a page.goto, plain
+// toHaveURL is correct and stays: goto already resolves after redirects, so there is nothing
+// left to wait for (see auth.spec.ts and behaviors.spec.ts's rider-redirect test).
 //
 // withBarn is a plain registration helper rather than a Playwright fixture because Playwright
 // has no file scope — only test and worker — and a worker-scoped fixture would leak one barn
