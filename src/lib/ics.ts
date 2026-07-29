@@ -1,3 +1,12 @@
+/**
+ * RFC 5545 renderer behind the `/calendar.ics` feed: `buildIcsFeed` (the sole export)
+ * renders a barn name plus already-fetched `CalendarFeedItem[]` into a VCALENDAR string —
+ * UTC `DTSTART`/`DTEND` (end = start + `durationMinutes`), a per-item `UID`, RFC-escaped
+ * text (`escapeIcsText` normalizes CRLF/bare-CR line endings first), and 75-octet
+ * content-line folding that never splits a UTF-16 surrogate pair. Pure string building —
+ * the fetch and token check live in `calendar-feed.ts:getCalendarFeedData`, and
+ * `src/app/calendar.ics/route.ts` composes the two.
+ */
 import type { CalendarFeedItem } from './db/types'
 
 const CRLF = '\r\n'

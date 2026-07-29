@@ -1,3 +1,13 @@
+/**
+ * Pure lesson permission/eligibility predicates over already-fetched rows (no DB access),
+ * shared by the lesson pages/cards and re-checked server-side by `lesson-cancellation.ts`'s
+ * actions: `canManageLesson` (manager, or trainer on their own lesson) and the narrower
+ * `isInstructorOfLesson`; `isLessonCancellationEligible` (still upcoming, or unpaid); the
+ * late-cancellation pair (`isWithinLateCancellationWindow` — `lesson_at` 24 hours or less away
+ * or already past; `isLateCancellation` — never late when the instructor cancels); and the
+ * #847 attention-badge pair (`isLessonEligibleForAttentionBadge`; `getHorseAttentionReasons`
+ * — inactive/unavailable-horse reasons, empty once the lesson is cancelled or past).
+ */
 import type { PaymentType, Role } from '@/lib/db/types'
 
 export function isLessonCancellationEligible(lesson: { lesson_at: string; payment_type: PaymentType | null }): boolean {
