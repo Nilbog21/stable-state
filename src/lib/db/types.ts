@@ -160,26 +160,6 @@ export interface LessonDetail extends Lesson {
   lesson_riders: { rider_notes: string | null; private_notes: string | null; cancellation_notes: string | null; cancelled_at: string | null; barn_membership: { id: string; name: string; user_id: string | null } | null }[]
 }
 
-export interface LessonHorse {
-  id: string
-  barn_id: string
-  lesson_id: string
-  horse_id: string
-  exertion_level: number
-  horse_notes: string | null
-}
-
-export interface LessonRider {
-  id: string
-  barn_id: string
-  lesson_id: string
-  rider_id: string
-  rider_notes: string | null
-  private_notes: string | null
-  cancellation_notes: string | null
-  cancelled_at: string | null
-}
-
 export interface OutstandingLesson {
   id: string
   barn_id: string

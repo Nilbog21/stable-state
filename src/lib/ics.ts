@@ -11,7 +11,7 @@ function toIcsDateTime(instant: string | Date): string {
   return `${d.getUTCFullYear()}${pad(d.getUTCMonth() + 1)}${pad(d.getUTCDate())}T${pad(d.getUTCHours())}${pad(d.getUTCMinutes())}${pad(d.getUTCSeconds())}Z`
 }
 
-export function escapeIcsText(text: string): string {
+function escapeIcsText(text: string): string {
   return text
     // Normalize CRLF/bare-CR line endings to \n first — RFC 5545 has no separate escape
     // for a raw carriage return, and leaving one unescaped can read as a stray line
