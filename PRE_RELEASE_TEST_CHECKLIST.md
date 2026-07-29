@@ -149,10 +149,15 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (#1019) That popup shows each item's horse and rider names
 - [ ] (#1019) Tap a day with nothing on it — the popup reads "Nothing scheduled for this day."
 - [ ] (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
-- [ ] (#1019) Tap **›** — the grid advances one month
+- [ ] (#1019) Tap **&gt;** — the grid advances one month
+- [ ] (#1019) The **&lt;** / **&gt;** month arrows are the same size as the ones on the Finances page
 - [ ] (#1019) After advancing a month, the new grid's shading reflects that month's lessons
 - [ ] (#1019) A day carried in from the neighbouring month renders dimmed
 - [ ] (#1019) That dimmed neighbouring-month day is still selectable
+- [ ] (#1019) In **dark mode**, an amber day and a red day are clearly different colours from each other
+- [ ] (#1019) In **dark mode**, the date number on a tinted neighbouring-month day is still readable
+- [ ] (#1019) The popup opened by tapping a day in the calendar's first row does not cover that day
+- [ ] (#1019) The exhaustion bar under a horse's checkbox uses the same amber/red as that horse's calendar shading
 - [ ] (#1019) Check **Recurring (weekly)** — the calendar's field label changes to "Starting Date"
 - [ ] (#1019) Manage Barn → Events → Add Event still uses a plain native date box, not the month calendar
 - [ ] Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)
