@@ -194,19 +194,37 @@ export async function getScheduleForRange(
   const lessons = (lessonData ?? []) as { id: string; lesson_at: string; instructor_id: string | null }[]
   const lessonIds = lessons.map((l) => l.id)
 
-  // Not getLessonJunctionRows (lesson-finance-queries.ts): that helper's generic shape returns
-  // exactly `lesson_id` + one participant column, and #1019's exertion heatmap needs
-  // `exertion_level` alongside the horse id.
-  const lessonHorseRows: { lesson_id: string; horse_id: string; exertion_level: number | null }[] = []
+  // Horse ids come from the junction table but exertion levels come from an RPC, because
+  // the two have different visibility: `lesson_horses` row RLS lets an enrolled rider see
+  // the row, while `exertion_level` has no SELECT grant to `authenticated` at all
+  // (#937/#1015) and is readable only via get_lesson_horse_exertion_levels_batch, whose
+  // filter is narrower (manager/trainer, or a rider holding lesson_read_privileges on the
+  // horse). Selecting the column here instead makes Postgres deny the whole query with
+  // 42501 — the #1019 regression this split fixes.
+  //
+  // Not getLessonJunctionRows (lesson-finance-queries.ts) for the horse ids: that helper's
+  // generic shape returns exactly `lesson_id` + one participant column, and the RPC result
+  // has to be joined back on both `lesson_id` and `horse_id`.
+  const lessonHorseRows: { lesson_id: string; horse_id: string }[] = []
+  const exertionRows: { lesson_id: string; horse_id: string; exertion_level: number | null }[] = []
   const lessonRiderRows: { lesson_id: string; rider_id: string; cancelled_at: string | null }[] = []
   if (lessonIds.length) {
     const { data: horseData, error: horseError } = await supabase
       .from('lesson_horses')
-      .select('lesson_id, horse_id, exertion_level')
+      .select('lesson_id, horse_id')
       .eq('barn_id', barnId)
       .in('lesson_id', lessonIds)
     if (horseError) throw horseError
     lessonHorseRows.push(...((horseData ?? []) as typeof lessonHorseRows))
+
+    // Called unconditionally for every role, same as lessons.ts:fetchExertionLevels — the
+    // DB does the per-role filtering, so a rider caller just gets zero rows back.
+    const { data: exertionData, error: exertionError } = await supabase.rpc('get_lesson_horse_exertion_levels_batch', {
+      p_lesson_ids: lessonIds,
+      p_barn_id: barnId,
+    })
+    if (exertionError) throw exertionError
+    exertionRows.push(...((exertionData ?? []) as typeof exertionRows))
 
     // cancelled_at is filtered here rather than at the query level so the rider list matches
     // what lesson-participants.ts already treats as "still enrolled" — a cancelled rider is
@@ -221,12 +239,14 @@ export async function getScheduleForRange(
   }
 
   const lessonHorseIdsByLessonId = new Map<string, string[]>()
-  const exertionByLessonId = new Map<string, Record<string, number>>()
   for (const row of lessonHorseRows) {
     const list = lessonHorseIdsByLessonId.get(row.lesson_id) ?? []
     list.push(row.horse_id)
     lessonHorseIdsByLessonId.set(row.lesson_id, list)
+  }
 
+  const exertionByLessonId = new Map<string, Record<string, number>>()
+  for (const row of exertionRows) {
     const exertions = exertionByLessonId.get(row.lesson_id) ?? {}
     exertions[row.horse_id] = Number(row.exertion_level ?? 0)
     exertionByLessonId.set(row.lesson_id, exertions)
