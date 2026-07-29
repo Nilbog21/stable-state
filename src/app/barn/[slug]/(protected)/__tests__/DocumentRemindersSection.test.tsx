@@ -74,6 +74,7 @@ describe('DocumentRemindersSection', () => {
     render(
       <DocumentRemindersSection
         slug="green-acres"
+        today="2026-07-07"
         dueDocuments={[{ ...pastDueHorseDoc, recordType: 'some_future_type' }]}
       />
     )

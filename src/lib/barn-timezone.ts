@@ -1,7 +1,8 @@
-// Barn-relative timezone: used only by server-side comparisons that run with no
-// request/viewer context (cron jobs, dashboard SSR) — e.g. "is this planned expense
-// past due". Display of real instants (lesson_at) stays viewer-local, per #935, and
-// never reads this.
+// Barn-relative timezone: every comparison against barn data resolves "today"/"now" here,
+// whether it runs with a viewer present or not (cron jobs, dashboard SSR, and — via a
+// server-computed prop — the client forms' own date comparisons, #1149). Display of real
+// instants (lesson_at) stays viewer-local, per #935, and never reads this; so do default
+// values for the user's own input (see local-day.ts's localToday).
 export const BARN_TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern (New York)' },
   { value: 'America/Chicago', label: 'Central (Chicago)' },
@@ -29,6 +30,13 @@ export function instantToLocalWallClock(instant: Date, timeZone: string): string
   }).formatToParts(instant)
   const get = (type: string) => parts.find((p) => p.type === type)!.value
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
+}
+
+// The barn's own calendar day for an instant — the barn-local counterpart to local-day.ts's
+// localToday, and the value every comparison against barn data measures against. Computed
+// server-side and handed to client components as a prop; they must not re-derive it.
+export function barnToday(timeZone: string, now: Date = new Date()): string {
+  return instantToLocalWallClock(now, timeZone).slice(0, 10)
 }
 
 // Reverse of instantToLocalWallClock: what real instant does this barn-local wall-clock

@@ -122,6 +122,15 @@ Canonical file-touch sequence for any new feature:
 6. Component / page
 7. Tests (written first — TDD)
 
+## Timezone convention
+
+Two rules, one for each direction a date crosses the viewer/barn boundary:
+
+- **Display of a real instant is viewer-local.** A `TIMESTAMPTZ` (`lessons.lesson_at`, a finance row's date) renders in the *viewer's own* browser timezone via the `LocalDateTime` Client Component (#935/#955) — never the barn's. `formatShortDate`'s UTC forcing is correct only for a genuinely DATE-only value (`agreement_charges.period`, a document's `reminder_date`).
+- **Comparison against barn data is barn-local; a default value for the user's own input stays viewer-local.** (#1149) Anything deciding "is this date past / due / today" resolves today from `barns.timezone` via `barn-timezone.ts`'s `barnToday()`, computed server-side and passed to client components as a required prop. `local-day.ts`'s `localToday()` is only for input defaults and decoding a stored instant back to an initial form value.
+
+Full detail — every call site, why each stayed or moved, and the helpers involved — lives in the `barns.timezone` and `lessons.lesson_at` rows of [`docs/architecture/schema.md`](docs/architecture/schema.md).
+
 ## Coverage + null safety
 
 CI enforces 100% branch coverage via `scripts/check-coverage.sh`. Handle all branches during implementation; do not leave gaps for the coverage script to catch. Null-check at all runtime boundaries (user input, Supabase responses, external API results).

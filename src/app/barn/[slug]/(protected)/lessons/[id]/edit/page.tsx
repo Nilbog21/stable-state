@@ -8,6 +8,7 @@ import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getSeriesById } from '@/lib/db/lesson-series'
 import { updateLessonAction, stopLessonSeriesAction, getProjectedExhaustionForBarn, getScheduleRangeForBarn } from '@/app/actions/lessons'
 import { getHorseAttentionReasons } from '@/lib/lesson-authorization'
+import { barnToday } from '@/lib/barn-timezone'
 import { LessonForm } from '../../LessonForm'
 import { StopSeriesButton } from '../../StopSeriesButton'
 import { HorseStatusBanner } from '../../HorseStatusBanner'
@@ -114,6 +115,7 @@ export default async function EditLessonPage({
         currentMembershipId={membership.id}
         tiers={tiers}
         defaultInstructorCut={barn.default_instructor_cut}
+        todayStr={barnToday(barn.timezone)}
         action={update}
         initialNotes={initialNotes}
         getProjectedExhaustion={getProjectedExhaustion}

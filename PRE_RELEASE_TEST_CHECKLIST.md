@@ -674,6 +674,9 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) **Barn Timezone** select shows the current value (default Eastern)
 - [ ] (e2e-candidate) Change it and Save → it persists on reload
 - [ ] (e2e-candidate) With the timezone changed above, add a planned expense due a few minutes from now, wait for its due time to pass *in the barn's configured timezone* → it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
+- [ ] (e2e-candidate) #1149 setup — set **Barn Timezone** to Eastern, set your *machine's* timezone to Hawaii, and do the next two checks after 8pm Hawaii time (by then the barn's own date is already tomorrow): the dashboard heading names the barn's date, one day ahead of your device's
+- [ ] (e2e-candidate) Under that setup, **New Lesson**'s month calendar greys out your machine's own current date as past — the cutoff follows the barn's day, which has already moved past it, not your device's
+- [ ] (e2e-candidate) Under that setup, a horse document whose Reminder Date is *tomorrow* by your machine's clock (i.e. the barn's current date) shows the amber **Reminder Due** badge on the horse detail page
 - [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
 - [ ] (e2e-candidate) That list entry shows the correct date

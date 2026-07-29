@@ -5,6 +5,7 @@ import { getHorsesByBarn, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { getActiveMembersWithProfiles, getInstructorsByBarn, getUserMembership } from '@/lib/db/barn-memberships'
 import { getTiersByBarn } from '@/lib/db/lesson-tiers'
 import { submitLesson, getProjectedExhaustionForBarn, getScheduleRangeForBarn } from '@/app/actions/lessons'
+import { barnToday } from '@/lib/barn-timezone'
 import { LessonForm } from '../LessonForm'
 
 export default async function LessonNewPage({
@@ -61,6 +62,7 @@ export default async function LessonNewPage({
         currentMembershipId={membership?.id ?? ''}
         tiers={tiers}
         defaultInstructorCut={barn.default_instructor_cut}
+        todayStr={barnToday(barn.timezone)}
         getProjectedExhaustion={getProjectedExhaustion}
         getScheduleRange={getScheduleRange}
         thresholdsByHorseId={thresholdsByHorseId}

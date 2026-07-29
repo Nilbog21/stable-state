@@ -1,26 +1,18 @@
-// The server fetches/renders on UTC day boundaries; comparing again here
-// against the viewer's local day means a reminder that isn't "today" yet in
-// their timezone doesn't flash into the wrong section a day early. Server
-// (SSR) and client hydration can compute `now` in different timezones, so a
-// value right at the boundary could theoretically land differently between
-// renders — an accepted tradeoff. Structural mismatches (a badge or section
-// appearing/disappearing, e.g. ReminderDueBadge, DocumentRemindersSection)
-// aren't suppressible via suppressHydrationWarning that way — React just
-// re-renders client-side. (The dashboard Day view's own cards dropped this
-// viewer-local "Today" comparison entirely, #1015 — every item on a Day view
-// already belongs to the one day its heading names, computed once from
-// `barns.timezone`, so a per-item re-derivation of "is this today" in the
-// viewer's own zone was redundant and could disagree with that heading.)
-// Despite the name, an explicit argument makes this "the viewer-local calendar day of that
-// instant" — `isSameLocalDay` below and the lesson/event forms' initial-date decode rely on it.
+// The viewer's own calendar day. #1149 settled which half of the app this belongs to:
+//
+//   Comparisons against barn data are barn-local (`barnToday`, src/lib/barn-timezone.ts).
+//   Default values for the user's own input stay viewer-local (here).
+//
+// So the remaining callers are the ones where the viewer's calendar is the right frame: the
+// default date for a new lesson (DateHourPicker), and which month the lesson form's calendar
+// opens on. Despite the name, an explicit argument makes this "the viewer-local calendar day of
+// that instant", which is also how the lesson/event forms decode a stored `lesson_at`/`event_at`
+// back into an initial date. Never use it to decide whether a barn-local date is past or due —
+// that lands a day off for any viewer whose device zone differs from `barns.timezone`.
 export function localToday(now: Date = new Date()): string {
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')
   return `${now.getFullYear()}-${month}-${day}`
-}
-
-export function isSameLocalDay(date: Date, now: Date): boolean {
-  return localToday(date) === localToday(now)
 }
 
 // Validates a "YYYY-MM-DD" calendar-date string, e.g. a `?date=` search param, rejecting
