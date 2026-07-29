@@ -158,6 +158,16 @@ describe('computeDayDecorations — heatmap bucketing', () => {
     expect(result['2026-03-10'].band).toBe('low')
   })
 
+  it('should_ignore_a_barn_wide_expense_when_summing_exertion', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'e1', itemType: 'expense', start: '2026-03-10T12:00:00', horseIds: [], appliesToAllHorses: true, exertionByHorseId: { h1: 20 } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+
+    expect(result['2026-03-10'].band).toBe('low')
+  })
+
   it('should_return_a_null_band_when_no_horse_is_selected', () => {
     const result = computeDayDecorations(['2026-03-10'], [], baseOpts)
 
@@ -311,6 +321,16 @@ describe('computeDayDecorations — conflict dot', () => {
     const result = computeDayDecorations(
       ['2026-03-10'],
       [item({ id: 'e1', itemType: 'expense', start: '2026-03-10T09:00:00', horseIds: ['h1'] })],
+      horseOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(true)
+  })
+
+  it('should_flag_a_day_where_a_barn_wide_expense_is_scheduled', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'e1', itemType: 'expense', start: '2026-03-10T09:00:00', horseIds: [], appliesToAllHorses: true })],
       horseOpts
     )
 
