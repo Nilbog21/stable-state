@@ -25,10 +25,15 @@ const navButtonClass =
 // 'low' deliberately gets no background: with a horse selected most of the month is low, and
 // painting all of it green drowns out the moderate/high cells that actually need attention
 // (Refactoring UI's "emphasize by de-emphasizing"). Same hues as ExhaustionBar's bands.
+//
+// Dark mode uses ExhaustionBar's own -500 hues at low alpha rather than the -900 shades: at
+// 900 both orange and red collapse to the same muddy brown against a zinc page, so a moderate
+// day was indistinguishable from a high one -- and with 'low' untinted there is no third
+// colour to calibrate against, so moderate simply read as "red".
 const BAND_CLASS: Record<NonNullable<DayDecoration['band']>, string> = {
   low: '',
-  moderate: 'bg-orange-200 dark:bg-orange-900/50',
-  high: 'bg-red-200 dark:bg-red-900/50',
+  moderate: 'bg-orange-200 dark:bg-orange-500/30',
+  high: 'bg-red-200 dark:bg-red-500/30',
 }
 
 const SCHEDULED_CLASS = 'bg-blue-100 dark:bg-blue-900/40'
