@@ -1,5 +1,7 @@
 import { describe, it, expect, afterEach } from 'vitest'
-import { monthAnchor, pastInstantInMonth, barnSlugFor, runPrefix } from './fixtures'
+import { existsSync } from 'fs'
+import { isAbsolute } from 'path'
+import { monthAnchor, pastInstantInMonth, barnSlugFor, runPrefix, assetPath } from './fixtures'
 
 describe('monthAnchor', () => {
   it('should_land_on_day_15', () => {
@@ -72,5 +74,37 @@ describe('runPrefix', () => {
   it('should_fall_back_to_an_e2e_prefixed_slug_when_unset', () => {
     delete process.env.E2E_RUN_PREFIX
     expect(runPrefix()).toMatch(/^e2e-/)
+  })
+})
+
+describe('assetPath', () => {
+  const original = process.cwd()
+
+  afterEach(() => {
+    process.chdir(original)
+  })
+
+  it('should_resolve_a_committed_asset_to_a_file_that_exists', () => {
+    expect(existsSync(assetPath('test_1_kb.pdf'))).toBe(true)
+  })
+
+  it('should_return_an_absolute_path', () => {
+    expect(isAbsolute(assetPath('test_1_kb.pdf'))).toBe(true)
+  })
+
+  it('should_resolve_under_scripts_data', () => {
+    expect(assetPath('butter-photo.jpg').endsWith('/scripts/data/butter-photo.jpg')).toBe(true)
+  })
+
+  // The whole point of resolving from the module path: Playwright and tsx run this file from
+  // the repo root, but nothing guarantees that, and a cwd-relative path fails silently-ish.
+  it('should_resolve_the_same_path_from_any_working_directory', () => {
+    const fromRoot = assetPath('test_1_kb.pdf')
+    process.chdir('/')
+    expect(assetPath('test_1_kb.pdf')).toBe(fromRoot)
+  })
+
+  it('should_throw_naming_the_missing_asset', () => {
+    expect(() => assetPath('no-such-asset.pdf')).toThrow(/scripts\/data\/no-such-asset\.pdf/)
   })
 })
