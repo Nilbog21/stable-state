@@ -16,11 +16,14 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
   const bella = await addHorse(supabase, barn.id, 'Bella')
 
   // Day +2 carries exactly one lesson and one expense — the interleave assertion below
-  // depends on nothing else landing there. The expense is pinned to 23:00 while the lesson
-  // inherits the seed's own time of day, making "lesson card, then expense card" a
-  // deterministic DOM order.
+  // depends on nothing else landing there. Both are pinned to an explicit barn-local time,
+  // 10:00 before 23:00, making "lesson card, then expense card" a deterministic DOM order.
+  // The lesson's time has to be set: daysFromNow carries the runner's own time of day, and the
+  // dashboard sorts on barn-local wall clock, so a seed landing after 23:00 *in the barn's zone*
+  // would otherwise place it past the expense (#1150).
   await addUnpaidLesson(supabase, barn, {
     at: daysFromNow(2),
+    time: '10:00',
     instructorId: members.trainer.membershipId,
     horseIds: [apollo.id],
     riderIds: [members.rider.membershipId],

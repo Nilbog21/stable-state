@@ -1,7 +1,20 @@
-import { describe, it, expect, afterEach } from 'vitest'
+import { describe, it, expect, afterEach, beforeEach, vi } from 'vitest'
 import { existsSync } from 'fs'
 import { isAbsolute } from 'path'
-import { monthAnchor, pastInstantInMonth, barnSlugFor, runPrefix, assetPath } from './fixtures'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
+import {
+  monthAnchor,
+  pastInstantInMonth,
+  barnSlugFor,
+  runPrefix,
+  assetPath,
+  daysFromNow,
+  addUnpaidLesson,
+  type SeededBarn,
+} from './fixtures'
+
+vi.mock('@/lib/db/lesson-participants', () => ({ createLessonWithParticipants: vi.fn() }))
 
 describe('monthAnchor', () => {
   it('should_land_on_day_15', () => {
@@ -43,6 +56,34 @@ describe('pastInstantInMonth', () => {
   it('should_delegate_to_month_anchor_for_a_prior_month', () => {
     const now = new Date(2026, 6, 27, 14, 0, 0)
     expect(pastInstantInMonth(1, now).getTime()).toBe(monthAnchor(1, now).getTime())
+  })
+})
+
+describe('addUnpaidLesson', () => {
+  // A barn in a zone the runner is unlikely to share, and instants built from explicit UTC ISO
+  // strings, so both assertions hold whatever TZ the suite runs under.
+  const barn: SeededBarn = { id: 'barn-1', slug: 'e2e-barn', name: 'E2E Barn', timezone: 'America/New_York' }
+  const supabase = {} as SupabaseClient
+  const opts = { instructorId: null, horseIds: [], riderIds: [], fee: 80 }
+
+  const lessonAtOfLastCall = () => vi.mocked(createLessonWithParticipants).mock.calls[0][0].lessonAt
+
+  beforeEach(() => {
+    vi.mocked(createLessonWithParticipants).mockReset()
+  })
+
+  // The #1150 case: 03:30Z is 23:30 in the barn's zone, so day+2 lands at barn-local 23:30 —
+  // after that day's 23:00 expense, inverting the interleave assertion. Barn-local is the frame
+  // that matters here: mergeScheduleItems sorts on the wall clock, not on the instant.
+  it('should_place_the_lesson_at_the_given_barn_local_time', async () => {
+    await addUnpaidLesson(supabase, barn, { ...opts, at: daysFromNow(2, new Date('2026-07-21T03:30:00Z')), time: '10:00' })
+    expect(lessonAtOfLastCall()).toBe('2026-07-22T14:00:00.000Z')
+  })
+
+  it('should_keep_the_seed_instant_when_no_time_is_given', async () => {
+    const at = new Date('2026-07-22T23:30:00Z')
+    await addUnpaidLesson(supabase, barn, { ...opts, at })
+    expect(lessonAtOfLastCall()).toBe(at.toISOString())
   })
 })
 
