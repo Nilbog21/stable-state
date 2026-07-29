@@ -35,7 +35,7 @@ test('rider_redirected_from_new_lesson_page @rider', async ({ page }) => {
 test('manager_by_instructor_pill_sets_filter_param @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/lessons`)
   await page.getByRole('link', { name: 'By Instructor' }).click()
-  await expect(page).toHaveURL(/filter=trainer/)
+  await page.waitForURL(/filter=trainer/, { waitUntil: 'commit' })
 })
 
 test('older_lessons_hidden_until_toggle_clicked @manager', async ({ page }) => {
@@ -68,6 +68,6 @@ for (const { label, param } of financeTabs) {
   test(`manager_finance_${param}_tab_updates_tab_param @manager`, async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/finances`)
     await page.getByRole('link', { name: `By ${label}` }).click()
-    await expect(page).toHaveURL(new RegExp(`tab=${param}`))
+    await page.waitForURL(new RegExp(`tab=${param}`), { waitUntil: 'commit' })
   })
 }

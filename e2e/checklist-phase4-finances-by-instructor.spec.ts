@@ -314,9 +314,7 @@ test('trainer_drilldown_preserves_the_month_param @manager', async ({ page }) =>
   const month = currentMonth()
   await page.goto(financesUrl())
   await rowFor(page, TRAINER_NAME).getByRole('link').click()
-  await expect(page).toHaveURL(
-    new RegExp(`/finances/trainers/${seeded.trainerMembershipId}\\?month=${month}$`)
-  )
+  await page.waitForURL(new RegExp(`/finances/trainers/${seeded.trainerMembershipId}\\?month=${month}$`), { waitUntil: 'commit' })
 })
 
 // ---------------------------------------------------------------------------
