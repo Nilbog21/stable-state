@@ -481,7 +481,7 @@ describe('getScheduleForRange', () => {
   }
 
   // get_lesson_horse_exertion_levels_batch — the only readable path to
-  // lesson_horses.exertion_level (#937/#1015 revoked the column grant).
+  // lesson_horses.exertion_level (#937 revoked the column grant).
   function makeRpc(data: unknown[] | null = [], error: Error | null = null) {
     return vi.fn().mockResolvedValue({ data, error })
   }
@@ -791,7 +791,7 @@ describe('getScheduleForRange', () => {
     expect(client.rpc).toHaveBeenCalledWith('get_lesson_horse_exertion_levels_batch', { p_lesson_ids: ['lesson-1', 'lesson-2'], p_barn_id: 'barn-1' })
   })
 
-  // exertion_level has no SELECT grant to `authenticated` (#937/#1015) — selecting it
+  // exertion_level has no SELECT grant to `authenticated` (#937) — selecting it
   // directly makes Postgres deny the whole lesson_horses query with 42501, which the
   // mocked client here can't reproduce. Asserting the select string is what keeps that
   // regression from silently returning.

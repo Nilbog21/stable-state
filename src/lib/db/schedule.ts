@@ -1,6 +1,7 @@
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
+import { getLessonJunctionRows } from './lesson-finance-queries'
 import type { Role, ScheduleItem } from './types'
 
 /**
@@ -196,26 +197,16 @@ export async function getScheduleForRange(
 
   // Horse ids come from the junction table but exertion levels come from an RPC, because
   // the two have different visibility: `lesson_horses` row RLS lets an enrolled rider see
-  // the row, while `exertion_level` has no SELECT grant to `authenticated` at all
-  // (#937/#1015) and is readable only via get_lesson_horse_exertion_levels_batch, whose
-  // filter is narrower (manager/trainer, or a rider holding lesson_read_privileges on the
-  // horse). Selecting the column here instead makes Postgres deny the whole query with
-  // 42501 — the #1019 regression this split fixes.
-  //
-  // Not getLessonJunctionRows (lesson-finance-queries.ts) for the horse ids: that helper's
-  // generic shape returns exactly `lesson_id` + one participant column, and the RPC result
-  // has to be joined back on both `lesson_id` and `horse_id`.
+  // the row, while `exertion_level` has no SELECT grant to `authenticated` at all (#937)
+  // and is readable only via get_lesson_horse_exertion_levels_batch, whose filter is
+  // narrower (manager/trainer, or a rider holding lesson_read_privileges on the horse).
+  // Selecting the column here instead makes Postgres deny the whole query with 42501 —
+  // the #1019 regression this split fixes.
   const lessonHorseRows: { lesson_id: string; horse_id: string }[] = []
   const exertionRows: { lesson_id: string; horse_id: string; exertion_level: number | null }[] = []
   const lessonRiderRows: { lesson_id: string; rider_id: string; cancelled_at: string | null }[] = []
   if (lessonIds.length) {
-    const { data: horseData, error: horseError } = await supabase
-      .from('lesson_horses')
-      .select('lesson_id, horse_id')
-      .eq('barn_id', barnId)
-      .in('lesson_id', lessonIds)
-    if (horseError) throw horseError
-    lessonHorseRows.push(...((horseData ?? []) as typeof lessonHorseRows))
+    lessonHorseRows.push(...(await getLessonJunctionRows('lesson_horses', 'horse_id', barnId, lessonIds, supabase)))
 
     // Called unconditionally for every role, same as lessons.ts:fetchExertionLevels — the
     // DB does the per-role filtering, so a rider caller just gets zero rows back.
