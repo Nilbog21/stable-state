@@ -16,11 +16,19 @@ set -uo pipefail
 # The one worktree->port map. Ordered, so `worktrees=` reads the way a prompt should.
 WORKTREES=(alpha:3001 beta:3002 gamma:3003 delta:3004 epsilon:3005)
 
+# `fable-N` — the /fableFleet headless fleet — is a rule rather than table rows: port
+# 3100+N, for any N. Unbounded because the fleet sizes itself to a batch's concurrency
+# cap, and deliberately absent from `worktrees=` because that list is the prompt the
+# skills offer a *human*, and a fable worktree is never chosen interactively. Detection
+# still has to resolve one, though: a worker runs the same five skills from inside it,
+# and an unresolved worktree makes them stop and ask a user who isn't there.
 port_for() {
   local entry
   for entry in "${WORKTREES[@]}"; do
     [[ ${entry%%:*} == "$1" ]] && { echo "${entry##*:}"; return; }
   done
+  # 10# so a zero-padded name (fable-08) isn't read as octal.
+  [[ $1 =~ ^fable-([0-9]+)$ ]] && echo "$((3100 + 10#${BASH_REMATCH[1]}))"
 }
 
 # The one definition of the label -> base branch rule. Sets `base`, and `base_from_label`
@@ -46,10 +54,11 @@ worktree=""
 worktree_path=""
 port=""
 root=$(git rev-parse --show-toplevel 2>/dev/null || echo "$PWD")
-if [[ $root =~ stable-state-worktrees/([a-z]+)$ ]]; then
-  port=$(port_for "${BASH_REMATCH[1]}")
+if [[ $root =~ stable-state-worktrees/([a-z]+(-[0-9]+)?)$ ]]; then
+  name="${BASH_REMATCH[1]}"
+  port=$(port_for "$name")
   if [[ -n $port ]]; then
-    worktree="${BASH_REMATCH[1]}"
+    worktree="$name"
     worktree_path="$root"
   fi
 fi
