@@ -33,7 +33,7 @@ import {
   getLessonById,
 } from '../lessons'
 
-// hydrateParticipants is exercised directly in lesson-participants.test.ts;
+// hydrateParticipants is exercised directly in lesson-participants-hydrate.test.ts;
 // here it's mocked as a single unit that passes lessons through unchanged by default.
 beforeEach(() => {
   vi.mocked(hydrateParticipants).mockImplementation(async (_supabase, lessons) =>

@@ -37,7 +37,7 @@ function makePaymentInfoRpc(rows: { lesson_id: string; payment_type: string | nu
   return vi.fn().mockResolvedValue({ data: rows, error })
 }
 
-// hydrateParticipants is exercised directly in lesson-participants.test.ts;
+// hydrateParticipants is exercised directly in lesson-participants-hydrate.test.ts;
 // here it's mocked as a single unit that passes lessons through unchanged by default.
 beforeEach(() => {
   vi.mocked(hydrateParticipants).mockImplementation(async (_supabase, lessons) =>

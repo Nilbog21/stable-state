@@ -36,7 +36,7 @@ import {
 
 const mockLesson = createMockLesson({ fee: 75, lesson_at: '2026-05-16T10:00:00Z', submitted_at: '2026-05-16T10:05:00Z' })
 
-// hydrateParticipants is exercised directly in lesson-participants.test.ts;
+// hydrateParticipants is exercised directly in lesson-participants-hydrate.test.ts;
 // here it's mocked as a single unit that passes lessons through unchanged by default.
 beforeEach(() => {
   vi.mocked(hydrateParticipants).mockImplementation(async (_supabase, lessons) =>
