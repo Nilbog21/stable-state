@@ -355,7 +355,7 @@ test.describe.serial('collecting a lease charge', () => {
   test('horse_drilldown_charge_row_links_back_to_its_agreement @manager', async ({ page }) => {
     await page.goto(horseDrilldownUrl(seeded.apple.id))
     await leaseDrilldownRow(page).getByRole('link').click()
-    await page.waitForURL(new RegExp(`/barn/${barn.slug}/agreements/${seeded.lease.id}\\?kind=lease$`))
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/agreements/${seeded.lease.id}\\?kind=lease$`), { waitUntil: 'commit' })
     await expect(page.getByRole('heading', { name: 'Lease Detail' })).toBeVisible()
   })
 

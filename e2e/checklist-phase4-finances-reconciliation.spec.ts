@@ -311,11 +311,11 @@ test.describe.serial('deleting a paid expense but keeping its collected record',
     // let its expense_id go NULL as the horse_expenses row goes away.
     await page.goto(`/barn/${barn.slug}/expenses/${seeded.orphanExpense.id}/delete`)
     await page.getByRole('button', { name: 'Confirm Delete' }).click()
-    // waitForURL with an explicit timeout, and commit rather than load — the repo's
-    // established pattern for a post-form-submit redirect that can land on a route the dev
-    // server is still cold-compiling under full-suite load (#1009, #1140, and
+    // waitForURL, and commit rather than load — the repo's established pattern for a
+    // post-form-submit redirect that can land on a route the dev server is still
+    // cold-compiling under full-suite load (#1009, #1140, and
     // checklist-phase4-finances-outstanding.spec.ts's saveExpenseForm on this same route).
-    await page.waitForURL(new RegExp(`/barn/${barn.slug}/expenses$`), { timeout: 15000, waitUntil: 'commit' })
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/expenses$`), { waitUntil: 'commit' })
     await requireLedgerRow('orphaned')
 
     await page.goto(financesUrl('horse'))

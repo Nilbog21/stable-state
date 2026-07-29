@@ -56,9 +56,8 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   await submit.press('Enter')
   // waitUntil: 'commit' (URL changed) rather than the default 'load' — under
   // Next dev-mode compile pressure the full load event can lag well past the
-  // redirect itself actually completing. 15s budget for the action's first,
-  // uncompiled invocation.
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { timeout: 15000, waitUntil: 'commit' })
+  // redirect itself actually completing.
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons$`), { waitUntil: 'commit' })
 
   // Mirrors DateHourPicker.tsx's own conversion — this checks the real
   // UI -> server action -> RPC -> storage pipeline against it, not a

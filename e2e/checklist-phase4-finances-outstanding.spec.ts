@@ -249,7 +249,7 @@ async function lateCancelByRider(page: Page, lessonId: string, riderMembershipId
   await page.goto(`/barn/${barn.slug}/lessons/${lessonId}/cancel-rider/${riderMembershipId}`)
   await page.locator('input[name="cancel_type"][value="rider"]').check()
   await page.getByRole('button', { name: 'Confirm Cancellation' }).click()
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons/${lessonId}$`), { timeout: 15000, waitUntil: 'commit' })
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons/${lessonId}$`), { waitUntil: 'commit' })
 }
 
 function lessonHref(lessonId: string): string {
@@ -270,7 +270,7 @@ async function outstandingPageHrefsForTypes(page: Page, types: string[]): Promis
 
 async function saveExpenseForm(page: Page) {
   await page.getByRole('button', { name: 'Save Changes' }).click()
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/expenses$`), { timeout: 15000, waitUntil: 'commit' })
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/expenses$`), { waitUntil: 'commit' })
 }
 
 // ---------------------------------------------------------------------------
@@ -386,7 +386,13 @@ test.describe.serial('cancellation fee', () => {
     await page.getByRole('link', { name: /View all outstanding/ }).click()
     // A wait, not a second assertion: the checkbox's one claim is what the page lists, and
     // this call still fails the test outright if the link doesn't land where it should.
-    await page.waitForURL(new RegExp(`/barn/${barn.slug}/finances/outstanding$`))
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/finances/outstanding$`), { waitUntil: 'commit' })
+    // A wait, not an assertion — the types list below is the checkbox's one claim.
+    // allInnerTexts() is a one-shot read with no auto-wait, and 'commit' settles the URL before
+    // the new document has rendered, so without this the read can return [] and fail on a page
+    // that was about to be correct. A 'commit' site whose next call auto-waits needs no such
+    // guard; the ones that read the DOM one-shot do.
+    await page.locator('tbody tr').first().waitFor()
     const types = await page.locator('tbody tr td:nth-child(2)').allInnerTexts()
     expect([...new Set(types)].sort()).toEqual(['Boarding', 'Cancellation Fee', 'Lease', 'Lesson'])
   })
@@ -429,7 +435,7 @@ test('outstanding_page_omits_outstanding_expenses @manager', async ({ page }) =>
 test('month_navigation_arrows_update_the_month_query_param @manager', async ({ page }) => {
   await page.goto(financesUrl())
   await page.getByRole('link', { name: '<', exact: true }).click()
-  await page.waitForURL((url) => url.searchParams.get('month') === previousMonth())
+  await page.waitForURL((url) => url.searchParams.get('month') === previousMonth(), { waitUntil: 'commit' })
   await page.getByRole('link', { name: '>', exact: true }).click()
   await page.waitForURL(new RegExp(`month=${currentMonth()}`), { waitUntil: 'commit' })
 })
