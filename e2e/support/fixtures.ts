@@ -374,8 +374,15 @@ export type LessonOptions = When & {
 }
 
 /**
- * The barn-local calendar day of `instant`, recombined with `time` — the same
- * instantToLocalWallClock/wallClockToInstant pair addExpense resolves expense_date with.
+ * The barn-local calendar day of `instant`, recombined with `time`. addExpense derives
+ * expense_date the same way — instantToLocalWallClock, sliced to the day — but stops there,
+ * because expense_time is a literal wall-clock column while lesson_at is a timestamptz, so
+ * only this side has to convert back with wallClockToInstant.
+ *
+ * That makes this the first caller anywhere to hand wallClockToInstant a non-midnight time,
+ * and its single correction is exact only outside a DST transition window: a `time` inside a
+ * skipped or repeated hour (e.g. '02:30' on a US spring-forward date) silently resolves an
+ * hour off. Harmless for the times fixtures actually pin — don't pin one near a transition.
  *
  * ponytail: this pins the time of day, not the day. goToDaysAhead navigates the dashboard
  * barn-relative while daysFromNow places the instant runner-relative, and the two self-cancel

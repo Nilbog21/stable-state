@@ -72,10 +72,11 @@ describe('addUnpaidLesson', () => {
     vi.mocked(createLessonWithParticipants).mockReset()
   })
 
-  // The #1150 case: a suite started at 23:30 seeds day+2 at 23:30 too, which sorts after a
-  // 23:00 expense on that day and inverts the interleave assertion.
+  // The #1150 case: 03:30Z is 23:30 in the barn's zone, so day+2 lands at barn-local 23:30 —
+  // after that day's 23:00 expense, inverting the interleave assertion. Barn-local is the frame
+  // that matters here: mergeScheduleItems sorts on the wall clock, not on the instant.
   it('should_place_the_lesson_at_the_given_barn_local_time', async () => {
-    await addUnpaidLesson(supabase, barn, { ...opts, at: daysFromNow(2, new Date('2026-07-20T23:30:00Z')), time: '10:00' })
+    await addUnpaidLesson(supabase, barn, { ...opts, at: daysFromNow(2, new Date('2026-07-21T03:30:00Z')), time: '10:00' })
     expect(lessonAtOfLastCall()).toBe('2026-07-22T14:00:00.000Z')
   })
 
