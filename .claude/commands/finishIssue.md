@@ -160,7 +160,7 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 
 Only fall back to telling the user to resolve it themselves (e.g. via `/reviewIssue`) if the conflict is large/ambiguous enough that guessing intent would be reckless — a docs-table or generated-file conflict is normally safe to resolve inline; a genuine logic conflict between two features' behavior is not.
 
-**`CI: timeout after 5m — {checks}`** — a conflict can also appear mid-wait if the base branch moved, but the script re-checks `mergeable` on every poll, so a timeout here really is a slow or stuck runner. Stop, print which checks are still running, and tell the user to re-run `/finishIssue` when they complete.
+**`CI: timeout after 5m — {checks}`** — usually a slow or stuck runner, but not always: since #1155 a single unsettled `CONFLICTING` read landing on the deadline also reports the timeout (with `conflict reported once — re-checking` among the pending names) rather than a conflict the gate never confirmed. Stop, print which checks are still running, and tell the user to re-run `/finishIssue` when they complete — if that pending reason is in the list, the re-run is also what settles the mergeability question.
 
 **`CI: fail — {checks}`** —
 
@@ -185,6 +185,10 @@ gh api repos/{owner}/{repo}/issues/{pr}/assignees -X POST -f "assignees[]=$(gh a
 ## Step 4 — Merge and delete branch
 
 (If either command below gets denied by the auto mode classifier, see "Known friction" above — don't try to self-approve or edit permissions, ask the user to toggle Auto Mode off and retry.)
+
+**Before merging:** a `CI: pass` taken before a push is stale for the new head — after any push, re-verify by re-running `bash scripts/workflow-ci-wait.sh {pr}` and require a fresh `CI: pass`. Branch on that verdict exactly as Step 2 does; do not merge on anything but a pass.
+
+Re-run it unconditionally here rather than only when this session pushed. Step 2's conflict branch already re-verifies at its own step 7, so that isn't the case this guards — the head can have moved for reasons this skill never saw, such as a `/reviewIssue` fix commit pushed moments before `/finishIssue` started, and there's no cheap local signal for that. On an already-green PR the script reaches a verdict on its first poll, so the unconditional re-run costs seconds and removes the judgment call about whether it was needed.
 
 Merge via the GitHub API to avoid worktree conflicts (the base branch may be checked out in another worktree, which blocks `gh pr merge`):
 
@@ -309,8 +313,10 @@ This is a targeted, O(1) update — it only touches entries that referenced #{N}
 Use Step 0's `port` — the worktree's fixed dev-server port.
 
 ```
-PID=$(lsof -ti:{port} -sTCP:LISTEN | head -1)
+PID=$(ss -lptnH "sport = :{port}" | grep -oP 'pid=\K[0-9]+' | head -1)
 ```
+
+Resolve the pid with `ss`, not `lsof` (#1155). `lsof -ti:{port} -sTCP:LISTEN` returns empty here while the server is demonstrably listening, and the `-sTCP:LISTEN` filter is not the cause — bare `lsof -i:{port}` returns nothing either, for the same live `next-server` that `ss` reports a pid for immediately. Confirmed at two separate close-outs (#1088, and #1092/#1094), each of which leaked its dev server. `ss` is iproute2 and present on every Linux, so it replaces `lsof` rather than being chained behind it; `README.md`'s Prerequisites carry that swap and the `lsof` substitution a macOS developer needs here instead, since iproute2 is Linux-only.
 
 If `PID` is empty, nothing is running — skip silently. Otherwise kill the whole process group (npm/next/next-server all share one PGID) so nothing is left orphaned:
 

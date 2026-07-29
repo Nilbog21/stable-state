@@ -21,7 +21,7 @@ Running the app needs only the above. The dev scripts in `scripts/` and the work
 - **A POSIX shell** — Linux or macOS. On Windows, use WSL: `scripts/*.sh` are bash, and the skills background a dev server, write logs under `/tmp`, and kill process groups, none of which have a native Windows equivalent.
 - **GNU coreutils** — the skills use GNU-only flags (`date -d`, `sort -V`). `brew install coreutils` covers both on macOS; where a plain BSD equivalent exists the skill text notes it inline (`date`), and where none does (`sort -V`) coreutils is the only option.
 - **The [`gh` CLI](https://cli.github.com/), installed and authenticated** (`gh auth login`) — nearly every step of every workflow skill shells out to it for issues, PRs, labels, and checks.
-- **`jq`, `curl`, and `lsof`** — used for label lookups, dev-server readiness polling, and stopping a worktree's dev server respectively.
+- **`jq`, `curl`, and `ss`** — used for label lookups, dev-server readiness polling, and stopping a worktree's dev server respectively. `ss` is iproute2, so that last one is Linux-only: it replaced `lsof` in #1155 because `lsof -ti:{port}` returns empty here for a demonstrably listening `next-server`, leaking the dev server at close-out. On macOS, substitute `lsof -ti:{port} -sTCP:LISTEN` in `/finishIssue`'s Step 6.
 
 ## Development setup
 

@@ -3,7 +3,8 @@
 # and exits with exactly one of:
 #   0  prints "CI: pass"                       (nothing else on this path)
 #   1  prints "CI: fail — {names}"
-#   2  prints "CI: conflict — rebase needed"
+#   2  prints "CI: conflict — rebase needed" (only after the conflict settles —
+#      two consecutive CONFLICTING reads one poll apart; see below)
 #   3  prints "CI: timeout after {N}m — {pending names}"
 #   4  prints NOTHING — a gh call or the jq verdict computation failed
 # Omitting <pr> also exits 1, via the ${1:?} expansion below, printing a usage
@@ -14,6 +15,7 @@ PR="${1:?usage: workflow-ci-wait.sh <pr-number> [timeout-minutes]}"
 TIMEOUT_MIN="${2:-5}"
 INTERVAL=15
 deadline=$(( SECONDS + TIMEOUT_MIN * 60 ))
+conflicting_streak=0
 
 # ponytail: every check counts as required. gh 2.46 has no `gh pr checks --json`,
 # and statusCheckRollup's isRequired comes back null (the GraphQL field needs a
@@ -27,17 +29,39 @@ while :; do
   # sailing on: an empty $sha below makes gh return the *entire* repo's run
   # history unfiltered, which would then be scored as this PR's checks.
   mergeable=$(jq -er .mergeable <<<"$pr_json") || exit 4
-  if [ "$mergeable" = "CONFLICTING" ]; then
-    echo "CI: conflict — rebase needed"
-    exit 2
-  fi
+
+  # mergeable is three-valued, and only MERGEABLE is trustworthy on a single read.
+  #
   # UNKNOWN means GitHub hasn't finished computing mergeability yet — it does so
   # lazily, and every push or base-branch move reopens that window. Treating it
   # as "not conflicting" lets a green rollup print "CI: pass" on a PR that is in
   # fact conflicting, which is the exact misdiagnosis this gate exists to stop.
-  # Counted as pending instead, so we poll until it settles (or time out saying so).
-  unknown_mergeability=""
-  [ "$mergeable" = "MERGEABLE" ] || unknown_mergeability="mergeability not yet computed"
+  #
+  # CONFLICTING gets the same skepticism for one poll (#1155): inside that same
+  # recompute window GitHub returns CONFLICTING for a PR that is in fact
+  # MERGEABLE and 0 commits behind, and exit 2 sends the caller into a costly,
+  # unnecessary rebase. So it takes two consecutive CONFLICTING reads, one
+  # INTERVAL apart, to exit 2; a lone one counts as pending and any other value
+  # resets the streak (a CONFLICTING→MERGEABLE→CONFLICTING sequence is not two
+  # consecutive reads).
+  #
+  # Both cases are counted as pending, so we poll until they settle (or time out
+  # saying so) — including a first CONFLICTING that lands on the deadline, which
+  # honestly reports exit 3 rather than a conflict this gate never confirmed.
+  if [ "$mergeable" = "CONFLICTING" ]; then
+    conflicting_streak=$(( conflicting_streak + 1 ))
+    if [ "$conflicting_streak" -ge 2 ]; then
+      echo "CI: conflict — rebase needed"
+      exit 2
+    fi
+    unknown_mergeability="conflict reported once — re-checking"
+  elif [ "$mergeable" = "MERGEABLE" ]; then
+    conflicting_streak=0
+    unknown_mergeability=""
+  else
+    conflicting_streak=0
+    unknown_mergeability="mergeability not yet computed"
+  fi
 
   # Cross-check the rollup against the real workflow runs for this exact SHA on
   # every poll, not once — the rollup lags for a minute or two after a push and
