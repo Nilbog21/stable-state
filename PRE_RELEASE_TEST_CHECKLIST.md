@@ -163,6 +163,8 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
 - [ ] (#1019) Change the Hour dropdown from an early hour to a late one — at least one day's shading shifts
 - [ ] (#1019) Schedule a vet/farrier expense for Apple on a future day, then reopen this form with Apple selected — that day shows a dot
+- [ ] (#1147) Schedule a farrier expense on another future day with **Applies to all horses** checked, then reopen this form with Apple selected — that day shows a dot even though the expense names no horse
+- [ ] (#1147) That barn-wide day's exertion shading is unchanged from before the expense was booked (an appointment is not a workload)
 - [ ] (#1019) With Apple selected, a greyed-out past day shows no shading
 - [ ] (#1019) With Apple selected, a greyed-out past day shows no dot
 - [ ] (#1019) Tap a day that has a lesson on it — a popup lists that day's items

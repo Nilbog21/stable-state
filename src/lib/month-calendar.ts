@@ -129,7 +129,10 @@ export function computeDayDecorations(
         past: false,
         band: worstBand(relevant, opts.selectedHorseIds, date, opts),
         scheduled: false,
-        conflict: onThisDay.some((i) => i.horseIds.some((h) => horseIds.has(h))),
+        // A barn-wide appointment (#1147) has no expense_horses rows to match against, so it
+        // conflicts with whichever horses are selected — the fan-out lives here rather than in
+        // materialized junction rows, which would also miss horses added to the barn since.
+        conflict: onThisDay.some((i) => i.appliesToAllHorses || i.horseIds.some((h) => horseIds.has(h))),
       }
       continue
     }
