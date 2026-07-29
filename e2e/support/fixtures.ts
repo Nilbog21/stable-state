@@ -138,9 +138,9 @@ export function runPrefix(): string {
 }
 
 /**
- * Playwright's unit of parallel dispatch is (spec file × project), not spec file — four of the
- * five specs are greped by more than one project — so the project name has to be part of the
- * slug or two jobs race the same `barns_slug_key` insert. `prefix` stays leading so
+ * Playwright's unit of parallel dispatch is (spec file × project), not spec file — a spec greped
+ * by more than one project is dispatched once per project — so the project name has to be part
+ * of the slug or two jobs race the same `barns_slug_key` insert. `prefix` stays leading so
  * teardown-test-barn.ts's `${prefix}-%` sweep still matches.
  */
 export function barnSlugFor(prefix: string, key: string, project: string): string {

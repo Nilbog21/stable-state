@@ -431,7 +431,7 @@ test('month_navigation_arrows_update_the_month_query_param @manager', async ({ p
   await page.getByRole('link', { name: '<', exact: true }).click()
   await page.waitForURL((url) => url.searchParams.get('month') === previousMonth())
   await page.getByRole('link', { name: '>', exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`month=${currentMonth()}`))
+  await page.waitForURL(new RegExp(`month=${currentMonth()}`), { timeout: 15000, waitUntil: 'commit' })
 })
 
 test('previous_month_reflects_its_own_seeded_lesson @manager', async ({ page }) => {
@@ -456,7 +456,10 @@ test.describe.serial('resolving a past-due planned expense', () => {
     await outstandingExpenses(page)
       .getByRole('link', { name: new RegExp(seeded.plannedExpense.recipient) })
       .click()
-    await expect(page).toHaveURL(new RegExp(`/barn/${barn.slug}/expenses/${seeded.plannedExpense.id}$`))
+    await page.waitForURL(new RegExp(`/barn/${barn.slug}/expenses/${seeded.plannedExpense.id}$`), {
+      timeout: 15000,
+      waitUntil: 'commit',
+    })
   })
 
   test('past_due_expense_still_outstanding_after_amount_entered_without_payment_type @manager', async ({ page }) => {

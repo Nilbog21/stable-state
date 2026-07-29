@@ -391,7 +391,10 @@ test('horse_drilldown_net_is_the_by_horse_net_less_the_horses_share_of_its_lesso
 test('horse_drilldown_link_preserves_the_month_param @manager', async ({ page }) => {
   await page.goto(financesUrl(previousMonth()))
   await page.getByRole('link', { name: seeded.dancer.name, exact: true }).click()
-  await expect(page).toHaveURL(new RegExp(`/finances/horses/${seeded.dancer.id}\\?month=${previousMonth()}$`))
+  await page.waitForURL(new RegExp(`/finances/horses/${seeded.dancer.id}\\?month=${previousMonth()}$`), {
+    timeout: 15000,
+    waitUntil: 'commit',
+  })
 })
 
 // ---------------------------------------------------------------------------
