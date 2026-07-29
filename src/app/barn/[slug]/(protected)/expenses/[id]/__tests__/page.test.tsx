@@ -57,9 +57,9 @@ describe('EditExpensePage', () => {
     vi.mocked(getRecentExpenseTypes).mockResolvedValue(['Farrier'])
   })
 
-  it('should_call_requireMembership_with_manager_role', async () => {
+  it('should_allow_a_manager_or_a_trainer', async () => {
     await callPage()
-    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
+    expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])
   })
 
   it('should_call_notFound_when_expense_not_found', async () => {
@@ -111,5 +111,92 @@ describe('EditExpensePage', () => {
     render(jsx)
     const link = screen.getByRole('link', { name: /delete/i })
     expect((link as HTMLAnchorElement).href).toMatch(/\/barn\/green-acres\/expenses\/expense-1\/delete$/)
+  })
+})
+
+// #1148: the route is a manager edit form and, for a trainer, a read-only appointment
+// view — a farrier visit is barn business, its cost is not. Everything the trainer needs
+// is already on the row; only `notes` isn't on the dashboard card.
+describe('EditExpensePage as a trainer', () => {
+  const trainerAppointment = createMockExpenseWithHorses({
+    id: 'expense-1',
+    recipient: 'Valley Farrier',
+    expense_type: 'Farrier',
+    expense_date: '2026-07-15',
+    expense_time: '14:00:00',
+    notes: 'Front shoes only',
+    horse_ids: ['horse-2'],
+    horse_names: ['Butter'],
+    // appointment_costs is manager-only RLS, so a trainer's read never resolves a cost.
+    amount: null,
+    payment_type: null,
+  })
+
+  beforeEach(() => {
+    vi.mocked(requireMembership).mockReset()
+    vi.mocked(getHorsesByBarn).mockReset()
+    vi.mocked(getExpenseById).mockReset()
+    vi.mocked(getRecentRecipients).mockReset()
+    vi.mocked(getRecentExpenseTypes).mockReset()
+    vi.mocked(notFound).mockReset()
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: mockUser as any,
+      barn: mockBarn,
+      membership: createMockMembership({ role: 'trainer' }),
+    })
+    vi.mocked(getExpenseById).mockResolvedValue(trainerAppointment)
+  })
+
+  it('should_render_the_appointment_heading', async () => {
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByRole('heading', { name: /^appointment$/i })).toBeDefined()
+  })
+
+  it('should_render_the_recipient', async () => {
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Valley Farrier')).toBeDefined()
+  })
+
+  it('should_render_the_appointment_type', async () => {
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Farrier')).toBeDefined()
+  })
+
+  it('should_render_the_assigned_horse', async () => {
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Butter')).toBeDefined()
+  })
+
+  it('should_render_the_notes', async () => {
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.getByText('Front shoes only')).toBeDefined()
+  })
+
+  it('should_not_render_an_edit_form', async () => {
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.queryByRole('button', { name: /save changes/i })).toBeNull()
+  })
+
+  it('should_not_render_a_delete_link', async () => {
+    const jsx = await callPage()
+    render(jsx)
+    expect(screen.queryByRole('link', { name: /delete/i })).toBeNull()
+  })
+
+  it('should_not_load_the_manager_only_form_data', async () => {
+    await callPage()
+    expect(getRecentRecipients).not.toHaveBeenCalled()
+  })
+
+  it('should_call_notFound_when_the_appointment_does_not_exist', async () => {
+    vi.mocked(getExpenseById).mockResolvedValue(null)
+    vi.mocked(notFound).mockImplementation(() => { throw new Error('NEXT_NOT_FOUND') })
+    await expect(callPage()).rejects.toThrow('NEXT_NOT_FOUND')
   })
 })

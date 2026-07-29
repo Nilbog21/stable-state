@@ -27,7 +27,7 @@ import type {
   BarnEvent,
   Horse,
   HorseDocumentType,
-  HorseExpense,
+  Appointment,
   Lesson,
   LessonTier,
   Notification,
@@ -576,14 +576,16 @@ export type ExpenseOptions = When & {
   time?: string
   amount?: number
   horseIds?: string[]
+  /** The one appointment field a trainer can only see on the detail page, not the card (#1148). */
+  notes?: string
 }
 
 export async function addExpense(
   supabase: SupabaseClient,
   barn: SeededBarn,
   opts: ExpenseOptions
-): Promise<HorseExpense> {
-  // horse_expenses.expense_date is DATE-only and is compared against a barn-timezone
+): Promise<Appointment> {
+  // appointments.expense_date is DATE-only and is compared against a barn-timezone
   // wall-clock window (see barns.timezone in docs/architecture/schema.md), so it has to land
   // on the barn's own calendar day, not UTC's.
   const expenseDate = instantToLocalWallClock(resolveWhen(opts), barn.timezone).slice(0, 10)
@@ -595,6 +597,7 @@ export async function addExpense(
       recipient: opts.recipient,
       expenseType: opts.expenseType ?? 'Farrier',
       amount: opts.amount,
+      notes: opts.notes,
       appliesToAllHorses: !opts.horseIds,
       horseIds: opts.horseIds,
     },

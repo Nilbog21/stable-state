@@ -3,11 +3,11 @@ import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, monthAnchor } from './support/fixtures'
 import { formatMonthParam } from '@/lib/finances-month'
-import type { Horse, HorseExpense } from '@/lib/db/types'
+import type { Horse, Appointment } from '@/lib/db/types'
 
 // By Paid To is a pure expense breakdown — no lesson, tier or agreement is seeded here,
 // because none of them can ever contribute a row to it (a recipient is only ever the payee
-// of a horse_expenses record). Every figure asserted below comes from one of these seed
+// of an appointments record). Every figure asserted below comes from one of these seed
 // amounts, from a builder return value, or from another figure read off the DOM.
 const ACE_EXPENSE = 300
 const BRIGHT_EXPENSE = 100
@@ -52,8 +52,8 @@ const NET_COL = 4
 
 type Seeded = {
   horse: Horse
-  smithFarrier: HorseExpense
-  smithVet: HorseExpense
+  smithFarrier: Appointment
+  smithVet: Appointment
 }
 
 let seeded: Seeded

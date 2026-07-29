@@ -456,7 +456,7 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockEq, mockNot, mockGte, mockLte }
   }
 
-  // expense_horses junction: select → eq(barn_id) → in(expense_id) → resolves
+  // appointment_horses junction: select → eq(barn_id) → in(appointment_id) → resolves
   function makeExpenseHorsesChain(data: unknown[] | null, error: Error | null = null) {
     const mockIn = vi.fn().mockResolvedValue({ data, error })
     const mockEq = vi.fn().mockReturnValue({ in: mockIn })
@@ -506,8 +506,8 @@ describe('getScheduleForRange', () => {
       if (table === 'lessons') return makeLessonsChain(lessons, lessonsError)
       if (table === 'lesson_horses') return makeLessonHorsesChain(lessonHorses, lessonHorsesError)
       if (table === 'lesson_riders') return makeLessonRidersChain(lessonRiders, lessonRidersError)
-      if (table === 'horse_expenses') return makeExpensesChain(expenses, expensesError)
-      if (table === 'expense_horses') return makeExpenseHorsesChain(expenseHorses, expenseHorsesError)
+      if (table === 'appointments') return makeExpensesChain(expenses, expensesError)
+      if (table === 'appointment_horses') return makeExpenseHorsesChain(expenseHorses, expenseHorsesError)
       if (table === 'barn_events') return makeEventsChain(events, eventsError)
       throw new Error(`unexpected table: ${table}`)
     })
@@ -575,7 +575,7 @@ describe('getScheduleForRange', () => {
   it('should_exclude_expenses_with_null_expense_time_at_the_query_level', async () => {
     const { select, mockNot } = makeExpensesChain([])
     const fromFn = vi.fn().mockImplementation((table: string) => {
-      if (table === 'horse_expenses') return { select }
+      if (table === 'appointments') return { select }
       return makeFrom()(table)
     })
     vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makeRpc() } as any)
@@ -608,7 +608,7 @@ describe('getScheduleForRange', () => {
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
-    expect(fromFn).not.toHaveBeenCalledWith('expense_horses')
+    expect(fromFn).not.toHaveBeenCalledWith('appointment_horses')
   })
 
   it('should_include_lesson_horse_ids_resolved_from_the_junction_table', async () => {
@@ -622,7 +622,7 @@ describe('getScheduleForRange', () => {
 
   it('should_include_expense_horse_ids_resolved_from_the_junction_table', async () => {
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
-    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: [{ expense_id: 'expense-1', horse_id: 'horse-1' }] }) as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: [{ appointment_id: 'expense-1', horse_id: 'horse-1' }] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -700,9 +700,9 @@ describe('getScheduleForRange', () => {
     expect(result[0].horseIds).toEqual([])
   })
 
-  it('should_return_lessons_with_empty_expenses_when_horse_expenses_select_returns_no_rows', async () => {
-    // manager_all_horse_expenses is manager-only RLS — a trainer/rider caller's session
-    // silently gets zero rows back from horse_expenses rather than an error.
+  it('should_return_lessons_with_empty_expenses_when_appointments_select_returns_no_rows', async () => {
+    // appointments SELECT is manager + trainer (#1148) — a *rider* caller's session
+    // silently gets zero rows back rather than an error.
     const lesson = createMockLesson({ id: 'lesson-1' })
     vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [] }) as any)
 

@@ -5,7 +5,7 @@ import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
-import type { HorseExpense } from '@/lib/db/types'
+import type { Appointment } from '@/lib/db/types'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { SeededBarn } from './support/fixtures'
 
@@ -62,7 +62,7 @@ const BY_HORSE_UNATTRIBUTED_INFO_TEXT =
 const BY_PAID_TO_UNATTRIBUTED_INFO_TEXT =
   'An expense record whose original entry was deleted after being marked paid.'
 
-type Seeded = { orphanExpense: HorseExpense }
+type Seeded = { orphanExpense: Appointment }
 
 let seeded: Seeded
 
@@ -156,16 +156,17 @@ const barn = withBarn('phase4-finances-reconciliation', async ({ supabase, barn,
  *
  * Written as a direct ledger update for the same reason addPaidLesson and addLeaseCharge are —
  * create_expense_with_horses owns transaction creation, so collection is a separate update over
- * the rows it wrote. horse_expenses.payment_type moves with it so the expense also reads as
- * paid to getOutstandingExpenses, matching what a manager who set a payment type would see.
+ * the rows it wrote. appointment_costs.payment_type moves with it (#1148 — the column left
+ * `appointments` for that manager-only table) so the appointment also reads as paid to
+ * getOutstandingExpenses, matching what a manager who set a payment type would see.
  */
 async function markExpensePaid(
   supabase: SupabaseClient,
   barn: SeededBarn,
-  expense: HorseExpense
-): Promise<HorseExpense> {
+  expense: Appointment
+): Promise<Appointment> {
   mustSucceed(
-    await supabase.from('horse_expenses').update({ payment_type: 'venmo' }).eq('id', expense.id),
+    await supabase.from('appointment_costs').update({ payment_type: 'venmo' }).eq('appointment_id', expense.id),
     'mark expense paid'
   )
   mustSucceed(
@@ -310,7 +311,7 @@ test.describe.serial('deleting a paid expense but keeping its collected record',
 
     // "Also delete the collected record from Finances" is deliberately left unchecked — that
     // is what makes delete_expense_with_transactions keep the collected transactions row and
-    // let its expense_id go NULL as the horse_expenses row goes away.
+    // let its expense_id go NULL as the appointments row goes away.
     await page.goto(`/barn/${barn.slug}/expenses/${seeded.orphanExpense.id}/delete`)
     await page.getByRole('button', { name: 'Confirm Delete' }).click()
     // waitForURL, and commit rather than load — the repo's established pattern for a
