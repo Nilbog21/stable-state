@@ -8,7 +8,7 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
 
-> **Phases are partitioned by the role doing the *asserting*, not the role the data is about.** A manager reading a page *about* riders is a Phase 4 line; a rider reading their own page is a Phase 6 line. That distinction is load-bearing — read it the other way and all 139 Finances lines look like Phase 6 material.
+> **Phases are partitioned by the role doing the *asserting*, not the role the data is about.** A manager reading a page *about* riders is a Phase 4 line; a rider reading their own page is a Phase 6 line. That distinction is load-bearing — read it the other way and all 141 Finances lines look like Phase 6 material.
 >
 > - A precondition may be planted by any role, including a mid-phase `change-user.sh` detour to a manager. Only the eye doing the looking has to match the phase.
 > - When such a line is later automated, the manager-side precondition becomes a **fixture/seed call in the asserting role's own barn**, so one test is always one role — a Playwright project binds one `storageState`.
@@ -33,7 +33,7 @@ Every step below that uploads a file names one from `scripts/data/` (#1135 — a
 
 ## Phase 1 — Setup
 
-<!-- Asserting role: the developer's own account, pre-membership and then as its manager. Role-agnostic setup. -->
+<!-- Asserting role: role-agnostic setup — an unauthenticated visitor, then the shared demo user, then the developer's own account pre-membership and as its manager. -->
 
 - [ ] Visit `/login` — a **Terms of Service** link is present
 - [ ] Clicking the link opens `/terms`
@@ -359,7 +359,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e-candidate) With a photo set, tap **Remove** → the placeholder icon returns
 - [ ] (e2e-candidate) The **Set Photo** button returns with it
 - [ ] (e2e-candidate) On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
-- [ ] (e2e-candidate) As manager, set `scripts/data/harper-photo.png` on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
+- [ ] (e2e-candidate) As manager, set `scripts/data/harper-photo.png` on Apple (the seed gives Apple an owning rider, but no owner has ever set her photo — the lock needs both, so it can't apply yet) → succeeds
 - [ ] (e2e-candidate) Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
 - [ ] (e2e-candidate) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
 - [ ] (e2e-candidate) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
@@ -733,7 +733,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) No **Delete** button is shown on any lesson, your own included
 - [ ] On one of your own lessons, click **Cancel** in the header and cancel a rider's spot (or the whole lesson) — works the same as manager; open Blake's lesson — no header **Cancel** button is shown
 - [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson you instruct — the Notes section shows the same **Cancellation Notes** textarea the manager gets
-- [ ] (e2e-candidate) Open a cancelled lesson you instruct that already has cancellation notes recorded (the manager entered them in Phase 4) — its detail page renders the same read-only **Cancellation Notes** row
+- [ ] (e2e-candidate) On that same lesson, enter cancellation notes in that textarea and Save — its detail page renders the same read-only **Cancellation Notes** row the manager gets
 - [ ] The recurring lesson created in Phase 3 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, uploading `scripts/data/test_1_kb.pdf` works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
@@ -789,10 +789,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] (e2e-candidate) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
-- [ ] (e2e-candidate) Open an enrolled lesson that was cancelled with cancellation notes recorded (the manager entered them in Phase 4) — its detail page renders the same read-only **Cancellation Notes** row
 - [ ] Same lesson detail page — no exertion rating shown next to any horse name (still true for a horse Dana holds no lesson-read privilege on)
 - [ ] (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse **does** show an exertion rating and its horse notes (if any)
 - [ ] (#999) Same page — other riders' rider/private notes stay hidden from Dana
+- [ ] (e2e-candidate) As manager, cancel a lesson Dana is enrolled in and record cancellation notes on it; reopen that lesson as Dana — its detail page renders the same read-only **Cancellation Notes** row (an e2e run seeds the cancelled lesson and its notes in the rider's own barn instead)
 - [ ] Open an enrolled **group** lesson's detail page — every co-rider's real name is shown, not a blank or raw ID
 - [ ] Copy a lesson ID Dana is **not** enrolled in, for a lesson with no horse she holds lesson-read privileges on, and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson via the **Cancel** button in the lesson detail page header (no Cancel button on the Lessons list or Dashboard) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected; the instructor receives a "Lesson participation cancelled" notification
