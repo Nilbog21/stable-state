@@ -26,14 +26,19 @@ const navButtonClass =
 // painting all of it green drowns out the moderate/high cells that actually need attention
 // (Refactoring UI's "emphasize by de-emphasizing"). Same hues as ExhaustionBar's bands.
 //
-// Dark mode uses ExhaustionBar's own -500 hues at low alpha rather than the -900 shades: at
-// 900 both orange and red collapse to the same muddy brown against a zinc page, so a moderate
-// day was indistinguishable from a high one -- and with 'low' untinted there is no third
-// colour to calibrate against, so moderate simply read as "red".
+// Dark mode uses solid colours rather than a tint at alpha. The page is #0a0a0a, so any hue
+// composited at low alpha lands in the same dark brown -- orange-500/30 and red-500/30 differ
+// by 14 in one channel, which is why moderate read as "high". Picking the dark values directly
+// sidesteps the compositing entirely, and separates the two bands in lightness as well as hue
+// (both are required: hue alone fails for red-green colour vision deficiency, and with 'low'
+// untinted there is no third colour to calibrate against).
+//
+// The two dark hexes are arbitrary values, not tokens, because no Tailwind pair holds the
+// separation: amber-900/red-900 differ by only 24 in green where these differ by 48.
 const BAND_CLASS: Record<NonNullable<DayDecoration['band']>, string> = {
   low: '',
-  moderate: 'bg-orange-200 dark:bg-orange-500/30',
-  high: 'bg-red-200 dark:bg-red-500/30',
+  moderate: 'bg-amber-200 dark:bg-[#6b4d10]',
+  high: 'bg-red-300 dark:bg-[#8c1d18]',
 }
 
 const SCHEDULED_CLASS = 'bg-blue-100 dark:bg-blue-900/40'
