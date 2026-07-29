@@ -1,0 +1,13 @@
+-- #1137: the e2e fixture builders plant already-cancelled lesson state with a service-role
+-- client. cancel_lesson_with_transactions / cancel_rider_participation both raise
+-- not_authorized for a NULL auth.uid(), so the builders replay those functions' table writes
+-- directly — but the cancellation-fee ledger must stay owned by this function rather than be
+-- reimplemented in a fixture that can drift from the real fee policy.
+--
+-- sync_rider_cancellation_fee already exempts a NULL-auth.uid() caller from its own
+-- authorization check (the documented service-role-caller exception it shares with
+-- sync_lesson_transactions); only the EXECUTE grant was missing. Same fix as
+-- 20260723182521_nearby_instructor_unread_title_service_role_grant.sql and #930's
+-- get_outstanding_transactions grant. No new capability: service_role already bypasses RLS
+-- and can write `transactions` directly.
+GRANT EXECUTE ON FUNCTION public.sync_rider_cancellation_fee(uuid, uuid, lesson_type, boolean) TO service_role;

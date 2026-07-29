@@ -6,7 +6,6 @@
 
 import { fileURLToPath } from 'url'
 import { readFileSync } from 'fs'
-import { join } from 'path'
 import {
   createBarn,
   addMemberships,
@@ -16,8 +15,18 @@ import {
   addUnpaidLesson,
   addExpense,
   addLeaseCharge,
+  addBarnEvent,
   addHorseDocument,
-  addManagedManagerInvite,
+  addRiderDocument,
+  addStaffDocument,
+  addNotification,
+  addManagedMember,
+  cancelLesson,
+  cancelLessonRider,
+  setHorsePhoto,
+  setMemberPhoto,
+  updateBarnSettings,
+  assetPath,
   daysFromNow,
   E2E_USERS,
   E2E_PASSWORD,
@@ -63,13 +72,29 @@ async function run() {
   // membership in this throwaway barn via the normal invite flow (claim_managed_member
   // merges into their existing profile, per #887).
   const { firstName: devFirstName, lastName: devLastName } = splitDevName(DEV_NAME!)
-  const devInviteToken = await addManagedManagerInvite(supabase, barn.id, devFirstName, devLastName)
+  const { inviteToken: devInviteToken } = await addManagedMember(supabase, barn.id, {
+    firstName: devFirstName,
+    lastName: devLastName,
+    role: 'manager',
+  })
+
+  // Managed rider stub — the unclaimed-member pages, and the member-photo flows.
+  await addManagedMember(supabase, barn.id, { firstName: 'Harper', lastName: 'Test', role: 'rider' })
 
   const tier1 = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
   const tier2 = await addTier(supabase, barn.id, { name: 'Premium', price: 120 })
 
   const apollo = await addHorse(supabase, barn.id, 'Apollo')
-  const bella = await addHorse(supabase, barn.id, 'Bella')
+  const bella = await addHorse(supabase, barn.id, 'Bella', {
+    registeredName: "Bella's Registered Name",
+    owningMemberId: members.rider.membershipId,
+    exhaustionThresholdModerate: 4,
+    exhaustionThresholdHigh: 8,
+    feedNotes: '2 flakes hay AM/PM, half scoop grain.',
+    medicationNotes: 'Daily joint supplement with breakfast.',
+  })
+  // Out of rotation — the inactive-horse "Needs Attention" path.
+  await addHorse(supabase, barn.id, 'Comet', { isAvailable: false, unavailabilityReason: 'Recovering from an abscess' })
 
   type LessonOverrides = {
     horseIds?: string[]
@@ -112,6 +137,42 @@ async function run() {
   await addUnpaidLesson(supabase, barn, lesson(daysFromNow(-1), { horseIds: [bella.id], riderIds: [members.rider2.membershipId] }))
   await addLeaseCharge(supabase, barn, { monthsAgo: 2, riderId: members.rider2.membershipId, horseId: bella.id, fee: 150 })
 
+  // Already-cancelled state, so the Cancelled badge and the cancellation-notes display have
+  // something to show without driving the cancel flow first.
+  const cancelled = await addUnpaidLesson(supabase, barn, lesson(daysFromNow(3)))
+  await cancelLesson(supabase, barn, { lessonId: cancelled.id, notes: 'Arena flooded.' })
+
+  // A group lesson with one rider already cancelled — the per-rider cancel display, and the
+  // group flows that need a lesson still active with a cancelled participant on it.
+  const groupLesson = await addUnpaidLesson(supabase, barn, lesson(daysFromNow(4), {
+    horseIds: [apollo.id, bella.id],
+    exertionLevels: [3, 2],
+    riderIds: [members.rider.membershipId, members.rider2.membershipId],
+    lessonType: 'group',
+  }))
+  await cancelLessonRider(supabase, barn, {
+    lessonId: groupLesson.id,
+    riderId: members.rider2.membershipId,
+    notes: 'Away that week.',
+  })
+
+  // Barn event — Manage Barn's Barn Events list, and the dashboard calendar's interleaving.
+  await addBarnEvent(supabase, barn.id, { at: daysFromNow(6), title: 'Spring Schooling Show', notes: 'Entries close Friday.' })
+
+  // Pre-set photos, so the read-only and replace/remove flows start from real state. Clover
+  // and Harper's own assets are left unused here on purpose — they're the upload sources.
+  await setHorsePhoto(supabase, barn, apollo.id, 'butter-photo.jpg')
+  await setMemberPhoto(supabase, barn, members.trainer.profileId, 'emery-photo.jpg')
+
+  await addNotification(supabase, {
+    userId: members.manager.userId!,
+    barnId: barn.id,
+    type: 'lesson_cancelled',
+    title: 'A lesson was cancelled',
+    body: 'Arena flooded.',
+    link: `/barn/${barn.slug}/lessons`,
+  })
+
   // Undated document — the horse page's reminder-date form has something to act on.
   await addHorseDocument(supabase, barn, apollo.id, { recordType: 'coggins', fileName: 'coggins.pdf' })
   // Past-due document, from the real fixture PDF, so the Document Reminders card has content
@@ -120,8 +181,11 @@ async function run() {
     recordType: 'insurance_binder',
     fileName: 'insurance.pdf',
     reminderDate: daysFromNow(-1).toISOString().slice(0, 10),
-    content: readFileSync(join(process.cwd(), 'scripts/data/test_1_kb.pdf')),
+    content: readFileSync(assetPath('test_1_kb.pdf')),
   })
+  // Members' own Documents sections.
+  await addStaffDocument(supabase, barn, members.trainer, { recordType: 'instructor_contract', fileName: 'contract.pdf' })
+  await addRiderDocument(supabase, barn, members.rider, { recordType: 'liability_waiver', fileName: 'waiver.pdf' })
 
   await addExpense(supabase, barn, {
     at: daysFromNow(2),
@@ -133,17 +197,29 @@ async function run() {
   // Date-only planned expense (no time) — must NOT appear on the dashboard.
   await addExpense(supabase, barn, { at: daysFromNow(4), recipient: 'Feed Supplier', expenseType: 'Feed' })
 
+  // Non-default settings, so Manage Barn's fields aren't all showing the schema defaults.
+  await updateBarnSettings(supabase, barn.id, {
+    defaultInstructorCut: 30,
+    defaultBoardFee: 900,
+    exhaustionThresholdModerate: 6,
+    exhaustionThresholdHigh: 12,
+    scheduleBufferMinutes: 45,
+  })
+
   console.log(`Done. Test barn seeded:`)
   console.log(`  Barn:     ${barn.name} (slug: ${barn.slug}, id: ${barn.id})`)
   for (const user of Object.values(E2E_USERS)) {
     console.log(`  ${(user.role.charAt(0).toUpperCase() + user.role.slice(1) + ':').padEnd(9)} ${user.email} / ${E2E_PASSWORD}`)
   }
-  console.log(`  Horses:   Apollo, Bella`)
+  console.log(`  Horses:   Apollo (photo), Bella (owned by rider, notes, thresholds), Comet (unavailable)`)
+  console.log(`  Members:  Harper Test (managed rider, unclaimed), trainer has a profile photo`)
   console.log(`  Tiers:    Standard ($80, default), Premium ($120)`)
-  console.log(`  Lessons:  8 (5 past, 1 today, 2 future; 1 group; 4 marked paid)`)
+  console.log(`  Lessons:  10 (5 past, 1 today, 4 future; 2 group; 4 marked paid; 1 cancelled; 1 with a cancelled rider)`)
+  console.log(`  Events:   1 upcoming (Spring Schooling Show)`)
   console.log(`  Expenses: 1 scheduled (Valley Farrier), 1 date-only planned (Feed Supplier)`)
   console.log(`  Lease:    1 unpaid (2 months backdated)`)
-  console.log(`  Documents: 1 undated (Apollo, Coggins), 1 past-due reminder (Bella, Insurance Binder)`)
+  console.log(`  Documents: 1 undated (Apollo, Coggins), 1 past-due reminder (Bella, Insurance Binder), 1 staff, 1 rider`)
+  console.log(`  Notifications: 1 unread for the manager login`)
   console.log(`  Dev manager invite (claim to work in this barn as yourself):`)
   console.log(`    ${buildInvitePath(barn.slug, devInviteToken)}`)
 }
