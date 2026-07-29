@@ -17,7 +17,7 @@ describe('ExhaustionBar', () => {
 
   it('should_render_solid_segment_orange_when_existing_total_is_moderate_band', () => {
     render(<ExhaustionBar existingRows={[{ lessonAt: '2026-07-01', exertionLevel: 7 }]} thresholds={thresholds} />)
-    expect(screen.getByTestId('exhaustion-bar-solid').className).toContain('bg-orange-500')
+    expect(screen.getByTestId('exhaustion-bar-solid').className).toContain('bg-amber-500')
   })
 
   it('should_render_solid_segment_red_when_existing_total_is_high_band', () => {
@@ -33,7 +33,7 @@ describe('ExhaustionBar', () => {
         thresholds={thresholds}
       />
     )
-    expect(screen.getByTestId('exhaustion-bar-solid').className).toContain('bg-orange-500')
+    expect(screen.getByTestId('exhaustion-bar-solid').className).toContain('bg-amber-500')
   })
 
   it('should_not_render_ghost_segment_when_ghost_value_omitted', () => {

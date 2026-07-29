@@ -13,33 +13,43 @@ import { makeExpense } from '@/test/fixtures'
 
 describe('CalendarExpenseCard', () => {
   it('should_render_formatted_time', () => {
-    render(<CalendarExpenseCard expense={makeExpense({ expense_date: '2026-07-15', expense_time: '14:00:00' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ expense_date: '2026-07-15', expense_time: '14:00:00' })} slug="green-acres" role="manager" />)
     expect(screen.getByText(formatExpenseTime('14:00:00'))).toBeDefined()
   })
 
   it('should_render_recipient', () => {
-    render(<CalendarExpenseCard expense={makeExpense({ recipient: 'Dr. Smith' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ recipient: 'Dr. Smith' })} slug="green-acres" role="manager" />)
     expect(screen.getByText('Dr. Smith')).toBeDefined()
   })
 
   it('should_render_expense_type', () => {
-    render(<CalendarExpenseCard expense={makeExpense({ expense_type: 'Veterinary' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ expense_type: 'Veterinary' })} slug="green-acres" role="manager" />)
     expect(screen.getByText('Veterinary')).toBeDefined()
   })
 
   it('should_render_horse_names', () => {
-    render(<CalendarExpenseCard expense={makeExpense({ horse_names: ['Thunderbolt'] })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ horse_names: ['Thunderbolt'] })} slug="green-acres" role="manager" />)
     expect(screen.getByText('Thunderbolt')).toBeDefined()
   })
 
   it('should_render_entire_barn_when_applies_to_all_horses', () => {
-    render(<CalendarExpenseCard expense={makeExpense({ applies_to_all_horses: true, horse_names: [] })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ applies_to_all_horses: true, horse_names: [] })} slug="green-acres" role="manager" />)
     expect(screen.getByText('Entire Barn')).toBeDefined()
   })
 
   it('should_link_to_expense_detail_page', () => {
-    render(<CalendarExpenseCard expense={makeExpense({ id: 'expense-123' })} slug="green-acres" />)
+    render(<CalendarExpenseCard expense={makeExpense({ id: 'expense-123' })} slug="green-acres" role="manager" />)
     const link = screen.getByRole('link') as HTMLAnchorElement
     expect(link.href).toContain('/barn/green-acres/expenses/expense-123')
+  })
+
+  it('should_not_link_for_a_trainer', () => {
+    render(<CalendarExpenseCard expense={makeExpense({ id: 'expense-123' })} slug="green-acres" role="trainer" />)
+    expect(screen.queryByRole('link')).toBeNull()
+  })
+
+  it('should_still_render_recipient_for_a_trainer', () => {
+    render(<CalendarExpenseCard expense={makeExpense({ recipient: 'Dr. Smith' })} slug="green-acres" role="trainer" />)
+    expect(screen.getByText('Dr. Smith')).toBeDefined()
   })
 })

@@ -43,9 +43,10 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
     expenseType: 'Feed',
   })
 
-  // Both unpaid fixtures enrol the stub rider, not the `rider` login, so the manager sees a
-  // barn-wide reminder while the rider still has none — the shown/hidden pair the Reminders
-  // assertions below need.
+  // Both unpaid fixtures enrol the stub rider, not the `rider` login, so the manager's
+  // Reminders section has barn-wide content to show. The matching hidden-for-a-rider
+  // assertion moved to checklist-phase6-dashboard.spec.ts (#1136) and reseeds this same
+  // pairing there — keep the two in step if either changes.
   await addUnpaidLesson(supabase, barn, {
     at: daysFromNow(-1),
     instructorId: members.trainer.membershipId,
@@ -142,11 +143,6 @@ test('dashboard_expense_card_shows_horse @manager', async ({ page }) => {
 test('dashboard_reminders_header_visible_for_manager @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
   await expect(page.getByRole('heading', { name: 'Reminders' })).toBeVisible()
-})
-
-test('dashboard_reminders_header_hidden_for_rider_with_no_reminders @rider', async ({ page }) => {
-  await page.goto(`/barn/${barn.slug}`)
-  await expect(page.getByRole('heading', { name: 'Reminders' })).toHaveCount(0)
 })
 
 test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manager', async ({ page }) => {

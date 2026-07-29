@@ -8,6 +8,21 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 >
 > - **Setup/data-creation steps** that assert nothing are fine to leave bundled with the assertion they set up for.
 
+> **Phases are partitioned by the role doing the *asserting*, not the role the data is about.** A manager reading a page *about* riders is a Phase 4 line; a rider reading their own page is a Phase 6 line. That distinction is load-bearing — read it the other way and all 141 Finances lines look like Phase 6 material.
+>
+> - A precondition may be planted by any role, including a mid-phase `change-user.sh` detour to a manager. Only the eye doing the looking has to match the phase.
+> - When such a line is later automated, the manager-side precondition becomes a **fixture/seed call in the asserting role's own barn**, so one test is always one role — a Playwright project binds one `storageState`.
+> - A misplaced line is not merely untidy: it can never be tagged honestly. A Phase 4 line asserting trainer-visible UI can only ever be covered by a `@trainer` test, so its `(e2e: …)` tag would be a lie.
+> - If a check ever genuinely needs two live roles acting in sequence and cannot be reduced to seed-then-assert, give it its own phase and tag it `(manual)`. No such check exists today.
+
+> **Automation tags:** in an audited section, every checkbox carries exactly one of — including a standalone setup step, which a spec automates alongside the assertions it sets up
+>
+> - `(e2e: <test name>)` — covered by that Playwright test in `e2e/`; run via `scripts/run-checklist-suite.sh`
+> - `(e2e-candidate)` — automatable, spec not written yet
+> - `(manual)` — not automatable; always hand-verified
+>
+> Sections with no tags on their checkboxes have not been audited yet.
+
 ## Prerequisites
 
 - [ ] `.env.local` at repo root with `DEV_EMAIL`, `DEV_NAME` (must be "First Last" — a single word breaks the name prompt in Phase 1), `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` (optionally `DEV_BARN` — `seed-account.sh` in Phase 1 defaults it to `dev-barn`; `change-user.sh` in Phases 5–7 takes the barn slug as a required argument, e.g. `bash scripts/change-user.sh dev-barn`)
@@ -17,6 +32,8 @@ Paths below are relative — prepend your app origin (local `npm run dev` or Ver
 Every step below that uploads a file names one from `scripts/data/` (#1135 — a tracked directory, nothing to place by hand). The images are deliberately non-square and bracketed by `|------- word -------|` edge markers, so a square-crop regression visibly eats the bars instead of needing a proportion judgment, and the word tells you at a glance which file is displayed. See `scripts/CLAUDE.md`'s Test assets section for the full manifest.
 
 ## Phase 1 — Setup
+
+<!-- Asserting role: role-agnostic setup — an unauthenticated visitor, then the shared demo user, then the developer's own account pre-membership and as its manager. -->
 
 - [ ] Visit `/login` — a **Terms of Service** link is present
 - [ ] Clicking the link opens `/terms`
@@ -59,6 +76,8 @@ Every step below that uploads a file names one from `scripts/data/` (#1135 — a
 **Seeded baseline after reset** (expect this data alongside anything you create below): trainers Alex, Blake, Casey; riders Dana, Emery, Finley; second manager Morgan Manager; horses Apple, Butter, Clover; horse Willow (retired/inactive with 3 past lessons + 1 upcoming — will not appear in the horse picker or the Horses page's Available/Unavailable sections, only visible to managers under Inactive); tiers Normal Tier ($100, default) and Premium Tier ($150); ~38 lessons spread over the past 3 months (some paid, one group per five, some jumping, 5 upcoming).
 
 ## Phase 2 — Manager seeding
+
+<!-- Asserting role: manager only. Data other phases depend on is created here. -->
 
 Lesson tiers (`/barn/dev-barn/settings` → Add Tier → `/barn/dev-barn/settings/tiers/new`):
 
@@ -119,6 +138,8 @@ Managed rider stubs (`/barn/dev-barn/members`, inline Add Rider form in the Ride
 
 ## Phase 3 — Manager lesson entry
 
+<!-- Asserting role: manager only. -->
+
 All via `/barn/dev-barn/lessons/new`. Times entered here should display later in 12-hour AM/PM format. `reset-db.ts` seeds ~43 varied lessons across past/current/future dates, tiers, jumping, and exertion — only create the purpose-built lessons below; verify everything else against seeded data (including the seeded Custom-tier lesson).
 
 - [ ] Create a **past lesson** (dated ~5 weeks ago, previous calendar month): Beginner tier, trainer Alex, horse Apple, rider Dana
@@ -127,6 +148,39 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 - [ ] Create a **current-month paid lesson** (dated a few days ago, before today): Beginner tier, trainer Alex, horse Clover, rider Dana — after saving, mark it **paid**
 - [ ] While creating it, pick a date and check Apple, Butter, and Clover in turn — each shows an exhaustion bar (no bars before a date is picked); adjust a checked horse's exertion level and watch its ghost segment move live, unchecked horses stay solid; change the date and confirm bars refresh
 - [ ] Open this lesson's edit page afterward and confirm Clover's bar still renders (excluding the lesson itself from its own window)
+
+**#1019 — month conflict calendar on the Date field.** All on `/barn/dev-barn/lessons/new` unless stated.
+
+- [ ] (#1019) The Date field renders as a month calendar grid, not a native date box
+- [ ] (#1019) Days before today are greyed out, making today the first fully-coloured day on the grid
+- [ ] (#1019) With neither a horse nor a rider selected, no day is tinted
+- [ ] (#1019) With neither a horse nor a rider selected, no day shows a dot
+- [ ] (#1019) Select rider Dana and no horse — days where Dana already has a lesson are tinted
+- [ ] (#1019) Still rider-only, no day shows a dot
+- [ ] (#1019) Now also check horse Apple — the flat rider tint is replaced by exertion shading
+- [ ] (#1019) A day where Apple already has a lesson shows a small red dot below the date number
+- [ ] (#1019) A day shaded amber/red only by neighbouring days' lessons shows no dot
+- [ ] (#1019) Check a second horse alongside Apple — a day loaded for either horse takes the heavier of the two shadings
+- [ ] (#1019) Change the Hour dropdown from an early hour to a late one — at least one day's shading shifts
+- [ ] (#1019) Schedule a vet/farrier expense for Apple on a future day, then reopen this form with Apple selected — that day shows a dot
+- [ ] (#1019) With Apple selected, a greyed-out past day shows no shading
+- [ ] (#1019) With Apple selected, a greyed-out past day shows no dot
+- [ ] (#1019) Tap a day that has a lesson on it — a popup lists that day's items
+- [ ] (#1019) That popup shows each item's time in 12-hour AM/PM format
+- [ ] (#1019) That popup shows each item's horse and rider names
+- [ ] (#1019) Tap a day with nothing on it — the popup reads "Nothing scheduled for this day."
+- [ ] (#1019) Tapping a day also selects it as the lesson's date (the tapped day gains a selection ring)
+- [ ] (#1019) Tap **&gt;** — the grid advances one month
+- [ ] (#1019) The **&lt;** / **&gt;** month arrows are the same size as the ones on the Finances page
+- [ ] (#1019) After advancing a month, the new grid's shading reflects that month's lessons
+- [ ] (#1019) A day carried in from the neighbouring month renders dimmed
+- [ ] (#1019) That dimmed neighbouring-month day is still selectable
+- [ ] (#1019) In **dark mode**, an amber day and a red day are clearly different colours from each other
+- [ ] (#1019) In **dark mode**, the date number on a tinted neighbouring-month day is still readable
+- [ ] (#1019) The popup opened by tapping a day in the calendar's first row does not cover that day
+- [ ] (#1019) The exhaustion bar under a horse's checkbox uses the same amber/red as that horse's calendar shading
+- [ ] (#1019) Check **Recurring (weekly)** — the calendar's field label changes to "Starting Date"
+- [ ] (#1019) Manage Barn → Events → Add Event still uses a plain native date box, not the month calendar
 - [ ] Create a **group lesson** (dated a few days ago): Group Special tier, trainer Blake, horse Butter, riders Dana + Emery — horse picker legend reads "Horses (select at least one)" (a Normal lesson reads plain "Horse", already exercised above)
 - [ ] On any lesson form, set the fee to `0` — Payment Type field disappears; raise it back above `0` — field reappears
 - [ ] Daisy (Unavailable) appears **disabled** in the horse picker
@@ -141,139 +195,305 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 
 ## Phase 4 — Manager verification
 
-- [ ] Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — confirms UTC storage round-trips correctly for your local timezone, not just that the created time displays back the same way it was entered
-- [ ] On the Lessons list and a lesson's detail page, confirm the displayed time matches the wall-clock time you entered (not shifted by your UTC offset) — if your system/browser clock is set to a non-UTC timezone, this also proves the display isn't silently forcing UTC
+<!-- Asserting role: manager, or role-agnostic. A line whose asserting eye is a trainer or rider belongs in Phase 5 or 6 — see the phase-partitioning Convention at the top. -->
+
+- [ ] (e2e: lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock) Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — confirms UTC storage round-trips correctly for your local timezone, not just that the created time displays back the same way it was entered
+- [ ] (e2e-candidate) On the Lessons list, a lesson's displayed time matches the wall-clock time you entered (not shifted by your UTC offset) — if your system/browser clock is set to a non-UTC timezone, this also proves the display isn't silently forcing UTC
+- [ ] (e2e-candidate) On that lesson's detail page, its displayed time matches the same wall-clock time
 
 Dashboard (`/barn/dev-barn`):
 
-- [ ] Dashboard shows a single-day calendar defaulting to today, with Prev/Next links and today's date in the heading
-- [ ] Today's seeded lessons and any planned expense scheduled for today (future date+time, no amount yet) appear together, sorted by time
-- [ ] Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for, and it appears there, interleaved by time with that day's lessons
-- [ ] A "Today" link appears only while viewing a day other than today, and returns to today's calendar when clicked
-- [ ] A date-only planned expense (no time set) does **not** appear on the calendar for its date
-- [ ] Expense entries show date/time, recipient, expense type, and horse(s) or "Entire Barn", and link to the expense detail page
-- [ ] A "Reminders" section header appears above the document-reminders/unpaid-income cards, and is hidden entirely when none of them have anything to show
-- [ ] No document-reminder cards appear under Reminders when no documents are past their reminder date; after setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders (no separate "Document Reminders" heading) and links to that horse's or member's detail page
-- [ ] If any lessons/charges are unpaid, "N unpaid lessons" and/or "N unpaid leases/boarding" cards appear under Reminders, each linking to `/barn/dev-barn/finances/outstanding`; each is hidden individually when its own count is zero
-- [ ] (#1016) A "Day"/"Week" pill switcher appears above the calendar
-- [ ] (#1016) The Day view is active by default
-- [ ] (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
-- [ ] (#1016) In Week view, each of the 7 days shows its own date heading and that day's lessons/expenses/events, or "Nothing scheduled for this day." when empty
-- [ ] (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
-- [ ] (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
-- [ ] (#1016) In Week view, a "Today" link appears only when today's date isn't already inside the visible week
-- [ ] (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in light mode
-- [ ] (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
-- [ ] (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
-- [ ] (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
-- [ ] (#1016) Switching to Week view as a trainer shows only lessons you instruct across all 7 days, matching Day view's role-scoping
-- [ ] (#1016) Switching to Week view as a rider shows only your enrolled lessons
+- [ ] (e2e-candidate) Dashboard shows a single-day calendar (one date's entries, not a week or a flat list)
+- [ ] (e2e: dashboard_today_indicator_visible_on_current_day) The calendar defaults to today, with today's date in the heading
+- [ ] (e2e-candidate) Prev/Next links appear alongside the calendar heading
+- [ ] (e2e-candidate) Today's seeded lessons appear on the calendar
+- [ ] (e2e-candidate) A planned expense scheduled for today (future date+time, no amount yet) appears on the same calendar alongside those lessons
+- [ ] (e2e-candidate) Today's lessons and that expense are ordered by time together, not grouped into separate blocks by type
+- [ ] (e2e-candidate) Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for
+- [ ] (e2e: dashboard_expense_interleaved_with_lesson_by_time_on_shared_day) That expense appears on that day interleaved by time with the day's lessons, not grouped into a separate expenses block
+- [ ] (e2e-candidate) A "Today" link appears while viewing a day other than today
+- [ ] (e2e-candidate) That "Today" link returns to today's calendar when clicked
+- [ ] (e2e-candidate) No "Today" link appears while already viewing today
+- [ ] (e2e: dashboard_date_only_planned_expense_not_shown) A date-only planned expense (no time set) does **not** appear on the calendar for its date
+- [ ] (e2e: dashboard_expense_card_shows_scheduled_time) An expense entry on the calendar shows its scheduled time (no per-entry date — the day heading already carries it)
+- [ ] (e2e: dashboard_expense_card_shows_recipient) That expense entry shows its recipient
+- [ ] (e2e: dashboard_expense_card_shows_type) That expense entry shows its expense type
+- [ ] (e2e: dashboard_expense_card_shows_horse) A horse-specific expense entry shows its horse(s)
+- [ ] (e2e-candidate) An **Entire Barn** expense entry shows "Entire Barn" in place of horse names
+- [ ] (e2e-candidate) Tapping an expense entry opens that expense's detail page
+- [ ] (e2e: dashboard_reminders_header_visible_for_manager) A "Reminders" section header appears above the document-reminders/unpaid-income cards
+- [ ] (e2e-candidate) No document-reminder cards appear under Reminders when no documents are past their reminder date
+- [ ] (e2e: dashboard_document_reminder_card_shown_after_setting_reminder_date) After setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders
+- [ ] (e2e-candidate) That card appears directly under Reminders with no separate "Document Reminders" heading above it
+- [ ] (e2e-candidate) That card links to the horse's or member's detail page
+- [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
+- [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
+- [ ] (e2e-candidate) Each of those two cards is hidden individually when its own count is zero, without hiding the other
+- [ ] (e2e-candidate) (#1016) A "Day"/"Week" pill switcher appears above the calendar
+- [ ] (e2e-candidate) (#1016) The Day view is active by default
+- [ ] (e2e-candidate) (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
+- [ ] (e2e-candidate) (#1016) In Week view, each of the 7 days shows its own date heading
+- [ ] (e2e-candidate) (#1016) In Week view, each day section lists that day's own lessons/expenses/events
+- [ ] (e2e-candidate) (#1016) In Week view, a day with nothing scheduled shows "Nothing scheduled for this day."
+- [ ] (e2e-candidate) (#1016) A week with nothing scheduled on any of its 7 days shows a single "You're all clear" empty state instead of 7 empty lines
+- [ ] (e2e-candidate) (#1016) In Week view, Prev/Next move the visible range by 7 days at a time
+- [ ] (e2e-candidate) (#1016) In Week view, a "Today" link appears when today's date isn't inside the visible week
+- [ ] (e2e-candidate) (#1016) In Week view, no "Today" link appears when today's date is already inside the visible week
+- [ ] (e2e-candidate) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in light mode
+- [ ] (e2e-candidate) (#1070) In Week view, today's day section (when visible) shows a distinct background tint/border in dark mode
+- [ ] (e2e-candidate) (#1070) Switching from Week to Day view lands on today if today is inside the currently-viewed week
+- [ ] (e2e-candidate) (#1070) Switching from Week to Day view lands on the week's Sunday if today is not inside the currently-viewed week
 
 Lessons (`/barn/dev-barn/lessons`):
 
-- [ ] Recent lessons (last 7 days) shown immediately; older lessons appear only after the older-lessons toggle
-- [ ] Each lesson renders as a full-width, uniformly-sized card link (whole row is tappable to the detail page) — no **Cancel** button on the list
-- [ ] Filter pills show `My Lessons | All | By Instructor | By Rider | By Horse | By Tier`, wrapping onto multiple lines at ~390px width instead of requiring horizontal scroll; **All** is active by default and shows every barn lesson; picking **My Lessons** filters to only lessons you instruct
-- [ ] Picking **All** shows every barn lesson regardless of instructor
-- [ ] Picking **By Instructor → Alex** shows only Alex's lessons and the URL carries `?filter=trainer&id=<uuid>`
-- [ ] **By Rider → Dana** filters correctly
-- [ ] **By Horse → Apple** filters correctly
-- [ ] **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
-- [ ] Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
-- [ ] Times display in 12-hour AM/PM format everywhere (no military time)
-- [ ] Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list and on the Dashboard's Day view (navigate to the lesson's date if it isn't today, Willow is seeded inactive); it does not appear on Willow's past lessons or on any cancelled lesson
-- [ ] Open Willow's flagged lesson's detail page — a **Needs Attention** banner at the top reads "Willow is inactive"; open the same lesson's edit page — the same banner appears there too; the banner does not block editing or saving
-- [ ] On Willow's flagged lesson's edit page, without changing any field, click a nav link (or hit browser back) — a confirm dialog warns about the unresolved horse issue, defaulting to Stay; swap Willow out for an active horse and save, then reopen the edit page and confirm navigating away no longer prompts
-- [ ] Open a lesson's detail page (`/barn/dev-barn/lessons/[id]`) — horse notes and rider notes render read-only; Edit link visible; open a lesson with no notes recorded at all and confirm every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
-- [ ] Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
-- [ ] The fee change appears on the detail page
-- [ ] The horse notes and rider notes from that same save appear on the detail page
-- [ ] Edit the group lesson created in Phase 3 → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
-- [ ] Delete one seeded lesson — it disappears from the list
-- [ ] Open a lesson's detail page → a single **Cancel** button appears in the header next to **Edit**/**Delete**, shown to the manager regardless of who instructs the lesson
-- [ ] Click **Cancel** on a **normal** lesson → the confirmation page shows a **Cancelled by Rider** / **Cancelled by Instructor** toggle, defaulting to **Cancelled by Instructor** when you instruct the lesson, else **Cancelled by Rider**; confirm with **Cancelled by Rider** on a lesson >24h out → fee is unaffected on far-out lessons but zeroed on a lesson booked <24h away → lesson shows a **Cancelled** badge and your notes under **Cancellation Notes**
-- [ ] Repeat with **Cancelled by Instructor** → fee is zeroed regardless of timing
-- [ ] On a **normal** lesson booked <24h away, select **Cancelled by Rider** → an amber "The rider will be due a late cancellation fee." label appears
-- [ ] On that same lesson, switch to **Cancelled by Instructor** → the label disappears
-- [ ] On a **normal** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
-- [ ] Click **Cancel** on a **group** lesson → the same toggle appears; choosing **Cancelled by Instructor** shows the count and names of enrolled riders who'll be affected and, on confirm, cancels the whole lesson (all riders, fee waived)
-- [ ] On that same group lesson's Cancel page, choose **Cancelled by Rider** instead → a rider picker reveals listing the still-active enrolled riders; select one and confirm → only that rider's row shows a **Cancelled** badge, the rest of the lesson (and other riders) is unaffected, and the standard 24-hour fee policy applies to that rider
-- [ ] On a **group** lesson booked <24h away, select **Cancelled by Rider** → an amber "Warning: No late cancellation fees are currently leveraged for group lessons." label appears
-- [ ] On that same lesson, switch to **Cancelled by Instructor** → the label disappears
-- [ ] On a **group** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
-- [ ] On a **normal** lesson, cancel it (there's only one rider) → the lesson itself shows a **Cancelled** badge on the list and detail page
-- [ ] (#1015) That same cancelled lesson no longer appears on the Dashboard's Day view for its date, even navigating directly to that day
-- [ ] On a **group** lesson, cancel riders one at a time via the picker → after the last active rider is cancelled, the lesson shows a **Cancelled** badge on the list and detail page; cancel the last-but-one and the second-to-last riders and confirm the badge does *not* appear until the final rider is cancelled
-- [ ] On an already-cancelled lesson, open **Edit Lesson** (manager and, separately, the instructing trainer) → the Notes section shows a **Cancellation Notes** textarea (confirm it does *not* appear when editing a non-cancelled lesson) → edit it and Save → the detail page shows the updated text read-only under **Cancellation Notes** for every role, including the instructing trainer and a rider; clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
-- [ ] As manager, open an **unpaid** lesson's detail page and click **Delete** → confirm the browser prompt → lesson disappears entirely from the Lessons list and Finances (no **Cancelled** badge, no notification to instructor/riders); repeat on an already-cancelled lesson to confirm Delete is reachable regardless of state; as trainer, confirm no **Delete** button is shown on any lesson
-- [ ] On a **paid** (or $0-fee) lesson's detail page, click **Delete** → lands on `/barn/dev-barn/lessons/[id]/delete` (not a browser prompt) showing the collected amount and an unchecked-by-default checkbox; confirm without checking it → lesson is gone but its income still shows up in Finances for that month; repeat on another paid lesson, this time checking the box → lesson's income is also gone from Finances
+- [ ] (e2e-candidate) Recent lessons (last 7 days) are shown immediately on page load
+- [ ] (e2e-candidate) Older lessons are not shown on page load
+- [ ] (e2e-candidate) Tapping the older-lessons toggle reveals them
+- [ ] (e2e-candidate) Each lesson renders as a full-width card of uniform height with its siblings
+- [ ] (e2e-candidate) The whole card is tappable and opens that lesson's detail page
+- [ ] (e2e-candidate) No **Cancel** button appears on any lesson in the list
+- [ ] (e2e-candidate) Filter pills show exactly `My Lessons | All | By Instructor | By Rider | By Horse | By Tier`
+- [ ] (e2e-candidate) At ~390px width those pills wrap onto multiple lines instead of requiring horizontal scroll
+- [ ] (e2e-candidate) **All** is the active pill on page load
+- [ ] (e2e-candidate) Picking **My Lessons** filters to only lessons you instruct
+- [ ] (e2e-candidate) Picking **All** shows every barn lesson regardless of instructor
+- [ ] (e2e-candidate) Picking **By Instructor → Alex** shows only Alex's lessons
+- [ ] (e2e-candidate) Picking **By Instructor → Alex** carries the URL `?filter=trainer&id=<uuid>`
+- [ ] (e2e-candidate) **By Rider → Dana** filters correctly
+- [ ] (e2e-candidate) **By Horse → Apple** filters correctly
+- [ ] (e2e-candidate) **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
+- [ ] (e2e-candidate) Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
+- [ ] (e2e-candidate) Times display in 12-hour AM/PM format everywhere (no military time)
+- [ ] (e2e-candidate) Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list (Willow is seeded inactive)
+- [ ] (e2e-candidate) That same lesson shows the badge on the Dashboard's Day view (navigate to the lesson's date if it isn't today)
+- [ ] (e2e-candidate) The badge does not appear on Willow's past lessons
+- [ ] (e2e-candidate) The badge does not appear on a cancelled lesson
+- [ ] (e2e-candidate) Willow's flagged lesson's detail page shows a **Needs Attention** banner at the top reading "Willow is inactive"
+- [ ] (e2e-candidate) The same banner appears on that lesson's edit page
+- [ ] (e2e-candidate) The banner does not block editing or saving that lesson
+- [ ] (e2e-candidate) On Willow's flagged lesson's edit page, without changing any field, clicking a nav link (or hitting browser back) raises a confirm dialog warning about the unresolved horse issue
+- [ ] (e2e-candidate) That dialog defaults to **Stay**
+- [ ] (e2e-candidate) Swap Willow out for an active horse and save, then reopen the edit page — navigating away no longer prompts
+- [ ] (e2e-candidate) On a lesson's detail page (`/barn/dev-barn/lessons/[id]`), horse notes render read-only
+- [ ] (e2e-candidate) On that same page, rider notes render read-only
+- [ ] (e2e-candidate) On that same page, the Edit link is visible
+- [ ] (e2e-candidate) On a lesson with no notes recorded at all, every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
+- [ ] (e2e-candidate) Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
+- [ ] (e2e-candidate) The fee change appears on the detail page
+- [ ] (e2e-candidate) The horse notes from that same save appear on the detail page
+- [ ] (e2e-candidate) The rider notes from that same save appear on the detail page
+- [ ] (e2e-candidate) Edit the group lesson created in Phase 3 → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
+- [ ] (e2e-candidate) Delete one seeded lesson — it disappears from the list
+- [ ] (e2e-candidate) A lesson's detail page header shows a single **Cancel** button next to **Edit**/**Delete**
+- [ ] (e2e-candidate) That **Cancel** button is shown to the manager even on a lesson another trainer instructs
+- [ ] (e2e-candidate) Clicking **Cancel** on a **normal** lesson opens a confirmation page with a **Cancelled by Rider** / **Cancelled by Instructor** toggle
+- [ ] (e2e-candidate) That toggle defaults to **Cancelled by Instructor** on a lesson you instruct
+- [ ] (e2e-candidate) That toggle defaults to **Cancelled by Rider** on a lesson you don't instruct
+- [ ] (e2e-candidate) Confirming **Cancelled by Rider** on a **normal** lesson >24h out leaves its fee unaffected
+- [ ] (e2e-candidate) Confirming **Cancelled by Rider** on a **normal** lesson booked <24h away zeroes its fee
+- [ ] (e2e-candidate) A lesson cancelled that way shows a **Cancelled** badge
+- [ ] (e2e-candidate) The notes you entered on the confirmation page appear under **Cancellation Notes**
+- [ ] (e2e-candidate) Confirming **Cancelled by Instructor** on a lesson >24h out zeroes its fee
+- [ ] (e2e-candidate) Confirming **Cancelled by Instructor** on a lesson booked <24h away zeroes its fee too
+- [ ] (e2e-candidate) On a **normal** lesson booked <24h away, select **Cancelled by Rider** → an amber "The rider will be due a late cancellation fee." label appears
+- [ ] (e2e-candidate) On that same lesson, switch to **Cancelled by Instructor** → the label disappears
+- [ ] (e2e-candidate) On a **normal** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
+- [ ] (e2e-candidate) Clicking **Cancel** on a **group** lesson shows the same **Cancelled by Rider** / **Cancelled by Instructor** toggle
+- [ ] (e2e-candidate) Choosing **Cancelled by Instructor** there shows the count of enrolled riders who'll be affected
+- [ ] (e2e-candidate) It also lists those riders by name
+- [ ] (e2e-candidate) Confirming cancels the whole lesson, every enrolled rider included
+- [ ] (e2e-candidate) That whole-lesson cancellation waives the fee
+- [ ] (e2e-candidate) On that same group lesson's Cancel page, choosing **Cancelled by Rider** reveals a rider picker listing the still-active enrolled riders
+- [ ] (e2e-candidate) Select one and confirm → only that rider's row shows a **Cancelled** badge
+- [ ] (e2e-candidate) The rest of the lesson and its other riders are unaffected
+- [ ] (e2e-candidate) The standard 24-hour fee policy applies to that rider
+- [ ] (e2e-candidate) On a **group** lesson booked <24h away, select **Cancelled by Rider** → an amber "Warning: No late cancellation fees are currently leveraged for group lessons." label appears
+- [ ] (e2e-candidate) On that same lesson, switch to **Cancelled by Instructor** → the label disappears
+- [ ] (e2e-candidate) On a **group** lesson booked >24h out, select **Cancelled by Rider** → the label does not appear
+- [ ] (e2e-candidate) Cancel a **normal** lesson (there's only one rider) → the lesson shows a **Cancelled** badge on the Lessons list
+- [ ] (e2e-candidate) That same lesson shows the **Cancelled** badge on its detail page
+- [ ] (e2e-candidate) (#1015) That same cancelled lesson no longer appears on the Dashboard's Day view for its date, even navigating directly to that day
+- [ ] (e2e-candidate) On a **group** lesson, cancel riders one at a time via the picker → the lesson does *not* show a **Cancelled** badge while any rider is still active
+- [ ] (e2e-candidate) Once the final rider is cancelled, the lesson shows a **Cancelled** badge on the Lessons list
+- [ ] (e2e-candidate) That fully-cancelled group lesson shows the **Cancelled** badge on its detail page too
+- [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson → the Notes section shows a **Cancellation Notes** textarea
+- [ ] (e2e-candidate) That textarea does *not* appear when editing a non-cancelled lesson
+- [ ] (e2e-candidate) Edit that textarea and Save → the detail page shows the updated text read-only under **Cancellation Notes**
+- [ ] (e2e-candidate) Clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
+- [ ] (e2e-candidate) Open an **unpaid** lesson's detail page, click **Delete** and confirm the browser prompt → the lesson disappears from the Lessons list
+- [ ] (e2e-candidate) That deleted lesson also disappears from Finances
+- [ ] (e2e-candidate) It leaves no **Cancelled** badge behind (it's gone, not cancelled)
+- [ ] (e2e-candidate) No notification is sent to the instructor or riders for that delete
+- [ ] (e2e-candidate) **Delete** is reachable the same way on an already-cancelled lesson
+- [ ] (e2e-candidate) On a **paid** (or $0-fee) lesson's detail page, **Delete** lands on `/barn/dev-barn/lessons/[id]/delete` rather than raising a browser prompt
+- [ ] (e2e-candidate) That page shows the amount already collected for the lesson
+- [ ] (e2e-candidate) Its "also delete the collected record" checkbox is unchecked by default
+- [ ] (e2e-candidate) Confirm without checking it → the lesson is gone from the Lessons list
+- [ ] (e2e-candidate) Its income still shows up in Finances for that month
+- [ ] (e2e-candidate) Repeat on another paid lesson, this time checking the box → that lesson's income is also gone from Finances
 
 Expenses (`/barn/dev-barn/expenses`):
 
-- [ ] Nav shows **Expenses** between Lessons and Horses
-- [ ] Seeded expenses render as full-card links (date/time, recipient, expense type, horse(s)/Entire Barn, amount all visible on the card), split into recent and older (**Show older expenses** toggle), including at least one future-dated planned expense with no amount
-- [ ] Tapping anywhere on an expense card opens its edit page — there is no separate row-level Delete link on the list
-- [ ] Add a new expense (`/barn/dev-barn/expenses/new`): enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills and flashes; leave amount blank to save a planned expense, then re-open the form later and fill it in
-- [ ] Check **Entire Barn** on the new-expense form — horse checkboxes disable; save and verify the card shows "Entire Barn" instead of specific horses
-- [ ] On the new-expense form, set the date to yesterday — the Time field disappears; change it back to today or a future date — the Time field reappears
-- [ ] Edit a seeded expense (`/barn/dev-barn/expenses/[id]`) — form opens pre-filled including the correct Entire Barn / specific-horse checkbox state; change the recipient and amount, save, verify the card updates
-- [ ] On the new- and edit-expense forms, set a **Payment Type**, save, and confirm it persists on reload
-- [ ] From the edit page, click **Delete** on a seeded expense with **no amount set** — confirmation page shows a bare "Confirm Delete" with no checkbox; confirm → expense disappears from the list
-- [ ] Delete a seeded expense **with an amount** — confirmation page shows an unchecked-by-default "Also delete the collected record from Finances" checkbox
-- [ ] Confirm that delete without checking the box — expense is gone from the list but its record still shows up in Finances for that month
-- [ ] Delete another seeded expense with an amount, this time checking the box — its record is also gone from Finances
+- [ ] (e2e-candidate) Nav shows **Expenses** between Lessons and Horses
+- [ ] (e2e-candidate) A seeded expense renders as a full-card link showing its date/time
+- [ ] (e2e-candidate) That card shows its recipient
+- [ ] (e2e-candidate) That card shows its expense type
+- [ ] (e2e-candidate) That card shows its horse(s), or "Entire Barn"
+- [ ] (e2e-candidate) That card shows its amount
+- [ ] (e2e-candidate) The list is split into a recent and an older group
+- [ ] (e2e-candidate) The older group is revealed by the **Show older expenses** toggle
+- [ ] (e2e-candidate) At least one future-dated planned expense with no amount appears in the list
+- [ ] (e2e-candidate) Tapping anywhere on an expense card opens its edit page
+- [ ] (e2e-candidate) There is no separate row-level Delete link on the list
+- [ ] (e2e-candidate) On `/barn/dev-barn/expenses/new`, enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills
+- [ ] (e2e-candidate) That auto-filled Expense Type field flashes to draw attention to itself
+- [ ] (e2e-candidate) Leaving the amount blank saves a planned expense
+- [ ] (e2e-candidate) Re-opening that planned expense's form later lets you fill the amount in and save
+- [ ] (e2e-candidate) Checking **Entire Barn** on the new-expense form disables the horse checkboxes
+- [ ] (e2e-candidate) Saving that expense shows "Entire Barn" on its card instead of specific horses
+- [ ] (e2e-candidate) On the new-expense form, setting the date to yesterday hides the Time field
+- [ ] (e2e-candidate) Changing it back to today or a future date brings the Time field back
+- [ ] (e2e-candidate) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
+- [ ] (e2e-candidate) That form opens with the correct Entire Barn / specific-horse checkbox state
+- [ ] (e2e-candidate) Change the recipient and save → the card shows the new recipient
+- [ ] (e2e-candidate) Change the amount and save → the card shows the new amount
+- [ ] (e2e-candidate) On the new-expense form, set a **Payment Type**, save → it persists on reload
+- [ ] (e2e-candidate) On the edit-expense form, set a **Payment Type**, save → it persists on reload
+- [ ] (e2e-candidate) From the edit page, **Delete** on a seeded expense with **no amount set** opens a confirmation page headed "Confirm Delete"
+- [ ] (e2e-candidate) That confirmation page carries no checkbox
+- [ ] (e2e-candidate) Confirming it removes the expense from the list
+- [ ] (e2e-candidate) Deleting a seeded expense **with an amount** shows an "Also delete the collected record from Finances" checkbox on the confirmation page
+- [ ] (e2e-candidate) That checkbox is unchecked by default
+- [ ] (e2e-candidate) Confirm that delete without checking the box — the expense is gone from the list
+- [ ] (e2e-candidate) Its record still shows up in Finances for that month
+- [ ] (e2e-candidate) Delete another seeded expense with an amount, this time checking the box — its record is also gone from Finances
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
-- [ ] Available section sorted by total exertion ascending (±3 days); Apple/Butter/Clover show an exhaustion bar in different color bands; tap a bar to expand the ±3-day lesson breakdown, tap again (or elsewhere) to dismiss — tapping the bar does not navigate to the horse detail page
-- [ ] Open Clover's detail page (no photo seeded) → placeholder icon and **Set Photo** button show
-- [ ] Tap **Set Photo** → navigates to the same upload screen used for horse documents, with Document Type locked to "Photo" (no dropdown) and no Notes/Expiration reminder date fields
-- [ ] Tap **Choose File** and select `scripts/data/clover-photo.png` → upload starts immediately with no separate Upload button click, and you land back on the horse detail page with the photo displayed, scaled to a fixed height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square
-- [ ] With a photo set, tap **Replace Photo**, choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → upload starts immediately and the displayed word changes from `clover` to `butter`
-- [ ] Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
-- [ ] With a photo set, tap **Remove** → placeholder and **Set Photo** button return
-- [ ] On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
-- [ ] As manager, set `scripts/data/harper-photo.png` on Apple (never assigned an owning member anywhere in this checklist, so the owner-lock can't apply) → succeeds
-- [ ] Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
-- [ ] Open Apple's detail page → rename it via the manager form, uncheck Exhaustion Thresholds' "Use barn defaults", set Moderate/High → tap the single **Save** button → name and thresholds both update, a brief "✓ Saved" confirmation appears next to the Save button, values persist on reload, and the toggle is now unchecked
-- [ ] The manager form's name field is now labeled **Barn Name**; fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → persists on reload
-- [ ] Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"; open its detail page as a trainer or rider → a **Registered Name** row appears below Status
-- [ ] (#1000) As manager, make yourself the owning member of Clover (Access section) → the Horses list shows a **My Horses** section at the top with Clover showing a green **Active** badge, and Clover no longer appears under Available
-- [ ] Clear **Registered Name** back to blank and Save → the card's parenthetical and the non-manager detail row are both gone on reload
-- [ ] Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
-- [ ] With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error, no "✓ Saved" confirmation, and neither the name/status nor the thresholds change
-- [ ] Fill in **Feed Notes** and **Medication Notes** → Save → both persist on reload
-- [ ] Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
-- [ ] Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
-- [ ] Open the document via its link (signed URL) → the PDF renders in the browser's viewer, no "failed to load" error
-- [ ] Delete it → row disappears
-- [ ] On the Add Document page, attempt to upload `scripts/data/test_4_6_mb.pdf` (4,600,000 bytes, over the 4.5MB limit) — rejected with an inline error, not a crash
-- [ ] On the Add Document page, upload `scripts/data/test_4_4_mb.pdf` (4,400,000 bytes, the largest accepted size) — the Upload button disables and an indeterminate progress bar shows while the upload is pending
-- [ ] Upload `scripts/data/test_1_kb.pdf` again with an **Expiration reminder date** set → the date persists in the Reminder Date column; edit it inline (tap the field, change the date, tap away) → it saves without a page reload
-- [ ] Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date, and a card shows up under the Dashboard's Reminders section, linking back to this horse
+- [ ] (e2e-candidate) The Available section is sorted by total exertion (±3 days) ascending
+- [ ] (e2e-candidate) Apple/Butter/Clover each show an exhaustion bar
+- [ ] (e2e-candidate) Those bars land in different color bands from one another
+- [ ] (e2e-candidate) Tapping a bar expands the ±3-day lesson breakdown
+- [ ] (e2e-candidate) Tapping the bar again dismisses the breakdown
+- [ ] (e2e-candidate) Tapping elsewhere dismisses the breakdown
+- [ ] (e2e-candidate) Tapping the bar does not navigate to the horse detail page
+- [ ] (e2e-candidate) Clover's detail page (no photo seeded) shows a placeholder icon
+- [ ] (e2e-candidate) It also shows a **Set Photo** button
+- [ ] (e2e-candidate) Tapping **Set Photo** navigates to the same upload screen used for horse documents
+- [ ] (e2e-candidate) On that screen Document Type is locked to "Photo" with no dropdown
+- [ ] (e2e-candidate) That screen has no Notes field
+- [ ] (e2e-candidate) That screen has no Expiration reminder date field
+- [ ] (e2e-candidate) Tap **Choose File** and select `scripts/data/clover-photo.png` (non-square) → the upload starts immediately, with no separate Upload button to click
+- [ ] (e2e-candidate) You land back on the horse detail page with the photo displayed
+- [ ] (e2e-candidate) That photo is scaled to a fixed height with its aspect ratio preserved — both `|` edge bars still visible, not cropped off to make a square
+- [ ] (e2e-candidate) With a photo set, tap **Replace Photo** and choose `scripts/data/butter-photo.jpg` (a different file *and* a different format) → the upload starts immediately
+- [ ] (e2e-candidate) The displayed word changes from `clover` to `butter`
+- [ ] (e2e-candidate) Reload the page after replacing a photo → the old photo is gone (confirms it wasn't just a stale client-side preview)
+- [ ] (e2e-candidate) With a photo set, tap **Remove** → the placeholder icon returns
+- [ ] (e2e-candidate) The **Set Photo** button returns with it
+- [ ] (e2e-candidate) On the photo upload screen, attempt to select `scripts/data/test_1_kb.pdf` → rejected with an inline error, not a crash
+- [ ] (e2e-candidate) As manager, set `scripts/data/harper-photo.png` on Apple (the seed gives Apple an owning rider, but no owner has ever set her photo — the lock needs both, so it can't apply yet) → succeeds
+- [ ] (e2e-candidate) Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
+- [ ] (e2e-candidate) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
+- [ ] (e2e-candidate) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
+- [ ] (e2e-candidate) Rename Apple, uncheck "Use barn defaults", set Moderate/High and Save → the name updates
+- [ ] (e2e-candidate) The thresholds update from that same Save
+- [ ] (e2e-candidate) A brief "✓ Saved" confirmation appears next to the Save button
+- [ ] (e2e-candidate) Both values persist on reload
+- [ ] (e2e-candidate) The "Use barn defaults" toggle is still unchecked on reload
+- [ ] (e2e-candidate) The manager form's name field is labeled **Barn Name**
+- [ ] (e2e-candidate) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
+- [ ] (e2e-candidate) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
+- [ ] (e2e-candidate) (#1000) Make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
+- [ ] (e2e-candidate) (#1000) Clover appears under **My Horses**
+- [ ] (e2e-candidate) (#1000) Clover shows a green **Active** badge there
+- [ ] (e2e-candidate) (#1000) Clover no longer appears under Available
+- [ ] (e2e-candidate) Clear **Registered Name** back to blank and Save → the card's parenthetical is gone on reload
+- [ ] (e2e-candidate) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
+- [ ] (e2e-candidate) With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error
+- [ ] (e2e-candidate) No "✓ Saved" confirmation appears for that rejected save
+- [ ] (e2e-candidate) The horse's name and status are unchanged by it
+- [ ] (e2e-candidate) The thresholds are unchanged by it
+- [ ] (e2e-candidate) Fill in **Feed Notes** → Save → it persists on reload
+- [ ] (e2e-candidate) Fill in **Medication Notes** → Save → it persists on reload
+- [ ] (e2e-candidate) Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
+- [ ] (e2e-candidate) Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
+- [ ] (e2e-candidate) That document is listed in the horse's Documents section
+- [ ] (e2e-candidate) Open the document via its link (signed URL)
+- [ ] (e2e-candidate) The PDF renders in the browser's viewer, with no "failed to load" error
+- [ ] (e2e-candidate) Delete it → row disappears
+- [ ] (e2e-candidate) On the Add Document page, attempt to upload `scripts/data/test_4_6_mb.pdf` (4,600,000 bytes, over the 4.5MB limit) — rejected with an inline error, not a crash
+- [ ] (e2e-candidate) On the Add Document page, upload `scripts/data/test_4_4_mb.pdf` (4,400,000 bytes, the largest accepted size) — the Upload button disables while the upload is pending
+- [ ] (e2e-candidate) An indeterminate progress bar shows while that upload is pending
+- [ ] (e2e-candidate) Upload `scripts/data/test_1_kb.pdf` again with an **Expiration reminder date** set → the date persists in the Reminder Date column
+- [ ] (e2e-candidate) Edit that date inline (tap the field, change the date, tap away) → the new date saves
+- [ ] (e2e-candidate) That inline edit saves without a page reload
+- [ ] (e2e-candidate) Set that document's Reminder Date to a past date → a **Reminder Due** badge appears next to the date
+- [ ] (e2e-candidate) A card for it shows up under the Dashboard's Reminders section
+- [ ] (e2e-candidate) That card links back to this horse
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
-- [ ] "You" card plus Managers (Morgan, own entry excluded), Trainers, and Riders sections all render
-- [ ] Open a trainer's member detail page → **Contact Info** section shows Phone, Emergency Contact Name, Emergency Contact Phone (or "—" for any that are blank)
-- [ ] Open managed/unclaimed rider Harper Test's member detail page → name and **Contact Info** render even though the account has no linked `user_id`; Documents section renders normally (not blocked) with an **Add Document** button
-- [ ] On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member) → set Phone, Emergency Contact Name, Emergency Contact Phone and tap **Save** → values persist on reload
-- [ ] On Harper Test's member detail page, tap **Set Photo**, choose `scripts/data/harper-photo.png` → upload starts immediately and you land back on the member page with the photo displayed
-- [ ] With Harper Test's photo set, tap **Replace Photo** and choose `scripts/data/emery-photo.jpg` (a different file *and* a different format) → the displayed word changes from `harper` to `emery`
-- [ ] With Harper Test's photo set, tap **Remove** → placeholder and **Set Photo** button return
-- [ ] Open a claimed trainer's member detail page → no **Set Photo**/**Replace Photo**/**Remove** control is shown (manager can't edit a claimed member's photo)
-- [ ] Open your own manager member detail page → tap **Set Photo** and upload `scripts/data/clover-photo.png` → photo displays and persists on reload
-- [ ] Tap **Add Document** on Harper Test's page, upload `scripts/data/test_1_kb.pdf` → redirects back to the member page and the document lists with a working signed-URL link
-- [ ] Delete it → row disappears
-- [ ] Open a trainer's member detail page → **Add Document** button is present and links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
-- [ ] Open rider Gale Test's member detail page — **Add Document** button present, links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
-- [ ] As manager, rider Emery's member detail page shows an **Active Agreements** header with one card each for her seeded lease and boarding agreements (kind, horse, fee), each linking to its agreement detail page; a rider with no active agreements shows **No active agreements** with no add-boarding link; a managed (unclaimed) rider's detail page shows the same section
-- [ ] Open a trainer's member detail page → **Instructor Access** section shows **Revoke Instructor Access** (trainers default to `can_instruct=true`) → tap it → a browser confirm prompt appears naming the trainer and warning they'll no longer be assignable to future lessons; **Cancel** it → access is unchanged; tap **Revoke Instructor Access** again and confirm → button now reads **Grant Instructor Access** and the trainer no longer appears in the instructor select on the new-lesson form; tap **Grant Instructor Access** to restore it (no confirm prompt on grant) → trainer reappears in the instructor select
-- [ ] Open your own manager member detail page → **Instructor Access** section shows **Grant Instructor Access** → tap it (no confirm prompt) → you now appear in the instructor select on the new-lesson form; tap **Revoke Instructor Access** to undo (confirm prompt appears)
-- [ ] Open rider Gale Test's member detail page — no **Instructor Access** section is shown
-- [ ] Open Indigo Test's member detail page → a **Remove** button appears top-right of the header, next to the member's name → tap it and confirm the browser prompt → redirected to the Members list and Indigo Test no longer appears there
-- [ ] Open your own manager member detail page → no **Remove** button is shown
-- [ ] Open second manager Morgan Manager's member detail page → no **Remove** button is shown either (managers can't remove other managers)
+- [ ] (e2e-candidate) A "You" card renders at the top of the Members list
+- [ ] (e2e-candidate) A **Managers** section renders, listing Morgan
+- [ ] (e2e-candidate) Your own entry is excluded from that Managers section
+- [ ] (e2e-candidate) A **Trainers** section renders
+- [ ] (e2e-candidate) A **Riders** section renders
+- [ ] (e2e-candidate) A trainer's member detail page shows a Phone row under **Contact Info**
+- [ ] (e2e-candidate) It shows an Emergency Contact Name row
+- [ ] (e2e-candidate) It shows an Emergency Contact Phone row
+- [ ] (e2e-candidate) Any of those three left blank renders as "—"
+- [ ] (e2e-candidate) Managed/unclaimed rider Harper Test's member detail page renders their name even though the account has no linked `user_id`
+- [ ] (e2e-candidate) That page renders **Contact Info** too
+- [ ] (e2e-candidate) Its Documents section renders normally, not blocked
+- [ ] (e2e-candidate) That Documents section has an **Add Document** button
+- [ ] (e2e-candidate) On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member)
+- [ ] (e2e-candidate) Set Phone, Emergency Contact Name and Emergency Contact Phone there and tap **Save** → the values persist on reload
+- [ ] (e2e-candidate) On Harper Test's member detail page, tap **Set Photo** and choose `scripts/data/harper-photo.png` → the upload starts immediately
+- [ ] (e2e-candidate) You land back on the member page
+- [ ] (e2e-candidate) The photo displays there
+- [ ] (e2e-candidate) With Harper Test's photo set, tap **Replace Photo** and choose `scripts/data/emery-photo.jpg` (a different file *and* a different format) → the displayed word changes from `harper` to `emery`
+- [ ] (e2e-candidate) With Harper Test's photo set, tap **Remove** → the placeholder returns
+- [ ] (e2e-candidate) The **Set Photo** button returns with it
+- [ ] (e2e-candidate) A claimed trainer's member detail page shows no **Set Photo**/**Replace Photo**/**Remove** control (manager can't edit a claimed member's photo)
+- [ ] (e2e-candidate) On your own manager member detail page, tap **Set Photo** and upload `scripts/data/clover-photo.png` → the photo displays
+- [ ] (e2e-candidate) That photo persists on reload
+- [ ] (e2e-candidate) Tap **Add Document** on Harper Test's page and upload `scripts/data/test_1_kb.pdf` → redirects back to the member page
+- [ ] (e2e-candidate) The document is listed there
+- [ ] (e2e-candidate) Its signed-URL link opens the document
+- [ ] (e2e-candidate) Delete it → row disappears
+- [ ] (e2e-candidate) A trainer's member detail page has an **Add Document** button
+- [ ] (e2e-candidate) That button links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
+- [ ] (e2e-candidate) Rider Gale Test's member detail page has an **Add Document** button
+- [ ] (e2e-candidate) That button links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
+- [ ] (e2e-candidate) Rider Emery's member detail page shows an **Active Agreements** header
+- [ ] (e2e-candidate) It shows a card for her seeded lease agreement
+- [ ] (e2e-candidate) It shows a card for her seeded boarding agreement
+- [ ] (e2e-candidate) Each of those cards names its kind (lease or boarding)
+- [ ] (e2e-candidate) Each names its horse
+- [ ] (e2e-candidate) Each shows its fee
+- [ ] (e2e-candidate) Each links to its agreement detail page
+- [ ] (e2e-candidate) A rider with no active agreements shows **No active agreements** instead
+- [ ] (e2e-candidate) That empty state carries no add-boarding link
+- [ ] (e2e-candidate) A managed (unclaimed) rider's detail page shows the same **Active Agreements** section
+- [ ] (e2e-candidate) A trainer's member detail page shows an **Instructor Access** section reading **Revoke Instructor Access** (trainers default to `can_instruct=true`)
+- [ ] (e2e-candidate) Tapping it raises a browser confirm prompt naming the trainer
+- [ ] (e2e-candidate) That prompt warns they'll no longer be assignable to future lessons
+- [ ] (e2e-candidate) **Cancel** it → access is unchanged
+- [ ] (e2e-candidate) Tap **Revoke Instructor Access** again and confirm → the button now reads **Grant Instructor Access**
+- [ ] (e2e-candidate) That trainer no longer appears in the instructor select on the new-lesson form
+- [ ] (e2e-candidate) Tapping **Grant Instructor Access** raises no confirm prompt
+- [ ] (e2e-candidate) The trainer reappears in the instructor select afterwards
+- [ ] (e2e-candidate) Your own manager member detail page shows an **Instructor Access** section reading **Grant Instructor Access**
+- [ ] (e2e-candidate) Tapping it raises no confirm prompt
+- [ ] (e2e-candidate) You then appear in the instructor select on the new-lesson form
+- [ ] (e2e-candidate) Tapping **Revoke Instructor Access** to undo does raise a confirm prompt
+- [ ] (e2e-candidate) Rider Gale Test's member detail page shows no **Instructor Access** section
+- [ ] (e2e-candidate) Indigo Test's member detail page shows a **Remove** button top-right of the header, next to the member's name
+- [ ] (e2e-candidate) Tap it and confirm the browser prompt → you're redirected to the Members list
+- [ ] (e2e-candidate) Indigo Test no longer appears on that list
+- [ ] (e2e-candidate) Your own manager member detail page shows no **Remove** button
+- [ ] (e2e-candidate) Second manager Morgan Manager's member detail page shows no **Remove** button either (managers can't remove other managers)
 
 Finances (`/barn/dev-barn/finances`):
 
@@ -421,57 +641,105 @@ Finances (`/barn/dev-barn/finances`):
 
 Manage Barn (`/barn/dev-barn/settings`):
 
-- [ ] Sections render as collapsible accordions, collapsed by default; clicking a section's heading toggles it open/closed independently of the others; there is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
-- [ ] **Default Instructor Cut** field shows the current value (default `25`)
-- [ ] Change it and **Save** → value persists on reload; confirm the helper text says the change doesn't affect past lessons, not that it recalculates historical income
-- [ ] Try `0` — allowed
-- [ ] Try blank — rejected, field stays unchanged
-- [ ] Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected; revert to the original price → warning disappears → Save
-- [ ] On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons"); revert → warning disappears; **Add Tier** a new tier and confirm its Instructor Cut field pre-fills from the barn's Default Instructor Cut
-- [ ] Set a different tier as **default** → new-lesson form pre-selects it
-- [ ] **Deactivate** the Group Special tier → it no longer appears when creating a lesson; **reactivate** it
-- [ ] Edit **Default Board Fee**, confirm the non-retroactive helper text is visible → Save → a pre-existing boarding agreement's fee is unchanged, but a newly created boarding agreement pre-fills the new fee
-- [ ] **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
-- [ ] Change both and **Save** → values persist on reload
-- [ ] Try setting Moderate ≥ High → rejected with a field error and values unchanged
-- [ ] **Schedule Buffer** field shows the current value (default `30`)
-- [ ] Change it and **Save** → value persists on reload
-- [ ] **Barn Timezone** select shows the current value (default Eastern); change it and Save → persists on reload; add a planned expense due a few minutes from now, wait for its due time to pass, then confirm it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
-- [ ] **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
-- [ ] Create an event with a title, date/hour, and notes → it appears in the Barn Events list with the correct title, date, and "manager, trainer, rider" visible-to text
-- [ ] **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked and Manager/Trainer still checked
-- [ ] From the event's Edit page, tap **Delete** → confirm page shows the event's title → **Confirm Delete** → event no longer appears in the Barn Events list
-- [ ] **Data Backup** section shows a **Download All Documents** button, enabled (documents were already uploaded earlier in this phase)
-- [ ] Tap **Download All Documents** → a `.zip` downloads; open it and confirm it contains `horse/<name>/` and `member/<name>/` folders holding the documents uploaded earlier, each file named `<original>-<type>-<date>.<ext>`
-- [ ] **Data Backup** section also shows a **Download Data** button, always enabled (no "nothing to export" state)
-- [ ] Tap **Download Data** → an `.xlsx` downloads; open it and confirm it has 8 sheets (Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions) and a horse/lesson/member created earlier in this phase appears by name (not a raw id) on the expected sheet
+- [ ] (e2e-candidate) Sections render as collapsible accordions, all collapsed on page load
+- [ ] (e2e-candidate) Clicking a section's heading opens that section
+- [ ] (e2e-candidate) Clicking it again closes the section
+- [ ] (e2e-candidate) Opening one section leaves the other sections' open/closed state unchanged
+- [ ] (e2e-candidate) There is no "Active Members" section (member removal now lives on each member's own detail page — see Members phase above)
+- [ ] (e2e-candidate) **Default Instructor Cut** field shows the current value (default `25`)
+- [ ] (e2e-candidate) Change it and **Save** → the value persists on reload
+- [ ] (e2e-candidate) Its helper text says the change doesn't affect past lessons, not that it recalculates historical income
+- [ ] (e2e-candidate) Try `0` — allowed
+- [ ] (e2e-candidate) Try blank — rejected
+- [ ] (e2e-candidate) After that rejection the field's stored value is unchanged
+- [ ] (e2e-candidate) Edit a tier (`/barn/dev-barn/settings/tiers/[id]`): change its price → an amber warning appears noting past lessons are unaffected
+- [ ] (e2e-candidate) Revert to the original price → that warning disappears
+- [ ] (e2e-candidate) On that same tier edit page, change its **Instructor Cut** → the same style amber warning appears ("won't affect past lessons")
+- [ ] (e2e-candidate) Revert the Instructor Cut → that warning disappears
+- [ ] (e2e-candidate) **Add Tier** a new tier — its Instructor Cut field pre-fills from the barn's Default Instructor Cut
+- [ ] (e2e-candidate) Set a different tier as **default** → the new-lesson form pre-selects it
+- [ ] (e2e-candidate) **Deactivate** the Group Special tier → it no longer appears when creating a lesson
+- [ ] (e2e-candidate) **Reactivate** it → it appears again when creating a lesson
+- [ ] (e2e-candidate) The **Default Board Fee** field's non-retroactive helper text is visible
+- [ ] (e2e-candidate) Edit **Default Board Fee** and Save → a pre-existing boarding agreement's fee is unchanged
+- [ ] (e2e-candidate) A newly created boarding agreement pre-fills the new fee
+- [ ] (e2e-candidate) **Horse Exhaustion Thresholds** fields show the current Moderate/High values (defaults `5`/`11`)
+- [ ] (e2e-candidate) Change both and **Save** → values persist on reload
+- [ ] (e2e-candidate) Try setting Moderate ≥ High → rejected with a field error
+- [ ] (e2e-candidate) After that rejection the stored threshold values are unchanged
+- [ ] (e2e-candidate) **Schedule Buffer** field shows the current value (default `30`)
+- [ ] (e2e-candidate) Change it and **Save** → value persists on reload
+- [ ] (e2e-candidate) **Barn Timezone** select shows the current value (default Eastern)
+- [ ] (e2e-candidate) Change it and Save → it persists on reload
+- [ ] (e2e-candidate) With the timezone changed above, add a planned expense due a few minutes from now, wait for its due time to pass *in the barn's configured timezone* → it now surfaces under Finances' **Outstanding Expenses** section — proves the barn timezone setting, not just the display, actually drives the past-due check
+- [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
+- [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
+- [ ] (e2e-candidate) That list entry shows the correct date
+- [ ] (e2e-candidate) That list entry shows "manager, trainer, rider" visible-to text
+- [ ] (e2e-candidate) **Edit** that event and uncheck the Rider checkbox → Save → reopening Edit shows Rider unchecked
+- [ ] (e2e-candidate) Manager and Trainer are still checked there
+- [ ] (e2e-candidate) From the event's Edit page, tap **Delete** → the confirm page shows the event's title
+- [ ] (e2e-candidate) **Confirm Delete** → the event no longer appears in the Barn Events list
+- [ ] (e2e-candidate) **Data Backup** section shows a **Download All Documents** button
+- [ ] (e2e-candidate) That button is enabled (documents were already uploaded earlier in this phase)
+- [ ] (e2e-candidate) Tap **Download All Documents** → a `.zip` downloads
+- [ ] (e2e-candidate) That zip contains a `horse/<name>/` folder holding the horse documents uploaded earlier
+- [ ] (e2e-candidate) It contains a `member/<name>/` folder holding the member documents uploaded earlier
+- [ ] (e2e-candidate) Each file inside is named `<original>-<type>-<date>.<ext>`
+- [ ] (e2e-candidate) **Data Backup** section also shows a **Download Data** button
+- [ ] (e2e-candidate) That button is always enabled (no "nothing to export" state)
+- [ ] (e2e-candidate) Tap **Download Data** → an `.xlsx` downloads
+- [ ] (e2e-candidate) It has exactly 8 sheets: Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions
+- [ ] (e2e-candidate) A horse created earlier in this phase appears by name (not a raw id) on the Horses sheet
+- [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet
+- [ ] (e2e-candidate) That lesson's row names its horse and rider (not raw ids)
+- [ ] (e2e-candidate) A member created earlier in this phase appears by name (not a raw id) on the Members sheet
 
 Notifications and profile:
 
-- [ ] Notification bell shows an unread-count badge; opening it lists notifications with title/body/timestamp
-- [ ] **Mark all read** clears the badge
-- [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages; edit phone → Save → redirected back to the barn
-- [ ] Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
-- [ ] Avatar menu → **About** (`/about`) renders the app overview
-- [ ] The **Changelog** link on `/about` includes the current version and opens `/changelog`
-- [ ] The **Terms of Service** link on `/about` opens `/terms`
-- [ ] The **Privacy Policy** link on `/about` opens `/privacy`
-- [ ] The **← Back** link on `/about`, `/changelog`, `/terms`, and `/privacy` returns to `/barns`
+- [ ] (e2e-candidate) Notification bell shows an unread-count badge
+- [ ] (e2e-candidate) Opening the bell lists the notifications
+- [ ] (e2e-candidate) Each listed notification shows its title
+- [ ] (e2e-candidate) Each shows its body
+- [ ] (e2e-candidate) Each shows its timestamp
+- [ ] (e2e-candidate) **Mark all read** clears the badge
+- [ ] (e2e-candidate) Avatar menu → **Profile** (`/profile?barn=dev-barn`) renders the barn nav bar
+- [ ] (e2e-candidate) That nav bar carries the **full 9-link manager nav** (Lessons, Expenses, Horses, Leases, Boarding, Members, Finances, Manage Barn, Guide) — same set as the regular barn pages
+- [ ] (e2e-candidate) Edit phone on `/profile` → Save → you're redirected back to the barn
+- [ ] (e2e-candidate) Avatar menu → **User Guide** (`/barn/dev-barn/guide`) renders the manager guide
+- [ ] (e2e-candidate) Avatar menu → **About** (`/about`) renders the app overview
+- [ ] (e2e-candidate) The **Changelog** link on `/about` includes the current version
+- [ ] (e2e-candidate) That **Changelog** link opens `/changelog`
+- [ ] (e2e-candidate) The **Terms of Service** link on `/about` opens `/terms`
+- [ ] (e2e-candidate) The **Privacy Policy** link on `/about` opens `/privacy`
+- [ ] (e2e-candidate) The **← Back** link on `/about` returns to `/barns`
+- [ ] (e2e-candidate) The **← Back** link on `/changelog` returns to `/barns`
+- [ ] (e2e-candidate) The **← Back** link on `/terms` returns to `/barns`
+- [ ] (e2e-candidate) The **← Back** link on `/privacy` returns to `/barns`
 
 Mobile spot-check (resize the browser to ~390px wide, or use your browser's device toolbar):
 
-- [ ] Nav bar and its dropdowns (avatar menu, notification bell) remain usable — reachable and dismissible by tap, with no reliance on hover
-- [ ] Lessons and Horses lists stay readable without horizontal scrolling
+- [ ] (e2e-candidate) At this width the avatar menu opens and dismisses by tap
+- [ ] (e2e-candidate) At this width the notification bell dropdown opens and dismisses by tap
+- [ ] (manual) Nothing in the nav bar or its dropdowns relies on hover to be reachable or dismissible
+- [ ] (e2e-candidate) The Lessons list stays readable without horizontal scrolling
+- [ ] (e2e-candidate) The Horses list stays readable without horizontal scrolling
 
 Calendar feed (#1018):
 
-- [ ] On `/profile?barn=dev-barn`, a **Calendar Feed** section appears; tap **Get my calendar link** — **Copy Link** and **Regenerate** appear
-- [ ] Tap **Copy Link** — the copied URL contains `/calendar.ics?token=...`
-- [ ] Open that URL directly (or `curl` it) — returns `Content-Type: text/calendar` and includes VEVENT entries for lessons across the whole barn (manager sees everything), not just your own
-- [ ] Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
-- [ ] Open the pre-regenerate URL — it now 404s
+- [ ] (e2e-candidate) On `/profile?barn=dev-barn`, a **Calendar Feed** section appears
+- [ ] (e2e-candidate) Tap **Get my calendar link** → a **Copy Link** button appears
+- [ ] (e2e-candidate) A **Regenerate** button appears alongside it
+- [ ] (e2e-candidate) Tap **Copy Link** — the copied URL contains `/calendar.ics?token=...`
+- [ ] (e2e-candidate) Open that URL directly (or `curl` it) — it returns `Content-Type: text/calendar`
+- [ ] (e2e-candidate) Its body includes VEVENT entries for the barn's lessons
+- [ ] (e2e-candidate) Those entries cover lessons across the whole barn (manager sees everything), not just your own
+- [ ] (e2e-candidate) Tap **Regenerate**, then **Copy Link** — the copied URL carries a different token than before
+- [ ] (e2e-candidate) Open the pre-regenerate URL — it now 404s
 
 ## Phase 5 — Trainer
+
+<!-- Asserting role: trainer only. A manager may plant a precondition mid-phase; the eye doing the looking must be the trainer's. Not audited for automation yet — the few tagged lines here were relocated from Phase 4 by #1136. -->
 
 Switch role (interactive):
 
@@ -487,6 +755,11 @@ bash scripts/change-user.sh dev-barn
 - [ ] `/barn/dev-barn/expenses` is blocked — visiting it directly shows **404**, not a login redirect
 - [ ] Lessons list defaults to **My Lessons** (only Alex's, now reassigned to you); switch to **All** to see every barn lesson including Blake's — filter pills show the same `My Lessons | All | By Instructor | By Rider | By Horse | By Tier` bar as the manager view
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
+- [ ] (#1019) The trainer's New Lesson form shows the same month conflict calendar on the Date field as the manager view
+- [ ] (#1019) With a horse selected there, the exertion shading reflects the whole barn's lessons for that horse — not just the ones you instruct
+- [ ] (#1019) With Apple selected there, the day carrying Apple's vet/farrier expense (scheduled back in Phase 3) shows a dot — the conflict dot fires on expenses for a trainer, not just lessons
+- [ ] (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
+- [ ] (#1019) That appointment's card on the Dashboard is not tappable — it renders as plain text, not a link (the expense detail page is manager-only)
 - [ ] Create one more lesson dated within 30 minutes of one of Blake's lessons (check Blake's lesson times via the **All** filter above) — submission succeeds with no error
 
 > This notification's recipient (Blake) isn't the persona you're currently acting as, so it can't be observed by switching personas with `change-user.sh` — the swap reassigns `barn_memberships.user_id` away from whichever persona you leave, permanently disconnecting it from the id the notification was written against. Verify the row directly instead (Supabase Studio or a `supabase db` query). The live bell UI these rows feed is exercised on a genuinely different account, in both directions, in [`POST_RELEASE_TEST_CHECKLIST.md`](POST_RELEASE_TEST_CHECKLIST.md) — that supplements these row checks rather than replacing them.
@@ -495,7 +768,10 @@ bash scripts/change-user.sh dev-barn
 - [ ] That row's `title` reads **"1 new lesson scheduled nearby"** (or an incremented count, e.g. "2 new lessons scheduled nearby", if a prior nearby lesson already landed this same row this pass)
 - [ ] Edit one of your own lessons — the instructor field is **hidden entirely** (no label, no read-only text — just locked server-side)
 - [ ] Open one of Blake's lessons from the Lessons list — no Edit link is shown, and navigating to its `/edit` URL directly does not let you save changes
+- [ ] (e2e-candidate) No **Delete** button is shown on any lesson, your own included
 - [ ] On one of your own lessons, click **Cancel** in the header and cancel a rider's spot (or the whole lesson) — works the same as manager; open Blake's lesson — no header **Cancel** button is shown
+- [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson you instruct — the Notes section shows the same **Cancellation Notes** textarea the manager gets
+- [ ] (e2e-candidate) On that same lesson, enter cancellation notes in that textarea and Save — its detail page renders the same read-only **Cancellation Notes** row the manager gets
 - [ ] The recurring lesson created in Phase 3 still shows its **Recurring** badge on the Lessons list row and detail page, now that it's reassigned to you
 - [ ] Open the recurring lesson's edit page (now reassigned to you) — "This is part of a recurring series" indicator and **Stop Recurring Lessons** button appear at the top of the page, above the lesson form; stopping works the same as manager
 - [ ] Horse detail page: documents are listed with working links, uploading `scripts/data/test_1_kb.pdf` works (including setting a Reminder Date), but there is **no Actions column at all** (not just a hidden delete button), **no Exhaustion Thresholds section**, and the Reminder Date column is **read-only**
@@ -505,17 +781,22 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#1000) Back on the Horses list as this trainer, a **My Horses** section appears at the top showing **Clover** with a status badge, and Clover no longer appears under Available/Unavailable
 - [ ] Butter's horse detail page (this trainer does **not** own her): her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
 - [ ] (#1003) On **Clover**'s detail page (the horse this trainer now owns), a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a non-manager
+- [ ] (e2e-candidate) As manager, set Apple's **Registered Name** (e.g. "Four-Leaf Clover"); reopen Apple as this trainer — a **Registered Name** row appears below Status (an e2e run seeds the registered name in the trainer's own barn instead)
+- [ ] (e2e-candidate) As manager, clear Apple's **Registered Name** again; reopen Apple as this trainer — no **Registered Name** row is shown
 - [ ] Members page shows all four sections (You/Managers/Trainers/Riders), same structure as the manager view — no Add Trainer/Add Rider forms; open your own member detail page and upload `scripts/data/test_1_kb.pdf`, optionally setting a Reminder Date; the Reminder Date column on your own documents is **read-only** (only a manager can edit it)
 - [ ] In the Riders section, the managed/unclaimed rows (Gale/Harper Test, whichever are still unclaimed — Indigo Test was removed earlier in the Members phase) render as normal card links — name only, **no Unlinked badge** (the list never shows Copy Invite/Revoke controls for any role — those now live only on the detail page's manager-only Manage Member section, which a trainer viewing that page won't see either)
 - [ ] Open Harper Test's member detail page as trainer — Contact Info is read-only (blank fields show "—"), with no Save button
 - [ ] Open another trainer's or a manager's member detail page from the roster — page loads (no 404), shows their name and **Contact Info** section (#863 — a trainer can view any member's Contact Info), but **no Documents section**; open Blake's (a rider's) detail page — same: Contact Info shown, Documents hidden (#779 narrowed rider-document access to manager/self only)
 - [ ] `/barn/dev-barn/finances` is blocked — shows **404**, not a login redirect; `/barn/dev-barn/finances/outstanding` works and shows **only your own** outstanding lessons, plus any uncollected cancellation fees for lessons you instruct
 - [ ] (#1015) Dashboard's Day view, on a day with other instructors' lessons scheduled too, shows only the lessons you instruct — not the whole barn's schedule
+- [ ] (e2e-candidate) (#1016) Switching to Week view shows only lessons you instruct across all 7 days, matching Day view's role-scoping
 - [ ] Dashboard: if any of your instructed lessons are unpaid, a "Reminders" section with an "N unpaid lessons" card appears, linking to `/barn/dev-barn/finances/outstanding` — this is your only nav path to that page (no Finances link in the nav)
 - [ ] Avatar menu → **Profile** (`/profile?barn=dev-barn`): barn nav bar renders with the **full 4-link trainer nav** (Lessons, Horses, Members, Guide) — same set as the regular barn pages
 - [ ] (#1018) On the same Profile page, get/open your Calendar Feed link — it includes only lessons where you're the instructor (your reassigned Alex lessons), not Blake's
 
 ## Phase 6 — Rider
+
+<!-- Asserting role: rider only. A manager may plant a precondition mid-phase; the eye doing the looking must be the rider's. Not audited for automation yet — the few tagged lines here were relocated from Phase 4 by #1136. -->
 
 Switch role (pick **Dana** from the same member list as Phase 5):
 
@@ -528,11 +809,12 @@ bash scripts/change-user.sh dev-barn
 - [ ] Horses page shows Available/Unavailable cards with name (and unavailability reason) only — **no exhaustion bar**, no Inactive section
 - [ ] Tap an Available or Unavailable card → navigates to that horse's detail page (#1002 — cards became linkable so a rider can view the horse's photo)
 - [ ] On Butter's detail page (Dana does **not** own her), her seeded photo displays, but there is **no Set Photo / Replace Photo / Remove control**
+- [ ] (e2e-candidate) As manager, set Apple's **Registered Name** (e.g. "Four-Leaf Clover"); reopen Apple as Dana — a **Registered Name** row appears below Status (an e2e run seeds the registered name in the rider's own barn instead)
+- [ ] (e2e-candidate) As manager, clear Apple's **Registered Name** again; reopen Apple as Dana — no **Registered Name** row is shown
 - [ ] (#1006) As manager, make Dana the owning member of **Clover** (Access section — Dana has no privileges row on Clover; this reassigns ownership away from the Phase 5 trainer, which nothing later re-checks); reopen Clover as Dana — **Feed Notes**/**Medication Notes** are editable textareas with a **Save** button
 - [ ] (#1006) On **Butter**, whom Dana does *not* own, Feed Notes/Medication Notes remain read-only text
 - [ ] (#1000) Back on the Horses list as Dana, a **My Horses** section appears at the top showing **Clover** with a status badge, and Clover no longer appears under Available/Unavailable
 - [ ] (#1003) On **Clover**'s detail page, a **Set Photo** or **Replace Photo** control **is** shown — owning a horse grants photo write even to a rider; use it to set `scripts/data/clover-photo.png` as Dana
-- [ ] (#1003) As manager, reopen **Clover** → **no Replace Photo / Remove control** (an owner-set photo locks managers out, the converse of the manager-set case in the manager phase)
 - [ ] (#999) As manager, grant Dana `document_privileges='read'` on a horse via its Access section; reopen that horse as Dana — a **Documents** section now appears, with no **Add Document** button
 - [ ] (#999) Change that same grant to `document_privileges='write'`; reopen the horse as Dana — the **Add Document** button now appears in the Documents section
 - [ ] (#999) On a horse Dana has no document privilege on, no Documents section appears for her at all
@@ -542,11 +824,13 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#999) Tap a lesson in that Upcoming Lessons list that Dana is **not** enrolled in — the lesson detail page loads (no 404)
 - [ ] (#999) On a horse Dana has no lesson-read privilege on, neither the Exhaustion bar nor the Upcoming Lessons section appears
 - [ ] Dashboard's Day view shows only lessons Dana is enrolled in for the viewed day, and no expenses (manager-only) or events outside her role's `visible_to_roles`
+- [ ] (e2e-candidate) (#1016) Switching to Week view shows only Dana's enrolled lessons across all 7 days
 - [ ] Lessons list shows only Dana's enrolled lessons, with filter pills `All | By Instructor | By Horse | By Tier` — no **My Lessons** or **By Rider** pill; Dana's own name does not appear on her own lesson cards
 - [ ] Open an enrolled lesson's detail page — own rider notes visible read-only; **no private notes** shown
 - [ ] Same lesson detail page — no exertion rating shown next to any horse name (still true for a horse Dana holds no lesson-read privilege on)
 - [ ] (#999) On the lesson detail page reached via the privileged Upcoming Lessons tap above, Dana's privileged horse **does** show an exertion rating and its horse notes (if any)
 - [ ] (#999) Same page — other riders' rider/private notes stay hidden from Dana
+- [ ] (e2e-candidate) As manager, cancel a lesson Dana is enrolled in and record cancellation notes on it; reopen that lesson as Dana — its detail page renders the same read-only **Cancellation Notes** row (an e2e run seeds the cancelled lesson and its notes in the rider's own barn instead)
 - [ ] Open an enrolled **group** lesson's detail page — every co-rider's real name is shown, not a blank or raw ID
 - [ ] Copy a lesson ID Dana is **not** enrolled in, for a lesson with no horse she holds lesson-read privileges on, and visit `/barn/dev-barn/lessons/[id]` directly — page shows **404**, not the lesson details
 - [ ] Cancel your own spot in an enrolled lesson via the **Cancel** button in the lesson detail page header (no Cancel button on the Lessons list or Dashboard) → your row shows a **Cancelled** badge on the list, Dashboard, and detail page; the rest of the lesson (and other riders in a group lesson) is unaffected; the instructor receives a "Lesson participation cancelled" notification
@@ -554,6 +838,7 @@ bash scripts/change-user.sh dev-barn
 - [ ] `/barn/dev-barn/finances/outstanding` shows only Dana's outstanding lessons, plus her own outstanding lease/boarding charges (if any are past due) and her own uncollected late-cancellation fees, with a Type column — no such column entries for other riders' agreements
 - [ ] Dashboard: if Dana has unpaid lessons and/or unpaid leases/boarding, a "Reminders" section with "N unpaid lessons"/"N unpaid leases/boarding" cards appears, each linking to `/barn/dev-barn/finances/outstanding` — this is Dana's only nav path to that page (no Finances link in the nav)
 - [ ] (#938) With an outstanding late-cancellation fee but zero unpaid lesson fees, the Dashboard's "N unpaid lessons" card still appears (its count includes the cancellation fee) instead of being hidden
+- [ ] (e2e: dashboard_reminders_header_hidden_for_rider_with_no_reminders) For a rider with nothing outstanding of their own, the Dashboard shows no **Reminders** header at all — even while the barn holds unpaid items belonging to *another* rider, which proves the reminders query is rider-scoped rather than merely empty (Dana has her own unpaid items by this point, so verify as a rider who does not — the e2e run seeds exactly that pair)
 - [ ] `/barn/dev-barn/members` shows all four sections (You/Managers/Trainers/Riders) — no Add Trainer/Add Rider forms, and no Unlinked badge on any managed/unclaimed row (rider never sees it, unlike a manager)
 - [ ] Open your own member detail page's Documents section — shows the empty state ("No documents yet"), with **no Add Document button** (#864 — rider self-service is read-only)
 - [ ] Open another member's detail page from the roster (a trainer, a manager) — page loads (no 404), shows their name and **Contact Info** section, but no Documents section
@@ -565,6 +850,8 @@ bash scripts/change-user.sh dev-barn
 - [ ] (#1018) On the same Profile page, get/open your Calendar Feed link — it includes only lessons Dana is enrolled in, not other riders' lessons
 
 ## Phase 7 — Multi-barn
+
+<!-- Asserting role: manager, across two barns. Cross-barn isolation, not cross-role. -->
 
 - [ ] Create a second barn — completes successfully:
 

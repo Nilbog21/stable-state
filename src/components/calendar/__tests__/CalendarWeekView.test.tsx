@@ -36,9 +36,16 @@ describe('CalendarWeekView', () => {
     expect(screen.getByText(/lessons, expenses, or events/)).toBeDefined()
   })
 
-  it('should_show_generic_empty_week_subtext_for_trainer', () => {
+  it('should_show_expense_mentioning_empty_week_subtext_for_trainer', () => {
     const days = [{ date: '2026-07-20', items: [] }]
     render(<CalendarWeekView days={days} todayStr="2026-07-20" role="trainer" slug="green-acres" />)
+
+    expect(screen.getByText(/lessons, expenses, or events/)).toBeDefined()
+  })
+
+  it('should_show_generic_empty_week_subtext_for_rider', () => {
+    const days = [{ date: '2026-07-20', items: [] }]
+    render(<CalendarWeekView days={days} todayStr="2026-07-20" role="rider" slug="green-acres" />)
 
     expect(screen.getByText('Nothing scheduled this week.')).toBeDefined()
   })

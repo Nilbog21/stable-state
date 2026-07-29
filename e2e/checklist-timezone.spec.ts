@@ -29,7 +29,22 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
 
   await page.getByRole('checkbox', { name: 'Apollo' }).check()
   await page.locator('#rider_id').selectOption({ label: `${E2E_USERS.rider.firstName} ${E2E_USERS.rider.lastName}` })
-  await page.locator('#dh-date').fill(dateStr)
+
+  // #1019 replaced this form's native date input with a month conflict calendar. The grid
+  // opens on the current month and today+30 can fall past its last spill-over cell, so page
+  // forward until the target month's heading is showing, then tap the day. Each day cell's
+  // accessible name is its own "YYYY-MM-DD".
+  const monthHeading = new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' })
+    .format(new Date(`${dateStr}T00:00:00Z`))
+  // Bounded: today+30 is at most two months ahead, so this never needs more than two taps.
+  for (let i = 0; i < 3 && !(await page.getByText(monthHeading, { exact: true }).isVisible()); i++) {
+    await page.getByRole('button', { name: 'Next month' }).click()
+  }
+  await expect(page.getByText(monthHeading, { exact: true })).toBeVisible()
+  await page.getByRole('button', { name: dateStr }).click()
+  // Tapping a day also pops up that day's schedule; dismiss it so it can't overlay the form.
+  await page.getByRole('button', { name: 'Close' }).click()
+
   await page.locator('#dh-hour').selectOption(String(hour))
 
   // Keyboard activation instead of a raw pointer .click(): Submit sits at the

@@ -21,10 +21,13 @@ export function CalendarDayView({
   viewerMembershipId?: string
 }) {
   if (items.length === 0) {
+    // Trainers see expenses too since #1019, so the split is rider-vs-rest, not manager-vs-rest.
+    const subtext =
+      role === 'rider' ? 'Nothing scheduled for this day.' : 'No lessons, expenses, or events scheduled for this day.'
     return (
       <EmptyState
         heading="You're all clear"
-        subtext={role === 'manager' ? 'No lessons, expenses, or events scheduled for this day.' : 'Nothing scheduled for this day.'}
+        subtext={subtext}
       />
     )
   }
@@ -44,7 +47,7 @@ export function CalendarDayView({
           )
         }
         if (item.itemType === 'expense') {
-          return <CalendarExpenseCard key={`expense-${item.id}`} expense={item.expense} slug={slug} />
+          return <CalendarExpenseCard key={`expense-${item.id}`} expense={item.expense} slug={slug} role={role} />
         }
         return <CalendarEventCard key={`event-${item.id}`} event={item.event} />
       })}

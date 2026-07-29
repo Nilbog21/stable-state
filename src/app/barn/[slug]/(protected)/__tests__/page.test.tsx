@@ -83,7 +83,7 @@ import { getEventsByIds } from '@/lib/db/barn-events'
 import { getDueDocuments } from '@/lib/db/documents'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
-import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarn, createMockMembership } from '@/test/fixtures'
+import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarn, createMockMembership, createMockScheduleItem } from '@/test/fixtures'
 import type { ScheduleItem } from '@/lib/db/types'
 import BarnDashboardPage from '../page'
 
@@ -128,7 +128,7 @@ function renderPage(searchParams: { date?: string; view?: string } = {}) {
   })
 }
 
-const lessonItem: ScheduleItem = { id: 'lesson-1', itemType: 'lesson', start: '2026-07-23T09:00:00', durationMinutes: 60, instructorId: 'mem-trn', horseIds: [] }
+const lessonItem: ScheduleItem = createMockScheduleItem({ id: 'lesson-1', instructorId: 'mem-trn' })
 
 describe('BarnDashboardPage', () => {
   beforeEach(() => {
@@ -267,7 +267,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_fetch_events_by_the_scoped_event_ids', async () => {
-    const eventItem: ScheduleItem = { id: 'event-1', itemType: 'event', start: '2026-07-23T09:00:00', durationMinutes: 0, instructorId: null, horseIds: [] }
+    const eventItem: ScheduleItem = createMockScheduleItem({ id: 'event-1', itemType: 'event', durationMinutes: 0 })
     vi.mocked(getScheduleForRange).mockResolvedValue([eventItem])
     vi.mocked(scopeScheduleItemsForRole).mockReturnValue([eventItem])
 
@@ -277,7 +277,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_filter_expenses_to_planned_only_amount_is_null', async () => {
-    const expenseItem: ScheduleItem = { id: 'expense-1', itemType: 'expense', start: '2026-07-23T09:00:00', durationMinutes: 0, instructorId: null, horseIds: [] }
+    const expenseItem: ScheduleItem = createMockScheduleItem({ id: 'expense-1', itemType: 'expense', durationMinutes: 0 })
     vi.mocked(getScheduleForRange).mockResolvedValue([expenseItem])
     vi.mocked(scopeScheduleItemsForRole).mockReturnValue([expenseItem])
     vi.mocked(getExpensesByIds).mockResolvedValue([
@@ -291,7 +291,7 @@ describe('BarnDashboardPage', () => {
   })
 
   it('should_include_planned_expenses_with_null_amount', async () => {
-    const expenseItem: ScheduleItem = { id: 'expense-1', itemType: 'expense', start: '2026-07-23T09:00:00', durationMinutes: 0, instructorId: null, horseIds: [] }
+    const expenseItem: ScheduleItem = createMockScheduleItem({ id: 'expense-1', itemType: 'expense', durationMinutes: 0 })
     vi.mocked(getScheduleForRange).mockResolvedValue([expenseItem])
     vi.mocked(scopeScheduleItemsForRole).mockReturnValue([expenseItem])
     vi.mocked(getExpensesByIds).mockResolvedValue([
