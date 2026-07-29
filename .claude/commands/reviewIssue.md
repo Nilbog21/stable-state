@@ -241,6 +241,7 @@ Then move to the next finding, or re-ask "anything else?" if that was the last o
      ```
      cd {worktree-path} && git push
      ```
+     A `CI: pass` taken before a push is stale for the new head — after any push, re-verify by re-running `bash scripts/workflow-ci-wait.sh {pr}` and require a fresh `CI: pass`. Step 2's verdict no longer describes this head, and `/testIssue` marks the PR ready on the strength of it. Branch on the fresh verdict exactly as Step 2 does; don't continue to 6 on a `CI: fail`.
   6. Ask: "Anything else to address, or are you done?"
 
 - **Substantial** (needs new test cases for new logic/behavior, touches DB schema/RPC, spans multiple files or introduces a new abstraction, or is better described as a design gap than a bug): **do not modify code.** Also classify **in-scope vs. out-of-scope**, stated with a one-line reason (same override rule applies):
