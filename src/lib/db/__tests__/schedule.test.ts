@@ -77,6 +77,39 @@ describe('mergeScheduleItems', () => {
     expect(result[0].horseIds).toEqual(['horse-1'])
   })
 
+  it('should_set_applies_to_all_horses_true_on_a_barn_wide_expense_item', () => {
+    const result = mergeScheduleItems(
+      [],
+      [{ id: 'expense-1', start: '2026-06-10T10:00:00', horse_ids: [], applies_to_all_horses: true }]
+    )
+
+    expect(result[0].appliesToAllHorses).toBe(true)
+  })
+
+  it('should_default_applies_to_all_horses_false_on_an_expense_row_without_the_flag', () => {
+    const result = mergeScheduleItems(
+      [],
+      [{ id: 'expense-1', start: '2026-06-10T10:00:00', horse_ids: ['horse-1'] }]
+    )
+
+    expect(result[0].appliesToAllHorses).toBe(false)
+  })
+
+  it('should_set_applies_to_all_horses_false_on_a_lesson_item', () => {
+    const result = mergeScheduleItems(
+      [{ id: 'lesson-1', start: '2026-06-10T10:00:00', instructor_id: null, horse_ids: ['horse-1'] }],
+      []
+    )
+
+    expect(result[0].appliesToAllHorses).toBe(false)
+  })
+
+  it('should_set_applies_to_all_horses_false_on_an_event_item', () => {
+    const result = mergeScheduleItems([], [], [{ id: 'event-1', start: '2026-06-10T10:00:00' }])
+
+    expect(result[0].appliesToAllHorses).toBe(false)
+  })
+
   it('should_sort_merged_items_by_start_ascending', () => {
     const result = mergeScheduleItems(
       [{ id: 'lesson-1', start: '2026-06-15T10:00:00', instructor_id: null, horse_ids: [] }],
@@ -594,6 +627,17 @@ describe('getScheduleForRange', () => {
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
     expect(result[0].horseIds).toEqual(['horse-1'])
+  })
+
+  // #1147: create_expense_with_horses skips the junction insert for a barn-wide expense, so
+  // the flag is the only signal that it applies to every horse.
+  it('should_carry_applies_to_all_horses_onto_an_expense_item_with_no_junction_rows', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00', applies_to_all_horses: true })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: [] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].appliesToAllHorses).toBe(true)
   })
 
   it('should_exclude_an_expense_dated_before_the_window', async () => {

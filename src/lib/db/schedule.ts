@@ -35,6 +35,7 @@ interface ScheduleExpenseRow {
   id: string
   start: string // barn-local wall clock, see ScheduleItem.start
   horse_ids: string[]
+  applies_to_all_horses?: boolean
   label?: string | null
 }
 
@@ -122,6 +123,7 @@ export function mergeScheduleItems(
     horseIds: l.horse_ids,
     riderIds: l.rider_ids ?? [],
     exertionByHorseId: l.exertion_by_horse_id ?? {},
+    appliesToAllHorses: false,
     label: null,
   }))
   const expenseItems: ScheduleItem[] = expenses.map((e) => ({
@@ -133,6 +135,7 @@ export function mergeScheduleItems(
     horseIds: e.horse_ids,
     riderIds: [],
     exertionByHorseId: {},
+    appliesToAllHorses: e.applies_to_all_horses ?? false,
     label: e.label ?? null,
   }))
   const eventItems: ScheduleItem[] = events.map((e) => ({
@@ -144,6 +147,7 @@ export function mergeScheduleItems(
     horseIds: [],
     riderIds: [],
     exertionByHorseId: {},
+    appliesToAllHorses: false,
     label: e.label ?? null,
   }))
   // #523 fixed identical-timestamp non-determinism for the old dashboard's expense list
@@ -277,16 +281,16 @@ export async function getScheduleForRange(
 
   const { data: expenseData, error: expensesError } = await supabase
     .from('horse_expenses')
-    .select('id, expense_date, expense_time, expense_type, recipient')
+    .select('id, expense_date, expense_time, expense_type, recipient, applies_to_all_horses')
     .eq('barn_id', barnId)
     .not('expense_time', 'is', null)
     .gte('expense_date', fromWall.slice(0, 10))
     .lte('expense_date', toWall.slice(0, 10))
   if (expensesError) throw expensesError
 
-  const expenseCandidates = ((expenseData ?? []) as { id: string; expense_date: string; expense_time: string | null; expense_type: string; recipient: string }[])
+  const expenseCandidates = ((expenseData ?? []) as { id: string; expense_date: string; expense_time: string | null; expense_type: string; recipient: string; applies_to_all_horses: boolean }[])
     .filter((e) => e.expense_time !== null)
-    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time}`, label: `${e.expense_type} — ${e.recipient}` }))
+    .map((e) => ({ id: e.id, wallClock: `${e.expense_date}T${e.expense_time}`, label: `${e.expense_type} — ${e.recipient}`, appliesToAllHorses: e.applies_to_all_horses }))
     .filter((e) => e.wallClock >= fromWall && e.wallClock < toWall)
 
   const expenseIds = expenseCandidates.map((e) => e.id)
@@ -311,6 +315,7 @@ export async function getScheduleForRange(
     id: e.id,
     start: e.wallClock,
     horse_ids: expenseHorseIdsByExpenseId.get(e.id) ?? [],
+    applies_to_all_horses: e.appliesToAllHorses,
     label: e.label,
   }))
 

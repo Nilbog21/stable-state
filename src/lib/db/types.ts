@@ -257,6 +257,10 @@ export interface ScheduleItem {
   riderIds: string[]
   /** Per-horse `lesson_horses.exertion_level`; always `{}` for expense/event items. */
   exertionByHorseId: Record<string, number>
+  /** `horse_expenses.applies_to_all_horses` (#1147) — a barn-wide appointment carries no
+   *  `expense_horses` rows at all, so `horseIds` is `[]` and this flag is the only signal
+   *  that it concerns every horse. Always `false` for lesson/event items. */
+  appliesToAllHorses: boolean
   /** Display text for expense/event items. `null` for lessons — their callers already
    *  hold horse/rider names and compose their own label from those. */
   label: string | null
