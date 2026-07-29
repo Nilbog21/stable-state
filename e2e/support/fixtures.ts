@@ -30,6 +30,7 @@ import type {
   HorseExpense,
   Lesson,
   LessonTier,
+  Notification,
   NotificationType,
   RiderDocumentType,
   Role,
@@ -414,10 +415,11 @@ export async function addPaidLesson(
  * Cancelled state, planted rather than driven through the UI, so a spec can start from it.
  *
  * The table writes are replayed here rather than delegated to cancel_lesson_with_transactions
- * / cancel_rider_participation: both RPCs authorize inline as manager / instructing trainer /
- * self and raise `not_authorized` for a service-role caller, whose auth.uid() is NULL — they
- * have no service-role exception (unlike sync_rider_cancellation_fee, which does, and which
- * still owns the ledger half below so the fee policy isn't reimplemented here).
+ * / cancel_rider_participation: both RPCs authorize inline (manager or instructing trainer,
+ * plus self for cancel_rider_participation only) and raise `not_authorized` for a service-role
+ * caller, whose auth.uid() is NULL — they have no service-role exception (unlike
+ * sync_rider_cancellation_fee, which does, and which still owns the ledger half below so the
+ * fee policy isn't reimplemented here).
  */
 export async function cancelLesson(
   supabase: SupabaseClient,
@@ -750,7 +752,9 @@ export async function addManagedMember(
         profile_id: profile.id,
         role: opts.role,
         status: 'active',
-        can_instruct: opts.canInstruct ?? false,
+        // create_managed_member sets can_instruct = (p_role = 'trainer'); match it so a
+        // managed trainer stub is instructor-capable the way the app's own stubs are.
+        can_instruct: opts.canInstruct ?? opts.role === 'trainer',
         invite_token: inviteToken,
       })
       .select('id')
@@ -787,15 +791,16 @@ export async function addBarnEvent(
 }
 
 /**
- * An already-read-or-unread in-app notification, for the Notifications subsection's badge
- * and list. upsertNotification is the service-role write path — the
- * create_or_update_notification RPC checks auth.uid(), which a service-role client doesn't
- * have (see its entry in docs/architecture/rpc.md).
+ * An unread in-app notification, for the Notifications subsection's badge and list —
+ * upsertNotification always writes read_at: null, so there is no already-read variant here.
+ * It is the service-role write path — the create_or_update_notification RPC checks
+ * auth.uid(), which a service-role client doesn't have (see its entry in
+ * docs/architecture/rpc.md).
  */
 export async function addNotification(
   supabase: SupabaseClient,
   opts: { userId: string; barnId: string; type: NotificationType; title: string; body?: string; link?: string }
-): Promise<void> {
+): Promise<Notification> {
   await upsertNotification(supabase, {
     userId: opts.userId,
     barnId: opts.barnId,
@@ -804,6 +809,18 @@ export async function addNotification(
     body: opts.body ?? '',
     link: opts.link ?? '',
   })
+  // upsertNotification returns void, so read the row back on the (user_id, barn_id, type)
+  // key it upserts on rather than widening the DAL's signature for a fixture's benefit.
+  return mustSucceed<Notification>(
+    await supabase
+      .from('notifications')
+      .select()
+      .eq('user_id', opts.userId)
+      .eq('barn_id', opts.barnId)
+      .eq('type', opts.type)
+      .single(),
+    'read back notification'
+  )
 }
 
 /** Manage Barn's settings form, planted rather than driven through the UI. */
