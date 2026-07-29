@@ -23,10 +23,13 @@ export function CalendarWeekView({
   viewerMembershipId?: string
 }) {
   if (days.every((day) => day.items.length === 0)) {
+    // Trainers see expenses too since #1019, so the split is rider-vs-rest, not manager-vs-rest.
+    const subtext =
+      role === 'rider' ? 'Nothing scheduled this week.' : 'No lessons, expenses, or events scheduled this week.'
     return (
       <EmptyState
         heading="You're all clear"
-        subtext={role === 'manager' ? 'No lessons, expenses, or events scheduled this week.' : 'Nothing scheduled this week.'}
+        subtext={subtext}
       />
     )
   }

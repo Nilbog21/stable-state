@@ -7,12 +7,12 @@ afterEach(cleanup)
 vi.mock('@/lib/db/barns', () => ({ getBarnBySlug: vi.fn() }))
 vi.mock('@/lib/db/lessons', () => ({ getLessonById: vi.fn() }))
 vi.mock('@/lib/db/barn-memberships', () => ({ getInstructorsByBarn: vi.fn(), getUserMembership: vi.fn(), getActiveMembersWithProfiles: vi.fn() }))
-vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn() }))
+vi.mock('@/lib/db/horses', () => ({ getHorsesByBarn: vi.fn(), resolveExhaustionThresholds: vi.fn().mockReturnValue({ high: 11, moderate: 5 }) }))
 vi.mock('@/lib/db/lesson-tiers', () => ({ getAllTiersByBarn: vi.fn() }))
 vi.mock('@/lib/db/lesson-series', () => ({ getSeriesById: vi.fn() }))
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
-vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn(), stopLessonSeriesAction: vi.fn(), getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}) }))
+vi.mock('@/app/actions/lessons', () => ({ updateLessonAction: vi.fn(), stopLessonSeriesAction: vi.fn(), getProjectedExhaustionForBarn: vi.fn().mockResolvedValue({}), getScheduleRangeForBarn: vi.fn().mockResolvedValue([]) }))
 vi.mock('../../../LessonForm', () => ({
   LessonForm: ({ horses, initialNotes, hasHorseIssue }: { horses: Array<{ id: string; name: string }>, initialNotes?: object, hasHorseIssue?: boolean }) => (
     <div data-testid="edit-lesson-form" data-has-notes={initialNotes ? 'true' : 'false'} data-has-horse-issue={hasHorseIssue ? 'true' : 'false'}>

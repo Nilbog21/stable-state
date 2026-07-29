@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
-import { createMockLessonTier, createMockHorse } from '@/test/fixtures'
+import { createMockLessonTier, createMockHorse, createMockScheduleItem } from '@/test/fixtures'
 import { LessonForm, computeUnpaidWarn } from '../LessonForm'
 
 afterEach(cleanup)
@@ -984,5 +984,86 @@ describe('LessonForm exhaustion bars', () => {
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
     })
+  })
+})
+
+// #1019 — the date field becomes a month conflict calendar when the form is given a
+// schedule reader; without one it stays the plain native date input (see DateHourPicker).
+describe('LessonForm — month conflict calendar', () => {
+  let originalTz: string | undefined
+
+  beforeEach(() => {
+    originalTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date('2026-06-01T14:30:00'))
+  })
+
+  afterEach(() => {
+    vi.useRealTimers()
+    process.env.TZ = originalTz
+  })
+
+  const thunder = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
+
+  async function renderWithCalendar(items: ReturnType<typeof createMockScheduleItem>[] = [], props = {}) {
+    const getScheduleRange = vi.fn().mockResolvedValue(items)
+    const result = render(
+      <LessonForm {...baseProps} horses={[thunder]} riders={[{ id: 'r1', name: 'Alice' }]} getScheduleRange={getScheduleRange} {...props} />
+    )
+    await act(async () => { await Promise.resolve() })
+    return { ...result, getScheduleRange }
+  }
+
+  it('should_replace_the_native_date_input_with_the_month_calendar', async () => {
+    const { container } = await renderWithCalendar()
+
+    expect(container.querySelector('input[type="date"]')).toBeNull()
+  })
+
+  it('should_widen_the_fetched_range_by_the_exertion_window_at_both_ends', async () => {
+    const { getScheduleRange } = await renderWithCalendar()
+
+    expect(getScheduleRange).toHaveBeenCalledWith('2026-05-28', '2026-07-15')
+  })
+
+  it('should_describe_a_lesson_by_the_names_its_participant_ids_resolve_to', async () => {
+    await renderWithCalendar([createMockScheduleItem({ id: 'l1', start: '2026-06-10T14:00:00', horseIds: ['h1'], riderIds: ['r1'] })])
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-06-10' }))
+
+    expect(screen.getByText('Lesson — Thunder, Alice')).toBeDefined()
+  })
+
+  it('should_fall_back_to_a_bare_lesson_label_when_no_participant_id_resolves', async () => {
+    await renderWithCalendar([createMockScheduleItem({ id: 'l1', start: '2026-06-10T14:00:00', horseIds: ['gone'] })])
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-06-10' }))
+
+    expect(screen.getByText('Lesson')).toBeDefined()
+  })
+
+  it('should_use_the_server_supplied_label_for_an_expense', async () => {
+    await renderWithCalendar([
+      createMockScheduleItem({ id: 'e1', itemType: 'expense', start: '2026-06-10T14:00:00', label: 'Veterinary — Dr. Smith' }),
+    ])
+
+    fireEvent.click(screen.getByRole('button', { name: '2026-06-10' }))
+
+    expect(screen.getByText('Veterinary — Dr. Smith')).toBeDefined()
+  })
+
+  it('should_title_the_calendar_field_Date_for_a_one_off_lesson', async () => {
+    await renderWithCalendar()
+
+    expect(screen.getByText('Date')).toBeDefined()
+  })
+
+  it('should_title_the_calendar_field_Starting_Date_once_recurring_is_checked', async () => {
+    await renderWithCalendar()
+
+    fireEvent.click(screen.getByRole('checkbox', { name: 'Recurring (weekly)' }))
+
+    expect(screen.getByText('Starting Date')).toBeDefined()
   })
 })

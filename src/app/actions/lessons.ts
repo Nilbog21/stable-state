@@ -5,11 +5,12 @@ import { collectLessonPayment, deleteLesson, getLessonById, updateLesson } from 
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, updateCancellationFeePaymentType } from '@/lib/db/lesson-participants'
 import { createLessonSeries, getSeriesById, stopLessonSeries } from '@/lib/db/lesson-series'
 import { getMembershipByIdForBarn } from '@/lib/db/barn-memberships'
-import { getNearbyInstructorMembershipIds } from '@/lib/db/schedule'
+import { getNearbyInstructorMembershipIds, getScheduleForRange } from '@/lib/db/schedule'
 import { createNotification, formatNearbyInstructorNotification, getUnreadNotificationCount, upsertNotificationsForRecipients } from '@/lib/db/notifications'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Barn, Lesson, NotificationType, PaymentType } from '@/lib/db/types'
+import type { Barn, Lesson, NotificationType, PaymentType, ScheduleItem } from '@/lib/db/types'
+import { wallClockToInstant } from '@/lib/barn-timezone'
 import { createHorse, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
 import { parseLessonFormData } from './lesson-form-parsing'
@@ -273,6 +274,37 @@ export async function stopLessonSeriesAction(barnSlug: string, lessonId: string,
   await stopLessonSeries(seriesId, barn.id)
 
   redirect(redirectPath)
+}
+
+/**
+ * #1019 — one read per displayed month for the lesson form's conflict calendar. The
+ * heatmap/dot/tint model is then recomputed client-side from this payload as the horse and
+ * rider selection changes (see src/lib/month-calendar.ts), rather than re-querying per
+ * selection or calling get_horse_projected_exhaustion once per day cell.
+ *
+ * `fromDate`/`toDate` are "YYYY-MM-DD" barn-local calendar days; `toDate` is exclusive,
+ * matching getScheduleForRange's own half-open range.
+ *
+ * Deliberately does NOT apply scopeScheduleItemsForRole, unlike the dashboard's Day/Week
+ * views: a horse's exhaustion is barn-wide, so narrowing a trainer to their own lessons here
+ * would under-report the load on a horse another instructor is already working. No new lesson
+ * exposure either — `lessons_select_staff` already grants trainers barn-wide lesson SELECT,
+ * which the Lessons list's "All" filter surfaces directly. Expenses did need a new grant:
+ * `trainer_select_horse_expenses`/`trainer_select_expense_horses` (#1019 review fix), without
+ * which the AC's "a lesson **or expense**" dot could only ever fire on a lesson for a trainer.
+ */
+export async function getScheduleRangeForBarn(
+  barnSlug: string,
+  fromDate: string,
+  toDate: string
+): Promise<ScheduleItem[]> {
+  const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  return getScheduleForRange(
+    barn.id,
+    wallClockToInstant(`${fromDate}T00:00:00`, barn.timezone).toISOString(),
+    wallClockToInstant(`${toDate}T00:00:00`, barn.timezone).toISOString(),
+    barn.timezone
+  )
 }
 
 export async function getProjectedExhaustionForBarn(

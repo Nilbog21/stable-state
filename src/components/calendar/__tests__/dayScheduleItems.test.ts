@@ -1,19 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarnEvent } from '@/test/fixtures'
+import { createMockLessonWithDetails, createMockExpenseWithHorses, createMockBarnEvent, createMockScheduleItem as scheduleItem } from '@/test/fixtures'
 import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay } from '../dayScheduleItems'
-import type { ScheduleItem } from '@/lib/db/types'
-
-function scheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
-  return {
-    id: 'item-1',
-    itemType: 'lesson',
-    start: '2026-07-23T09:00:00',
-    durationMinutes: 60,
-    instructorId: null,
-    horseIds: [],
-    ...overrides,
-  }
-}
 
 describe('mergeDayScheduleDisplayItems', () => {
   it('should_return_empty_array_when_no_items', () => {

@@ -147,4 +147,45 @@ describe('DateHourPicker', () => {
     fireEvent.change(dateInput, { target: { value: '' } })
     expect(onChange).toHaveBeenCalledWith('')
   })
+
+  // #1019 — the lesson form swaps the native date input for a month conflict calendar,
+  // while EventForm keeps the plain input.
+  it('should_render_the_native_date_input_when_no_renderDate_is_supplied', () => {
+    const { container } = render(<DateHourPicker />)
+    expect(container.querySelector('input[type="date"]')).not.toBeNull()
+  })
+
+  it('should_replace_the_native_date_input_when_renderDate_is_supplied', () => {
+    const { container } = render(<DateHourPicker renderDate={() => <div>custom</div>} />)
+    expect(container.querySelector('input[type="date"]')).toBeNull()
+  })
+
+  it('should_render_the_supplied_date_control', () => {
+    render(<DateHourPicker renderDate={() => <div>custom</div>} />)
+    expect(screen.getByText('custom')).toBeDefined()
+  })
+
+  it('should_hand_the_current_date_to_renderDate', () => {
+    render(<DateHourPicker initialDate="2026-06-15" renderDate={(value) => <div>{value}</div>} />)
+    expect(screen.getByText('2026-06-15')).toBeDefined()
+  })
+
+  it('should_let_the_supplied_date_control_change_the_date', () => {
+    const onChange = vi.fn()
+    render(
+      <DateHourPicker
+        onChange={onChange}
+        renderDate={(_value, setValue) => <button onClick={() => setValue('2026-06-15')}>pick</button>}
+      />
+    )
+
+    fireEvent.click(screen.getByText('pick'))
+
+    expect(onChange).toHaveBeenCalledWith('2026-06-15T18:00:00.000Z')
+  })
+
+  it('should_still_submit_lesson_at_when_a_custom_date_control_is_used', () => {
+    const { container } = render(<DateHourPicker initialDate="2026-06-15" renderDate={() => <div>custom</div>} />)
+    expect((container.querySelector('input[name="lesson_at"]') as HTMLInputElement).value).toBe('2026-06-15T18:00:00.000Z')
+  })
 })

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockLesson, createMockHorseExpense, createMockBarnEvent } from '@/test/fixtures'
+import { createMockLesson, createMockHorseExpense, createMockBarnEvent, createMockScheduleItem } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -134,12 +134,8 @@ describe('mergeScheduleItems', () => {
 })
 
 describe('intervalsOverlap', () => {
-  const lesson = (start: string): Parameters<typeof intervalsOverlap>[0] => ({
-    id: 'lesson', itemType: 'lesson', start, durationMinutes: LESSON_DURATION_MINUTES, instructorId: null, horseIds: [],
-  })
-  const point = (start: string): Parameters<typeof intervalsOverlap>[0] => ({
-    id: 'expense', itemType: 'expense', start, durationMinutes: 0, instructorId: null, horseIds: [],
-  })
+  const lesson = (start: string) => createMockScheduleItem({ id: 'lesson', start, durationMinutes: LESSON_DURATION_MINUTES })
+  const point = (start: string) => createMockScheduleItem({ id: 'expense', itemType: 'expense', start, durationMinutes: 0 })
 
   it('should_return_true_when_two_lessons_fully_overlap', () => {
     expect(intervalsOverlap(lesson('2026-06-10T09:00:00'), lesson('2026-06-10T09:00:00'))).toBe(true)
@@ -345,12 +341,10 @@ describe('getNearbyInstructorMembershipIds', () => {
 })
 
 describe('scopeScheduleItemsForRole', () => {
-  const lessonItem = (id: string, instructorId: string | null): ScheduleItem => ({
-    id, itemType: 'lesson', start: '2026-06-10T09:00:00', durationMinutes: 60, instructorId, horseIds: [],
-  })
-  const expenseItem = (id: string): ScheduleItem => ({
-    id, itemType: 'expense', start: '2026-06-10T09:00:00', durationMinutes: 0, instructorId: null, horseIds: [],
-  })
+  const lessonItem = (id: string, instructorId: string | null): ScheduleItem =>
+    createMockScheduleItem({ id, start: '2026-06-10T09:00:00', instructorId })
+  const expenseItem = (id: string): ScheduleItem =>
+    createMockScheduleItem({ id, itemType: 'expense', start: '2026-06-10T09:00:00', durationMinutes: 0 })
 
   it('should_pass_through_all_items_unchanged_for_manager', () => {
     const items = [lessonItem('lesson-1', 'mem-other'), expenseItem('expense-1')]
@@ -411,6 +405,14 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockIn }
   }
 
+  // lesson_riders junction: select → eq(barn_id) → in(lesson_id) → resolves
+  function makeLessonRidersChain(data: unknown[] | null, error: Error | null = null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    const mockSelect = vi.fn().mockReturnValue({ eq: mockEq })
+    return { select: mockSelect, mockIn }
+  }
+
   // expenses query: select → eq(barn_id) → not(expense_time) → gte(expense_date) → lte(expense_date) → resolves
   function makeExpensesChain(data: unknown[] | null, error: Error | null = null) {
     const mockLte = vi.fn().mockResolvedValue({ data, error })
@@ -438,32 +440,39 @@ describe('getScheduleForRange', () => {
     return { select: mockSelect, mockEq, mockGte, mockLt }
   }
 
-  function makeFrom({
-    lessons = [],
-    lessonHorses = [],
-    expenses = [],
-    expenseHorses = [],
-    events = [],
-    lessonsError = null,
-    expensesError = null,
-    lessonHorsesError = null,
-    expenseHorsesError = null,
-    eventsError = null,
-  }: {
+  interface FromOptions {
     lessons?: unknown[] | null
     lessonHorses?: unknown[] | null
+    lessonRiders?: unknown[] | null
     expenses?: unknown[] | null
     expenseHorses?: unknown[] | null
     events?: unknown[] | null
     lessonsError?: Error | null
     expensesError?: Error | null
     lessonHorsesError?: Error | null
+    lessonRidersError?: Error | null
     expenseHorsesError?: Error | null
     eventsError?: Error | null
-  } = {}) {
+  }
+
+  function makeFrom({
+    lessons = [],
+    lessonHorses = [],
+    lessonRiders = [],
+    expenses = [],
+    expenseHorses = [],
+    events = [],
+    lessonsError = null,
+    expensesError = null,
+    lessonHorsesError = null,
+    lessonRidersError = null,
+    expenseHorsesError = null,
+    eventsError = null,
+  }: FromOptions = {}) {
     return vi.fn().mockImplementation((table: string) => {
       if (table === 'lessons') return makeLessonsChain(lessons, lessonsError)
       if (table === 'lesson_horses') return makeLessonHorsesChain(lessonHorses, lessonHorsesError)
+      if (table === 'lesson_riders') return makeLessonRidersChain(lessonRiders, lessonRidersError)
       if (table === 'horse_expenses') return makeExpensesChain(expenses, expensesError)
       if (table === 'expense_horses') return makeExpenseHorsesChain(expenseHorses, expenseHorsesError)
       if (table === 'barn_events') return makeEventsChain(events, eventsError)
@@ -471,8 +480,18 @@ describe('getScheduleForRange', () => {
     })
   }
 
+  // get_lesson_horse_exertion_levels_batch — the only readable path to
+  // lesson_horses.exertion_level (#937 revoked the column grant).
+  function makeRpc(data: unknown[] | null = [], error: Error | null = null) {
+    return vi.fn().mockResolvedValue({ data, error })
+  }
+
+  function makeClient(opts: FromOptions & { exertions?: unknown[] | null; exertionsError?: Error | null } = {}) {
+    return { from: makeFrom(opts), rpc: makeRpc(opts.exertions, opts.exertionsError) }
+  }
+
   it('should_return_empty_array_when_no_lessons_or_expenses_in_range', async () => {
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom() } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient() as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -481,7 +500,7 @@ describe('getScheduleForRange', () => {
 
   it('should_return_lesson_items_only_when_only_lessons_exist_in_range', async () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: [lesson] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -490,7 +509,7 @@ describe('getScheduleForRange', () => {
 
   it('should_return_expense_items_only_when_only_expenses_exist_in_range', async () => {
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ expenses: [expense] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -500,7 +519,7 @@ describe('getScheduleForRange', () => {
   it('should_return_merged_lesson_and_expense_items_for_a_mixed_range', async () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: [lesson], expenses: [expense] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -513,7 +532,7 @@ describe('getScheduleForRange', () => {
       if (table === 'lessons') return { select }
       return makeFrom()(table)
     })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makeRpc() } as any)
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -526,7 +545,7 @@ describe('getScheduleForRange', () => {
       if (table === 'horse_expenses') return { select }
       return makeFrom()(table)
     })
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makeRpc() } as any)
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -534,7 +553,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_use_injected_client_when_provided', async () => {
-    const injectedClient = { from: makeFrom() } as any
+    const injectedClient = makeClient() as any
 
     await getScheduleForRange('barn-1', from, to, timezone, injectedClient)
 
@@ -543,7 +562,7 @@ describe('getScheduleForRange', () => {
 
   it('should_not_fetch_lesson_horse_junction_rows_when_no_lesson_rows', async () => {
     const fromFn = makeFrom()
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makeRpc() } as any)
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -552,7 +571,7 @@ describe('getScheduleForRange', () => {
 
   it('should_not_fetch_expense_horse_junction_rows_when_no_expense_rows', async () => {
     const fromFn = makeFrom()
-    vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makeRpc() } as any)
 
     await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -561,9 +580,7 @@ describe('getScheduleForRange', () => {
 
   it('should_include_lesson_horse_ids_resolved_from_the_junction_table', async () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: makeFrom({ lessons: [lesson], lessonHorses: [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }] }),
-    } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], lessonHorses: [{ lesson_id: 'lesson-1', horse_id: 'horse-1' }] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -572,9 +589,7 @@ describe('getScheduleForRange', () => {
 
   it('should_include_expense_horse_ids_resolved_from_the_junction_table', async () => {
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: makeFrom({ expenses: [expense], expenseHorses: [{ expense_id: 'expense-1', horse_id: 'horse-1' }] }),
-    } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: [{ expense_id: 'expense-1', horse_id: 'horse-1' }] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -583,7 +598,7 @@ describe('getScheduleForRange', () => {
 
   it('should_exclude_an_expense_dated_before_the_window', async () => {
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-06-20', expense_time: '10:00:00' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ expenses: [expense] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -591,37 +606,33 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_throw_when_the_lessons_query_rejects', async () => {
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: null, lessonsError: new Error('lessons error') }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: null, lessonsError: new Error('lessons error') }) as any)
 
     await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('lessons error')
   })
 
   it('should_throw_when_the_lesson_horse_junction_query_rejects', async () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: makeFrom({ lessons: [lesson], lessonHorses: null, lessonHorsesError: new Error('junction error') }),
-    } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], lessonHorses: null, lessonHorsesError: new Error('junction error') }) as any)
 
     await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('junction error')
   })
 
   it('should_throw_when_the_expenses_query_rejects', async () => {
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ expenses: null, expensesError: new Error('expenses error') }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: null, expensesError: new Error('expenses error') }) as any)
 
     await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('expenses error')
   })
 
   it('should_throw_when_the_expense_horse_junction_query_rejects', async () => {
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: makeFrom({ expenses: [expense], expenseHorses: null, expenseHorsesError: new Error('junction error') }),
-    } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: null, expenseHorsesError: new Error('junction error') }) as any)
 
     await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('junction error')
   })
 
   it('should_treat_null_lessons_data_as_empty', async () => {
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: null }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: null }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -629,7 +640,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_treat_null_expenses_data_as_empty', async () => {
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ expenses: null }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: null }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -638,9 +649,7 @@ describe('getScheduleForRange', () => {
 
   it('should_treat_null_expense_horse_junction_data_as_empty', async () => {
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: makeFrom({ expenses: [expense], expenseHorses: null }),
-    } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense], expenseHorses: null }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -651,7 +660,7 @@ describe('getScheduleForRange', () => {
     // manager_all_horse_expenses is manager-only RLS — a trainer/rider caller's session
     // silently gets zero rows back from horse_expenses rather than an error.
     const lesson = createMockLesson({ id: 'lesson-1' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: [lesson], expenses: [] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -660,7 +669,7 @@ describe('getScheduleForRange', () => {
 
   it('should_return_event_items_only_when_only_events_exist_in_range', async () => {
     const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: [event] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -671,9 +680,7 @@ describe('getScheduleForRange', () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
     const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-04T10:00:00Z' })
-    vi.mocked(createClient).mockResolvedValue({
-      from: makeFrom({ lessons: [lesson], expenses: [expense], events: [event] }),
-    } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [expense], events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -682,7 +689,7 @@ describe('getScheduleForRange', () => {
 
   it('should_set_empty_horse_ids_and_null_instructor_id_on_an_event_item', async () => {
     const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: [event] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -691,13 +698,13 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_throw_when_the_events_query_rejects', async () => {
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: null, eventsError: new Error('events error') }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ events: null, eventsError: new Error('events error') }) as any)
 
     await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('events error')
   })
 
   it('should_treat_null_events_data_as_empty', async () => {
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ events: null }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ events: null }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
@@ -711,10 +718,187 @@ describe('getScheduleForRange', () => {
     // string would sort '2026-07-03...' (expense) before '2026-07-04...' (lesson) — wrong order.
     const lesson = createMockLesson({ id: 'lesson-1', lesson_at: '2026-07-04T02:00:00.000Z' })
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '23:00:00' })
-    vi.mocked(createClient).mockResolvedValue({ from: makeFrom({ lessons: [lesson], expenses: [expense] }) } as any)
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [expense] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
 
     expect(result.map((r) => r.id)).toEqual(['lesson-1', 'expense-1'])
+  })
+
+  // #1019 — the month conflict picker needs rider ids, per-horse exertion, and a display
+  // label that the dashboard views get from their own separately hydrated rows.
+  it('should_include_lesson_rider_ids_resolved_from_the_junction_table', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], lessonRiders: [{ lesson_id: 'lesson-1', rider_id: 'mem-9', cancelled_at: null }] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual(['mem-9'])
+  })
+
+  it('should_exclude_a_cancelled_rider_from_lesson_rider_ids', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({
+        lessons: [lesson],
+        lessonRiders: [{ lesson_id: 'lesson-1', rider_id: 'mem-9', cancelled_at: '2026-07-02T00:00:00Z' }],
+      }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual([])
+  })
+
+  it('should_throw_when_the_lesson_rider_junction_query_rejects', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], lessonRiders: null, lessonRidersError: new Error('rider junction error') }) as any)
+
+    await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('rider junction error')
+  })
+
+  it('should_treat_null_lesson_rider_junction_data_as_empty', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], lessonRiders: null }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual([])
+  })
+
+  it('should_not_fetch_lesson_rider_junction_rows_when_no_lesson_rows', async () => {
+    const fromFn = makeFrom()
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makeRpc() } as any)
+
+    await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(fromFn).not.toHaveBeenCalledWith('lesson_riders')
+  })
+
+  it('should_read_per_horse_exertion_from_the_batch_rpc', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], exertions: [{ lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: 4 }] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].exertionByHorseId).toEqual({ 'horse-1': 4 })
+  })
+
+  it('should_call_the_batch_exertion_rpc_with_every_lesson_id_in_range', async () => {
+    const client = makeClient({ lessons: [createMockLesson({ id: 'lesson-1' }), createMockLesson({ id: 'lesson-2' })] })
+    vi.mocked(createClient).mockResolvedValue(client as any)
+
+    await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(client.rpc).toHaveBeenCalledWith('get_lesson_horse_exertion_levels_batch', { p_lesson_ids: ['lesson-1', 'lesson-2'], p_barn_id: 'barn-1' })
+  })
+
+  // exertion_level has no SELECT grant to `authenticated` (#937) — selecting it
+  // directly makes Postgres deny the whole lesson_horses query with 42501, which the
+  // mocked client here can't reproduce. Asserting the select string is what keeps that
+  // regression from silently returning.
+  it('should_not_select_exertion_level_from_the_lesson_horse_junction', async () => {
+    const { select } = makeLessonHorsesChain([])
+    const fromFn = vi.fn().mockImplementation((table: string) => {
+      if (table === 'lesson_horses') return { select }
+      return makeFrom({ lessons: [createMockLesson({ id: 'lesson-1' })] })(table)
+    })
+    vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makeRpc() } as any)
+
+    await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(select).toHaveBeenCalledWith('lesson_id, horse_id')
+  })
+
+  it('should_not_call_the_batch_exertion_rpc_when_no_lessons_are_in_range', async () => {
+    const client = makeClient()
+    vi.mocked(createClient).mockResolvedValue(client as any)
+
+    await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(client.rpc).not.toHaveBeenCalled()
+  })
+
+  it('should_throw_when_the_batch_exertion_rpc_rejects', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], exertions: null, exertionsError: new Error('exertion error') }) as any)
+
+    await expect(getScheduleForRange('barn-1', from, to, timezone)).rejects.toThrow('exertion error')
+  })
+
+  it('should_treat_null_batch_exertion_rpc_data_as_empty', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], exertions: null }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].exertionByHorseId).toEqual({})
+  })
+
+  it('should_set_an_empty_exertion_map_on_an_expense_item', async () => {
+    const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].exertionByHorseId).toEqual({})
+  })
+
+  it('should_set_a_null_label_on_a_lesson_item', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].label).toBeNull()
+  })
+
+  it('should_label_an_expense_item_with_its_type_and_recipient', async () => {
+    const expense = createMockHorseExpense({
+      id: 'expense-1',
+      expense_date: '2026-07-03',
+      expense_time: '10:00:00',
+      expense_type: 'Veterinary',
+      recipient: 'Dr. Smith',
+    })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ expenses: [expense] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].label).toBe('Veterinary — Dr. Smith')
+  })
+
+  it('should_label_an_event_item_with_its_title', async () => {
+    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z', title: 'Costume Party' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].label).toBe('Costume Party')
+  })
+
+  it('should_treat_null_lesson_horse_junction_data_as_empty', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], lessonHorses: null }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].horseIds).toEqual([])
+  })
+
+  it('should_default_a_null_exertion_level_to_zero', async () => {
+    const lesson = createMockLesson({ id: 'lesson-1' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], exertions: [{ lesson_id: 'lesson-1', horse_id: 'horse-1', exertion_level: null }] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].exertionByHorseId).toEqual({ 'horse-1': 0 })
+  })
+
+  it('should_set_empty_rider_ids_on_an_event_item', async () => {
+    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
+    vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
+
+    const result = await getScheduleForRange('barn-1', from, to, timezone)
+
+    expect(result[0].riderIds).toEqual([])
   })
 })

@@ -1,0 +1,412 @@
+import { describe, it, expect } from 'vitest'
+import { getMonthGrid, shiftMonth, computeDayDecorations, type DayDecorationOptions } from '../month-calendar'
+import { createMockScheduleItem as item } from '@/test/fixtures'
+
+const baseOpts: DayDecorationOptions = {
+  selectedHorseIds: [],
+  selectedRiderIds: [],
+  hour: 12,
+  thresholdsByHorseId: {},
+  todayStr: '2026-03-01',
+  excludeLessonId: null,
+}
+
+describe('getMonthGrid', () => {
+  it('should_return_42_dates_so_the_grid_height_never_changes', () => {
+    expect(getMonthGrid('2026-03')).toHaveLength(42)
+  })
+
+  it('should_start_on_the_first_of_the_month_when_that_day_is_a_sunday', () => {
+    expect(getMonthGrid('2026-03')[0]).toBe('2026-03-01')
+  })
+
+  it('should_spill_back_to_the_preceding_sunday_when_the_first_is_mid_week', () => {
+    expect(getMonthGrid('2026-04')[0]).toBe('2026-03-29')
+  })
+
+  it('should_spill_forward_into_the_following_month_to_fill_the_last_row', () => {
+    expect(getMonthGrid('2026-04')[41]).toBe('2026-05-09')
+  })
+
+  it('should_handle_a_leap_year_february', () => {
+    expect(getMonthGrid('2024-02')[0]).toBe('2024-01-28')
+  })
+})
+
+describe('shiftMonth', () => {
+  it('should_advance_to_the_next_month_within_a_year', () => {
+    expect(shiftMonth('2026-03', 1)).toBe('2026-04')
+  })
+
+  it('should_roll_over_into_the_next_year_from_december', () => {
+    expect(shiftMonth('2026-12', 1)).toBe('2027-01')
+  })
+
+  it('should_roll_back_into_the_previous_year_from_january', () => {
+    expect(shiftMonth('2026-01', -1)).toBe('2025-12')
+  })
+})
+
+describe('computeDayDecorations — past days', () => {
+  it('should_mark_a_day_before_today_as_past', () => {
+    const result = computeDayDecorations(['2026-02-28'], [], { ...baseOpts, todayStr: '2026-03-01' })
+
+    expect(result['2026-02-28'].past).toBe(true)
+  })
+
+  it('should_not_mark_today_itself_as_past', () => {
+    const result = computeDayDecorations(['2026-03-01'], [], { ...baseOpts, todayStr: '2026-03-01' })
+
+    expect(result['2026-03-01'].past).toBe(false)
+  })
+
+  it('should_suppress_the_exertion_band_on_a_past_day', () => {
+    const result = computeDayDecorations(
+      ['2026-02-28'],
+      [item({ id: 'l1', start: '2026-02-28T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: { h1: { high: 10, moderate: 6 } } }
+    )
+
+    expect(result['2026-02-28'].band).toBeNull()
+  })
+
+  it('should_suppress_the_conflict_dot_on_a_past_day', () => {
+    const result = computeDayDecorations(
+      ['2026-02-28'],
+      [item({ id: 'l1', start: '2026-02-28T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 3 } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: { h1: { high: 10, moderate: 6 } } }
+    )
+
+    expect(result['2026-02-28'].conflict).toBe(false)
+  })
+
+  it('should_suppress_the_rider_flat_tint_on_a_past_day', () => {
+    const result = computeDayDecorations(
+      ['2026-02-28'],
+      [item({ id: 'l1', start: '2026-02-28T12:00:00', riderIds: ['r1'] })],
+      { ...baseOpts, selectedRiderIds: ['r1'] }
+    )
+
+    expect(result['2026-02-28'].scheduled).toBe(false)
+  })
+})
+
+describe('computeDayDecorations — heatmap bucketing', () => {
+  const thresholds = { h1: { high: 10, moderate: 6 } }
+
+  function bandFor(totalExertion: number): string | null {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      totalExertion === 0
+        ? []
+        : [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: totalExertion } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+    return result['2026-03-10'].band
+  }
+
+  it('should_band_an_empty_window_as_low', () => {
+    expect(bandFor(0)).toBe('low')
+  })
+
+  it('should_band_a_total_equal_to_the_moderate_threshold_as_low', () => {
+    expect(bandFor(6)).toBe('low')
+  })
+
+  it('should_band_a_total_just_above_the_moderate_threshold_as_moderate', () => {
+    expect(bandFor(7)).toBe('moderate')
+  })
+
+  it('should_band_a_total_equal_to_the_high_threshold_as_moderate', () => {
+    expect(bandFor(10)).toBe('moderate')
+  })
+
+  it('should_band_a_total_above_the_high_threshold_as_high', () => {
+    expect(bandFor(11)).toBe('high')
+  })
+
+  it('should_sum_exertion_across_every_lesson_in_the_window', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [
+        item({ id: 'l1', start: '2026-03-09T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 5 } }),
+        item({ id: 'l2', start: '2026-03-11T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 5 } }),
+      ],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+
+    expect(result['2026-03-10'].band).toBe('moderate')
+  })
+
+  it('should_ignore_exertion_belonging_to_a_horse_that_is_not_selected', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h2'], exertionByHorseId: { h2: 20 } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+
+    expect(result['2026-03-10'].band).toBe('low')
+  })
+
+  it('should_ignore_expenses_when_summing_exertion', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'e1', itemType: 'expense', start: '2026-03-10T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+
+    expect(result['2026-03-10'].band).toBe('low')
+  })
+
+  it('should_return_a_null_band_when_no_horse_is_selected', () => {
+    const result = computeDayDecorations(['2026-03-10'], [], baseOpts)
+
+    expect(result['2026-03-10'].band).toBeNull()
+  })
+
+  it('should_return_a_null_band_when_the_selected_horse_has_no_resolved_thresholds', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: {} }
+    )
+
+    expect(result['2026-03-10'].band).toBeNull()
+  })
+})
+
+describe('computeDayDecorations — exertion window bounds', () => {
+  const thresholds = { h1: { high: 10, moderate: 6 } }
+
+  it('should_include_a_lesson_exactly_72_hours_before_the_target_hour', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-07T06:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
+      { ...baseOpts, hour: 6, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+
+    expect(result['2026-03-10'].band).toBe('high')
+  })
+
+  it('should_exclude_a_lesson_more_than_72_hours_before_the_target_hour', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-07T05:59:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
+      { ...baseOpts, hour: 6, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+
+    expect(result['2026-03-10'].band).toBe('low')
+  })
+
+  it('should_include_a_lesson_exactly_72_hours_after_the_target_hour', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-13T06:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
+      { ...baseOpts, hour: 6, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+    )
+
+    expect(result['2026-03-10'].band).toBe('high')
+  })
+
+  it('should_shift_the_window_with_the_selected_hour', () => {
+    const items = [item({ id: 'l1', start: '2026-03-07T06:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })]
+    const opts = { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+
+    const atNoon = computeDayDecorations(['2026-03-10'], items, { ...opts, hour: 12 })
+
+    expect(atNoon['2026-03-10'].band).toBe('low')
+  })
+})
+
+describe('computeDayDecorations — worst band across selected horses', () => {
+  const items = [
+    item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1', 'h2'], exertionByHorseId: { h1: 2, h2: 20 } }),
+  ]
+  const thresholdsByHorseId = { h1: { high: 10, moderate: 6 }, h2: { high: 10, moderate: 6 } }
+
+  it('should_take_the_worst_band_when_one_selected_horse_is_far_more_loaded', () => {
+    const result = computeDayDecorations(['2026-03-10'], items, {
+      ...baseOpts,
+      selectedHorseIds: ['h1', 'h2'],
+      thresholdsByHorseId,
+    })
+
+    expect(result['2026-03-10'].band).toBe('high')
+  })
+
+  it('should_prefer_moderate_over_low_when_neither_horse_is_high', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1', 'h2'], exertionByHorseId: { h1: 2, h2: 8 } })],
+      { ...baseOpts, selectedHorseIds: ['h1', 'h2'], thresholdsByHorseId }
+    )
+
+    expect(result['2026-03-10'].band).toBe('moderate')
+  })
+
+  it('should_respect_each_horses_own_thresholds', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1', 'h2'], exertionByHorseId: { h1: 8, h2: 8 } })],
+      {
+        ...baseOpts,
+        selectedHorseIds: ['h1', 'h2'],
+        thresholdsByHorseId: { h1: { high: 100, moderate: 50 }, h2: { high: 4, moderate: 2 } },
+      }
+    )
+
+    expect(result['2026-03-10'].band).toBe('high')
+  })
+
+  it('should_band_from_the_horses_that_do_have_thresholds_when_another_selected_horse_has_none', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1', 'h2'], exertionByHorseId: { h1: 20, h2: 20 } })],
+      { ...baseOpts, selectedHorseIds: ['h1', 'h2'], thresholdsByHorseId: { h2: { high: 10, moderate: 6 } } }
+    )
+
+    expect(result['2026-03-10'].band).toBe('high')
+  })
+})
+
+describe('computeDayDecorations — excluded lesson', () => {
+  const thresholds = { h1: { high: 10, moderate: 6 } }
+
+  it('should_not_count_the_excluded_lesson_toward_the_exertion_window', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds, excludeLessonId: 'l1' }
+    )
+
+    expect(result['2026-03-10'].band).toBe('low')
+  })
+
+  it('should_not_let_the_excluded_lesson_raise_a_conflict_dot', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 3 } })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds, excludeLessonId: 'l1' }
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+})
+
+describe('computeDayDecorations — conflict dot', () => {
+  const thresholds = { h1: { high: 10, moderate: 6 } }
+  const horseOpts = { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds }
+
+  it('should_flag_a_day_where_a_selected_horse_already_has_a_lesson', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 3 } })],
+      horseOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(true)
+  })
+
+  it('should_flag_a_day_where_a_selected_horse_has_a_scheduled_expense', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'e1', itemType: 'expense', start: '2026-03-10T09:00:00', horseIds: ['h1'] })],
+      horseOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(true)
+  })
+
+  it('should_not_flag_a_day_whose_only_lesson_belongs_to_another_horse', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', horseIds: ['h2'], exertionByHorseId: { h2: 3 } })],
+      horseOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+
+  it('should_not_flag_a_day_from_a_barn_event_since_events_carry_no_horse', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'ev1', itemType: 'event', start: '2026-03-10T09:00:00', label: 'Barn closed' })],
+      horseOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+
+  it('should_not_flag_a_neighbouring_day_that_only_contributes_exertion', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-09T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
+      horseOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+
+  it('should_not_flag_any_day_when_only_riders_are_selected', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', riderIds: ['r1'] })],
+      { ...baseOpts, selectedRiderIds: ['r1'] }
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+})
+
+describe('computeDayDecorations — rider-only flat tint', () => {
+  it('should_tint_a_day_where_a_selected_rider_already_has_a_lesson', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', riderIds: ['r1'] })],
+      { ...baseOpts, selectedRiderIds: ['r1'] }
+    )
+
+    expect(result['2026-03-10'].scheduled).toBe(true)
+  })
+
+  it('should_not_tint_a_day_whose_only_lesson_belongs_to_another_rider', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', riderIds: ['r2'] })],
+      { ...baseOpts, selectedRiderIds: ['r1'] }
+    )
+
+    expect(result['2026-03-10'].scheduled).toBe(false)
+  })
+
+  it('should_drop_the_flat_tint_once_a_horse_is_also_selected', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', horseIds: ['h1'], riderIds: ['r1'], exertionByHorseId: { h1: 3 } })],
+      {
+        ...baseOpts,
+        selectedHorseIds: ['h1'],
+        selectedRiderIds: ['r1'],
+        thresholdsByHorseId: { h1: { high: 10, moderate: 6 } },
+      }
+    )
+
+    expect(result['2026-03-10'].scheduled).toBe(false)
+  })
+
+  it('should_leave_a_day_undecorated_when_nothing_is_selected', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', horseIds: ['h1'], riderIds: ['r1'] })],
+      baseOpts
+    )
+
+    expect(result['2026-03-10']).toEqual({ past: false, band: null, scheduled: false, conflict: false })
+  })
+
+  it('should_return_a_decoration_for_every_requested_date', () => {
+    const result = computeDayDecorations(['2026-03-10', '2026-03-11'], [], baseOpts)
+
+    expect(Object.keys(result)).toEqual(['2026-03-10', '2026-03-11'])
+  })
+})
