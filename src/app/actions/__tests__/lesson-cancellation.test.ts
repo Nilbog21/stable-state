@@ -560,7 +560,8 @@ describe('cancelRiderParticipationAction', () => {
     // dropped the instructor from resolveCancellationRecipients here. This action trusts
     // whatever getLessonById resolves — it has no embed-based lookup of its own — so a
     // non-null instructor_user_id (as getLessonById now correctly returns even for a rider
-    // caller, see lessons.test.ts) is sufficient to prove the instructor gets notified.
+    // caller, see src/lib/db/__tests__/lessons-get-by-id.test.ts) is sufficient to prove
+    // the instructor gets notified.
     guardAs(mockRiderMembership)
     vi.mocked(getLessonById).mockResolvedValue(
       makeLessonDetailWithRiders(
