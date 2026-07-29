@@ -35,21 +35,18 @@ const ORPHAN_EXPENSE = 35
 
 /**
  * The month this file works in, and the `?month=` param naming it — both derived from one
- * Date on purpose. `monthAnchor` selects its month with local calendar getters while
- * `formatMonthParam` reads UTC ones, so deriving the two independently from `new Date()` lets
- * them name *different* months for the |UTC offset| hours either side of a month boundary:
- * the seed would land in one month while every navigation asked for another, and each tab
- * would render its EmptyState instead of a table. Re-encoding the anchor's own local
- * year/month as UTC keeps them consistent by construction.
+ * Date on purpose. Deriving them independently from `new Date()` would let them name
+ * *different* months if a month rolled over between the two calls: the seed would land in one
+ * month while every navigation asked for another, and each tab would render its EmptyState
+ * instead of a table. `monthAnchor` and `formatMonthParam` are both UTC-framed (#1151), so
+ * the param can be read straight off the anchor.
  *
  * A past month rather than the current one, per the same anchor's doc: day 15 of a finished
  * month is unambiguously inside it however the barn's timezone decodes the instant, whereas
  * `monthsAgo: 0` is placed relative to "now" and can decode to the previous calendar day.
  */
 const WORKING_MONTH_ANCHOR = monthAnchor(1)
-const WORKING_MONTH = formatMonthParam(
-  new Date(Date.UTC(WORKING_MONTH_ANCHOR.getFullYear(), WORKING_MONTH_ANCHOR.getMonth(), 1))
-)
+const WORKING_MONTH = formatMonthParam(WORKING_MONTH_ANCHOR)
 
 // Footer cells sit to the right of the label cell, which spans one column (labelColSpan={1}).
 const GROSS_COL = 1
