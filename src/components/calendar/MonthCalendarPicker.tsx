@@ -96,7 +96,7 @@ export function MonthCalendarPicker({
     <div className="flex flex-col gap-2">
       <span className="text-sm font-medium text-zinc-700 dark:text-zinc-300">{label}</span>
 
-      <div ref={ref} className="relative rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
+      <div ref={ref} className="rounded-lg border border-zinc-200 p-2 dark:border-zinc-700">
         <div className="mb-2 flex items-center justify-between gap-2">
           <button type="button" aria-label="Previous month" onClick={() => onMonthChange(shiftMonth(month, -1))} className={navButtonClass}>
             &lt;
@@ -156,8 +156,11 @@ export function MonthCalendarPicker({
           })}
         </div>
 
+        {/* In normal flow below the grid, not an overlay: anchored at a fixed `top` it covered
+            the first two rows, so tapping a day near the start of the month hid the very day
+            just tapped. Pushing the rest of the form down is the better trade on mobile. */}
         {open && popupDate && (
-          <div className="absolute inset-x-2 top-14 z-10 rounded-md border border-zinc-200 bg-white p-3 text-sm shadow-md dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="mt-2 rounded-md border border-zinc-200 bg-white p-3 text-sm shadow-md dark:border-zinc-700 dark:bg-zinc-900">
             <div className="mb-2 flex items-center justify-between gap-2">
               <span className="font-semibold text-zinc-900 dark:text-zinc-50">{formatCalendarDate(popupDate)}</span>
               {/* `primary`, not `ghost`, even though Close is logically the secondary action here:
