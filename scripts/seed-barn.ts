@@ -1,3 +1,19 @@
+/**
+ * Shared barn-seeding module (#502): `seedBarn(supabase, barnId, barnSlug,
+ * managerUserId, now?)` seeds a complete fixture barn — the manager2 membership with
+ * contact info, two pricing tiers, the trainer/rider rosters, the horse set (including
+ * the retired and unavailable ones), horse and profile photos from `scripts/data/`,
+ * lessons spanning the prior three months through the coming week with alternating
+ * tiers/jumping/exertion/payment types, board and lease agreements with paid, unpaid,
+ * and past-due charges, and planned/collected expense seeds — returning
+ * `SeedBarnResult` for the caller's own summary output. Both callers inject a
+ * service-role client: `reset-db.ts` (the fixed `dev-barn`) and `/demo`'s
+ * `createOrResumeDemoBarn` (`src/app/demo/actions.ts`). The exported `DEV_*` fixture
+ * constants and pure helpers (`buildLessonDates`, `getLessonVariation`,
+ * `getPaymentType`, `buildExpenseSeeds`, `computeExhaustionWindowTotals`, …) are the
+ * module's test surface (`seed-barn.test.ts`), re-imported by `reset-db.ts` for its
+ * summary math.
+ */
 import { fileURLToPath } from 'url'
 import { existsSync, readFileSync } from 'fs'
 import { dirname, join } from 'path'

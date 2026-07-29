@@ -1,3 +1,14 @@
+/**
+ * Dev-project reset entry point (#502's canonical split: this file holds the
+ * `.sh`-validated bootstrapping, `seed-barn.ts` holds the logic): gated by
+ * `assertDevProject`, it wipes the whole project via `teardownAllData`, recreates the
+ * three per-project e2e auth logins (`createE2eAuthUsers` — the teardown removes them
+ * along with everything else, #1085), inserts the fixed `dev-barn` row (stable UUID;
+ * `created_at` backdated four months so the Finances page's earliest navigable month
+ * has no seeded lessons, #971), creates the manager2 auth user, delegates every fixture
+ * to `seedBarn`, and prints the seeded-state summary from the returned `SeedBarnResult`
+ * plus the re-imported `DEV_*` constants.
+ */
 import { fileURLToPath } from 'url'
 import { mustSucceed, createServiceClient, teardownAllData, assertDevProject } from './script-utils'
 import { createE2eAuthUsers } from './e2e-auth-users'

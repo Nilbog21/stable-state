@@ -1,3 +1,15 @@
+/**
+ * Nightly cron (GHA-only, invoked via `run-cron.sh`; env/client ceremony owned by
+ * `runCronJob`): per barn, recomputes the managers' two outstanding badges —
+ * `outstanding_payment` (unpaid lessons + agreement charges via
+ * `getOutstandingLessons`/`getOutstandingCharges`, linking to Finances → Outstanding)
+ * and `expense_past_due` (via `getOutstandingExpenses` in the barn's own timezone,
+ * linking to Finances) — upserting one notification per active manager through
+ * `upsertNotificationsForRecipients` when the count is non-zero, and deleting the stale
+ * row via `deleteNotificationByType` when it drops to zero, so a cleared balance clears
+ * the badge. Barns with no active managers are skipped entirely; per-barn and
+ * per-recipient errors are logged and surfaced as `hadErrors`.
+ */
 import { fileURLToPath } from 'url'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getOutstandingLessons } from '@/lib/db/outstanding'

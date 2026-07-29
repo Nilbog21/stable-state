@@ -1,3 +1,16 @@
+/**
+ * Interactive dev tool (the `change-user.sh`-wrapped half): reassigns the developer's
+ * own auth `user_id` between a barn's `barn_memberships` rows so a local session can
+ * act as any member. Resolves the barn (`CHANGE_USER_BARN_SLUG` via `getBarnBySlug`,
+ * else a numbered prompt over all barns), refuses unless the developer already holds a
+ * membership row there, lists the barn's active members, then vacates the
+ * currently-inhabited row — restoring its rightful owner's `user_id`, or `null` for the
+ * dev's own row (see `resolveRevertUserId`'s UNIQUE-constraint note) — before taking
+ * over the selected member's row. Gated by `assertDevProject` unless
+ * `CHANGE_USER_ALLOW_PROD` is set, which in turn requires an explicit barn slug (#986).
+ * The pure formatters and resolvers are the module's test surface
+ * (`change-user.test.ts`).
+ */
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
 import { getBarnBySlug } from '@/lib/db/barns'
