@@ -22,15 +22,15 @@ make_repo() {
   local dir
   dir="$(mktemp -d)"
   git -C "$dir" init -q
-  mkdir -p "$dir/e2e/support" "$dir/src/app/barn/[slug]/finances" "$dir/src/lib/db" "$dir/src/components/ui"
+  mkdir -p "$dir/e2e/support" "$dir/src/app/barn/[slug]/finances" "$dir/src/lib/db" "$dir/src/components/calendar"
 
   printf '// covers: src/app/barn/[slug]/finances/**\n' > "$dir/e2e/finances.spec.ts"
-  printf '// covers: src/lib/format-currency.ts\n' > "$dir/e2e/currency.spec.ts"
+  printf '// covers: src/components/calendar/CalendarDayView.tsx\n' > "$dir/e2e/calendar.spec.ts"
   printf '// covers: src/app/barns/**\n' > "$dir/e2e/barns.spec.ts"
 
   touch "$dir/e2e/global-setup.ts" "$dir/e2e/support/test.ts" "$dir/playwright.config.ts"
   touch "$dir/src/app/barn/[slug]/finances/page.tsx"
-  touch "$dir/src/lib/format-currency.ts"
+  touch "$dir/src/components/calendar/CalendarDayView.tsx"
   touch "$dir/src/lib/db/types.ts"
   mkdir -p "$dir/src/app/barns" && touch "$dir/src/app/barns/page.tsx"
   mkdir -p "$dir/supabase/migrations" && touch "$dir/supabase/migrations/20260101000000_x.sql"
@@ -57,9 +57,9 @@ rm -rf "$REPO"
 
 # Test 2: a glob with no /** matches the exact path only
 REPO="$(make_repo)"
-out="$(select_specs 'src/lib/format-currency.ts')"
+out="$(select_specs 'src/components/calendar/CalendarDayView.tsx')"
 if [ "$out" = "mode=scoped
-spec=e2e/currency.spec.ts" ]; then
+spec=e2e/calendar.spec.ts" ]; then
   assert_pass "exact glob selects its spec"
 else
   assert_fail "exact glob selects its spec" "output=$out"

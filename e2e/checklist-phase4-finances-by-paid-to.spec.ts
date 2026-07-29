@@ -1,3 +1,4 @@
+// covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, monthAnchor } from './support/fixtures'

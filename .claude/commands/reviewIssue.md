@@ -83,12 +83,6 @@ Run it with the Bash tool's `timeout` set to `360000` (the default is 120s; the 
 1. Run `npm run build` locally to check for TypeScript/build errors. If errors are found, fix them, commit, push, and re-run the script.
 2. If the local build passes but Vercel still fails, ask the user to paste the Vercel error from the dashboard.
 
-**If the e2e check failed:** don't re-run it and don't wave it through. Work out whether this PR plausibly caused it — if the diff doesn't touch anything related to the failure, the likeliest cause is a stale base, not flake:
-```
-git -C {worktree-path} rev-list --left-right --count origin/{base}...HEAD
-```
-A branch well behind a fast-moving release branch fails e2e on fixes that already landed on the base. Present the reasoning (diff scope, how far behind the branch is, whether sibling PRs on the same base are passing), then ask: "Want me to rebase and re-run, or do you want to investigate first?" Wait for an explicit answer — the user may know about an unpushed migration or another cause that looks like flake from here.
-
 **If `Verify Migrations` failed:** diagnose the root cause (read the failure logs, identify which migration needs to sort later and why) and explain it to the user — but do NOT rename/reorder/`git mv`/commit the fix yourself, and do not auto-invoke `sync-migrations`. Surface it and stop; let the user decide whether to hand off to `/testIssue` or explicitly authorize a one-off fix in this session.
 
 ---
@@ -243,6 +237,8 @@ Then move to the next finding, or re-ask "anything else?" if that was the last o
      ```
      A `CI: pass` taken before a push is stale for the new head — after any push, re-verify by re-running `bash scripts/workflow-ci-wait.sh {pr}` and require a fresh `CI: pass`. Step 2's verdict no longer describes this head, and `/testIssue` marks the PR ready on the strength of it. Branch on the fresh verdict exactly as Step 2 does; don't continue to 6 on a `CI: fail`.
   6. Ask: "Anything else to address, or are you done?"
+
+  If the fix changed anything the e2e suite covers, pipe the diff through the selector before moving on — `/testIssue` Step 4 has the whole protocol (which command, backgrounding it, reading `checklist-suite.log`, the worktree port, the fleet mutex). Follow it there; don't restate it here. Most reconcile fixes are copy or a single assertion and come back `mode=none`, which is the answer, not a reason to skip the check.
 
 - **Substantial** (needs new test cases for new logic/behavior, touches DB schema/RPC, spans multiple files or introduces a new abstraction, or is better described as a design gap than a bug): **do not modify code.** Also classify **in-scope vs. out-of-scope**, stated with a one-line reason (same override rule applies):
   - **In-scope:** append (in memory, for this round) an entry for `## Open items`: `{finding summary} — found in review. Why deferred: {reason}`. No code changes, no commit — the actual fix happens later via `/beginIssue`'s revise mode.

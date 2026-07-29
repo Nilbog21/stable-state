@@ -10,3 +10,5 @@ SKIP_COVERAGE_RUN=1 bash scripts/check-coverage.sh
 bash scripts/check-coverage.test.sh
 bash scripts/check-doc-size.sh
 bash scripts/check-doc-size.test.sh
+bash scripts/select-specs.sh --lint
+bash scripts/select-specs.test.sh

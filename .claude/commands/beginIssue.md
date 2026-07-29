@@ -114,7 +114,7 @@ Check `{worktree-path}/specs/issue-{N}.md`. If it doesn't exist, or exists but i
 2. **Read `ARCHITECTURE.md`** from the worktree, same as Step 4 would.
 3. Enter Plan mode (`EnterPlanMode`, loaded via `ToolSearch select:EnterPlanMode` if not already loaded) scoped **only** to closing the gaps listed in the file — not a fresh review of the issue's full original acceptance criteria. The plan should cover, per deferred entry: the fix approach and the test(s) that will cover it.
 4. After approval, run the same TDD loop Step 5 uses below, plus a lint pass (this is the whole reason revise mode exists — the deferred items were substantial enough to warrant going through this properly instead of a rushed inline fix):
-   - Write a failing test, confirm red (`npx vitest run {test-file}`), commit `[#{N}] Add failing tests: {short description}`.
+   - Write a failing test, confirm red (`npx vitest run {test-file}`, or the single-spec Playwright command from Step 5's "Which runner the red-green loop uses" when the deliverable is an e2e spec), commit `[#{N}] Add failing tests: {short description}`.
    - Implement, confirm green, commit `[#{N}] {short description}`.
    - Coverage: `bash scripts/check-coverage.sh` — fix gaps, re-run until clean.
    - Lint: `npm run lint` — fix issues, re-run until clean.
@@ -184,6 +184,16 @@ Do not exit Plan mode or write any code until the user has explicitly approved t
 - **Needs its own issue:** commit as normal (the change still ships in this PR if it's already made and low-impact — same as "roll with it" — unless the user says otherwise), then append to `specs/issue-{N}.md`'s `## Follow-ups (needs own issue)`: `- {date} {time} — {2-4 sentence paragraph: what it is, how it was noticed, why it's out of scope for #{N}}.` This does not create a GitHub issue directly — per existing convention, `/grillMe` is the path for turning findings into issues (run `/grillMe specs/issue-{N}.md` whenever, or `/finishIssue` will remind you at the end if it's still there).
 
 After plan approval, do the following in order:
+
+**Which runner the red-green loop uses:** `npx vitest run {test-file}` for a unit/integration test, but when the deliverable *is* an e2e spec (as it is for every issue in the #1187–#1208 checklist-automation batch), the loop runs Playwright instead:
+
+```
+cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port} --spec {spec-file}
+```
+
+**Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and on `/fableFleet` a full run also burns the fleet-wide mutex. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished, the worktree port, the mutex — is stated once in `/testIssue` Step 4. Follow it there; it isn't restated here.
+
+A new spec also needs its `// covers:` declaration lines (see `scripts/CLAUDE.md`) — `scripts/ci.sh` fails without them.
 
 1. **Write failing tests first** — following the project's TDD convention. Run the tests to confirm they are red before committing:
    ```

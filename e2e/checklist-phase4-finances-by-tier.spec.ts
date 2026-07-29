@@ -1,3 +1,5 @@
+// covers: src/app/barn/[slug]/(protected)/finances/**
+// covers: src/app/barn/[slug]/(protected)/settings/tiers/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'

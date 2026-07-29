@@ -1,3 +1,6 @@
+// covers: src/app/barn/[slug]/(protected)/lessons/new/**
+// covers: src/app/barn/[slug]/(protected)/lessons/LessonForm.tsx
+// covers: src/app/barn/[slug]/(protected)/lessons/DateHourPicker.tsx
 import { test, expect, withBarn } from './support/test'
 import { createClient } from '@supabase/supabase-js'
 import { addHorse, addTier, E2E_USERS, E2E_PASSWORD } from './support/fixtures'
