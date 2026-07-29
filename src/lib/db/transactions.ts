@@ -1,3 +1,13 @@
+/**
+ * Single typed reader for the `transactions` ledger (#865): `getTransactionRows`
+ * returns the camelCase-mapped base row set scoped to barn and kinds, with optional
+ * collected/date-range filters and no FK embeds — a caller needing a joined field
+ * resolves it with its own follow-up lookup; `getOutstandingTransactionRows` relays
+ * through the `get_outstanding_transactions` RPC instead of a direct read (direct
+ * `transactions` SELECT is manager-only, #831); `positiveAmount` centralizes the
+ * ledger's sign convention (`instructor_payout`/`expense` stored negative, all other
+ * kinds positive).
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { PaymentType, TransactionKind } from './types'

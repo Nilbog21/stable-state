@@ -1,3 +1,11 @@
+/**
+ * Merged, duration-aware schedule read across `lessons`, `horse_expenses`, and
+ * `barn_events` (#1013) for calendars and conflict checking: `getScheduleForRange` plus
+ * the pure overlap/merge/role-scoping helpers it composes, and
+ * `getNearbyInstructorMembershipIds` for the instructor-proximity notification.
+ * `ScheduleItem.start` is a barn-local wall-clock string, not a UTC instant — lessons
+ * and events convert down into that frame via `src/lib/barn-timezone.ts`.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'

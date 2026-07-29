@@ -1,3 +1,11 @@
+/**
+ * Raw-row query layer under `lesson-finances.ts` and `outstanding.ts`:
+ * `getLessonFeeRows` off the `transactions` ledger, `getTierPricesByNames`, outstanding
+ * lesson/cancellation-fee candidate rows, and the shared
+ * `lesson_horses`/`lesson_riders` junction reader `getLessonJunctionRows`. Every
+ * function takes an optional trailing `client?: SupabaseClient` with a `createClient()`
+ * fallback.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { getRiderEnrolledLessonIds } from './lesson-participants'

@@ -1,3 +1,9 @@
+/**
+ * Shared domain and reporting types crossed by the DAL's modules and their callers:
+ * role/payment/kind unions, entity row shapes (barns, memberships, horses, lessons,
+ * agreements, expenses, documents, notifications, barn events), finance/reporting rows,
+ * and schedule/calendar item shapes. No runtime code.
+ */
 export type Role = 'manager' | 'trainer' | 'rider'
 export type NotificationType =
   | 'outstanding_payment'

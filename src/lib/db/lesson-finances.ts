@@ -1,3 +1,12 @@
+/**
+ * Lesson income reporting, net of each lesson's own snapshotted instructor cut (#776):
+ * pure fold helpers (`splitNetFee`, `computeGroupedIncome`, `computeHorseNetIncome`),
+ * the barn-wide `getFinancialSummary`, and per-entity income summaries/details
+ * dispatched through `getEntityIncome` over the horse/rider/trainer
+ * `EntityIncomeDescriptor`s. Lesson-derived rows come from
+ * `lesson-finance-queries.ts:getLessonFeeRows` (the `transactions` ledger, #827);
+ * Outstanding lives in `outstanding.ts`, which never applies the cut.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { resolveMemberNames } from './member-names'

@@ -1,3 +1,10 @@
+/**
+ * Horse registry: barn/owner/ID reads and `resolveHorseNames`, RPC-backed detail/notes
+ * mutations (`update_horse_details`, `update_horse_notes`), exertion-summary and
+ * projected-exhaustion reads with `resolveExhaustionThresholds`, upcoming-lesson
+ * lookup, and photo upload/replace/remove orchestration over `document-storage.ts` plus
+ * the `update_horse_photo` RPC.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Barn, Horse, HorseExertionSummary } from './types'
