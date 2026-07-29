@@ -340,7 +340,7 @@ test('recipient_drilldown_total_matches_the_by_paid_to_expenses_cell @manager', 
 test('recipient_name_with_ampersand_round_trips_through_the_drilldown_link @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
   await breakdownTable(page).getByRole('link', { name: SMITH, exact: true }).click()
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/finances/expenses/`), { timeout: 15000, waitUntil: 'commit' })
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/finances/expenses/`), { waitUntil: 'commit' })
   await expect(page.getByRole('heading', { name: SMITH, exact: true })).toBeVisible()
 })
 

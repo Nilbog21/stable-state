@@ -98,7 +98,7 @@ async function goToDaysAhead(page: Page, days: number) {
     const next = page.getByRole('link', { name: 'Next day' })
     const targetDate = new URL((await next.getAttribute('href'))!, page.url()).searchParams.get('date')
     await next.click()
-    await page.waitForURL((url) => url.searchParams.get('date') === targetDate)
+    await page.waitForURL((url) => url.searchParams.get('date') === targetDate, { waitUntil: 'commit' })
   }
 }
 
@@ -152,9 +152,9 @@ test('dashboard_document_reminder_card_shown_after_setting_reminder_date @manage
   await page.goto(`/barn/${barn.slug}/horses`)
   await page.getByRole('link', { name: /Apollo/ }).first().click()
   // page.waitForURL, not a bare expect(page).toHaveURL: expect's 5s default times out under
-  // full-suite load while the dev server cold-compiles this route (#1140). 15s + 'commit' match
-  // the repo's other cold-compile waits — 'commit' skips a `load` event that lags dev navigation.
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/horses/`), { timeout: 15000, waitUntil: 'commit' })
+  // full-suite load while the dev server cold-compiles this route (#1140). 'commit' matches the
+  // repo's other cold-compile waits — it skips a `load` event that lags dev navigation.
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/horses/`), { waitUntil: 'commit' })
 
   const pastDate = new Date()
   pastDate.setUTCDate(pastDate.getUTCDate() - 1)
