@@ -1,5 +1,15 @@
 'use server'
 
+/**
+ * Expense Server Actions, all manager-only via `requireMembership`: create/update
+ * (`createExpenseAction`/`updateExpenseAction`, sharing the private
+ * `parseExpenseFormData` — the parse-then-dispatch shape `lesson-form-parsing.ts`
+ * mirrors; a blank amount keeps the expense "planned" and deliberately drops any stray
+ * payment type), delete (`deleteExpenseAction`, forwarding the
+ * also-delete-collected-transactions checkbox to `deleteExpense`), and the
+ * `getMostCommonExpenseTypeAction` lookup that pre-fills the expense form's type field
+ * from the recipient's history.
+ */
 import { redirect } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
 import { getExpenseById, deleteExpense, createExpense, updateExpense, getMostCommonTypeForRecipient } from '@/lib/db/expenses'

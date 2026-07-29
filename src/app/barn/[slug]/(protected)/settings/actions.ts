@@ -1,5 +1,20 @@
 'use server'
 
+/**
+ * Manage Barn Server Actions, all manager-only via `requireMembership`, mirroring the
+ * settings page's own sections: lesson-tier pricing CRUD (`createTierAction`;
+ * `updateTierAction` with optional set-as-default; `deactivateTierAction`, which
+ * refuses on the default tier; `reactivateTierAction`), per-setting barn writes
+ * (`updateDefaultBoardFeeAction`, `updateInstructorCutAction`,
+ * `updateExhaustionThresholdsAction` — moderate must stay below high,
+ * `updateScheduleBufferMinutesAction`, `updateBarnTimezoneAction` — value must be in
+ * `BARN_TIMEZONES`), barn-event CRUD
+ * (`createEventAction`/`updateEventAction`/`deleteEventAction`, with `visible_to_roles`
+ * filtered to real roles), and the two Data Backup downloads
+ * (`downloadAllDocumentsAction`/`downloadBarnDataAction` — build the zip/xlsx via
+ * `document-backup.ts`/`backup.ts`, upload to the barn's `backup-archive/` storage
+ * path, return a signed URL).
+ */
 import { redirect } from 'next/navigation'
 import { revalidatePath } from 'next/cache'
 import { requireMembership } from '@/lib/auth/guard'

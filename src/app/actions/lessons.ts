@@ -1,5 +1,20 @@
 'use server'
 
+/**
+ * Global lesson Server Actions, all guarded by `requireMembership` (manager/trainer):
+ * form submission (`submitLesson` — parse via `./lesson-form-parsing`, optional
+ * manager-only inline new-horse create, then `createLessonWithParticipants` or, when
+ * recurring, `createLessonSeries`, then best-effort nearby-instructor notification
+ * fan-out that must never surface as a submission error), edit (`updateLessonAction` —
+ * same parse, then the participant update plus a second, deliberately non-atomic phase
+ * saving per-horse/per-rider/cancellation notes), post-creation lifecycle
+ * (`deleteLessonAction` — manager-only; `updatePaymentTypeAction` — a trainer only for
+ * their own lesson; `updateCancellationFeePaymentTypeAction` — manager-only, like the
+ * RPC it wraps; `stopLessonSeriesAction` — a trainer only for their own series), and
+ * the two read-only lookups feeding the lesson form (`getScheduleRangeForBarn` for the
+ * conflict calendar, `getProjectedExhaustionForBarn` for the exhaustion preview).
+ * Whole-lesson and per-rider cancellation live in `lesson-cancellation.ts`.
+ */
 import { requireMembership } from '@/lib/auth/guard'
 import { collectLessonPayment, deleteLesson, getLessonById, updateLesson } from '@/lib/db/lessons'
 import { createLessonWithParticipants, updateLessonWithParticipants, updateLessonHorseNotes, updateLessonRiderNotes, updateCancellationFeePaymentType } from '@/lib/db/lesson-participants'

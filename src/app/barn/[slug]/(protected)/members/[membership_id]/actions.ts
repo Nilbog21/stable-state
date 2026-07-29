@@ -1,5 +1,20 @@
 'use server'
 
+/**
+ * Member detail page Server Actions: staff/rider document row actions
+ * (`deleteDocumentAction` — any active role calls, the target resolved via
+ * `document-target.ts`'s `resolveManageableTarget` with the table picked from the
+ * target's real DB role; `updateDocumentReminderDateAction` — manager-only), the
+ * manager-only managed-profile contact save (`updateContactInfoAction`, refused once
+ * the profile is claimed and `is_managed` flips false), the Instructor Access toggle
+ * (`setCanInstructAction` — manager/trainer targets only), member removal
+ * (`removeMemberAction` — a manager can never remove themselves or another manager,
+ * mirroring the #969 RLS rule), invite-token rotation (`revokeInviteTokenAction` —
+ * returns `{ error }` rather than throwing, #1116), and profile-photo upload/delete
+ * (`uploadProfilePhotoAction`/`deleteProfilePhotoAction` — the shared
+ * `resolvePhotoTarget` allows self always, a manager only while the profile is still
+ * managed).
+ */
 import { revalidatePath } from 'next/cache'
 import { redirect, notFound } from 'next/navigation'
 import { requireMembership } from '@/lib/auth/guard'
