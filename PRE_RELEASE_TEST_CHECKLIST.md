@@ -283,11 +283,11 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e-candidate) On a **group** lesson, cancel riders one at a time via the picker → the lesson does *not* show a **Cancelled** badge while any rider is still active
 - [ ] (e2e-candidate) Once the final rider is cancelled, the lesson shows a **Cancelled** badge on the Lessons list
 - [ ] (e2e-candidate) That fully-cancelled group lesson shows the **Cancelled** badge on its detail page too
-- [ ] (e2e-candidate) As manager, open **Edit Lesson** on an already-cancelled lesson → the Notes section shows a **Cancellation Notes** textarea
+- [ ] (e2e-candidate) Open **Edit Lesson** on an already-cancelled lesson → the Notes section shows a **Cancellation Notes** textarea
 - [ ] (e2e-candidate) That textarea does *not* appear when editing a non-cancelled lesson
-- [ ] (e2e-candidate) As manager, edit that textarea and Save → the detail page shows the updated text read-only under **Cancellation Notes**
+- [ ] (e2e-candidate) Edit that textarea and Save → the detail page shows the updated text read-only under **Cancellation Notes**
 - [ ] (e2e-candidate) Clear the field and Save again → the **Cancellation Notes** row disappears entirely from the detail page
-- [ ] (e2e-candidate) As manager, open an **unpaid** lesson's detail page, click **Delete** and confirm the browser prompt → the lesson disappears from the Lessons list
+- [ ] (e2e-candidate) Open an **unpaid** lesson's detail page, click **Delete** and confirm the browser prompt → the lesson disappears from the Lessons list
 - [ ] (e2e-candidate) That deleted lesson also disappears from Finances
 - [ ] (e2e-candidate) It leaves no **Cancelled** badge behind (it's gone, not cancelled)
 - [ ] (e2e-candidate) No notification is sent to the instructor or riders for that delete
@@ -371,7 +371,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e-candidate) The manager form's name field is labeled **Barn Name**
 - [ ] (e2e-candidate) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
 - [ ] (e2e-candidate) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
-- [ ] (e2e-candidate) (#1000) As manager, make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
+- [ ] (e2e-candidate) (#1000) Make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
 - [ ] (e2e-candidate) (#1000) Clover appears under **My Horses**
 - [ ] (e2e-candidate) (#1000) Clover shows a green **Active** badge there
 - [ ] (e2e-candidate) (#1000) Clover no longer appears under Available
@@ -433,7 +433,7 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] (e2e-candidate) That button links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
 - [ ] (e2e-candidate) Rider Gale Test's member detail page has an **Add Document** button
 - [ ] (e2e-candidate) That button links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
-- [ ] (e2e-candidate) As manager, rider Emery's member detail page shows an **Active Agreements** header
+- [ ] (e2e-candidate) Rider Emery's member detail page shows an **Active Agreements** header
 - [ ] (e2e-candidate) It shows a card for her seeded lease agreement
 - [ ] (e2e-candidate) It shows a card for her seeded boarding agreement
 - [ ] (e2e-candidate) Each of those cards names its kind (lease or boarding)
