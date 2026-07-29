@@ -30,7 +30,8 @@ export interface DayDecoration {
   band: ExhaustionBand | null
   /** Rider-only flat "something scheduled" tint. */
   scheduled: boolean
-  /** A selected horse already has a lesson or expense on this exact day. */
+  /** A selected horse already has a lesson or expense on this exact day, or a barn-wide
+   *  appointment (#1147) is booked that day — those name no horse but concern every horse. */
   conflict: boolean
 }
 
