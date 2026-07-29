@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { instantToLocalWallClock, wallClockToInstant, BARN_TIMEZONES } from '../barn-timezone'
+import { instantToLocalWallClock, wallClockToInstant, barnToday, BARN_TIMEZONES } from '../barn-timezone'
 import { getWeekDates } from '../local-day'
 
 describe('instantToLocalWallClock', () => {
@@ -50,6 +50,22 @@ describe('wallClockToInstant', () => {
     const result = wallClockToInstant('2026-01-15T05:00:00', 'America/Phoenix')
 
     expect(result.toISOString()).toBe('2026-01-15T12:00:00.000Z')
+  })
+})
+
+describe('barnToday', () => {
+  // The same instant is already Mar 2 in Eastern but still Mar 1 in Pacific -- the whole
+  // reason a comparison against barn data can't read the viewer's own clock.
+  it('should_return_the_barn_local_calendar_day_of_an_instant', () => {
+    expect(barnToday('America/New_York', new Date('2026-03-02T06:00:00Z'))).toBe('2026-03-02')
+  })
+
+  it('should_return_the_previous_day_for_a_barn_west_of_that_instants_midnight', () => {
+    expect(barnToday('America/Los_Angeles', new Date('2026-03-02T06:00:00Z'))).toBe('2026-03-01')
+  })
+
+  it('should_default_to_now', () => {
+    expect(barnToday('America/New_York')).toBe(barnToday('America/New_York', new Date()))
   })
 })
 
