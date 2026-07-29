@@ -50,6 +50,8 @@ When making UI-impacting changes, update the relevant role guide(s): `USER_GUIDE
 
 When a PR adds or modifies a UI route, workflow, or user-facing feature, update `PRE_RELEASE_TEST_CHECKLIST.md` — add or adjust a step in the relevant phase: Phase 1 (Setup), Phases 2–4 (Manager), Phase 5 (Trainer), Phase 6 (Rider), or Phase 7 (Multi-barn).
 
+Pick the phase by **the role doing the asserting, not the role the data is about** — a manager reading a page about riders is Phase 4; a rider reading their own page is Phase 6. A precondition may be planted by any role. Getting this wrong makes the line permanently untaggable, since one e2e test binds one role. Full statement in that file's phase-partitioning Convention blockquote at the top, and a one-line role note sits under every phase header.
+
 A checklist note that asserts a capability *doesn't exist yet* — "until #N lands", "#N-blocked", "not yet assignable via UI" — is a hedge, and it goes stale the moment #N merges, silently suppressing coverage of a feature that now works. **The PR closing #N removes every hedge on #N from `PRE_RELEASE_TEST_CHECKLIST.md` and `POST_RELEASE_TEST_CHECKLIST.md` in that same PR**, and replaces each one with the check the hedge was standing in for. Grep both files for the issue number before opening the PR. This is a convention, not a CI check — both checklists legitimately cite closed issues as history ("since #864", "#969 — a manager can no longer…"), and no grep separates those from a hedge reliably.
 
 ## Post-Release Checklist
