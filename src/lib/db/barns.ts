@@ -1,3 +1,13 @@
+/**
+ * Barn record reads and settings writes: `getBarnBySlug` (request-deduped via React
+ * `cache`), per-setting mutations (default board fee, timezone, schedule buffer
+ * minutes, exhaustion thresholds), `setInstructorCut` via the `set_instructor_cut` RPC,
+ * and the demo-barn lifecycle
+ * (`createDemoBarn`/`countDemoBarns`/`getOldestDemoBarn`/`deleteBarn`) — the lifecycle
+ * four take a required injected client and never fall back to the request-scoped SSR
+ * client; their `/demo` and `/api/cron/reset-demo` callers inject a service-role
+ * client.
+ */
 import { cache } from 'react'
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'

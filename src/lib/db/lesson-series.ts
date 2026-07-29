@@ -1,3 +1,11 @@
+/**
+ * Recurring lesson series: `createLessonSeries` via the
+ * `create_lesson_series_with_participants` RPC (its `instructorCut` param is deprecated
+ * and ignored — the cut is re-derived server-side, #776), `getSeriesById`,
+ * `generateNextLessonForSeries` via the `generate_lesson_for_series` RPC, and
+ * `stopLessonSeries` (direct update flipping `is_active` off). Both RPC wrappers return
+ * a generated `Lesson`, not a `lesson_series` row.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Lesson, LessonSeries, LessonType, PaymentType } from './types'

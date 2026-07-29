@@ -1,3 +1,12 @@
+/**
+ * Manager-granted per-horse rider privileges (#997): per-horse list read and grant,
+ * direct-write updates to document access (`'none'`/`'read'`/`'write'`) and the
+ * lesson-read flag, revocation and owner assignment via the
+ * `revoke_horse_privilege`/`set_horse_owner` RPCs, and the caller's own-privilege reads
+ * (`getMyHorseDocumentPrivilege`/`getMyHorseLessonReadPrivilege`) relayed through the
+ * `auth_get_horse_document_privilege`/`auth_has_horse_lesson_read_privilege` helpers —
+ * riders have no direct grant on the table (see ARCHITECTURE.md's permissions matrix).
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { MemberHorsePrivilege } from './types'
 

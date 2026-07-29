@@ -1,3 +1,11 @@
+/**
+ * Per-membership iCal feed plumbing:
+ * `getOrCreateCalendarFeedToken`/`regenerateCalendarFeedToken` manage the
+ * `barn_memberships.calendar_feed_token` secret (rotation mints a fresh
+ * `crypto.randomUUID`, so the old feed URL stops working), and `getCalendarFeedData`
+ * relays through the `get_calendar_feed` RPC keyed by the token alone, returning the
+ * `{valid, barnName, items}` shape `/calendar.ics`'s route renders.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { CalendarFeedData } from './types'

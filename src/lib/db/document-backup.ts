@@ -1,3 +1,13 @@
+/**
+ * Documents half of Manage Barn → Data Backup (#995): `getAllBarnDocuments` reads all
+ * three document tables (`horse_documents`/`staff_documents`/`rider_documents`), the
+ * pure `buildBackupZipEntries` maps them to per-horse/per-member zip folders
+ * (path-segment sanitization plus `-1`/`-2` suffixes on name collisions), and
+ * `buildDocumentsBackupZip` composes the fetch, name resolution
+ * (`horses.ts:resolveHorseNames`/`member-names.ts:resolveMemberNames`),
+ * `document-storage.ts:downloadFile`, and JSZip into a Buffer — `null` when the barn
+ * has no documents at all.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import JSZip from 'jszip'

@@ -1,3 +1,10 @@
+/**
+ * Managed-member invite lifecycle: `createManagedMember` (the `create_managed_member`
+ * RPC, returning the new `membershipId`), `claimManagedMember` (the
+ * `claim_managed_member` RPC, binding an invite token to the claiming user), and
+ * `revokeInviteToken`, which rotates `barn_memberships.invite_token` to a fresh
+ * `crypto.randomUUID` so the old invite link stops working.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import type { Role } from './types'

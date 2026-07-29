@@ -1,3 +1,10 @@
+/**
+ * Barn event CRUD over `barn_events`: date-ordered barn read (`getEventsByBarn`),
+ * single-event read, `getEventsByIds` (hydrates `schedule.ts:getScheduleForRange` event
+ * ids into display rows, same idiom as `getLessonsByIds`/`getExpensesByIds`), and
+ * create/update/delete. Reads apply no role filter — the trainer/rider
+ * `visible_to_roles` scoping lives in RLS policy, not here.
+ */
 import { createClient } from '@/lib/supabase/server'
 import type { BarnEvent, BarnEventInput } from './types'
 
