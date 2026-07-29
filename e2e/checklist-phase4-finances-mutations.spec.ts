@@ -65,16 +65,12 @@ type Seeded = {
 let seeded: Seeded
 
 const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, members }) => {
-  // resolveFinancesMonth clamps a requested month *up* to the barn's own creation month,
-  // and withBarn creates this barn now — in UTC, while MONTH below is a local-calendar
-  // month. Where local sits behind UTC across a month boundary, an unbackdated barn would
-  // clamp MONTH away and every table below would read empty.
-  //
-  // The backdate fixes only that direction. The mirror window — local *ahead* of UTC, in
-  // the first hours of a month — trips resolveFinancesMonth's other clamp, down to the
-  // current UTC month, which no created_at can affect. That's the suite-wide
-  // monthAnchor-vs-UTC skew already tracked as a follow-up; it hits the sibling Finances
-  // specs identically, and is not something this file can close on its own.
+  // resolveFinancesMonth clamps a requested month *up* to the barn's own creation month, and
+  // withBarn creates this barn now. MONTH below is fixed at import while this runs in
+  // beforeAll, so a UTC month rollover in between would leave the barn a month ahead of
+  // MONTH, clamping it away and reading every table below as empty. Backdating removes the
+  // ordering dependency outright. (Both are UTC-framed since #1151, so there is no longer a
+  // standing skew between them for this to paper over.)
   mustSucceed(
     await supabase.from('barns').update({ created_at: monthAnchor(1).toISOString() }).eq('id', barn.id),
     'backdate barn created_at'
@@ -142,13 +138,12 @@ const barn = withBarn('phase4-finances-mutations', async ({ supabase, barn, memb
 // ---------------------------------------------------------------------------
 
 /**
- * The month every fixture above lands in, derived from the same local-calendar anchor the
- * builders use rather than from `new Date()`. finances/page.tsx resolves its default month
- * from the server clock, so a spec must always pass `?month=` — and passing the *UTC*
- * current month would disagree with a `monthAnchor(0)` fixture during the hours when the
- * local and UTC months differ. Day 15 is far enough from either boundary that the anchor's
- * own UTC month is never in doubt; see the seed's note above for the separate window where
- * resolveFinancesMonth clamps this value away regardless of what it says.
+ * The month every fixture above lands in, derived from the same anchor the builders use
+ * rather than from `new Date()`. finances/page.tsx resolves its default month from the server
+ * clock, so a spec must always pass `?month=` — and deriving the two independently would let
+ * them name different months if a UTC month rolled over between the two calls. Both sides are
+ * UTC-framed (#1151), so the anchor and formatMonthParam agree by construction; see the
+ * seed's note above for the ordering window the barn backdate closes.
  */
 const MONTH = formatMonthParam(monthAnchor(0))
 

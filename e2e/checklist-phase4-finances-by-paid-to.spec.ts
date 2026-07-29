@@ -107,8 +107,9 @@ const barn = withBarn('phase4-finances-by-paid-to', async ({ supabase, barn }) =
 
 /**
  * Derived from the same monthAnchor the fixtures are placed by, not from the raw clock — a
- * param computed independently can disagree with the month a fixture actually landed in when
- * the suite runs within a UTC offset of a month boundary.
+ * param computed independently can disagree with the month a fixture actually landed in if a
+ * UTC month rolls over between the two calls. (Both sides are UTC-framed since #1151, so that
+ * rollover race is all that's left; it used to be a window |UTC offset| hours wide.)
  */
 function currentMonth(): string {
   return formatMonthParam(monthAnchor(0))

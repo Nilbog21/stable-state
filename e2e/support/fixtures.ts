@@ -63,18 +63,33 @@ export type SeededMembers = Record<E2eRole, SeededMember> & { rider2: SeededMemb
 // ---------------------------------------------------------------------------
 
 /**
- * Day 15 of the month `monthsAgo` back from `now` — Finances is month-scoped, so fixtures
+ * Day 15 of the UTC month `monthsAgo` back from `now` — Finances is month-scoped, so fixtures
  * are placed by explicit month anchor rather than by day offset. A `past(5)`-style offset
  * silently lands in the previous month whenever the suite runs in the first days of a month,
  * which would read as a once-a-month phantom flake against every month-bucketed assertion.
+ *
+ * UTC rather than the local calendar (#1151), because that is the framing the thing being
+ * asserted against uses: resolveFinancesMonth buckets on getUTCMonth() and formatMonthParam
+ * formats from UTC. A local-calendar anchor and the `?month=` a spec navigates to name
+ * *different* months for the |UTC offset| hours either side of a month boundary, so the seed
+ * lands in one bucket while every navigation asks for another.
+ *
+ * Don't retry fixing this by pinning a timezone instead. Playwright's `timezoneId` isn't even
+ * a candidate — it sets the *browser context's* zone, while these helpers run in the Node
+ * runner process during beforeAll seeding, off process.env.TZ. Exporting TZ=UTC from
+ * scripts/run-checklist-suite.sh would work, but only for runs that go through that script: a
+ * bare `npx playwright test` or an IDE runner would silently get the skew back. Framing the
+ * anchors in UTC fixes it at the source, for every caller and every entry point.
  */
 export function monthAnchor(monthsAgo: 0 | 1 | 2, now: Date = new Date()): Date {
-  return new Date(now.getFullYear(), now.getMonth() - monthsAgo, 15)
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - monthsAgo, 15))
 }
 
 /**
- * An instant inside the month `monthsAgo` back that is guaranteed to already be in the past
- * — day 15 for a prior month, and an hour ago for the current one.
+ * An instant inside the UTC month `monthsAgo` back that is guaranteed to already be in the
+ * past — day 15 for a prior month, and an hour ago for the current one. Same UTC framing as
+ * monthAnchor above, and for the same reason; its month-start clamp is UTC too, so the
+ * clamped instant can't land in the previous bucket.
  *
  * ponytail: an hour before `now` can precede the month start when the suite runs within the
  * first hour of a month, so it clamps to the month start instead. That clamped instant is
@@ -84,12 +99,16 @@ export function monthAnchor(monthsAgo: 0 | 1 | 2, now: Date = new Date()): Date 
  */
 export function pastInstantInMonth(monthsAgo: 0 | 1 | 2, now: Date = new Date()): Date {
   if (monthsAgo > 0) return monthAnchor(monthsAgo, now)
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1))
   const anHourAgo = new Date(now.getTime() - 60 * 60 * 1000)
   return anHourAgo > startOfMonth ? anHourAgo : startOfMonth
 }
 
-/** Schedule-shaped placement (dashboard day navigation), where a month anchor says nothing. */
+/**
+ * Schedule-shaped placement (dashboard day navigation), where a month anchor says nothing.
+ * Deliberately runner-relative, unlike the two UTC anchors above — day placement is a
+ * separate axis, and `goToDaysAhead` navigates barn-relative.
+ */
 export function daysFromNow(days: number, now: Date = new Date()): Date {
   return new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
 }
