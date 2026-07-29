@@ -14,17 +14,6 @@ type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; th
 
 const CUSTOM_ID = '__custom__'
 
-function parseInitialDate(lessonAt: string): string {
-  const d = new Date(lessonAt)
-  const month = String(d.getMonth() + 1).padStart(2, '0')
-  const day = String(d.getDate()).padStart(2, '0')
-  return `${d.getFullYear()}-${month}-${day}`
-}
-
-function parseInitialHour(lessonAt: string): number {
-  return new Date(lessonAt).getHours()
-}
-
 export function computeUnpaidWarn(unpaidPastDue: boolean, paymentType: string, fee: string): boolean {
   const feeIsZero = fee !== '' && Number(fee) === 0
   return unpaidPastDue && paymentType === '' && !feeIsZero
@@ -148,7 +137,7 @@ export function LessonForm({
   const [lessonAt, setLessonAt] = useState('')
   const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
   const [calendarMonth, setCalendarMonth] = useState(
-    (initialLesson ? parseInitialDate(initialLesson.lesson_at) : localToday()).slice(0, 7)
+    (initialLesson ? localToday(new Date(initialLesson.lesson_at)) : localToday()).slice(0, 7)
   )
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
 
@@ -638,8 +627,8 @@ export function LessonForm({
       )}
 
       <DateHourPicker
-        initialDate={mode === 'edit' && initialLesson ? parseInitialDate(initialLesson.lesson_at) : undefined}
-        initialHour={mode === 'edit' && initialLesson ? parseInitialHour(initialLesson.lesson_at) : undefined}
+        initialDate={mode === 'edit' && initialLesson ? localToday(new Date(initialLesson.lesson_at)) : undefined}
+        initialHour={mode === 'edit' && initialLesson ? new Date(initialLesson.lesson_at).getHours() : undefined}
         onChange={setLessonAt}
         dateLabel={isRecurring ? 'Starting Date' : 'Date'}
         renderDate={getScheduleRange && ((value, setValue) => (

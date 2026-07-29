@@ -11,6 +11,8 @@
 // already belongs to the one day its heading names, computed once from
 // `barns.timezone`, so a per-item re-derivation of "is this today" in the
 // viewer's own zone was redundant and could disagree with that heading.)
+// Despite the name, an explicit argument makes this "the viewer-local calendar day of that
+// instant" — `isSameLocalDay` below and the lesson/event forms' initial-date decode rely on it.
 export function localToday(now: Date = new Date()): string {
   const month = String(now.getMonth() + 1).padStart(2, '0')
   const day = String(now.getDate()).padStart(2, '0')

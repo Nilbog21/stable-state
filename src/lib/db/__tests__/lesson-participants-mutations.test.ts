@@ -87,7 +87,7 @@ describe('createLessonWithParticipants', () => {
 
       // The exact value the RPC receives is what lands in the lesson_at
       // TIMESTAMPTZ column — decoding it back (mirroring LessonForm.tsx's
-      // parseInitialHour) must reproduce the wall-clock hour it was entered as.
+      // `initialHour` decode) must reproduce the wall-clock hour it was entered as.
       expect(new Date(storedLessonAt).getHours()).toBe(intendedLocalHour)
     } finally {
       process.env.TZ = originalTz
