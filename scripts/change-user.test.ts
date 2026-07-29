@@ -1,24 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import {
-  mustSucceed,
   formatProfileLine,
   formatBarnLine,
   mergeMembersWithProfiles,
   resolveRevertUserId,
   assertSlugRequiredForProd,
 } from './change-user'
-
-describe('mustSucceed', () => {
-  it('should_throw_with_label_and_message_when_result_has_error', () => {
-    expect(() =>
-      mustSucceed({ data: null, error: { message: 'boom' } }, 'test-label')
-    ).toThrow('test-label: boom')
-  })
-
-  it('should_return_data_when_result_has_no_error', () => {
-    expect(mustSucceed({ data: [1, 2, 3], error: null }, 'ok')).toEqual([1, 2, 3])
-  })
-})
 
 describe('formatProfileLine', () => {
   const profile = { first_name: 'Alex', last_name: 'Trainer', email: 'alex@dev.local' }

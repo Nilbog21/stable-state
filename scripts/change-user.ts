@@ -1,14 +1,7 @@
 import { fileURLToPath } from 'url'
 import * as readline from 'readline'
-import { createClient } from '@supabase/supabase-js'
 import { getBarnBySlug } from '@/lib/db/barns'
-import { assertDevProject } from './script-utils'
-
-export function mustSucceed<T>(result: { data: T | null; error: unknown }, label: string): T {
-  const err = result.error as { message?: string } | null
-  if (err) throw new Error(`${label}: ${err.message}`)
-  return result.data as T
-}
+import { mustSucceed, createServiceClient, assertDevProject } from './script-utils'
 
 export function formatProfileLine(
   profile: { first_name: string; last_name: string; email: string },
@@ -76,9 +69,7 @@ async function run() {
   assertSlugRequiredForProd(BARN_SLUG, allowProd)
   if (!allowProd) assertDevProject(SUPABASE_URL)
 
-  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  })
+  const supabase = createServiceClient(SUPABASE_URL, SERVICE_ROLE_KEY)
 
   let barnId: string
   if (BARN_SLUG) {
