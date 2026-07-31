@@ -759,13 +759,13 @@ bash scripts/change-user.sh dev-barn
 - [ ] Create 2 lessons via `/barn/dev-barn/lessons/new` — the instructor field is locked to you; pick a date and confirm the exhaustion bars render below each horse, same as the manager view
 - [ ] (#1019) The trainer's New Lesson form shows the same month conflict calendar on the Date field as the manager view
 - [ ] (#1019) With a horse selected there, the exertion shading reflects the whole barn's lessons for that horse — not just the ones you instruct
-- [ ] (#1019) With Apple selected there, the day carrying Apple's vet/farrier appointment (scheduled back in Phase 2) shows a dot — the conflict dot fires on appointments for a trainer, not just lessons
+- [ ] (#1019) With Apple selected there, the day carrying Apple's vet/farrier appointment (scheduled back in Phase 3) shows a dot — the conflict dot fires on appointments for a trainer, not just lessons
 - [ ] (#1019) The Dashboard calendar shows that same vet/farrier appointment alongside your own lessons
 - [ ] (#1148) That appointment's card on the Dashboard is a tappable link, not plain text
 - [ ] (#1148) Tapping it opens a page headed **Appointment**
 - [ ] (#1148) That page shows the appointment's recipient
 - [ ] (#1148) That page shows the appointment's horse
-- [ ] (#1148) That page shows no amount anywhere — the figure entered on it in Phase 2 appears nowhere on the page
+- [ ] (#1148) That page shows no amount anywhere — the figure entered on it in Phase 3 appears nowhere on the page
 - [ ] (#1148) That page shows no **Save Changes** button — it is read-only, not the manager's edit form
 - [ ] (#1148) That page shows no **Delete** button
 - [ ] (#1148) The Dashboard's empty-state subtext on a day with nothing on it reads "No lessons, appointments, or events scheduled for this day." — "appointments", not "expenses"
