@@ -35,7 +35,7 @@ import { getAllBarnDocuments } from '../document-backup'
 import { getLessonJunctionRows, getLessonFeeRows } from '../lesson-finance-queries'
 import { getTransactionRows } from '../transactions'
 import { getBarnBackupData, buildBarnDataWorkbook, buildBarnDataBackupBuffer } from '../backup'
-import type { ExpenseBackupRow, HorseBackupRow, TransactionBackupRow } from '../backup'
+import type { ExpenseBackupRow, HorseBackupRow, LessonBackupRow, TransactionBackupRow } from '../backup'
 
 const TIMEZONE = 'America/New_York'
 
@@ -849,6 +849,13 @@ describe('buildBarnDataWorkbook', () => {
     medicationNotes: null, owningMember: 'Jane Owner', ...overrides,
   })
 
+  const lessonRow = (overrides: Partial<LessonBackupRow> = {}): LessonBackupRow => ({
+    dateTime: new Date('2026-05-19T06:00:00Z'), type: 'normal', tierName: 'Beginner',
+    jumping: false, fee: 45, instructor: 'Jane Trainer', horses: 'Thunderbolt',
+    riders: 'Alice', recurring: false, collected: true, instructorPayout: 12.5,
+    cancelled: false, cancellationNotes: null, ...overrides,
+  })
+
   const transactionRow = (overrides: Partial<TransactionBackupRow> = {}): TransactionBackupRow => ({
     dateTime: new Date('2026-05-19T06:00:00Z'), kind: 'lesson_fee', amount: 50, collected: true,
     paymentType: 'cash', member: 'Alice', horse: 'Thunderbolt', ...overrides,
@@ -974,6 +981,29 @@ describe('buildBarnDataWorkbook', () => {
 
     const sheet = workbook.getWorksheet('Horses')!
     expect(sheet.getColumn('feedNotes').width).toBe(60)
+  })
+
+  it('should_size_a_money_column_to_its_rendered_currency_text', () => {
+    const workbook = buildBarnDataWorkbook({ ...emptyData, lessons: [lessonRow({ fee: 45 })] })
+
+    // "$45.00" is six characters where String(45) is two — and the header is only three,
+    // so measuring the raw number would leave Excel rendering the cell as "####".
+    const sheet = workbook.getWorksheet('Lessons')!
+    expect(sheet.getColumn('fee').width).toBe('$45.00'.length + 2)
+  })
+
+  it('should_size_a_money_column_to_its_thousands_separated_text', () => {
+    const workbook = buildBarnDataWorkbook({ ...emptyData, lessons: [lessonRow({ fee: 1234 })] })
+
+    const sheet = workbook.getWorksheet('Lessons')!
+    expect(sheet.getColumn('fee').width).toBe('$1,234.00'.length + 2)
+  })
+
+  it('should_size_a_money_column_to_its_header_when_the_amount_is_null', () => {
+    const workbook = buildBarnDataWorkbook({ ...emptyData, expenses: [expenseRow({ amount: null })] })
+
+    const sheet = workbook.getWorksheet('Horse Expenses')!
+    expect(sheet.getColumn('amount').width).toBe('Amount'.length + 2)
   })
 })
 

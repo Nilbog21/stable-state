@@ -26,9 +26,11 @@ import type { Agreement, AgreementCharge, BarnMembership, Horse, Lesson, Profile
  * than a literal one-sheet-per-table DB dump — disaster recovery is already
  * covered by Supabase's own backups, so this is a manager's own readable copy
  * of their business records, not a restore format. The "All Transactions" sheet
- * is the one deliberate exception: a full raw ledger dump for cross-referencing,
- * in addition to (not instead of) folding collected/payment status into the
- * Lessons and Agreement Charges sheets themselves.
+ * is the one deliberate exception: the barn's whole money ledger in one place,
+ * unfiltered by kind or date, in addition to (not instead of) folding
+ * collected/payment status into the Lessons and Agreement Charges sheets
+ * themselves. It carried raw row ids for cross-referencing until #1218 dropped
+ * them — see TransactionBackupRow.
  *
  * Every TIMESTAMPTZ column is rendered in the barn's own configured timezone
  * (instantToLocalWallClock), not viewer-local — a departure from this app's usual
@@ -433,10 +435,21 @@ export async function getBarnBackupData(barnId: string, timezone: string, client
   }
 }
 
-// A Date's String() form is far longer than the digits Excel actually renders, so it's
-// measured at its number format's own width instead.
-function cellWidth(value: unknown): number {
-  return value instanceof Date ? DATETIME_FMT.length : String(value ?? '').length
+// A raw value's String() form is not what Excel puts on screen once a numFmt applies, and
+// sizing a column to the wrong one of the two is visible: too narrow and a numeric cell
+// renders as "####", too wide and the sheet wastes screen. So both formatted kinds are
+// measured at their rendered text instead.
+//   - Date: measured at DATETIME_FMT, the wider of the two date formats a Date cell can
+//     carry (Horse Expenses overrides a timeless cell to the narrower DATE_FMT below), so
+//     a column is never under-sized. String(date) would be far longer than either.
+//   - Money: measured at the currency text, which adds "$", grouping commas and two forced
+//     decimals that a whole-dollar number's own String() form doesn't carry.
+function cellWidth(value: unknown, numFmt?: string): number {
+  if (value instanceof Date) return DATETIME_FMT.length
+  if (numFmt === MONEY_FMT && typeof value === 'number') {
+    return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' }).length
+  }
+  return String(value ?? '').length
 }
 
 function addSheet<T extends object>(
@@ -451,8 +464,14 @@ function addSheet<T extends object>(
     key: c.key,
     style: c.numFmt ? { numFmt: c.numFmt } : undefined,
     // Auto-size: widest of the header and every value in the column, capped so one long
-    // Notes cell can't push the rest of the sheet off screen.
-    width: Math.min(MAX_COLUMN_WIDTH, Math.max(c.header.length, ...rows.map((r) => cellWidth(r[c.key]))) + 2),
+    // Notes cell can't push the rest of the sheet off screen. Folded rather than spread
+    // into Math.max — a sheet with more rows than the engine's argument limit (the
+    // unfiltered All Transactions ledger is the one that grows without bound) would
+    // otherwise blow the stack and fail the whole export.
+    width: Math.min(
+      MAX_COLUMN_WIDTH,
+      rows.reduce((widest, r) => Math.max(widest, cellWidth(r[c.key], c.numFmt)), c.header.length) + 2
+    ),
   }))
   sheet.addRows(rows)
   return sheet
