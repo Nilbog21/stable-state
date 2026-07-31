@@ -719,12 +719,19 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet
 - [ ] (e2e-candidate) That lesson's row names its horse and rider (not raw ids)
 - [ ] (e2e-candidate) A member created earlier in this phase appears by name (not a raw id) on the Members sheet
-- [ ] (e2e-candidate) **Date/Time** is the first column on the Horses sheet
-- [ ] (e2e-candidate) It is also the first column on the Lessons sheet
+- [ ] (e2e-candidate) **Date/Time Added** is the first column on the Horses sheet
+- [ ] (e2e-candidate) **Date/Time** is the first column on the Lessons sheet
 - [ ] (e2e-candidate) It is also the first column on the Horse Expenses sheet
 - [ ] (e2e-candidate) It is also the first column on the Members sheet
 - [ ] (e2e-candidate) It is also the first column on the Documents sheet
 - [ ] (e2e-candidate) It is also the first column on the All Transactions sheet
+- [ ] (e2e-candidate) **Start Date** is the first column on the Agreements sheet
+- [ ] (e2e-candidate) **Period** is the first column on the Agreement Charges sheet
+- [ ] (e2e-candidate) The Horses sheet's rows run newest-first by that first column
+- [ ] (e2e-candidate) The All Transactions sheet's rows also run newest-first
+- [ ] (e2e-candidate) The Agreements sheet's rows also run newest-first, by Start Date
+- [ ] (e2e-candidate) The header row is bold on every sheet
+- [ ] (e2e-candidate) The header row is visibly taller than a data row, with its text vertically centered
 - [ ] (e2e-candidate) An expense's date and time appear together in that one **Date/Time** cell, not in two columns
 - [ ] (e2e-candidate) An expense entered without a time shows just its date there, with no `12:00 AM`
 - [ ] (e2e-candidate) A **Date/Time** cell is a real date to Excel, not text (its format shows as a date, and it right-aligns by default)

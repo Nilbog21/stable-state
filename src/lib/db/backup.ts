@@ -52,6 +52,8 @@ const DATETIME_FMT = 'm/d/yyyy h:mm AM/PM'
 const DATE_FMT = 'm/d/yyyy'
 const MONEY_FMT = '"$"#,##0.00'
 const MAX_COLUMN_WIDTH = 60
+// 2× exceljs's 15-point default row height, so the bolded header has room to breathe.
+const HEADER_ROW_HEIGHT = 30
 
 const ALL_TRANSACTION_KINDS: TransactionKind[] = [
   'lesson_fee',
@@ -452,12 +454,28 @@ function cellWidth(value: unknown, numFmt?: string): number {
   return String(value ?? '').length
 }
 
+// Newest first, keyed off whichever column the sheet leads with — every sheet leads with its
+// own date column (#1218), so this is "most recent at the top" without each call site having
+// to name its own sort key, and a sheet added later inherits the ordering by construction.
+// Comparing with </> rather than by type keeps one code path for both the Date-valued columns
+// and the ISO `YYYY-MM-DD` string ones (Agreements' Start Date, Agreement Charges' Period),
+// where lexical order is already chronological order. Arithmetic on the two booleans instead
+// of branching on them: sort() only needs the sign, and this way there's no unreachable
+// third case to cover.
+function sortByFirstColumn<T extends object>(rows: T[], key: Extract<keyof T, string>): T[] {
+  return [...rows].sort((a, b) => Number(a[key] < b[key]) - Number(a[key] > b[key]))
+}
+
+// Returns the sorted rows alongside the sheet, not just the sheet: Horse Expenses applies a
+// per-cell format override by row index below, which would land on the wrong rows if it
+// walked the caller's original unsorted array.
 function addSheet<T extends object>(
   workbook: ExcelJS.Workbook,
   name: string,
   columns: { header: string; key: Extract<keyof T, string>; numFmt?: string }[],
-  rows: T[]
-): ExcelJS.Worksheet {
+  unsortedRows: T[]
+): { sheet: ExcelJS.Worksheet; rows: T[] } {
+  const rows = sortByFirstColumn(unsortedRows, columns[0].key)
   const sheet = workbook.addWorksheet(name)
   sheet.columns = columns.map((c) => ({
     header: c.header,
@@ -473,8 +491,12 @@ function addSheet<T extends object>(
       rows.reduce((widest, r) => Math.max(widest, cellWidth(r[c.key], c.numFmt)), c.header.length) + 2
     ),
   }))
+  const header = sheet.getRow(1)
+  header.font = { bold: true, size: 12 }
+  header.height = HEADER_ROW_HEIGHT
+  header.alignment = { vertical: 'middle' }
   sheet.addRows(rows)
-  return sheet
+  return { sheet, rows }
 }
 
 export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
@@ -484,7 +506,9 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Horses',
     [
-      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
+      // Not the bare "Date/Time" the other five sheets use: a horse's row has several dates a
+      // reader could mean, so this one says which one it is.
+      { header: 'Date/Time Added', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Name', key: 'name' },
       { header: 'Registered Name', key: 'registeredName' },
       { header: 'Active', key: 'active' },
@@ -522,12 +546,12 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Agreements',
     [
+      { header: 'Start Date', key: 'startDate' },
       { header: 'Rider', key: 'rider' },
       { header: 'Horse', key: 'horse' },
       { header: 'Kind', key: 'kind' },
       { header: 'Cadence', key: 'cadence' },
       { header: 'Fee', key: 'fee', numFmt: MONEY_FMT },
-      { header: 'Start Date', key: 'startDate' },
       { header: 'Active', key: 'active' },
     ],
     data.agreements
@@ -537,10 +561,10 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Agreement Charges',
     [
+      { header: 'Period', key: 'period' },
       { header: 'Rider', key: 'rider' },
       { header: 'Horse', key: 'horse' },
       { header: 'Kind', key: 'kind' },
-      { header: 'Period', key: 'period' },
       { header: 'Fee', key: 'fee', numFmt: MONEY_FMT },
       { header: 'Collected', key: 'collected' },
       { header: 'Payment Type', key: 'paymentType' },
@@ -548,7 +572,7 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     data.agreementCharges
   )
 
-  const expenseSheet = addSheet<ExpenseBackupRow>(
+  const { sheet: expenseSheet, rows: expenseRows } = addSheet<ExpenseBackupRow>(
     workbook,
     'Horse Expenses',
     [
@@ -564,8 +588,9 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
   )
   // The only sheet whose timestamp is optional — a per-cell override beats the alternatives
   // of showing every spontaneous appointment a fabricated 12:00 AM or splitting the column
-  // back in two. Row 1 is the header, so row i + 2 is data row i.
-  data.expenses.forEach((e, i) => {
+  // back in two. Row 1 is the header, so row i + 2 is data row i — indexed against addSheet's
+  // returned rows, which are the sorted ones actually written to the sheet.
+  expenseRows.forEach((e, i) => {
     if (e.dateOnly) expenseSheet.getRow(i + 2).getCell('dateTime').numFmt = DATE_FMT
   })
 
