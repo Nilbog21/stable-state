@@ -185,6 +185,48 @@ export function ExpenseForm({
         </datalist>
       </div>
 
+      {/* Above Date, not below it: the calendar's dots are driven by this selection, so a
+        * manager who fills the form top-down has an empty grid until they scroll past the date
+        * they came here to pick. */}
+      <div className="flex flex-col gap-2">
+        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+          <input
+            type="checkbox"
+            name="applies_to_all_horses"
+            value="true"
+            checked={appliesToAllHorses}
+            onChange={(e) => setAppliesToAllHorses(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600"
+          />
+          Entire Barn
+        </label>
+
+        <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
+          {horses.map((h) => (
+            <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+              <input
+                type="checkbox"
+                name="horse_id"
+                value={h.id}
+                disabled={appliesToAllHorses}
+                checked={checkedHorseIds.has(h.id)}
+                onChange={(e) => {
+                  setCheckedHorseIds((prev) => {
+                    const next = new Set(prev)
+                    if (e.target.checked) next.add(h.id)
+                    else next.delete(h.id)
+                    return next
+                  })
+                }}
+                className="rounded border-zinc-300 dark:border-zinc-600"
+              />
+              {h.name}
+            </label>
+          ))}
+        </fieldset>
+      </div>
+
       {getScheduleRange ? (
         <>
           <MonthCalendarPicker
@@ -275,45 +317,6 @@ export function ExpenseForm({
           </select>
         </div>
       )}
-
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-          <input
-            type="checkbox"
-            name="applies_to_all_horses"
-            value="true"
-            checked={appliesToAllHorses}
-            onChange={(e) => setAppliesToAllHorses(e.target.checked)}
-            className="rounded border-zinc-300 dark:border-zinc-600"
-          />
-          Entire Barn
-        </label>
-
-        <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
-          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
-          {horses.map((h) => (
-            <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-              <input
-                type="checkbox"
-                name="horse_id"
-                value={h.id}
-                disabled={appliesToAllHorses}
-                checked={checkedHorseIds.has(h.id)}
-                onChange={(e) => {
-                  setCheckedHorseIds((prev) => {
-                    const next = new Set(prev)
-                    if (e.target.checked) next.add(h.id)
-                    else next.delete(h.id)
-                    return next
-                  })
-                }}
-                className="rounded border-zinc-300 dark:border-zinc-600"
-              />
-              {h.name}
-            </label>
-          ))}
-        </fieldset>
-      </div>
 
       <div>
         <label htmlFor="expense-notes" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
