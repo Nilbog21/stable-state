@@ -184,6 +184,28 @@ In Google Cloud Console → **APIs & Services** → **Credentials** → your OAu
 - `https://<your-vercel-domain>.vercel.app/auth/callback`
 - `https://*.vercel.app/auth/callback`
 
+## Pinned timezones
+
+The test suite runs in a deliberately awkward zone so that a wrong-frame call site fails a
+test instead of waiting for a human to spot it (#1221). The app juggles three frames —
+viewer-local, barn-local (`barns.timezone`), and UTC — and unpinned they collapse into two:
+a developer machine on `America/New_York` *is* the `barns.timezone` default, and CI is UTC.
+
+| Process | Zone | Set in |
+|---|---|---|
+| Vitest workers | `Asia/Kolkata` | `vitest.config.mts` (`test.env.TZ`) |
+| Playwright browser context | `Asia/Kolkata` | `playwright.config.ts` (`use.timezoneId`) |
+| `next dev` | `UTC` | `package.json`'s `dev` script — matches Vercel |
+
+`Asia/Kolkata` is +5:30 with no DST: distinct from both the barn default and UTC in every
+run, and the half-hour offset additionally breaks anything assuming whole-hour offsets. The
+Playwright *runner* process is left on your own zone on purpose — `e2e/support/fixtures.ts`
+places every fixture either UTC-framed (`monthAnchor`) or barn-framed (`daysFromNow`), so
+nothing it computes reads the runner's clock.
+
+A test that breaks under the pin gets fixed at its source. Re-pinning that one test back to
+UTC restores exactly the blindness this exists to remove.
+
 ## Manual smoke-testing against a target project
 
 Click through the live app as a seeded manager/trainer/rider against any target
