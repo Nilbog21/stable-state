@@ -17,8 +17,12 @@ const mockRider2 = { id: 'rider-2', name: 'Bob' }
 // which is what the edit form's date/hour picker can represent. It seeds the hour from
 // `new Date(lesson_at).getHours()` and drops the minutes, so an instant landing on a
 // half-hour viewer-local (10:00Z → 15:30) does not survive the round trip. That lossiness is
-// a real app bug for any viewer at a non-whole-hour offset, not a property of these tests —
-// #1222 fixes it by deleting the viewer frame outright.
+// a real app bug for any viewer at a non-whole-hour offset, not a property of these tests.
+//
+// Two queued changes each close it independently, and this fixture can go back to a round
+// number once either lands: #1222 deletes the viewer frame, and #1021's replacement picker
+// gains minute granularity (the client asked for it after that issue was written), which
+// stops the truncation at its source.
 const normalLesson: LessonDetail = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
