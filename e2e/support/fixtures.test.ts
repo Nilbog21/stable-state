@@ -3,6 +3,7 @@ import { existsSync } from 'fs'
 import { isAbsolute } from 'path'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
+import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import {
   monthAnchor,
   pastInstantInMonth,
@@ -62,6 +63,53 @@ describe('pastInstantInMonth', () => {
   })
 })
 
+/**
+ * #1221: `goToDaysAhead` navigates the dashboard barn-relative, so the seed has to be placed
+ * barn-relative too. Every case here uses a `now` whose barn-local day differs from its UTC
+ * day (23:30 barn-local), which is exactly the skew a runner-relative offset used to smuggle in.
+ */
+describe('daysFromNow', () => {
+  const TZ = 'America/New_York'
+  // 03:30Z is 23:30 the *previous* day in the barn's zone, so a UTC-framed offset would land
+  // a day later than the dashboard's own "+2 days" does.
+  const now = new Date('2026-07-21T03:30:00Z')
+
+  it('should_land_on_the_barn_local_calendar_day_n_days_out', () => {
+    expect(instantToLocalWallClock(daysFromNow(2, TZ, now), TZ).slice(0, 10)).toBe('2026-07-22')
+  })
+
+  it('should_place_the_instant_at_barn_local_noon', () => {
+    expect(instantToLocalWallClock(daysFromNow(2, TZ, now), TZ).slice(11)).toBe('12:00:00')
+  })
+
+  it('should_step_backwards_for_a_negative_offset', () => {
+    expect(instantToLocalWallClock(daysFromNow(-1, TZ, now), TZ).slice(0, 10)).toBe('2026-07-19')
+  })
+
+  // Spring forward is 2026-03-08 in this zone: the two days either side of it are 23 hours
+  // apart, so any implementation adding 24h × days drifts to 11:00 instead of noon.
+  it('should_stay_at_barn_local_noon_across_a_dst_transition', () => {
+    const beforeTransition = new Date('2026-03-07T17:00:00Z')
+    expect(instantToLocalWallClock(daysFromNow(2, TZ, beforeTransition), TZ)).toBe('2026-03-09T12:00:00')
+  })
+
+  // The whole point of the barn-timezone argument: the answer must not move when the runner's
+  // own zone does. Same save/restore shape as the UTC-month-framing block below.
+  describe('runner zone independence', () => {
+    const originalTZ = process.env.TZ
+
+    afterEach(() => {
+      if (originalTZ === undefined) delete process.env.TZ
+      else process.env.TZ = originalTZ
+    })
+
+    it('should_ignore_the_runner_zone', () => {
+      process.env.TZ = 'Pacific/Kiritimati'
+      expect(daysFromNow(2, TZ, now).toISOString()).toBe('2026-07-22T16:00:00.000Z')
+    })
+  })
+})
+
 describe('addUnpaidLesson', () => {
   // A barn in a zone the runner is unlikely to share, and instants built from explicit UTC ISO
   // strings, so both assertions hold whatever TZ the suite runs under.
@@ -79,7 +127,7 @@ describe('addUnpaidLesson', () => {
   // after that day's 23:00 expense, inverting the interleave assertion. Barn-local is the frame
   // that matters here: mergeScheduleItems sorts on the wall clock, not on the instant.
   it('should_place_the_lesson_at_the_given_barn_local_time', async () => {
-    await addUnpaidLesson(supabase, barn, { ...opts, at: daysFromNow(2, new Date('2026-07-21T03:30:00Z')), time: '10:00' })
+    await addUnpaidLesson(supabase, barn, { ...opts, at: daysFromNow(2, barn.timezone, new Date('2026-07-21T03:30:00Z')), time: '10:00' })
     expect(lessonAtOfLastCall()).toBe('2026-07-22T14:00:00.000Z')
   })
 

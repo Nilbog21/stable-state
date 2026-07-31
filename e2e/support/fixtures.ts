@@ -20,7 +20,7 @@ import { upsertNotification } from '@/lib/db/notifications'
 import { createLessonWithParticipants } from '@/lib/db/lesson-participants'
 import { createExpense } from '@/lib/db/expenses'
 import { createAgreement } from '@/lib/db/agreements'
-import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
+import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import type {
   Agreement,
   Barn,
@@ -106,11 +106,24 @@ export function pastInstantInMonth(monthsAgo: 0 | 1 | 2, now: Date = new Date())
 
 /**
  * Schedule-shaped placement (dashboard day navigation), where a month anchor says nothing.
- * Deliberately runner-relative, unlike the two UTC anchors above — day placement is a
- * separate axis, and `goToDaysAhead` navigates barn-relative.
+ * Barn-relative, unlike the two UTC anchors above — day placement is a separate axis, and
+ * `goToDaysAhead` navigates the dashboard by clicking "Next day" from the *barn's* today, so
+ * the seed has to be placed in that same frame (#1221). Was runner-relative until then, which
+ * agreed with the dashboard only by cancellation, and stopped agreeing across a DST transition.
+ *
+ * Lands at barn-local noon rather than carrying the runner's own time of day: noon exists on
+ * every calendar day in every zone (a DST transition can skip midnight, never noon), and it
+ * keeps a fixture without an explicit `time` well clear of the 23:00-barn-local ordering
+ * hazard that forced #1150's callers to pin one.
+ *
+ * Day arithmetic goes through Date.UTC on the barn's own calendar digits, so a `days` that
+ * crosses a transition still names the right calendar day — adding `days × 24h` to an instant
+ * would drift by the transition's offset change.
  */
-export function daysFromNow(days: number, now: Date = new Date()): Date {
-  return new Date(now.getTime() + days * 24 * 60 * 60 * 1000)
+export function daysFromNow(days: number, timezone: string, now: Date = new Date()): Date {
+  const [year, month, day] = barnToday(timezone, now).split('-').map(Number)
+  const target = new Date(Date.UTC(year, month - 1, day + days)).toISOString().slice(0, 10)
+  return wallClockToInstant(`${target}T12:00:00`, timezone)
 }
 
 /** Exactly one of `at`/`monthsAgo`; `monthsAgo` is the month-scoped Finances path. */
@@ -398,15 +411,12 @@ export type LessonOptions = When & {
  * because expense_time is a literal wall-clock column while lesson_at is a timestamptz, so
  * only this side has to convert back with wallClockToInstant.
  *
- * That makes this the first caller anywhere to hand wallClockToInstant a non-midnight time,
- * and its single correction is exact only outside a DST transition window: a `time` inside a
+ * Its single correction is exact only outside a DST transition window: a `time` inside a
  * skipped or repeated hour (e.g. '02:30' on a US spring-forward date) silently resolves an
  * hour off. Harmless for the times fixtures actually pin — don't pin one near a transition.
  *
- * ponytail: this pins the time of day, not the day. goToDaysAhead navigates the dashboard
- * barn-relative while daysFromNow places the instant runner-relative, and the two self-cancel
- * except across a DST transition within an hour of midnight. Upgrade path if that ever bites:
- * give daysFromNow the barn timezone too, rather than special-casing the fixtures.
+ * This pins the time of day, not the day; daysFromNow above owns the day, and since #1221 it
+ * owns it barn-relative, so the two agree outright rather than by cancellation.
  */
 function atBarnLocalTime(instant: Date, timezone: string, time: string): Date {
   const day = instantToLocalWallClock(instant, timezone).slice(0, 10)

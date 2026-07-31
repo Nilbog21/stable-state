@@ -18,7 +18,7 @@ const barn = withBarn('phase6-dashboard', async ({ supabase, barn, members }) =>
   const bella = await addHorse(supabase, barn.id, 'Bella')
 
   await addUnpaidLesson(supabase, barn, {
-    at: daysFromNow(-1),
+    at: daysFromNow(-1, barn.timezone),
     instructorId: members.trainer.membershipId,
     horseIds: [bella.id],
     riderIds: [members.rider2.membershipId],

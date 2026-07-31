@@ -3,7 +3,9 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/DateHourPicker.tsx
 import { test, expect, withBarn } from './support/test'
 import { createClient } from '@supabase/supabase-js'
-import { addHorse, addTier, E2E_USERS, E2E_PASSWORD } from './support/fixtures'
+import { addHorse, addTier, daysFromNow, E2E_USERS, E2E_PASSWORD } from './support/fixtures'
+import { BROWSER_TIMEZONE } from './support/timezone'
+import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
 if (!supabaseUrl) throw new Error('NEXT_PUBLIC_SUPABASE_URL is required')
@@ -20,13 +22,14 @@ const barn = withBarn('timezone', async ({ supabase, barn }) => {
 test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @manager', async ({ page }) => {
   // The barn is seeded with no lessons at all, so the direct-read query below can only match
   // the one this test creates.
-  const target = new Date()
-  target.setDate(target.getDate() + 30)
-  const year = target.getFullYear()
-  const month = target.getMonth() + 1
-  const day = target.getDate()
-  const hour = 14 // 2:00 PM local
-  const dateStr = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`
+  //
+  // Every date below is computed in the *browser's* zone, not this Node process's: the calendar
+  // this test pages through and the picker that converts the click both run in the browser,
+  // which playwright.config.ts pins while leaving the runner on the developer's own zone
+  // (#1221). Deriving today+30 from the runner's clock would name a day the calendar disagrees
+  // about, and would compare the stored instant against the wrong wall clock entirely.
+  const hour = 14 // 2:00 PM in the browser's zone
+  const dateStr = instantToLocalWallClock(daysFromNow(30, BROWSER_TIMEZONE), BROWSER_TIMEZONE).slice(0, 10)
 
   await page.goto(`/barn/${barn.slug}/lessons/new`)
 
@@ -64,11 +67,10 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
 
   // Mirrors DateHourPicker.tsx's own conversion — this checks the real
   // UI -> server action -> RPC -> storage pipeline against it, not a
-  // re-derivation of the logic under test. Assumes the Playwright-launched
-  // browser shares this Node process's local timezone — true here since
-  // Chromium runs as a local subprocess, not a remote/differently-configured
-  // browser, and no project pins a timezoneId.
-  const expectedIso = new Date(year, month - 1, day, hour).toISOString()
+  // re-derivation of the logic under test. The picker converts a wall clock the
+  // browser's zone owns, so the mirror names that zone rather than leaning on
+  // this process happening to share it: it no longer does (#1221).
+  const expectedIso = wallClockToInstant(`${dateStr}T${String(hour).padStart(2, '0')}:00:00`, BROWSER_TIMEZONE).toISOString()
 
   const supabase = createClient(supabaseUrl, anonKey)
   const { error: authError } = await supabase.auth.signInWithPassword({

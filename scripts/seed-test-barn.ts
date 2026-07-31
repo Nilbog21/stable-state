@@ -115,17 +115,17 @@ async function run() {
     ...opts,
   })
 
-  await addPaidLesson(supabase, barn, lesson(daysFromNow(-10)))
-  await addPaidLesson(supabase, barn, lesson(daysFromNow(-5)))
-  await addPaidLesson(supabase, barn, lesson(daysFromNow(-3), { horseIds: [bella.id], fee: tier2.price, tierName: tier2.name, jumping: true }))
-  await addPaidLesson(supabase, barn, lesson(daysFromNow(-1), {
+  await addPaidLesson(supabase, barn, lesson(daysFromNow(-10, barn.timezone)))
+  await addPaidLesson(supabase, barn, lesson(daysFromNow(-5, barn.timezone)))
+  await addPaidLesson(supabase, barn, lesson(daysFromNow(-3, barn.timezone), { horseIds: [bella.id], fee: tier2.price, tierName: tier2.name, jumping: true }))
+  await addPaidLesson(supabase, barn, lesson(daysFromNow(-1, barn.timezone), {
     horseIds: [apollo.id, bella.id],
     exertionLevels: [3, 2],
     riderIds: [members.rider.membershipId, members.rider2.membershipId],
     lessonType: 'group',
   }))
-  await addUnpaidLesson(supabase, barn, lesson(daysFromNow(2)))
-  await addUnpaidLesson(supabase, barn, lesson(daysFromNow(5), { horseIds: [bella.id], fee: tier2.price, tierName: tier2.name, jumping: true }))
+  await addUnpaidLesson(supabase, barn, lesson(daysFromNow(2, barn.timezone)))
+  await addUnpaidLesson(supabase, barn, lesson(daysFromNow(5, barn.timezone), { horseIds: [bella.id], fee: tier2.price, tierName: tier2.name, jumping: true }))
 
   // Same-day lesson so the dashboard's current day has content. fee: 0 keeps it out of every
   // outstanding-fee query. Pinned 15 minutes out, not at `now` — getUpcomingLessons filters
@@ -134,17 +134,17 @@ async function run() {
 
   // Unpaid lesson and lease charge on the stub rider only, so the `rider` login still has
   // zero reminders while the manager sees both barn-wide.
-  await addUnpaidLesson(supabase, barn, lesson(daysFromNow(-1), { horseIds: [bella.id], riderIds: [members.rider2.membershipId] }))
+  await addUnpaidLesson(supabase, barn, lesson(daysFromNow(-1, barn.timezone), { horseIds: [bella.id], riderIds: [members.rider2.membershipId] }))
   await addLeaseCharge(supabase, barn, { monthsAgo: 2, riderId: members.rider2.membershipId, horseId: bella.id, fee: 150 })
 
   // Already-cancelled state, so the Cancelled badge and the cancellation-notes display have
   // something to show without driving the cancel flow first.
-  const cancelled = await addUnpaidLesson(supabase, barn, lesson(daysFromNow(3)))
+  const cancelled = await addUnpaidLesson(supabase, barn, lesson(daysFromNow(3, barn.timezone)))
   await cancelLesson(supabase, barn, { lessonId: cancelled.id, notes: 'Arena flooded.' })
 
   // A group lesson with one rider already cancelled — the per-rider cancel display, and the
   // group flows that need a lesson still active with a cancelled participant on it.
-  const groupLesson = await addUnpaidLesson(supabase, barn, lesson(daysFromNow(4), {
+  const groupLesson = await addUnpaidLesson(supabase, barn, lesson(daysFromNow(4, barn.timezone), {
     horseIds: [apollo.id, bella.id],
     exertionLevels: [3, 2],
     riderIds: [members.rider.membershipId, members.rider2.membershipId],
@@ -157,7 +157,7 @@ async function run() {
   })
 
   // Barn event — Manage Barn's Barn Events list, and the dashboard calendar's interleaving.
-  await addBarnEvent(supabase, barn.id, { at: daysFromNow(6), title: 'Spring Schooling Show', notes: 'Entries close Friday.' })
+  await addBarnEvent(supabase, barn.id, { at: daysFromNow(6, barn.timezone), title: 'Spring Schooling Show', notes: 'Entries close Friday.' })
 
   // Pre-set photos, so the read-only and replace/remove flows start from real state. Clover
   // and Harper's own assets are left unused here on purpose — they're the upload sources.
@@ -180,7 +180,7 @@ async function run() {
   await addHorseDocument(supabase, barn, bella.id, {
     recordType: 'insurance_binder',
     fileName: 'insurance.pdf',
-    reminderDate: daysFromNow(-1).toISOString().slice(0, 10),
+    reminderDate: daysFromNow(-1, barn.timezone).toISOString().slice(0, 10),
     content: readFileSync(assetPath('test_1_kb.pdf')),
   })
   // Members' own Documents sections.
@@ -188,14 +188,14 @@ async function run() {
   await addRiderDocument(supabase, barn, members.rider, { recordType: 'liability_waiver', fileName: 'waiver.pdf' })
 
   await addExpense(supabase, barn, {
-    at: daysFromNow(2),
+    at: daysFromNow(2, barn.timezone),
     time: '23:00',
     recipient: 'Valley Farrier',
     expenseType: 'Farrier',
     horseIds: [apollo.id],
   })
   // Date-only planned expense (no time) — must NOT appear on the dashboard.
-  await addExpense(supabase, barn, { at: daysFromNow(4), recipient: 'Feed Supplier', expenseType: 'Feed' })
+  await addExpense(supabase, barn, { at: daysFromNow(4, barn.timezone), recipient: 'Feed Supplier', expenseType: 'Feed' })
 
   // Non-default settings, so Manage Barn's fields aren't all showing the schema defaults.
   await updateBarnSettings(supabase, barn.id, {

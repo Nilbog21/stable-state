@@ -9,7 +9,7 @@ const barn = withBarn('smoke', async ({ supabase, barn, members }) => {
   const tier = await addTier(supabase, barn.id, { name: 'Standard', price: 80, isDefault: true })
   const horse = await addHorse(supabase, barn.id, 'Apollo')
   await addPaidLesson(supabase, barn, {
-    at: daysFromNow(-2),
+    at: daysFromNow(-2, barn.timezone),
     instructorId: members.trainer.membershipId,
     horseIds: [horse.id],
     riderIds: [members.rider.membershipId],
