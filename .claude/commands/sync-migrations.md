@@ -48,9 +48,9 @@ Check Supabase migration status, rename pending migrations to the current timest
    - Rename: `mv supabase/migrations/{old} supabase/migrations/{new_timestamp}_{rest_of_name}`
    - After **all** renames are done, sweep the repo for references to each old filename and rewrite it to the new one. A pending migration's header comment often cites a sibling that was renamed in the same batch, and `docs/architecture/*.md` cite migration filenames too, so this is repo-wide rather than confined to `supabase/migrations/`:
      ```
-     git grep -l --untracked --fixed-strings '{old}' | xargs -r sed -i 's/{old}/{new}/g'
+     git grep -lz --untracked --fixed-strings '{old}' | xargs -0 -r sed -i 's/{old}/{new}/g'
      ```
-     `--untracked` is load-bearing: the migrations being renamed are pending and usually untracked, so a plain `git grep` would miss exactly the sibling-cites-sibling case this is here to fix. Untracked-but-ignored paths (`node_modules/`, `specs/`) are correctly skipped. Record which files each pass rewrote — step 6 reports them.
+     `--untracked` is load-bearing: the migrations being renamed are pending and usually untracked, so a plain `git grep` would miss exactly the sibling-cites-sibling case this is here to fix. Untracked-but-ignored paths (`node_modules/`, `specs/`) are correctly skipped. `-lz`/`-0` pair a NUL-delimited file list with a NUL-delimited `xargs` so a path containing a space is rewritten rather than silently split into arguments that match nothing. This is GNU sed; the BSD/macOS equivalent needs an explicit empty backup suffix: `sed -i '' 's/{old}/{new}/g'`. Record which files each pass rewrote — step 6 reports them.
 
      Some of the files this rewrites are migrations that have already been applied. That is fine and is the documented exception to the never-edit-an-applied-migration rule — a header comment is inert (see `CLAUDE.md`'s Schema/RLS/RPC verification section).
 

@@ -27,7 +27,7 @@ squash above, these apply to prod for the first time whenever release-3 ships
 normally — no prod migration-tracking reconciliation was needed for this one.
 
 Their net effect was originally captured by a 4-file set:
-`20260716005941_release3_schema.sql`, `..._release3_backfills.sql`,
+`20260715075708_release3_schema.sql`, `..._release3_backfills.sql`,
 `..._release3_functions.sql`, `..._release3_rls.sql`. Unlike the first squash
 (a from-scratch baseline with no prior data), this one is a delta on top of the
 existing baseline — four one-time backfills that migrate real pre-existing rows
