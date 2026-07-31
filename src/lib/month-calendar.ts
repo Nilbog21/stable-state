@@ -8,9 +8,11 @@ import type { ScheduleItem } from '@/lib/db/types'
  * already-fetched `ScheduleItem[]` plus the form's current horse/rider selection, so
  * changing the selection re-renders without another round trip.
  *
- * Horse selection is the dominant signal: with at least one horse selected the day
- * background is the projected-exertion heatmap and the dot marks real bookings; the
- * rider-only flat tint applies only when no horse is selected.
+ * Three signals, checked in this order. A barn-wide *selection* (#1020's "Entire Barn")
+ * outranks everything: it reaches every horse, so the dot marks any booking that names a
+ * horse and there is no heatmap to draw. Otherwise horse selection dominates: with at least
+ * one horse selected the day background is the projected-exertion heatmap and the dot marks
+ * real bookings. The rider-only flat tint applies only when neither of those holds.
  */
 
 /** Fixed 6 rows × 7 days. A short month would fit in 4–5 rows, but a variable row count
@@ -48,8 +50,11 @@ export interface DayDecorationOptions {
    *  every other date on this grid is in. */
   todayStr: string
   /** The appointment form's "Entire Barn" (#1020) — the mirror of #1147's barn-wide *item*.
-   *  Such a selection ticks no horses, so without this the horse branch below is skipped and the
-   *  grid shows nothing exactly when the appointment reaches the most horses. */
+   *  It normally ticks no horses, so without this the horse branch below is skipped and the grid
+   *  goes blank exactly when the appointment reaches the most horses. Don't reorder it after that
+   *  branch on the assumption the two are mutually exclusive: `ExpenseForm` only *disables* the
+   *  horse checkboxes when this is checked, so a selection made first survives in state. Barn-wide
+   *  has to win outright anyway — it covers those horses and every other one. */
   selectionAppliesToAllHorses?: boolean
   /** In edit mode, the lesson or appointment being edited — it must not count against itself. */
   excludeItemId?: string | null
@@ -125,8 +130,9 @@ export function computeDayDecorations(
 
     const onThisDay = relevant.filter((i) => i.start.slice(0, 10) === date)
 
-    // Checked before the horse branch, since "Entire Barn" leaves the horse selection empty.
-    // No band: an appointment carries no exertion_level, so there is nothing to heat-map.
+    // Checked before the horse branch: barn-wide covers every horse, including any left checked
+    // in state (see the option's doc). No band: an appointment carries no exertion_level, so
+    // there is nothing to heat-map.
     // Events stay excluded for the same reason they are below — a barn event names no horse
     // in either direction, so it is not a scheduling conflict.
     if (opts.selectionAppliesToAllHorses) {
