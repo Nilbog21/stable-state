@@ -421,6 +421,30 @@ describe('MemberDetailPage', () => {
     expect(screen.queryByText(/reminder due/i)).toBeNull()
   })
 
+  // #1149 -- the badge's cutoff is the barn's own day, not the viewer's. At this instant a Pacific
+  // barn is still on Mar 1 while the pinned Eastern viewer's device already reads Mar 2.
+  it('should_not_render_reminder_due_badge_when_the_reminder_is_still_future_in_barn_time', async () => {
+    const originalTz = process.env.TZ
+    process.env.TZ = 'America/New_York'
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-03-02T06:00:00Z'))
+    vi.mocked(requireMembership).mockResolvedValue({
+      user: createMockUser({ id: managerMembership.user_id }) as any,
+      barn: { ...mockBarn, timezone: 'America/Los_Angeles' },
+      membership: managerMembership,
+    })
+    vi.mocked(getDocumentsWithUrls).mockResolvedValue([{ doc: { ...mockTrainerDoc, reminder_date: '2026-03-02' }, signedUrl: 'https://example.com/signed' }])
+
+    try {
+      const jsx = await MemberDetailPage({ params: makeParams('green-acres', 'mem-target-trn') })
+      render(jsx)
+      expect(screen.queryByText(/reminder due/i)).toBeNull()
+    } finally {
+      vi.useRealTimers()
+      process.env.TZ = originalTz
+    }
+  })
+
   it('should_show_active_agreements_header_and_card_when_active_agreement_exists', async () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(targetRiderMembership)
     vi.mocked(getActiveAgreementsForRider).mockResolvedValue([

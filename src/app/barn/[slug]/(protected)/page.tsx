@@ -10,7 +10,7 @@ import { getExpensesByIds } from '@/lib/db/expenses'
 import { getEventsByIds } from '@/lib/db/barn-events'
 import { getOutstandingLessons, getOutstandingCancellationFees } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
-import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
+import { barnToday, wallClockToInstant } from '@/lib/barn-timezone'
 import { isValidDateString, addDays, formatCalendarDate, getWeekDates } from '@/lib/local-day'
 import { mergeDayScheduleDisplayItems, groupScheduleItemsByDay, type DayScheduleDisplayItem } from '@/components/calendar/dayScheduleItems'
 import { CalendarDayView } from '@/components/calendar/CalendarDayView'
@@ -61,7 +61,7 @@ export default async function BarnDashboardPage({
       membershipId = membership.id
       userRole = membership.role as 'manager' | 'trainer' | 'rider'
 
-      todayStr = instantToLocalWallClock(new Date(), barn.timezone).slice(0, 10)
+      todayStr = barnToday(barn.timezone)
       const { date: requestedDate, view: requestedView } = await searchParams
       selectedDate = requestedDate && isValidDateString(requestedDate) ? requestedDate : todayStr
       view = requestedView === 'week' ? 'week' : 'day'
@@ -156,7 +156,7 @@ export default async function BarnDashboardPage({
                 </Button>
               </div>
             )}
-            <DocumentRemindersSection slug={slug} dueDocuments={dueDocuments} />
+            <DocumentRemindersSection slug={slug} today={todayStr} dueDocuments={dueDocuments} />
           </div>
         </section>
       )}

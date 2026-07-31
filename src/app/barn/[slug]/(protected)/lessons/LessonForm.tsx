@@ -42,6 +42,7 @@ export function LessonForm({
   currentMembershipId,
   tiers,
   defaultInstructorCut,
+  todayStr,
   initialLesson,
   initialNotes,
   getProjectedExhaustion,
@@ -58,6 +59,10 @@ export function LessonForm({
   currentMembershipId: string
   tiers: LessonTier[]
   defaultInstructorCut: number
+  /** The barn's own calendar day ("YYYY-MM-DD"), computed server-side via `barnToday` — the
+   *  month calendar's past-day cutoff, which has to sit in the same frame as every other date
+   *  on that grid. Not `localToday()`: the viewer's zone may differ from the barn's (#1149). */
+  todayStr: string
   initialLesson?: LessonDetail
   initialNotes?: {
     horses: Array<{ id: string; name: string; horse_notes: string | null }>
@@ -263,7 +268,7 @@ export function LessonForm({
     selectedRiderIds,
     hour: selectedHour,
     thresholdsByHorseId,
-    todayStr: localToday(),
+    todayStr,
     excludeLessonId: initialLesson?.id ?? null,
   })
 

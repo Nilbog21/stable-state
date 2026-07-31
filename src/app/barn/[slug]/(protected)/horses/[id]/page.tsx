@@ -18,6 +18,7 @@ import { EmptyState } from '@/components/EmptyState'
 import { ExhaustionBar } from '@/components/ExhaustionBar'
 import { LocalDateTime } from '@/components/LocalDateTime'
 import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
+import { barnToday } from '@/lib/barn-timezone'
 import {
   updateHorseAction,
   deleteHorseDocumentAction,
@@ -266,7 +267,7 @@ export default async function HorseDetailPage({
                           ) : (
                             doc.reminder_date ?? '—'
                           )}
-                          <ReminderDueBadge reminderDate={doc.reminder_date} />
+                          <ReminderDueBadge reminderDate={doc.reminder_date} today={barnToday(barn.timezone)} />
                         </div>
                       </Td>
                       {role === 'manager' && (

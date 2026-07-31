@@ -17,6 +17,7 @@ const baseProps = {
   currentMembershipId: 'user-1',
   tiers: [sampleTier],
   defaultInstructorCut: 25,
+  todayStr: '2026-06-01',
 }
 
 describe('computeUnpaidWarn', () => {
@@ -1014,6 +1015,14 @@ describe('LessonForm — month conflict calendar', () => {
     await act(async () => { await Promise.resolve() })
     return { ...result, getScheduleRange }
   }
+
+  // #1149 -- todayStr is the barn's own day, computed server-side. A barn a day ahead of the
+  // viewer greys out the viewer's own day, since it is already past in barn time.
+  it('should_grey_out_the_viewers_own_day_when_the_barn_is_already_a_day_ahead', async () => {
+    await renderWithCalendar([], { todayStr: '2026-06-02' })
+
+    expect(screen.getByRole('button', { name: '2026-06-01' }).getAttribute('data-past')).toBe('true')
+  })
 
   it('should_replace_the_native_date_input_with_the_month_calendar', async () => {
     const { container } = await renderWithCalendar()

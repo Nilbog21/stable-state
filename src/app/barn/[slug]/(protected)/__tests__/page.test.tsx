@@ -16,8 +16,8 @@ vi.mock('@/components/calendar/CalendarWeekView', () => ({
 }))
 
 vi.mock('../DocumentRemindersSection', () => ({
-  DocumentRemindersSection: ({ slug, dueDocuments }: { slug: string; dueDocuments: { id: string }[] }) => (
-    <div data-testid="document-reminders" data-slug={slug} data-due-count={dueDocuments.length} />
+  DocumentRemindersSection: ({ slug, today, dueDocuments }: { slug: string; today: string; dueDocuments: { id: string }[] }) => (
+    <div data-testid="document-reminders" data-slug={slug} data-today={today} data-due-count={dueDocuments.length} />
   ),
 }))
 
@@ -378,6 +378,17 @@ describe('BarnDashboardPage', () => {
     render(jsx)
 
     expect(screen.getByTestId('document-reminders').getAttribute('data-slug')).toBe('green-acres')
+  })
+
+  // #1149 -- the due/not-yet-due split is the barn's own day, the same one the Day view heading
+  // already uses, rather than a re-derivation from the viewer's browser clock inside the component.
+  it('should_pass_a_barn_local_today_to_document_reminders_section', async () => {
+    vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
+
+    const jsx = await renderPage()
+    render(jsx)
+
+    expect(screen.getByTestId('document-reminders').getAttribute('data-today')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
   })
 
   it('should_not_call_getDueDocuments_for_trainer', async () => {

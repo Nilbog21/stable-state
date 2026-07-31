@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { createMockBarn, createMockMembership, createMockHorse, createMockUser } from '@/test/fixtures'
 
@@ -434,6 +434,51 @@ describe('HorseDetailPage', () => {
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
     expect(screen.getByText('coggins.pdf')).toBeDefined()
+  })
+
+  // #1149 -- the reminder badge's cutoff is the barn's own day, not the viewer's. At this instant
+  // a Pacific barn is still on Mar 1 while the pinned Eastern viewer's device already reads Mar 2.
+  describe('reminder badge barn-local cutoff', () => {
+    let originalTz: string | undefined
+
+    beforeEach(() => {
+      originalTz = process.env.TZ
+      process.env.TZ = 'America/New_York'
+      vi.useFakeTimers({ toFake: ['Date'] })
+      vi.setSystemTime(new Date('2026-03-02T06:00:00Z'))
+      vi.mocked(requireMembership).mockResolvedValue({
+        user: mockUser as any,
+        barn: { ...mockBarn, timezone: 'America/Los_Angeles' },
+        membership: managerMembership,
+      })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+      process.env.TZ = originalTz
+    })
+
+    it('should_not_flag_a_reminder_as_due_when_it_is_still_future_in_barn_time', async () => {
+      vi.mocked(getDocumentsWithUrls).mockResolvedValue([
+        { doc: { ...mockDoc, reminder_date: '2026-03-02' }, signedUrl: 'https://example.com/signed' },
+      ] as any)
+
+      const jsx = await HorseDetailPage({ params: pageParams })
+      render(jsx)
+
+      expect(screen.queryByText(/reminder due/i)).toBeNull()
+    })
+
+    it('should_flag_a_reminder_already_reached_in_barn_time_as_due', async () => {
+      vi.mocked(getDocumentsWithUrls).mockResolvedValue([
+        { doc: { ...mockDoc, reminder_date: '2026-03-01' }, signedUrl: 'https://example.com/signed' },
+      ] as any)
+
+      const jsx = await HorseDetailPage({ params: pageParams })
+      render(jsx)
+
+      expect(screen.getByText(/reminder due/i)).toBeDefined()
+    })
   })
 
   it('should_render_no_documents_message_when_list_is_empty_for_manager', async () => {

@@ -41,6 +41,7 @@ const baseProps = {
   tiers: [mockTier],
   action: vi.fn().mockResolvedValue({ error: null }),
   defaultInstructorCut: 25,
+  todayStr: '2026-06-01',
 }
 
 describe('LessonForm (edit mode)', () => {

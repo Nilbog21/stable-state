@@ -2,6 +2,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getRecentRecipients, getRecentExpenseTypes } from '@/lib/db/expenses'
 import { createExpenseAction } from '@/app/actions/expenses'
+import { barnToday } from '@/lib/barn-timezone'
 import { ExpenseForm } from '../ExpenseForm'
 
 export default async function NewExpensePage({
@@ -31,6 +32,7 @@ export default async function NewExpensePage({
         recentRecipients={recentRecipients}
         recentExpenseTypes={recentExpenseTypes}
         defaultDate={new Date().toISOString().slice(0, 10)}
+        todayStr={barnToday(barn.timezone)}
         onSave={save}
       />
     </main>

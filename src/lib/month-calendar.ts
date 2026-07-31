@@ -24,7 +24,7 @@ const EXERTION_WINDOW_MS = 3 * 24 * 60 * 60 * 1000
 const BAND_SEVERITY: Record<ExhaustionBand, number> = { low: 0, moderate: 1, high: 2 }
 
 export interface DayDecoration {
-  /** Earlier than today in the viewer's own timezone. Suppresses every other signal. */
+  /** Earlier than today in the barn's own timezone. Suppresses every other signal. */
   past: boolean
   /** Projected-exertion band; non-null only when at least one horse is selected. */
   band: ExhaustionBand | null
@@ -42,14 +42,8 @@ export interface DayDecorationOptions {
    *  on midnight, so the heatmap tracks the Hour dropdown the way ExhaustionBar does. */
   hour: number
   thresholdsByHorseId: Record<string, { high: number; moderate: number }>
-  // ponytail: known limitation — this is the viewer's own day (local-day.ts's localToday),
-  // while every other date here is a barn-local day, so a viewer whose device timezone differs
-  // from barns.timezone can see the past/future cutoff land a day off near midnight. Accepted
-  // for now on the assumption that users are in the barn's timezone; the app makes the same
-  // viewer-local assumption in several other places, so the fix is a cross-app audit rather
-  // than a one-line change here. Upgrade path: pass a barn-local todayStr computed server-side
-  // with instantToLocalWallClock(new Date(), barn.timezone), as the dashboard Day view does.
-  /** "YYYY-MM-DD" for today, viewer-local. */
+  /** "YYYY-MM-DD" for today in the barn's own timezone (#1149, `barnToday`) — the same frame
+   *  every other date on this grid is in. */
   todayStr: string
   /** In edit mode, the lesson being edited — it must not count against itself. */
   excludeLessonId?: string | null

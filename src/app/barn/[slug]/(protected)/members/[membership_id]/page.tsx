@@ -15,6 +15,7 @@ import { InstructorAccess } from './InstructorAccess'
 import { RemoveMemberButton } from './RemoveMemberButton'
 import { ReminderDateCell } from '@/components/documents/ReminderDateCell'
 import { ReminderDueBadge } from '@/components/documents/ReminderDueBadge'
+import { barnToday } from '@/lib/barn-timezone'
 import { Th, Td, TableActions } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 import { deleteDocumentAction, updateDocumentReminderDateAction, updateContactInfoAction, setCanInstructAction, revokeInviteTokenAction, removeMemberAction, deleteProfilePhotoAction } from './actions'
@@ -306,7 +307,7 @@ export default async function MemberDetailPage({
                         ) : (
                           doc.reminder_date ?? '—'
                         )}
-                        <ReminderDueBadge reminderDate={doc.reminder_date} />
+                        <ReminderDueBadge reminderDate={doc.reminder_date} today={barnToday(barn.timezone)} />
                       </div>
                     </Td>
                     <TableActions>

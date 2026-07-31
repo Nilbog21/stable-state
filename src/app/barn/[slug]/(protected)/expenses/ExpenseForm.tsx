@@ -3,7 +3,6 @@
 import { useActionState, useState } from 'react'
 import { getMostCommonExpenseTypeAction, type ExpenseFormState } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
-import { localToday } from '@/lib/local-day'
 import type { PaymentType } from '@/lib/db/types'
 
 const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
@@ -25,6 +24,12 @@ type ExpenseFormProps = {
   recentRecipients: string[]
   recentExpenseTypes: string[]
   defaultDate?: string
+  /** The barn's own calendar day, from `barnToday` (#1149) — required rather than defaulted to
+   *  the viewer's clock, which would put this comparison in the wrong frame for anyone whose
+   *  device timezone differs from the barn's. `defaultDate` sits on the other side of that rule:
+   *  it seeds the user's own input rather than comparing against barn data, so it should be
+   *  viewer-local, not barn-local. */
+  todayStr: string
   initial?: ExpenseFormInitial
   submitLabel?: string
   onSave: (state: ExpenseFormState, fd: FormData) => Promise<ExpenseFormState>
@@ -50,13 +55,14 @@ export function ExpenseForm({
   recentRecipients,
   recentExpenseTypes,
   defaultDate,
+  todayStr,
   initial,
   submitLabel = 'Add Expense',
   onSave,
 }: ExpenseFormProps) {
   const [state, formAction] = useActionState(onSave, { error: null })
   const [expenseDate, setExpenseDate] = useState(defaultDate ?? '')
-  const isPastDate = expenseDate !== '' && expenseDate < localToday()
+  const isPastDate = expenseDate !== '' && expenseDate < todayStr
   const [expenseTime, setExpenseTime] = useState(initial?.expenseTime ?? '')
   const [recipient, setRecipient] = useState(initial?.recipient ?? '')
   const [lastCheckedRecipient, setLastCheckedRecipient] = useState(initial?.recipient ?? '')

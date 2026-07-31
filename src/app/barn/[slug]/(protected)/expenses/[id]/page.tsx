@@ -4,6 +4,7 @@ import { getHorsesByBarn } from '@/lib/db/horses'
 import { getExpenseById, getRecentRecipients, getRecentExpenseTypes } from '@/lib/db/expenses'
 import { updateExpenseAction } from '@/app/actions/expenses'
 import { Button } from '@/components/ui/Button'
+import { barnToday } from '@/lib/barn-timezone'
 import { ExpenseForm } from '../ExpenseForm'
 import { AppointmentDetail } from './AppointmentDetail'
 
@@ -54,6 +55,7 @@ export default async function EditExpensePage({
         recentRecipients={recentRecipients}
         recentExpenseTypes={recentExpenseTypes}
         defaultDate={expense.expense_date}
+        todayStr={barnToday(barn.timezone)}
         initial={{
           recipient: expense.recipient,
           expenseType: expense.expense_type,
