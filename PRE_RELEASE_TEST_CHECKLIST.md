@@ -719,6 +719,33 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet
 - [ ] (e2e-candidate) That lesson's row names its horse and rider (not raw ids)
 - [ ] (e2e-candidate) A member created earlier in this phase appears by name (not a raw id) on the Members sheet
+- [ ] (e2e-candidate) **Date/Time Added** is the first column on the Horses sheet
+- [ ] (e2e-candidate) **Date/Time** is the first column on the Lessons sheet
+- [ ] (e2e-candidate) It is also the first column on the Horse Expenses sheet
+- [ ] (e2e-candidate) It is also the first column on the All Transactions sheet
+- [ ] (e2e-candidate) **Date/Time Added** is the first column on the Members sheet
+- [ ] (e2e-candidate) It is also the first column on the Documents sheet
+- [ ] (e2e-candidate) **Start Date** is the first column on the Agreements sheet
+- [ ] (e2e-candidate) **Period** is the first column on the Agreement Charges sheet
+- [ ] (e2e-candidate) The Horses sheet's rows run newest-first by that first column
+- [ ] (e2e-candidate) The All Transactions sheet's rows also run newest-first
+- [ ] (e2e-candidate) The Agreements sheet's rows also run newest-first, by Start Date
+- [ ] (e2e-candidate) The header row is bold on every sheet
+- [ ] (e2e-candidate) The header row is visibly taller than a data row, with its text vertically centered
+- [ ] (e2e-candidate) An expense's date and time appear together in that one **Date/Time** cell, not in two columns
+- [ ] (e2e-candidate) An expense entered without a time shows just its date there, with no `12:00 AM`
+- [ ] (e2e-candidate) A date cell is a real date to Excel, not text — Format Cells reports category Date, and switching the column to General turns it into a serial number
+- [ ] (e2e-candidate) Dates render zero-padded (`07/15/2026`, not `7/15/2026`) so they are all the same width
+- [ ] (e2e-candidate) Date columns are left-justified, so a date-only row lines its date up with a date+time row's date
+- [ ] (e2e-candidate) The All Transactions sheet has no `Lesson ID` column
+- [ ] (e2e-candidate) It has no `Lesson Rider ID` column
+- [ ] (e2e-candidate) It has no `Agreement Charge ID` column
+- [ ] (e2e-candidate) It has no `Expense ID` column
+- [ ] (e2e-candidate) An `expense` row on the All Transactions sheet shows a negative amount
+- [ ] (e2e-candidate) An `instructor_payout` row there also shows a negative amount
+- [ ] (e2e-candidate) A `lesson_fee` row there still shows a positive amount
+- [ ] (e2e-candidate) Amounts on that sheet render as currency (a `$`, two decimals), not as bare numbers
+- [ ] (e2e-candidate) Every column is wide enough to read its contents without manual resizing
 
 Notifications and profile:
 
