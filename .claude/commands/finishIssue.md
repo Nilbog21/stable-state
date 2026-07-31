@@ -166,7 +166,7 @@ Only fall back to telling the user to resolve it themselves (e.g. via `/reviewIs
 
 > "The following checks did not pass: {list}. Fix these before merging."
 
-Stop. Do not continue. (A `skipping` e2e check is *not* a failure — the script counts `SKIPPED` as passing, which is expected when the PR doesn't touch e2e-relevant paths.)
+Stop. Do not continue.
 
 **No verdict line at all (exit 4)** — the script's own `gh` or `jq` call failed (network blip, rate limit, expired auth), not CI. Silence is never a pass, and hand-polling `gh pr checks` is not the fallback — that's the loop this script exists to replace. Re-run the script once; if it exits silently again, stop and ask the user to check `gh auth status` and their network. Never merge without a `CI: pass`.
 

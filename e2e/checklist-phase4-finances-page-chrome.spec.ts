@@ -1,3 +1,4 @@
+// covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addExpense, addHorse, addPaidLesson, addTier, addUnpaidLesson } from './support/fixtures'
 import { formatMonthParam } from '@/lib/finances-month'

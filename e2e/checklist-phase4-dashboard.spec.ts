@@ -1,3 +1,7 @@
+// covers: src/app/barn/[slug]/(protected)/page.tsx
+// covers: src/app/barn/[slug]/(protected)/DocumentRemindersSection.tsx
+// covers: src/app/barn/[slug]/(protected)/horses/**
+// covers: src/components/calendar/**
 import { test, expect, withBarn, type Page } from './support/test'
 import {
   addExpense,

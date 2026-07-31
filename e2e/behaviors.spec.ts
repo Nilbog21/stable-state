@@ -1,3 +1,5 @@
+// covers: src/app/barn/[slug]/(protected)/lessons/**
+// covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn } from './support/test'
 import { addHorse, addPaidLesson, addTier, daysFromNow } from './support/fixtures'
 

@@ -133,7 +133,19 @@ If an item recommends running the local checklist e2e suite (`npm run test:check
 
 **Stale-branch check before running the checklist suite:** whenever the checklist suite command above is about to be printed, first run `git -C {worktree-path} fetch origin {base} && git -C {worktree-path} rev-list HEAD..origin/{base} --count`. If the count is nonzero, print a warning before the command: "This branch is {N} commits behind `origin/{base}` — checklist-suite failures may be stale fixes from `{base}` reappearing as noise, not new regressions. Consider `git -C {worktree-path} merge origin/{base}` before trusting the results (a merge, not a rebase, so no force-push is needed)." This is advisory only — print the checklist-suite command either way and let the user decide whether to catch up first.
 
-**Mechanical e2e regression check:** independent of whatever the issue's own ACs call for, check `gh pr diff --name-only` for any changed file under `e2e/`. If there are any, run the checklist suite once as a regression check, scoped to just those files: `cd {worktree-path} && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port} --spec {file}`, repeating `--spec` per changed spec file. Drop the `--spec` flags to run the whole suite instead when the change is broad enough to warrant it (a shared fixture, `global-setup.ts`, or `playwright.config.ts`, none of which a per-file filter would cover). Apply the same stale-branch check above before running it.
+**Mechanical e2e regression check:** independent of whatever the issue's own ACs call for, ask the selector what this diff can plausibly break:
+
+```
+cd {worktree-path} && gh pr diff --name-only | bash scripts/select-specs.sh
+```
+
+Every `e2e/*.spec.ts` declares the source paths it exercises in `// covers:` lines, and the selector intersects those with the diff (`scripts/CLAUDE.md` documents the contract; CI lints the declarations). Act on the `mode=` line it prints:
+
+- **`mode=none`** — nothing e2e-relevant changed. Skip this check entirely; don't run the suite "just in case".
+- **`mode=scoped`** — run exactly the specs it lists: `cd {worktree-path} && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port} --spec {file}`, repeating `--spec` per reported spec.
+- **`mode=full`** — a shared-infrastructure path changed. Same command with no `--spec` flags.
+
+Don't second-guess the mode by hand-reading the diff — a blast radius the declarations get wrong is fixed by correcting the `covers:` line, not by widening this one run. Apply the same stale-branch check above before running it.
 
 **Launch that command with the Bash tool's `run_in_background`, and read its results from `{worktree-path}/checklist-suite.log`** — not from the tool result. A full suite run can outrun the Bash tool's 600s foreground ceiling, which loses the output entirely; the harness re-invokes you when the process exits, so there's nothing to poll and no interval to tune. The background tool result can also truncate, whereas the script `tee`s the whole run to that log. Pass the `--spec` flags exactly as above — backgrounding changes how the command is launched, not what it is. Keep the `cd {worktree-path} &&` prefix too: the script writes its log next to whatever repo root it starts in, and every worktree holds a copy of the script, so launching it from another worktree's cwd succeeds silently and leaves you reading a stale log at the path below.
 

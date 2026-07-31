@@ -1,3 +1,6 @@
+// covers: src/app/barn/[slug]/(protected)/page.tsx
+// covers: src/app/barn/[slug]/(protected)/DocumentRemindersSection.tsx
+// covers: src/components/calendar/**
 import { test, expect, withBarn } from './support/test'
 import { addHorse, addLeaseCharge, addTier, addUnpaidLesson, daysFromNow } from './support/fixtures'
 

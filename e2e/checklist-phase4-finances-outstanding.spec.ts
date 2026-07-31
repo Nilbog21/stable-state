@@ -1,3 +1,6 @@
+// covers: src/app/barn/[slug]/(protected)/finances/**
+// covers: src/app/barn/[slug]/(protected)/expenses/**
+// covers: src/app/barn/[slug]/(protected)/lessons/[id]/cancel-rider/**
 import { test, expect, withBarn, type Page } from './support/test'
 import {
   addExpense,

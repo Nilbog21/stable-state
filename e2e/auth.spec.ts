@@ -1,3 +1,4 @@
+// covers: src/app/barn/[slug]/(protected)/page.tsx
 import { test, expect, withBarn } from './support/test'
 
 const barn = withBarn('auth')
