@@ -39,6 +39,7 @@ function renderForm(overrides: Partial<Parameters<typeof ExpenseForm>[0]> = {}) 
       recentRecipients={recentRecipients}
       recentExpenseTypes={recentExpenseTypes}
       defaultDate="2026-07-04"
+      todayStr="2026-07-04"
       onSave={onSave}
       {...overrides}
     />
@@ -85,6 +86,18 @@ describe('ExpenseForm', () => {
   it('should_prefill_date_from_defaultDate', () => {
     renderForm()
     expect((screen.getByLabelText(/date/i) as HTMLInputElement).value).toBe('2026-07-04')
+  })
+
+  // The faked clock puts the viewer on 2026-07-04, so a barn already on 2026-07-05 is the
+  // case #1149 is about: the date is past in barn time but not in the viewer's own (#1149).
+  it('should_hide_time_field_when_date_is_past_in_barn_time', () => {
+    renderForm({ todayStr: '2026-07-05' })
+    expect(screen.queryByLabelText(/time/i)).toBeNull()
+  })
+
+  it('should_show_time_field_when_date_is_not_yet_past_in_barn_time', () => {
+    renderForm({ todayStr: '2026-07-03' })
+    expect(screen.queryByLabelText(/time/i)).not.toBeNull()
   })
 
   it('should_render_a_checkbox_for_each_horse', () => {
