@@ -30,8 +30,10 @@ export interface DayDecoration {
   band: ExhaustionBand | null
   /** Rider-only flat "something scheduled" tint. */
   scheduled: boolean
-  /** A selected horse already has a lesson or expense on this exact day, or a barn-wide
-   *  appointment (#1147) is booked that day — those name no horse but concern every horse. */
+  /** Something already booked collides with the current selection on this exact day. Three
+   *  ways in: a selected horse has a lesson or appointment; a barn-wide appointment (#1147) is
+   *  booked, which names no horse but concerns every one; or the *selection* is barn-wide
+   *  (#1020's "Entire Barn"), which collides with anything holding a horse. */
   conflict: boolean
 }
 
@@ -45,8 +47,12 @@ export interface DayDecorationOptions {
   /** "YYYY-MM-DD" for today in the barn's own timezone (#1149, `barnToday`) — the same frame
    *  every other date on this grid is in. */
   todayStr: string
-  /** In edit mode, the lesson being edited — it must not count against itself. */
-  excludeLessonId?: string | null
+  /** The appointment form's "Entire Barn" (#1020) — the mirror of #1147's barn-wide *item*.
+   *  Such a selection ticks no horses, so without this the horse branch below is skipped and the
+   *  grid shows nothing exactly when the appointment reaches the most horses. */
+  selectionAppliesToAllHorses?: boolean
+  /** In edit mode, the lesson or appointment being edited — it must not count against itself. */
+  excludeItemId?: string | null
 }
 
 /** All 42 dates of `month`'s ("YYYY-MM") Sunday-start grid, spilling into the
@@ -104,7 +110,7 @@ export function computeDayDecorations(
   items: ScheduleItem[],
   opts: DayDecorationOptions
 ): Record<string, DayDecoration> {
-  const relevant = opts.excludeLessonId ? items.filter((i) => i.id !== opts.excludeLessonId) : items
+  const relevant = opts.excludeItemId ? items.filter((i) => i.id !== opts.excludeItemId) : items
   const horseIds = new Set(opts.selectedHorseIds)
   const riderIds = new Set(opts.selectedRiderIds)
   const hasHorse = opts.selectedHorseIds.length > 0
@@ -118,6 +124,20 @@ export function computeDayDecorations(
     }
 
     const onThisDay = relevant.filter((i) => i.start.slice(0, 10) === date)
+
+    // Checked before the horse branch, since "Entire Barn" leaves the horse selection empty.
+    // No band: an appointment carries no exertion_level, so there is nothing to heat-map.
+    // Events stay excluded for the same reason they are below — a barn event names no horse
+    // in either direction, so it is not a scheduling conflict.
+    if (opts.selectionAppliesToAllHorses) {
+      result[date] = {
+        past: false,
+        band: null,
+        scheduled: false,
+        conflict: onThisDay.some((i) => i.itemType !== 'event'),
+      }
+      continue
+    }
 
     if (hasHorse) {
       result[date] = {

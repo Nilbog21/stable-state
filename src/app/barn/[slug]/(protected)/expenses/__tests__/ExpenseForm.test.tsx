@@ -524,3 +524,48 @@ describe('ExpenseForm — conflict calendar', () => {
     expect(getScheduleRange).toHaveBeenCalledWith('2026-06-28', '2026-08-09')
   })
 })
+
+describe('ExpenseForm — tapped day popup', () => {
+  async function openDay(items: ScheduleItem[]) {
+    renderForm({ getScheduleRange: vi.fn().mockResolvedValue(items) })
+    fireEvent.click(await screen.findByLabelText('2026-07-15'))
+  }
+
+  it('should_show_an_appointments_server_built_label', async () => {
+    await openDay([
+      createMockScheduleItem({
+        id: 'a1',
+        itemType: 'expense',
+        start: '2026-07-15T09:00:00',
+        label: 'Farrier — Dr. Hoof',
+      }),
+    ])
+    expect(screen.getByText('Farrier — Dr. Hoof')).toBeTruthy()
+  })
+
+  it('should_name_a_lessons_horses_since_lessons_carry_no_label', async () => {
+    await openDay([
+      createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00', horseIds: ['horse-1'] }),
+    ])
+    expect(screen.getByText('Lesson — Apple')).toBeTruthy()
+  })
+
+  it('should_fall_back_to_a_bare_lesson_label_when_it_names_no_horse', async () => {
+    await openDay([createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00' })])
+    expect(screen.getByText('Lesson')).toBeTruthy()
+  })
+
+  // A lesson can hold a horse this form doesn't list — an inactive one, say, which the new-expense
+  // page filters out of `horses`. The name lookup misses and that id is dropped, not rendered blank.
+  it('should_drop_a_horse_id_the_form_cannot_name', async () => {
+    await openDay([
+      createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00', horseIds: ['horse-gone'] }),
+    ])
+    expect(screen.getByText('Lesson')).toBeTruthy()
+  })
+
+  it('should_report_an_empty_day_as_having_nothing_scheduled', async () => {
+    await openDay([])
+    expect(screen.getByText('Nothing scheduled for this day.')).toBeTruthy()
+  })
+})
