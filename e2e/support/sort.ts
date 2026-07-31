@@ -23,14 +23,18 @@
 // bare `tapSort`. The tap whose result the test asserts is always a `tapSort`.
 //
 // The one exception is a *precondition* tap. A "second tap flips it to ▼" test has to get the
-// column into the ▲ state first, and that first tap does settle — otherwise the second tap can
-// land before the first has been applied and the test is racing itself. Settling on ▲ cannot
-// pre-establish a claim about ▼, so the circularity this module exists to prevent isn't in
-// play. The rule is about the indicator being *asserted*, not about the call appearing at all.
+// column into the ▲ state first, and that first tap does settle. Not because the taps would
+// otherwise race: `useSortableRows`'s `toggleSort` uses a functional updater, so two rapid taps
+// net two flips whether or not a render committed in between. It settles so that a precondition
+// that never landed fails on the setup line instead of surfacing as a baffling ▼ assertion
+// failure — and so the tests still hold if that updater is ever refactored to close over render
+// scope. Settling on ▲ cannot pre-establish a claim about ▼, so the circularity this module
+// exists to prevent isn't in play. The rule is about the indicator being *asserted*, not about
+// the call appearing at all.
 //
 // `tapSortAndSettle` waits on the control it just tapped rather than on the thead at large: on
 // the first tap the ▲ is still sitting on the previously-active column, so a table-wide wait
-// would already be satisfied and would return before the re-sort had happened at all (#1090).
+// would already be satisfied and would return before the re-sort had happened at all (#1091).
 
 import type { Locator } from '@playwright/test'
 
@@ -65,7 +69,9 @@ export function tapSort(control: Locator): Promise<void> {
 }
 
 /**
- * Taps a sort control and blocks until `indicator` lands on it. For row-order tests only.
+ * Taps a sort control and blocks until `indicator` lands on it. For a tap whose result is read
+ * one-shot: a row-order test's taps, or the ▲ precondition of a ▼ indicator test. Never for the
+ * tap an indicator test asserts on — see the module comment.
  * `indicator` is passed in rather than derived from a tap counter, so a test that taps twice
  * with a read in between still names the right glyph for each tap.
  *
