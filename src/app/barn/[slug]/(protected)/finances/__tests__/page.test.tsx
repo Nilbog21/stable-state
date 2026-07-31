@@ -1305,7 +1305,7 @@ describe('FinancesPage', () => {
 
   it('should_surface_an_orphaned_expense_as_unattributed_on_the_horse_tab_instead_of_dropping_it', async () => {
     // The $90 gap: totalExpenses includes it, the by-horse breakdown doesn't (deleted
-    // horse_expenses record, collected transaction kept — see deleteExpense).
+    // appointments record, collected transaction kept — see deleteExpense).
     vi.mocked(getExpenseFinancialSummary).mockResolvedValue({
       totalExpenses: 6865,
       breakdown: [{ horseId: 'horse-1', horseName: 'Thunderbolt', totalExpenses: 6775 }],
@@ -1337,7 +1337,7 @@ describe('FinancesPage', () => {
 
   it('should_render_the_reconciliation_footer_on_the_recipient_tab_when_every_expense_that_month_is_orphaned', async () => {
     // #971 review fix: a month where the only expense activity is a fully orphaned
-    // (deleted horse_expenses, collected transaction kept) record has zero real
+    // (deleted appointments row, collected transaction kept) record has zero real
     // recipient rows — the tab's Unattributed total must still surface, not vanish
     // behind the "No expenses" EmptyState.
     vi.mocked(getExpenseFinancialSummary).mockResolvedValue({ totalExpenses: 90, breakdown: [] })

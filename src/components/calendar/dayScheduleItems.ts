@@ -1,8 +1,8 @@
-import type { ScheduleItem, LessonWithDetails, ExpenseWithHorses, ScheduledExpense, BarnEvent } from '@/lib/db/types'
+import type { ScheduleItem, LessonWithDetails, ExpenseWithHorses, ScheduledAppointment, BarnEvent } from '@/lib/db/types'
 
 export type DayScheduleDisplayItem =
   | { itemType: 'lesson'; id: string; lesson: LessonWithDetails }
-  | { itemType: 'expense'; id: string; expense: ScheduledExpense }
+  | { itemType: 'expense'; id: string; expense: ScheduledAppointment }
   | { itemType: 'event'; id: string; event: BarnEvent }
 
 // Walks `items` (already correctly sorted by getScheduleForRange) and resolves each id
@@ -27,7 +27,7 @@ export function mergeDayScheduleDisplayItems(
     } else if (item.itemType === 'expense') {
       const expense = expensesById.get(item.id)
       // getScheduleForRange only ever surfaces expense ids with a non-null expense_time.
-      if (expense) result.push({ itemType: 'expense', id: item.id, expense: expense as ScheduledExpense })
+      if (expense) result.push({ itemType: 'expense', id: item.id, expense: expense as ScheduledAppointment })
     } else {
       const event = eventsById.get(item.id)
       if (event) result.push({ itemType: 'event', id: item.id, event })

@@ -1,4 +1,4 @@
-import type { Agreement, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledExpense, ScheduleItem } from '@/lib/db/types'
+import type { Agreement, Appointment, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledAppointment, ScheduleItem } from '@/lib/db/types'
 
 export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
@@ -245,20 +245,29 @@ export function createMockBarnEvent(overrides: Partial<BarnEvent> = {}): BarnEve
   }
 }
 
-export function createMockHorseExpense(overrides: Partial<HorseExpense> = {}): HorseExpense {
+// A bare `appointments` row as the DB returns it (#1148) — no amount/payment_type, those
+// live on appointment_costs and are flattened back on by the DAL.
+export function createMockAppointment(overrides: Partial<Appointment> = {}): Appointment {
   return {
     id: 'expense-1',
     barn_id: 'barn-1',
     expense_date: '2026-07-01',
     expense_time: null,
-    amount: 100,
     recipient: 'Dr. Smith',
     expense_type: 'Veterinary',
     notes: null,
     applies_to_all_horses: false,
-    payment_type: null,
     created_at: '',
     updated_at: '',
+    ...overrides,
+  }
+}
+
+export function createMockHorseExpense(overrides: Partial<HorseExpense> = {}): HorseExpense {
+  return {
+    ...createMockAppointment(),
+    amount: 100,
+    payment_type: null,
     ...overrides,
   }
 }
@@ -272,12 +281,12 @@ export function createMockExpenseWithHorses(overrides: Partial<ExpenseWithHorses
   }
 }
 
-// Builds a ScheduledExpense (expense_time preset to 10:00) for the dashboard card/sections tests.
-export function makeExpense(overrides: Partial<ScheduledExpense> = {}): ScheduledExpense {
+// Builds a ScheduledAppointment (expense_time preset to 10:00) for the dashboard card/sections tests.
+export function makeExpense(overrides: Partial<ScheduledAppointment> = {}): ScheduledAppointment {
   return {
     ...createMockExpenseWithHorses({ expense_time: '10:00:00' }),
     ...overrides,
-  } as ScheduledExpense
+  } as ScheduledAppointment
 }
 
 export function createMockLessonTier(overrides: Partial<LessonTier> = {}): LessonTier {

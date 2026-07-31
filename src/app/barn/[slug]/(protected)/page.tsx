@@ -90,7 +90,14 @@ export default async function BarnDashboardPage({
         getEventsByIds(barn.id, eventIds),
       ])
       // Mirrors the pre-Day-view dashboard: only "planned" expenses (amount IS NULL) are
-      // shown, not every timed expense getScheduleForRange itself returns.
+      // shown, not every timed appointment getScheduleForRange itself returns.
+      //
+      // #1148 made this filter manager-only in effect rather than by role check. Costs live
+      // on the manager-only appointment_costs table now, so a trainer reads `amount` as null
+      // for every appointment and sees the whole appointment schedule, while a manager still
+      // sees just the unpriced ones. That asymmetry is the model's point, not a leak: a
+      // calendar has no business filtering by cost, and the figure a trainer can't read is
+      // exactly the one the split removed from their reach.
       const expenses = expensesRaw.filter((expense) => expense.amount === null)
 
       if (view === 'week') {

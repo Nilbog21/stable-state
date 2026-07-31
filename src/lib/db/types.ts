@@ -257,8 +257,8 @@ export interface ScheduleItem {
   riderIds: string[]
   /** Per-horse `lesson_horses.exertion_level`; always `{}` for expense/event items. */
   exertionByHorseId: Record<string, number>
-  /** `horse_expenses.applies_to_all_horses` (#1147) — a barn-wide appointment carries no
-   *  `expense_horses` rows at all, so `horseIds` is `[]` and this flag is the only signal
+  /** `appointments.applies_to_all_horses` (#1147) — a barn-wide appointment carries no
+   *  `appointment_horses` rows at all, so `horseIds` is `[]` and this flag is the only signal
    *  that it concerns every horse. Always `false` for lesson/event items. */
   appliesToAllHorses: boolean
   /** Display text for expense/event items. `null` for lessons — their callers already
@@ -424,19 +424,29 @@ export interface AgreementCharge {
   created_at: string
 }
 
-export interface HorseExpense {
+/** An `appointments` row exactly as the DB holds it (#1148) — the barn-visible half, with
+ *  no money on it. This is what the expense-writing RPCs return. */
+export interface Appointment {
   id: string
   barn_id: string
   expense_date: string
   expense_time: string | null
-  amount: number | null
   recipient: string
   expense_type: string
   notes: string | null
   applies_to_all_horses: boolean
-  payment_type: PaymentType | null
   created_at: string
   updated_at: string
+}
+
+/** An appointment with its `appointment_costs` row flattened back on (#1148). Both fields
+ *  are `null` when the appointment isn't priced yet — and also for any caller whose session
+ *  can't read `appointment_costs` at all, i.e. a trainer (see `attachCosts` in
+ *  `expenses.ts`). The name is unchanged so every manager-facing expense consumer keeps
+ *  reading `expense.amount`. */
+export interface HorseExpense extends Appointment {
+  amount: number | null
+  payment_type: PaymentType | null
 }
 
 export interface ExpenseWithHorses extends HorseExpense {
@@ -444,7 +454,7 @@ export interface ExpenseWithHorses extends HorseExpense {
   horse_ids: string[]
 }
 
-export interface ScheduledExpense extends ExpenseWithHorses {
+export interface ScheduledAppointment extends ExpenseWithHorses {
   expense_time: string
 }
 

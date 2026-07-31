@@ -1,5 +1,5 @@
 /**
- * Merged, duration-aware schedule read across `lessons`, `horse_expenses`, and
+ * Merged, duration-aware schedule read across `lessons`, `appointments`, and
  * `barn_events` (#1014) for calendars and conflict checking: `getScheduleForRange` plus
  * the pure overlap/merge/role-scoping helpers it composes, and
  * `getNearbyInstructorMembershipIds` for the instructor-proximity notification.
@@ -13,7 +13,7 @@ import { getLessonJunctionRows } from './lesson-finance-queries'
 import type { Role, ScheduleItem } from './types'
 
 /**
- * Merged, duration-aware read of `lessons` + `horse_expenses` + `barn_events` (#1014) for
+ * Merged, duration-aware read of `lessons` + `appointments` + `barn_events` (#1014) for
  * availability/conflict checking (#1013). A UNION across indexed tables isn't a real
  * bottleneck at barn scale — mirrors the existing `agreement_charges` vs. lessons precedent
  * in Finances. Raw-row fetch + merge only, no name resolution — same idiom as
@@ -173,12 +173,12 @@ export function scopeScheduleItemsForRole(items: ScheduleItem[], role: Role, mem
 
 /**
  * `from`/`to` are real UTC instants (matches the old getUpcomingLessons' convention).
- * `timezone` (barns.timezone) is required — horse_expenses.expense_date/expense_time are
+ * `timezone` (barns.timezone) is required — appointments.expense_date/expense_time are
  * barn-local wall-clock digits, not real instants (see expenses.ts:getOutstandingExpenses),
  * so ScheduleItem.start normalizes everything down into that same barn-local frame rather
  * than inventing a wall-clock-to-instant conversion.
  *
- * RLS is respected as-is, no DAL-level role check: horse_expenses/expense_horses SELECT is
+ * RLS is respected as-is, no DAL-level role check: appointments/appointment_horses SELECT is
  * manager + trainer (#1019 added the trainer half so the lesson form's conflict calendar
  * could mark vet/farrier days for a trainer), so a *rider* caller still gets lesson items
  * back with no expense items, silently (zero rows, not an error). barn_events SELECT (#1014)
@@ -280,7 +280,7 @@ export async function getScheduleForRange(
   const toWall = instantToLocalWallClock(new Date(to), timezone)
 
   const { data: expenseData, error: expensesError } = await supabase
-    .from('horse_expenses')
+    .from('appointments')
     .select('id, expense_date, expense_time, expense_type, recipient, applies_to_all_horses')
     .eq('barn_id', barnId)
     .not('expense_time', 'is', null)
@@ -294,21 +294,21 @@ export async function getScheduleForRange(
     .filter((e) => e.wallClock >= fromWall && e.wallClock < toWall)
 
   const expenseIds = expenseCandidates.map((e) => e.id)
-  let expenseHorseRows: { expense_id: string; horse_id: string }[] = []
+  let expenseHorseRows: { appointment_id: string; horse_id: string }[] = []
   if (expenseIds.length) {
     const { data: junctionData, error: junctionError } = await supabase
-      .from('expense_horses')
-      .select('expense_id, horse_id')
+      .from('appointment_horses')
+      .select('appointment_id, horse_id')
       .eq('barn_id', barnId)
-      .in('expense_id', expenseIds)
+      .in('appointment_id', expenseIds)
     if (junctionError) throw junctionError
-    expenseHorseRows = (junctionData ?? []) as { expense_id: string; horse_id: string }[]
+    expenseHorseRows = (junctionData ?? []) as { appointment_id: string; horse_id: string }[]
   }
   const expenseHorseIdsByExpenseId = new Map<string, string[]>()
   for (const row of expenseHorseRows) {
-    const list = expenseHorseIdsByExpenseId.get(row.expense_id) ?? []
+    const list = expenseHorseIdsByExpenseId.get(row.appointment_id) ?? []
     list.push(row.horse_id)
-    expenseHorseIdsByExpenseId.set(row.expense_id, list)
+    expenseHorseIdsByExpenseId.set(row.appointment_id, list)
   }
 
   const scheduleExpenseRows: ScheduleExpenseRow[] = expenseCandidates.map((e) => ({
@@ -320,7 +320,7 @@ export async function getScheduleForRange(
   }))
 
   // event_at, like lesson_at, is a true UTC instant — same real-instant bound as lessons,
-  // no wall-clock coarse/precise split needed (that's only for horse_expenses' zoneless digits).
+  // no wall-clock coarse/precise split needed (that's only for appointments' zoneless digits).
   const { data: eventData, error: eventsError } = await supabase
     .from('barn_events')
     .select('id, event_at, title')

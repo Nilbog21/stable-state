@@ -1,11 +1,11 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
-import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
+import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor, type SeededAppointment } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
-import type { Horse, HorseExpense, LessonTier } from '@/lib/db/types'
+import type { Horse, LessonTier } from '@/lib/db/types'
 
 // Per-horse figures. Every horse's Gross is distinct, and the gross-descending order
 // computeHorseNetIncome returns rows in differs from the name-ascending order the client
@@ -38,7 +38,7 @@ type Seeded = {
   comet: Horse
   willow: Horse
   dancer: Horse
-  bellaExpense: HorseExpense
+  bellaExpense: SeededAppointment
 }
 
 let seeded: Seeded
@@ -278,7 +278,7 @@ test.describe.serial('adding an expense for a horse that already has a lesson', 
   // know what Apollo's Expenses or Net were to begin with.
   let baselineExpenses: number
   let baselineNet: number
-  let addedExpense: HorseExpense
+  let addedExpense: SeededAppointment
 
   test('by_horse_expenses_column_grows_by_the_new_expense_amount @manager', async ({ page }) => {
     await page.goto(financesUrl())

@@ -286,6 +286,12 @@ async function getAgreementsAndCharges(
   return { agreements: agreementRows, charges: chargeRows }
 }
 
+// One sheet, not two, across #1148's appointments/appointment_costs split: getExpensesByBarn
+// flattens each appointment's cost row back onto it, so Amount and Payment Type still land in
+// this sheet's own columns and a second Appointment Costs sheet would only duplicate them at
+// the cost of making the export a join the reader has to perform. Keeps its "Horse Expenses"
+// sheet name for the same reason the manager's route did — this export is manager-only, and a
+// manager is genuinely looking at money here.
 async function getExpensesSheet(barnId: string): Promise<ExpenseBackupRow[]> {
   const expenses = await getExpensesByBarn(barnId)
   return expenses.map((e) => ({
