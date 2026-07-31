@@ -18,7 +18,7 @@ let appointment: Appointment
 const barn = withBarn('phase5-appointments', async ({ supabase, barn }) => {
   const apollo = await addHorse(supabase, barn.id, 'Apollo')
   appointment = await addExpense(supabase, barn, {
-    at: daysFromNow(2),
+    at: daysFromNow(2, barn.timezone),
     time: '14:00',
     recipient: RECIPIENT,
     expenseType: 'Farrier',

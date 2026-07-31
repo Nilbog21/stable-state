@@ -13,11 +13,21 @@ const mockHorse: Horse = createMockHorse()
 const mockRider = { id: 'rider-1', name: 'Alice' }
 const mockRider2 = { id: 'rider-2', name: 'Bob' }
 
+// 10:30Z is 16:00 in the pinned test zone (Asia/Kolkata, +5:30) — a whole viewer-local hour,
+// which is what the edit form's date/hour picker can represent. It seeds the hour from
+// `new Date(lesson_at).getHours()` and drops the minutes, so an instant landing on a
+// half-hour viewer-local (10:00Z → 15:30) does not survive the round trip. That lossiness is
+// a real app bug for any viewer at a non-whole-hour offset, not a property of these tests.
+//
+// Two queued changes each close it independently, and this fixture can go back to a round
+// number once either lands: #1222 deletes the viewer frame, and #1021's replacement picker
+// gains minute granularity (the client asked for it after that issue was written), which
+// stops the truncation at its source.
 const normalLesson: LessonDetail = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:00:00Z',
-  submitted_at: '2026-05-17T10:05:00Z',
+  lesson_at: '2026-05-17T10:30:00Z',
+  submitted_at: '2026-05-17T10:35:00Z',
   lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } }],
 })
 
@@ -926,7 +936,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   it('should_fetch_projected_exhaustion_using_the_prefilled_lesson_date_on_mount', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
     render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1']))
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:30:00.000Z', ['horse-1']))
   })
 
   it('should_render_exhaustion_bar_for_the_pre_checked_horse', async () => {
@@ -945,7 +955,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     // Round-tripping initialLesson.lesson_at through the (local-aware) date/hour
     // picker and back into a UTC instant reproduces the same instant exactly.
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1', 'horse-2']))
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:30:00.000Z', ['horse-1', 'horse-2']))
   })
 
   it('should_not_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {

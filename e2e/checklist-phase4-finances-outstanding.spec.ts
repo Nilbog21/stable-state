@@ -12,6 +12,7 @@ import {
   monthAnchor,
   type SeededAppointment,
 } from './support/fixtures'
+import { BROWSER_TIMEZONE } from './support/timezone'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
@@ -199,12 +200,14 @@ function financesUrl(month = currentMonth()): string {
 
 /**
  * Mirrors LocalDateTime + DATE_ONLY_OPTIONS (src/components/LocalDateTime.tsx): a
- * TIMESTAMPTZ instant renders in the *viewer's* timezone, never UTC. Discriminating only on
- * a machine whose local timezone isn't UTC — the same assumption checklist-timezone.spec.ts
- * already makes about the locally-launched Chromium sharing this process's timezone.
+ * TIMESTAMPTZ instant renders in the *viewer's* timezone, never UTC. The viewer is the pinned
+ * browser context, not this Node process — playwright.config.ts pins the browser and leaves
+ * the runner on the developer's own zone (#1221) — so the zone is named rather than inherited.
+ * Naming it also makes the assertion discriminating on every machine, not just one whose own
+ * zone happens not to be UTC.
  */
 function viewerLocalDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric' }).format(new Date(iso))
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: BROWSER_TIMEZONE }).format(new Date(iso))
 }
 
 function outstandingIncome(page: Page) {
