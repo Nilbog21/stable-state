@@ -1,4 +1,4 @@
--- #999 review follow-up: 20260724003222_lesson_rider_notes_privilege_rls.sql
+-- #999 review follow-up: 20260725005004_lesson_rider_notes_privilege_rls.sql
 -- revoked table-wide SELECT on lesson_riders.rider_notes/private_notes for
 -- authenticated, but updateLessonRiderNotes still did .update(...).select().
 -- single() with no explicit column list -- PostgREST turns that into an
