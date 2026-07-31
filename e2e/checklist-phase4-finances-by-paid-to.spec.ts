@@ -2,6 +2,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, monthAnchor, type SeededAppointment } from './support/fixtures'
+import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { formatMonthParam } from '@/lib/finances-month'
 import type { Horse } from '@/lib/db/types'
 
@@ -174,33 +175,13 @@ async function columnLabels(page: Page): Promise<string[]> {
     )
 }
 
-/**
- * The sort controls currently carrying `indicator`, as a locator rather than as text already
- * read out — so a test whose claim *is* where the indicator sits asserts it with a retrying
- * `toHaveText` and needs no wait of its own to settle the re-render. The ⓘ triggers share
- * these header cells, hence the aria-label exclusion.
- */
-function headersShowing(page: Page, indicator: '▲' | '▼'): Locator {
-  return breakdownTable(page).locator('thead th button:not([aria-label="Info"])').filter({ hasText: indicator })
-}
-
 function header(page: Page, label: RegExp): Locator {
   return breakdownTable(page).locator('thead th').filter({ hasText: label })
 }
 
-/** The header's sort control, as opposed to the ⓘ button that may sit beside it. */
-function sortButton(page: Page, label: RegExp): Locator {
-  return header(page, label).getByRole('button', { name: label })
-}
-
-/**
- * Blocks until the sort indicator has landed on a header, which is how a test knows React has
- * finished re-rendering the sorted rows and a plain (non-retrying) read of them is safe.
- * Locator.waitFor(), deliberately, and not an expect(): the latter is a real assertion and
- * would put a second one into a test that makes a single claim.
- */
-function awaitSortIndicator(page: Page, label: RegExp, indicator: '▲' | '▼'): Promise<void> {
-  return header(page, label).locator('button', { hasText: indicator }).waitFor()
+/** The Expenses column's sort control — the only header this tab's sort tests tap. */
+function expensesSort(page: Page): Locator {
+  return sortControl(breakdownTable(page), /^expenses/i)
 }
 
 /** The drill-down's bottom Total is a two-span flex row beneath the table, not a <tfoot>. */
@@ -255,19 +236,17 @@ test('by_paid_to_recipient_header_shows_an_ascending_indicator_on_load @manager'
 
 test('by_paid_to_expenses_header_tap_re_sorts_rows_ascending @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
-  await sortButton(page, /^expenses/i).click()
+  await tapSort(expensesSort(page))
   await expect(columnCells(page, RECIPIENT_COL)).toHaveText([BRIGHT, SMITH, ACE])
 })
 
 // "…and disappears from Recipient" is the same claim as "…appears on Expenses" — one
 // indicator, one place — so it is asserted as the exclusive match set rather than as a
-// present-here/absent-there pair. Tapped bare, with no awaitSortIndicator: that helper waits
-// for exactly what this test claims, so calling it here would leave the assertion with
-// nothing left to catch (the shape #1089/#1090/#1091 each landed a fix for).
+// present-here/absent-there pair.
 test('by_paid_to_expenses_header_tap_moves_the_ascending_indicator_off_recipient @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
-  await sortButton(page, /^expenses/i).click()
-  await expect(headersShowing(page, '▲')).toHaveText(['Expenses ▲'])
+  await tapSort(expensesSort(page))
+  await expect(headersShowing(breakdownTable(page), '▲')).toHaveText(['Expenses ▲'])
 })
 
 // Compared against the ascending order this same test just read off the page, rather than
@@ -275,20 +254,19 @@ test('by_paid_to_expenses_header_tap_moves_the_ascending_indicator_off_recipient
 // the first tap produced.
 test('by_paid_to_second_expenses_header_tap_reverses_the_row_order @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
-  await sortButton(page, /^expenses/i).click()
-  await awaitSortIndicator(page, /^expenses/i, '▲')
+  await tapSortAndSettle(expensesSort(page), '▲')
   const ascending = await columnCells(page, RECIPIENT_COL).allInnerTexts()
 
-  await sortButton(page, /^expenses/i).click()
-  await awaitSortIndicator(page, /^expenses/i, '▼')
+  await tapSortAndSettle(expensesSort(page), '▼')
   expect(await columnCells(page, RECIPIENT_COL).allInnerTexts()).toEqual([...ascending].reverse())
 })
 
+// The first tap settles only to establish the ▲ precondition; the second is bare, because ▼ is
+// this test's claim.
 test('by_paid_to_second_expenses_header_tap_flips_the_indicator_to_descending @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
-  await sortButton(page, /^expenses/i).click()
-  await awaitSortIndicator(page, /^expenses/i, '▲')
-  await sortButton(page, /^expenses/i).click()
+  await tapSortAndSettle(expensesSort(page), '▲')
+  await tapSort(expensesSort(page))
   await expect(header(page, /^expenses/i)).toContainText('▼')
 })
 

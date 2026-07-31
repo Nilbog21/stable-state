@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
+import { sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 
@@ -185,16 +186,6 @@ function headerCell(page: Page, index: number) {
 }
 
 /**
- * Blocks until the sort indicator has landed on a header, which is how a test knows React has
- * finished re-rendering the sorted rows and a plain (non-retrying) read of them is safe.
- * Locator.waitFor(), deliberately, and not `expect(...).toContainText('▲')`: the latter is a
- * real assertion and would put a second and third one into a test that makes a single claim.
- */
-function awaitSortIndicator(page: Page, index: number) {
-  return headerCell(page, index).locator('button', { hasText: '▲' }).waitFor()
-}
-
-/**
  * Each header's own label text — the first button (sortable column) or span (not) inside the
  * th, which is the label element in both SortableTh modes. Excludes InfoPopover's trailing ⓘ
  * trigger, and strips the ▲/▼ sort indicator the active column's label carries.
@@ -312,7 +303,7 @@ test('by_rider_rider_header_shows_an_ascending_indicator_on_load @manager', asyn
 
 test('by_rider_gross_header_tap_re_sorts_rows_ascending @manager', async ({ page }) => {
   await page.goto(byRiderUrl())
-  await breakdownTable(page).getByRole('button', { name: 'Gross', exact: true }).click()
+  await tapSort(sortControl(breakdownTable(page), 'Gross'))
   await expect(columnCells(page, 1)).toHaveText([TRAINER_NAME, RIDER_NAME, RIDER2_NAME])
 })
 
@@ -321,12 +312,10 @@ test('by_rider_gross_header_tap_re_sorts_rows_ascending @manager', async ({ page
 // written-out expectation, so the check is about the two columns agreeing with each other.
 test('by_rider_net_header_tap_produces_the_same_order_as_gross @manager', async ({ page }) => {
   await page.goto(byRiderUrl())
-  await breakdownTable(page).getByRole('button', { name: 'Gross', exact: true }).click()
-  await awaitSortIndicator(page, 1)
+  await tapSortAndSettle(sortControl(breakdownTable(page), 'Gross'), '▲')
   const orderByGross = await columnCells(page, 1).allInnerTexts()
 
   await page.goto(byRiderUrl())
-  await breakdownTable(page).getByRole('button', { name: 'Net', exact: true }).click()
-  await awaitSortIndicator(page, 3)
+  await tapSortAndSettle(sortControl(breakdownTable(page), 'Net'), '▲')
   expect(await columnCells(page, 1).allInnerTexts()).toEqual(orderByGross)
 })

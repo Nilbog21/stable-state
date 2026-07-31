@@ -2,6 +2,7 @@
 // covers: src/app/barn/[slug]/(protected)/settings/tiers/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
+import { headersShowing, sortControl, sortControls, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
@@ -116,28 +117,10 @@ function breakdownTable(page: Page) {
   return page.locator('main table:has(tfoot)')
 }
 
-/**
- * The sortable column headers, excluding each header's ⓘ trigger — SortableTh renders both as
- * <button> inside the same <th>, and only the sort control carries the column label.
- */
-function sortHeaders(page: Page) {
-  return breakdownTable(page).locator('thead th button:not([aria-label="Info"])')
-}
-
 /** Header labels with the sort indicator stripped — the column list, independent of sort state. */
 async function columnLabels(page: Page): Promise<string[]> {
-  const texts = await sortHeaders(page).allTextContents()
+  const texts = await sortControls(breakdownTable(page)).allTextContents()
   return texts.map((text) => text.replace(/[▲▼]/g, '').trim())
-}
-
-/**
- * The headers currently carrying `indicator`, as a locator rather than as text already read
- * out — so the indicator assertions below are auto-retrying `toHaveText` calls and can't race
- * the client-side re-sort. Asserting the full match set (not just the expected header) is what
- * covers "and disappears from the previous column".
- */
-function headersShowing(page: Page, indicator: '▲' | '▼') {
-  return sortHeaders(page).filter({ hasText: indicator })
 }
 
 /** Every body row's cells as text, in render order — the row order the sort produced. */
@@ -172,23 +155,9 @@ function footerRow(page: Page, label: string) {
   return breakdownTable(page).locator('tfoot tr').filter({ hasText: label })
 }
 
-/**
- * Taps a sort header and blocks until the indicator has settled on it.
- *
- * The wait is what makes the row-order tests below sound: sorting is client-side React state,
- * and click() resolves once the event is dispatched, not once the re-render has committed —
- * so bodyRows(), which reads through evaluateAll and therefore does not auto-retry, would
- * otherwise race it and read the pre-tap order. `settlesOn` is passed in rather than derived
- * from a tap counter so a caller that taps twice with a read in between still names the right
- * indicator for each tap.
- *
- * A wait, not an assertion — and used only by the two tests whose claim is about row order, so
- * it never pre-establishes what its caller goes on to assert. The two tests whose claim *is*
- * about the indicator assert it directly with a retrying `toHaveText` instead.
- */
-async function tapSort(page: Page, label: string, settlesOn: '▲' | '▼') {
-  await sortHeaders(page).filter({ hasText: label }).click()
-  await headersShowing(page, settlesOn).filter({ hasText: label }).waitFor()
+/** The Net column's sort control — the only header this tab's sort tests tap. */
+function netSort(page: Page) {
+  return sortControl(breakdownTable(page), 'Net')
 }
 
 // ---------------------------------------------------------------------------
@@ -265,7 +234,7 @@ test('by_tier_shows_empty_state_in_a_month_with_no_collected_income @manager', a
 
 test('by_tier_shows_its_table_in_a_charge_only_month @manager', async ({ page }) => {
   await page.goto(byTierUrl(2))
-  await expect(sortHeaders(page).filter({ hasText: 'Tier' })).toBeVisible()
+  await expect(sortControl(breakdownTable(page), 'Tier')).toBeVisible()
 })
 
 // A charge belongs to no tier, so in a month whose only income is one charge the entire Gross
@@ -293,39 +262,37 @@ test('by_tier_rows_load_sorted_by_tier_name_ascending @manager', async ({ page }
 // once: that the indicator is on Tier, and that it is on nothing else.
 test('by_tier_tier_header_carries_the_ascending_indicator_on_load @manager', async ({ page }) => {
   await page.goto(byTierUrl())
-  await expect(headersShowing(page, '▲')).toHaveText(['Tier ▲'])
+  await expect(headersShowing(breakdownTable(page), '▲')).toHaveText(['Tier ▲'])
 })
 
 test('tapping_the_net_header_sorts_by_net_ascending @manager', async ({ page }) => {
   await page.goto(byTierUrl())
-  await tapSort(page, 'Net', '▲')
+  await tapSortAndSettle(netSort(page), '▲')
   const nets = (await bodyRows(page)).map((cells) => parseMoney(cells[NET]))
   expect(nets).toEqual([...nets].sort((a, b) => a - b))
 })
 
-// Clicked directly rather than through tapSort: the indicator is this checkbox's whole claim,
-// so waiting for it first would leave the assertion with nothing left to catch.
 test('tapping_the_net_header_moves_the_ascending_indicator_to_net @manager', async ({ page }) => {
   await page.goto(byTierUrl())
-  await sortHeaders(page).filter({ hasText: 'Net' }).click()
-  await expect(headersShowing(page, '▲')).toHaveText(['Net ▲'])
+  await tapSort(netSort(page))
+  await expect(headersShowing(breakdownTable(page), '▲')).toHaveText(['Net ▲'])
 })
 
 test('tapping_the_net_header_twice_reverses_the_order @manager', async ({ page }) => {
   await page.goto(byTierUrl())
-  await tapSort(page, 'Net', '▲')
+  await tapSortAndSettle(netSort(page), '▲')
   const ascending = (await bodyRows(page)).map((cells) => cells[TIER])
-  await tapSort(page, 'Net', '▼')
+  await tapSortAndSettle(netSort(page), '▼')
   expect((await bodyRows(page)).map((cells) => cells[TIER])).toEqual([...ascending].reverse())
 })
 
-// First tap goes through tapSort so the second one can't land before the first has been
-// applied; the second is a bare click for the same reason as the test above — ▼ is the claim.
+// The first tap settles only to establish the ▲ precondition; the second is bare, because ▼ is
+// this test's claim.
 test('tapping_the_net_header_twice_flips_the_indicator_to_descending @manager', async ({ page }) => {
   await page.goto(byTierUrl())
-  await tapSort(page, 'Net', '▲')
-  await sortHeaders(page).filter({ hasText: 'Net' }).click()
-  await expect(headersShowing(page, '▼')).toHaveText(['Net ▼'])
+  await tapSortAndSettle(netSort(page), '▲')
+  await tapSort(netSort(page))
+  await expect(headersShowing(breakdownTable(page), '▼')).toHaveText(['Net ▼'])
 })
 
 // ---------------------------------------------------------------------------
