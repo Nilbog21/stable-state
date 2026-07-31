@@ -8,7 +8,7 @@ const baseOpts: DayDecorationOptions = {
   hour: 12,
   thresholdsByHorseId: {},
   todayStr: '2026-03-01',
-  excludeLessonId: null,
+  excludeItemId: null,
 }
 
 describe('getMonthGrid', () => {
@@ -279,14 +279,14 @@ describe('computeDayDecorations — worst band across selected horses', () => {
   })
 })
 
-describe('computeDayDecorations — excluded lesson', () => {
+describe('computeDayDecorations — excluded item', () => {
   const thresholds = { h1: { high: 10, moderate: 6 } }
 
   it('should_not_count_the_excluded_lesson_toward_the_exertion_window', () => {
     const result = computeDayDecorations(
       ['2026-03-10'],
       [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 20 } })],
-      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds, excludeLessonId: 'l1' }
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds, excludeItemId: 'l1' }
     )
 
     expect(result['2026-03-10'].band).toBe('low')
@@ -296,7 +296,19 @@ describe('computeDayDecorations — excluded lesson', () => {
     const result = computeDayDecorations(
       ['2026-03-10'],
       [item({ id: 'l1', start: '2026-03-10T12:00:00', horseIds: ['h1'], exertionByHorseId: { h1: 3 } })],
-      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds, excludeLessonId: 'l1' }
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds, excludeItemId: 'l1' }
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+
+  // The appointment form edits an appointment, not a lesson — same field, hence the rename
+  // from excludeLessonId (#1020).
+  it('should_not_let_the_excluded_appointment_raise_a_conflict_dot', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'a1', itemType: 'expense', start: '2026-03-10T12:00:00', horseIds: ['h1'] })],
+      { ...baseOpts, selectedHorseIds: ['h1'], thresholdsByHorseId: thresholds, excludeItemId: 'a1' }
     )
 
     expect(result['2026-03-10'].conflict).toBe(false)
@@ -375,6 +387,62 @@ describe('computeDayDecorations — conflict dot', () => {
     )
 
     expect(result['2026-03-10'].conflict).toBe(false)
+  })
+})
+
+// The mirror of #1147: that fix made a barn-wide *item* conflict with a selected horse; this is
+// a barn-wide *selection* — the appointment form's "Entire Barn" — conflicting with whatever is
+// already booked. It ticks no horses, so without this the grid goes blank exactly when the
+// appointment reaches the most horses.
+describe('computeDayDecorations — barn-wide selection', () => {
+  const barnWideOpts = { ...baseOpts, selectionAppliesToAllHorses: true }
+
+  it('should_flag_a_day_holding_a_lesson_for_any_horse', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', horseIds: ['h2'], exertionByHorseId: { h2: 3 } })],
+      barnWideOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(true)
+  })
+
+  it('should_flag_a_day_holding_another_appointment', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'a1', itemType: 'expense', start: '2026-03-10T09:00:00', horseIds: ['h2'] })],
+      barnWideOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(true)
+  })
+
+  // Same rule the horse-selection branch follows: a barn event names no horse in either
+  // direction, so it is not a scheduling conflict.
+  it('should_not_flag_a_day_holding_only_a_barn_event', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'ev1', itemType: 'event', start: '2026-03-10T09:00:00', label: 'Barn closed' })],
+      barnWideOpts
+    )
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+
+  it('should_not_flag_an_empty_day', () => {
+    const result = computeDayDecorations(['2026-03-10'], [], barnWideOpts)
+
+    expect(result['2026-03-10'].conflict).toBe(false)
+  })
+
+  it('should_not_tint_a_day_since_an_appointment_has_no_exertion_band', () => {
+    const result = computeDayDecorations(
+      ['2026-03-10'],
+      [item({ id: 'l1', start: '2026-03-10T09:00:00', horseIds: ['h2'], exertionByHorseId: { h2: 20 } })],
+      barnWideOpts
+    )
+
+    expect(result['2026-03-10'].band).toBeNull()
   })
 })
 

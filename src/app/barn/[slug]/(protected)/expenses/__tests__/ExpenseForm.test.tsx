@@ -16,6 +16,8 @@ vi.mock('@/app/actions/expenses', () => ({
 
 import { getMostCommonExpenseTypeAction } from '@/app/actions/expenses'
 import { ExpenseForm } from '../ExpenseForm'
+import { createMockScheduleItem } from '@/test/fixtures'
+import type { ScheduleItem } from '@/lib/db/types'
 
 const horses = [
   { id: 'horse-1', name: 'Apple' },
@@ -457,5 +459,68 @@ describe('ExpenseForm', () => {
       const fd = new FormData(form)
       expect(fd.get('occurred_at')).toBeNull()
     })
+  })
+})
+
+// #1020 — the same month conflict calendar the lesson form got in #1019, so a manager booking
+// the farrier can see the horse already has a vet visit or a lesson that day.
+describe('ExpenseForm — conflict calendar', () => {
+  const scheduleItem = (overrides: Partial<ScheduleItem> = {}): ScheduleItem =>
+    createMockScheduleItem({ start: '2026-07-15T09:00:00', ...overrides })
+
+  function renderWithSchedule(items: ScheduleItem[], overrides = {}) {
+    const getScheduleRange = vi.fn().mockResolvedValue(items)
+    const result = renderForm({ getScheduleRange, ...overrides })
+    return { ...result, getScheduleRange }
+  }
+
+  it('should_render_the_month_grid_when_a_schedule_reader_is_supplied', async () => {
+    renderWithSchedule([])
+    expect(await screen.findByLabelText('2026-07-15')).toBeTruthy()
+  })
+
+  it('should_fall_back_to_a_plain_date_input_without_a_schedule_reader', () => {
+    const { container } = renderForm()
+    expect(container.querySelector('input#expense-date[type="date"]')).toBeTruthy()
+  })
+
+  it('should_flag_a_day_where_the_selected_horse_already_has_an_appointment', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-1'] })])
+    fireEvent.click(screen.getByLabelText('Apple'))
+    expect(await screen.findByTestId('conflict-dot-2026-07-15')).toBeTruthy()
+  })
+
+  it('should_not_flag_a_day_whose_only_appointment_belongs_to_another_horse', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-2'] })])
+    fireEvent.click(screen.getByLabelText('Apple'))
+    await screen.findByLabelText('2026-07-15')
+    expect(screen.queryByTestId('conflict-dot-2026-07-15')).toBeNull()
+  })
+
+  it('should_flag_a_booked_day_when_entire_barn_is_checked', async () => {
+    renderWithSchedule([scheduleItem({ id: 'l1', horseIds: ['horse-2'] })])
+    fireEvent.click(screen.getByLabelText('Entire Barn'))
+    expect(await screen.findByTestId('conflict-dot-2026-07-15')).toBeTruthy()
+  })
+
+  it('should_not_flag_the_appointment_being_edited_against_itself', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-1'] })], {
+      excludeItemId: 'a1',
+    })
+    fireEvent.click(screen.getByLabelText('Apple'))
+    await screen.findByLabelText('2026-07-15')
+    expect(screen.queryByTestId('conflict-dot-2026-07-15')).toBeNull()
+  })
+
+  it('should_submit_the_tapped_day_as_expense_date', async () => {
+    const { container } = renderWithSchedule([])
+    fireEvent.click(await screen.findByLabelText('2026-07-15'))
+    expect(new FormData(container.querySelector('form')!).get('expense_date')).toBe('2026-07-15')
+  })
+
+  it('should_request_one_schedule_read_covering_the_displayed_month_grid', async () => {
+    const { getScheduleRange } = renderWithSchedule([])
+    await screen.findByLabelText('2026-07-15')
+    expect(getScheduleRange).toHaveBeenCalledWith('2026-06-28', '2026-08-09')
   })
 })
