@@ -1,4 +1,4 @@
--- Companion to 20260724003220_lesson_rider_notes_privilege_functions.sql: Postgres
+-- Companion to 20260725005003_lesson_rider_notes_privilege_functions.sql: Postgres
 -- has no "all columns except this one" grant, so the table-wide SELECT grant on
 -- lesson_riders is revoked and re-granted for every column except rider_notes/
 -- private_notes -- those are readable only via get_lesson_rider_notes now, the

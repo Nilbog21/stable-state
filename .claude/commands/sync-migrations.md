@@ -46,13 +46,25 @@ Check Supabase migration status, rename pending migrations to the current timest
    - For the first migration, use epoch seconds as-is; for each subsequent one, add 1 second
    - Format each timestamp in UTC (existing migration filenames are UTC-based): `date -u -d @{epoch} +%Y%m%d%H%M%S` — this is GNU date; the BSD/macOS equivalent is `date -u -r {epoch} +%Y%m%d%H%M%S`
    - Rename: `mv supabase/migrations/{old} supabase/migrations/{new_timestamp}_{rest_of_name}`
+   - After **all** renames are done, sweep the repo for references to each old filename and rewrite it to the new one. A pending migration's header comment often cites a sibling that was renamed in the same batch, and `docs/architecture/*.md` cite migration filenames too, so this is repo-wide rather than confined to `supabase/migrations/`:
+     ```
+     git grep -l --untracked --fixed-strings '{old}' | xargs -r sed -i 's/{old}/{new}/g'
+     ```
+     `--untracked` is load-bearing: the migrations being renamed are pending and usually untracked, so a plain `git grep` would miss exactly the sibling-cites-sibling case this is here to fix. Untracked-but-ignored paths (`node_modules/`, `specs/`) are correctly skipped. Record which files each pass rewrote — step 6 reports them.
 
-6. Display the planned renames clearly:
+     Some of the files this rewrites are migrations that have already been applied. That is fine and is the documented exception to the never-edit-an-applied-migration rule — a header comment is inert (see `CLAUDE.md`'s Schema/RLS/RPC verification section).
+
+6. Display the planned renames clearly, followed by any files the sweep rewrote:
    ```
    Renaming migrations:
      20260623003217_add_function.sql → 20260625002301_add_function.sql
      20260623004100_add_index.sql    → 20260625002302_add_index.sql
+
+   Updated references:
+     docs/architecture/rpc.md
+     supabase/migrations/20260625002302_add_index.sql
    ```
+   Omit the `Updated references:` block entirely when the sweep rewrote nothing.
 
 7. Ask: **"Type 'sync' to push these migrations to remote, or anything else to abort:"**
 
