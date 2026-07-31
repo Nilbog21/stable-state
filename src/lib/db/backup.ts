@@ -48,8 +48,13 @@ function barnLocalCell(instant: Date, timezone: string): Date {
   return new Date(instantToLocalWallClock(instant, timezone) + 'Z')
 }
 
-const DATETIME_FMT = 'm/d/yyyy h:mm AM/PM'
-const DATE_FMT = 'm/d/yyyy'
+// Zero-padded, so every rendered date occupies exactly 10 characters. Paired with the
+// left-justification below, that's what lets a reader scan a date column where date-only and
+// date+time rows are interleaved (Horse Expenses) — under the unpadded m/d/yyyy the dates
+// themselves shifted row to row, and under Excel's default right-alignment for dates the
+// date-only rows lined their date up against the timed rows' *time*.
+const DATETIME_FMT = 'mm/dd/yyyy hh:mm AM/PM'
+const DATE_FMT = 'mm/dd/yyyy'
 const MONEY_FMT = '"$"#,##0.00'
 const MAX_COLUMN_WIDTH = 60
 // 2× exceljs's 15-point default row height, so the bolded header has room to breathe.
@@ -480,7 +485,12 @@ function addSheet<T extends object>(
   sheet.columns = columns.map((c) => ({
     header: c.header,
     key: c.key,
-    style: c.numFmt ? { numFmt: c.numFmt } : undefined,
+    // Date columns are left-justified against Excel's right-aligned default for dates — see
+    // DATETIME_FMT. Keyed off the format rather than a separate per-column flag, since
+    // carrying DATETIME_FMT is exactly what makes a column a date column.
+    style: c.numFmt
+      ? { numFmt: c.numFmt, ...(c.numFmt === DATETIME_FMT && { alignment: { horizontal: 'left' as const } }) }
+      : undefined,
     // Auto-size: widest of the header and every value in the column, capped so one long
     // Notes cell can't push the rest of the sheet off screen. Folded rather than spread
     // into Math.max — a sheet with more rows than the engine's argument limit (the
@@ -492,7 +502,10 @@ function addSheet<T extends object>(
     ),
   }))
   const header = sheet.getRow(1)
-  header.font = { bold: true, size: 12 }
+  // Bold only, at the default size: column widths are measured in units of the default font's
+  // character width, so a larger header font renders wider than cellWidth's budget allows and
+  // clips the longest headers.
+  header.font = { bold: true }
   header.height = HEADER_ROW_HEIGHT
   header.alignment = { vertical: 'middle' }
   sheet.addRows(rows)
@@ -506,8 +519,10 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Horses',
     [
-      // Not the bare "Date/Time" the other five sheets use: a horse's row has several dates a
-      // reader could mean, so this one says which one it is.
+      // "Added", not the bare "Date/Time" — this is a created_at, and a horse's row carries
+      // several dates a reader could otherwise mistake it for. Members and Documents say the
+      // same for the same reason; the three sheets whose date is the thing that happened
+      // (Lessons, Horse Expenses, All Transactions) stay on plain "Date/Time".
       { header: 'Date/Time Added', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Name', key: 'name' },
       { header: 'Registered Name', key: 'registeredName' },
@@ -598,7 +613,7 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Members',
     [
-      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
+      { header: 'Date/Time Added', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Name', key: 'name' },
       { header: 'Role', key: 'role' },
       { header: 'Status', key: 'status' },
@@ -616,7 +631,7 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Documents',
     [
-      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
+      { header: 'Date/Time Added', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Owner Type', key: 'ownerType' },
       { header: 'Owner', key: 'owner' },
       { header: 'Record Type', key: 'recordType' },
