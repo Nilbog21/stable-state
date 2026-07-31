@@ -700,6 +700,17 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet
 - [ ] (e2e-candidate) That lesson's row names its horse and rider (not raw ids)
 - [ ] (e2e-candidate) A member created earlier in this phase appears by name (not a raw id) on the Members sheet
+- [ ] (e2e-candidate) **Date/Time** is the first column on the Horses sheet
+- [ ] (e2e-candidate) It is also the first column on Lessons, Horse Expenses, Members, Documents and All Transactions
+- [ ] (e2e-candidate) An expense's date and time appear together in that one **Date/Time** cell, not in two columns
+- [ ] (e2e-candidate) An expense entered without a time shows just its date there, with no `12:00 AM`
+- [ ] (e2e-candidate) A **Date/Time** cell is a real date to Excel, not text (its format shows as a date, and it right-aligns by default)
+- [ ] (e2e-candidate) The All Transactions sheet has no `Lesson ID`, `Lesson Rider ID`, `Agreement Charge ID` or `Expense ID` column
+- [ ] (e2e-candidate) An `expense` row on the All Transactions sheet shows a negative amount
+- [ ] (e2e-candidate) An `instructor_payout` row there also shows a negative amount
+- [ ] (e2e-candidate) A `lesson_fee` row there still shows a positive amount
+- [ ] (e2e-candidate) Amounts on that sheet render as currency (a `$`, two decimals), not as bare numbers
+- [ ] (e2e-candidate) Every column is wide enough to read its contents without manual resizing
 
 Notifications and profile:
 

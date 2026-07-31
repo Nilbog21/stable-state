@@ -15,7 +15,7 @@ import { resolveMemberNames } from './member-names'
 import { getAgreementsByBarn } from './agreements'
 import { CHARGE_TRANSACTION_KINDS } from './agreement-finances'
 import { getExpensesByBarn } from './expenses'
-import { getTransactionRows, positiveAmount } from './transactions'
+import { getTransactionRows } from './transactions'
 import { getLessonFeeRows, getLessonJunctionRows } from './lesson-finance-queries'
 import { getAllBarnDocuments } from './document-backup'
 import type { Agreement, AgreementCharge, BarnMembership, Horse, Lesson, Profile, TransactionKind } from './types'
@@ -37,6 +37,20 @@ import type { Agreement, AgreementCharge, BarnMembership, Horse, Lesson, Profile
  * a viewer's zone from; the barn's own timezone is the best available stand-in.
  */
 
+// Excel serial numbers are zone-less, and exceljs derives one from Date#getTime, so a Date
+// whose *UTC* components are the barn's wall clock renders those exact digits on every
+// recipient's machine regardless of where they open the file. Deliberately not
+// barn-timezone.ts's wallClockToInstant — that resolves back to the real instant, which is
+// precisely the viewer-zone dependence this export exists to avoid (#1218).
+function barnLocalCell(instant: Date, timezone: string): Date {
+  return new Date(instantToLocalWallClock(instant, timezone) + 'Z')
+}
+
+const DATETIME_FMT = 'm/d/yyyy h:mm AM/PM'
+const DATE_FMT = 'm/d/yyyy'
+const MONEY_FMT = '"$"#,##0.00'
+const MAX_COLUMN_WIDTH = 60
+
 const ALL_TRANSACTION_KINDS: TransactionKind[] = [
   'lesson_fee',
   'rider_cancellation_fee',
@@ -57,6 +71,7 @@ const BACKUP_RANGE_END = new Date('9999-12-31T00:00:00Z')
 // Deliberately excludes horses.photo_path/photo_uploaded_by — a raw Storage path isn't
 // spreadsheet-readable, and the photo itself isn't covered by this export.
 export interface HorseBackupRow {
+  dateTime: Date
   name: string
   registeredName: string | null
   active: boolean
@@ -65,11 +80,10 @@ export interface HorseBackupRow {
   feedNotes: string | null
   medicationNotes: string | null
   owningMember: string | null
-  createdAt: string
 }
 
 export interface LessonBackupRow {
-  lessonAt: string
+  dateTime: Date
   type: string
   tierName: string
   jumping: boolean
@@ -105,8 +119,10 @@ export interface AgreementChargeBackupRow {
 }
 
 export interface ExpenseBackupRow {
-  date: string
-  time: string | null
+  dateTime: Date
+  // No column of its own — drives the per-cell date-only format for an appointment booked
+  // without a time, so it reads "7/15/2026" rather than a fabricated "7/15/2026 12:00 AM".
+  dateOnly: boolean
   recipient: string
   type: string
   amount: number | null
@@ -117,6 +133,7 @@ export interface ExpenseBackupRow {
 
 // Deliberately excludes profiles.photo_path — same reasoning as HorseBackupRow above.
 export interface MemberBackupRow {
+  dateTime: Date
   name: string
   role: string
   status: string
@@ -126,31 +143,32 @@ export interface MemberBackupRow {
   phone: string | null
   emergencyContactName: string | null
   emergencyContactPhone: string | null
-  joinedAt: string
 }
 
 export interface DocumentBackupRow {
+  dateTime: Date
   ownerType: 'Horse' | 'Member'
   owner: string
   recordType: string
   fileName: string
   notes: string | null
   reminderDate: string | null
-  uploadedAt: string
 }
 
+// #1218 dropped this sheet's lesson/lesson-rider/agreement-charge/expense id columns: raw
+// UUIDs appearing nowhere else in the workbook, so they cross-referenced nothing a reader
+// could act on. Its purpose is now simply the full money ledger in one place.
 export interface TransactionBackupRow {
+  dateTime: Date
   kind: TransactionKind
+  // Signed as the ledger stores it — outflows (instructor_payout, expense) stay negative
+  // rather than going through transactions.ts:positiveAmount, so the column sums to the
+  // barn's actual net and picks up any future negative-direction kind for free.
   amount: number
   collected: boolean
   paymentType: string | null
   member: string | null
   horse: string | null
-  lessonId: string | null
-  lessonRiderId: string | null
-  agreementChargeId: string | null
-  expenseId: string | null
-  occurredAt: string
 }
 
 export interface BarnBackupData {
@@ -174,6 +192,7 @@ async function getHorsesSheet(barnId: string, timezone: string, supabase: Supaba
   const memberNames = await resolveMemberNames(memberIds, barnId, supabase)
 
   return horses.map((h) => ({
+    dateTime: barnLocalCell(new Date(h.created_at), timezone),
     name: h.name,
     registeredName: h.registered_name,
     active: h.is_active,
@@ -182,7 +201,6 @@ async function getHorsesSheet(barnId: string, timezone: string, supabase: Supaba
     feedNotes: h.feed_notes,
     medicationNotes: h.medication_notes,
     owningMember: h.owning_member_id ? memberNames.get(h.owning_member_id) ?? UNKNOWN_MEMBER : null,
-    createdAt: instantToLocalWallClock(new Date(h.created_at), timezone),
   }))
 }
 
@@ -217,7 +235,7 @@ async function getLessonsSheet(barnId: string, timezone: string, supabase: Supab
   return lessons.map((l) => {
     const fee = feeByLesson.get(l.id)
     return {
-      lessonAt: instantToLocalWallClock(new Date(l.lesson_at), timezone),
+      dateTime: barnLocalCell(new Date(l.lesson_at), timezone),
       type: l.lesson_type,
       tierName: l.tier_name,
       jumping: l.jumping,
@@ -295,8 +313,10 @@ async function getAgreementsAndCharges(
 async function getExpensesSheet(barnId: string): Promise<ExpenseBackupRow[]> {
   const expenses = await getExpensesByBarn(barnId)
   return expenses.map((e) => ({
-    date: e.expense_date,
-    time: e.expense_time,
+    // expense_date/expense_time are already barn-local digits, not an instant — no conversion,
+    // just the same UTC anchoring barnLocalCell applies to real TIMESTAMPTZ columns.
+    dateTime: new Date(`${e.expense_date}T${e.expense_time ?? '00:00:00'}Z`),
+    dateOnly: e.expense_time === null,
     recipient: e.recipient,
     type: e.expense_type,
     amount: e.amount,
@@ -320,6 +340,7 @@ async function getMembersSheet(barnId: string, timezone: string, supabase: Supab
   return memberships.map((m) => {
     const profile = profileById.get(m.profile_id)!
     return {
+      dateTime: barnLocalCell(new Date(m.created_at), timezone),
       name: `${profile.first_name} ${profile.last_name}`,
       role: m.role,
       status: m.status,
@@ -329,7 +350,6 @@ async function getMembersSheet(barnId: string, timezone: string, supabase: Supab
       phone: profile.phone,
       emergencyContactName: profile.emergency_contact_name,
       emergencyContactPhone: profile.emergency_contact_phone,
-      joinedAt: instantToLocalWallClock(new Date(m.created_at), timezone),
     }
   })
 }
@@ -350,13 +370,13 @@ async function getDocumentsSheet(barnId: string, timezone: string, supabase: Sup
     owner: string,
     d: { record_type: string; file_name: string; notes: string | null; reminder_date: string | null; created_at: string }
   ): DocumentBackupRow => ({
+    dateTime: barnLocalCell(new Date(d.created_at), timezone),
     ownerType,
     owner,
     recordType: d.record_type,
     fileName: d.file_name,
     notes: d.notes,
     reminderDate: d.reminder_date,
-    uploadedAt: instantToLocalWallClock(new Date(d.created_at), timezone),
   })
 
   return [
@@ -378,17 +398,13 @@ async function getTransactionsSheet(barnId: string, timezone: string, supabase: 
   ])
 
   return rows.map((r) => ({
+    dateTime: barnLocalCell(new Date(r.occurredAt), timezone),
     kind: r.kind,
-    amount: positiveAmount(r.kind, r.amount),
+    amount: r.amount,
     collected: r.collected,
     paymentType: r.paymentType,
     member: r.membershipId ? memberNames.get(r.membershipId) ?? UNKNOWN_MEMBER : null,
     horse: r.horseId ? horseNames.get(r.horseId) ?? UNKNOWN_HORSE : null,
-    lessonId: r.lessonId,
-    lessonRiderId: r.lessonRiderId,
-    agreementChargeId: r.agreementChargeId,
-    expenseId: r.expenseId,
-    occurredAt: instantToLocalWallClock(new Date(r.occurredAt), timezone),
   }))
 }
 
@@ -417,15 +433,29 @@ export async function getBarnBackupData(barnId: string, timezone: string, client
   }
 }
 
+// A Date's String() form is far longer than the digits Excel actually renders, so it's
+// measured at its number format's own width instead.
+function cellWidth(value: unknown): number {
+  return value instanceof Date ? DATETIME_FMT.length : String(value ?? '').length
+}
+
 function addSheet<T extends object>(
   workbook: ExcelJS.Workbook,
   name: string,
-  columns: { header: string; key: Extract<keyof T, string> }[],
+  columns: { header: string; key: Extract<keyof T, string>; numFmt?: string }[],
   rows: T[]
-): void {
+): ExcelJS.Worksheet {
   const sheet = workbook.addWorksheet(name)
-  sheet.columns = columns
+  sheet.columns = columns.map((c) => ({
+    header: c.header,
+    key: c.key,
+    style: c.numFmt ? { numFmt: c.numFmt } : undefined,
+    // Auto-size: widest of the header and every value in the column, capped so one long
+    // Notes cell can't push the rest of the sheet off screen.
+    width: Math.min(MAX_COLUMN_WIDTH, Math.max(c.header.length, ...rows.map((r) => cellWidth(r[c.key]))) + 2),
+  }))
   sheet.addRows(rows)
+  return sheet
 }
 
 export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
@@ -435,6 +465,7 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Horses',
     [
+      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Name', key: 'name' },
       { header: 'Registered Name', key: 'registeredName' },
       { header: 'Active', key: 'active' },
@@ -443,7 +474,6 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
       { header: 'Feed Notes', key: 'feedNotes' },
       { header: 'Medication Notes', key: 'medicationNotes' },
       { header: 'Owning Member', key: 'owningMember' },
-      { header: 'Created At', key: 'createdAt' },
     ],
     data.horses
   )
@@ -452,17 +482,17 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Lessons',
     [
-      { header: 'Date', key: 'lessonAt' },
+      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Type', key: 'type' },
       { header: 'Tier', key: 'tierName' },
       { header: 'Jumping', key: 'jumping' },
-      { header: 'Fee', key: 'fee' },
+      { header: 'Fee', key: 'fee', numFmt: MONEY_FMT },
       { header: 'Instructor', key: 'instructor' },
       { header: 'Horses', key: 'horses' },
       { header: 'Riders', key: 'riders' },
       { header: 'Recurring', key: 'recurring' },
       { header: 'Collected', key: 'collected' },
-      { header: 'Instructor Payout', key: 'instructorPayout' },
+      { header: 'Instructor Payout', key: 'instructorPayout', numFmt: MONEY_FMT },
       { header: 'Cancelled', key: 'cancelled' },
       { header: 'Cancellation Notes', key: 'cancellationNotes' },
     ],
@@ -477,7 +507,7 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
       { header: 'Horse', key: 'horse' },
       { header: 'Kind', key: 'kind' },
       { header: 'Cadence', key: 'cadence' },
-      { header: 'Fee', key: 'fee' },
+      { header: 'Fee', key: 'fee', numFmt: MONEY_FMT },
       { header: 'Start Date', key: 'startDate' },
       { header: 'Active', key: 'active' },
     ],
@@ -492,33 +522,39 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
       { header: 'Horse', key: 'horse' },
       { header: 'Kind', key: 'kind' },
       { header: 'Period', key: 'period' },
-      { header: 'Fee', key: 'fee' },
+      { header: 'Fee', key: 'fee', numFmt: MONEY_FMT },
       { header: 'Collected', key: 'collected' },
       { header: 'Payment Type', key: 'paymentType' },
     ],
     data.agreementCharges
   )
 
-  addSheet<ExpenseBackupRow>(
+  const expenseSheet = addSheet<ExpenseBackupRow>(
     workbook,
     'Horse Expenses',
     [
-      { header: 'Date', key: 'date' },
-      { header: 'Time', key: 'time' },
+      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Recipient', key: 'recipient' },
       { header: 'Type', key: 'type' },
-      { header: 'Amount', key: 'amount' },
+      { header: 'Amount', key: 'amount', numFmt: MONEY_FMT },
       { header: 'Horses', key: 'horses' },
       { header: 'Payment Type', key: 'paymentType' },
       { header: 'Notes', key: 'notes' },
     ],
     data.expenses
   )
+  // The only sheet whose timestamp is optional — a per-cell override beats the alternatives
+  // of showing every spontaneous appointment a fabricated 12:00 AM or splitting the column
+  // back in two. Row 1 is the header, so row i + 2 is data row i.
+  data.expenses.forEach((e, i) => {
+    if (e.dateOnly) expenseSheet.getRow(i + 2).getCell('dateTime').numFmt = DATE_FMT
+  })
 
   addSheet<MemberBackupRow>(
     workbook,
     'Members',
     [
+      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Name', key: 'name' },
       { header: 'Role', key: 'role' },
       { header: 'Status', key: 'status' },
@@ -528,7 +564,6 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
       { header: 'Phone', key: 'phone' },
       { header: 'Emergency Contact Name', key: 'emergencyContactName' },
       { header: 'Emergency Contact Phone', key: 'emergencyContactPhone' },
-      { header: 'Joined At', key: 'joinedAt' },
     ],
     data.members
   )
@@ -537,13 +572,13 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'Documents',
     [
+      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Owner Type', key: 'ownerType' },
       { header: 'Owner', key: 'owner' },
       { header: 'Record Type', key: 'recordType' },
       { header: 'File Name', key: 'fileName' },
       { header: 'Notes', key: 'notes' },
       { header: 'Reminder Date', key: 'reminderDate' },
-      { header: 'Uploaded At', key: 'uploadedAt' },
     ],
     data.documents
   )
@@ -552,17 +587,13 @@ export function buildBarnDataWorkbook(data: BarnBackupData): ExcelJS.Workbook {
     workbook,
     'All Transactions',
     [
+      { header: 'Date/Time', key: 'dateTime', numFmt: DATETIME_FMT },
       { header: 'Kind', key: 'kind' },
-      { header: 'Amount', key: 'amount' },
+      { header: 'Amount', key: 'amount', numFmt: MONEY_FMT },
       { header: 'Collected', key: 'collected' },
       { header: 'Payment Type', key: 'paymentType' },
       { header: 'Member', key: 'member' },
       { header: 'Horse', key: 'horse' },
-      { header: 'Lesson ID', key: 'lessonId' },
-      { header: 'Lesson Rider ID', key: 'lessonRiderId' },
-      { header: 'Agreement Charge ID', key: 'agreementChargeId' },
-      { header: 'Expense ID', key: 'expenseId' },
-      { header: 'Occurred At', key: 'occurredAt' },
     ],
     data.transactions
   )
