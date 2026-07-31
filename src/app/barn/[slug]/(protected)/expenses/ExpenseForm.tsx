@@ -1,9 +1,12 @@
 'use client'
 
-import { useActionState, useState } from 'react'
+import { useActionState, useEffect, useState } from 'react'
 import { getMostCommonExpenseTypeAction, type ExpenseFormState } from '@/app/actions/expenses'
+import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
+import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
+import { addDays } from '@/lib/local-day'
 import { Button } from '@/components/ui/Button'
-import type { PaymentType } from '@/lib/db/types'
+import type { PaymentType, ScheduleItem } from '@/lib/db/types'
 
 const PAYMENT_TYPES: PaymentType[] = ['venmo', 'zelle', 'cash', 'check', 'freshbooks']
 
@@ -30,6 +33,13 @@ type ExpenseFormProps = {
    *  it seeds the user's own input rather than comparing against barn data, so it should be
    *  viewer-local, not barn-local. */
   todayStr: string
+  /** #1020 — supplied, the Date field becomes the same month conflict calendar the lesson form
+   *  got in #1019; omitted, it stays a plain `<input type="date">`. Injected rather than called
+   *  directly because this is a client component and the DAL is server-only, matching how
+   *  `LessonForm` takes the same action. */
+  getScheduleRange?: (fromDate: string, toDate: string) => Promise<ScheduleItem[]>
+  /** In edit mode, the appointment being edited — it must not conflict with itself. */
+  excludeItemId?: string
   initial?: ExpenseFormInitial
   submitLabel?: string
   onSave: (state: ExpenseFormState, fd: FormData) => Promise<ExpenseFormState>
@@ -56,6 +66,8 @@ export function ExpenseForm({
   recentExpenseTypes,
   defaultDate,
   todayStr,
+  getScheduleRange,
+  excludeItemId,
   initial,
   submitLabel = 'Add Expense',
   onSave,
@@ -72,6 +84,46 @@ export function ExpenseForm({
   const [appliesToAllHorses, setAppliesToAllHorses] = useState(initial?.appliesToAllHorses ?? false)
   const [checkedHorseIds, setCheckedHorseIds] = useState<Set<string>>(new Set(initial?.horseIds ?? []))
   const [typeFlashing, setTypeFlashing] = useState(false)
+  const [calendarMonth, setCalendarMonth] = useState((defaultDate ?? todayStr).slice(0, 7))
+  const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
+
+  // One fetch per displayed month, over the grid exactly. LessonForm widens this by 3 days at
+  // each end to feed the ±3-day exertion window; there is no heatmap here, so the plain grid is
+  // all this calendar reads. `to` is exclusive.
+  useEffect(() => {
+    if (!getScheduleRange) return
+    const grid = getMonthGrid(calendarMonth)
+    let cancelled = false
+    getScheduleRange(grid[0], addDays(grid[41], 1)).then((items) => {
+      if (!cancelled) setScheduleItems(items)
+    })
+    return () => { cancelled = true }
+  }, [calendarMonth, getScheduleRange])
+
+  // No exertion bands: an appointment carries no exertion_level, and the thresholds would cost a
+  // second round trip. Empty thresholds make worstBand skip every horse and return null, so
+  // `hour` cannot affect the result either — hence the 0.
+  const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
+    selectedHorseIds: [...checkedHorseIds],
+    selectedRiderIds: [],
+    hour: 0,
+    thresholdsByHorseId: {},
+    todayStr,
+    selectionAppliesToAllHorses: appliesToAllHorses,
+    excludeItemId,
+  })
+
+  const horseNameById = new Map(horses.map((h) => [h.id, h.name]))
+
+  // Appointments and events carry a server-built label; lessons don't, and this form holds no
+  // rider names, so it composes one from the horse names it does have.
+  function describeScheduleItem(scheduleItem: ScheduleItem): string {
+    if (scheduleItem.label) return scheduleItem.label
+    const names = scheduleItem.horseIds
+      .map((id) => horseNameById.get(id))
+      .filter((name): name is string => name !== undefined)
+    return names.length ? `Lesson — ${names.join(', ')}` : 'Lesson'
+  }
 
   async function handleRecipientBlur() {
     const trimmed = recipient.trim()
@@ -133,20 +185,78 @@ export function ExpenseForm({
         </datalist>
       </div>
 
-      <div>
-        <label htmlFor="expense-date" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
-          Date
+      {/* Above Date, not below it: the calendar's dots are driven by this selection, so a
+        * manager who fills the form top-down has an empty grid until they scroll past the date
+        * they came here to pick. */}
+      <div className="flex flex-col gap-2">
+        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+          <input
+            type="checkbox"
+            name="applies_to_all_horses"
+            value="true"
+            checked={appliesToAllHorses}
+            onChange={(e) => setAppliesToAllHorses(e.target.checked)}
+            className="rounded border-zinc-300 dark:border-zinc-600"
+          />
+          Entire Barn
         </label>
-        <input
-          id="expense-date"
-          name="expense_date"
-          type="date"
-          required
-          value={expenseDate}
-          onChange={(e) => setExpenseDate(e.target.value)}
-          className={inputClassName}
-        />
+
+        <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
+          {horses.map((h) => (
+            <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+              <input
+                type="checkbox"
+                name="horse_id"
+                value={h.id}
+                disabled={appliesToAllHorses}
+                checked={checkedHorseIds.has(h.id)}
+                onChange={(e) => {
+                  setCheckedHorseIds((prev) => {
+                    const next = new Set(prev)
+                    if (e.target.checked) next.add(h.id)
+                    else next.delete(h.id)
+                    return next
+                  })
+                }}
+                className="rounded border-zinc-300 dark:border-zinc-600"
+              />
+              {h.name}
+            </label>
+          ))}
+        </fieldset>
       </div>
+
+      {getScheduleRange ? (
+        <>
+          <MonthCalendarPicker
+            value={expenseDate}
+            onChange={setExpenseDate}
+            month={calendarMonth}
+            onMonthChange={setCalendarMonth}
+            decorations={dayDecorations}
+            items={scheduleItems}
+            describeItem={describeScheduleItem}
+            label="Date"
+          />
+          <input type="hidden" name="expense_date" value={expenseDate} />
+        </>
+      ) : (
+        <div>
+          <label htmlFor="expense-date" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">
+            Date
+          </label>
+          <input
+            id="expense-date"
+            name="expense_date"
+            type="date"
+            required
+            value={expenseDate}
+            onChange={(e) => setExpenseDate(e.target.value)}
+            className={inputClassName}
+          />
+        </div>
+      )}
 
       {expenseDate && (
         <input type="hidden" name="occurred_at" value={computeOccurredAt(expenseDate, expenseTime)} />
@@ -207,45 +317,6 @@ export function ExpenseForm({
           </select>
         </div>
       )}
-
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-          <input
-            type="checkbox"
-            name="applies_to_all_horses"
-            value="true"
-            checked={appliesToAllHorses}
-            onChange={(e) => setAppliesToAllHorses(e.target.checked)}
-            className="rounded border-zinc-300 dark:border-zinc-600"
-          />
-          Entire Barn
-        </label>
-
-        <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
-          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
-          {horses.map((h) => (
-            <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-              <input
-                type="checkbox"
-                name="horse_id"
-                value={h.id}
-                disabled={appliesToAllHorses}
-                checked={checkedHorseIds.has(h.id)}
-                onChange={(e) => {
-                  setCheckedHorseIds((prev) => {
-                    const next = new Set(prev)
-                    if (e.target.checked) next.add(h.id)
-                    else next.delete(h.id)
-                    return next
-                  })
-                }}
-                className="rounded border-zinc-300 dark:border-zinc-600"
-              />
-              {h.name}
-            </label>
-          ))}
-        </fieldset>
-      </div>
 
       <div>
         <label htmlFor="expense-notes" className="block text-sm font-medium text-zinc-700 dark:text-zinc-300">

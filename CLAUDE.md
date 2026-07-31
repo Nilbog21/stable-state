@@ -16,6 +16,7 @@
 
 ### Schema/RLS/RPC verification
 - Migrations have no DAL-layer TDD tests of their own — they're verified by the `Verify Migrations` CI workflow (`.github/workflows/verify-migrations.yml`), which replays every migration from scratch against an ephemeral local Supabase/Postgres instance on any PR touching `supabase/migrations/**`
+- Never edit an applied migration's SQL — every database change gets a new migration file. **Header comments are the sole exception:** they're inert, `Verify Migrations` replays the file identically, and the Supabase CLI tracks migrations by version rather than content hash. This is what lets `/sync-migrations` step 5 rewrite stale filename references after a rename
 - Don't install Docker locally or push to `stable-state-dev` just to check a migration applies cleanly (syntax, ordering, FK/RLS/RPC errors) — let the CI gate catch that. It replays from a clean instance, so it can't catch drift between a migration's assumptions and `stable-state-dev`/prod's actual accumulated schema state (e.g. a renamed constraint) — that class of bug still needs manual dev-DB verification or a repair script (see `scripts/repair-migration-history.sh`)
 
 ### E2E spec maintenance

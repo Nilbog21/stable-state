@@ -14,6 +14,11 @@ vi.mock('@/lib/db/expenses', () => ({
   getMostCommonTypeForRecipient: vi.fn(),
 }))
 vi.mock('next/navigation', () => ({ notFound: vi.fn() }))
+// The form's conflict calendar (#1020) calls this on mount; unmocked it reaches the real DAL
+// and `cookies()` outside a request context.
+vi.mock('@/app/actions/lessons', () => ({
+  getScheduleRangeForBarn: vi.fn().mockResolvedValue([]),
+}))
 
 import { requireMembership } from '@/lib/auth/guard'
 import { getHorsesByBarn } from '@/lib/db/horses'

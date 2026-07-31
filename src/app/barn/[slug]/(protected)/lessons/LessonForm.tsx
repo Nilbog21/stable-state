@@ -269,7 +269,7 @@ export function LessonForm({
     hour: selectedHour,
     thresholdsByHorseId,
     todayStr,
-    excludeLessonId: initialLesson?.id ?? null,
+    excludeItemId: initialLesson?.id ?? null,
   })
 
   const horseNameById = new Map(horses.map(h => [h.id, h.name]))
