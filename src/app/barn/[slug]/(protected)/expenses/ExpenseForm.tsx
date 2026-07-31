@@ -26,8 +26,9 @@ type ExpenseFormProps = {
   defaultDate?: string
   /** The barn's own calendar day, from `barnToday` (#1149) — required rather than defaulted to
    *  the viewer's clock, which would put this comparison in the wrong frame for anyone whose
-   *  device timezone differs from the barn's. Unlike `defaultDate`, which is a default for the
-   *  user's own input and so stays viewer-local. */
+   *  device timezone differs from the barn's. `defaultDate` sits on the other side of that rule:
+   *  it seeds the user's own input rather than comparing against barn data, so it should be
+   *  viewer-local, not barn-local. */
   todayStr: string
   initial?: ExpenseFormInitial
   submitLabel?: string
