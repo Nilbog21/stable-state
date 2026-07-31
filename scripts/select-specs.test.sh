@@ -141,6 +141,28 @@ else
 fi
 rm -rf "$REPO"
 
+# Test 10: a final path with no trailing newline still counts
+# `gh pr diff --name-only` terminates its last line, but a bare `read` loop drops an
+# unterminated one — and it drops it toward mode=none, i.e. toward running no e2e.
+REPO="$(make_repo)"
+out="$(printf 'playwright.config.ts' | (cd "$REPO" && bash "$SCRIPT" 2>&1))"
+if [ "$out" = "mode=full" ]; then
+  assert_pass "unterminated final line still counts"
+else
+  assert_fail "unterminated final line still counts" "output=$out"
+fi
+rm -rf "$REPO"
+
+# Test 11: run outside a git repo, the script stops rather than answering from the wrong tree
+# --lint is the dangerous half: ci.sh gates on its exit code, so exiting 0 here would be a
+# clean bill of health for a spec set the script never actually read.
+out="$(cd / && bash "$SCRIPT" --lint 2>&1)" && code=0 || code=$?
+if [ "$code" -ne 0 ]; then
+  assert_pass "lint fails outside a git repository"
+else
+  assert_fail "lint fails outside a git repository" "exit=$code output=$out"
+fi
+
 echo ""
 echo "Results: $PASS passed, $FAIL failed"
 [ "$FAIL" -eq 0 ]

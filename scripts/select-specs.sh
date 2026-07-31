@@ -17,7 +17,14 @@
 # regression, and that's worth the minutes saved on every other PR.
 set -uo pipefail
 
-cd "$(git rev-parse --show-toplevel)"
+# Stop rather than answer from whatever tree we happen to be standing in: three skills and
+# ci.sh branch on this script's output, and a --lint that exits 0 having read no specs at
+# all reads exactly like a clean one.
+root=$(git rev-parse --show-toplevel 2>/dev/null) || {
+  echo "select-specs.sh: not a git repository" >&2
+  exit 1
+}
+cd "$root" || exit 1
 
 # Paths whose blast radius is every spec, so no per-spec declaration could express it.
 # The whole of src/lib/** is here rather than enumerated per spec — that layer is data
@@ -92,7 +99,9 @@ if [[ $# -gt 0 ]]; then
 fi
 
 changed=()
-while IFS= read -r line; do
+# `|| [[ -n $line ]]` so a final line with no trailing newline isn't dropped — read returns
+# non-zero on it, and losing it loses it toward mode=none.
+while IFS= read -r line || [[ -n $line ]]; do
   [[ -n $line ]] && changed+=("$line")
 done
 

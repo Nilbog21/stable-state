@@ -191,7 +191,7 @@ After plan approval, do the following in order:
 cd /absolute/path/to/worktree && bash scripts/run-checklist-suite.sh --base-url http://localhost:{port} --spec {spec-file}
 ```
 
-**Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and on `/fableFleet` a full run also burns the fleet-wide mutex. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished, the worktree port, the mutex — is stated once in `/testIssue` Step 4. Follow it there; it isn't restated here.
+**Only the spec under construction** — no regression subset, no full suite. `/testIssue` Step 4 computes the diff's blast radius and runs it minutes later anyway, so a broader run here is duplicated cost, and on `/fableFleet` a full run also burns the fleet-wide mutex. The run protocol — backgrounding it, reading `{worktree-path}/checklist-suite.log` rather than the tool result, the freshness header and exit terminator that say the log is yours and finished, the worktree port — is stated once in `/testIssue` Step 4. Follow it there; it isn't restated here. The mutex itself is `/fableFleet`'s, and is stated in its Step 5.
 
 A new spec also needs its `// covers:` declaration lines (see `scripts/CLAUDE.md`) — `scripts/ci.sh` fails without them.
 
