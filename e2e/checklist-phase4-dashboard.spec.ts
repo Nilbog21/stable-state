@@ -26,7 +26,7 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
   // dashboard sorts on barn-local wall clock, so a seed landing after 23:00 *in the barn's zone*
   // would otherwise place it past the expense (#1150).
   await addUnpaidLesson(supabase, barn, {
-    at: daysFromNow(2),
+    at: daysFromNow(2, barn.timezone),
     time: '10:00',
     instructorId: members.trainer.membershipId,
     horseIds: [apollo.id],
@@ -35,7 +35,7 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
     tierName: tier.name,
   })
   await addExpense(supabase, barn, {
-    at: daysFromNow(2),
+    at: daysFromNow(2, barn.timezone),
     time: '23:00',
     recipient: 'Valley Farrier',
     expenseType: 'Farrier',
@@ -45,7 +45,7 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
   // Date-only planned expense (no time) — must stay off the dashboard, which shows only
   // scheduled expenses that have a time set. Asserted on its own day, not an unrelated one.
   await addExpense(supabase, barn, {
-    at: daysFromNow(4),
+    at: daysFromNow(4, barn.timezone),
     recipient: 'Feed Supplier',
     expenseType: 'Feed',
   })
@@ -55,7 +55,7 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
   // assertion moved to checklist-phase6-dashboard.spec.ts (#1136) and reseeds this same
   // pairing there — keep the two in step if either changes.
   await addUnpaidLesson(supabase, barn, {
-    at: daysFromNow(-1),
+    at: daysFromNow(-1, barn.timezone),
     instructorId: members.trainer.membershipId,
     horseIds: [bella.id],
     riderIds: [members.rider2.membershipId],
@@ -71,7 +71,7 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
 
   // A paid past lesson so the day view and lesson list aren't empty behind the reminders.
   await addPaidLesson(supabase, barn, {
-    at: daysFromNow(-3),
+    at: daysFromNow(-3, barn.timezone),
     instructorId: members.trainer.membershipId,
     horseIds: [apollo.id],
     riderIds: [members.rider.membershipId],

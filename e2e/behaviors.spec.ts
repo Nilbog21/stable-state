@@ -11,7 +11,7 @@ const barn = withBarn('behaviors', async ({ supabase, barn, members }) => {
   const horse = await addHorse(supabase, barn.id, 'Apollo')
 
   await addPaidLesson(supabase, barn, {
-    at: daysFromNow(-2),
+    at: daysFromNow(-2, barn.timezone),
     instructorId: members.trainer.membershipId,
     horseIds: [horse.id],
     riderIds: [members.rider.membershipId],
