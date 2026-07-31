@@ -1,3 +1,5 @@
+// covers: src/app/barn/[slug]/(protected)/expenses/**
+
 import { test, expect, withBarn } from './support/test'
 import { addExpense, addHorse, daysFromNow } from './support/fixtures'
 import type { Appointment } from '@/lib/db/types'
