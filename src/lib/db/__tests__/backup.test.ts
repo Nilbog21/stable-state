@@ -912,9 +912,29 @@ describe('buildBarnDataWorkbook', () => {
   it('should_put_the_date_time_column_first_on_every_sheet_that_has_one', () => {
     const workbook = buildBarnDataWorkbook(emptyData)
 
-    const firstHeaders = ['Lessons', 'Horse Expenses', 'Members', 'Documents', 'All Transactions']
+    const firstHeaders = ['Lessons', 'Horse Expenses', 'All Transactions']
       .map((name) => workbook.getWorksheet(name)!.getRow(1).getCell(1).value)
-    expect(firstHeaders).toEqual(Array(5).fill('Date/Time'))
+    expect(firstHeaders).toEqual(Array(3).fill('Date/Time'))
+  })
+
+  it('should_name_every_created_at_column_date_time_added', () => {
+    const workbook = buildBarnDataWorkbook(emptyData)
+
+    const firstHeaders = ['Horses', 'Members', 'Documents']
+      .map((name) => workbook.getWorksheet(name)!.getRow(1).getCell(1).value)
+    expect(firstHeaders).toEqual(Array(3).fill('Date/Time Added'))
+  })
+
+  it('should_left_justify_a_date_column', () => {
+    const workbook = buildBarnDataWorkbook({ ...emptyData, transactions: [transactionRow()] })
+
+    expect(workbook.getWorksheet('All Transactions')!.getColumn('dateTime').alignment!.horizontal).toBe('left')
+  })
+
+  it('should_not_force_alignment_on_a_non_date_column', () => {
+    const workbook = buildBarnDataWorkbook({ ...emptyData, transactions: [transactionRow()] })
+
+    expect(workbook.getWorksheet('All Transactions')!.getColumn('amount').alignment).toBeUndefined()
   })
 
   it('should_format_the_transaction_amount_column_as_currency', () => {
@@ -928,7 +948,7 @@ describe('buildBarnDataWorkbook', () => {
     const workbook = buildBarnDataWorkbook({ ...emptyData, transactions: [transactionRow()] })
 
     const sheet = workbook.getWorksheet('All Transactions')!
-    expect(sheet.getColumn('dateTime').numFmt).toBe('m/d/yyyy h:mm AM/PM')
+    expect(sheet.getColumn('dateTime').numFmt).toBe('mm/dd/yyyy hh:mm AM/PM')
   })
 
   it('should_leave_a_non_money_column_unformatted', () => {
@@ -945,14 +965,14 @@ describe('buildBarnDataWorkbook', () => {
     })
 
     const sheet = workbook.getWorksheet('Horse Expenses')!
-    expect(sheet.getRow(2).getCell('dateTime').numFmt).toBe('m/d/yyyy')
+    expect(sheet.getRow(2).getCell('dateTime').numFmt).toBe('mm/dd/yyyy')
   })
 
   it('should_leave_a_timed_expense_date_time_cell_on_the_column_format', () => {
     const workbook = buildBarnDataWorkbook({ ...emptyData, expenses: [expenseRow()] })
 
     const sheet = workbook.getWorksheet('Horse Expenses')!
-    expect(sheet.getRow(2).getCell('dateTime').numFmt).toBe('m/d/yyyy h:mm AM/PM')
+    expect(sheet.getRow(2).getCell('dateTime').numFmt).toBe('mm/dd/yyyy hh:mm AM/PM')
   })
 
   const agreementRow = (overrides: Partial<AgreementBackupRow> = {}): AgreementBackupRow => ({
@@ -975,12 +995,6 @@ describe('buildBarnDataWorkbook', () => {
     const workbook = buildBarnDataWorkbook(emptyData)
 
     expect(workbook.getWorksheet('Agreement Charges')!.getRow(1).getCell(1).value).toBe('Period')
-  })
-
-  it('should_name_the_horses_date_column_date_time_added', () => {
-    const workbook = buildBarnDataWorkbook(emptyData)
-
-    expect(workbook.getWorksheet('Horses')!.getRow(1).getCell(1).value).toBe('Date/Time Added')
   })
 
   it('should_sort_rows_by_the_first_column_descending', () => {
@@ -1022,7 +1036,7 @@ describe('buildBarnDataWorkbook', () => {
       ],
     })
 
-    expect(workbook.getWorksheet('Horse Expenses')!.getRow(2).getCell('dateTime').numFmt).toBe('m/d/yyyy')
+    expect(workbook.getWorksheet('Horse Expenses')!.getRow(2).getCell('dateTime').numFmt).toBe('mm/dd/yyyy')
   })
 
   it('should_bold_the_header_row', () => {
@@ -1031,10 +1045,10 @@ describe('buildBarnDataWorkbook', () => {
     expect(workbook.getWorksheet('Horses')!.getRow(1).font.bold).toBe(true)
   })
 
-  it('should_set_the_header_row_font_to_twelve_point', () => {
+  it('should_leave_the_header_row_font_at_the_default_size', () => {
     const workbook = buildBarnDataWorkbook(emptyData)
 
-    expect(workbook.getWorksheet('Horses')!.getRow(1).font.size).toBe(12)
+    expect(workbook.getWorksheet('Horses')!.getRow(1).font.size).toBeUndefined()
   })
 
   it('should_double_the_header_row_height', () => {
@@ -1067,7 +1081,7 @@ describe('buildBarnDataWorkbook', () => {
     const workbook = buildBarnDataWorkbook({ ...emptyData, horses: [horseRow()] })
 
     const sheet = workbook.getWorksheet('Horses')!
-    expect(sheet.getColumn('dateTime').width).toBe('m/d/yyyy h:mm AM/PM'.length + 2)
+    expect(sheet.getColumn('dateTime').width).toBe('mm/dd/yyyy hh:mm AM/PM'.length + 2)
   })
 
   it('should_treat_a_null_value_as_empty_when_sizing', () => {
