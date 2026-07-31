@@ -17,6 +17,11 @@ export default defineConfig({
   retries: 0,
   use: {
     baseURL: process.env.E2E_BASE_URL,
+    // The browser context's zone, pinned for the same reason vitest.config.mts pins TZ — see
+    // the comment there. The Node *runner* process is deliberately left on the developer's own
+    // zone: the fixture helpers are UTC-framed (monthAnchor, #1151) or barn-framed
+    // (daysFromNow, #1221) by design, so nothing they compute reads the runner's clock.
+    timezoneId: 'Asia/Kolkata',
   },
   projects: [
     { name: 'manager', grep: /@manager/, use: { ...devices['Desktop Chrome'], storageState: 'e2e/.auth/manager.json' } },
