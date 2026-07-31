@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addPaidLesson, addTier, addUnpaidLesson } from './support/fixtures'
+import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
@@ -169,15 +170,6 @@ async function headerLabels(page: Page): Promise<string[]> {
     )
 }
 
-/** Every header currently carrying a sort-direction glyph, as `label glyph`. */
-async function indicatedHeaders(page: Page): Promise<string[]> {
-  return table(page)
-    .locator('thead th')
-    .evaluateAll((headers) =>
-      headers.map((th) => (th.querySelector('div > *')?.textContent ?? '').trim()).filter((text) => /[▲▼]/.test(text))
-    )
-}
-
 async function rowNames(page: Page): Promise<string[]> {
   return bodyRows(page).locator('td:first-child').allInnerTexts()
 }
@@ -192,31 +184,9 @@ function drilldownTotal(page: Page) {
   return page.locator('main > div > div').filter({ hasText: /^Total/ }).locator('span').nth(1)
 }
 
-/** The Net column's header cell. No other header label contains "Net". */
-function netHeader(page: Page) {
-  return table(page).locator('thead th').filter({ hasText: 'Net' })
-}
-
-/** Scoped by text so it can't match the InfoPopover trigger sharing the same header cell. */
-function netSortButton(page: Page) {
-  return netHeader(page).locator('button').filter({ hasText: 'Net' })
-}
-
-/**
- * Taps the Net header and waits for `indicator` to render *on the Net header*. A wait, not an
- * assertion: the row reads below are one-shot `allInnerTexts`/`evaluateAll` calls with no
- * retry of their own, so without it they could sample the order the click was about to
- * replace. `Locator.waitFor` rather than a retrying `expect`, so a test whose single claim is
- * about the indicator is never pre-empted by its own setup asserting that same claim — which
- * is why the two indicator tests below tap bare and poll instead of calling this.
- *
- * Scoped to the Net header specifically, not to the whole thead: on the first tap the ▲ is
- * still sitting on Trainer, so an unscoped `has-text("▲")` would already be satisfied and the
- * wait would return before the re-sort had happened at all.
- */
-async function tapNetHeader(page: Page, indicator: '▲' | '▼'): Promise<void> {
-  await netSortButton(page).click()
-  await netHeader(page).locator(`button:has-text("${indicator}")`).waitFor()
+/** The Net column's sort control. No other header label contains "Net". */
+function netSort(page: Page) {
+  return sortControl(table(page), 'Net')
 }
 
 // ---------------------------------------------------------------------------
@@ -335,38 +305,37 @@ test.describe.serial('by instructor sorting', () => {
 
   test('by_instructor_trainer_header_carries_the_ascending_indicator_on_load @manager', async ({ page }) => {
     await page.goto(financesUrl())
-    expect(await indicatedHeaders(page)).toEqual(['Trainer ▲'])
+    await expect(headersShowing(table(page), '▲')).toHaveText(['Trainer ▲'])
   })
 
   test('tapping_net_header_re_sorts_by_net_ascending @manager', async ({ page }) => {
     await page.goto(financesUrl())
-    await tapNetHeader(page, '▲')
+    await tapSortAndSettle(netSort(page), '▲')
     expect(await rowNames(page)).toEqual([TRAINER_NAME, MANAGER_NAME, UNDERSTUDY_NAME])
   })
 
   // One claim about one state — where the indicator is — so it's a single set assertion
-  // rather than an "appears on Net" test plus a "gone from Trainer" test. Tapped bare and
-  // polled, because tapNetHeader's own wait is for exactly what this test claims.
+  // rather than an "appears on Net" test plus a "gone from Trainer" test.
   test('tapping_net_header_moves_the_ascending_indicator_to_net @manager', async ({ page }) => {
     await page.goto(financesUrl())
-    await netSortButton(page).click()
-    await expect.poll(() => indicatedHeaders(page)).toEqual(['Net ▲'])
+    await tapSort(netSort(page))
+    await expect(headersShowing(table(page), '▲')).toHaveText(['Net ▲'])
   })
 
   test('tapping_net_header_twice_reverses_the_row_order @manager', async ({ page }) => {
     await page.goto(financesUrl())
-    await tapNetHeader(page, '▲')
+    await tapSortAndSettle(netSort(page), '▲')
     const ascending = await rowNames(page)
-    await tapNetHeader(page, '▼')
+    await tapSortAndSettle(netSort(page), '▼')
     expect(await rowNames(page)).toEqual([...ascending].reverse())
   })
 
-  // Only the first tap goes through tapNetHeader: it establishes the ascending state this
-  // test starts from, which is not the descending state it claims.
+  // The first tap settles only to establish the ▲ precondition; the second is bare, because ▼
+  // is this test's claim.
   test('tapping_net_header_twice_flips_the_indicator_to_descending @manager', async ({ page }) => {
     await page.goto(financesUrl())
-    await tapNetHeader(page, '▲')
-    await netSortButton(page).click()
-    await expect.poll(() => indicatedHeaders(page)).toEqual(['Net ▼'])
+    await tapSortAndSettle(netSort(page), '▲')
+    await tapSort(netSort(page))
+    await expect(headersShowing(table(page), '▼')).toHaveText(['Net ▼'])
   })
 })

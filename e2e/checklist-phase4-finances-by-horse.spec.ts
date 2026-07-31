@@ -2,6 +2,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor, type SeededAppointment } from './support/fixtures'
+import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
@@ -201,28 +202,14 @@ async function columnLabels(page: Page): Promise<string[]> {
   return (await breakdownTable(page).locator('thead th').allInnerTexts()).map(headerLabel)
 }
 
-async function headersWithIndicator(page: Page, indicator: '▲' | '▼'): Promise<string[]> {
-  const texts = await breakdownTable(page).locator('thead th').allInnerTexts()
-  return texts.filter((text) => text.includes(indicator)).map(headerLabel)
-}
-
+/** The Gross header cell — the sort control and the ⓘ trigger together. */
 function grossHeader(page: Page): Locator {
   return breakdownTable(page).locator('thead th').filter({ hasText: /gross/i })
 }
 
-/** The header's sort control, as opposed to the ⓘ button sitting beside it. */
-function grossSortButton(page: Page): Locator {
-  return grossHeader(page).getByRole('button', { name: /gross/i })
-}
-
-/**
- * Taps the Gross header and waits for `indicator` to render. A wait, not an assertion: the
- * row-order reads below are one-shot `allInnerTexts` calls with no retry of their own, so
- * without it they could sample the order the click was about to replace.
- */
-async function tapGrossHeader(page: Page, indicator: '▲' | '▼'): Promise<void> {
-  await grossSortButton(page).click()
-  await grossHeader(page).locator(`button:has-text("${indicator}")`).waitFor()
+/** The Gross column's sort control — the only header this tab's sort tests tap. */
+function grossSort(page: Page): Locator {
+  return sortControl(breakdownTable(page), /gross/i)
 }
 
 /** The drill-down's combined table: Date, Type, Amount, Horses, Split. */
@@ -410,12 +397,12 @@ test('by_horse_rows_load_sorted_by_horse_name_ascending @manager', async ({ page
 
 test('by_horse_horse_header_shows_an_ascending_indicator_on_load @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  expect(await headersWithIndicator(page, '▲')).toEqual(['HORSE'])
+  await expect(headersShowing(breakdownTable(page), '▲')).toHaveText(['Horse ▲'])
 })
 
 test('by_horse_gross_header_tap_sorts_rows_by_gross_ascending @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  await tapGrossHeader(page, '▲')
+  await tapSortAndSettle(grossSort(page), '▲')
   const gross = await columnValues(page, GROSS_COL)
   expect(gross).toEqual([...gross].sort((a, b) => a - b))
 })
@@ -424,8 +411,8 @@ test('by_horse_gross_header_tap_sorts_rows_by_gross_ascending @manager', async (
 // Horse are the same claim about which column is active.
 test('by_horse_gross_header_tap_moves_the_ascending_indicator_to_gross @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  await tapGrossHeader(page, '▲')
-  expect(await headersWithIndicator(page, '▲')).toEqual(['GROSS'])
+  await tapSort(grossSort(page))
+  await expect(headersShowing(breakdownTable(page), '▲')).toHaveText(['Gross ▲'])
 })
 
 // The probe covers the half of the claim a URL comparison can't: a reload would leave the
@@ -437,7 +424,7 @@ test('by_horse_gross_header_tap_does_not_change_the_url @manager', async ({ page
   })
   const urlBefore = page.url()
 
-  await tapGrossHeader(page, '▲')
+  await tapSortAndSettle(grossSort(page), '▲')
 
   expect(
     await page.evaluate(() => ({
@@ -449,19 +436,19 @@ test('by_horse_gross_header_tap_does_not_change_the_url @manager', async ({ page
 
 test('by_horse_second_gross_header_tap_reverses_the_order @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  await tapGrossHeader(page, '▲')
+  await tapSortAndSettle(grossSort(page), '▲')
   const ascending = await columnValues(page, GROSS_COL)
-  await tapGrossHeader(page, '▼')
+  await tapSortAndSettle(grossSort(page), '▼')
   expect(await columnValues(page, GROSS_COL)).toEqual([...ascending].reverse())
 })
 
-// The second tap is a bare click rather than tapGrossHeader, whose wait is for the very
-// indicator this test exists to check — waiting on it first would make the assertion circular.
+// The first tap settles only to establish the ▲ precondition; the second is bare, because ▼ is
+// this test's claim.
 test('by_horse_second_gross_header_tap_flips_the_indicator_to_descending @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  await tapGrossHeader(page, '▲')
-  await grossSortButton(page).click()
-  await expect(grossSortButton(page)).toContainText('▼')
+  await tapSortAndSettle(grossSort(page), '▲')
+  await tapSort(grossSort(page))
+  await expect(grossSort(page)).toContainText('▼')
 })
 
 // ---------------------------------------------------------------------------
@@ -480,5 +467,5 @@ test('gross_header_info_icon_tap_does_not_trigger_a_sort @manager', async ({ pag
   await page.goto(financesUrl())
   await grossHeader(page).getByRole('button', { name: 'Info' }).click()
   await page.getByText(GROSS_INFO_TEXT).waitFor()
-  expect(await headersWithIndicator(page, '▲')).toEqual(['HORSE'])
+  await expect(headersShowing(breakdownTable(page), '▲')).toHaveText(['Horse ▲'])
 })
