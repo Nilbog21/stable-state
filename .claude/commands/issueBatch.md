@@ -110,7 +110,7 @@ Pick the set that best serves, in the developer's own words:
 
 1. **Finish the release quickly.**
 2. **Avoid rework on issues still to come** in the release — which serves (1).
-3. **Keep tests current so later work doesn't fail** — which also serves (1).
+3. **Improve tests early in the release to avoid introducing failures** — which also serves (1).
 
 There is no rule table here, and no weighting to apply. Reason about the backlog and make the call. What follows is not how to decide; it's what you are not allowed to have missed.
 

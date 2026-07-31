@@ -29,8 +29,6 @@ If that file doesn't exist, tell the user to run `/issueBatch create` first and 
 
 Invoke `/issueBatch pick 1` and use what it returns. The count is 1 because the worktree this session is already standing in is the slot being filled — `pick`'s free-worktree detection isn't consulted here.
 
-This used to be a copy of `pick`'s selection rules, kept local "so this step has no cross-skill dependency." The copy drifted instead: it ran four slots against `pick`'s five, never recomputed `unblocks` live, and silently ignored deferrals — the same divergence #1118 fixed for the worktree→port map, and #1231 removed here for the same reason. One definition of the judgment.
-
 Read the **Blocked** section as-is for display — no live re-check needed there, `/issueBatch create`/`prune` keep it current.
 
 Display `pick`'s fill plan (a single entry, given `N` = 1), preceded by the batch context:
