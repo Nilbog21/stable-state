@@ -27,17 +27,13 @@ Record as `{release-label}`. Batch file is `specs/batch_{release-label}.md`.
 
 If that file doesn't exist, tell the user to run `/issueBatch create` first and stop.
 
-Read the file's **Ready** section and pick up to 3 suggestions — same rules `/issueBatch pick` uses, duplicated here rather than invoked, so this step has no cross-skill dependency:
-1. **Slot 1:** a `high-priority`-labeled Ready entry (ties broken by highest `unblocks`), else the highest-`unblocks` Ready entry.
-2. **Slot 2:** the highest-`unblocks` Ready entry not already chosen carrying `rearchitecture` or `data-migration`, if one exists.
-3. **Slot 3:** a Ready entry not already chosen carrying `quick-win`, if one exists.
-4. **Backfill** any unfilled slots with the next-highest-`unblocks` Ready entries not already chosen.
+Invoke `/issueBatch pick 1` and use what it returns. The count is 1 because the worktree this session is already standing in is the slot being filled — `pick`'s free-worktree detection isn't consulted here.
 
-Spot-check the chosen issues live before presenting: `gh issue view {N} --json state,assignees,labels` for each, confirming still open, unassigned (or assigned to you), and not newly blocked/in-progress. Drop and backfill any that fail (cap at 6 total lookups).
+This used to be a copy of `pick`'s selection rules, kept local "so this step has no cross-skill dependency." The copy drifted instead: it ran four slots against `pick`'s five, never recomputed `unblocks` live, and silently ignored deferrals — the same divergence #1118 fixed for the worktree→port map, and #1231 removed here for the same reason. One definition of the judgment.
 
 Read the **Blocked** section as-is for display — no live re-check needed there, `/issueBatch create`/`prune` keep it current.
 
-Display:
+Display `pick`'s fill plan (a single entry, given `N` = 1), preceded by the batch context:
 ```
 ## Current Batch — {release-label}
 
@@ -48,14 +44,9 @@ Display:
 **Blocked:**
 - #N — Title — blocked by #M, #P
 ...
-
-**Suggested next (up to 3):**
-1. #N — Title — {reason: high-priority / deepest dependency tree / architecture / quick win / next-best}
-2. #N — Title — {reason}
-3. #N — Title — {reason}
 ```
 
-Ask: "Which issue do you want to work on?" Wait for their answer.
+Then ask: "Which issue do you want to work on?" — `pick`'s suggestion is a recommendation, not a selection, and the user may name any issue. Wait for their answer.
 
 **Issue confirmation:** fetch the chosen issue with `gh issue view <N> --json number,title,labels,body`, check whether it has a `blocked`, `needs-*`, or `depends-on` label, or body text matching `depends on #N`, `blocked by #N`, `prerequisite: #N`, or `requires #N` where N is still open. If so, warn the user before continuing. Then go to **Worktree Setup** below, then skip directly to Step 4 (Design review).
 

@@ -68,7 +68,14 @@ Evaluate the dependency tree: identify which existing issues must land before th
 
 When presenting the new issues for creation, suggest appropriate labels for each one based on their nature and the label descriptions. Ask me to confirm or adjust before proceeding. Then ask if I'd like you to create these issues with `gh issue create`.
 
-**After creating the issues**, check whether `specs/batch_{release-label}.md` already exists. If it doesn't, skip silently — the batch file gets built whenever `/issueBatch create` is next run manually. If it does exist, append each new issue to the appropriate section (Ready or Blocked, using the same dependency-phrasing rules `/issueBatch create` uses) with `unblocks: 0` and a `(newly added by grillMe — run /issueBatch create to rescore)` note in place of a real score, rather than recomputing the whole graph.
+**After creating the issues**, check whether `specs/batch_{release-label}.md` already exists. If it doesn't, skip silently — the batch file gets built whenever `/issueBatch create` is next run manually. If it does exist, append each new issue to the appropriate section (Ready or Blocked, using the same dependency-phrasing rules `/issueBatch create` uses) with `unblocks: 0` rather than recomputing the whole graph.
+
+**Write down what the interview taught you.** This is the more valuable half, and it's the reason a grilling session leaves a durable mark on the batch file at all. `/issueBatch pick` reasons over this prose — it is the substrate, not decoration (see that skill's "The batch file format" section):
+
+- A `note:` line under an entry, for anything issue-specific: which issues it must land before or after and what rework the wrong order causes, which files it collides on and in which region, what a reviewer will need to know that isn't in the body. Write the *why*, not just the ordering — "sequence before #1206, which writes specs asserting the current workbook" survives a change of circumstances in a way "do #1218 first" doesn't.
+- An entry under `## Insights`, for anything release-wide that doesn't attach to one issue: which cluster is the long pole, which issue is its keystone, a constraint that shapes every pick this release.
+
+Add these for issues the interview *touched*, not only for ones it created — if you worked out that two existing issues conflict, that finding belongs in the file too. Never overwrite an existing note you didn't author; append.
 
 **In an issues-only session, never edit a tracked file.** If the interview surfaces a needed change to `CLAUDE.md`, `ARCHITECTURE.md`, source, or a migration, that change is itself an issue — capture it as one. Don't make the edit "just this once" as a convenience; every change to a version-controlled file goes through issue → branch → PR. (The `specs/issue-*.md` work log in the special mode above is gitignored scratch, not a tracked file — editing it is expected.)
 

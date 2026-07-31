@@ -87,7 +87,44 @@ if pr_line=$(gh pr view --json number,state -q '"\(.number) \(.state)"' 2>/dev/n
   pr_state="${pr_line##* }"
 fi
 
+# Which sibling worktrees are free to take new work. `/issueBatch pick` fills every free
+# one, so it needs the count; the map lives here rather than in the skill for the same
+# reason the port map does (#1118).
+#
+# Derived from local git alone — no `gh` calls. The other five skills read none of this
+# and all call the script at Step 0, so a per-worktree network round trip would tax every
+# one of them for a field only `pick` wants.
+#
+# Busy = a dirty tree, or a HEAD carrying commits the release branch doesn't have yet.
+# The corollary is what makes it useful: a merged issue branch left checked out — the
+# normal state after `/finishIssue` — is an ancestor of the release branch and reads free,
+# with no need to ask GitHub whether its issue closed.
+#
+# `fable-N` worktrees are excluded on purpose, same rationale as `worktrees=` above: this
+# answers "where can a human start something", and the fleet is never chosen that way.
+release_ref=$(git branch -r --list 'origin/release/release-*' | sed 's|.*origin/release/||' | sort -t- -k2 -n | tail -1)
+if [[ -n $release_ref ]]; then release_ref="origin/release/$release_ref"; else release_ref="origin/main"; fi
+
+declare -A WT_PATHS=()
+while read -r wt_path; do
+  [[ $wt_path =~ stable-state-worktrees/([a-z]+(-[0-9]+)?)$ ]] && WT_PATHS[${BASH_REMATCH[1]}]="$wt_path"
+done < <(git worktree list --porcelain 2>/dev/null | sed -n 's/^worktree //p')
+
+worktree_state=""
+for entry in "${WORKTREES[@]}"; do
+  name="${entry%%:*}"
+  wt_path="${WT_PATHS[$name]:-}"
+  [[ -z $wt_path ]] && continue
+  if [[ -n $(git -C "$wt_path" status --porcelain 2>/dev/null) ]] ||
+     ! git -C "$wt_path" merge-base --is-ancestor HEAD "$release_ref" 2>/dev/null; then
+    worktree_state+=" $name:busy"
+  else
+    worktree_state+=" $name:free"
+  fi
+done
+
 echo "worktrees=${WORKTREES[*]%%:*}"
+echo "worktree_state=${worktree_state# }"
 echo "worktree=$worktree"
 echo "worktree_path=$worktree_path"
 echo "port=$port"
