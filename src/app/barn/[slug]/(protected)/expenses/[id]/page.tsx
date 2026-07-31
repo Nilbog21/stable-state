@@ -3,6 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getHorsesByBarn } from '@/lib/db/horses'
 import { getExpenseById, getRecentRecipients, getRecentExpenseTypes } from '@/lib/db/expenses'
 import { updateExpenseAction } from '@/app/actions/expenses'
+import { getScheduleRangeForBarn } from '@/app/actions/lessons'
 import { Button } from '@/components/ui/Button'
 import { barnToday } from '@/lib/barn-timezone'
 import { ExpenseForm } from '../ExpenseForm'
@@ -40,6 +41,7 @@ export default async function EditExpensePage({
   const horsesForForm = [...horses, ...inactiveAssigned]
 
   const save = updateExpenseAction.bind(null, slug, expense.id)
+  const getScheduleRange = getScheduleRangeForBarn.bind(null, slug)
 
   return (
     <main className="mx-auto max-w-md px-4 py-12">
@@ -56,6 +58,8 @@ export default async function EditExpensePage({
         recentExpenseTypes={recentExpenseTypes}
         defaultDate={expense.expense_date}
         todayStr={barnToday(barn.timezone)}
+        getScheduleRange={getScheduleRange}
+        excludeItemId={expense.id}
         initial={{
           recipient: expense.recipient,
           expenseType: expense.expense_type,

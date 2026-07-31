@@ -16,6 +16,8 @@ vi.mock('@/app/actions/expenses', () => ({
 
 import { getMostCommonExpenseTypeAction } from '@/app/actions/expenses'
 import { ExpenseForm } from '../ExpenseForm'
+import { createMockScheduleItem } from '@/test/fixtures'
+import type { ScheduleItem } from '@/lib/db/types'
 
 const horses = [
   { id: 'horse-1', name: 'Apple' },
@@ -457,5 +459,113 @@ describe('ExpenseForm', () => {
       const fd = new FormData(form)
       expect(fd.get('occurred_at')).toBeNull()
     })
+  })
+})
+
+// #1020 — the same month conflict calendar the lesson form got in #1019, so a manager booking
+// the farrier can see the horse already has a vet visit or a lesson that day.
+describe('ExpenseForm — conflict calendar', () => {
+  const scheduleItem = (overrides: Partial<ScheduleItem> = {}): ScheduleItem =>
+    createMockScheduleItem({ start: '2026-07-15T09:00:00', ...overrides })
+
+  function renderWithSchedule(items: ScheduleItem[], overrides = {}) {
+    const getScheduleRange = vi.fn().mockResolvedValue(items)
+    const result = renderForm({ getScheduleRange, ...overrides })
+    return { ...result, getScheduleRange }
+  }
+
+  it('should_render_the_month_grid_when_a_schedule_reader_is_supplied', async () => {
+    renderWithSchedule([])
+    expect(await screen.findByLabelText('2026-07-15')).toBeTruthy()
+  })
+
+  it('should_fall_back_to_a_plain_date_input_without_a_schedule_reader', () => {
+    const { container } = renderForm()
+    expect(container.querySelector('input#expense-date[type="date"]')).toBeTruthy()
+  })
+
+  it('should_flag_a_day_where_the_selected_horse_already_has_an_appointment', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-1'] })])
+    fireEvent.click(screen.getByLabelText('Apple'))
+    expect(await screen.findByTestId('conflict-dot-2026-07-15')).toBeTruthy()
+  })
+
+  it('should_not_flag_a_day_whose_only_appointment_belongs_to_another_horse', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-2'] })])
+    fireEvent.click(screen.getByLabelText('Apple'))
+    await screen.findByLabelText('2026-07-15')
+    expect(screen.queryByTestId('conflict-dot-2026-07-15')).toBeNull()
+  })
+
+  it('should_flag_a_booked_day_when_entire_barn_is_checked', async () => {
+    renderWithSchedule([scheduleItem({ id: 'l1', horseIds: ['horse-2'] })])
+    fireEvent.click(screen.getByLabelText('Entire Barn'))
+    expect(await screen.findByTestId('conflict-dot-2026-07-15')).toBeTruthy()
+  })
+
+  it('should_not_flag_the_appointment_being_edited_against_itself', async () => {
+    renderWithSchedule([scheduleItem({ id: 'a1', itemType: 'expense', horseIds: ['horse-1'] })], {
+      excludeItemId: 'a1',
+    })
+    fireEvent.click(screen.getByLabelText('Apple'))
+    await screen.findByLabelText('2026-07-15')
+    expect(screen.queryByTestId('conflict-dot-2026-07-15')).toBeNull()
+  })
+
+  it('should_submit_the_tapped_day_as_expense_date', async () => {
+    const { container } = renderWithSchedule([])
+    fireEvent.click(await screen.findByLabelText('2026-07-15'))
+    expect(new FormData(container.querySelector('form')!).get('expense_date')).toBe('2026-07-15')
+  })
+
+  it('should_request_one_schedule_read_covering_the_displayed_month_grid', async () => {
+    const { getScheduleRange } = renderWithSchedule([])
+    await screen.findByLabelText('2026-07-15')
+    expect(getScheduleRange).toHaveBeenCalledWith('2026-06-28', '2026-08-09')
+  })
+})
+
+describe('ExpenseForm — tapped day popup', () => {
+  async function openDay(items: ScheduleItem[]) {
+    renderForm({ getScheduleRange: vi.fn().mockResolvedValue(items) })
+    fireEvent.click(await screen.findByLabelText('2026-07-15'))
+  }
+
+  it('should_show_an_appointments_server_built_label', async () => {
+    await openDay([
+      createMockScheduleItem({
+        id: 'a1',
+        itemType: 'expense',
+        start: '2026-07-15T09:00:00',
+        label: 'Farrier — Dr. Hoof',
+      }),
+    ])
+    expect(screen.getByText('Farrier — Dr. Hoof')).toBeTruthy()
+  })
+
+  it('should_name_a_lessons_horses_since_lessons_carry_no_label', async () => {
+    await openDay([
+      createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00', horseIds: ['horse-1'] }),
+    ])
+    expect(screen.getByText('Lesson — Apple')).toBeTruthy()
+  })
+
+  it('should_fall_back_to_a_bare_lesson_label_when_it_names_no_horse', async () => {
+    await openDay([createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00' })])
+    expect(screen.getByText('Lesson')).toBeTruthy()
+  })
+
+  // A lesson can hold a horse this form doesn't list — an inactive one, say, which the new-expense
+  // page filters out of `horses`. The name lookup misses and that id is dropped, not rendered blank.
+  it('should_drop_a_horse_id_the_form_cannot_name', async () => {
+    await openDay([
+      createMockScheduleItem({ id: 'l1', start: '2026-07-15T09:00:00', horseIds: ['horse-gone'] }),
+    ])
+    expect(screen.getByText('Lesson')).toBeTruthy()
+  })
+
+  it('should_report_an_empty_day_as_having_nothing_scheduled', async () => {
+    await openDay([])
+    expect(screen.getByText('Nothing scheduled for this day.')).toBeTruthy()
   })
 })
