@@ -194,14 +194,16 @@ a developer machine on `America/New_York` *is* the `barns.timezone` default, and
 | Process | Zone | Set in |
 |---|---|---|
 | Vitest workers | `Asia/Kolkata` | `vitest.config.mts` (`test.env.TZ`) |
-| Playwright browser context | `Asia/Kolkata` | `playwright.config.ts` (`use.timezoneId`) |
+| Playwright browser context | `Asia/Kolkata` | `playwright.config.ts` (`use.timezoneId`), value from `e2e/support/timezone.ts` |
 | `next dev` | `UTC` | `package.json`'s `dev` script — matches Vercel |
 
 `Asia/Kolkata` is +5:30 with no DST: distinct from both the barn default and UTC in every
 run, and the half-hour offset additionally breaks anything assuming whole-hour offsets. The
 Playwright *runner* process is left on your own zone on purpose — `e2e/support/fixtures.ts`
 places every fixture either UTC-framed (`monthAnchor`) or barn-framed (`daysFromNow`), so
-nothing it computes reads the runner's clock.
+nothing it computes reads the runner's clock. A spec that computes an expected date runner-side
+to compare against what the page rendered is the exception: it must name `BROWSER_TIMEZONE`
+(`e2e/support/timezone.ts`) explicitly, since the runner and the browser no longer agree.
 
 A test that breaks under the pin gets fixed at its source. Re-pinning that one test back to
 UTC restores exactly the blindness this exists to remove.
