@@ -55,7 +55,6 @@ describe('createLessonWithParticipants', () => {
       p_jumping: false,
       p_tier_name: 'Custom',
       p_payment_type: null,
-      p_instructor_cut: 0,
     })
   })
 
@@ -92,47 +91,6 @@ describe('createLessonWithParticipants', () => {
     } finally {
       process.env.TZ = originalTz
     }
-  })
-
-  it('should_pass_instructor_cut_to_rpc_when_provided', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
-    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
-
-    await createLessonWithParticipants({
-      barnId: 'barn-1',
-      instructorId: 'user-1',
-      lessonAt: '2026-05-16T10:00:00Z',
-      fee: 75,
-      horseIds: ['horse-1'],
-      exertionLevels: [3],
-      riderIds: ['rider-1'],
-      lessonType: 'normal',
-      instructorCut: 30,
-    })
-
-    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
-      expect.objectContaining({ p_instructor_cut: 30 })
-    )
-  })
-
-  it('should_default_instructor_cut_to_zero_when_not_provided', async () => {
-    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
-    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
-
-    await createLessonWithParticipants({
-      barnId: 'barn-1',
-      instructorId: 'user-1',
-      lessonAt: '2026-05-16T10:00:00Z',
-      fee: 75,
-      horseIds: ['horse-1'],
-      exertionLevels: [3],
-      riderIds: ['rider-1'],
-      lessonType: 'normal',
-    })
-
-    expect(mockRpc).toHaveBeenCalledWith('create_lesson_with_participants',
-      expect.objectContaining({ p_instructor_cut: 0 })
-    )
   })
 
   it('should_return_the_created_lesson', async () => {
@@ -200,7 +158,6 @@ describe('createLessonWithParticipants', () => {
       p_jumping: false,
       p_tier_name: 'Custom',
       p_payment_type: null,
-      p_instructor_cut: 0,
     })
   })
 
@@ -335,7 +292,6 @@ describe('updateLessonWithParticipants', () => {
       horseIds: ['horse-1'],
       exertionLevels: [3],
       riderIds: ['rider-1'],
-      instructorCut: 30,
     })
 
     expect(mockRpc).toHaveBeenCalledWith('update_lesson_with_participants', {
@@ -351,7 +307,6 @@ describe('updateLessonWithParticipants', () => {
       p_horse_ids: ['horse-1'],
       p_exertion_levels: [3],
       p_rider_ids: ['rider-1'],
-      p_instructor_cut: 30,
     })
   })
 
@@ -373,7 +328,6 @@ describe('updateLessonWithParticipants', () => {
         horseIds: ['horse-1'],
         exertionLevels: [3],
         riderIds: ['rider-1'],
-        instructorCut: 25,
       })
     ).rejects.toThrow('rpc failed')
   })
