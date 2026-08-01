@@ -1,5 +1,6 @@
 'use client'
 
+import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { LocalDateTime } from '@/components/LocalDateTime'
 import type { LessonWithDetails } from '@/lib/db/types'
@@ -47,19 +48,19 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembe
         <span className="flex items-center gap-2 text-sm text-zinc-500">
           ${lesson.fee} · {lesson.tier_name}
           {lesson.series_id !== null && (
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-950 dark:text-zinc-400">Recurring</span>
+            <Badge tone="gray">Recurring</Badge>
           )}
           {isCancelled && (
-            <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+            <Badge tone="red">Cancelled</Badge>
           )}
           {!isCancelled && isOwnParticipationCancelled && (
-            <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+            <Badge tone="red">Cancelled</Badge>
           )}
           {!isCancelled && lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
-            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
+            <Badge tone="amber">Unpaid</Badge>
           )}
           {needsAttention && (
-            <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Needs Attention</span>
+            <Badge tone="amber">Needs Attention</Badge>
           )}
         </span>
       </Card>

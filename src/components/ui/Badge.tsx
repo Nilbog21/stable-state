@@ -1,13 +1,16 @@
 import type { ReactNode } from 'react'
 
-type Tone = 'amber' | 'solid' | 'green' | 'gray'
-
-const toneClasses: Record<Tone, string> = {
+// Exported so Badge.test.tsx can enumerate the tones and assert each one clears
+// WCAG AA -- a `Tone` union alone doesn't exist at runtime.
+export const toneClasses = {
   amber: 'rounded-full bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 px-2 py-0.5',
+  red: 'rounded-full bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300 px-2 py-0.5',
   solid: 'rounded bg-zinc-900 text-white dark:bg-zinc-50 dark:text-zinc-900 px-1.5 py-0.5',
   green: 'rounded-full bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300 px-2 py-0.5',
   gray: 'rounded-full bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400 px-2 py-0.5',
 }
+
+type Tone = keyof typeof toneClasses
 
 export function Badge({
   tone,

@@ -2,6 +2,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getAgreementsByBarn, getAgreementStatusLabel, getUnpaidAgreementIds } from '@/lib/db/agreements'
 import { resolveMemberNames } from '@/lib/db/member-names'
 import { resolveHorseNames } from '@/lib/db/horses'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { Card } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
@@ -62,7 +63,7 @@ export default async function AgreementsPage({
               <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
                 <span>{formatFee(a.fee)} · {getAgreementStatusLabel(a)}</span>
                 {unpaidAgreementIds.has(a.id) && (
-                  <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
+                  <Badge tone="amber">Unpaid</Badge>
                 )}
               </p>
             </Card>
