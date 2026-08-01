@@ -1,7 +1,10 @@
-// The viewer's own calendar day. #1149 settled which half of the app this belongs to:
+// The viewer's own calendar day. #1149 settled which half of the app this belongs to, and
+// #1224 sharpened the second line — "input default" was too broad a category:
 //
-//   Comparisons against barn data are barn-local (`barnToday`, src/lib/barn-timezone.ts).
-//   Default values for the user's own input stay viewer-local (here).
+//   Comparisons against barn data are barn-local (`barnToday`, src/lib/barn-timezone.ts),
+//   and so is an input default seeding a day of barn business (the new-expense Date, the
+//   new-lease/boarding Start Date). Only a default seeding the viewer's own scheduling
+//   choice stays viewer-local (here).
 //
 // So the remaining callers are the ones where the viewer's calendar is the right frame: the
 // default date for a new lesson (DateHourPicker), and which month the lesson form's calendar
