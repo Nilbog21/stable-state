@@ -33,7 +33,6 @@ export default async function NewExpensePage({
         horses={horses}
         recentRecipients={recentRecipients}
         recentExpenseTypes={recentExpenseTypes}
-        defaultDate={new Date().toISOString().slice(0, 10)}
         todayStr={barnToday(barn.timezone)}
         getScheduleRange={getScheduleRange}
         onSave={save}
