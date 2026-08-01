@@ -100,11 +100,12 @@ export async function createLessonWithParticipants(params: {
   jumping?: boolean
   tierName?: string
   paymentType?: PaymentType | null
-  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
-  instructorCut?: number
 }, client?: SupabaseClient): Promise<Lesson> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
+  // p_instructor_cut is deliberately unpassed (#1154): the RPC ignores it and re-derives the
+  // cut server-side (#776), and its DEFAULT 0 lets us stop sending it without a signature
+  // change. Why the signature itself stays: docs/architecture/rpc.md.
   const { data, error } = await supabase.rpc('create_lesson_with_participants', {
     p_barn_id: params.barnId,
     p_instructor_id: params.instructorId,
@@ -117,7 +118,6 @@ export async function createLessonWithParticipants(params: {
     p_jumping: params.jumping ?? false,
     p_tier_name: params.tierName ?? 'Custom',
     p_payment_type: params.paymentType ?? null,
-    p_instructor_cut: params.instructorCut ?? 0,
   })
   if (error) throw error
   return data as Lesson
@@ -136,10 +136,9 @@ export async function updateLessonWithParticipants(params: {
   horseIds: string[]
   exertionLevels: number[]
   riderIds: string[]
-  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
-  instructorCut: number
 }): Promise<Lesson> {
   const supabase = await createClient()
+  // p_instructor_cut deliberately unpassed — see createLessonWithParticipants above.
   const { data, error } = await supabase.rpc('update_lesson_with_participants', {
     p_lesson_id: params.lessonId,
     p_barn_id: params.barnId,
@@ -153,7 +152,6 @@ export async function updateLessonWithParticipants(params: {
     p_horse_ids: params.horseIds,
     p_exertion_levels: params.exertionLevels,
     p_rider_ids: params.riderIds,
-    p_instructor_cut: params.instructorCut,
   })
   if (error) throw error
   return data as Lesson

@@ -147,14 +147,6 @@ describe('submitLesson', () => {
     )
   })
 
-  it('should_forward_instructor_cut_from_form_to_createLessonWithParticipants', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', instructor_cut: '30' })
-    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(createLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorCut: 30 })
-    )
-  })
-
   it('should_redirect_after_successful_submission', async () => {
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard' })
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
@@ -186,14 +178,6 @@ describe('submitLesson', () => {
     await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
     expect(createLessonSeries).toHaveBeenCalledWith(
       expect.objectContaining({ barnId: 'barn-1', instructorId: mockTrainerMembership.id, horseIds: ['horse-1'], riderIds: ['mem-1'] })
-    )
-  })
-
-  it('should_forward_instructor_cut_from_form_to_createLessonSeries', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', is_recurring: 'true', instructor_cut: '30' })
-    await submitLesson('barn-1', 'barn-slug', { error: null }, fd)
-    expect(createLessonSeries).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorCut: 30 })
     )
   })
 

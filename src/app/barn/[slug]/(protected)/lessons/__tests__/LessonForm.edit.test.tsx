@@ -50,7 +50,6 @@ const baseProps = {
   isManager: true,
   tiers: [mockTier],
   action: vi.fn().mockResolvedValue({ error: null }),
-  defaultInstructorCut: 25,
   todayStr: '2026-06-01',
 }
 
@@ -391,33 +390,6 @@ describe('LessonForm (edit mode)', () => {
   it('should_show_fee_input_when_custom_tier_selected_in_edit_mode', () => {
     render(<LessonForm {...baseProps} />)
     expect(screen.queryByRole('spinbutton', { name: /fee/i })).not.toBeNull()
-  })
-
-  it('should_snapshot_instructor_cut_from_lessons_saved_value_not_tier_rate_on_initial_load', () => {
-    const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', price: 50, instructor_cut: 20, is_default: true })
-    const lesson = { ...normalLesson, tier_name: 'Standard', fee: 50, instructor_cut: 12 }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
-    const instructorCutInput = container.querySelector('input[name="instructor_cut"]') as HTMLInputElement
-    expect(instructorCutInput.value).toBe('12')
-  })
-
-  it('should_update_instructor_cut_when_switching_to_a_different_named_tier_in_edit_mode', () => {
-    const tierA = createMockLessonTier({ id: 'tier-a', name: 'Standard', instructor_cut: 20, is_default: true })
-    const tierB = createMockLessonTier({ id: 'tier-b', name: 'Premium', instructor_cut: 35 })
-    const lesson = { ...normalLesson, tier_name: 'Standard', fee: 50, instructor_cut: 12 }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tierA, tierB]} />)
-    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 'tier-b' } })
-    const instructorCutInput = container.querySelector('input[name="instructor_cut"]') as HTMLInputElement
-    expect(instructorCutInput.value).toBe('35')
-  })
-
-  it('should_snapshot_barn_default_instructor_cut_when_switching_to_custom_tier_in_edit_mode', () => {
-    const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', instructor_cut: 20, is_default: true })
-    const lesson = { ...normalLesson, tier_name: 'Standard', fee: 50, instructor_cut: 12 }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} defaultInstructorCut={25} />)
-    fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
-    const instructorCutInput = container.querySelector('input[name="instructor_cut"]') as HTMLInputElement
-    expect(instructorCutInput.value).toBe('25')
   })
 
   it('should_mark_fee_input_as_required_in_edit_mode', () => {

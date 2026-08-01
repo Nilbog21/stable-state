@@ -247,14 +247,6 @@ describe('updateLessonAction', () => {
     expect(redirect).toHaveBeenCalledWith('/barn/barn-slug/lessons/lesson-1')
   })
 
-  it('should_forward_instructor_cut_from_form_to_updateLessonWithParticipants', async () => {
-    const fd = makeFormData({ horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', fee: '75', tier_name: 'Custom', instructor_cut: '30' })
-    await updateLessonAction('lesson-1', 'barn-slug', 'barn-1', { error: null }, fd)
-    expect(updateLessonWithParticipants).toHaveBeenCalledWith(
-      expect.objectContaining({ instructorCut: 30 })
-    )
-  })
-
   it('should_return_error_when_updateLessonWithParticipants_throws', async () => {
     vi.mocked(updateLessonWithParticipants).mockRejectedValue(new Error('db error'))
     const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Custom' })

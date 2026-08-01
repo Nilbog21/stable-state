@@ -131,7 +131,7 @@ describe('parseLessonFormData', () => {
   })
 
   it('should_return_parsed_data_on_valid_input', async () => {
-    const fd = makeFormData({ fee: '75.5', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', jumping: 'true', payment_type: 'venmo', instructor_cut: '25' })
+    const fd = makeFormData({ fee: '75.5', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', tier_name: 'Standard', jumping: 'true', payment_type: 'venmo' })
     const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
     expect(result).toEqual({
       data: {
@@ -147,21 +147,8 @@ describe('parseLessonFormData', () => {
         paymentType: 'venmo',
         tierName: 'Standard',
         instructorId: mockTrainerMembership.id,
-        instructorCut: 25,
       },
     })
-  })
-
-  it('should_default_instructor_cut_to_zero_when_absent', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
-    expect('data' in result && result.data.instructorCut).toBe(0)
-  })
-
-  it('should_default_instructor_cut_to_zero_when_non_numeric', async () => {
-    const fd = makeFormData({ fee: '50', horse_id: 'horse-1', rider_id: 'mem-1', lesson_at: '2026-05-17T10:00', instructor_cut: 'abc' })
-    const result = await parseLessonFormData(fd, 'barn-1', mockTrainerMembership)
-    expect('data' in result && result.data.instructorCut).toBe(0)
   })
 
   it('should_include_new_horse_name_in_parsed_data', async () => {
