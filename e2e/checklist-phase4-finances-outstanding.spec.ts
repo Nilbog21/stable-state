@@ -416,10 +416,12 @@ test.describe.serial('cancellation fee', () => {
 
   test('outstanding_page_lesson_and_cancellation_fee_rows_link_to_their_lesson @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/finances/outstanding`)
-    // arrayContaining, not an exact set: `paidableLesson` is a third Lesson row here until the
-    // *other* describe.serial block collects it, and this block owns neither that lesson nor
-    // the order the two blocks run in. The claim is that a row of each type links to its
-    // lesson, which the two hrefs this block does own prove on their own.
+    // arrayContaining, not an exact set. Block order here is deterministic — `fullyParallel` is
+    // false, so the earlier 'outstanding income' block has already collected `paidableLesson` by
+    // the time this runs — but an exact set makes *that* block's write a precondition of this
+    // assertion, which is how a single timed-out collect there cascaded into a failure here.
+    // The claim is that a row of each type links to its lesson, which the two hrefs this block
+    // seeds prove on their own; whether a third Lesson row lingers is the other block's business.
     expect(await outstandingPageHrefsForTypes(page, ['Lesson', 'Cancellation Fee'])).toEqual(
       expect.arrayContaining([
         lessonHref(seeded.standingUnpaidLesson.id),
