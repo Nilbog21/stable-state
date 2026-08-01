@@ -114,7 +114,6 @@ export default async function EditLessonPage({
         instructors={instructors}
         currentMembershipId={membership.id}
         tiers={tiers}
-        defaultInstructorCut={barn.default_instructor_cut}
         todayStr={barnToday(barn.timezone)}
         action={update}
         initialNotes={initialNotes}

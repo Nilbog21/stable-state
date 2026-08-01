@@ -61,7 +61,6 @@ export default async function LessonNewPage({
         instructors={instructors}
         currentMembershipId={membership?.id ?? ''}
         tiers={tiers}
-        defaultInstructorCut={barn.default_instructor_cut}
         todayStr={barnToday(barn.timezone)}
         getProjectedExhaustion={getProjectedExhaustion}
         getScheduleRange={getScheduleRange}

@@ -1,7 +1,6 @@
 /**
  * Recurring lesson series: `createLessonSeries` via the
- * `create_lesson_series_with_participants` RPC (its `instructorCut` param is deprecated
- * and ignored — the cut is re-derived server-side, #776), `getSeriesById`,
+ * `create_lesson_series_with_participants` RPC, `getSeriesById`,
  * `generateNextLessonForSeries` via the `generate_lesson_for_series` RPC, and
  * `stopLessonSeries` (direct update flipping `is_active` off). Both RPC wrappers return
  * a generated `Lesson`, not a `lesson_series` row.
@@ -22,11 +21,12 @@ export async function createLessonSeries(params: {
   jumping?: boolean
   tierName?: string
   paymentType?: PaymentType | null
-  /** @deprecated ignored by the RPC — instructor_cut is now re-derived server-side from the tier/barn config (#776 review fix) */
-  instructorCut?: number
 }, client?: SupabaseClient): Promise<Lesson> {
   // optional client for service-role injection from scripts; omitting defaults to SSR client
   const supabase = client ?? await createClient()
+  // p_instructor_cut is deliberately unpassed (#1154): the RPC ignores it and re-derives the
+  // cut server-side (#776), and its DEFAULT 0 lets us stop sending it without a signature
+  // change. Why the signature itself stays: docs/architecture/rpc.md.
   const { data, error } = await supabase.rpc('create_lesson_series_with_participants', {
     p_barn_id: params.barnId,
     p_instructor_id: params.instructorId,
@@ -39,7 +39,6 @@ export async function createLessonSeries(params: {
     p_jumping: params.jumping ?? false,
     p_tier_name: params.tierName ?? 'Custom',
     p_payment_type: params.paymentType ?? null,
-    p_instructor_cut: params.instructorCut ?? 0,
   })
   if (error) throw error
   return data as Lesson

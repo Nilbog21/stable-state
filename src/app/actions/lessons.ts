@@ -86,7 +86,7 @@ export async function submitLesson(
   if ('error' in parsed) return parsed
 
   let { horseIds } = parsed.data
-  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId, instructorCut } = parsed.data
+  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
 
   let lesson: Lesson
   try {
@@ -112,7 +112,6 @@ export async function submitLesson(
       jumping,
       tierName,
       paymentType,
-      instructorCut,
     })
   } catch {
     return { error: 'Failed to submit lesson' }
@@ -136,7 +135,7 @@ export async function updateLessonAction(
   if ('error' in parsed) return parsed
 
   let { horseIds } = parsed.data
-  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId, instructorCut } = parsed.data
+  const { newHorseName, newHorseExertionLevel, exertionLevels, riderIds, lessonAt, fee, lessonType, jumping, paymentType, tierName, instructorId } = parsed.data
 
   const cancellationNotesRaw = formData.get('cancellation_notes') as string | null
 
@@ -171,7 +170,6 @@ export async function updateLessonAction(
       horseIds,
       exertionLevels: horseIds.map(id => exertionLevels.get(id)!),
       riderIds,
-      instructorCut,
     })
   } catch (err) {
     console.error('Failed to update lesson:', (err as Error).message)
