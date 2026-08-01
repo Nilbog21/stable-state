@@ -202,4 +202,21 @@ describe('ChargesTable', () => {
     })
     expect(mockRefresh).not.toHaveBeenCalled()
   })
+
+  it('should_disable_payment_type_select_while_write_is_in_flight', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockReturnValue(new Promise(() => {}))
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByRole('combobox')).toHaveProperty('disabled', true)
+  })
+
+  it('should_re_enable_payment_type_select_after_write_completes', async () => {
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByRole('combobox')).toHaveProperty('disabled', false)
+  })
 })

@@ -31,6 +31,16 @@ const PLANNED_EXPENSE_AMOUNT = 42
 
 const TABS = ['horse', 'tier', 'rider', 'trainer', 'recipient'] as const
 
+/**
+ * The suite's only custom timeout, and only for the two assertions that follow a payment-type
+ * `selectOption`. The 5s default is sized for a page assertion; those two wait on a server
+ * action *plus* the revalidate and RSC round trip it triggers, which has been observed
+ * exceeding 5s in CI under parallel-worker load. With `retries: 0` that's a hard failure, not
+ * a retry — so the wait is widened here rather than globally, where it would slow every
+ * genuine failure in the suite down.
+ */
+const SETTLE_AFTER_WRITE = 15_000
+
 type Seeded = {
   apollo: Horse
   comet: Horse
@@ -302,7 +312,7 @@ test.describe.serial('outstanding income', () => {
   test('outstanding_income_row_leaves_list_once_payment_type_set @manager', async ({ page }) => {
     await page.goto(financesUrl())
     await paidableLessonRow(page).locator('select').selectOption('venmo')
-    await expect(paidableLessonRow(page)).toHaveCount(0)
+    await expect(paidableLessonRow(page)).toHaveCount(0, { timeout: SETTLE_AFTER_WRITE })
   })
 
   test('by_horse_drilldown_lesson_date_renders_in_viewer_timezone @manager', async ({ page }) => {
@@ -406,8 +416,15 @@ test.describe.serial('cancellation fee', () => {
 
   test('outstanding_page_lesson_and_cancellation_fee_rows_link_to_their_lesson @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/finances/outstanding`)
+    // arrayContaining, not an exact set: `paidableLesson` is a third Lesson row here until the
+    // *other* describe.serial block collects it, and this block owns neither that lesson nor
+    // the order the two blocks run in. The claim is that a row of each type links to its
+    // lesson, which the two hrefs this block does own prove on their own.
     expect(await outstandingPageHrefsForTypes(page, ['Lesson', 'Cancellation Fee'])).toEqual(
-      [lessonHref(seeded.standingUnpaidLesson.id), lessonHref(seeded.unpaidLateCancelLesson.id)].sort()
+      expect.arrayContaining([
+        lessonHref(seeded.standingUnpaidLesson.id),
+        lessonHref(seeded.unpaidLateCancelLesson.id),
+      ])
     )
   })
 
@@ -415,7 +432,7 @@ test.describe.serial('cancellation fee', () => {
     await page.goto(financesUrl())
     const feeRow = outstandingIncome(page).locator('tbody tr').filter({ hasText: 'Cancellation Fee' })
     await feeRow.locator('select').selectOption('venmo')
-    await expect(feeRow).toHaveCount(0)
+    await expect(feeRow).toHaveCount(0, { timeout: SETTLE_AFTER_WRITE })
   })
 })
 
