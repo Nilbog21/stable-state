@@ -62,6 +62,14 @@ describe('EditExpensePage', () => {
     vi.mocked(getRecentExpenseTypes).mockResolvedValue(['Farrier'])
   })
 
+  // #1224 -- the new-expense page dropped `defaultDate` so the form falls back to the barn's day.
+  // Edit mode must keep overriding that fallback with the record's own date.
+  it('should_prefill_the_date_field_with_the_records_own_expense_date', async () => {
+    const jsx = await callPage()
+    const { container } = render(jsx)
+    expect((container.querySelector('input[name="expense_date"]') as HTMLInputElement).value).toBe('2026-07-01')
+  })
+
   it('should_allow_a_manager_or_a_trainer', async () => {
     await callPage()
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager', 'trainer'])

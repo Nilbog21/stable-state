@@ -54,6 +54,14 @@ describe('ExpenseForm', () => {
     expect((screen.getByLabelText(/recipient/i) as HTMLInputElement).required).toBe(true)
   })
 
+  // #1224 -- `defaultDate` carries an existing record's own date in edit mode. Omitted (the
+  // new-expense case), the field seeds from `todayStr` — the barn's own day — rather than from
+  // the server host's UTC day, which runs ahead of every barn zone the picker offers.
+  it('should_seed_the_date_field_from_todayStr_when_defaultDate_is_omitted', () => {
+    const { container } = renderForm({ defaultDate: undefined, todayStr: '2026-03-01' })
+    expect((container.querySelector('input[name="expense_date"]') as HTMLInputElement).value).toBe('2026-03-01')
+  })
+
   it('should_render_recipient_datalist_options_from_recentRecipients', () => {
     const { container } = renderForm()
     const options = Array.from(container.querySelectorAll('datalist#recipient-options option')).map(

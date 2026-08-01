@@ -47,6 +47,21 @@ describe('NewAgreementPage', () => {
     expect(requireMembership).toHaveBeenCalledWith('green-acres', ['manager'])
   })
 
+  // #1224 -- pinned to an instant where the barn's day (America/New_York, the createMockBarn
+  // default) and the server host's UTC day disagree: 03:00Z on the 2nd is still the 1st in New
+  // York. The pre-fill follows the barn.
+  it('should_prefill_start_date_with_the_barns_day_not_the_server_hosts_utc_day', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-03-02T03:00:00Z'))
+    try {
+      const jsx = await callPage('lease')
+      const { container } = render(jsx)
+      expect((container.querySelector('input[name="start_date"]') as HTMLInputElement).value).toBe('2026-03-01')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('should_default_to_lease_kind_when_kind_param_missing', async () => {
     const jsx = await callPage(undefined)
     render(jsx)
