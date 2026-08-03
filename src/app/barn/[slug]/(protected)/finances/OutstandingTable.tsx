@@ -6,6 +6,7 @@ import { updatePaymentTypeAction, updateCancellationFeePaymentTypeAction } from 
 import { updateChargePaymentTypeAction } from '../agreements/actions'
 import type { OutstandingItem } from '@/lib/db/types'
 import { formatBarnDate, formatShortDate } from '@/lib/format-date'
+import { formatFee } from '@/lib/format-currency'
 
 import { Th, Td, TableActions } from '@/components/ui/Table'
 
@@ -70,7 +71,7 @@ function OutstandingRow({ item, barnSlug }: { item: OutstandingItem; barnSlug: s
       <Td>{TYPE_LABELS[item.itemType]}</Td>
       <Td>{item.riderNames.join(', ') || '—'}</Td>
       <Td>{item.instructorName ?? '—'}</Td>
-      <Td>{item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Td>
+      <Td>{formatFee(item.fee)}</Td>
       <TableActions>
         {/* Stacked in its own column: `TableActions` wraps children in a nowrap flex row, which
             would sit the error beside the select and stop it wrapping on a phone. */}

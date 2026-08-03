@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { createMockLesson } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -58,39 +59,34 @@ describe('createLessonWithParticipants', () => {
     })
   })
 
-  it('should_store_a_utc_instant_that_decodes_back_to_the_intended_wall_clock_time_in_a_non_utc_timezone', async () => {
-    const originalTz = process.env.TZ
-    process.env.TZ = 'America/New_York'
-    try {
-      const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
-      vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
+  it('should_store_a_utc_instant_that_decodes_back_to_the_intended_barn_wall_clock_time', async () => {
+    const mockRpc = vi.fn().mockResolvedValue({ data: mockLesson, error: null })
+    vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-      // Mirrors DateHourPicker.tsx's own construction: a lesson entered for
-      // "4:00 PM" local time on 2026-05-16 (EDT, UTC-4).
-      const intendedLocalHour = 16
-      const lessonAt = new Date(2026, 4, 16, intendedLocalHour).toISOString()
+    // Mirrors DateHourPicker.tsx's own construction: a lesson entered for "4:00 PM" at a
+    // barn in America/New_York (EDT, UTC-4) on 2026-05-16. The host's own zone no longer
+    // participates in either direction, which is the whole point of #1222 — so unlike the
+    // pre-#1222 version of this test, nothing here touches process.env.TZ.
+    const lessonAt = wallClockToInstant('2026-05-16T16:00:00', 'America/New_York').toISOString()
 
-      await createLessonWithParticipants({
-        barnId: 'barn-1',
-        instructorId: 'user-1',
-        lessonAt,
-        fee: 75,
-        horseIds: ['horse-1'],
-        exertionLevels: [3],
-        riderIds: ['rider-1'],
-        lessonType: 'normal',
-      })
+    await createLessonWithParticipants({
+      barnId: 'barn-1',
+      instructorId: 'user-1',
+      lessonAt,
+      fee: 75,
+      horseIds: ['horse-1'],
+      exertionLevels: [3],
+      riderIds: ['rider-1'],
+      lessonType: 'normal',
+    })
 
-      const [, rpcArgs] = mockRpc.mock.calls[0]
-      const storedLessonAt = rpcArgs.p_lesson_at as string
+    const [, rpcArgs] = mockRpc.mock.calls[0]
+    const storedLessonAt = rpcArgs.p_lesson_at as string
 
-      // The exact value the RPC receives is what lands in the lesson_at
-      // TIMESTAMPTZ column — decoding it back (mirroring LessonForm.tsx's
-      // `initialHour` decode) must reproduce the wall-clock hour it was entered as.
-      expect(new Date(storedLessonAt).getHours()).toBe(intendedLocalHour)
-    } finally {
-      process.env.TZ = originalTz
-    }
+    // The exact value the RPC receives is what lands in the lesson_at TIMESTAMPTZ column;
+    // decoding it back (as LessonForm.tsx's own initial-value decode does) must reproduce
+    // the barn wall clock it was entered as.
+    expect(instantToLocalWallClock(new Date(storedLessonAt), 'America/New_York')).toBe('2026-05-16T16:00:00')
   })
 
   it('should_return_the_created_lesson', async () => {

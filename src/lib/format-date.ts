@@ -47,3 +47,10 @@ export function formatShortDate(isoString: string): string {
 export function formatShortDateOnly(dateOnly: string): string {
   return formatShortDate(`${dateOnly}T00:00:00Z`)
 }
+
+// "Jul 2026" for an `agreement_charges.period` — a DATE naming a billing month, so UTC-forced
+// like the two above. Lives here rather than beside its one caller so the fence has nothing
+// to make an exception for.
+export function formatChargePeriod(period: string): string {
+  return new Intl.DateTimeFormat('en-US', { month: 'short', year: 'numeric', timeZone: 'UTC' }).format(new Date(period))
+}

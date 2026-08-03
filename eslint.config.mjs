@@ -25,6 +25,42 @@ const eslintConfig = defineConfig([
     files: ["scripts/**/*.js"],
     rules: { "@typescript-eslint/no-require-imports": "off" },
   },
+  // #1222's fence. The app has two date frames — a real instant rendered in the barn's zone
+  // (via the `Instant` brand and `format-date.ts`'s formatters), and zoneless "YYYY-MM-DD"
+  // calendar arithmetic. Neither is the *host's* zone, but every API below silently reads it,
+  // which is how fourteen timezone bugs got in. Only the date modules may call them.
+  //
+  // Note what is deliberately NOT banned: a bare `new Date()`. Comparing two instants, or
+  // stamping `now` into a TIMESTAMPTZ, is zone-free and correct — the bug is always reading a
+  // *calendar field* off a Date, which is what the getters below do.
+  {
+    files: ["src/**/*.ts", "src/**/*.tsx"],
+    ignores: [
+      "src/lib/format-date.ts",
+      "src/lib/format-expense.ts",
+      "src/lib/local-day.ts",
+      "src/lib/barn-timezone.ts",
+      "src/lib/finances-month.ts",
+      // Formats numbers, not dates — the AC calls this out explicitly.
+      "src/lib/format-currency.ts",
+    ],
+    rules: {
+      "no-restricted-syntax": ["error",
+        {
+          selector: "CallExpression > MemberExpression[property.name=/^toLocale(Date|Time)?String$/]",
+          message: "Renders in the host's timezone. Use format-date.ts's formatBarnDateTime/formatBarnDate/formatBarnTime on an Instant, or formatShortDate for a DATE-only value (#1222).",
+        },
+        {
+          selector: "NewExpression[callee.object.name='Intl'][callee.property.name='DateTimeFormat'], CallExpression[callee.object.name='Intl'][callee.property.name='DateTimeFormat']",
+          message: "Defaults to the host's timezone. Format dates through src/lib/format-date.ts, which carries the barn's zone on the Instant (#1222).",
+        },
+        {
+          selector: "MemberExpression[property.name=/^get(Hours|Minutes|Seconds|Date|Month|FullYear|Day)$/]",
+          message: "Reads the calendar field in the host's timezone. Resolve barn-local via barn-timezone.ts's instantToLocalWallClock/barnToday instead (#1222).",
+        },
+      ],
+    },
+  },
   // Honor the `_`-prefix convention for intentionally-unused args/vars
   {
     rules: {

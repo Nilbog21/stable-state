@@ -25,6 +25,19 @@ export function getWeekDates(date: string): string[] {
   return Array.from({ length: 7 }, (_, i) => addDays(weekStart, i))
 }
 
+// "July 2026" for a "YYYY-MM" month key — the month calendar's heading.
+export function formatMonthHeading(month: string): string {
+  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
+    new Date(`${month}-01T00:00:00Z`)
+  )
+}
+
+// `start` is a barn-local wall clock ("YYYY-MM-DDTHH:mm:ss"), so it is parsed and formatted
+// as UTC — the digits are displayed as given, with no conversion.
+export function formatItemTime(start: string): string {
+  return new Intl.DateTimeFormat('en-US', { timeStyle: 'short', timeZone: 'UTC' }).format(new Date(`${start}Z`))
+}
+
 // Shared by the Day view's single heading and the Week view's per-day-cell headings.
 export function formatCalendarDate(date: string): string {
   return new Intl.DateTimeFormat('en-US', { weekday: 'long', month: 'short', day: 'numeric', timeZone: 'UTC' }).format(

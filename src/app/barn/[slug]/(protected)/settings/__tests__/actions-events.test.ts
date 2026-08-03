@@ -78,7 +78,7 @@ describe('createEventAction', () => {
       barn: mockBarn,
       membership: mockManagerMembership,
     })
-    vi.mocked(createEvent).mockResolvedValue(createMockBarnEvent())
+    vi.mocked(createEvent).mockResolvedValue({ ...createMockBarnEvent(), event_at: '2026-07-01T10:00:00Z' })
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {
@@ -162,7 +162,7 @@ describe('updateEventAction', () => {
       barn: mockBarn,
       membership: mockManagerMembership,
     })
-    vi.mocked(updateEvent).mockResolvedValue(createMockBarnEvent())
+    vi.mocked(updateEvent).mockResolvedValue({ ...createMockBarnEvent(), event_at: '2026-07-01T10:00:00Z' })
   })
 
   it('should_call_requireMembership_with_manager_role', async () => {

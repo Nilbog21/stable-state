@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
 import { createMockLessonTier, createMockHorse, createMockScheduleItem } from '@/test/fixtures'
 import { LessonForm, computeUnpaidWarn } from '../LessonForm'
@@ -901,9 +902,8 @@ describe('LessonForm exhaustion bars', () => {
     // The received value is a UTC instant now, not a raw '2026-06-15...' string —
     // decode it back to the local calendar date it represents instead of substring matching.
     const receivedIso = getProjectedExhaustion.mock.calls[1][0] as string
-    const receivedDate = new Date(receivedIso)
-    const localDate = `${receivedDate.getFullYear()}-${String(receivedDate.getMonth() + 1).padStart(2, '0')}-${String(receivedDate.getDate()).padStart(2, '0')}`
-    expect(localDate).toBe('2026-06-15')
+    const barnDate = instantToLocalWallClock(new Date(receivedIso), 'America/New_York').slice(0, 10)
+    expect(barnDate).toBe('2026-06-15')
   })
 
   it('should_call_getProjectedExhaustion_with_the_ids_of_every_horse_passed_in_props', async () => {

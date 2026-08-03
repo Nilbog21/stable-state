@@ -10,6 +10,7 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import ExcelJS from 'exceljs'
 import { instantToLocalWallClock } from '@/lib/barn-timezone'
+import { formatFee } from '@/lib/format-currency'
 import { resolveHorseNames } from './horses'
 import { resolveMemberNames } from './member-names'
 import { getAgreementsByBarn } from './agreements'
@@ -454,7 +455,7 @@ export async function getBarnBackupData(barnId: string, timezone: string, client
 function cellWidth(value: unknown, numFmt?: string): number {
   if (value instanceof Date) return DATETIME_FMT.length
   if (numFmt === MONEY_FMT && typeof value === 'number') {
-    return value.toLocaleString('en-US', { style: 'currency', currency: 'USD' }).length
+    return formatFee(value).length
   }
   return String(value ?? '').length
 }

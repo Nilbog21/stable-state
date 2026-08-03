@@ -7,16 +7,9 @@ import { Th, Td } from '@/components/ui/Table'
 import { SavedIndicator, useSaveFlash } from '@/components/ui/SavedIndicator'
 import { EmptyState } from '@/components/EmptyState'
 import type { AgreementCharge } from '@/lib/db/types'
+import { formatChargePeriod } from '@/lib/format-date'
 
 const PAYMENT_TYPES = ['venmo', 'zelle', 'cash', 'check', 'freshbooks'] as const
-
-function formatPeriod(period: string): string {
-  return new Date(period).toLocaleDateString('en-US', {
-    month: 'short',
-    year: 'numeric',
-    timeZone: 'UTC',
-  })
-}
 
 function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: string }) {
   const router = useRouter()
@@ -66,7 +59,7 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
 
   return (
     <tr>
-      <Td>{formatPeriod(charge.period)}</Td>
+      <Td>{formatChargePeriod(charge.period)}</Td>
       <Td>
         <input
           type="number"

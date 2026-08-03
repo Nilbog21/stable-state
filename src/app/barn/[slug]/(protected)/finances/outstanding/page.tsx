@@ -4,6 +4,7 @@ import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstanding
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import type { OutstandingItem, Role } from '@/lib/db/types'
 import { formatBarnDate, formatShortDate } from '@/lib/format-date'
+import { formatFee } from '@/lib/format-currency'
 
 import { Th, Td } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
@@ -95,7 +96,7 @@ export default async function OutstandingPage({
                 <Td>{item.instructorName ?? '—'}</Td>
                 <Td>{item.riderNames.join(', ') || '—'}</Td>
                 <Td>
-                  {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                  {formatFee(item.fee)}
                 </Td>
               </tr>
               )

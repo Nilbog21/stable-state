@@ -2,7 +2,7 @@
 
 import { useState } from 'react'
 import { getMonthGrid, shiftMonth, type DayDecoration } from '@/lib/month-calendar'
-import { formatCalendarDate } from '@/lib/local-day'
+import { formatCalendarDate, formatMonthHeading, formatItemTime } from '@/lib/local-day'
 import { BAND_TINT_CLASS } from '@/lib/band-colors'
 import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { Button } from '@/components/ui/Button'
@@ -28,18 +28,6 @@ const SCHEDULED_CLASS = 'bg-blue-100 dark:bg-blue-900/40'
 const WEEKDAY_INITIALS = ['S', 'M', 'T', 'W', 'T', 'F', 'S']
 
 const NEUTRAL_DAY: DayDecoration = { past: false, band: null, scheduled: false, conflict: false }
-
-function formatMonthHeading(month: string): string {
-  return new Intl.DateTimeFormat('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(
-    new Date(`${month}-01T00:00:00Z`)
-  )
-}
-
-// `start` is barn-local wall clock, so it is parsed as UTC and formatted in UTC — the same
-// no-conversion-on-display rule the rest of the calendar components follow.
-function formatItemTime(start: string): string {
-  return new Intl.DateTimeFormat('en-US', { timeStyle: 'short', timeZone: 'UTC' }).format(new Date(`${start}Z`))
-}
 
 export function MonthCalendarPicker({
   value,
