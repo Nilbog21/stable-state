@@ -61,7 +61,11 @@ const inputClassName =
 // a late-evening expense on a month boundary was bucketing it into the wrong month. Time
 // defaults to midnight when blank.
 function computeOccurredAt(expenseDate: string, expenseTime: string, timezone: string): string {
-  return wallClockToInstant(`${expenseDate}T${expenseTime || '00:00'}:00`, timezone).toISOString()
+  // Take only hour and minute: the time input produces "HH:MM", but the edit page seeds this
+  // from `appointments.expense_time`, a Postgres `time` that arrives as "HH:MM:SS". Appending
+  // seconds to that built an Invalid Date and threw out of wallClockToInstant.
+  const [hour, minute] = (expenseTime || '00:00').split(':')
+  return wallClockToInstant(`${expenseDate}T${hour}:${minute}:00`, timezone).toISOString()
 }
 
 export function ExpenseForm({
