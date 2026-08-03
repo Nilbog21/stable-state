@@ -302,6 +302,7 @@ Batch file is `specs/batch_release-N.md`. If it doesn't exist, skip this step.
 2. For every remaining entry whose `deps:` line lists #{N}, remove #{N} from that list.
    - If the list is now empty, move the entry to **Ready**.
    - If it still lists one or more other open dependencies, leave it in **Blocked** with the shortened list — never flip an entry to Ready while any other dependency remains unresolved.
+   - An entry moves whole: its `note:` lines travel with it into Ready verbatim. See `/issueBatch`'s "The batch file format" section.
 3. Rewrite the file in place, keeping each section sorted by `unblocks` descending, and update (or add) a `_last pruned: {timestamp} (finishIssue #{N})_` line beneath the refresh line.
 
 This is a targeted, O(1) update — it only touches entries that referenced #{N}. It doesn't re-verify the rest of the file against `gh`; that's what `/issueBatch prune` is for.

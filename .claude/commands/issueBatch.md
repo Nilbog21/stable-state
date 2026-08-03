@@ -24,7 +24,7 @@ Jump to the matching subcommand section below.
 
 ## The batch file format
 
-All four subcommands read and write this shape. Two parts of it are **prose written by humans and by `/grillMe`, and no subcommand may ever discard them**:
+All four subcommands read and write this shape, as do `/grillMe`, `/beginIssue`, and `/finishIssue`. Two parts of it are **prose written by humans and by `/grillMe`, and no skill that writes this file may ever discard them**:
 
 ```
 # Batch — {release-label}
@@ -48,7 +48,7 @@ _last full refresh: {timestamp} (issueBatch create)_
 
 `note:` lines and the `## Insights` section are where this file's real value accumulates. `unblocks:` counts a dependency graph; the prose records everything a graph can't hold — that landing #1218 before #1206 saves rewriting brand-new specs, that two issues collide on different hunks of the same file, that a slice was excluded from a fleet batch on purpose. That knowledge is expensive to rediscover and exists nowhere else: not in the issue bodies, not in git history.
 
-So: **an entry may carry any number of `note:` lines, and every subcommand carries them forward verbatim.** Same for `## Insights`. `create` rebuilds scores and sections from scratch and still preserves both. A subcommand that rewrites this file and drops the prose has destroyed the thing the file is for. (This is not hypothetical — `create` did exactly that until #1231, which is why the notes in it are worth reading before you trust the numbers.)
+So: **an entry may carry any number of `note:` lines, and every skill that writes this file carries them forward verbatim** — this command's four subcommands, and equally `/beginIssue` and `/finishIssue` when they move an entry between sections. Same for `## Insights`. `create` rebuilds scores and sections from scratch and still preserves both. A skill that rewrites this file and drops the prose has destroyed the thing the file is for. (This is not hypothetical — `create` did exactly that until #1231, which is why the notes in it are worth reading before you trust the numbers.)
 
 ---
 

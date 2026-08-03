@@ -141,7 +141,7 @@ CI enforces 100% branch coverage via `scripts/check-coverage.sh`. Handle all bra
 
 The main sequence, one issue from selection to merge:
 
-1. `/issueBatch create|pick|prune|defer` — maintain the release's candidate-issue file and pick what to work on next. `pick` fills every free worktree (detected via `scripts/workflow-context.sh`'s `worktree_state`) and reasons from the file's `note:`/`## Insights` prose rather than from a rule table (#1231); that prose is the file's real payload, and every subcommand preserves it
+1. `/issueBatch create|pick|prune|defer` — maintain the release's candidate-issue file and pick what to work on next. `pick` fills every free worktree (detected via `scripts/workflow-context.sh`'s `worktree_state`) and reasons from the file's `note:`/`## Insights` prose rather than from a rule table (#1231); that prose is the file's real payload, and every skill that writes the file preserves it — this command's four subcommands, `/grillMe`, which appends entries and notes, and `/beginIssue` and `/finishIssue`, which move entries between sections (#1237)
 2. `/beginIssue {N}` — assign, branch, design review in plan mode, TDD implementation, draft PR
 3. `/reviewIssue {N}` — automated code review of the PR; substantial findings go back to `/beginIssue`'s revise mode
 4. `/testIssue {N}` — sync migrations, run the app, walk the acceptance criteria manually, mark the PR ready
