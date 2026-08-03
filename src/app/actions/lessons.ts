@@ -28,6 +28,7 @@ import type { Barn, Lesson, NotificationType, PaymentType, ScheduleItem } from '
 import { wallClockToInstant } from '@/lib/barn-timezone'
 import { createHorse, getHorsesByIds, getHorseProjectedExhaustion, resolveExhaustionThresholds } from '@/lib/db/horses'
 import { redirect } from 'next/navigation'
+import type { ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { parseLessonFormData } from './lesson-form-parsing'
 
 function sendNearbyInstructorNotificationViaRpc(
@@ -129,7 +130,7 @@ export async function updateLessonAction(
   prevState: { error: string | null },
   formData: FormData
 ): Promise<{ error: string | null }> {
-  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   const parsed = await parseLessonFormData(formData, barnId, membership)
   if ('error' in parsed) return parsed
@@ -144,7 +145,7 @@ export async function updateLessonAction(
     // cancelled_at, so hoisting is behaviour-preserving and stops a rejected save from
     // having already committed participant edits.
     if (cancellationNotesRaw !== null) {
-      const currentLesson = await getLessonById(lessonId, barnId, membership.role)
+      const currentLesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
       if (!currentLesson || currentLesson.cancelled_at === null) {
         return { error: 'lesson is not cancelled' }
       }
@@ -214,9 +215,9 @@ export async function deleteLessonAction(
   lessonId: string,
   formData: FormData
 ): Promise<void> {
-  const { membership } = await requireMembership(barnSlug, ['manager'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -235,7 +236,7 @@ export async function updatePaymentTypeAction(
   const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
   if (membership.role === 'trainer') {
-    const lesson = await getLessonById(lessonId, barn.id, 'trainer')
+    const lesson = await getLessonById(lessonId, barn.id, 'trainer', barn.timezone)
     if (!lesson) return { error: 'lesson not found' }
     if (lesson.instructor_id !== membership.id) return { error: 'not authorized' }
   }
@@ -325,14 +326,14 @@ export async function getProjectedExhaustionForBarn(
   excludeLessonId: string | null,
   targetDateIso: string,
   horseIds: string[]
-): Promise<Record<string, { existingRows: { lessonAt: string; exertionLevel: number }[]; thresholds: { high: number; moderate: number } }>> {
+): Promise<Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>> {
   const { barn } = await requireMembership(barnSlug, ['manager', 'trainer'])
   const horses = await getHorsesByIds(horseIds, barn.id)
   const targetDate = new Date(targetDateIso)
 
   const entries = await Promise.all(
     horses.map(async (h) => {
-      const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, targetDate, excludeLessonId ?? undefined)
+      const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, targetDate, barn.timezone, excludeLessonId ?? undefined)
       return [h.id, { existingRows, thresholds: resolveExhaustionThresholds(h, barn) }] as const
     })
   )

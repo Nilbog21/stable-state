@@ -42,6 +42,7 @@ function renderForm(overrides: Partial<Parameters<typeof ExpenseForm>[0]> = {}) 
       recentExpenseTypes={recentExpenseTypes}
       defaultDate="2026-07-04"
       todayStr="2026-07-04"
+      timezone="America/New_York"
       onSave={onSave}
       {...overrides}
     />
@@ -409,16 +410,17 @@ describe('ExpenseForm', () => {
     expect(screen.queryByLabelText(/payment type/i)).toBeNull()
   })
 
+  // #1222 -- these used to force process.env.TZ to the barn's zone, which made the host and
+  // the barn agree and hid the fact that the form was reading the host's. The assertions
+  // below always stated the barn-local answer; only the frame producing it has changed.
   describe('occurred_at wiring', () => {
-    let originalTz: string | undefined
-
-    beforeEach(() => {
-      originalTz = process.env.TZ
-      process.env.TZ = 'America/New_York'
-    })
-
-    afterEach(() => {
-      process.env.TZ = originalTz
+    it('should_compute_occurred_at_in_the_barns_timezone_rather_than_the_hosts', () => {
+      const { container } = renderForm({ defaultDate: '2026-07-05', timezone: 'America/Los_Angeles' })
+      fireEvent.change(screen.getByLabelText(/time/i), { target: { value: '14:30' } })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // 2026-07-05 14:30 America/Los_Angeles (PDT, UTC-7) => 21:30 UTC
+      expect(fd.get('occurred_at')).toBe('2026-07-05T21:30:00.000Z')
     })
 
     it('should_include_a_hidden_occurred_at_field_computed_from_date_and_time_as_a_utc_instant', () => {
@@ -458,6 +460,21 @@ describe('ExpenseForm', () => {
       const form = container.querySelector('form')!
       const fd = new FormData(form)
       expect(fd.get('occurred_at')).toBe('2026-01-15T05:00:00.000Z')
+    })
+
+    it('should_compute_occurred_at_from_a_stored_time_that_carries_seconds', () => {
+      // `appointments.expense_time` is a Postgres `time`, so the edit page seeds this with
+      // "HH:MM:SS" — the time input only ever produces "HH:MM". Appending seconds blindly
+      // built "…T20:30:00:00", an Invalid Date that threw out of wallClockToInstant and
+      // 500'd the whole edit page.
+      const { container } = renderForm({
+        defaultDate: '2026-07-05',
+        initial: { recipient: '', expenseType: '', expenseTime: '20:30:00', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
+      })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // 2026-07-05 20:30 America/New_York (EDT, UTC-4) => 00:30 UTC the next day
+      expect(fd.get('occurred_at')).toBe('2026-07-06T00:30:00.000Z')
     })
 
     it('should_omit_the_occurred_at_field_when_date_is_cleared', () => {

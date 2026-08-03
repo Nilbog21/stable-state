@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockLesson, createMockHorseExpense, createMockBarnEvent, createMockScheduleItem } from '@/test/fixtures'
+import { createMockLesson, createMockHorseExpense, createMockScheduleItem } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -712,7 +712,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_return_event_items_only_when_only_events_exist_in_range', async () => {
-    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
+    const event = { id: 'event-1', event_at: '2026-07-03T10:00:00Z', title: 'Costume Party' }
     vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -723,7 +723,7 @@ describe('getScheduleForRange', () => {
   it('should_return_merged_lesson_expense_and_event_items_for_a_mixed_range', async () => {
     const lesson = createMockLesson({ id: 'lesson-1' })
     const expense = createMockHorseExpense({ id: 'expense-1', expense_date: '2026-07-03', expense_time: '10:00:00' })
-    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-04T10:00:00Z' })
+    const event = { id: 'event-1', event_at: '2026-07-04T10:00:00Z', title: 'Costume Party' }
     vi.mocked(createClient).mockResolvedValue(makeClient({ lessons: [lesson], expenses: [expense], events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -732,7 +732,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_set_empty_horse_ids_and_null_instructor_id_on_an_event_item', async () => {
-    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
+    const event = { id: 'event-1', event_at: '2026-07-03T10:00:00Z', title: 'Costume Party' }
     vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -911,7 +911,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_label_an_event_item_with_its_title', async () => {
-    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z', title: 'Costume Party' })
+    const event = { id: 'event-1', event_at: '2026-07-03T10:00:00Z', title: 'Costume Party' }
     vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)
@@ -938,7 +938,7 @@ describe('getScheduleForRange', () => {
   })
 
   it('should_set_empty_rider_ids_on_an_event_item', async () => {
-    const event = createMockBarnEvent({ id: 'event-1', event_at: '2026-07-03T10:00:00Z' })
+    const event = { id: 'event-1', event_at: '2026-07-03T10:00:00Z', title: 'Costume Party' }
     vi.mocked(createClient).mockResolvedValue(makeClient({ events: [event] }) as any)
 
     const result = await getScheduleForRange('barn-1', from, to, timezone)

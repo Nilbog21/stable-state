@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup, fireEvent, waitFor, act } from '@testing-library/react'
 import type { LessonDetail, Horse } from '@/lib/db/types'
-import { createMockHorse, createMockLessonDetail, createMockLessonTier } from '@/test/fixtures'
+import { createMockHorse, createMockLessonDetail, createMockLessonTier, instant } from '@/test/fixtures'
 import { LessonForm } from '../LessonForm'
 import { NavigationBlockerProvider, useNavigationBlocker } from '../../NavigationBlocker'
 
@@ -13,20 +13,15 @@ const mockHorse: Horse = createMockHorse()
 const mockRider = { id: 'rider-1', name: 'Alice' }
 const mockRider2 = { id: 'rider-2', name: 'Bob' }
 
-// 10:30Z is 16:00 in the pinned test zone (Asia/Kolkata, +5:30) — a whole viewer-local hour,
-// which is what the edit form's date/hour picker can represent. It seeds the hour from
-// `new Date(lesson_at).getHours()` and drops the minutes, so an instant landing on a
-// half-hour viewer-local (10:00Z → 15:30) does not survive the round trip. That lossiness is
-// a real app bug for any viewer at a non-whole-hour offset, not a property of these tests.
-//
-// Two queued changes each close it independently, and this fixture can go back to a round
-// number once either lands: #1222 deletes the viewer frame, and #1021's replacement picker
-// gains minute granularity (the client asked for it after that issue was written), which
-// stops the truncation at its source.
+// A round 10:00Z, which is 06:00 in the fixture barn's America/New_York — a whole barn hour,
+// which is what the edit form's date/hour picker can represent. This fixture used to be
+// 10:30Z to dodge the viewer-frame version of this, where the surviving hour depended on the
+// *viewer's* offset; #1222 deleted that frame, so the round trip is now the same for
+// everyone. Whole-hour granularity itself is #1021's picker to fix.
 const normalLesson: LessonDetail = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:30:00Z',
+  lesson_at: instant('2026-05-17T10:00:00Z'),
   submitted_at: '2026-05-17T10:35:00Z',
   lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: null } }],
 })
@@ -55,31 +50,31 @@ const baseProps = {
 
 describe('LessonForm (edit mode)', () => {
   it('should_not_render_recurring_checkbox', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('checkbox', { name: /recurring/i })).toBeNull()
   })
 
   it('should_initialize_lesson_type_toggle_to_normal', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const hidden = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
     expect(hidden.value).toBe('normal')
   })
 
   it('should_initialize_lesson_type_toggle_to_group', () => {
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} />)
     const hidden = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
     expect(hidden.value).toBe('group')
   })
 
   it('should_precheck_current_horses', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     expect(checkbox.checked).toBe(true)
   })
 
   it('should_prepopulate_exertion_level_for_current_horse', () => {
     const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 4, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
-    render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
     expect(exertionInput.value).toBe('4')
   })
@@ -88,49 +83,49 @@ describe('LessonForm (edit mode)', () => {
     // exertion_level is only absent for a rider-role LessonDetail read, which this
     // manager/trainer-only form never receives in practice — this covers the fallback branch.
     const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: undefined, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
-    render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
     expect(exertionInput.value).toBe('3')
   })
 
   it('should_preselect_current_rider_in_dropdown_for_normal_lesson', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const select = container.querySelector('select[name="rider_id"]') as HTMLSelectElement
     expect(select.value).toBe('rider-1')
   })
 
   it('should_render_rider_dropdown_for_normal_lesson', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(container.querySelector('select[name="rider_id"]')).not.toBeNull()
   })
 
   it('should_precheck_rider_1_for_group_lesson', () => {
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
     const r1 = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-1"]') as HTMLInputElement
     expect(r1.checked).toBe(true)
   })
 
   it('should_precheck_rider_2_for_group_lesson', () => {
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
     const r2 = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-2"]') as HTMLInputElement
     expect(r2.checked).toBe(true)
   })
 
   it('should_show_downgrade_warning_when_switching_group_to_normal', () => {
-    render(<LessonForm {...baseProps} initialLesson={groupLesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} />)
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     expect(screen.getByRole('alert')).toBeDefined()
   })
 
   it('should_hide_downgrade_warning_when_switching_back_to_group', () => {
-    render(<LessonForm {...baseProps} initialLesson={groupLesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} />)
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     expect(screen.queryByRole('alert')).toBeNull()
   })
 
   it('should_show_client_error_when_group_submitted_with_fewer_than_two_riders', () => {
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     const horseCheckbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
@@ -142,7 +137,7 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_not_call_action_when_group_submitted_with_fewer_than_two_riders', () => {
     const action = vi.fn().mockResolvedValue({ error: null })
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} action={action} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} action={action} />)
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     const horseCheckbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
@@ -154,7 +149,7 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_show_error_from_action_state', async () => {
     const errorAction = vi.fn().mockResolvedValue({ error: 'Failed to save' })
-    render(<LessonForm {...baseProps} action={errorAction} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} action={errorAction} />)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
     fireEvent.submit(form)
     await waitFor(() => {
@@ -163,39 +158,39 @@ describe('LessonForm (edit mode)', () => {
   })
 
   it('should_render_venmo_payment_type_option', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('option', { name: /venmo/i })).not.toBeNull()
   })
 
   it('should_render_zelle_payment_type_option', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('option', { name: /zelle/i })).not.toBeNull()
   })
 
   it('should_render_cash_payment_type_option', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('option', { name: /cash/i })).not.toBeNull()
   })
 
   it('should_render_check_payment_type_option', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('option', { name: /check/i })).not.toBeNull()
   })
 
   it('should_render_freshbooks_payment_type_option', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('option', { name: /freshbooks/i })).not.toBeNull()
   })
 
   it('should_preselect_current_payment_type', () => {
     const lesson = { ...normalLesson, payment_type: 'venmo' as const }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const select = container.querySelector('select[name="payment_type"]') as HTMLSelectElement
     expect(select.value).toBe('venmo')
   })
 
   it('should_uncheck_horse_when_horse_checkbox_is_clicked_while_checked', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     fireEvent.click(checkbox)
     expect(checkbox.checked).toBe(false)
@@ -203,21 +198,21 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_check_horse_when_unchecked_horse_checkbox_is_clicked', () => {
     const lesson = { ...normalLesson, lesson_horses: [] }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     fireEvent.click(checkbox)
     expect(checkbox.checked).toBe(true)
   })
 
   it('should_update_exertion_level_when_changed', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
     fireEvent.change(exertionInput, { target: { value: '5' } })
     expect(exertionInput.value).toBe('5')
   })
 
   it('should_default_exertion_to_3_when_nan_is_entered', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
     fireEvent.change(exertionInput, { target: { value: '' } })
     expect(exertionInput.value).toBe('3')
@@ -225,14 +220,14 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_check_rider_checkbox_when_clicked_in_group_mode', () => {
     const lesson = { ...groupLesson, lesson_riders: [] }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} riders={[mockRider, mockRider2]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} riders={[mockRider, mockRider2]} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-1"]') as HTMLInputElement
     fireEvent.click(checkbox)
     expect(checkbox.checked).toBe(true)
   })
 
   it('should_uncheck_rider_checkbox_when_clicked_again_in_group_mode', () => {
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="rider_id"][value="rider-1"]') as HTMLInputElement
     fireEvent.click(checkbox)
     expect(checkbox.checked).toBe(false)
@@ -240,21 +235,21 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_render_jumping_hidden_input_as_true_when_lesson_jumping_is_true', () => {
     const lesson = { ...normalLesson, jumping: true }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const hiddenJumping = container.querySelector('input[name="jumping"]') as HTMLInputElement
     expect(hiddenJumping.value).toBe('true')
   })
 
   it('should_default_instructor_to_currentMembershipId_when_instructor_id_is_null', () => {
     const lesson = { ...normalLesson, instructor_id: null }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const select = container.querySelector('select[name="instructor_id"]') as HTMLSelectElement
     expect(select).not.toBeNull()
   })
 
   it('should_handle_null_horses_relation_in_lesson_horses', () => {
     const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: null }] }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     expect(container.querySelector('form')).not.toBeNull()
   })
 
@@ -267,21 +262,21 @@ describe('LessonForm (edit mode)', () => {
       ],
     }
     const horse2: Horse = createMockHorse({ id: 'horse-2', name: 'Storm' })
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLessonTwoHorses} horses={[mockHorse, horse2]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLessonTwoHorses} horses={[mockHorse, horse2]} />)
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     const checkbox1 = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     expect(checkbox1.checked).toBe(false)
   })
 
   it('should_show_downgrade_warning_mentioning_horses_when_switching_group_to_normal', () => {
-    render(<LessonForm {...baseProps} initialLesson={groupLesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} />)
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     expect(screen.getByRole('alert').textContent).toContain('horse')
   })
 
   it('should_show_client_error_when_normal_submitted_with_no_horses_selected', () => {
     const lesson = { ...normalLesson, lesson_horses: [] }
-    render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
     fireEvent.submit(form)
     expect(screen.getByRole('alert').textContent).toContain('normal lesson requires exactly 1 horse')
@@ -290,73 +285,73 @@ describe('LessonForm (edit mode)', () => {
   it('should_not_call_action_when_normal_submitted_with_no_horses_selected', () => {
     const action = vi.fn().mockResolvedValue({ error: null })
     const lesson = { ...normalLesson, lesson_horses: [] }
-    render(<LessonForm {...baseProps} initialLesson={lesson} action={action} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} action={action} />)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
     fireEvent.submit(form)
     expect(action).not.toHaveBeenCalled()
   })
 
   it('should_show_exertion_label_when_horse_is_pre_checked', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
   })
 
   it('should_not_show_exertion_label_when_no_horse_is_checked', () => {
     const lesson = { ...normalLesson, lesson_horses: [] }
-    render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     expect(screen.queryByText('Exertion (1–5)')).toBeNull()
   })
 
   it('should_show_exertion_label_when_unchecked_horse_is_checked', () => {
     const lesson = { ...normalLesson, lesson_horses: [] }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     fireEvent.click(checkbox)
     expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
   })
 
   it('should_hide_exertion_label_when_horse_is_unchecked', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     fireEvent.click(checkbox)
     expect(screen.queryByText('Exertion (1–5)')).toBeNull()
   })
 
   it('should_render_jumping_checkbox_in_edit_mode', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('checkbox', { name: /jumping/i })).not.toBeNull()
   })
 
   it('should_initialize_jumping_checkbox_to_true_when_lesson_jumping_is_true', () => {
     const lesson = { ...normalLesson, jumping: true }
-    render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     const checkbox = screen.getByRole('checkbox', { name: /jumping/i }) as HTMLInputElement
     expect(checkbox.checked).toBe(true)
   })
 
   it('should_initialize_jumping_checkbox_to_false_when_lesson_jumping_is_false', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const checkbox = screen.getByRole('checkbox', { name: /jumping/i }) as HTMLInputElement
     expect(checkbox.checked).toBe(false)
   })
 
   it('should_snap_exertion_to_4_when_jumping_toggled_on_in_edit_mode', () => {
     const lesson = { ...normalLesson, lesson_horses: [{ exertion_level: 2, horse_notes: null, horses: { id: 'horse-1', name: 'Thunderbolt' } }] }
-    render(<LessonForm {...baseProps} initialLesson={lesson} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /exertion level for Thunderbolt/i }) as HTMLInputElement
     expect(exertionInput.value).toBe('4')
   })
 
   it('should_show_tier_dropdown_in_edit_mode', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('combobox', { name: /tier/i })).not.toBeNull()
   })
 
   it('should_preselect_tier_matching_initial_lesson_tier_name_in_edit_mode', () => {
     const tier = createMockLessonTier({ id: 'tier-abc', name: 'Premium', is_default: false })
     const lesson = { ...normalLesson, tier_name: 'Premium', fee: 75 }
-    render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} tiers={[tier]} />)
     const select = screen.getByRole('combobox', { name: /tier/i }) as HTMLSelectElement
     expect(select.value).toBe('tier-abc')
   })
@@ -364,7 +359,7 @@ describe('LessonForm (edit mode)', () => {
   it('should_show_fee_input_when_named_tier_selected_in_edit_mode', () => {
     const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', price: 50, is_default: true })
     const lesson = { ...normalLesson, tier_name: 'Standard', fee: 50 }
-    render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.value).toBe('50')
   })
@@ -372,7 +367,7 @@ describe('LessonForm (edit mode)', () => {
   it('should_prefill_fee_with_lessons_saved_fee_not_tier_price_on_initial_load', () => {
     const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', price: 50, is_default: true })
     const lesson = { ...normalLesson, tier_name: 'Standard', fee: 65 }
-    render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.value).toBe('65')
   })
@@ -380,7 +375,7 @@ describe('LessonForm (edit mode)', () => {
   it('should_not_change_tier_name_when_fee_is_manually_edited_in_edit_mode', () => {
     const tier = createMockLessonTier({ id: 'tier-standard', name: 'Standard', price: 50, is_default: true })
     const lesson = { ...normalLesson, tier_name: 'Standard', fee: 50 }
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lesson} tiers={[tier]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     fireEvent.change(feeInput, { target: { value: '40' } })
     const tierNameInput = container.querySelector('input[name="tier_name"]') as HTMLInputElement
@@ -388,28 +383,28 @@ describe('LessonForm (edit mode)', () => {
   })
 
   it('should_show_fee_input_when_custom_tier_selected_in_edit_mode', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('spinbutton', { name: /fee/i })).not.toBeNull()
   })
 
   it('should_mark_fee_input_as_required_in_edit_mode', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect((screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement).required).toBe(true)
   })
 
   it('should_render_add_new_horse_input_for_managers_in_edit_mode', () => {
-    render(<LessonForm {...baseProps} isManager={true} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
     expect(screen.queryByPlaceholderText(/add new horse/i)).not.toBeNull()
   })
 
   it('should_show_save_button_in_edit_mode', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('button', { name: 'Save' })).not.toBeNull()
   })
 
   it('should_show_saving_text_while_pending_in_edit_mode', async () => {
     const pendingAction = vi.fn().mockImplementation(() => new Promise(() => {}))
-    render(<LessonForm {...baseProps} action={pendingAction} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} action={pendingAction} />)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
     fireEvent.submit(form)
     await waitFor(() => {
@@ -418,7 +413,7 @@ describe('LessonForm (edit mode)', () => {
   })
 
   it('should_show_error_when_group_submitted_with_no_horses_in_edit_mode', () => {
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} />)
     const horseCheckbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     fireEvent.click(horseCheckbox)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
@@ -428,7 +423,7 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_not_call_action_when_group_submitted_with_no_horses_in_edit_mode', () => {
     const action = vi.fn().mockResolvedValue({ error: null })
-    const { container } = render(<LessonForm {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} action={action} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={groupLesson} riders={[mockRider, mockRider2]} action={action} />)
     const horseCheckbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-1"]') as HTMLInputElement
     fireEvent.click(horseCheckbox)
     const form = screen.getByRole('button', { name: 'Save' }).closest('form')!
@@ -438,7 +433,7 @@ describe('LessonForm (edit mode)', () => {
 
   it('should_render_unavailable_horse_as_disabled_checkbox', () => {
     const unavailableHorse = createMockHorse({ id: 'horse-2', name: 'Blaze', is_available: false })
-    const { container } = render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, unavailableHorse]} />)
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
     expect(checkbox.disabled).toBe(true)
   })
@@ -446,7 +441,7 @@ describe('LessonForm (edit mode)', () => {
   it('should_sort_available_horse_before_unavailable_horse', () => {
     const unavailableHorse = createMockHorse({ id: 'horse-unavail', name: 'AAA Unavailable', is_available: false })
     const availableHorse = createMockHorse({ id: 'horse-avail', name: 'ZZZ Available' })
-    const { container } = render(<LessonForm {...baseProps} horses={[unavailableHorse, availableHorse]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[unavailableHorse, availableHorse]} />)
     const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
     expect((checkboxes[0] as HTMLInputElement).value).toBe('horse-avail')
   })
@@ -454,14 +449,14 @@ describe('LessonForm (edit mode)', () => {
   it('should_sort_unavailable_horse_after_available_horse', () => {
     const unavailableHorse = createMockHorse({ id: 'horse-unavail', name: 'AAA Unavailable', is_available: false })
     const availableHorse = createMockHorse({ id: 'horse-avail', name: 'ZZZ Available' })
-    const { container } = render(<LessonForm {...baseProps} horses={[unavailableHorse, availableHorse]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[unavailableHorse, availableHorse]} />)
     const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
     expect((checkboxes[1] as HTMLInputElement).value).toBe('horse-unavail')
   })
 
   it('should_show_unavailability_reason_next_to_horse_name', () => {
     const unavailableHorse = createMockHorse({ id: 'horse-2', name: 'Blaze', is_available: false, unavailability_reason: 'on stall rest' })
-    render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, unavailableHorse]} />)
     expect(screen.getByText(/on stall rest/i)).toBeDefined()
   })
 
@@ -472,14 +467,14 @@ describe('LessonForm (edit mode)', () => {
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
     }
     const { container } = render(
-      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+      <LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
     )
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
     expect(checkbox.checked).toBe(true)
   })
 
   it('should_render_tier_selector_before_jumping_checkbox_in_edit_mode', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const tierSelect = screen.getByRole('combobox', { name: /tier/i })
     const jumpingCheckbox = screen.getByRole('checkbox', { name: /jumping/i })
     expect(tierSelect.compareDocumentPosition(jumpingCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -492,7 +487,7 @@ describe('LessonForm (edit mode)', () => {
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
     }
     const { container } = render(
-      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+      <LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
     )
     const checkbox = container.querySelector('input[type="checkbox"][name="horse_id"][value="horse-2"]') as HTMLInputElement
     expect(checkbox.disabled).toBe(true)
@@ -505,7 +500,7 @@ describe('LessonForm (edit mode)', () => {
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-2', name: 'Blaze' } }],
     }
     const { container } = render(
-      <LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
+      <LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, unavailableHorse]} initialLesson={lessonWithUnavailableHorse} />
     )
     const hidden = container.querySelector('input[type="hidden"][name="horse_id"][value="horse-2"]')
     expect(hidden).not.toBeNull()
@@ -519,7 +514,7 @@ function DirtyDisplay() {
 
 const pastLesson: LessonDetail = {
   ...normalLesson,
-  lesson_at: '2020-01-01T10:00:00Z',
+  lesson_at: instant('2020-01-01T10:00:00Z'),
   payment_type: null,
   fee: 75,
 }
@@ -539,11 +534,11 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
   })
 
   it('should_not_set_dirty_when_lesson_is_future', async () => {
-    const futureLesson: LessonDetail = { ...pastLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    const futureLesson: LessonDetail = { ...pastLesson, lesson_at: instant('2099-01-01T10:00:00Z') }
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -554,7 +549,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={zeroFeeLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={zeroFeeLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -565,7 +560,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={paidLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={paidLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -575,7 +570,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={pastLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={pastLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
@@ -585,7 +580,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={pastLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={pastLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
@@ -598,7 +593,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={pastLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={pastLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
@@ -612,7 +607,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
   it('should_register_beforeunload_when_dirty', async () => {
     render(
       <NavigationBlockerProvider>
-        <LessonForm {...baseProps} initialLesson={pastLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={pastLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => {
@@ -624,7 +619,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
   it('should_remove_beforeunload_when_payment_type_selected', async () => {
     const { container } = render(
       <NavigationBlockerProvider>
-        <LessonForm {...baseProps} initialLesson={pastLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={pastLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => {
@@ -640,7 +635,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
   it('should_prevent_default_on_beforeunload_event_when_dirty', async () => {
     render(
       <NavigationBlockerProvider>
-        <LessonForm {...baseProps} initialLesson={pastLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={pastLesson} />
       </NavigationBlockerProvider>
     )
     let handler: ((e: BeforeUnloadEvent) => void) | undefined
@@ -654,14 +649,14 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     expect(mockEvent.preventDefault).toHaveBeenCalled()
   })
 
-  const futureNormalLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
-  const futureGroupLesson: LessonDetail = { ...groupLesson, lesson_at: '2099-01-01T10:00:00Z' }
+  const futureNormalLesson: LessonDetail = { ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z') }
+  const futureGroupLesson: LessonDetail = { ...groupLesson, lesson_at: instant('2099-01-01T10:00:00Z') }
 
   it('should_set_dirty_when_fee_changed', async () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureNormalLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -674,7 +669,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureNormalLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -689,7 +684,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureNormalLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -702,7 +697,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureNormalLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -715,7 +710,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} mode="new" initialLesson={undefined} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} mode="new" initialLesson={undefined} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -728,7 +723,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureNormalLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureNormalLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -741,7 +736,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureGroupLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureGroupLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -755,7 +750,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     const { container } = render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} riders={[mockRider, mockRider2, mockRider3]} initialLesson={futureGroupLesson} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} riders={[mockRider, mockRider2, mockRider3]} initialLesson={futureGroupLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -766,33 +761,33 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
   })
 
   it('should_set_dirty_when_lesson_has_unresolved_horse_issue', async () => {
-    const cleanFutureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    const cleanFutureLesson: LessonDetail = { ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z') }
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={cleanFutureLesson} hasHorseIssue />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={cleanFutureLesson} hasHorseIssue />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
   })
 
   it('should_not_set_dirty_when_hasHorseIssue_is_false_and_nothing_else_dirty', async () => {
-    const cleanFutureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    const cleanFutureLesson: LessonDetail = { ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z') }
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={cleanFutureLesson} hasHorseIssue={false} />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={cleanFutureLesson} hasHorseIssue={false} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
   })
 
   it('should_stay_dirty_when_hasHorseIssue_true_and_fee_also_changed', async () => {
-    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z') }
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} initialLesson={futureLesson} hasHorseIssue />
+        <LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={futureLesson} hasHorseIssue />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('dirty'))
@@ -804,7 +799,7 @@ describe('LessonForm (edit mode — navigation dirty state)', () => {
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...baseProps} mode="new" initialLesson={undefined} hasHorseIssue />
+        <LessonForm timezone={'America/New_York'} {...baseProps} mode="new" initialLesson={undefined} hasHorseIssue />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -821,35 +816,35 @@ describe('LessonForm notes fields', () => {
   }
 
   it('should_render_horse_notes_textarea_when_initialNotes_provided', () => {
-    render(<LessonForm {...notesProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...notesProps} />)
     expect(screen.getByDisplayValue('watch left lead')).toBeDefined()
   })
 
   it('should_render_rider_notes_textarea_when_initialNotes_provided', () => {
-    render(<LessonForm {...notesProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...notesProps} />)
     expect(screen.getByDisplayValue('good position')).toBeDefined()
   })
 
   it('should_render_private_notes_textarea_when_initialNotes_provided', () => {
-    render(<LessonForm {...notesProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...notesProps} />)
     expect(screen.getByDisplayValue('private info')).toBeDefined()
   })
 
   it('should_render_empty_textarea_when_horse_notes_is_null', () => {
     const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, horses: [{ id: 'horse-1', name: 'Thunderbolt', horse_notes: null }] } }
-    render(<LessonForm {...props} />)
+    render(<LessonForm timezone={'America/New_York'} {...props} />)
     expect(screen.getByLabelText('Thunderbolt', { selector: 'textarea' })).toBeDefined()
   })
 
   it('should_render_empty_textarea_when_rider_notes_is_null', () => {
     const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: null, private_notes: 'private info' }] } }
-    render(<LessonForm {...props} />)
+    render(<LessonForm timezone={'America/New_York'} {...props} />)
     expect(screen.getByText('Rider Notes')).toBeDefined()
   })
 
   it('should_render_empty_textarea_when_private_notes_is_null', () => {
     const props = { ...notesProps, initialNotes: { ...notesProps.initialNotes, riders: [{ membershipId: 'rider-1', name: 'Alice', rider_notes: 'good position', private_notes: null }] } }
-    render(<LessonForm {...props} />)
+    render(<LessonForm timezone={'America/New_York'} {...props} />)
     expect(screen.getByText('Private')).toBeDefined()
   })
 
@@ -858,12 +853,12 @@ describe('LessonForm notes fields', () => {
       ...notesProps,
       initialLesson: { ...normalLesson, cancelled_at: '2026-05-18T00:00:00Z', cancellation_notes: 'weather' },
     }
-    render(<LessonForm {...props} />)
+    render(<LessonForm timezone={'America/New_York'} {...props} />)
     expect(screen.getByDisplayValue('weather')).toBeDefined()
   })
 
   it('should_not_render_cancellation_notes_textarea_when_lesson_is_not_cancelled', () => {
-    render(<LessonForm {...notesProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...notesProps} />)
     expect(screen.queryByText('Cancellation Notes')).toBeNull()
   })
 
@@ -872,21 +867,21 @@ describe('LessonForm notes fields', () => {
       ...notesProps,
       initialLesson: { ...normalLesson, cancelled_at: '2026-05-18T00:00:00Z', cancellation_notes: null },
     }
-    render(<LessonForm {...props} />)
+    render(<LessonForm timezone={'America/New_York'} {...props} />)
     expect(screen.getByLabelText('Cancellation Notes')).toBeDefined()
   })
 
   it('should_not_render_notes_section_when_initialNotes_not_provided', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByText('Notes')).toBeNull()
   })
 
   it('should_set_dirty_when_notes_changed', async () => {
-    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }
+    const futureLesson: LessonDetail = { ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z') }
     render(
       <NavigationBlockerProvider>
         <DirtyDisplay />
-        <LessonForm {...notesProps} initialLesson={futureLesson} />
+        <LessonForm timezone={'America/New_York'} {...notesProps} initialLesson={futureLesson} />
       </NavigationBlockerProvider>
     )
     await waitFor(() => expect(screen.getByTestId('dirty').textContent).toBe('clean'))
@@ -907,15 +902,15 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
 
   it('should_fetch_projected_exhaustion_using_the_prefilled_lesson_date_on_mount', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:30:00.000Z', ['horse-1']))
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1']))
   })
 
   it('should_render_exhaustion_bar_for_the_pre_checked_horse', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
     })
-    render(<LessonForm {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
@@ -924,10 +919,10 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
   it('should_call_getProjectedExhaustion_with_the_id_of_an_inactive_assigned_horse_too', async () => {
     const inactiveHorse = createMockHorse({ id: 'horse-2', name: 'Retired (inactive)', is_active: false })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     // Round-tripping initialLesson.lesson_at through the (local-aware) date/hour
     // picker and back into a UTC instant reproduces the same instant exactly.
-    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:30:00.000Z', ['horse-1', 'horse-2']))
+    await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledWith('2026-05-17T10:00:00.000Z', ['horse-1', 'horse-2']))
   })
 
   it('should_not_render_an_exhaustion_bar_for_an_inactive_assigned_horse', async () => {
@@ -936,7 +931,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
       'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
     })
-    render(<LessonForm {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(1)
     })
@@ -948,7 +943,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
       'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
     })
-    render(<LessonForm {...baseProps} horses={[mockHorse, unavailableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[mockHorse, unavailableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(1)
     })
@@ -958,7 +953,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-1': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
     })
-    render(<LessonForm {...baseProps} initialLesson={pastLesson} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={pastLesson} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
     expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
   })
@@ -969,7 +964,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
       'horse-1': { existingRows: [{ lessonAt: 'x', exertionLevel: 5 }], thresholds: { high: 11, moderate: 5 } },
       'horse-avail': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
     })
-    const { container } = render(<LessonForm {...baseProps} horses={[availableHorse, mockHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[availableHorse, mockHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
     await waitFor(() => {
       const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
@@ -984,7 +979,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
       'horse-high': { existingRows: [{ lessonAt: 'x', exertionLevel: 5 }], thresholds: { high: 11, moderate: 5 } },
       'horse-low': { existingRows: [{ lessonAt: 'x', exertionLevel: 1 }], thresholds: { high: 11, moderate: 5 } },
     })
-    const { container } = render(<LessonForm {...baseProps} horses={[moreExhausted, lessExhausted]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[moreExhausted, lessExhausted]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
     await waitFor(() => {
       const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
@@ -996,7 +991,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     const availableHorse = createMockHorse({ id: 'horse-avail', name: 'Zeal' })
     const inactiveHorse = createMockHorse({ id: 'horse-inactive', name: 'Retired', is_active: false })
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    const { container } = render(<LessonForm {...baseProps} horses={[inactiveHorse, availableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[inactiveHorse, availableHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
     await waitFor(() => {
       const checkboxes = container.querySelectorAll('input[type="checkbox"][name="horse_id"]')
@@ -1010,7 +1005,7 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       'horse-2': { existingRows: [], thresholds: { high: 11, moderate: 5 } },
     })
-    render(<LessonForm {...baseProps} initialLesson={lesson} horses={[inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lesson} horses={[inactiveHorse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
@@ -1018,29 +1013,18 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
 })
 
 describe('LessonForm (edit mode) — timezone-aware date/hour prefill', () => {
-  let originalTz: string | undefined
-
-  beforeEach(() => {
-    originalTz = process.env.TZ
-    process.env.TZ = 'America/New_York'
-  })
-
-  afterEach(() => {
-    process.env.TZ = originalTz
-  })
-
   // 02:00 UTC on 2026-05-17 is 22:00 EDT (UTC-4) on the *previous* local day —
   // the case naive string-slicing gets wrong.
-  const lessonNearUtcMidnight: LessonDetail = { ...normalLesson, lesson_at: '2026-05-17T02:00:00Z' }
+  const lessonNearUtcMidnight: LessonDetail = { ...normalLesson, lesson_at: instant('2026-05-17T02:00:00Z') }
 
   it('should_prefill_the_date_picker_with_the_local_calendar_date_not_the_utc_date', () => {
-    const { container } = render(<LessonForm {...baseProps} initialLesson={lessonNearUtcMidnight} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lessonNearUtcMidnight} />)
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     expect(dateInput.value).toBe('2026-05-16')
   })
 
   it('should_prefill_the_hour_selector_with_the_local_hour_not_the_utc_hour', () => {
-    render(<LessonForm {...baseProps} initialLesson={lessonNearUtcMidnight} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} initialLesson={lessonNearUtcMidnight} />)
     const select = screen.getByLabelText('Hour') as HTMLSelectElement
     expect(select.value).toBe('22')
   })

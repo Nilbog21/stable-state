@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState, type ReactNode } from 'react'
-import { localToday } from '@/lib/local-day'
+import { barnToday, instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 
 function hourLabel(h: number) {
   const period = h < 12 ? 'AM' : 'PM'
@@ -10,12 +10,17 @@ function hourLabel(h: number) {
 }
 
 export function DateHourPicker({
+  timezone,
   initialDate,
   initialHour,
   onChange,
   dateLabel = 'Date',
   renderDate,
 }: {
+  /** The barn's `barns.timezone`. Required, and the only frame this control works in: the
+   *  date and hour a user picks mean that wall clock *at the barn*, so both the defaults and
+   *  the instant they combine into resolve here rather than in the viewer's zone (#1222). */
+  timezone: string
   initialDate?: string
   initialHour?: number
   onChange?: (lessonAt: string) => void
@@ -23,12 +28,15 @@ export function DateHourPicker({
   /** Replaces the native date input with a caller-supplied control — #1019's month conflict
    *  calendar. Omitted by EventForm, which keeps the plain input. */
   renderDate?: (value: string, setValue: (date: string) => void) => ReactNode
-} = {}) {
-  const [date, setDate] = useState(initialDate ?? localToday)
-  const [hour, setHour] = useState(initialHour ?? (() => new Date().getHours()))
+}) {
+  const [date, setDate] = useState(initialDate ?? (() => barnToday(timezone)))
+  const [hour, setHour] = useState(
+    initialHour ?? (() => Number(instantToLocalWallClock(new Date(), timezone).slice(11, 13)))
+  )
 
-  const [year, month, day] = date.split('-').map(Number)
-  const combinedValue = date ? new Date(year, month - 1, day, hour).toISOString() : ''
+  const combinedValue = date
+    ? wallClockToInstant(`${date}T${String(hour).padStart(2, '0')}:00:00`, timezone).toISOString()
+    : ''
 
   useEffect(() => {
     onChange?.(date ? combinedValue : '')

@@ -34,6 +34,7 @@ export default async function NewExpensePage({
         recentRecipients={recentRecipients}
         recentExpenseTypes={recentExpenseTypes}
         todayStr={barnToday(barn.timezone)}
+        timezone={barn.timezone}
         getScheduleRange={getScheduleRange}
         onSave={save}
       />

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn().mockResolvedValue({}),
@@ -38,7 +39,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result).toEqual({ horseName: 'Thunderbolt', rows: [], chargeRows: [], total: 0 })
   })
@@ -47,7 +48,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
-    await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
@@ -56,7 +57,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.horseName).toBe('horse-1')
   })
@@ -66,7 +67,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].splitAmount).toBe(100)
   })
@@ -76,7 +77,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].horseCount).toBe(1)
   })
@@ -89,7 +90,7 @@ describe('getHorseIncomeDetail', () => {
     ])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].splitAmount).toBe(50)
   })
@@ -105,7 +106,7 @@ describe('getHorseIncomeDetail', () => {
     ])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toHaveLength(1)
   })
@@ -115,7 +116,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].lessonId).toBe('lesson-1')
   })
@@ -131,7 +132,7 @@ describe('getHorseIncomeDetail', () => {
     ])
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(160)
   })
@@ -140,14 +141,14 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockRejectedValue(new Error('lessons error'))
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
 
-    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('lessons error')
+    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('lessons error')
   })
 
   it('should_throw_on_horse_name_resolution_error', async () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveHorseNames).mockRejectedValue(new Error('horse error'))
 
-    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('horse error')
+    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('horse error')
   })
 
   it('should_throw_on_lesson_horses_error', async () => {
@@ -155,7 +156,7 @@ describe('getHorseIncomeDetail', () => {
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
     vi.mocked(getLessonJunctionRows).mockRejectedValue(new Error('lh error'))
 
-    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('lh error')
+    await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('lh error')
   })
 
   describe('agreement charge folding', () => {
@@ -166,7 +167,7 @@ describe('getHorseIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
-      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.chargeRows).toEqual([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 },
@@ -180,7 +181,7 @@ describe('getHorseIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-2' },
       ])
 
-      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.chargeRows).toEqual([])
     })
@@ -193,7 +194,7 @@ describe('getHorseIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
-      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.total).toBe(600)
     })
@@ -203,7 +204,7 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
-      await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)).rejects.toThrow('charges error')
+      await expect(getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')).rejects.toThrow('charges error')
     })
   })
 
@@ -213,7 +214,7 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.rows[0].fee).toBe(75)
     })
@@ -226,7 +227,7 @@ describe('getHorseIncomeDetail', () => {
       ])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.rows[0].splitAmount).toBe(37.5)
     })
@@ -238,7 +239,7 @@ describe('getHorseIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
-      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.total).toBe(500)
     })
@@ -248,7 +249,7 @@ describe('getHorseIncomeDetail', () => {
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
       vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
 
-      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate)
+      const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
 
       expect(result.total).toBe(-25)
     })
@@ -271,7 +272,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.riderName).toBe('Alice Rider')
   })
@@ -280,7 +281,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([])
   })
@@ -289,7 +290,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(0)
   })
@@ -298,7 +299,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(getLessonJunctionRows).not.toHaveBeenCalled()
   })
@@ -307,7 +308,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.riderName).toBe('mem-1')
   })
@@ -316,7 +317,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(resolveMemberNames).toHaveBeenCalledWith(['mem-1'], 'barn-1', expect.anything())
   })
@@ -326,7 +327,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].splitAmount).toBe(100)
   })
@@ -339,7 +340,7 @@ describe('getRiderIncomeDetail', () => {
       { lesson_id: 'lesson-1', rider_id: 'mem-2' },
     ])
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].splitAmount).toBe(50)
   })
@@ -355,7 +356,7 @@ describe('getRiderIncomeDetail', () => {
       { lesson_id: 'lesson-2', rider_id: 'mem-2' },
     ])
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toHaveLength(1)
   })
@@ -365,7 +366,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].lessonId).toBe('lesson-1')
   })
@@ -381,7 +382,7 @@ describe('getRiderIncomeDetail', () => {
       { lesson_id: 'lesson-2', rider_id: 'mem-1' },
     ])
 
-    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+    const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(160)
   })
@@ -389,14 +390,14 @@ describe('getRiderIncomeDetail', () => {
   it('should_throw_on_lessons_error', async () => {
     vi.mocked(getLessonFeeRows).mockRejectedValue(new Error('lessons error'))
 
-    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('lessons error')
+    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')).rejects.toThrow('lessons error')
   })
 
   it('should_throw_when_resolveMemberNames_rejects', async () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
-    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('resolve error')
+    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')).rejects.toThrow('resolve error')
   })
 
   it('should_throw_on_lesson_riders_error', async () => {
@@ -404,7 +405,7 @@ describe('getRiderIncomeDetail', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     vi.mocked(getLessonJunctionRows).mockRejectedValue(new Error('lr error'))
 
-    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('lr error')
+    await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')).rejects.toThrow('lr error')
   })
 
   describe('agreement charge folding', () => {
@@ -415,7 +416,7 @@ describe('getRiderIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
-      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.chargeRows).toEqual([
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 },
@@ -429,7 +430,7 @@ describe('getRiderIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-2', horseId: 'horse-1' },
       ])
 
-      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.chargeRows).toEqual([])
     })
@@ -442,7 +443,7 @@ describe('getRiderIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
-      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.total).toBe(600)
     })
@@ -452,7 +453,7 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getPaidCharges).mockRejectedValue(new Error('charges error'))
 
-      await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)).rejects.toThrow('charges error')
+      await expect(getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')).rejects.toThrow('charges error')
     })
   })
 
@@ -462,7 +463,7 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
-      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.rows[0].fee).toBe(75)
     })
@@ -475,7 +476,7 @@ describe('getRiderIncomeDetail', () => {
         { lesson_id: 'lesson-1', rider_id: 'mem-2' },
       ])
 
-      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.rows[0].splitAmount).toBe(37.5)
     })
@@ -487,7 +488,7 @@ describe('getRiderIncomeDetail', () => {
         { chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', fee: 500, kind: 'board', riderId: 'mem-1', horseId: 'horse-1' },
       ])
 
-      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.total).toBe(500)
     })
@@ -497,7 +498,7 @@ describe('getRiderIncomeDetail', () => {
       vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
       vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', rider_id: 'mem-1' }])
 
-      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate)
+      const result = await getRiderIncomeDetail('barn-1', 'mem-1', startDate, endDate, 'America/New_York')
 
       expect(result.total).toBe(-25)
     })
@@ -517,7 +518,7 @@ describe('getTrainerIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-trainer-1', 'Jane Smith']]))
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.trainerName).toBe('Jane Smith')
   })
@@ -526,7 +527,7 @@ describe('getTrainerIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toEqual([])
   })
@@ -535,7 +536,7 @@ describe('getTrainerIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(0)
   })
@@ -544,7 +545,7 @@ describe('getTrainerIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.trainerName).toBe('mem-trainer-1')
   })
@@ -553,7 +554,7 @@ describe('getTrainerIncomeDetail', () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(resolveMemberNames).toHaveBeenCalledWith(['mem-trainer-1'], 'barn-1', expect.anything())
   })
@@ -565,7 +566,7 @@ describe('getTrainerIncomeDetail', () => {
     ])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows).toHaveLength(1)
   })
@@ -576,9 +577,9 @@ describe('getTrainerIncomeDetail', () => {
     ])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
-    expect(result.rows[0]).toEqual({ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100 })
+    expect(result.rows[0]).toEqual({ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100 })
   })
 
   it('should_net_the_instructor_cut_from_the_row_fee', async () => {
@@ -587,7 +588,7 @@ describe('getTrainerIncomeDetail', () => {
     ])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.rows[0].fee).toBe(75)
   })
@@ -599,7 +600,7 @@ describe('getTrainerIncomeDetail', () => {
     ])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(160)
   })
@@ -610,7 +611,7 @@ describe('getTrainerIncomeDetail', () => {
     ])
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)
+    const result = await getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')
 
     expect(result.total).toBe(-25)
   })
@@ -618,14 +619,37 @@ describe('getTrainerIncomeDetail', () => {
   it('should_throw_on_lessons_error', async () => {
     vi.mocked(getLessonFeeRows).mockRejectedValue(new Error('lessons error'))
 
-    await expect(getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)).rejects.toThrow('lessons error')
+    await expect(getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')).rejects.toThrow('lessons error')
   })
 
   it('should_throw_when_resolveMemberNames_rejects', async () => {
     vi.mocked(getLessonFeeRows).mockResolvedValue([])
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve error'))
 
-    await expect(getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate)).rejects.toThrow('resolve error')
+    await expect(getTrainerIncomeDetail('barn-1', 'mem-trainer-1', startDate, endDate, 'America/New_York')).rejects.toThrow('resolve error')
   })
 })
 
+
+describe('income detail instant branding', () => {
+  const startDate = new Date('2026-05-01T00:00:00Z')
+  const endDate = new Date('2026-06-01T00:00:00Z')
+
+  beforeEach(() => {
+    vi.mocked(getLessonFeeRows).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
+    vi.mocked(resolveHorseNames).mockReset()
+    vi.mocked(getPaidCharges).mockReset()
+    vi.mocked(getPaidCharges).mockResolvedValue([])
+  })
+
+  it('should_brand_a_horse_detail_rows_lesson_at_with_the_barns_timezone', async () => {
+    vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 0, collected: true, instructorId: null, occurredAt: '2026-07-15T20:00:00Z', tierName: 'Custom' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    expect(result.rows[0].lessonAt).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
+  })
+})

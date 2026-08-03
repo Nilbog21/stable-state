@@ -5,7 +5,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAllTiersByBarn } from '@/lib/db/lesson-tiers'
 import { getEventsByBarn } from '@/lib/db/barn-events'
 import { getAllBarnDocuments } from '@/lib/db/document-backup'
-import { LocalDateTime } from '@/components/LocalDateTime'
+import { formatBarnDateTime } from '@/lib/format-date'
 import {
   updateDefaultBoardFeeAction,
   updateInstructorCutAction,
@@ -80,7 +80,7 @@ export default async function SettingsPage({
 
   const [tiers, events, barnDocuments] = await Promise.all([
     getAllTiersByBarn(barn.id),
-    getEventsByBarn(barn.id),
+    getEventsByBarn(barn.id, barn.timezone),
     getAllBarnDocuments(barn.id),
   ])
 
@@ -225,7 +225,7 @@ export default async function SettingsPage({
                   <tr key={event.id}>
                     <Td>{event.title}</Td>
                     <Td tone="secondary">
-                      <LocalDateTime iso={event.event_at} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
+                      {formatBarnDateTime(event.event_at)}
                     </Td>
                     <Td tone="secondary" className="capitalize">
                       {event.visible_to_roles.join(', ')}

@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { updatePaymentTypeAction, updateCancellationFeePaymentTypeAction } from '@/app/actions/lessons'
 import { updateChargePaymentTypeAction } from '../agreements/actions'
 import type { OutstandingItem } from '@/lib/db/types'
-import { formatShortDate } from '@/lib/format-date'
-import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
+import { formatBarnDate, formatShortDate } from '@/lib/format-date'
+import { formatFee } from '@/lib/format-currency'
+
 import { Th, Td, TableActions } from '@/components/ui/Table'
 
 
@@ -63,16 +64,14 @@ function OutstandingRow({ item, barnSlug }: { item: OutstandingItem; barnSlug: s
   return (
     <tr>
       <Td>
-        {item.itemType === 'lesson' || item.itemType === 'cancellation_fee' ? (
-          <LocalDateTime iso={item.date} options={DATE_ONLY_OPTIONS} />
-        ) : (
-          formatShortDate(item.date)
-        )}
+        {item.itemType === 'lesson' || item.itemType === 'cancellation_fee'
+          ? formatBarnDate(item.date)
+          : formatShortDate(item.date)}
       </Td>
       <Td>{TYPE_LABELS[item.itemType]}</Td>
       <Td>{item.riderNames.join(', ') || '—'}</Td>
       <Td>{item.instructorName ?? '—'}</Td>
-      <Td>{item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}</Td>
+      <Td>{formatFee(item.fee)}</Td>
       <TableActions>
         {/* Stacked in its own column: `TableActions` wraps children in a nowrap flex row, which
             would sit the error beside the select and stop it wrapping on a phone. */}

@@ -3,12 +3,10 @@ import type { LessonWithDetails } from '@/lib/db/types'
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
+import { formatBarnTime } from '@/lib/format-date'
 
 // No "Today"/weekday label -- every item on a Day view already belongs to the one
 // day its heading names, so a per-item date label would just repeat that.
-export function formatLessonTime(iso: string): string {
-  return new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' })
-}
 
 export function CalendarLessonCard({
   lesson,
@@ -21,7 +19,7 @@ export function CalendarLessonCard({
   slug: string
   viewerMembershipId?: string
 }) {
-  const display = formatLessonTime(lesson.lesson_at)
+  const display = formatBarnTime(lesson.lesson_at)
 
   const myRiderIndex = role === 'rider' && viewerMembershipId ? lesson.rider_ids.indexOf(viewerMembershipId) : -1
   const isOwnParticipationCancelled = myRiderIndex >= 0 && lesson.rider_cancelled_ats[myRiderIndex] !== null
@@ -29,9 +27,7 @@ export function CalendarLessonCard({
 
   return (
     <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="p-4">
-      {/* suppressHydrationWarning: server (host TZ) and client (browser TZ) render this
-          viewer-local time-of-day string differently, per #935's convention */}
-      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50" suppressHydrationWarning>{display}</p>
+      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50">{display}</p>
       {lesson.cancelled_at !== null && (
         <div className="mt-1"><Badge tone="red">Cancelled</Badge></div>
       )}

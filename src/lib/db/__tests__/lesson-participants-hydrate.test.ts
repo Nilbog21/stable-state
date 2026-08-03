@@ -47,7 +47,7 @@ describe('hydrateParticipants', () => {
   }
 
   it('should_return_empty_array_when_no_lessons', async () => {
-    const result = await hydrateParticipants(makeSupabase([], []), [], 'barn-1')
+    const result = await hydrateParticipants(makeSupabase([], []), [], 'barn-1', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -55,7 +55,7 @@ describe('hydrateParticipants', () => {
   it('should_not_query_supabase_when_no_lessons', async () => {
     const supabase = makeSupabase([], [])
 
-    await hydrateParticipants(supabase, [], 'barn-1')
+    await hydrateParticipants(supabase, [], 'barn-1', 'America/New_York')
 
     expect(supabase.from).not.toHaveBeenCalled()
   })
@@ -65,7 +65,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-instructor-1', 'John Doe']]))
 
-    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1', 'America/New_York')
 
     expect(result.instructor_name).toBe('John Doe')
   })
@@ -75,7 +75,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1', 'America/New_York')
 
     expect(result.instructor_name).toBeNull()
   })
@@ -85,7 +85,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1', 'America/New_York')
 
     expect(result.instructor_name).toBeNull()
   })
@@ -96,7 +96,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.horse_names).toEqual(['Thunderbolt'])
   })
@@ -107,7 +107,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.horse_ids).toEqual(['horse-1'])
   })
@@ -118,7 +118,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.horse_names).toEqual([])
   })
@@ -129,7 +129,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase([{ lesson_id: lesson.id, horse_id: 'horse-1' }], [])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.horse_count).toBe(1)
   })
@@ -140,7 +140,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase(null, [])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.horse_names).toEqual([])
   })
@@ -151,7 +151,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
     const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.rider_names).toEqual(['Alice Rider'])
   })
@@ -168,7 +168,7 @@ describe('hydrateParticipants', () => {
       { lesson_id: lesson.id, rider_id: 'mem-2' },
     ])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.rider_names).toEqual(['Alice Rider', 'Bob Rider'])
   })
@@ -179,7 +179,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.rider_names).toEqual([])
   })
@@ -190,7 +190,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.rider_count).toBe(1)
   })
@@ -201,7 +201,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
     const supabase = makeSupabase([], null)
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.rider_names).toEqual([])
   })
@@ -212,7 +212,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
     const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1', cancelled_at: '2026-06-01T00:00:00Z' }])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.rider_cancelled_ats).toEqual(['2026-06-01T00:00:00Z'])
   })
@@ -223,7 +223,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
     const supabase = makeSupabase([], [{ lesson_id: lesson.id, rider_id: 'mem-1' }])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.rider_cancelled_ats).toEqual([null])
   })
@@ -238,7 +238,7 @@ describe('hydrateParticipants', () => {
       { lesson_id: 'lesson-b', horse_id: 'horse-2' },
     ], [])
 
-    const [resultA] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1')
+    const [resultA] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1', 'America/New_York')
 
     expect(resultA.horse_names).toEqual(['Thunderbolt'])
   })
@@ -253,7 +253,7 @@ describe('hydrateParticipants', () => {
       { lesson_id: 'lesson-b', horse_id: 'horse-2' },
     ], [])
 
-    const [, resultB] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1')
+    const [, resultB] = await hydrateParticipants(supabase, [lessonA, lessonB], 'barn-1', 'America/New_York')
 
     expect(resultB.horse_names).toEqual(['Shadow'])
   })
@@ -262,14 +262,14 @@ describe('hydrateParticipants', () => {
     const lesson = createMockLesson({ instructor_id: null })
     const supabase = makeSupabase([], [], new Error('horses error'))
 
-    await expect(hydrateParticipants(supabase, [lesson], 'barn-1')).rejects.toThrow('horses error')
+    await expect(hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')).rejects.toThrow('horses error')
   })
 
   it('should_throw_when_lesson_riders_fetch_returns_an_error', async () => {
     const lesson = createMockLesson({ instructor_id: null })
     const supabase = makeSupabase([], [], null, new Error('riders error'))
 
-    await expect(hydrateParticipants(supabase, [lesson], 'barn-1')).rejects.toThrow('riders error')
+    await expect(hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')).rejects.toThrow('riders error')
   })
 
   it('should_propagate_errors_from_resolve_horse_names', async () => {
@@ -277,7 +277,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveHorseNames).mockRejectedValue(new Error('resolve horse names error'))
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    await expect(hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')).rejects.toThrow('resolve horse names error')
+    await expect(hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1', 'America/New_York')).rejects.toThrow('resolve horse names error')
   })
 
   it('should_propagate_errors_from_resolve_member_names', async () => {
@@ -285,7 +285,7 @@ describe('hydrateParticipants', () => {
     vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('resolve member names error'))
 
-    await expect(hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1')).rejects.toThrow('resolve member names error')
+    await expect(hydrateParticipants(makeSupabase([], []), [lesson], 'barn-1', 'America/New_York')).rejects.toThrow('resolve member names error')
   })
 
   it('should_set_needs_attention_true_when_assigned_horse_is_inactive', async () => {
@@ -297,7 +297,7 @@ describe('hydrateParticipants', () => {
       []
     )
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.needs_attention).toBe(true)
   })
@@ -311,7 +311,7 @@ describe('hydrateParticipants', () => {
       []
     )
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.needs_attention).toBe(true)
   })
@@ -325,7 +325,7 @@ describe('hydrateParticipants', () => {
       []
     )
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.needs_attention).toBe(false)
   })
@@ -339,8 +339,35 @@ describe('hydrateParticipants', () => {
       { lesson_id: lesson.id, horse_id: 'horse-2', horses: { is_active: false, is_available: true } },
     ], [])
 
-    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1')
+    const [result] = await hydrateParticipants(supabase, [lesson], 'barn-1', 'America/New_York')
 
     expect(result.needs_attention).toBe(true)
+  })
+})
+
+describe('hydrateParticipants instant branding', () => {
+  beforeEach(() => {
+    vi.mocked(resolveHorseNames).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
+  })
+
+  function makeInChain(data: unknown[] | null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error: null })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    return { select: vi.fn().mockReturnValue({ eq: mockEq }) }
+  }
+
+  function makeSupabase() {
+    return { from: vi.fn().mockImplementation(() => makeInChain([])) } as any
+  }
+
+  it('should_brand_lesson_at_with_the_barns_timezone', async () => {
+    const lesson = createMockLesson({ lesson_at: '2026-07-15T20:00:00Z' })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const [result] = await hydrateParticipants(makeSupabase(), [lesson], 'barn-1', 'America/New_York')
+
+    expect(result.lesson_at).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
   })
 })

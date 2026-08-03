@@ -53,6 +53,53 @@ describe('wallClockToInstant', () => {
   })
 })
 
+// A single guess-and-correct pass measures the zone's offset at the *naive* guess, which
+// sits 4-5 hours from the true instant -- so on a transition day the sample lands on the
+// wrong side of the boundary and the result is an hour off for a whole band of morning
+// hours, not just the skipped/repeated one. Harmless while every caller passed midnight,
+// but #1222 routes DateHourPicker, EventForm and LessonForm's isPastLessonAt through this
+// with arbitrary user-picked hours.
+describe('wallClockToInstant across a DST transition (#1222)', () => {
+  // 04:00 is past the 2am jump, so it is already EDT (UTC-4). Sampling the offset at the
+  // naive guess measured EST instead and produced 09:00Z, an hour late.
+  it('should_resolve_a_morning_wall_clock_on_the_spring_forward_day', () => {
+    const result = wallClockToInstant('2026-03-08T04:00:00', 'America/New_York')
+
+    expect(result.toISOString()).toBe('2026-03-08T08:00:00.000Z')
+  })
+
+  it('should_resolve_a_morning_wall_clock_on_the_fall_back_day', () => {
+    const result = wallClockToInstant('2026-11-01T03:00:00', 'America/New_York')
+
+    expect(result.toISOString()).toBe('2026-11-01T08:00:00.000Z')
+  })
+
+  // Derived from real instants rather than from the digits 00..23, so the wall clock that
+  // spring-forward skips is never in the set -- every entry here is a time that exists.
+  const roundTripFailures = (utcDay: string, timeZone: string) =>
+    Array.from({ length: 24 }, (_, i) => new Date(`${utcDay}T00:00:00Z`).getTime() + i * 3600_000)
+      .map((ms) => instantToLocalWallClock(new Date(ms), timeZone))
+      .filter((wallClock) => instantToLocalWallClock(wallClockToInstant(wallClock, timeZone), timeZone) !== wallClock)
+
+  it('should_round_trip_every_real_wall_clock_on_the_spring_forward_day', () => {
+    expect(roundTripFailures('2026-03-08', 'America/New_York')).toEqual([])
+  })
+
+  it('should_round_trip_every_real_wall_clock_on_the_fall_back_day', () => {
+    expect(roundTripFailures('2026-11-01', 'America/New_York')).toEqual([])
+  })
+
+  // 2am doesn't exist on the spring-forward day -- the clock jumps 01:59:59 -> 03:00:00.
+  // There is no right answer, so this pins the one we give: the entered wall clock minus the
+  // jump, i.e. 06:00Z, which renders back as 01:00 -- an hour earlier than entered, not the
+  // 01:59:59 boundary.
+  it('should_resolve_the_wall_clock_skipped_by_spring_forward_to_an_hour_before_it', () => {
+    const result = wallClockToInstant('2026-03-08T02:00:00', 'America/New_York')
+
+    expect(result.toISOString()).toBe('2026-03-08T06:00:00.000Z')
+  })
+})
+
 describe('barnToday', () => {
   // The same instant is already Mar 2 in Eastern but still Mar 1 in Pacific -- the whole
   // reason a comparison against barn data can't read the viewer's own clock.

@@ -17,8 +17,10 @@ export default async function ExpensesPage({
 
   const expenses = await getExpensesByBarn(barn.id)
 
+  // getTime/setTime rather than getDate/setDate: a day offset on a real instant is
+  // zone-free, and reading the calendar field would resolve it in the host's zone (#1222).
   const cutoff = new Date()
-  cutoff.setDate(cutoff.getDate() - OLDER_EXPENSE_CUTOFF_DAYS)
+  cutoff.setTime(cutoff.getTime() - OLDER_EXPENSE_CUTOFF_DAYS * 24 * 60 * 60 * 1000)
   const recentExpenses = expenses.filter((e) => new Date(`${e.expense_date}T00:00:00Z`) >= cutoff)
   const olderExpenses = expenses.filter((e) => new Date(`${e.expense_date}T00:00:00Z`) < cutoff)
 

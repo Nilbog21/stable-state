@@ -23,7 +23,7 @@ export default async function CancelRiderParticipationPage({
   if (!membership || membership.status !== 'active') notFound()
 
   const role = membership.role
-  const lesson = await getLessonById(id, barn.id, role)
+  const lesson = await getLessonById(id, barn.id, role, barn.timezone)
   if (!lesson) notFound()
   if (lesson.cancelled_at !== null) notFound()
   if (role === 'trainer' && !canManageLesson(role, membership.id, lesson)) notFound()

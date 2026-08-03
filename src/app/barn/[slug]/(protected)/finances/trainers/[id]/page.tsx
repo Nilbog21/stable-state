@@ -3,7 +3,7 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getTrainerIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
-import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
+import { formatBarnDate } from '@/lib/format-date'
 import { Th, Td } from '@/components/ui/Table'
 
 
@@ -20,9 +20,9 @@ export default async function TrainerIncomePage({
   const { month: monthParam } = await searchParams
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const { trainerName, rows, total } = await getTrainerIncomeDetail(barn.id, trainerId, startDate, endDate)
+  const { trainerName, rows, total } = await getTrainerIncomeDetail(barn.id, trainerId, startDate, endDate, barn.timezone)
 
-  const sortedRows = [...rows].sort((a, b) => new Date(a.lessonAt).getTime() - new Date(b.lessonAt).getTime())
+  const sortedRows = [...rows].sort((a, b) => new Date(a.lessonAt.at).getTime() - new Date(b.lessonAt.at).getTime())
 
   const monthQ = `month=${formatMonthParam(startDate)}`
   const backHref = `/barn/${slug}/finances?tab=trainer&${monthQ}`
@@ -59,7 +59,7 @@ export default async function TrainerIncomePage({
                 <tr key={row.lessonId}>
                   <Td>
                     <Link href={`/barn/${slug}/lessons/${row.lessonId}`} className="underline">
-                      <LocalDateTime iso={row.lessonAt} options={DATE_ONLY_OPTIONS} />
+                      {formatBarnDate(row.lessonAt)}
                     </Link>
                   </Td>
                   <Td>Lesson</Td>

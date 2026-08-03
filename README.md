@@ -187,9 +187,11 @@ In Google Cloud Console → **APIs & Services** → **Credentials** → your OAu
 ## Pinned timezones
 
 The test suite runs in a deliberately awkward zone so that a wrong-frame call site fails a
-test instead of waiting for a human to spot it (#1221). The app juggles three frames —
-viewer-local, barn-local (`barns.timezone`), and UTC — and unpinned they collapse into two:
-a developer machine on `America/New_York` *is* the `barns.timezone` default, and CI is UTC.
+test instead of waiting for a human to spot it (#1221). #1222 has since deleted the
+viewer-local frame, leaving barn-local (`barns.timezone`) and zoneless calendar dates — but
+the pin matters just as much, because the frame that must never leak in is the *host's*, and
+unpinned it hides: a developer machine on `America/New_York` *is* the `barns.timezone`
+default, and CI is UTC.
 
 | Process | Zone | Set in |
 |---|---|---|

@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -12,7 +13,7 @@ const mockLesson: LessonWithDetails = {
   instructor_id: 'user-1',
   instructor_name: 'Jane Smith',
   fee: 50,
-  lesson_at: '2026-01-01T10:00:00Z',
+  lesson_at: instant('2026-01-01T10:00:00Z'),
   submitted_at: '2026-01-01T10:05:00Z',
   lesson_type: 'normal',
   jumping: false,
@@ -157,7 +158,7 @@ describe('OlderLessonsToggle', () => {
   it('should_never_show_cancel_link_regardless_of_role', () => {
     render(
       <OlderLessonsToggle
-        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' }]}
+        lessons={[{ ...mockLesson, lesson_at: instant('2099-01-01T10:00:00Z') }]}
         slug="green-acres"
         isManager={true}
         isTrainer={false}
@@ -170,7 +171,7 @@ describe('OlderLessonsToggle', () => {
   it('should_pass_viewer_membership_id_through_to_lesson_list_item', () => {
     render(
       <OlderLessonsToggle
-        lessons={[{ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }]}
+        lessons={[{ ...mockLesson, lesson_at: instant('2099-01-01T10:00:00Z'), rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }]}
         slug="green-acres"
         isManager={false}
         isTrainer={false}

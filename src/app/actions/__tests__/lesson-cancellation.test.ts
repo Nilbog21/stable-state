@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockLesson, createMockMembership, makeLessonDetail } from '@/test/fixtures'
+import { createMockLesson, createMockMembership, makeLessonDetail, instant } from '@/test/fixtures'
 import type { PaymentType } from '@/lib/db/types'
 import { makeFormData } from '@/test/utils/forms'
 import { guardAs } from '@/test/mocks/guard'
@@ -341,8 +341,10 @@ function makeLessonDetailWithRiders(
   instructorUserId: string | null = null
 ) {
   const { payment_type = null, ...lessonOverrides } = overrides
+  const lesson = createMockLesson(lessonOverrides)
   return {
-    ...createMockLesson(lessonOverrides),
+    ...lesson,
+    lesson_at: instant(lesson.lesson_at),
     payment_type,
     instructor_name: null,
     instructor_user_id: instructorUserId,

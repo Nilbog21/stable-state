@@ -263,7 +263,7 @@ describe('BarnDashboardPage', () => {
 
     await renderPage()
 
-    expect(getLessonsByIds).toHaveBeenCalledWith(mockBarn.id, ['lesson-1'])
+    expect(getLessonsByIds).toHaveBeenCalledWith(mockBarn.id, ['lesson-1'], 'America/New_York')
   })
 
   it('should_fetch_events_by_the_scoped_event_ids', async () => {
@@ -273,7 +273,7 @@ describe('BarnDashboardPage', () => {
 
     await renderPage()
 
-    expect(getEventsByIds).toHaveBeenCalledWith(mockBarn.id, ['event-1'])
+    expect(getEventsByIds).toHaveBeenCalledWith(mockBarn.id, ['event-1'], 'America/New_York')
   })
 
   it('should_filter_expenses_to_planned_only_amount_is_null', async () => {
@@ -783,17 +783,6 @@ describe('BarnDashboardPage', () => {
   })
 
   describe('demo mode banner', () => {
-    let originalTz: string | undefined
-
-    beforeEach(() => {
-      originalTz = process.env.TZ
-      process.env.TZ = 'America/New_York'
-    })
-
-    afterEach(() => {
-      process.env.TZ = originalTz
-    })
-
     it('should_render_demo_banner_when_barn_is_demo', async () => {
       vi.mocked(getBarnBySlug).mockResolvedValue(
         createMockBarn({ ...mockBarn, is_demo: true, created_at: '2026-05-17T00:00:00Z' })

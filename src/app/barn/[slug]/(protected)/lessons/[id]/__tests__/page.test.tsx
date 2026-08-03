@@ -38,7 +38,7 @@ import { getUserMembership } from '@/lib/db/barn-memberships'
 import { getAuthenticatedUser } from '@/lib/db/auth'
 import { notFound } from 'next/navigation'
 import LessonDetailPage from '../page'
-import { createMockBarn, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockLessonDetail, createMockMembership, instant } from '@/test/fixtures'
 
 const mockBarn = createMockBarn({
   created_at: '2026-01-01T00:00:00Z',
@@ -47,7 +47,7 @@ const mockBarn = createMockBarn({
 const mockLessonDetail = createMockLessonDetail({
   instructor_id: 'mem-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:00:00Z',
+  lesson_at: instant('2026-05-17T10:00:00Z'),
   submitted_at: '2026-05-17T10:05:00Z',
   lesson_horses: [{ exertion_level: 3, horse_notes: 'watch left lead', horses: { id: 'horse-1', name: 'Thunderbolt' } }],
   lesson_riders: [{ rider_notes: 'good position', private_notes: 'struggling with confidence', cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'rider-1', name: 'Alice', user_id: 'user-1' } }],
@@ -190,18 +190,12 @@ describe('LessonDetailPage', () => {
     expect(screen.getByText(/\$75/)).toBeDefined()
   })
 
-  it('should_render_the_lesson_time_in_the_viewers_local_timezone_not_utc', async () => {
-    const originalTz = process.env.TZ
-    process.env.TZ = 'America/New_York'
-    try {
-      // 2026-05-17T10:00:00Z is 6:00 AM EDT (UTC-4) — a naive UTC-timeZone
-      // formatter would show 10:00 AM instead.
-      const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
-      render(jsx)
-      expect(screen.getByText(/6:00 am/i)).toBeDefined()
-    } finally {
-      process.env.TZ = originalTz
-    }
+  it('should_render_the_lesson_time_in_the_barns_timezone_not_utc', async () => {
+    // 2026-05-17T10:00:00Z is 6:00 AM EDT (UTC-4) — a naive UTC-timeZone
+    // formatter would show 10:00 AM instead.
+    const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
+    render(jsx)
+    expect(screen.getByText(/6:00 am/i)).toBeDefined()
   })
 
   it('should_render_dash_when_instructor_is_null', async () => {
@@ -477,7 +471,7 @@ describe('LessonDetailPage', () => {
 
   it('should_show_delete_confirmation_link_instead_of_delete_button_for_manager_on_a_paid_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: 'cash' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2026-05-17T10:00:00Z'), payment_type: 'cash' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByTestId('delete-lesson-button')).toBeNull()
@@ -485,7 +479,7 @@ describe('LessonDetailPage', () => {
 
   it('should_link_to_the_delete_confirmation_page_for_manager_on_a_paid_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: 'cash' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2026-05-17T10:00:00Z'), payment_type: 'cash' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByRole('link', { name: /delete/i }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/delete')
@@ -493,7 +487,7 @@ describe('LessonDetailPage', () => {
 
   it('should_show_bare_delete_button_for_manager_on_an_unpaid_past_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', payment_type: null })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2026-05-17T10:00:00Z'), payment_type: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByTestId('delete-lesson-button')).toBeDefined()
@@ -501,7 +495,7 @@ describe('LessonDetailPage', () => {
 
   it('should_link_to_the_delete_confirmation_page_for_manager_on_a_zero_fee_lesson', async () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 0, payment_type: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByRole('link', { name: /delete/i }).getAttribute('href')).toBe('/barn/green-acres/lessons/lesson-1/delete')
@@ -749,7 +743,7 @@ describe('LessonDetailPage', () => {
   it('should_show_horse_status_banner_when_future_uncancelled_lesson_has_inactive_horse', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -760,7 +754,7 @@ describe('LessonDetailPage', () => {
   it('should_show_horse_status_banner_with_unavailability_reason', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Rocky', is_active: true, is_available: false, unavailability_reason: 'lame — resting per vet' } }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -771,7 +765,7 @@ describe('LessonDetailPage', () => {
   it('should_hide_horse_status_banner_when_lesson_is_in_the_past', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_at: '2020-01-01T10:00:00Z',
+      lesson_at: instant('2020-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -782,7 +776,7 @@ describe('LessonDetailPage', () => {
   it('should_hide_horse_status_banner_when_lesson_is_cancelled', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
       cancelled_at: '2026-01-01T00:00:00Z',
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
@@ -794,7 +788,7 @@ describe('LessonDetailPage', () => {
   it('should_hide_horse_status_banner_when_all_horses_active_and_available', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
@@ -834,28 +828,28 @@ describe('LessonDetailPage', () => {
   })
 
   it('should_show_unpaid_badge_when_past_lesson_with_fee_and_no_payment', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: null })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 75, payment_type: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.getByText('Unpaid')).toBeDefined()
   })
 
   it('should_not_show_unpaid_badge_when_fee_is_zero', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 0, payment_type: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('Unpaid')).toBeNull()
   })
 
   it('should_not_show_unpaid_badge_when_payment_type_is_set', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: 'cash' as const })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 75, payment_type: 'cash' as const })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('Unpaid')).toBeNull()
   })
 
   it('should_not_show_unpaid_badge_when_lesson_is_in_future', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: '2099-01-01T10:00:00Z', fee: 75, payment_type: null })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLessonDetail, lesson_at: instant('2099-01-01T10:00:00Z'), fee: 75, payment_type: null })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
     render(jsx)
     expect(screen.queryByText('Unpaid')).toBeNull()
@@ -865,7 +859,7 @@ describe('LessonDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_at: '2026-05-17T10:00:00Z',
+      lesson_at: instant('2026-05-17T10:00:00Z'),
       payment_type: 'cash' as const,
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })
@@ -877,7 +871,7 @@ describe('LessonDetailPage', () => {
     vi.mocked(getUserMembership).mockResolvedValue({ ...mockMembership, role: 'manager' as const })
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLessonDetail,
-      lesson_at: '2026-05-17T10:00:00Z',
+      lesson_at: instant('2026-05-17T10:00:00Z'),
       payment_type: 'cash' as const,
     })
     const jsx = await LessonDetailPage({ params: Promise.resolve({ slug: 'green-acres', id: 'lesson-1' }) })

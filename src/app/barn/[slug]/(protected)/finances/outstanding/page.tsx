@@ -3,8 +3,9 @@ import { requireMembership } from '@/lib/auth/guard'
 import { getOutstandingLessons, getOutstandingCancellationFees, mergeOutstandingItems } from '@/lib/db/outstanding'
 import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import type { OutstandingItem, Role } from '@/lib/db/types'
-import { formatShortDate } from '@/lib/format-date'
-import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
+import { formatBarnDate, formatShortDate } from '@/lib/format-date'
+import { formatFee } from '@/lib/format-currency'
+
 import { Th, Td } from '@/components/ui/Table'
 import { EmptyState } from '@/components/EmptyState'
 
@@ -30,7 +31,7 @@ export default async function OutstandingPage({
     getOutstandingCharges(barn.id, user.id, role),
     getOutstandingCancellationFees(barn.id, user.id, role),
   ])
-  const items = mergeOutstandingItems(lessons, charges, cancellationFees)
+  const items = mergeOutstandingItems(lessons, charges, cancellationFees, barn.timezone)
 
   const backHref = membership.role === 'manager' ? `/barn/${slug}/finances` : `/barn/${slug}`
 
@@ -76,10 +77,10 @@ export default async function OutstandingPage({
                 : role === 'manager'
                 ? `/barn/${slug}/agreements/${item.linkId}`
                 : undefined
-              const isInstant = item.itemType === 'lesson' || item.itemType === 'cancellation_fee'
-              const dateDisplay = isInstant
-                ? <LocalDateTime iso={item.date} options={DATE_ONLY_OPTIONS} />
-                : formatShortDate(item.date)
+              const dateDisplay =
+                item.itemType === 'lesson' || item.itemType === 'cancellation_fee'
+                  ? formatBarnDate(item.date)
+                  : formatShortDate(item.date)
               return (
               <tr key={item.id}>
                 <Td>
@@ -95,7 +96,7 @@ export default async function OutstandingPage({
                 <Td>{item.instructorName ?? '—'}</Td>
                 <Td>{item.riderNames.join(', ') || '—'}</Td>
                 <Td>
-                  {item.fee.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+                  {formatFee(item.fee)}
                 </Td>
               </tr>
               )

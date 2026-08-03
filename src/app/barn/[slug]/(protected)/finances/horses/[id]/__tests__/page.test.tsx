@@ -1,6 +1,6 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockUser } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockUser, instant } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/lesson-finances', () => ({ getHorseIncomeDetail: vi.fn() }))
@@ -56,7 +56,7 @@ describe('HorseIncomePage', () => {
   it('should_call_getHorseIncomeDetail_with_horse_id', async () => {
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
     render(jsx)
-    expect(getHorseIncomeDetail).toHaveBeenCalledWith(mockBarn.id, 'horse-1', expect.any(Date), expect.any(Date))
+    expect(getHorseIncomeDetail).toHaveBeenCalledWith(mockBarn.id, 'horse-1', expect.any(Date), expect.any(Date), 'America/New_York')
   })
 
   it('should_call_getHorseExpenseDetail_with_horse_id', async () => {
@@ -91,7 +91,7 @@ describe('HorseIncomePage', () => {
   it('should_render_lesson_date_in_table', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -102,7 +102,7 @@ describe('HorseIncomePage', () => {
   it('should_render_full_fee_in_table', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -113,7 +113,7 @@ describe('HorseIncomePage', () => {
   it('should_render_horse_count_in_table', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 2, splitAmount: 50 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 2, splitAmount: 50 }],
       chargeRows: [], total: 50,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -124,7 +124,7 @@ describe('HorseIncomePage', () => {
   it('should_render_split_amount_in_table', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 2, splitAmount: 50 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 2, splitAmount: 50 }],
       chargeRows: [], total: 50,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -135,7 +135,7 @@ describe('HorseIncomePage', () => {
   it('should_render_lesson_type_label', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -146,7 +146,7 @@ describe('HorseIncomePage', () => {
   it('should_render_net_row', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -157,7 +157,7 @@ describe('HorseIncomePage', () => {
   it('should_subtract_expense_total_from_net', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [], total: 100,
     })
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
@@ -185,7 +185,7 @@ describe('HorseIncomePage', () => {
   it('should_link_date_to_lesson_detail', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [], total: 100,
     })
     const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -246,7 +246,7 @@ describe('HorseIncomePage', () => {
   it('should_combine_lesson_and_charge_rows_in_net', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-10T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-10T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [{ chargeId: 'charge-1', agreementId: 'agreement-1', period: '2026-05-01', kind: 'board', fee: 500 }],
       total: 600,
     })
@@ -325,7 +325,7 @@ describe('HorseIncomePage', () => {
   it('should_render_rows_in_date_ascending_order', async () => {
     vi.mocked(getHorseIncomeDetail).mockResolvedValue({
       horseName: 'Thunderbolt',
-      rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-20T10:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+      rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-20T10:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
       chargeRows: [], total: 100,
     })
     vi.mocked(getHorseExpenseDetail).mockResolvedValue({
@@ -340,23 +340,12 @@ describe('HorseIncomePage', () => {
   })
 
   describe('timezone-aware date display', () => {
-    let originalTz: string | undefined
-
-    beforeEach(() => {
-      originalTz = process.env.TZ
-      process.env.TZ = 'America/New_York'
-    })
-
-    afterEach(() => {
-      process.env.TZ = originalTz
-    })
-
     // 2026-05-11T02:00:00Z is 10:00 PM EDT on May 10 — a naive UTC-anchored formatter
     // would show May 11 instead.
-    it('should_display_a_lesson_rows_date_in_the_viewers_local_timezone_not_utc', async () => {
+    it('should_display_a_lesson_rows_date_in_the_barns_timezone_not_utc', async () => {
       vi.mocked(getHorseIncomeDetail).mockResolvedValue({
         horseName: 'Thunderbolt',
-        rows: [{ lessonId: 'lesson-1', lessonAt: '2026-05-11T02:00:00Z', fee: 100, horseCount: 1, splitAmount: 100 }],
+        rows: [{ lessonId: 'lesson-1', lessonAt: instant('2026-05-11T02:00:00Z'), fee: 100, horseCount: 1, splitAmount: 100 }],
         chargeRows: [], total: 100,
       })
       const jsx = await HorseIncomePage({ params: defaultParams, searchParams: maySearchParams })
@@ -364,7 +353,7 @@ describe('HorseIncomePage', () => {
       expect(screen.getByText('May 10, 2026')).toBeDefined()
     })
 
-    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_viewer_timezone', async () => {
+    it('should_keep_a_charge_rows_date_utc_anchored_regardless_of_timezone', async () => {
       vi.mocked(getHorseIncomeDetail).mockResolvedValue({
         horseName: 'Thunderbolt',
         rows: [],
@@ -376,7 +365,7 @@ describe('HorseIncomePage', () => {
       expect(screen.getByText('May 1, 2026')).toBeDefined()
     })
 
-    it('should_keep_an_expense_rows_date_utc_anchored_regardless_of_viewer_timezone', async () => {
+    it('should_keep_an_expense_rows_date_utc_anchored_regardless_of_timezone', async () => {
       vi.mocked(getHorseExpenseDetail).mockResolvedValue({
         horseName: 'Thunderbolt',
         rows: [{ expenseId: 'expense-1', expenseDate: '2026-05-12', amount: 75, horseCount: 1, splitAmount: 75 }],

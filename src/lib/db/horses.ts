@@ -7,7 +7,7 @@
  */
 import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
-import type { Barn, Horse, HorseExertionSummary } from './types'
+import type { Barn, Horse, HorseExertionSummary, Instant } from './types'
 import { removeFile, uploadFile } from './document-storage'
 
 export async function getHorsesByBarn(barnId: string): Promise<Horse[]> {
@@ -226,8 +226,9 @@ export async function getHorseProjectedExhaustion(
   horseId: string,
   barnId: string,
   targetDate: Date,
+  timezone: string,
   excludeLessonId?: string
-): Promise<{ lessonAt: string; exertionLevel: number }[]> {
+): Promise<{ lessonAt: Instant; exertionLevel: number }[]> {
   const supabase = await createClient()
   const { data, error } = await supabase.rpc('get_horse_projected_exhaustion', {
     p_horse_id: horseId,
@@ -237,7 +238,7 @@ export async function getHorseProjectedExhaustion(
   })
   if (error) throw error
   return (data ?? []).map((row: { lesson_at: string; exertion_level: number }) => ({
-    lessonAt: row.lesson_at,
+    lessonAt: { at: row.lesson_at, tz: timezone },
     exertionLevel: Number(row.exertion_level),
   }))
 }
@@ -248,8 +249,9 @@ export async function getHorseProjectedExhaustion(
 // query (#665).
 export async function getUpcomingLessonsForHorse(
   horseId: string,
-  barnId: string
-): Promise<{ id: string; lessonAt: string }[]> {
+  barnId: string,
+  timezone: string
+): Promise<{ id: string; lessonAt: Instant }[]> {
   const supabase = await createClient()
   const { data: links, error: linksError } = await supabase
     .from('lesson_horses')
@@ -271,7 +273,7 @@ export async function getUpcomingLessonsForHorse(
     .order('lesson_at', { ascending: true })
   if (error) throw error
 
-  return (data ?? []).map((row: { id: string; lesson_at: string }) => ({ id: row.id, lessonAt: row.lesson_at }))
+  return (data ?? []).map((row: { id: string; lesson_at: string }) => ({ id: row.id, lessonAt: { at: row.lesson_at, tz: timezone } }))
 }
 
 /**

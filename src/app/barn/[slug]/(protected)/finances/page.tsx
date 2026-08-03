@@ -6,7 +6,7 @@ import { getOutstandingCharges } from '@/lib/db/agreement-finances'
 import { getOutstandingExpenses } from '@/lib/db/expenses'
 import { getExpenseFinancialSummary, getRecipientExpenseSummary } from '@/lib/db/expense-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
-import { formatCurrency } from '@/lib/format-currency'
+import { formatCurrency, formatFee } from '@/lib/format-currency'
 import { formatShortDateOnly } from '@/lib/format-date'
 import { buildReconciliationColumn, deriveNetColumn } from '@/lib/finances-reconciliation'
 import { OutstandingTable } from './OutstandingTable'
@@ -51,7 +51,7 @@ export default async function FinancesPage({
     getRecipientExpenseSummary(barn.id, startDate, endDate, barn.timezone),
   ])
 
-  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
+  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees, barn.timezone)
   const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
   const outstandingExpensesTotal = outstandingExpenses.reduce((sum, e) => sum + (e.amount ?? 0), 0)
 
@@ -133,7 +133,7 @@ export default async function FinancesPage({
             <InfoPopover text="All-time unpaid lessons, leases, and boarding charges" />
           </p>
           <p className={`mt-1 text-2xl font-bold ${outstandingTotal > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-zinc-900 dark:text-zinc-50'}`}>
-            {outstandingTotal.toLocaleString('en-US', { style: 'currency', currency: 'USD' })}
+            {formatFee(outstandingTotal)}
           </p>
           <div className="mt-4">
             <OutstandingTable items={outstandingItems} barnSlug={slug} />

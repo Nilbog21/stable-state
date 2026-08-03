@@ -7,13 +7,15 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-import { CalendarLessonCard, formatLessonTime } from '../CalendarLessonCard'
-import { createMockLesson } from '@/test/fixtures'
+import { CalendarLessonCard } from '../CalendarLessonCard'
+import { createMockLesson, instant } from '@/test/fixtures'
 import type { LessonWithDetails } from '@/lib/db/types'
 
 function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
+  const lesson = createMockLesson()
   return {
-    ...createMockLesson(),
+    ...lesson,
+    lesson_at: instant(lesson.lesson_at),
     payment_type: null,
     instructor_name: 'Jane Smith',
     horse_names: ['Thunderbolt'],
@@ -28,18 +30,13 @@ function makeLesson(overrides: Partial<LessonWithDetails> = {}): LessonWithDetai
   }
 }
 
-describe('formatLessonTime', () => {
-  it('should_format_the_lesson_start_time', () => {
-    const iso = '2026-06-22T14:00:00Z'
-    expect(formatLessonTime(iso)).toBe(new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
-  })
-})
-
 describe('CalendarLessonCard', () => {
-  it('should_render_formatted_time', () => {
-    const iso = '2026-06-15T14:00:00Z'
-    render(<CalendarLessonCard lesson={makeLesson({ lesson_at: iso })} role="manager" slug="green-acres" />)
-    expect(screen.getByText(formatLessonTime(iso))).toBeDefined()
+  // 14:00Z is 10:00 in the fixture barn's America/New_York, and 19:30 in the suite's own
+  // Asia/Kolkata host zone — the assertion is a literal so it fails if the viewer frame
+  // ever comes back (#1222).
+  it('should_render_the_time_in_the_barns_timezone', () => {
+    render(<CalendarLessonCard lesson={makeLesson({ lesson_at: instant('2026-06-15T14:00:00Z') })} role="manager" slug="green-acres" />)
+    expect(screen.getByText('10:00 AM')).toBeDefined()
   })
 
   it('should_render_horse_names', () => {
@@ -136,7 +133,7 @@ describe('CalendarLessonCard', () => {
   it('should_show_needs_attention_badge_when_future_uncancelled_lesson_needs_attention', () => {
     render(
       <CalendarLessonCard
-        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true })}
+        lesson={makeLesson({ lesson_at: instant('2099-01-01T10:00:00Z'), needs_attention: true })}
         role="manager"
         slug="green-acres"
       />
@@ -147,7 +144,7 @@ describe('CalendarLessonCard', () => {
   it('should_not_show_needs_attention_badge_when_lesson_is_in_the_past', () => {
     render(
       <CalendarLessonCard
-        lesson={makeLesson({ lesson_at: '2026-01-01T10:00:00Z', needs_attention: true })}
+        lesson={makeLesson({ lesson_at: instant('2026-01-01T10:00:00Z'), needs_attention: true })}
         role="manager"
         slug="green-acres"
       />
@@ -158,7 +155,7 @@ describe('CalendarLessonCard', () => {
   it('should_not_show_needs_attention_badge_when_lesson_is_cancelled', () => {
     render(
       <CalendarLessonCard
-        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' })}
+        lesson={makeLesson({ lesson_at: instant('2099-01-01T10:00:00Z'), needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' })}
         role="manager"
         slug="green-acres"
       />
@@ -169,7 +166,7 @@ describe('CalendarLessonCard', () => {
   it('should_not_show_needs_attention_badge_when_needs_attention_is_false', () => {
     render(
       <CalendarLessonCard
-        lesson={makeLesson({ lesson_at: '2099-01-01T10:00:00Z', needs_attention: false })}
+        lesson={makeLesson({ lesson_at: instant('2099-01-01T10:00:00Z'), needs_attention: false })}
         role="manager"
         slug="green-acres"
       />

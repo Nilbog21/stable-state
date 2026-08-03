@@ -4,13 +4,18 @@ import { getRiderIncomeDetail } from '@/lib/db/lesson-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDate } from '@/lib/format-date'
-import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
+import { formatBarnDate } from '@/lib/format-date'
+import type { Instant } from '@/lib/db/types'
 import { Th, Td } from '@/components/ui/Table'
 
 
 type CombinedRow =
-  | { kind: 'lesson'; key: string; date: string; href: string; amount: number; riderCount: number; split: number }
+  | { kind: 'lesson'; key: string; date: Instant; href: string; amount: number; riderCount: number; split: number }
   | { kind: 'lease' | 'board'; key: string; date: string; href: string; amount: number }
+
+function sortableDate(date: Instant | string): string {
+  return typeof date === 'string' ? date : date.at
+}
 
 const TYPE_LABELS: Record<CombinedRow['kind'], string> = {
   lesson: 'Lesson',
@@ -31,7 +36,7 @@ export default async function RiderIncomePage({
   const { month: monthParam } = await searchParams
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
-  const { riderName, rows, chargeRows, total } = await getRiderIncomeDetail(barn.id, riderId, startDate, endDate)
+  const { riderName, rows, chargeRows, total } = await getRiderIncomeDetail(barn.id, riderId, startDate, endDate, barn.timezone)
 
   const combinedRows: CombinedRow[] = [
     ...rows.map((row): CombinedRow => ({
@@ -50,7 +55,9 @@ export default async function RiderIncomePage({
       href: `/barn/${slug}/agreements/${row.agreementId}?kind=${row.kind}`,
       amount: row.fee,
     })),
-  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  // A lesson row's date is a branded instant, a lease/board/expense row's a DATE-only
+  // string; both sort correctly on the ISO prefix they share.
+  ].sort((a, b) => sortableDate(a.date).localeCompare(sortableDate(b.date)))
 
   const monthQ = `month=${formatMonthParam(startDate)}`
   const backHref = `/barn/${slug}/finances?tab=rider&${monthQ}`
@@ -89,11 +96,7 @@ export default async function RiderIncomePage({
                 <tr key={row.key}>
                   <Td>
                     <Link href={row.href} className="underline">
-                      {row.kind === 'lesson' ? (
-                        <LocalDateTime iso={row.date} options={DATE_ONLY_OPTIONS} />
-                      ) : (
-                        formatShortDate(row.date)
-                      )}
+                      {row.kind === 'lesson' ? formatBarnDate(row.date) : formatShortDate(row.date)}
                     </Link>
                   </Td>
                   <Td>{TYPE_LABELS[row.kind]}</Td>

@@ -1,19 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { localToday, isValidDateString, addDays, getWeekDates } from '../local-day'
-
-describe('localToday', () => {
-  it('should_format_local_date_as_yyyy_mm_dd', () => {
-    expect(localToday(new Date('2026-07-09T12:00:00'))).toBe('2026-07-09')
-  })
-
-  it('should_zero_pad_single_digit_month_and_day', () => {
-    expect(localToday(new Date('2026-01-05T12:00:00'))).toBe('2026-01-05')
-  })
-
-  it('should_default_to_current_date_when_called_with_no_argument', () => {
-    expect(localToday()).toBe(localToday(new Date()))
-  })
-})
+import { isValidDateString, addDays, getWeekDates } from '../local-day'
 
 describe('isValidDateString', () => {
   it('should_return_true_for_a_well_formed_date', () => {

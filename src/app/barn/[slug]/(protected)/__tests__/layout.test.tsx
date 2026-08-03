@@ -590,7 +590,7 @@ describe('ProtectedBarnLayout - NotificationBell', () => {
   it('should_fetch_notifications_for_user_and_barn', async () => {
     await ProtectedBarnLayout({ children, params })
 
-    expect(getNotifications).toHaveBeenCalledWith('user-1', 'barn-1')
+    expect(getNotifications).toHaveBeenCalledWith('user-1', 'barn-1', 'America/New_York')
   })
 
   it('should_render_notification_bell', async () => {

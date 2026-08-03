@@ -53,6 +53,7 @@ export default async function LessonNewPage({
         New Lesson
       </h1>
       <LessonForm
+        timezone={barn.timezone}
         mode="new"
         horses={horses}
         riders={riders}

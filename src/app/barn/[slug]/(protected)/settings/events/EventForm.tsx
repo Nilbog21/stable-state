@@ -3,7 +3,7 @@
 import { useActionState, useState } from 'react'
 import type { BarnEvent, Role } from '@/lib/db/types'
 import { DateHourPicker } from '../../lessons/DateHourPicker'
-import { localToday } from '@/lib/local-day'
+import { instantToLocalWallClock } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 
 const ROLE_OPTIONS: { value: Role; label: string }[] = [
@@ -14,14 +14,18 @@ const ROLE_OPTIONS: { value: Role; label: string }[] = [
 
 type EventFormProps = {
   mode: 'new' | 'edit'
+  /** `barns.timezone` — the frame the event's date/hour are entered and decoded in (#1222). */
+  timezone: string
   initialEvent?: BarnEvent
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
   deleteHref?: string
 }
 
-export function EventForm({ mode, initialEvent, action, deleteHref }: EventFormProps) {
+export function EventForm({ mode, timezone, initialEvent, action, deleteHref }: EventFormProps) {
   const [title, setTitle] = useState(initialEvent?.title ?? '')
   const [eventAt, setEventAt] = useState('')
+  // Decoding a stored instant back to form values is barn-local, same as entering one.
+  const eventWallClock = initialEvent ? instantToLocalWallClock(new Date(initialEvent.event_at.at), timezone) : ''
   const [state, formAction] = useActionState(action, { error: null })
 
   return (
@@ -58,8 +62,9 @@ export function EventForm({ mode, initialEvent, action, deleteHref }: EventFormP
         </div>
 
         <DateHourPicker
-          initialDate={mode === 'edit' && initialEvent ? localToday(new Date(initialEvent.event_at)) : undefined}
-          initialHour={mode === 'edit' && initialEvent ? new Date(initialEvent.event_at).getHours() : undefined}
+          timezone={timezone}
+          initialDate={mode === 'edit' && initialEvent ? eventWallClock.slice(0, 10) : undefined}
+          initialHour={mode === 'edit' && initialEvent ? Number(eventWallClock.slice(11, 13)) : undefined}
           onChange={setEventAt}
         />
         <input type="hidden" name="event_at" value={eventAt} />

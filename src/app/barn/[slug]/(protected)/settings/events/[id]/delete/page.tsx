@@ -12,7 +12,7 @@ export default async function DeleteEventPage({
   const { slug, id } = await params
   const { barn } = await requireMembership(slug, ['manager'])
 
-  const event = await getEventById(id, barn.id)
+  const event = await getEventById(id, barn.id, barn.timezone)
   if (!event) notFound()
 
   const deleteEvent = deleteEventAction.bind(null, slug, event.id)

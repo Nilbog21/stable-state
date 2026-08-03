@@ -242,8 +242,10 @@ export async function getRecentRecipients(barnId: string): Promise<string[]> {
   const rows = data ?? []
   if (!rows.length) return []
 
+  // UTC month arithmetic: this is a coarse lower bound for the query, so it needs to be
+  // zone-free rather than barn-local (#1222's fence).
   const sixMonthsAgo = new Date()
-  sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6)
+  sixMonthsAgo.setUTCMonth(sixMonthsAgo.getUTCMonth() - 6)
   const cutoff = sixMonthsAgo.toISOString().slice(0, 10)
 
   const recentCount = new Map<string, number>()

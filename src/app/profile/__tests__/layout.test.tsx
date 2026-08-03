@@ -300,7 +300,7 @@ describe('ProfileLayout - barn nav (valid barn param + active membership)', () =
 
   it('should_fetch_notifications_for_user_and_barn', async () => {
     await ProfileLayout({ children: <span>child</span> })
-    expect(getNotifications).toHaveBeenCalledWith('user-1', mockBarn.id)
+    expect(getNotifications).toHaveBeenCalledWith('user-1', mockBarn.id, 'America/New_York')
   })
 
   it('should_render_initials_from_profile', async () => {

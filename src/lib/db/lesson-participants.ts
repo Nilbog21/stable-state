@@ -22,7 +22,8 @@ interface LessonHorseJunctionRow {
 export async function hydrateParticipants(
   supabase: Awaited<ReturnType<typeof createClient>>,
   lessons: Lesson[],
-  barnId: string
+  barnId: string,
+  timezone: string
 ): Promise<LessonWithDetails[]> {
   if (!lessons.length) return []
   const lessonIds = lessons.map((l) => l.id)
@@ -71,6 +72,7 @@ export async function hydrateParticipants(
     const needsAttention = horseParticipants.some((p) => (p.status ? !p.status.is_active || !p.status.is_available : false))
     return {
       ...lesson,
+      lesson_at: { at: lesson.lesson_at, tz: timezone },
       // #885: lessons.payment_type is no longer trustworthy — getLessonsByBarn overlays the
       // real value from get_lesson_payment_info after this returns. getLessonsByIds (the
       // other caller) doesn't render payment_type at all, so the default is never seen there.

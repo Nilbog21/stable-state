@@ -16,7 +16,7 @@ import { Button } from '@/components/ui/Button'
 import { Card, cardBaseClass } from '@/components/ui/Card'
 import { EmptyState } from '@/components/EmptyState'
 import { ExhaustionBar } from '@/components/ExhaustionBar'
-import { LocalDateTime } from '@/components/LocalDateTime'
+import { formatBarnDateTime } from '@/lib/format-date'
 import { RECORD_TYPE_LABELS } from '@/lib/document-record-types'
 import { barnToday } from '@/lib/barn-timezone'
 import {
@@ -58,8 +58,8 @@ export default async function HorseDetailPage({
 
   const docsWithUrls = canSeeDocuments ? await getDocumentsWithUrls('horse', horse.id, barn.id) : []
   const exhaustionThresholds = canSeeExhaustion ? resolveExhaustionThresholds(horse, barn) : null
-  const exhaustionRows = canSeeExhaustion ? await getHorseProjectedExhaustion(horse.id, barn.id, new Date()) : []
-  const upcomingLessons = canSeeExhaustion ? await getUpcomingLessonsForHorse(horse.id, barn.id) : []
+  const exhaustionRows = canSeeExhaustion ? await getHorseProjectedExhaustion(horse.id, barn.id, new Date(), barn.timezone) : []
+  const upcomingLessons = canSeeExhaustion ? await getUpcomingLessonsForHorse(horse.id, barn.id, barn.timezone) : []
   const photoUrl = horse.photo_path ? await getSignedUrl(horse.photo_path) : null
 
   const ownerName = horse.owning_member_id
@@ -305,7 +305,7 @@ export default async function HorseDetailPage({
                     <li key={l.id}>
                       <Card href={`/barn/${slug}/lessons/${l.id}`} className="p-4">
                         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-                          <LocalDateTime iso={l.lessonAt} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
+                          {formatBarnDateTime(l.lessonAt)}
                         </span>
                       </Card>
                     </li>

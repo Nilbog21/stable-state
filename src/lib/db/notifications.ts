@@ -179,6 +179,7 @@ export async function getUnreadNotificationCount(
 export async function getNotifications(
   userId: string,
   barnId: string,
+  timezone: string,
   limit = 20
 ): Promise<Notification[]> {
   const supabase = await createClient()
@@ -191,7 +192,7 @@ export async function getNotifications(
     .limit(limit)
 
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((row) => ({ ...row, created_at: { at: row.created_at, tz: timezone } }))
 }
 
 export async function deleteNotificationByType(
