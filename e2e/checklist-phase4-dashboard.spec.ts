@@ -3,8 +3,11 @@
 // covers: src/app/barn/[slug]/(protected)/horses/**
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/components/calendar/**
+import type { Locator } from '@playwright/test'
 import { test, expect, withBarn, type Page } from './support/test'
+import { wallClockToInstant } from '@/lib/barn-timezone'
 import {
+  addBarnEvent,
   addExpense,
   addHorse,
   addHorseDocument,
@@ -135,6 +138,49 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
     time: '08:00',
     recipient: 'Barn Supply Co',
     expenseType: 'Supplies',
+  })
+
+  // --- #1188 ---------------------------------------------------------------------------
+  // The Week-view fixtures sit on FIXED calendar dates rather than daysFromNow offsets.
+  //
+  // Two reasons. A relative offset lands on a different weekday every day of the week, and
+  // the day-to-content map the Week view is asserted against below is the whole point of
+  // those items — #1188's own acceptance criteria require the Sunday-to-Saturday window to
+  // be pinned explicitly instead of inherited from the runner's current weekday. And four
+  // years out is comfortably clear of days -3..+4, where every exact-count assertion in this
+  // file lives: none of these three rows can reach today's calendar, the day +2/+3/+4 cards,
+  // or either Reminders count.
+  //
+  // W1 is Sunday 2030-05-12 .. Saturday 2030-05-18, viewed through ?date=2030-05-15 — a
+  // Wednesday, so a rolling 7-day window would start on the 15th where a calendar-aligned
+  // one starts on the 12th. Tuesday, Thursday and Friday carry one item each; the other four
+  // days are empty.
+  //
+  // Inserted in reverse day order — Friday, then Thursday, then Tuesday — deliberately. The
+  // bucketing assertion's expected answer has to differ from every fallback the system could
+  // produce by accident, and insertion order is one of them.
+  const barnNoon = (date: string) => wallClockToInstant(`${date}T12:00:00`, barn.timezone)
+
+  await addBarnEvent(supabase, barn.id, { at: barnNoon('2030-05-17'), title: 'Spring Open House' })
+  await addExpense(supabase, barn, {
+    at: barnNoon('2030-05-16'),
+    time: '14:00',
+    recipient: 'Ridgeline Vet',
+    expenseType: 'Vet',
+    horseIds: [bella.id],
+  })
+  // Paid rather than unpaid. getOutstandingLessons only counts lessons already in the past,
+  // so a 2030 unpaid lesson would not reach the "N unpaid lessons" card either — but a paid
+  // row cannot reach it under any clock at all, and two tests above assert that card's exact
+  // text.
+  await addPaidLesson(supabase, barn, {
+    at: barnNoon('2030-05-14'),
+    time: '09:00',
+    instructorId: members.trainer.membershipId,
+    horseIds: [apollo.id],
+    riderIds: [members.rider.membershipId],
+    fee: tier.price,
+    tierName: tier.name,
   })
 })
 
@@ -520,4 +566,295 @@ test('dashboard_unpaid_reminder_cards_hide_independently_of_each_other @manager'
     await restoreUncollected(lessonRows)
     await restoreUncollected(chargeRows)
   }
+})
+
+// =============================================================================================
+// #1188 — the Dashboard subsection's Week view: the Day/Week switcher, calendar alignment,
+// per-day headings and content, the per-day and whole-week empty states, 7-day paging, the
+// current-period link's presence rule in both directions, today's tint in both colour
+// schemes, and the two Week-to-Day landing rules.
+//
+// Appended, like #1187's block above it, so every pre-existing test keeps its declaration
+// position. Nothing here mutates a row, so nothing here can disturb the tests above.
+// =============================================================================================
+
+/** Wednesday. Its calendar week is Sunday 2030-05-12 .. Saturday 2030-05-18 (see the seed). */
+const WEEK_ANCHOR = '2030-05-15'
+
+/**
+ * W1's seven day headings, in order, as formatCalendarDate renders them ("weekday long, month
+ * short, day numeric"). Written out as literals rather than computed, so the expected answer
+ * cannot agree with a bug in the formatter or in getWeekDates.
+ */
+const WEEK_DAY_HEADINGS = [
+  'Sunday, May 12',
+  'Monday, May 13',
+  'Tuesday, May 14',
+  'Wednesday, May 15',
+  'Thursday, May 16',
+  'Friday, May 17',
+  'Saturday, May 18',
+]
+
+/** Wednesday, four weeks past W1. Nothing at all is seeded in Sunday 2030-06-09 .. Saturday 2030-06-15. */
+const EMPTY_WEEK_ANCHOR = '2030-06-12'
+
+/**
+ * The Calendar <section>.
+ *
+ * The dashboard has two top-level sections — Reminders and Calendar — and, in Week view, seven
+ * more nested inside this one. The filter picks the outer one unambiguously, since no day
+ * section carries a "Calendar" heading.
+ */
+const calendarSection = (page: Page) =>
+  page.locator('section').filter({ has: page.getByRole('heading', { name: 'Calendar' }) })
+
+/**
+ * The Day/Week pill row.
+ *
+ * Located as the Calendar section's *first* <div> rather than by its Tailwind classes, because
+ * being first is exactly the "above the calendar" half of the item it serves — the locator
+ * carries that claim instead of assuming it. The section's children in order are the "Calendar"
+ * <h2>, this row, the Prev/heading/Next row, an optional current-period button, and then the
+ * calendar body itself.
+ */
+const pillRow = (page: Page) => calendarSection(page).locator('div').first()
+
+/**
+ * The date (Day view) or date-range (Week view) heading that sits between Prev and Next.
+ *
+ * nth(1), not a text match: the section's own "Calendar" <h2> is nth(0). Locating this by
+ * position means the tests below select it by where it is and assert what it says, rather than
+ * selecting it by the very text under assertion.
+ */
+const dateHeading = (page: Page) => calendarSection(page).getByRole('heading', { level: 2 }).nth(1)
+
+/** The Week view's seven per-day <section>s. */
+const daySections = (page: Page) => calendarSection(page).locator('section')
+
+/** Their per-day date headings — the only <h3>s the dashboard renders. */
+const dayHeadings = (page: Page) => calendarSection(page).getByRole('heading', { level: 3 })
+
+/**
+ * Every view/period control in the Calendar section: the two pills plus the current-period
+ * link, which reads "This Week" in Week view (page.tsx's currentPeriodLabel) and "Today" in
+ * Day view. Prev/Next are excluded — their accessible names come from aria-label
+ * ("Previous week"/"Next week") — as are the lesson and appointment cards.
+ *
+ * Shared deliberately between the two presence-rule tests, and asserted as a positive array in
+ * both directions rather than as a count of zero. An absent-link assertion written as
+ * toHaveCount(0) passes just as happily when the locator is wrong or the page never rendered;
+ * this one demands two named elements be there in order, so a broken locator fails both tests
+ * instead of silently satisfying the negative one.
+ */
+const periodControls = (page: Page) =>
+  calendarSection(page).getByRole('link', { name: /^(Day|Week|This Week)$/ })
+
+/** The day section whose heading carries the "· Today" suffix CalendarWeekView appends. */
+const todayDaySection = (page: Page) =>
+  daySections(page).filter({ has: page.getByRole('heading', { level: 3, name: /Today$/ }) })
+
+/** Any day section that is not today's — six of the seven, whatever weekday today falls on. */
+const otherDaySection = (page: Page) =>
+  daySections(page)
+    .filter({ hasNot: page.getByRole('heading', { level: 3, name: /Today$/ }) })
+    .first()
+
+/**
+ * locator.evaluate auto-waits for the element, so this throws rather than returning a stale or
+ * empty value if the section never renders — which matters here more than usual: a computed
+ * style read answers with a real value for whatever element it lands on, so a mis-aimed one
+ * would pass for the wrong reason. background-color is not inherited, so an accidentally
+ * selected ancestor computes as transparent and fails.
+ */
+const backgroundOf = (locator: Locator) => locator.evaluate((el) => getComputedStyle(el).backgroundColor)
+
+/** An untinted day section's computed background — the control half of both tint assertions. */
+const TRANSPARENT = 'rgba(0, 0, 0, 0)'
+
+/**
+ * Clicks a Week-view Prev/Next control and waits for the new week to be the *rendered* one.
+ *
+ * The toHaveAttribute is a wait, not the calling test's assertion. `waitUntil: 'commit'`
+ * resolves before the new document has rendered, so a second consecutive step would otherwise
+ * read the previous document's link, click a stale href, and satisfy its own URL wait without
+ * having moved anywhere — the same race goToDaysAhead documents for the day pager.
+ */
+async function stepWeek(page: Page, label: 'Previous week' | 'Next week', expectedDate: string) {
+  const link = calendarSection(page).getByRole('link', { name: label })
+  await expect(link).toHaveAttribute('href', new RegExp(`date=${expectedDate}$`))
+  await link.click()
+  await page.waitForURL((url) => url.searchParams.get('date') === expectedDate, { waitUntil: 'commit' })
+}
+
+test('dashboard_day_and_week_pill_switcher_appears_above_the_calendar @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}`)
+  await expect(pillRow(page).getByRole('link')).toHaveText(['Day', 'Week'])
+})
+
+// bg-zinc-900 is Pill.tsx's active-state class and appears in no inactive pill — pillInactive
+// carries hover:text-zinc-900, a different property. One array assertion therefore proves both
+// halves at once: that Day is the active pill, and that Week is not.
+test('dashboard_day_pill_is_the_active_view_on_load @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}`)
+  await expect(pillRow(page).locator('[class*="bg-zinc-900"]')).toHaveText(['Day'])
+})
+
+// Anchored on a Wednesday, which is what makes "calendar-aligned, not a rolling 7-day window"
+// falsifiable: a rolling window from the viewed date would render May 15 .. May 21.
+test('dashboard_week_pill_shows_the_calendar_aligned_sunday_to_saturday_week_of_the_viewed_date @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?date=${WEEK_ANCHOR}`)
+  await pillRow(page).getByRole('link', { name: 'Week', exact: true }).click()
+  await page.waitForURL((url) => url.searchParams.get('view') === 'week', { waitUntil: 'commit' })
+  await expect(dayHeadings(page)).toHaveText(WEEK_DAY_HEADINGS)
+})
+
+test('dashboard_week_view_shows_a_date_heading_for_each_of_the_seven_days @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
+  await expect(dayHeadings(page)).toHaveCount(7)
+})
+
+// The bucketing assertion. One regex per day section, matched against that section's whole
+// text, so this pins the complete day-to-content map in a single expectation rather than
+// sampling it: a lesson on Tuesday, an appointment on Thursday, an event on Friday, and the
+// empty-day line on the other four.
+//
+// The seed inserts those three rows in reverse day order on purpose. Bucketing is a derived
+// property, and a derived property can be accidentally right — so the expected answer here is
+// one that neither insertion order, nor created_at, nor "everything in the first day" can
+// produce. [\s\S]* rather than .* so the match survives whatever whitespace normalisation
+// toHaveText applies to a multi-line section.
+test('dashboard_week_view_lists_each_days_own_items_under_that_day @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
+  await expect(daySections(page)).toHaveText([
+    /Sunday, May 12[\s\S]*Nothing scheduled for this day\./,
+    /Monday, May 13[\s\S]*Nothing scheduled for this day\./,
+    /Tuesday, May 14[\s\S]*9:00 AM[\s\S]*Apollo/,
+    /Wednesday, May 15[\s\S]*Nothing scheduled for this day\./,
+    /Thursday, May 16[\s\S]*Ridgeline Vet/,
+    /Friday, May 17[\s\S]*Spring Open House/,
+    /Saturday, May 18[\s\S]*Nothing scheduled for this day\./,
+  ])
+})
+
+// Four, not seven and not zero: W1 seeds Tuesday, Thursday and Friday, so the count is a
+// number only a view that renders the line on empty days and withholds it on occupied ones can
+// produce.
+test('dashboard_week_view_shows_nothing_scheduled_on_a_day_with_no_items @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
+  await expect(calendarSection(page).getByText('Nothing scheduled for this day.')).toHaveCount(4)
+})
+
+// "A single empty state instead of 7 empty lines" is one claim about two things, so it is one
+// assertion over a pair. The 1 is what keeps it honest: a locator pointing nowhere would give
+// [0, 0] and fail, where a bare toHaveCount(0) on the per-day line would have passed.
+test('dashboard_week_view_shows_one_all_clear_empty_state_for_a_week_with_nothing_on_it @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week&date=${EMPTY_WEEK_ANCHOR}`)
+  const allClear = calendarSection(page).getByText("You're all clear")
+  const perDayLines = calendarSection(page).getByText('Nothing scheduled for this day.')
+  // count() is a one-shot read with no auto-wait; the empty state is what settles the page.
+  await allClear.waitFor()
+  expect([await allClear.count(), await perDayLines.count()]).toEqual([1, 0])
+})
+
+// Two assertions, one per direction, under this batch's ratified exception for a claim that
+// inherently spans a pair — "Prev/Next move the visible range by 7 days" is a single claim
+// about a two-ended pager. The checklist line is not split.
+//
+// Asserted on the rendered range heading rather than on the URL: the href moving by 7 days
+// would be satisfied by a page that then rendered some other week.
+test('dashboard_week_view_prev_and_next_move_the_visible_range_by_seven_days @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
+  await stepWeek(page, 'Previous week', '2030-05-08')
+  await expect(dateHeading(page)).toHaveText('Sunday, May 5 – Saturday, May 11')
+  await stepWeek(page, 'Next week', '2030-05-15')
+  await stepWeek(page, 'Next week', '2030-05-22')
+  await expect(dateHeading(page)).toHaveText('Sunday, May 19 – Saturday, May 25')
+})
+
+// 2030 is never today, so this direction needs no clock control of any kind.
+test('dashboard_week_view_shows_the_this_week_link_when_today_is_outside_the_visible_week @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
+  await expect(periodControls(page)).toHaveText(['Day', 'Week', 'This Week'])
+})
+
+// No ?date= at all, so the server resolves the week from the barn's own today — the link's
+// absence is decided and rendered in the same request, with no seed-time clock to drift from.
+// See periodControls on why this is a positive two-element assertion rather than a zero count.
+test('dashboard_week_view_hides_the_this_week_link_when_today_is_inside_the_visible_week @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week`)
+  await expect(periodControls(page)).toHaveText(['Day', 'Week'])
+})
+
+/**
+ * Both tint assertions are a pair: today's day section's computed background, and a sibling's.
+ *
+ * The sibling is the control. A style read answers with a real value for whatever element it
+ * lands on, so "today's section is blue" alone could pass off an element that is blue for some
+ * other reason; requiring the neighbour to be transparent in the same expectation means a
+ * locator that resolved both to the same node fails. Read as backgrounds rather than as
+ * toHaveClass because the class attribute is identical in both schemes — `dark:` variants ride
+ * along in the same string — so a class assertion could not tell the two items apart, and the
+ * dark one would pass on a page that never applied dark mode at all.
+ *
+ * The two expected colours were measured against the running app, not derived from the
+ * Tailwind palette: bg-blue-50/60 and dark:bg-blue-950/30 are opacity-modified utilities, and
+ * Tailwind 4 emits those as color-mix(), which Chromium resolves and serialises in oklab —
+ *
+ *     light   oklab(0.969998 -0.0037263 -0.0134743 / 0.6)     blue-50  at 60%
+ *     dark    oklab(0.281996 -0.00328462 -0.090931 / 0.3)     blue-950 at 30%
+ *
+ * — matched by pattern rather than by those full strings. Seven significant figures of an
+ * oklab component are the browser's serialisation, not the app's behaviour, so pinning them
+ * would make a Chromium bump fail a test that is about the dashboard. What is pinned is
+ * everything the item actually claims and everything that separates the two schemes: the
+ * lightness band (0.9x against 0.2x — blue-50 against blue-950, which no rounding can
+ * confuse) and the exact alpha (0.6 against 0.3, the two utilities' own opacity modifiers).
+ * The patterns are mutually exclusive, so neither test can pass on the other's value.
+ */
+const TODAY_TINT_LIGHT = expect.stringMatching(/^oklab\(0\.9\d+ [-\d.]+ [-\d.]+ \/ 0\.6\)$/)
+const TODAY_TINT_DARK = expect.stringMatching(/^oklab\(0\.2\d+ [-\d.]+ [-\d.]+ \/ 0\.3\)$/)
+
+test('dashboard_week_view_tints_todays_day_section_in_light_mode @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week`)
+  expect([await backgroundOf(todayDaySection(page)), await backgroundOf(otherDaySection(page))]).toEqual([
+    TODAY_TINT_LIGHT,
+    TRANSPARENT,
+  ])
+})
+
+// Native colorScheme, not a class or data-attribute flip: src/app/globals.css drives dark mode
+// purely off prefers-color-scheme, and Tailwind 4's `dark:` variant is that same media query.
+// Scoped to its own describe so the file's other tests keep the default light scheme.
+test.describe('week view in dark mode', () => {
+  test.use({ colorScheme: 'dark' })
+
+  test('dashboard_week_view_tints_todays_day_section_in_dark_mode @manager', async ({ page }) => {
+    await page.goto(`/barn/${barn.slug}?view=week`)
+    expect([await backgroundOf(todayDaySection(page)), await backgroundOf(otherDaySection(page))]).toEqual([
+      TODAY_TINT_DARK,
+      TRANSPARENT,
+    ])
+  })
+})
+
+// Asserted on the level-2 date heading, not on any "· Today" text: the Week view puts that
+// same suffix on today's day-section <h3>, so a page-wide check for it would pass without the
+// Day pill having navigated anywhere at all. In Day view the level-2 heading is the date and
+// carries the suffix; in Week view it is the range and carries "· This Week" instead.
+test('dashboard_week_to_day_view_lands_on_today_when_today_is_inside_the_week @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week`)
+  await pillRow(page).getByRole('link', { name: 'Day', exact: true }).click()
+  await page.waitForURL((url) => !url.searchParams.has('view'), { waitUntil: 'commit' })
+  await expect(dateHeading(page)).toHaveText(/· Today$/)
+})
+
+// Full-string equality rather than a substring: "Sunday, May 12" with nothing after it is also
+// what proves this landed on the week's Sunday rather than on today, which would have brought
+// a "· Today" suffix with it.
+test('dashboard_week_to_day_view_lands_on_the_weeks_sunday_when_today_is_outside_the_week @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}?view=week&date=${WEEK_ANCHOR}`)
+  await pillRow(page).getByRole('link', { name: 'Day', exact: true }).click()
+  await page.waitForURL((url) => url.searchParams.get('date') === '2030-05-12', { waitUntil: 'commit' })
+  await expect(dateHeading(page)).toHaveText('Sunday, May 12')
 })
