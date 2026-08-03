@@ -23,9 +23,14 @@ const extensionOf = (assetName: string) => assetName.slice(assetName.lastIndexOf
 
 let managedRiderId: string
 let claimedTrainerId: string
+let claimedTrainerProfileId: string
 let secondRiderId: string
+/** Captured in the seed so the claimed-trainer cleanup below can't depend on `barn.data`. */
+let seedClient: SupabaseClient | null = null
 
 const barn = withBarn('phase4-members-media', async ({ supabase, barn }) => {
+  seedClient = supabase
+
   // The unclaimed rider whose photo is set, replaced and removed through the UI, and who then
   // carries the document upload/list/open/delete chain. addManagedMember leaves user_id null
   // and is_managed true, which is exactly the manager-editable state those flows need.
@@ -44,9 +49,15 @@ const barn = withBarn('phase4-members-media', async ({ supabase, barn }) => {
   // The photo is pre-seeded deliberately. With one set, an *editable* Photo section renders two
   // controls (Replace Photo, Remove); with none it renders one (Set Photo). Starting from a
   // photo therefore gives the absence assertion below something to be absent against.
+  //
+  // emery-photo.jpg rather than clover-photo.png: scripts/CLAUDE.md's asset table assigns
+  // emery-photo.jpg to a profile and clover-photo.png to the horse Clover's upload flow. The one
+  // place this spec does use clover-photo.png is the manager's own upload, where checklist line
+  // 480 names that file explicitly.
   const claimedTrainer = await addManagedMember(supabase, barn.id, { ...CLAIMED_TRAINER, role: 'trainer' })
   claimedTrainerId = claimedTrainer.membershipId
-  await setMemberPhoto(supabase, barn, claimedTrainer.profileId, CLOVER_PHOTO)
+  claimedTrainerProfileId = claimedTrainer.profileId
+  await setMemberPhoto(supabase, barn, claimedTrainer.profileId, EMERY_PHOTO)
   mustSucceed(
     await supabase.from('profiles').update({ is_managed: false }).eq('id', claimedTrainer.profileId).select('id').single(),
     'demote trainer stub to claimed'
@@ -140,15 +151,58 @@ test.describe.serial('a managed rider photo', () => {
 // A claimed member's photo is locked to the member
 // ---------------------------------------------------------------------------
 
-// Counted rather than asserted absent. A bare toHaveCount(0) over the controls would pass
-// vacuously if the Photo section itself failed to resolve — the failure mode this batch's
-// mutation check can't distinguish, since flipping the expectation fails either way. Counting
-// `img, a, button` inside the section pins both halves in one assertion: exactly the photo and
-// nothing interactive. An editable section with a photo set renders three (img, Replace link,
-// Remove button); a section that didn't render renders none. Only the locked one renders one.
-test('claimed_member_photo_section_offers_no_edit_controls_to_a_manager @manager', async ({ page }) => {
-  await page.goto(memberUrl(claimedTrainerId))
-  await expect(section(page, 'Photo').locator('img, a, button')).toHaveCount(1)
+test.describe('a claimed trainer', () => {
+  // The seed demotes this stub to `is_managed = false`, which is exactly what teardown can't
+  // see: teardownBarnData sweeps profile photo storage and deletes stub rows for
+  // `is_managed = true` only, so both this profile's row and its photo object would survive
+  // every run — one more of each, accumulating silently, which is precisely the residue the
+  // own-photo block below goes to such lengths to avoid creating.
+  //
+  // Handed back to teardown rather than swept here: flipping is_managed true again once the
+  // claimed-state assertions are done lets teardownBarnData collect it by its own existing
+  // rule, instead of this spec reimplementing that sweep and drifting from it.
+  //
+  // A describe-scoped afterAll is what makes the ordering safe — Playwright completes an inner
+  // suite's hooks before the file-scoped afterAll that withBarn registers for teardown.
+  test.afterAll(async () => {
+    if (!seedClient || !claimedTrainerProfileId) return
+    mustSucceed(
+      await seedClient
+        .from('profiles')
+        .update({ is_managed: true })
+        .eq('id', claimedTrainerProfileId)
+        .select('id')
+        .single(),
+      'restore trainer stub to managed so teardown sweeps it'
+    )
+  })
+
+  // Counted rather than asserted absent. A bare toHaveCount(0) over the controls would pass
+  // vacuously if the Photo section itself failed to resolve — the failure mode this batch's
+  // mutation check can't distinguish, since flipping the expectation fails either way. Counting
+  // `img, a, button` inside the section pins both halves in one assertion: exactly the photo and
+  // nothing interactive. An editable section with a photo set renders three (img, Replace link,
+  // Remove button); a section that didn't render renders none. Only the locked one renders one.
+  test('claimed_member_photo_section_offers_no_edit_controls_to_a_manager @manager', async ({ page }) => {
+    await page.goto(memberUrl(claimedTrainerId))
+    await expect(section(page, 'Photo').locator('img, a, button')).toHaveCount(1)
+  })
+
+  // Documents are gated by canManage, which — unlike the photo lock above — does not consult
+  // is_managed, so a claimed trainer still gets the button. Kept inside this block so every
+  // read of this member's page happens before the afterAll flips it back.
+  test('trainer_detail_has_an_add_document_button @manager', async ({ page }) => {
+    await page.goto(memberUrl(claimedTrainerId))
+    await expect(section(page, 'Documents').getByRole('link', { name: 'Add Document' })).toBeVisible()
+  })
+
+  test('trainer_add_document_button_links_to_the_trainer_upload_page @manager', async ({ page }) => {
+    await page.goto(memberUrl(claimedTrainerId))
+    await expect(section(page, 'Documents').getByRole('link', { name: 'Add Document' })).toHaveAttribute(
+      'href',
+      `/barn/${barn.slug}/documents/new?entity=trainer&id=${claimedTrainerId}`
+    )
+  })
 })
 
 // ---------------------------------------------------------------------------
@@ -197,14 +251,16 @@ test.describe.serial('your own member photo', () => {
   // Unconditional: no pass/fail gate, no early return on anything but "the capture never
   // happened", so a test throwing mid-chain still restores. Reads the row back afterwards and
   // throws on a mismatch — an unverified restore is one that can stop working silently.
+  //
+  // The row is restored *before* the storage object is deleted, and the two failure modes are
+  // why. An un-restored row is a shared-state failure every later slice inherits; an orphaned
+  // object is only a leak. Deleting first meant a storage error threw before the restore ever
+  // ran, converting the cheap failure into the expensive one — so the shared row is put back
+  // and verified first, and the object deletion, which can still throw loudly, comes last.
   test.afterAll(async () => {
     if (!service || !managerProfileId) return
 
     const uploaded = await readPhotoPath(service, managerProfileId)
-    if (uploaded && uploaded !== capturedPhotoPath) {
-      const { error } = await service.storage.from('documents').remove([uploaded])
-      if (error) throw new Error(`remove uploaded manager photo object: ${error.message}`)
-    }
     mustSucceed(
       await service
         .from('profiles')
@@ -218,6 +274,11 @@ test.describe.serial('your own member photo', () => {
     const restored = await readPhotoPath(service, managerProfileId)
     if (restored !== capturedPhotoPath) {
       throw new Error(`manager profile photo_path not restored: expected ${capturedPhotoPath}, found ${restored}`)
+    }
+
+    if (uploaded && uploaded !== capturedPhotoPath) {
+      const { error } = await service.storage.from('documents').remove([uploaded])
+      if (error) throw new Error(`remove uploaded manager photo object: ${error.message}`)
     }
   })
 
@@ -286,21 +347,9 @@ test.describe.serial('a managed rider document', () => {
 })
 
 // ---------------------------------------------------------------------------
-// The two entity-typed Add Document links
+// The rider half of the entity-typed Add Document links (the trainer half is above, inside the
+// claimed-trainer block, so it runs before that block's afterAll)
 // ---------------------------------------------------------------------------
-
-test('trainer_detail_has_an_add_document_button @manager', async ({ page }) => {
-  await page.goto(memberUrl(claimedTrainerId))
-  await expect(section(page, 'Documents').getByRole('link', { name: 'Add Document' })).toBeVisible()
-})
-
-test('trainer_add_document_button_links_to_the_trainer_upload_page @manager', async ({ page }) => {
-  await page.goto(memberUrl(claimedTrainerId))
-  await expect(section(page, 'Documents').getByRole('link', { name: 'Add Document' })).toHaveAttribute(
-    'href',
-    `/barn/${barn.slug}/documents/new?entity=trainer&id=${claimedTrainerId}`
-  )
-})
 
 test('rider_detail_has_an_add_document_button @manager', async ({ page }) => {
   await page.goto(memberUrl(secondRiderId))
