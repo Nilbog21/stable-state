@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, cleanup, act, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, cleanup, act, waitFor, within } from '@testing-library/react'
 
 beforeEach(() => {
   vi.useFakeTimers({ shouldAdvanceTime: true })
@@ -117,16 +117,24 @@ describe('ExpenseForm', () => {
     expect(screen.getByRole('checkbox', { name: 'Butter' })).toBeDefined()
   })
 
-  it('should_disable_horse_checkboxes_when_entire_barn_is_checked', () => {
+  // Within the group, not merely present somewhere: the control disables every horse checkbox
+  // below it, so sitting outside the group it controls is the thing being fixed.
+  it('should_render_the_barn_wide_checkbox_inside_the_horses_group', () => {
     renderForm()
-    fireEvent.click(screen.getByRole('checkbox', { name: /entire barn/i }))
+    const horsesGroup = screen.getByRole('group', { name: 'Horses' })
+    expect(within(horsesGroup).getByLabelText('All')).toBeDefined()
+  })
+
+  it('should_disable_horse_checkboxes_when_the_barn_wide_box_is_checked', () => {
+    renderForm()
+    fireEvent.click(screen.getByRole('checkbox', { name: 'All' }))
     expect((screen.getByRole('checkbox', { name: 'Apple' }) as HTMLInputElement).disabled).toBe(true)
   })
 
-  it('should_exclude_horse_id_from_form_data_when_entire_barn_is_checked', () => {
+  it('should_exclude_horse_id_from_form_data_when_the_barn_wide_box_is_checked', () => {
     const { container } = renderForm()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Apple' }))
-    fireEvent.click(screen.getByRole('checkbox', { name: /entire barn/i }))
+    fireEvent.click(screen.getByRole('checkbox', { name: 'All' }))
     const form = container.querySelector('form')!
     const fd = new FormData(form)
     expect(fd.getAll('horse_id')).toEqual([])
@@ -294,12 +302,12 @@ describe('ExpenseForm', () => {
     expect((screen.getByLabelText(/notes/i) as HTMLTextAreaElement).value).toBe('Regular trim')
   })
 
-  it('should_check_entire_barn_from_initial', () => {
+  it('should_check_the_barn_wide_box_from_initial', () => {
     renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: true, horseIds: [] } })
-    expect((screen.getByRole('checkbox', { name: /entire barn/i }) as HTMLInputElement).checked).toBe(true)
+    expect((screen.getByRole('checkbox', { name: 'All' }) as HTMLInputElement).checked).toBe(true)
   })
 
-  it('should_disable_horse_checkboxes_when_entire_barn_from_initial', () => {
+  it('should_disable_horse_checkboxes_when_barn_wide_from_initial', () => {
     renderForm({ initial: { recipient: '', expenseType: '', expenseTime: null, amount: null, notes: null, appliesToAllHorses: true, horseIds: [] } })
     expect((screen.getByRole('checkbox', { name: 'Apple' }) as HTMLInputElement).disabled).toBe(true)
   })
@@ -522,9 +530,9 @@ describe('ExpenseForm — conflict calendar', () => {
     expect(screen.queryByTestId('conflict-dot-2026-07-15')).toBeNull()
   })
 
-  it('should_flag_a_booked_day_when_entire_barn_is_checked', async () => {
+  it('should_flag_a_booked_day_when_the_barn_wide_box_is_checked', async () => {
     renderWithSchedule([scheduleItem({ id: 'l1', horseIds: ['horse-2'] })])
-    fireEvent.click(screen.getByLabelText('Entire Barn'))
+    fireEvent.click(screen.getByLabelText('All'))
     expect(await screen.findByTestId('conflict-dot-2026-07-15')).toBeTruthy()
   })
 
