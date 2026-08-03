@@ -12,7 +12,22 @@ This skill is for batches that are **small, related, and migration-free**. Verif
 
 1. Fetch every issue (`gh issue view {N} --json title,body,labels,state`). All must share a release label. **Keep each issue's `state`** — Step 3 needs it as its already-done guard, and this is the only place you fetch it.
 2. **No-migration check (hard requirement):** grep each body for migration/schema/RLS/RPC scope. If any issue plausibly requires a file under `supabase/migrations/`, stop and tell the user this batch doesn't qualify — migrations need the human-supervised flow.
-3. **Dependency check:** every `Blocked by` reference in every body must be a closed issue whose PR is merged. If a blocker is still open, report it and stop — do not start a partial batch unless the user says to.
+3. **Dependency check — the default is dispatch.** Gates reach a batch two ways: a **formal** blocker reference in an issue body — the same four phrasings `issueBatch.md`'s dependency check recognizes, not just `Blocked by`; read them from there so the two skills can't drift on what counts as one — and an **informal** one promoted through `specs/batch_{release-label}.md`'s `## Insights` prose. The presumption both argue against is that the batch goes out today. The presumption is rebuttable, not decorative — but a candidate gate carries the burden, and "we found something" does not discharge it.
+
+   The recoverability test below governs **informal candidates**. A formal blocker that is still open is not eligible for it: on the issues it actually touches it stops them outright, exactly as before, and you ask the user before starting any of those. What changed for formal blockers is only *which* issues they hold — the per-issue test two paragraphs down — never whether an open one can be waved through.
+
+   An informal finding gates only if hitting it is **unrecoverable**, or costs more than the begin→review→test→finish cycle that would fix it first, fleet idle included. Batch size is not an argument by itself: ×22 a trivial cost is still trivial, and the comparison is against the cost of that fixing cycle, not against zero. **Recoverable-but-annoying is a dispatch, not a gate** — say so in those words when you classify one, because it is the category that gets misfiled, and the misfiling is invisible once it's dressed up as a multiplier.
+
+   A gate claimed of the *batch* is not a gate on every issue in it. Before a candidate holds any given issue, test it against that issue: read the blocker's actual changed files and check them against the files that issue touches — inferred from its body, the same way item 4 below infers shared files, since a batch issue has no diff of its own until a worker writes one. Resolve the blocker's PR number first — it is not the blocker's issue number, and diffing the wrong one answers this test with a stranger's changed files. Branches are named `{issue}-{slug}`, so that pairing is exact:
+
+   ```bash
+   gh pr list --state all --limit 200 --json number,headRefName \
+     --jq '[.[] | select(.headRefName | startswith("{blocker-issue}-"))] | .[0].number'
+   ```
+
+   Then `gh pr diff {blocker-pr} --name-only`. Body-text searches (`"Closes #N"`) are fuzzy and return neighbouring PRs — don't gate on one. An issue the blocker never reaches gets dispatched while its siblings wait; a blanket hold over the whole batch needs the per-issue evidence behind it.
+
+   Report every candidate gate you considered and how it resolved, **dismissals included, with the reasoning**. A gate dismissed silently is indistinguishable from one never noticed, and the user is the only one who can tell you which it was. Carry the verdict into Step 3 — it is the input to that step's held-issue filter, and a gate you resolved but never recorded holds nothing.
 4. **Shared-file survey:** from the issue bodies, list files more than one issue will touch (e.g. a checklist file all slices annotate). These are the expected merge-conflict sites; note them for Step 5.
 
 ## Step 1 — Opening interview
@@ -20,7 +35,7 @@ This skill is for batches that are **small, related, and migration-free**. Verif
 Before provisioning anything, interview the user grillMe-style — one question at a time, recommended answer attached — to settle the batch-specific unknowns:
 
 - The **concurrency cap** (default recommendation: 3–4; never more than the number of issues).
-- Whether to open with a **canary**: one issue dispatched alone through the entire pipeline — through merge — before fanning out to the cap. Recommend yes for this skill's first outing or any batch shape it hasn't run before; the first full run debugs every seam in the headless contract serially instead of concurrently.
+- Whether to open with a **canary**, and **which issue it is**: one issue dispatched alone through the entire pipeline — through merge — before fanning out to the cap. Recommend yes for this skill's first outing or any batch shape it hasn't run before; the first full run debugs every seam in the headless contract serially instead of concurrently. Pick the slice with the **least exposure to in-flight work** — fewest files shared with anything unmerged, and least entangled with whatever the batch's candidate gates were about. Debugging the headless seams is the canary's whole job; an exposed pick debugs the seams and the batch's hardest slice at once, and a canary that can't start is a batch that can't start.
 - Any risk the qualification pass surfaced (a stale-looking issue body, an unexpected shared file, a dependency merged but not yet on the base branch).
 - Anything about *this* batch that the escalation policy in Step 4 doesn't already cover.
 
@@ -49,6 +64,8 @@ The symlink is the same relative form every worktree uses (README's "`.env.local
 ## Step 3 — Dispatch workers
 
 **Before dispatching anything, drop the issues that are already done.** Reuse the `state` Step 0 already fetched — don't re-look it up. An issue that is already `CLOSED`, or whose PR is already `MERGED`, is not dispatched: record it in the fleet table as `merged` and move on. If *every* issue in the batch is already done, stop cold and say so rather than provisioning a fleet for an empty batch. This is load-bearing, not defensive: a batch is re-invoked on the same issue range after any interruption, and resuming instead of restarting is the entire value of the range being re-runnable.
+
+**Then drop the issues Step 0 left held.** Its dependency check resolves per-issue, so a batch can arrive here part-gated: an issue a still-open blocker genuinely touches is not dispatched this round — record it as `held: #{blocker}` and re-test it once that blocker merges. Say the same thing back explicitly rather than trusting yourself to remember it from Step 0; a verdict nothing here branches on holds nothing.
 
 If a canary was agreed in Step 1, dispatch it alone and hold the rest of the batch until it merges; then fan out. Fold what the canary teaches — batch-specific constraints, shared-fixture changes, corrected issue text — into the prompts of every subsequently dispatched worker.
 
@@ -93,7 +110,7 @@ When a worker ends its turn, read the status block. Answer routine questions via
 
    | Issue | Worktree | Status | Elapsed |
    |---|---|---|---|
-   | #N | fable-K | the skill/step the worker is in (skill name is fine), or `queued` / `waiting: <lock/slot/answer>` / `merged` | time since the current skill started — only for actively-running work |
+   | #N | fable-K | the skill/step the worker is in (skill name is fine), or `queued` / `waiting: <lock/slot/answer>` / `held: #{blocker}` / `merged` | time since the current skill started — only for actively-running work |
 
    Track skill start times from your dispatch and the workers' status blocks. Don't spawn a subagent to render this — subagents can't print to the user; the table is your own turn output from state you already hold.
 2. **Escalation prompts** — the questions you need the user to settle, one at a time, as defined above.
