@@ -5,18 +5,16 @@ import { DateHourPicker } from '../DateHourPicker'
 afterEach(cleanup)
 
 describe('DateHourPicker', () => {
-  let originalTz: string | undefined
-
   beforeEach(() => {
-    originalTz = process.env.TZ
-    process.env.TZ = 'America/New_York'
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-01T14:30:00'))
+    // Explicitly UTC: 18:30Z is 2:30 PM in the barn's Eastern zone (EDT, UTC-4), which is
+    // what the hour/date defaults below assert. A bare local string would instead mean
+    // whatever the host zone says, quietly re-deriving those expectations per machine.
+    vi.setSystemTime(new Date('2026-06-01T18:30:00Z'))
   })
 
   afterEach(() => {
     vi.useRealTimers()
-    process.env.TZ = originalTz
   })
 
   it('should_render_a_date_input', () => {

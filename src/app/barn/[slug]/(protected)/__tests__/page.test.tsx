@@ -783,17 +783,6 @@ describe('BarnDashboardPage', () => {
   })
 
   describe('demo mode banner', () => {
-    let originalTz: string | undefined
-
-    beforeEach(() => {
-      originalTz = process.env.TZ
-      process.env.TZ = 'America/New_York'
-    })
-
-    afterEach(() => {
-      process.env.TZ = originalTz
-    })
-
     it('should_render_demo_banner_when_barn_is_demo', async () => {
       vi.mocked(getBarnBySlug).mockResolvedValue(
         createMockBarn({ ...mockBarn, is_demo: true, created_at: '2026-05-17T00:00:00Z' })

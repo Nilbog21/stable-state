@@ -1,4 +1,4 @@
-import { describe, it, expect, afterEach, beforeEach } from 'vitest'
+import { describe, it, expect, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { LessonListItem } from '../LessonListItem'
 import { createMockLessonWithDetails, instant } from '@/test/fixtures'
@@ -375,18 +375,7 @@ describe('LessonListItem', () => {
   })
 
   describe('timezone-aware date/time display', () => {
-    let originalTz: string | undefined
-
-    beforeEach(() => {
-      originalTz = process.env.TZ
-      process.env.TZ = 'America/New_York'
-    })
-
-    afterEach(() => {
-      process.env.TZ = originalTz
-    })
-
-    it('should_display_the_lesson_time_in_the_viewers_local_timezone_not_utc', () => {
+    it('should_display_the_lesson_time_in_the_barns_timezone_not_utc', () => {
       // 2026-05-17T10:00:00Z is 6:00 AM EDT (UTC-4) — a naive UTC-timeZone
       // formatter would show 10:00 AM instead.
       render(

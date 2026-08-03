@@ -1013,17 +1013,6 @@ describe('LessonForm (edit mode) exhaustion bars', () => {
 })
 
 describe('LessonForm (edit mode) — timezone-aware date/hour prefill', () => {
-  let originalTz: string | undefined
-
-  beforeEach(() => {
-    originalTz = process.env.TZ
-    process.env.TZ = 'America/New_York'
-  })
-
-  afterEach(() => {
-    process.env.TZ = originalTz
-  })
-
   // 02:00 UTC on 2026-05-17 is 22:00 EDT (UTC-4) on the *previous* local day —
   // the case naive string-slicing gets wrong.
   const lessonNearUtcMidnight: LessonDetail = { ...normalLesson, lesson_at: instant('2026-05-17T02:00:00Z') }

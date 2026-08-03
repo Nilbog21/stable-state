@@ -2,6 +2,20 @@
 
 `src/lib/db/` — one file per domain. Never query Supabase directly from components or actions; always go through these modules.
 
+**`Instant` return types (#1222).** This layer is the only one that knows both a `TIMESTAMPTZ` and the barn it belongs to, so it is the only place an `Instant` (`{ at, tz }`, `types.ts`) is minted — that is what lets `format-date.ts`'s `formatBarnDateTime`/`formatBarnDate`/`formatBarnTime` take no timezone argument and be impossible to call wrong. Any reader returning an instant that gets rendered or compared therefore takes a `timezone` parameter and brands its output rather than returning a plain string:
+
+| Module | Branded field(s) | Signature change |
+|---|---|---|
+| `lessons.ts` | `Lesson.lesson_at`, `LessonDetail.lesson_at` | `getLessonById`/`getLessonsByIds`/`getLessonsByBarn` take `timezone` |
+| `barn-events.ts` | `BarnEvent.event_at` | `getEventsByBarn`/`getEventById`/`getEventsByIds` take `timezone`; `createEvent`/`updateEvent` return the raw row (unbranded — neither caller reads it) |
+| `outstanding.ts` | `OutstandingItem.date` | `mergeOutstandingItems` takes `timezone` |
+| `lesson-finances.ts` | `HorseIncomeDetailRow.lessonAt`, `RiderIncomeDetailRow.lessonAt`, `TrainerIncomeDetailRow.lessonAt` | the three `get*IncomeDetail` readers take `timezone` |
+| `notifications.ts` | `Notification.created_at` | `getNotifications(userId, barnId, timezone, limit?)` |
+| `horses.ts` | projected-exhaustion and upcoming-lesson `lessonAt` | `getHorseProjectedExhaustion`/`getUpcomingLessonsForHorse` take `timezone` |
+| `lesson-participants.ts` | the hydrated participant's `lesson_at` | `hydrateParticipants` takes `timezone` |
+
+Audit columns nothing displays stay plain strings — see `types.ts`'s `Instant` doc comment for the rule and its one exception. `backup.ts` is deliberately outside this scheme (see its row below): it needs zone-less wall-clock digits for an Excel serial, not a formatted string.
+
 | File | Domain |
 |---|---|
 | `auth.ts` | Auth session; `getAuthenticatedUser()` — wraps `supabase.auth.getUser()`, returns `User \| null` |

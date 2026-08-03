@@ -34,10 +34,12 @@ import type { Agreement, AgreementCharge, BarnMembership, Horse, Lesson, Profile
  * them — see TransactionBackupRow.
  *
  * Every TIMESTAMPTZ column is rendered in the barn's own configured timezone
- * (instantToLocalWallClock), not viewer-local — a departure from this app's usual
- * "instants render viewer-local, never barn-local" rule (see barn-timezone.ts),
- * made only because a downloaded static file has no live browser session to read
- * a viewer's zone from; the barn's own timezone is the best available stand-in.
+ * (instantToLocalWallClock). This used to be a deliberate exception to an
+ * "instants render viewer-local" rule; #1222 deleted that rule, so the export is
+ * now simply doing what every other surface does. It reaches for
+ * instantToLocalWallClock rather than the Instant brand because the sheet needs
+ * zone-less wall-clock digits baked into an Excel serial (see below), not a
+ * formatted string.
  */
 
 // Excel serial numbers are zone-less, and exceljs derives one from Date#getTime, so a Date

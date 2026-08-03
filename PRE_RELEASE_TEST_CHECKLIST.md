@@ -699,11 +699,16 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Under that setup, **Add Expense** with the Date set to your machine's own current date — already yesterday in barn time — hides the optional **Time** field, since the barn considers that date past
 - [ ] (e2e-candidate) Under that setup, **Add Expense**'s Date field pre-fills with the *barn's* date, one day ahead of your device's
 - [ ] (e2e-candidate) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
-- [ ] (e2e-candidate) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list, the lesson detail page and the dashboard calendar — not 10:00 AM Hawaii (#1222)
-- [ ] (e2e-candidate) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/hour picker, and saving without changing anything leaves the stored time untouched (#1222)
-- [ ] (e2e-candidate) Under that setup, **New Lesson**'s date pre-fills with the barn's date and its hour select opens on the barn's current hour, not your device's (#1222)
+- [ ] (e2e-candidate) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list — not 10:00 AM Hawaii (#1222)
+- [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the lesson detail page (#1222)
+- [ ] (e2e-candidate) Under that setup, that same lesson still reads 4:00 PM on the dashboard calendar (#1222)
+- [ ] (e2e-candidate) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/hour picker (#1222)
+- [ ] (e2e-candidate) Under that setup, saving that **Edit** form without changing anything leaves the stored time untouched (#1222)
+- [ ] (e2e-candidate) Under that setup, **New Lesson**'s date pre-fills with the barn's date, not your device's (#1222)
+- [ ] (e2e-candidate) Under that setup, **New Lesson**'s hour select opens on the barn's current hour, not your device's (#1222)
 - [ ] (e2e-candidate) Under that setup, creating a lesson at 4:00 PM stores 4:00 PM *barn-local* — check the DB value, or reopen the lesson and confirm it still says 4:00 PM (#1222 — entry is barn-anchored, not just display)
-- [ ] (e2e-candidate) Under that setup, a barn event's time on **Manage Barn** → Barn Events and on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
+- [ ] (e2e-candidate) Under that setup, a barn event's time on **Manage Barn** → Barn Events is the barn's, matching what the Add Event form was given (#1222)
+- [ ] (e2e-candidate) Under that setup, that same barn event's time on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
 - [ ] (e2e-candidate) That list entry shows the correct date

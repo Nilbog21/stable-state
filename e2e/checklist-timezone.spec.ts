@@ -23,12 +23,11 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   // The barn is seeded with no lessons at all, so the direct-read query below can only match
   // the one this test creates.
   //
-  // Every date below is computed in the *browser's* zone, not this Node process's: the calendar
-  // this test pages through and the picker that converts the click both run in the browser,
-  // which playwright.config.ts pins while leaving the runner on the developer's own zone
-  // (#1221). Deriving today+30 from the runner's clock would name a day the calendar disagrees
-  // about, and would compare the stored instant against the wrong wall clock entirely.
-  const hour = 14 // 2:00 PM in the browser's zone
+  // dateStr only has to name a day cell the calendar actually renders, so it is derived in the
+  // *browser's* zone — the grid this test pages through runs there, and playwright.config.ts
+  // pins that zone while leaving the runner on the developer's own (#1221). Which instant the
+  // picked day+hour then becomes is a separate question, answered barn-locally below (#1222).
+  const hour = 14 // 2:00 PM, entered as barn-local wall clock
   const dateStr = instantToLocalWallClock(daysFromNow(30, BROWSER_TIMEZONE), BROWSER_TIMEZONE).slice(0, 10)
 
   await page.goto(`/barn/${barn.slug}/lessons/new`)
@@ -67,10 +66,11 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
 
   // Mirrors DateHourPicker.tsx's own conversion — this checks the real
   // UI -> server action -> RPC -> storage pipeline against it, not a
-  // re-derivation of the logic under test. The picker converts a wall clock the
-  // browser's zone owns, so the mirror names that zone rather than leaning on
-  // this process happening to share it: it no longer does (#1221).
-  const expectedIso = wallClockToInstant(`${dateStr}T${String(hour).padStart(2, '0')}:00:00`, BROWSER_TIMEZONE).toISOString()
+  // re-derivation of the logic under test. #1222 moved that conversion off the
+  // browser's zone and onto the *barn's*, so the mirror names the barn's zone.
+  // The two genuinely differ here (barn Eastern by schema default vs. browser
+  // Asia/Kolkata), which is what makes this assertion load-bearing.
+  const expectedIso = wallClockToInstant(`${dateStr}T${String(hour).padStart(2, '0')}:00:00`, barn.data.barn.timezone).toISOString()
 
   const supabase = createClient(supabaseUrl, anonKey)
   const { error: authError } = await supabase.auth.signInWithPassword({

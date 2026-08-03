@@ -957,18 +957,13 @@ describe('LessonForm exhaustion bars', () => {
 // #1019 — the date field becomes a month conflict calendar when the form is given a
 // schedule reader; without one it stays the plain native date input (see DateHourPicker).
 describe('LessonForm — month conflict calendar', () => {
-  let originalTz: string | undefined
-
   beforeEach(() => {
-    originalTz = process.env.TZ
-    process.env.TZ = 'America/New_York'
     vi.useFakeTimers()
-    vi.setSystemTime(new Date('2026-06-01T14:30:00'))
+    vi.setSystemTime(new Date('2026-06-01T14:30:00Z'))
   })
 
   afterEach(() => {
     vi.useRealTimers()
-    process.env.TZ = originalTz
   })
 
   const thunder = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
