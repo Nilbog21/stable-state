@@ -12,7 +12,13 @@ This skill is for batches that are **small, related, and migration-free**. Verif
 
 1. Fetch every issue (`gh issue view {N} --json title,body,labels,state`). All must share a release label. **Keep each issue's `state`** — Step 3 needs it as its already-done guard, and this is the only place you fetch it.
 2. **No-migration check (hard requirement):** grep each body for migration/schema/RLS/RPC scope. If any issue plausibly requires a file under `supabase/migrations/`, stop and tell the user this batch doesn't qualify — migrations need the human-supervised flow.
-3. **Dependency check:** every `Blocked by` reference in every body must be a closed issue whose PR is merged. If a blocker is still open, report it and stop — do not start a partial batch unless the user says to.
+3. **Dependency check — the default is dispatch.** Gates reach a batch two ways: a formal `Blocked by` reference in an issue body, and an informal one promoted through `specs/batch_{release-label}.md`'s `## Insights` prose. Both get the same test, and the presumption both argue against is that the batch goes out today. The presumption is rebuttable, not decorative — but a candidate gate carries the burden, and "we found something" does not discharge it.
+
+   A finding gates only if hitting it is **unrecoverable**, or costs more than the begin→review→test→finish cycle that would fix it first, fleet idle included. Batch size is not an argument by itself: ×22 a trivial cost is still trivial, and the comparison is against the cost of that fixing cycle, not against zero. **Recoverable-but-annoying is a dispatch, not a gate** — say so in those words when you classify one, because it is the category that gets misfiled, and the misfiling is invisible once it's dressed up as a multiplier.
+
+   A gate claimed of the *batch* is not a gate on every issue in it. Before a candidate holds any given issue, test it against that issue: read the blocker's actual changed files (`gh pr diff {N} --name-only`) and check them against the files that issue touches. An issue the blocker never reaches gets dispatched while its siblings wait. This applies to open formal blockers too — they still stop the issues they genuinely touch, and you still ask the user before starting those, but a blanket hold over the whole batch needs the per-issue evidence behind it.
+
+   Report every candidate gate you considered and how it resolved, **dismissals included, with the reasoning**. A gate dismissed silently is indistinguishable from one never noticed, and the user is the only one who can tell you which it was.
 4. **Shared-file survey:** from the issue bodies, list files more than one issue will touch (e.g. a checklist file all slices annotate). These are the expected merge-conflict sites; note them for Step 5.
 
 ## Step 1 — Opening interview
@@ -20,7 +26,7 @@ This skill is for batches that are **small, related, and migration-free**. Verif
 Before provisioning anything, interview the user grillMe-style — one question at a time, recommended answer attached — to settle the batch-specific unknowns:
 
 - The **concurrency cap** (default recommendation: 3–4; never more than the number of issues).
-- Whether to open with a **canary**: one issue dispatched alone through the entire pipeline — through merge — before fanning out to the cap. Recommend yes for this skill's first outing or any batch shape it hasn't run before; the first full run debugs every seam in the headless contract serially instead of concurrently.
+- Whether to open with a **canary**, and **which issue it is**: one issue dispatched alone through the entire pipeline — through merge — before fanning out to the cap. Recommend yes for this skill's first outing or any batch shape it hasn't run before; the first full run debugs every seam in the headless contract serially instead of concurrently. Pick the slice with the **least exposure to in-flight work** — fewest files shared with anything unmerged, and least entangled with whatever the batch's candidate gates were about. Debugging the headless seams is the canary's whole job; an exposed pick debugs the seams and the batch's hardest slice at once, and a canary that can't start is a batch that can't start.
 - Any risk the qualification pass surfaced (a stale-looking issue body, an unexpected shared file, a dependency merged but not yet on the base branch).
 - Anything about *this* batch that the escalation policy in Step 4 doesn't already cover.
 
