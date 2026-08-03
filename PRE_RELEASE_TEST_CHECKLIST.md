@@ -416,28 +416,28 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e-candidate) As manager, set `scripts/data/harper-photo.png` on Apple (the seed gives Apple an owning rider, but no owner has ever set her photo — the lock needs both, so it can't apply yet) → succeeds
 - [ ] (e2e-candidate) Replace Apple's photo with `scripts/data/emery-photo.jpg` as manager → still succeeds (manager-set photos never lock out other managers)
 - [ ] (e2e-candidate) (#1003) On a horse whose photo was set by its **owning member** rather than by a manager, no **Replace Photo**/**Remove** control is shown to you — the converse of the case above. No seed plants this today, so plant it by hand: `bash scripts/change-user.sh dev-barn` → pick Apple's owning rider, set Apple's photo as them, switch back to yourself, reopen Apple. (An e2e run stamps `photo_uploaded_by` in the fixture instead, needing no detour.)
-- [ ] (e2e-candidate) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
-- [ ] (e2e-candidate) Rename Apple, uncheck "Use barn defaults", set Moderate/High and Save → the name updates
-- [ ] (e2e-candidate) The thresholds update from that same Save
-- [ ] (e2e-candidate) A brief "✓ Saved" confirmation appears next to the Save button
-- [ ] (e2e-candidate) Both values persist on reload
-- [ ] (e2e-candidate) The "Use barn defaults" toggle is still unchecked on reload
-- [ ] (e2e-candidate) The manager form's name field is labeled **Barn Name**
-- [ ] (e2e-candidate) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
-- [ ] (e2e-candidate) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
-- [ ] (e2e-candidate) (#1000) Make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
-- [ ] (e2e-candidate) (#1000) Clover appears under **My Horses**
-- [ ] (e2e-candidate) (#1000) Clover shows a green **Active** badge there
-- [ ] (e2e-candidate) (#1000) Clover no longer appears under Available
-- [ ] (e2e-candidate) Clear **Registered Name** back to blank and Save → the card's parenthetical is gone on reload
-- [ ] (e2e-candidate) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
-- [ ] (e2e-candidate) With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error
-- [ ] (e2e-candidate) No "✓ Saved" confirmation appears for that rejected save
-- [ ] (e2e-candidate) The horse's name and status are unchanged by it
-- [ ] (e2e-candidate) The thresholds are unchanged by it
-- [ ] (e2e-candidate) Fill in **Feed Notes** → Save → it persists on reload
-- [ ] (e2e-candidate) Fill in **Medication Notes** → Save → it persists on reload
-- [ ] (e2e-candidate) Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
+- [ ] (e2e: manager_form_and_exhaustion_thresholds_share_one_save_button) On Apple's detail page, the manager form and Exhaustion Thresholds share a single **Save** button
+- [ ] (e2e: renaming_apple_with_threshold_overrides_updates_the_heading) Rename Apple, uncheck "Use barn defaults", set Moderate/High and Save → the name updates
+- [ ] (e2e: threshold_overrides_update_from_the_same_save) The thresholds update from that same Save
+- [ ] (e2e: saved_confirmation_appears_next_to_the_save_button) A brief "✓ Saved" confirmation appears next to the Save button
+- [ ] (e2e: renamed_name_and_thresholds_persist_on_reload) Both values persist on reload
+- [ ] (e2e: use_barn_defaults_toggle_is_still_unchecked_on_reload) The "Use barn defaults" toggle is still unchecked on reload
+- [ ] (e2e: manager_form_name_field_is_labeled_barn_name) The manager form's name field is labeled **Barn Name**
+- [ ] (e2e: registered_name_persists_on_reload) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
+- [ ] (e2e: horses_list_card_shows_registered_name_in_parentheses) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
+- [ ] (e2e: setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list) (#1000) Make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list
+- [ ] (e2e: owned_horse_appears_under_my_horses) (#1000) Clover appears under **My Horses**
+- [ ] (e2e: owned_horse_shows_a_green_active_badge_under_my_horses) (#1000) Clover shows a green **Active** badge there
+- [ ] (e2e: owned_horse_no_longer_appears_under_available) (#1000) Clover no longer appears under Available
+- [ ] (e2e: clearing_registered_name_removes_the_card_parenthetical) Clear **Registered Name** back to blank and Save → the card's parenthetical is gone on reload
+- [ ] (e2e: re_checking_use_barn_defaults_reverts_thresholds_on_reload) Re-check "Use barn defaults" and Save → thresholds revert to barn defaults (`5`/`11`) on reload — **known limitation, accepted as-is**: the Moderate/High inputs don't visually refresh until reload
+- [ ] (e2e: moderate_not_below_high_is_rejected_with_an_error) With "Use barn defaults" unchecked, try Moderate ≥ High → rejected with a field error
+- [ ] (e2e: no_saved_confirmation_appears_for_a_rejected_save) No "✓ Saved" confirmation appears for that rejected save
+- [ ] (e2e: a_rejected_save_leaves_the_name_and_status_unchanged) The horse's name and status are unchanged by it
+- [ ] (e2e: a_rejected_save_leaves_the_thresholds_unchanged) The thresholds are unchanged by it
+- [ ] (e2e: feed_notes_persist_on_reload) Fill in **Feed Notes** → Save → it persists on reload
+- [ ] (e2e: medication_notes_persist_on_reload) Fill in **Medication Notes** → Save → it persists on reload
+- [ ] (e2e: clearing_feed_notes_leaves_the_field_empty_on_reload) Clear **Feed Notes** back to blank and Save → the field is empty on reload (confirms `NULL` clears it, not just an empty-string no-op)
 - [ ] (e2e-candidate) Documents section: tap **Add Document**, upload `scripts/data/test_1_kb.pdf` → redirects back to this horse's page
 - [ ] (e2e-candidate) That document is listed in the horse's Documents section
 - [ ] (e2e-candidate) Open the document via its link (signed URL)
