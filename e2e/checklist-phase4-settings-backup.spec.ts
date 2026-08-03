@@ -123,16 +123,25 @@ async function openDataBackup(page: Page) {
  * already gone by the next. Parsing eagerly is what lets the two memos outlive the test that
  * filled them.
  *
- * The explicit waitForEvent timeout is *not* the #1211 anti-pattern that support/test.ts warns
- * about. That one is about waitForURL, whose navigationTimeout default is no-timeout, so any
- * number written there could only tighten it. waitForEvent's default is a real 30s, and the
- * action behind these buttons builds the whole archive server-side (every document fetched out
- * of Storage, then re-uploaded) on a possibly cold-compiled route — so this loosens, which is
- * the direction the budget needs to move.
+ * No explicit timeout on waitForEvent, for the same reason support/test.ts gives for waitForURL
+ * (#1211). It is tempting to write one here, because 30s is documented as waitForEvent's
+ * default and this is by far the heaviest click in the suite — the action fetches every
+ * document out of Storage, builds the archive, and re-uploads it, on a possibly cold-compiled
+ * route. But that 30s is the *library* default: @playwright/test's own `actionTimeout` fixture
+ * defaults to 0, which it pushes into the context as its default timeout, so under the runner
+ * the wait is already unbounded and governed solely by the test's budget. Any number written
+ * here could therefore only *tighten* it — the same trap, one API over.
+ *
+ * The budget is raised where it is actually spent instead: test.slow() below triples the
+ * enclosing test's timeout. Putting it in the helper rather than in the two tests that nominally
+ * perform the downloads is deliberate — the memos mean *whichever* test runs first pays the
+ * cost, and #1240's appended block (or any --grep of a single downstream test) makes that a
+ * different test than it is today.
  */
 async function performDownload(page: Page, buttonName: string): Promise<{ filename: string; path: string }> {
+  test.slow()
   const section = await openDataBackup(page)
-  const downloadPromise = page.waitForEvent('download', { timeout: 60_000 })
+  const downloadPromise = page.waitForEvent('download')
   await section.getByRole('button', { name: buttonName }).click()
   const download = await downloadPromise
   const path = await download.path()
@@ -250,7 +259,6 @@ test.describe.serial('Data Backup — documents archive', () => {
   })
 
   test('download_all_documents_downloads_a_zip_file @manager', async ({ page }) => {
-    test.slow()
     const { filename } = await downloadDocumentsZip(page)
     expect(filename).toMatch(/\.zip$/)
   })
@@ -301,7 +309,6 @@ test.describe.serial('Data Backup — data workbook', () => {
   })
 
   test('download_data_downloads_an_xlsx_file @manager', async ({ page }) => {
-    test.slow()
     const { filename } = await downloadDataWorkbook(page)
     expect(filename).toMatch(/\.xlsx$/)
   })
