@@ -1,6 +1,9 @@
 // covers: src/app/barn/[slug]/(protected)/lessons/new/**
 // covers: src/app/barn/[slug]/(protected)/lessons/LessonForm.tsx
 // covers: src/app/barn/[slug]/(protected)/lessons/DateHourPicker.tsx
+// covers: src/app/barn/[slug]/(protected)/lessons/page.tsx
+// covers: src/app/barn/[slug]/(protected)/lessons/LessonListItem.tsx
+// covers: src/app/barn/[slug]/(protected)/lessons/[id]/page.tsx
 import { test, expect, withBarn } from './support/test'
 import { createClient } from '@supabase/supabase-js'
 import { addHorse, addTier, daysFromNow, E2E_USERS, E2E_PASSWORD } from './support/fixtures'
@@ -19,16 +22,36 @@ const barn = withBarn('timezone', async ({ supabase, barn }) => {
   await addHorse(supabase, barn.id, 'Apollo')
 })
 
+// The wall clock this file's first test enters into the form, hoisted to module scope so the
+// two display assertions after it can name the same values instead of re-deriving them.
+//
+// LESSON_DATE only has to name a day cell the calendar actually renders, so it is derived in
+// the *browser's* zone — the grid the form test pages through runs there, and
+// playwright.config.ts pins that zone while leaving the runner on the developer's own (#1221).
+// Which instant the picked day+hour then becomes is a separate question, answered barn-locally
+// by the form itself (#1222).
+const LESSON_HOUR = 14
+const LESSON_DATE = instantToLocalWallClock(daysFromNow(30, BROWSER_TIMEZONE), BROWSER_TIMEZONE).slice(0, 10)
+
+// What the barn-local wall clock above must *render* as. Written out rather than run back
+// through formatBarnDateTime deliberately: an expectation derived from the code under test
+// agrees with any bug in it. The date half is formatted UTC-forced from LESSON_DATE — that
+// string names a calendar day, not an instant — using the same Intl idiom the month-heading
+// lookup below already uses.
+const LESSON_HOUR_DISPLAY = '2:00 PM'
+const LESSON_DISPLAY = `${new Intl.DateTimeFormat('en-US', {
+  month: 'short',
+  day: 'numeric',
+  year: 'numeric',
+  timeZone: 'UTC',
+}).format(new Date(`${LESSON_DATE}T00:00:00Z`))}, ${LESSON_HOUR_DISPLAY}`
+
 test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @manager', async ({ page }) => {
   // The barn is seeded with no lessons at all, so the direct-read query below can only match
-  // the one this test creates.
-  //
-  // dateStr only has to name a day cell the calendar actually renders, so it is derived in the
-  // *browser's* zone — the grid this test pages through runs there, and playwright.config.ts
-  // pins that zone while leaving the runner on the developer's own (#1221). Which instant the
-  // picked day+hour then becomes is a separate question, answered barn-locally below (#1222).
-  const hour = 14 // 2:00 PM, entered as barn-local wall clock
-  const dateStr = instantToLocalWallClock(daysFromNow(30, BROWSER_TIMEZONE), BROWSER_TIMEZONE).slice(0, 10)
+  // the one this test creates. See LESSON_HOUR/LESSON_DATE above for how the entered wall
+  // clock is framed.
+  const hour = LESSON_HOUR // 2:00 PM, entered as barn-local wall clock
+  const dateStr = LESSON_DATE
 
   await page.goto(`/barn/${barn.slug}/lessons/new`)
 
@@ -87,4 +110,26 @@ test('lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock @m
   if (lessonsError) throw lessonsError
 
   expect(lessons.length).toBe(1)
+})
+
+// The two display checks below depend on the lesson the test above creates, and are declared
+// after it for that reason: Playwright keeps a file's tests in declaration order in one worker
+// (fullyParallel: false), the same order-dependence checklist-phase4-members-list.spec.ts
+// relies on. This barn is seeded with no lessons, so that one is the only card on the list.
+//
+// What makes them load-bearing rather than tautological is the zone spread: the browser
+// context is pinned to Asia/Kolkata (#1221) while the barn is Eastern by schema default, and
+// the runner host is on neither. A page still rendering in the device's zone — or the server
+// host's — cannot produce the barn's wall clock by accident from any of the three.
+test('lesson_list_shows_the_barn_local_wall_clock_time_entered_on_the_form @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/lessons`)
+  await expect(page.locator('main ul li > a > span').first()).toHaveText(LESSON_DISPLAY)
+})
+
+test('lesson_detail_shows_the_same_barn_local_wall_clock_time @manager', async ({ page }) => {
+  await page.goto(`/barn/${barn.slug}/lessons`)
+  await page.locator('main ul li > a').first().click()
+  await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons/[0-9a-f-]+$`), { waitUntil: 'commit' })
+  const dateTimeRow = page.locator('dl > div').filter({ has: page.getByText('Date & Time', { exact: true }) })
+  await expect(dateTimeRow.locator('dd')).toHaveText(LESSON_DISPLAY)
 })
