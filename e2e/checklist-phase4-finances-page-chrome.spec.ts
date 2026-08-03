@@ -104,9 +104,10 @@ async function awaitBreakdownTable(page: Page): Promise<void> {
  * is read, so the label's trailing InfoPopover glyph is excluded.
  */
 async function summaryBlockLabels(page: Page): Promise<string[]> {
-  return page
-    .locator('main > section > p:first-child, main > div > p:first-child')
-    .evaluateAll((paragraphs) => paragraphs.map((p) => (p.childNodes[0]?.textContent ?? '').trim()))
+  const blocks = page.locator('main > section > p:first-child, main > div > p:first-child')
+  // Same no-auto-wait hazard `awaitBreakdownTable` guards against, on a different locator.
+  await blocks.first().waitFor()
+  return blocks.evaluateAll((paragraphs) => paragraphs.map((p) => (p.childNodes[0]?.textContent ?? '').trim()))
 }
 
 /**

@@ -42,7 +42,7 @@ git -C "$MAIN" worktree add "$FLEET/fable-N" --detach origin/{base}
 (cd "$FLEET/fable-N" && ln -s ../../stable-state/.env.local .env.local && npm install)
 ```
 
-The symlink is the same relative form every worktree uses (README's "`.env.local` across worktrees"), so the whole fleet points at the one dev Supabase project — which is why Step 5's full-suite mutex has to exist at all.
+The symlink is the same relative form every worktree uses (README's "`.env.local` across worktrees"), so the whole fleet points at the one dev Supabase project — which, together with the single `next dev` server every worker's suite run drives, is why Step 5's suite mutex has to exist at all.
 
 **Reusing an existing `fable-N` — check before you clobber.** A worktree from a prior batch may hold uncommitted work, most likely left by a worker abandoned under Step 4. Run `git -C "$FLEET/fable-N" status --porcelain` first. Non-empty: do not detach, and escalate — what to do with an abandoned worker's remains is the user's call, and this is the one provisioning step that destroys evidence. Clean: detach from the stale branch, fetch, and `npm install` to refresh.
 

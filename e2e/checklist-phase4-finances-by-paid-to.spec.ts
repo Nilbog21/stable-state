@@ -168,6 +168,9 @@ function parseMagnitude(text: string): number {
  * strips the ▲/▼ the active column's label carries.
  */
 async function columnLabels(page: Page): Promise<string[]> {
+  // `evaluateAll` does not auto-wait, so a table that hasn't rendered yet yields `[]` — a diff
+  // that reads as "this tab rendered no table" rather than "this read was too early" (#1238).
+  await breakdownTable(page).waitFor()
   return breakdownTable(page)
     .locator('thead th')
     .evaluateAll((ths) =>
@@ -292,9 +295,11 @@ test('recipient_drilldown_shows_date_type_amount_columns @manager', async ({ pag
 
 test('recipient_drilldown_date_links_to_the_expense_edit_page @manager', async ({ page }) => {
   await page.goto(drilldownPath(SMITH))
-  const hrefs = await page
-    .locator('tbody tr td:nth-child(1) a')
-    .evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+  const dateLinks = page.locator('tbody tr td:nth-child(1) a')
+  // `evaluateAll` does not auto-wait: a not-yet-rendered table yields `[]`, which reads as an
+  // empty drill-down rather than a read that was too early (#1238).
+  await dateLinks.first().waitFor()
+  const hrefs = await dateLinks.evaluateAll((links) => links.map((link) => link.getAttribute('href')))
   expect(hrefs.sort()).toEqual(
     [expenseEditPath(seeded.smithFarrier.id), expenseEditPath(seeded.smithVet.id)].sort()
   )

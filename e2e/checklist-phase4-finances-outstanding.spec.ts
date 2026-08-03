@@ -275,6 +275,9 @@ function lessonHref(lessonId: string): string {
 
 /** Hrefs of the Outstanding Payments rows whose Type cell is one of `types`, sorted. */
 async function outstandingPageHrefsForTypes(page: Page, types: string[]): Promise<string[]> {
+  // Same guard the types-list read above carries, and for the same reason: `evaluateAll` is a
+  // one-shot read with no auto-wait, so a not-yet-rendered table yields `[]` (#1238).
+  await page.locator('tbody tr').first().waitFor()
   const hrefs = await page.locator('tbody tr').evaluateAll(
     (rows, wanted) =>
       rows
