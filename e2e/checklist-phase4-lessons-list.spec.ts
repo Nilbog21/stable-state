@@ -57,9 +57,9 @@ const barn = withBarn('phase4-lessons-list', async ({ supabase, barn, members })
     riderIds: [members.rider2.membershipId],
   })).id
 
-  // The only Custom-tier lesson in the barn, so the By Tier assertion has a one-element
-  // answer, and the only one pinned to an afternoon hour, which is what makes the 12-hour
-  // check falsifiable — 14:00 barn-local renders "2:00 PM" or the page is wrong.
+  // The only Custom-tier lesson in the barn, so the By Tier assertion has a one-element answer.
+  // Its 14:00 is also one of the two afternoon times in the recent list (the cancelled lesson
+  // above is at 15:00) — see the 12-hour test below for why an afternoon time is load-bearing.
   willowUpcomingId = (await addUnpaidLesson(supabase, barn, {
     at: daysFromNow(2, barn.timezone),
     time: '14:00',
@@ -136,6 +136,13 @@ function lessonCards(page: Page): Locator {
 }
 
 async function visibleLessonIds(page: Page): Promise<string[]> {
+  // evaluateAll is one-shot and does not auto-retry, so an unsettled read yields [] and any
+  // assertion that happens to accept an empty array passes on nothing (#1243). support/read.ts
+  // wraps allInnerTexts/allTextContents for exactly this; it leaves evaluateAll its inline
+  // guard ("a helper that has to wrap a callback reads worse than the guard it would replace"),
+  // so the guard belongs here. It doubles as the assertion: waitFor throws on timeout, so a
+  // list that renders nothing fails the test instead of satisfying it.
+  await lessonCards(page).first().waitFor()
   return lessonCards(page).evaluateAll((els) => els.map((el) => el.getAttribute('href')!.split('/').pop()!))
 }
 
@@ -172,8 +179,18 @@ async function pickSubFilter(page: Page, label: string) {
   await page.waitForURL((url) => url.searchParams.get('id') !== null, { waitUntil: 'commit' })
 }
 
+/**
+ * Keyboard activation rather than a pointer .click(): this is the same button 04c64505 (#501)
+ * fixed, and for the same reason — it sits at the very bottom of a long scrollable page, where
+ * Chromium's scroll-into-view animation races Playwright's actionability check and a list item
+ * intermittently intercepts the click mid-scroll. behaviors.spec.ts's
+ * older_lessons_hidden_until_toggle_clicked still drives it this way under this same desktop
+ * @manager project, so the hazard is not mobile-only.
+ */
 async function revealOlderLessons(page: Page) {
-  await page.getByRole('button', { name: 'Show older lessons' }).click()
+  const toggle = page.getByRole('button', { name: 'Show older lessons' })
+  await toggle.focus()
+  await toggle.press('Enter')
 }
 
 // ---------------------------------------------------------------------------
@@ -228,6 +245,9 @@ test('lesson_cards_are_full_width_and_uniform_height @manager', async ({ page })
 test('whole_lesson_card_opens_its_detail_page @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/lessons`)
   const card = listCard(page, trainerRecentId)
+  // boundingBox() is a one-shot read like evaluate(): guarded so it can't measure a card that
+  // hasn't laid out yet and hand back a degenerate box to click into.
+  await card.waitFor()
   const box = (await card.boundingBox())!
   await card.click({ position: { x: box.width - 5, y: 10 } })
   await page.waitForURL(new RegExp(`/barn/${barn.slug}/lessons/${trainerRecentId}$`), { waitUntil: 'commit' })
@@ -365,9 +385,10 @@ test('by_tier_filter_url_carries_the_tier_name @manager', async ({ page }) => {
 // ---------------------------------------------------------------------------
 
 // The hour clamp `(1[0-2]|[1-9])` is the whole assertion: it is what a 24-hour rendering
-// fails. It bites because the seed pins one lesson to 14:00 barn-local — without that lesson
-// the pattern would be unfalsifiable, since every morning time reads the same in both
-// formats. Applied to all five cards at once via toHaveText's array form.
+// fails. It bites because the seed pins two of the five recent lessons to afternoon hours —
+// 14:00 and 15:00 barn-local — which a 24-hour rendering would print as "14:00"/"15:00". With
+// a morning-only seed the pattern would be unfalsifiable, since 9:00 reads the same either
+// way. Applied to all five cards at once via toHaveText's array form.
 test('lesson_list_times_display_in_twelve_hour_format @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/lessons`)
   const times = page.locator('main ul li > a > span:first-child')
