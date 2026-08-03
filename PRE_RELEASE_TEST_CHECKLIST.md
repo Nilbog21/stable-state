@@ -199,8 +199,8 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 
 <!-- Asserting role: manager, or role-agnostic. A line whose asserting eye is a trainer or rider belongs in Phase 5 or 6 — see the phase-partitioning Convention at the top. -->
 
-- [ ] (e2e: lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock) Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — confirms UTC storage round-trips correctly for your local timezone, not just that the created time displays back the same way it was entered
-- [ ] (e2e-candidate) On the Lessons list, a lesson's displayed time matches the wall-clock time you entered (not shifted by your UTC offset) — if your system/browser clock is set to a non-UTC timezone, this also proves the display isn't silently forcing UTC
+- [ ] (e2e: lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock) Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — it must be that time in the **barn's** timezone converted to UTC, regardless of your own machine's zone (#1222)
+- [ ] (e2e-candidate) On the Lessons list, a lesson's displayed time matches the wall-clock time you entered — with your machine's clock set to a zone that is neither UTC nor the barn's, this proves the display follows the barn (#1222) rather than your device or the server host
 - [ ] (e2e-candidate) On that lesson's detail page, its displayed time matches the same wall-clock time
 
 Dashboard (`/barn/dev-barn`):
@@ -521,10 +521,10 @@ Finances (`/barn/dev-barn/finances`):
 - [ ] (manual) The Finances page as a whole — Outstanding sections, tab pills, and every tab's table/footer — looks clean and visually consistent (spacing, alignment, typography) with the rest of the app
 - [ ] (e2e: outstanding_income_lists_past_unpaid_lesson) **Outstanding Income** section (renamed from "Outstanding") lists past unpaid lessons
 - [ ] (e2e: outstanding_income_row_leaves_list_once_payment_type_set) Set a payment type on one **Outstanding Income** row via the inline dropdown → it leaves the list
-- [ ] (e2e: outstanding_income_lesson_date_renders_in_viewer_timezone) A lesson row's date in **Outstanding Income** matches the wall-clock time you entered for that lesson, not shifted by your UTC offset
-- [ ] (e2e: by_horse_drilldown_lesson_date_renders_in_viewer_timezone) That same lesson's date in the **By Horse** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
-- [ ] (e2e: by_rider_drilldown_lesson_date_renders_in_viewer_timezone) That same lesson's date in the **By Rider** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
-- [ ] (e2e: by_instructor_drilldown_lesson_date_renders_in_viewer_timezone) That same lesson's date in the **By Instructor** drill-down matches the wall-clock time you entered, not shifted by your UTC offset
+- [ ] (e2e: outstanding_income_lesson_date_renders_in_barn_timezone) A lesson row's date in **Outstanding Income** is the barn-local date of the time you entered for that lesson, not shifted by your own machine's UTC offset
+- [ ] (e2e: by_horse_drilldown_lesson_date_renders_in_barn_timezone) That same lesson's date in the **By Horse** drill-down is the barn-local date, not shifted by your own machine's UTC offset
+- [ ] (e2e: by_rider_drilldown_lesson_date_renders_in_barn_timezone) That same lesson's date in the **By Rider** drill-down is the barn-local date, not shifted by your own machine's UTC offset
+- [ ] (e2e: by_instructor_drilldown_lesson_date_renders_in_barn_timezone) That same lesson's date in the **By Instructor** drill-down is the barn-local date, not shifted by your own machine's UTC offset
 - [ ] (e2e: outstanding_income_lease_charge_date_renders_as_plain_calendar_date) A lease/boarding charge row's date, in contrast, is unaffected by timezone (it's a plain calendar date, not a time-of-day instant)
 - [ ] (e2e: late_cancelled_unpaid_lesson_raises_an_outstanding_cancellation_fee) Late-cancel an **unpaid** normal lesson (**Cancelled by Rider**, within 24 hours of `lesson_at`) → a **Cancellation Fee** row for it appears in **Outstanding Income** with a **Type** of "Cancellation Fee"
 - [ ] (e2e: late_cancelled_paid_lesson_raises_no_cancellation_fee) The same late cancellation on a lesson that was **already marked paid** raises **no** Cancellation Fee row — the rider has already paid for that lesson and must not be billed twice
@@ -699,6 +699,11 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Under that setup, **Add Expense** with the Date set to your machine's own current date — already yesterday in barn time — hides the optional **Time** field, since the barn considers that date past
 - [ ] (e2e-candidate) Under that setup, **Add Expense**'s Date field pre-fills with the *barn's* date, one day ahead of your device's
 - [ ] (e2e-candidate) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
+- [ ] (e2e-candidate) Under that setup, a lesson you created for 4:00 PM still reads 4:00 PM on the Lessons list, the lesson detail page and the dashboard calendar — not 10:00 AM Hawaii (#1222)
+- [ ] (e2e-candidate) Under that setup, opening that lesson's **Edit** form shows 4:00 PM and the barn's date in the date/hour picker, and saving without changing anything leaves the stored time untouched (#1222)
+- [ ] (e2e-candidate) Under that setup, **New Lesson**'s date pre-fills with the barn's date and its hour select opens on the barn's current hour, not your device's (#1222)
+- [ ] (e2e-candidate) Under that setup, creating a lesson at 4:00 PM stores 4:00 PM *barn-local* — check the DB value, or reopen the lesson and confirm it still says 4:00 PM (#1222 — entry is barn-anchored, not just display)
+- [ ] (e2e-candidate) Under that setup, a barn event's time on **Manage Barn** → Barn Events and on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
 - [ ] (e2e-candidate) That list entry shows the correct date

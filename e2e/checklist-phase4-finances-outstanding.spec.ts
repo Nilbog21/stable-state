@@ -12,7 +12,6 @@ import {
   monthAnchor,
   type SeededAppointment,
 } from './support/fixtures'
-import { BROWSER_TIMEZONE } from './support/timezone'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
@@ -209,15 +208,14 @@ function financesUrl(month = currentMonth()): string {
 }
 
 /**
- * Mirrors LocalDateTime + DATE_ONLY_OPTIONS (src/components/LocalDateTime.tsx): a
- * TIMESTAMPTZ instant renders in the *viewer's* timezone, never UTC. The viewer is the pinned
- * browser context, not this Node process — playwright.config.ts pins the browser and leaves
- * the runner on the developer's own zone (#1221) — so the zone is named rather than inherited.
- * Naming it also makes the assertion discriminating on every machine, not just one whose own
- * zone happens not to be UTC.
+ * Mirrors `formatBarnDate` (src/lib/format-date.ts): a TIMESTAMPTZ instant renders in the
+ * *barn's* timezone — not the viewer's, not the runner's, and not UTC (#1222 deleted the
+ * viewer frame this used to assert). The browser context is pinned to `BROWSER_TIMEZONE`,
+ * which is neither UTC nor the barn's zone, so this assertion fails if the page ever falls
+ * back to the machine it renders on in either direction.
  */
-function viewerLocalDate(iso: string): string {
-  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: BROWSER_TIMEZONE }).format(new Date(iso))
+function barnLocalDate(iso: string): string {
+  return new Intl.DateTimeFormat('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: barn.data.barn.timezone }).format(new Date(iso))
 }
 
 function outstandingIncome(page: Page) {
@@ -294,7 +292,7 @@ async function saveExpenseForm(page: Page) {
 }
 
 // ---------------------------------------------------------------------------
-// Outstanding Income, and the viewer-timezone correctness of its dates
+// Outstanding Income, and the barn-timezone correctness of its dates
 // ---------------------------------------------------------------------------
 
 // Serial because step 3 collects the lesson steps 1-2 assert is outstanding, which is also
@@ -305,10 +303,10 @@ test.describe.serial('outstanding income', () => {
     await expect(paidableLessonRow(page)).toHaveCount(1)
   })
 
-  test('outstanding_income_lesson_date_renders_in_viewer_timezone @manager', async ({ page }) => {
+  test('outstanding_income_lesson_date_renders_in_barn_timezone @manager', async ({ page }) => {
     await page.goto(financesUrl())
     await expect(paidableLessonRow(page).locator('td').first()).toHaveText(
-      viewerLocalDate(seeded.paidableLesson.lesson_at)
+      barnLocalDate(seeded.paidableLesson.lesson_at)
     )
   })
 
@@ -318,24 +316,24 @@ test.describe.serial('outstanding income', () => {
     await expect(paidableLessonRow(page)).toHaveCount(0, { timeout: SETTLE_AFTER_WRITE })
   })
 
-  test('by_horse_drilldown_lesson_date_renders_in_viewer_timezone @manager', async ({ page }) => {
+  test('by_horse_drilldown_lesson_date_renders_in_barn_timezone @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/finances/horses/${seeded.apollo.id}?month=${currentMonth()}`)
     await expect(page.locator(`a[href="/barn/${barn.slug}/lessons/${seeded.paidableLesson.id}"]`)).toHaveText(
-      viewerLocalDate(seeded.paidableLesson.lesson_at)
+      barnLocalDate(seeded.paidableLesson.lesson_at)
     )
   })
 
-  test('by_rider_drilldown_lesson_date_renders_in_viewer_timezone @manager', async ({ page }) => {
+  test('by_rider_drilldown_lesson_date_renders_in_barn_timezone @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/finances/riders/${seeded.rider2MembershipId}?month=${currentMonth()}`)
     await expect(page.locator(`a[href="/barn/${barn.slug}/lessons/${seeded.paidableLesson.id}"]`)).toHaveText(
-      viewerLocalDate(seeded.paidableLesson.lesson_at)
+      barnLocalDate(seeded.paidableLesson.lesson_at)
     )
   })
 
-  test('by_instructor_drilldown_lesson_date_renders_in_viewer_timezone @manager', async ({ page }) => {
+  test('by_instructor_drilldown_lesson_date_renders_in_barn_timezone @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/finances/trainers/${seeded.trainerMembershipId}?month=${currentMonth()}`)
     await expect(page.locator(`a[href="/barn/${barn.slug}/lessons/${seeded.paidableLesson.id}"]`)).toHaveText(
-      viewerLocalDate(seeded.paidableLesson.lesson_at)
+      barnLocalDate(seeded.paidableLesson.lesson_at)
     )
   })
 })
