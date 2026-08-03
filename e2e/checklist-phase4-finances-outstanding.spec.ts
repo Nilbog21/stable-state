@@ -12,6 +12,7 @@ import {
   monthAnchor,
   type SeededAppointment,
 } from './support/fixtures'
+import { settledInnerTexts } from './support/read'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
@@ -405,13 +406,10 @@ test.describe.serial('cancellation fee', () => {
     // A wait, not a second assertion: the checkbox's one claim is what the page lists, and
     // this call still fails the test outright if the link doesn't land where it should.
     await page.waitForURL(new RegExp(`/barn/${barn.slug}/finances/outstanding$`), { waitUntil: 'commit' })
-    // A wait, not an assertion — the types list below is the checkbox's one claim.
-    // allInnerTexts() is a one-shot read with no auto-wait, and 'commit' settles the URL before
-    // the new document has rendered, so without this the read can return [] and fail on a page
-    // that was about to be correct. A 'commit' site whose next call auto-waits needs no such
-    // guard; the ones that read the DOM one-shot do.
-    await page.locator('tbody tr').first().waitFor()
-    const types = await page.locator('tbody tr td:nth-child(2)').allInnerTexts()
+    // 'commit' settles the URL before the new document has rendered, which is precisely the
+    // window settledInnerTexts closes — see e2e/support/read.ts. A 'commit' site whose next call
+    // auto-waits needs no such guard; the ones that read the DOM one-shot do.
+    const types = await settledInnerTexts(page.locator('tbody tr td:nth-child(2)'))
     expect([...new Set(types)].sort()).toEqual(['Boarding', 'Cancellation Fee', 'Lease', 'Lesson'])
   })
 

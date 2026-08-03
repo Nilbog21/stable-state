@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addPaidLesson, addTier, addUnpaidLesson } from './support/fixtures'
+import { settledInnerTexts } from './support/read'
 import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
@@ -174,9 +175,7 @@ async function headerLabels(page: Page): Promise<string[]> {
 }
 
 async function rowNames(page: Page): Promise<string[]> {
-  // `allInnerTexts` is the same one-shot, non-auto-waiting read as `evaluateAll` above.
-  await bodyRows(page).first().waitFor()
-  return bodyRows(page).locator('td:first-child').allInnerTexts()
+  return settledInnerTexts(bodyRows(page).locator('td:first-child'))
 }
 
 /** The Expenses column renders in accounting parens, so the magnitude is the figure. */
@@ -269,7 +268,7 @@ test('trainer_drilldown_date_cell_links_to_its_lesson @manager', async ({ page }
 
 test('trainer_drilldown_type_column_is_always_lesson @manager', async ({ page }) => {
   await page.goto(drilldownUrl(seeded.trainerMembershipId))
-  expect([...new Set(await bodyRows(page).locator('td:nth-child(2)').allInnerTexts())]).toEqual(['Lesson'])
+  expect([...new Set(await settledInnerTexts(bodyRows(page).locator('td:nth-child(2)')))]).toEqual(['Lesson'])
 })
 
 test('trainer_drilldown_amount_is_net_of_the_instructor_cut @manager', async ({ page }) => {

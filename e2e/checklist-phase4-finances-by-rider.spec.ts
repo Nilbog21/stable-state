@@ -1,6 +1,7 @@
 // covers: src/app/barn/[slug]/(protected)/finances/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
+import { settledInnerTexts } from './support/read'
 import { sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
@@ -239,7 +240,7 @@ test('by_rider_expenses_header_is_not_sortable @manager', async ({ page }) => {
 
 test('by_rider_net_column_equals_gross_in_every_row @manager', async ({ page }) => {
   await page.goto(byRiderUrl())
-  expect(await columnCells(page, 4).allInnerTexts()).toEqual(await columnCells(page, 2).allInnerTexts())
+  expect(await settledInnerTexts(columnCells(page, 4))).toEqual(await settledInnerTexts(columnCells(page, 2)))
 })
 
 test('by_rider_name_is_an_underlined_link_to_the_rider_drilldown @manager', async ({ page }) => {
@@ -257,13 +258,13 @@ test('by_rider_name_is_an_underlined_link_to_the_rider_drilldown @manager', asyn
 
 test('rider_drilldown_combines_lessons_and_agreement_charges_in_one_table @manager', async ({ page }) => {
   await page.goto(drilldownUrl())
-  const types = await page.locator('tbody tr td:nth-child(2)').allInnerTexts()
+  const types = await settledInnerTexts(page.locator('tbody tr td:nth-child(2)'))
   expect([...new Set(types)].sort()).toEqual(['Boarding', 'Lease', 'Lesson'])
 })
 
 test('rider_drilldown_rows_are_ordered_by_date_ascending @manager', async ({ page }) => {
   await page.goto(drilldownUrl())
-  const dates = (await page.locator('tbody tr td:nth-child(1)').allInnerTexts()).map((t) => new Date(t).getTime())
+  const dates = (await settledInnerTexts(page.locator('tbody tr td:nth-child(1)'))).map((t) => new Date(t).getTime())
   expect(dates).toEqual([...dates].sort((a, b) => a - b))
 })
 
@@ -316,9 +317,9 @@ test('by_rider_gross_header_tap_re_sorts_rows_ascending @manager', async ({ page
 test('by_rider_net_header_tap_produces_the_same_order_as_gross @manager', async ({ page }) => {
   await page.goto(byRiderUrl())
   await tapSortAndSettle(sortControl(breakdownTable(page), 'Gross'), '▲')
-  const orderByGross = await columnCells(page, 1).allInnerTexts()
+  const orderByGross = await settledInnerTexts(columnCells(page, 1))
 
   await page.goto(byRiderUrl())
   await tapSortAndSettle(sortControl(breakdownTable(page), 'Net'), '▲')
-  expect(await columnCells(page, 1).allInnerTexts()).toEqual(orderByGross)
+  expect(await settledInnerTexts(columnCells(page, 1))).toEqual(orderByGross)
 })

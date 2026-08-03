@@ -2,6 +2,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, monthAnchor, type SeededAppointment } from './support/fixtures'
+import { settledInnerTexts } from './support/read'
 import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { formatMonthParam } from '@/lib/finances-month'
 import type { Horse } from '@/lib/db/types'
@@ -258,10 +259,10 @@ test('by_paid_to_expenses_header_tap_moves_the_ascending_indicator_off_recipient
 test('by_paid_to_second_expenses_header_tap_reverses_the_row_order @manager', async ({ page }) => {
   await page.goto(byPaidToUrl())
   await tapSortAndSettle(expensesSort(page), '▲')
-  const ascending = await columnCells(page, RECIPIENT_COL).allInnerTexts()
+  const ascending = await settledInnerTexts(columnCells(page, RECIPIENT_COL))
 
   await tapSortAndSettle(expensesSort(page), '▼')
-  expect(await columnCells(page, RECIPIENT_COL).allInnerTexts()).toEqual([...ascending].reverse())
+  expect(await settledInnerTexts(columnCells(page, RECIPIENT_COL))).toEqual([...ascending].reverse())
 })
 
 // The first tap settles only to establish the ▲ precondition; the second is bare, because ▼ is
@@ -282,7 +283,7 @@ test('by_paid_to_second_expenses_header_tap_flips_the_indicator_to_descending @m
 // undefined. The previous month's larger entry is the one this excludes.
 test('recipient_drilldown_lists_only_that_recipients_expenses_for_the_month @manager', async ({ page }) => {
   await page.goto(drilldownPath(SMITH))
-  const amounts = (await page.locator('tbody tr td:nth-child(3)').allInnerTexts()).map(parseMagnitude)
+  const amounts = (await settledInnerTexts(page.locator('tbody tr td:nth-child(3)'))).map(parseMagnitude)
   expect(amounts.sort((a, b) => a - b)).toEqual(
     [seeded.smithFarrier.amount!, seeded.smithVet.amount!].sort((a, b) => a - b)
   )

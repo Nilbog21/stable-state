@@ -2,6 +2,7 @@
 import { test, expect, withBarn, type Page } from './support/test'
 import type { Locator } from '@playwright/test'
 import { addExpense, addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor, type SeededAppointment } from './support/fixtures'
+import { settledInnerTexts } from './support/read'
 import { headersShowing, sortControl, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
@@ -189,7 +190,7 @@ async function cellText(row: Locator, index: number): Promise<string> {
 }
 
 async function columnValues(page: Page, index: number): Promise<number[]> {
-  const texts = await breakdownTable(page).locator(`tbody td:nth-child(${index + 1})`).allInnerTexts()
+  const texts = await settledInnerTexts(breakdownTable(page).locator(`tbody td:nth-child(${index + 1})`))
   return texts.map(parseMagnitude)
 }
 
@@ -199,7 +200,7 @@ function headerLabel(text: string): string {
 }
 
 async function columnLabels(page: Page): Promise<string[]> {
-  return (await breakdownTable(page).locator('thead th').allInnerTexts()).map(headerLabel)
+  return (await settledInnerTexts(breakdownTable(page).locator('thead th'))).map(headerLabel)
 }
 
 /** The Gross header cell — the sort control and the ⓘ trigger together. */
@@ -319,13 +320,13 @@ test('by_horse_net_is_negative_for_a_horse_with_expenses_and_no_lessons @manager
 
 test('horse_drilldown_combines_lessons_charges_and_expenses_in_one_table @manager', async ({ page }) => {
   await page.goto(horseDrilldownUrl(seeded.bella.id))
-  const types = await page.locator('tbody tr td:nth-child(2)').allInnerTexts()
+  const types = await settledInnerTexts(page.locator('tbody tr td:nth-child(2)'))
   expect([...new Set(types)].sort()).toEqual(['Expense', 'Lease', 'Lesson'])
 })
 
 test('horse_drilldown_rows_are_ordered_by_date_ascending @manager', async ({ page }) => {
   await page.goto(horseDrilldownUrl(seeded.bella.id))
-  const dates = (await page.locator('tbody tr td:nth-child(1)').allInnerTexts()).map((text) => Date.parse(text))
+  const dates = (await settledInnerTexts(page.locator('tbody tr td:nth-child(1)'))).map((text) => Date.parse(text))
   expect(dates).toEqual([...dates].sort((a, b) => a - b))
 })
 
@@ -391,7 +392,7 @@ test('horse_drilldown_link_preserves_the_month_param @manager', async ({ page })
 
 test('by_horse_rows_load_sorted_by_horse_name_ascending @manager', async ({ page }) => {
   await page.goto(financesUrl())
-  const names = await breakdownTable(page).locator(`tbody td:nth-child(${HORSE_COL + 1})`).allInnerTexts()
+  const names = await settledInnerTexts(breakdownTable(page).locator(`tbody td:nth-child(${HORSE_COL + 1})`))
   expect(names).toEqual([...names].sort((a, b) => a.localeCompare(b)))
 })
 

@@ -2,6 +2,7 @@
 // covers: src/app/barn/[slug]/(protected)/settings/tiers/**
 import { test, expect, withBarn, type Page } from './support/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
+import { settledTextContents } from './support/read'
 import { headersShowing, sortControl, sortControls, tapSort, tapSortAndSettle } from './support/sort'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
@@ -119,9 +120,7 @@ function breakdownTable(page: Page) {
 
 /** Header labels with the sort indicator stripped — the column list, independent of sort state. */
 async function columnLabels(page: Page): Promise<string[]> {
-  // `allTextContents` is the same one-shot, non-auto-waiting read as `bodyRows`' `evaluateAll`.
-  await breakdownTable(page).waitFor()
-  const texts = await sortControls(breakdownTable(page)).allTextContents()
+  const texts = await settledTextContents(sortControls(breakdownTable(page)))
   return texts.map((text) => text.replace(/[▲▼]/g, '').trim())
 }
 
