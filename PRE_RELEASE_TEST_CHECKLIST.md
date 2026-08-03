@@ -391,13 +391,13 @@ Expenses (`/barn/dev-barn/expenses`):
 
 Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
-- [ ] (e2e-candidate) The Available section is sorted by total exertion (±3 days) ascending
-- [ ] (e2e-candidate) Apple/Butter/Clover each show an exhaustion bar
-- [ ] (e2e-candidate) Those bars land in different color bands from one another
-- [ ] (e2e-candidate) Tapping a bar expands the ±3-day lesson breakdown
-- [ ] (e2e-candidate) Tapping the bar again dismisses the breakdown
-- [ ] (e2e-candidate) Tapping elsewhere dismisses the breakdown
-- [ ] (e2e-candidate) Tapping the bar does not navigate to the horse detail page
+- [ ] (e2e: available_section_is_sorted_by_total_exertion_ascending) The Available section is sorted by total exertion (±3 days) ascending
+- [ ] (e2e: each_available_horse_card_shows_an_exhaustion_bar) Apple/Butter/Clover each show an exhaustion bar
+- [ ] (e2e: the_three_bars_land_in_three_different_color_bands) Those bars land in different color bands from one another
+- [ ] (e2e: tapping_a_bar_expands_the_three_day_lesson_breakdown) Tapping a bar expands the ±3-day lesson breakdown
+- [ ] (e2e: tapping_the_bar_again_dismisses_the_breakdown) Tapping the bar again dismisses the breakdown
+- [ ] (e2e: tapping_elsewhere_dismisses_the_breakdown) Tapping elsewhere dismisses the breakdown
+- [ ] (e2e: tapping_the_bar_does_not_navigate_to_the_horse_detail_page) Tapping the bar does not navigate to the horse detail page
 - [ ] (e2e-candidate) Clover's detail page (no photo seeded) shows a placeholder icon
 - [ ] (e2e-candidate) It also shows a **Set Photo** button
 - [ ] (e2e-candidate) Tapping **Set Photo** navigates to the same upload screen used for horse documents
