@@ -4,6 +4,7 @@ import { getBarnBySlug } from '@/lib/db/barns'
 import { getLessonById } from '@/lib/db/lessons'
 import { getUserMembership } from '@/lib/db/barn-memberships'
 import type { LessonDetail } from '@/lib/db/types'
+import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible, getHorseAttentionReasons } from '@/lib/lesson-authorization'
 import { LocalDateTime } from '@/components/LocalDateTime'
@@ -13,11 +14,7 @@ import { deleteLessonAction } from '@/app/actions/lessons'
 
 function RiderStatusBadge({ cancelledAt }: { cancelledAt: string | null }) {
   if (cancelledAt === null) return null
-  return (
-    <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
-      Cancelled
-    </span>
-  )
+  return <Badge tone="red">Cancelled</Badge>
 }
 
 function RiderNotesBlock({
@@ -148,23 +145,17 @@ export default async function LessonDetailPage({
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
               Lesson Detail
             </h1>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
+            <Badge tone="gray">
               {lesson.lesson_type === 'group' ? 'Group' : 'Normal'}
-            </span>
+            </Badge>
             {lesson.jumping && (
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                Jumping
-              </span>
+              <Badge tone="gray">Jumping</Badge>
             )}
             {lesson.series_id !== null && (
-              <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">
-                Recurring
-              </span>
+              <Badge tone="gray">Recurring</Badge>
             )}
             {lesson.cancelled_at !== null && (
-              <span className="rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">
-                Cancelled
-              </span>
+              <Badge tone="red">Cancelled</Badge>
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -217,9 +208,9 @@ export default async function LessonDetailPage({
                       <span>{lh.horses?.name ?? '—'}</span>{' '}
                       {lh.exertion_level !== undefined && <span className="text-zinc-500">(exertion {lh.exertion_level})</span>}{' '}
                       {lh.horses?.is_active === false ? (
-                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Inactive</span>
+                        <Badge tone="amber">Inactive</Badge>
                       ) : lh.horses?.is_available === false ? (
-                        <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unavailable</span>
+                        <Badge tone="amber">Unavailable</Badge>
                       ) : null}
                       {(canSeeNotes || lh.exertion_level !== undefined) && lh.horses?.id && lh.horse_notes && (
                         <div className="mt-1">
@@ -286,7 +277,7 @@ export default async function LessonDetailPage({
             <dd className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
               ${lesson.fee}
               {lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
-                <span className="rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Unpaid</span>
+                <Badge tone="amber">Unpaid</Badge>
               )}
             </dd>
           </div>

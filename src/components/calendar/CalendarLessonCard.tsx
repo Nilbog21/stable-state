@@ -1,5 +1,6 @@
 'use client'
 import type { LessonWithDetails } from '@/lib/db/types'
+import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
 import { isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
 
@@ -32,13 +33,13 @@ export function CalendarLessonCard({
           viewer-local time-of-day string differently, per #935's convention */}
       <p className="text-sm font-medium text-zinc-900 dark:text-zinc-50" suppressHydrationWarning>{display}</p>
       {lesson.cancelled_at !== null && (
-        <span className="mt-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+        <div className="mt-1"><Badge tone="red">Cancelled</Badge></div>
       )}
       {lesson.cancelled_at === null && isOwnParticipationCancelled && (
-        <span className="mt-1 inline-block rounded-full bg-red-600 px-2 py-0.5 text-xs font-medium text-white">Cancelled</span>
+        <div className="mt-1"><Badge tone="red">Cancelled</Badge></div>
       )}
       {needsAttention && (
-        <span className="mt-1 inline-block rounded-full bg-amber-500 px-2 py-0.5 text-xs font-medium text-white">Needs Attention</span>
+        <div className="mt-1"><Badge tone="amber">Needs Attention</Badge></div>
       )}
       {lesson.horse_names.length > 0 && (
         <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
