@@ -25,9 +25,12 @@ const HIGH_THRESHOLD = 11
 // The seeded lessons, one row per (horse, day, time). lesson_horses.exertion_level is CHECK 1..5,
 // so the three horses are separated by lesson *count* as much as by per-lesson exertion.
 //
-// Days are -1/0/+1 against get_horse_exertion_summary's +/-3-day window, so a run that crosses
-// barn-local midnight — daysFromNow fixes "today" at seed time — still leaves every lesson two
-// clear days inside the window. That is why this file needs no clock pinning.
+// Days are -1/0/+1 against get_horse_exertion_summary's +/-3-day window, which is an instant
+// window (`lesson_at BETWEEN p_target_date -/+ INTERVAL '3 days'`), not a calendar one. The
+// furthest any seeded lesson sits from the moment the page reads it is ~37h — day +1 at 13:00
+// barn-local, read just after barn-local midnight — or ~39h if the run crosses barn-local
+// midnight, since daysFromNow fixes "today" at seed time. Both are comfortably inside 72h, which
+// is why this file needs no clock pinning. Adding a further-out day would eat that margin.
 //
 // Times are distinct per horse so no two seeded lessons share an instant.
 const LESSON_PLAN = {
@@ -191,6 +194,11 @@ test('the_three_bars_land_in_three_different_color_bands @manager', async ({ pag
 // The breakdown popover
 // ---------------------------------------------------------------------------
 
+// The header is asserted rather than the <li> rows, and it covers them: `existingRows.length`
+// renders both the "2 lessons" here and the <ul> beneath it, and a zero-length popover renders
+// the "No lessons in window" branch instead. So a header reading exactly this cannot coexist
+// with a missing or differently-sized row list — which keeps the claim to one assertion while
+// still pinning the aggregate (8), the lesson count (2) and the window label.
 test('tapping_a_bar_expands_the_three_day_lesson_breakdown @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}/horses`)
   await bar(page, appleId).click()
@@ -225,14 +233,39 @@ test('tapping_elsewhere_dismisses_the_breakdown @manager', async ({ page }) => {
   await expect(cardOf(page, appleId)).toHaveText(APPLE)
 })
 
-// Anchored with $ deliberately: '/horses' is a prefix of '/horses/<id>', so an unanchored pattern
-// would match the very navigation this test exists to rule out. The waitFor is again a guard — it
-// proves the tap registered, so the URL claim is about a tap that happened rather than one that
-// silently missed.
+// Recorded navigations rather than a final URL read, because a URL read cannot express this
+// claim safely. `expect(page).toHaveURL` retries until it *matches*, so it passes on its first
+// poll — and an App Router <Link> commits its history.pushState only once the RSC payload for the
+// destination arrives, which on a dev server compiling that route on demand is well after the
+// popover has opened. A tap that really did navigate would therefore still read the old URL and
+// pass. Recording every main-frame navigation instead moves the claim off "where am I now" and
+// onto "what did the browser do", which no in-flight navigation can hide from.
+//
+// The listener is attached *before* the goto on purpose, so that navigation lands in the array
+// too: the expectation is "exactly the one destination I asked for", not "none", and an empty
+// array fails it. That is the positive control — a listener that never fired, or a frame filter
+// that matched nothing, cannot pass this.
+//
+// Distinct paths, because the count is not stable and the destination is: one page.goto to this
+// route fires framenavigated *twice* for the same path (measured — the document commit, then the
+// App Router's own client navigation). Deduplicating keeps the claim on "which destinations were
+// ever navigated to", which is what the checkbox is about, and off an event count that would be a
+// silent flake. A Set preserves insertion order, so the comparison stays ordered.
+//
+// Deliberately not the suite's post-click `page.waitForURL` idiom (e2e/support/test.ts): that
+// idiom asserts a navigation *happened* and has no negative form. Paths are compared, not full
+// URLs, so the assertion doesn't restate the base URL; '/horses' vs '/horses/<id>' is an
+// equality here rather than a prefix match, so the boundary the old anchored regex needed is
+// structural now.
 test('tapping_the_bar_does_not_navigate_to_the_horse_detail_page @manager', async ({ page }) => {
+  const navigations: string[] = []
+  page.on('framenavigated', (frame) => {
+    if (frame === page.mainFrame()) navigations.push(new URL(frame.url()).pathname)
+  })
+
   await page.goto(`/barn/${barn.slug}/horses`)
   await bar(page, appleId).click()
   await breakdown(page, appleId, APPLE_BREAKDOWN).waitFor()
 
-  await expect(page).toHaveURL(new RegExp(`/barn/${barn.slug}/horses$`))
+  expect([...new Set(navigations)]).toEqual([`/barn/${barn.slug}/horses`])
 })
