@@ -487,16 +487,16 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] (e2e: trainer_add_document_button_links_to_the_trainer_upload_page) That button links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
 - [ ] (e2e: rider_detail_has_an_add_document_button) Rider Gale Test's member detail page has an **Add Document** button
 - [ ] (e2e: rider_add_document_button_links_to_the_rider_upload_page) That button links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
-- [ ] (e2e-candidate) Rider Emery's member detail page shows an **Active Agreements** header
-- [ ] (e2e-candidate) It shows a card for her seeded lease agreement
-- [ ] (e2e-candidate) It shows a card for her seeded boarding agreement
-- [ ] (e2e-candidate) Each of those cards names its kind (lease or boarding)
-- [ ] (e2e-candidate) Each names its horse
-- [ ] (e2e-candidate) Each shows its fee
-- [ ] (e2e-candidate) Each links to its agreement detail page
-- [ ] (e2e-candidate) A rider with no active agreements shows **No active agreements** instead
-- [ ] (e2e-candidate) That empty state carries no add-boarding link
-- [ ] (e2e-candidate) A managed (unclaimed) rider's detail page shows the same **Active Agreements** section
+- [ ] (e2e: rider_detail_shows_an_active_agreements_header) Rider Emery's member detail page shows an **Active Agreements** header
+- [ ] (e2e: rider_detail_shows_a_card_for_the_lease_agreement) It shows a card for her seeded lease agreement
+- [ ] (e2e: rider_detail_shows_a_card_for_the_boarding_agreement) It shows a card for her seeded boarding agreement
+- [ ] (e2e: each_agreement_card_names_its_kind) Each of those cards names its kind (lease or boarding)
+- [ ] (e2e: each_agreement_card_names_its_horse) Each names its horse
+- [ ] (e2e: each_agreement_card_shows_its_fee) Each shows its fee
+- [ ] (e2e: each_agreement_card_links_to_its_agreement_detail_page) Each links to its agreement detail page
+- [ ] (e2e: a_rider_with_no_active_agreements_shows_the_empty_state) A rider with no active agreements shows **No active agreements** instead
+- [ ] (e2e: the_empty_active_agreements_state_carries_no_add_boarding_link) That empty state carries no add-boarding link
+- [ ] (e2e: a_managed_riders_detail_page_shows_the_active_agreements_section) A managed (unclaimed) rider's detail page shows the same **Active Agreements** section
 - [ ] (e2e-candidate) A trainer's member detail page shows an **Instructor Access** section reading **Revoke Instructor Access** (trainers default to `can_instruct=true`)
 - [ ] (e2e-candidate) Tapping it raises a browser confirm prompt naming the trainer
 - [ ] (e2e-candidate) That prompt warns they'll no longer be assignable to future lessons
