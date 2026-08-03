@@ -30,9 +30,13 @@ const eslintConfig = defineConfig([
   // calendar arithmetic. Neither is the *host's* zone, but every API below silently reads it,
   // which is how fourteen timezone bugs got in. Only the date modules may call them.
   //
-  // Note what is deliberately NOT banned: a bare `new Date()`. Comparing two instants, or
-  // stamping `now` into a TIMESTAMPTZ, is zone-free and correct — the bug is always reading a
-  // *calendar field* off a Date, which is what the getters below do.
+  // Note what is deliberately NOT banned: a bare `new Date()`, or `new Date(msOrIsoString)`.
+  // Comparing two instants, or stamping `now` into a TIMESTAMPTZ, is zone-free and correct —
+  // the bug is always reading or writing a *calendar field* against the host's clock. Reading
+  // is what the getters below do; writing is the multi-argument `new Date(y, m, d, h, min)`
+  // constructor, which is banned for the same reason and caught by argument count. It reads
+  // no getter, so the getter rule couldn't see it — which is how `ExpenseForm` kept anchoring
+  // expense entry to the viewer's zone after every other entry path had moved.
   {
     files: ["src/**/*.ts", "src/**/*.tsx"],
     ignores: [
@@ -57,6 +61,10 @@ const eslintConfig = defineConfig([
         {
           selector: "MemberExpression[property.name=/^get(Hours|Minutes|Seconds|Date|Month|FullYear|Day)$/]",
           message: "Reads the calendar field in the host's timezone. Resolve barn-local via barn-timezone.ts's instantToLocalWallClock/barnToday instead (#1222).",
+        },
+        {
+          selector: "NewExpression[callee.name='Date'][arguments.length>1]",
+          message: "Interprets the calendar components in the host's timezone. Build the instant from a barn-local wall clock via barn-timezone.ts's wallClockToInstant instead (#1222).",
         },
       ],
     },

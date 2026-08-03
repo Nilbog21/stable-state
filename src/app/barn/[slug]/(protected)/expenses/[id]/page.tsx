@@ -58,6 +58,7 @@ export default async function EditExpensePage({
         recentExpenseTypes={recentExpenseTypes}
         defaultDate={expense.expense_date}
         todayStr={barnToday(barn.timezone)}
+        timezone={barn.timezone}
         getScheduleRange={getScheduleRange}
         excludeItemId={expense.id}
         initial={{

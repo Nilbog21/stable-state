@@ -707,6 +707,7 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Under that setup, **New Lesson**'s date pre-fills with the barn's date, not your device's (#1222)
 - [ ] (e2e-candidate) Under that setup, **New Lesson**'s hour select opens on the barn's current hour, not your device's (#1222)
 - [ ] (e2e-candidate) Under that setup, creating a lesson at 4:00 PM stores 4:00 PM *barn-local* — check the DB value, or reopen the lesson and confirm it still says 4:00 PM (#1222 — entry is barn-anchored, not just display)
+- [ ] (e2e-candidate) Under that setup, **Add Expense** with a Time of 11:30 PM stores that as 11:30 PM *barn-local* — check that expense's `transactions.occurred_at` in the DB, which must be the barn's 11:30 PM converted to UTC, not your device's (#1222 — a late-evening entry near a month boundary otherwise buckets into the wrong month in Finances)
 - [ ] (e2e-candidate) Under that setup, a barn event's time on **Manage Barn** → Barn Events is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e-candidate) Under that setup, that same barn event's time on the dashboard calendar is the barn's, matching what the Add Event form was given (#1222)
 - [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default

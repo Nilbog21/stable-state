@@ -5,6 +5,7 @@ import { getMostCommonExpenseTypeAction, type ExpenseFormState } from '@/app/act
 import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
 import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
 import { addDays } from '@/lib/local-day'
+import { wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 import type { PaymentType, ScheduleItem } from '@/lib/db/types'
 
@@ -35,6 +36,9 @@ type ExpenseFormProps = {
    *  the day being pre-filled is a day of *barn* business, and the alternative it replaced was
    *  the server host's UTC day, which runs ahead of every zone the barn picker offers. */
   todayStr: string
+  /** The barn's `barns.timezone`. Required, and the frame the entered date and time resolve
+   *  in: they mean that wall clock *at the barn*, same as `DateHourPicker`'s (#1222). */
+  timezone: string
   /** #1020 — supplied, the Date field becomes the same month conflict calendar the lesson form
    *  got in #1019; omitted, it stays a plain `<input type="date">`. Injected rather than called
    *  directly because this is a client component and the DAL is server-only, matching how
@@ -50,15 +54,14 @@ type ExpenseFormProps = {
 const inputClassName =
   'mt-1 block w-full rounded border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50'
 
-// Mirrors DateHourPicker's fix: constructing via Date's local (year, month, day, hour,
-// minute) numeric components, then reading the true UTC instant back out via
-// toISOString(), uses the entering user's actual browser timezone — unlike a naive
-// server-side (date + time)::timestamptz cast, which #935's audit found interprets in
-// the session's timezone instead. Time defaults to midnight when blank.
-function computeOccurredAt(expenseDate: string, expenseTime: string): string {
-  const [year, month, day] = expenseDate.split('-').map(Number)
-  const [hour, minute] = expenseTime ? expenseTime.split(':').map(Number) : [0, 0]
-  return new Date(year, month - 1, day, hour, minute).toISOString()
+// The date and time entered here mean that wall clock *at the barn* (#1222), so they
+// resolve through the barn's zone — not the entering user's browser zone, which is what
+// `new Date(year, month - 1, day, hour, minute)` used to read here. `occurred_at` drives
+// barn-local month bucketing in expense-finances.ts, so a manager in another zone entering
+// a late-evening expense on a month boundary was bucketing it into the wrong month. Time
+// defaults to midnight when blank.
+function computeOccurredAt(expenseDate: string, expenseTime: string, timezone: string): string {
+  return wallClockToInstant(`${expenseDate}T${expenseTime || '00:00'}:00`, timezone).toISOString()
 }
 
 export function ExpenseForm({
@@ -68,6 +71,7 @@ export function ExpenseForm({
   recentExpenseTypes,
   defaultDate,
   todayStr,
+  timezone,
   getScheduleRange,
   excludeItemId,
   initial,
@@ -261,7 +265,7 @@ export function ExpenseForm({
       )}
 
       {expenseDate && (
-        <input type="hidden" name="occurred_at" value={computeOccurredAt(expenseDate, expenseTime)} />
+        <input type="hidden" name="occurred_at" value={computeOccurredAt(expenseDate, expenseTime, timezone)} />
       )}
 
       {isPastDate ? (

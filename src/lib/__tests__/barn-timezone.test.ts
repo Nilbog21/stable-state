@@ -60,10 +60,12 @@ describe('wallClockToInstant', () => {
 // but #1222 routes DateHourPicker, EventForm and LessonForm's isPastLessonAt through this
 // with arbitrary user-picked hours.
 describe('wallClockToInstant across a DST transition (#1222)', () => {
+  // 04:00 is past the 2am jump, so it is already EDT (UTC-4). Sampling the offset at the
+  // naive guess measured EST instead and produced 09:00Z, an hour late.
   it('should_resolve_a_morning_wall_clock_on_the_spring_forward_day', () => {
     const result = wallClockToInstant('2026-03-08T04:00:00', 'America/New_York')
 
-    expect(result.toISOString()).toBe('2026-03-08T09:00:00.000Z')
+    expect(result.toISOString()).toBe('2026-03-08T08:00:00.000Z')
   })
 
   it('should_resolve_a_morning_wall_clock_on_the_fall_back_day', () => {

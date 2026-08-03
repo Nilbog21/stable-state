@@ -42,10 +42,22 @@ export function barnToday(timeZone: string, now: Date = new Date()): string {
 // Reverse of instantToLocalWallClock: what real instant does this barn-local wall-clock
 // string correspond to? Guess-and-correct — treat the digits as if they were UTC, measure
 // how far that guess's own wall-clock rendering in `timeZone` drifts from the input, then
-// shift by that drift. A single correction is exact except within a DST transition window
-// (a wall-clock time that's skipped or repeated), which day-boundary calculations never hit.
+// shift by that drift.
+//
+// It takes two passes, not one. The first sample is taken at the naive guess, which sits a
+// whole UTC offset (4–5 hours here) from the truth — so on a DST transition day it can fall
+// on the wrong side of the boundary and measure the wrong offset, putting a whole band of
+// morning hours an hour off rather than just the skipped/repeated one. The first correction
+// always lands within an hour of the truth, so re-measuring there is inside the right
+// regime: two passes round-trip exactly for every wall clock that exists, in every zone in
+// BARN_TIMEZONES. The single exception is the hour spring-forward skips (2am, which the
+// clock jumps straight over) — no instant renders back to it, and we resolve it to the last
+// instant before the gap.
 export function wallClockToInstant(wallClock: string, timeZone: string): Date {
-  const naiveUtc = new Date(wallClock + 'Z')
-  const offsetMs = naiveUtc.getTime() - new Date(instantToLocalWallClock(naiveUtc, timeZone) + 'Z').getTime()
-  return new Date(naiveUtc.getTime() + offsetMs)
+  const target = new Date(wallClock + 'Z').getTime()
+  const driftFrom = (guess: Date) =>
+    target - new Date(instantToLocalWallClock(guess, timeZone) + 'Z').getTime()
+  const naiveUtc = new Date(target)
+  const firstPass = new Date(naiveUtc.getTime() + driftFrom(naiveUtc))
+  return new Date(firstPass.getTime() + driftFrom(firstPass))
 }
