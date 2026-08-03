@@ -150,7 +150,7 @@ Check `{worktree-path}/specs/issue-{N}.md`. If it doesn't exist, or exists but i
 **Mark the issue in-progress:**
 - Run: `gh issue edit {N} --add-label 'in-progress'`
 
-**Update the batch file:** if `{release-label}` is set and `specs/batch_{release-label}.md` exists and contains an entry for `#{N}`, move it (from Ready or Blocked) into the **In Progress** section: `- #{N} — Title [labels] (in progress: branch {branch-name})`. If the batch file doesn't exist, or has no entry for this issue (e.g. it was picked by number directly and never went through `/issueBatch create`), skip silently — this is a best-effort sync, not a requirement.
+**Update the batch file:** if `{release-label}` is set and `specs/batch_{release-label}.md` exists and contains an entry for `#{N}`, move that entry — its first line **and every indented line beneath it, `note:` lines included** — from Ready or Blocked into the **In Progress** section, then append ` (in progress: branch {branch-name})` to the end of its existing first line. Move the lines that are already there; don't retype the entry from a template — a reconstructed line has nowhere to put the `note:` prose beneath it, which is exactly how this step destroyed notes until #1237. See `/issueBatch`'s "The batch file format" section. If the batch file doesn't exist, or has no entry for this issue (e.g. it was picked by number directly and never went through `/issueBatch create`), skip silently — this is a best-effort sync, not a requirement.
 
 **Read `ARCHITECTURE.md`** from the worktree (`{worktree-path}/ARCHITECTURE.md`) before drafting the plan. This is the authoritative source for the current database schema and architecture — do not trawl through migrations instead.
 
