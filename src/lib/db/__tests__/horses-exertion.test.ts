@@ -289,3 +289,19 @@ describe('resolveExhaustionThresholds', () => {
   })
 })
 
+
+describe('getHorseProjectedExhaustion instant branding', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_brand_lesson_at_with_the_barns_timezone', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      rpc: vi.fn().mockResolvedValue({ data: [{ lesson_at: '2026-07-15T20:00:00Z', exertion_level: 3 }], error: null }),
+    } as any)
+
+    const [row] = await getHorseProjectedExhaustion('horse-1', 'barn-1', new Date('2026-07-01T00:00:00Z'), 'America/New_York')
+
+    expect(row.lessonAt).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
+  })
+})

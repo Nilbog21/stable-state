@@ -350,3 +350,25 @@ describe('deleteEvent', () => {
     await expect(deleteEvent('event-1', 'barn-1')).rejects.toThrow('db error')
   })
 })
+
+describe('getEventsByBarn instant branding', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_brand_event_at_with_the_barns_timezone', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            order: vi.fn().mockResolvedValue({ data: [mockEvent], error: null }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const [result] = await getEventsByBarn('barn-1', 'America/New_York')
+
+    expect(result.event_at).toEqual({ at: '2026-10-31T22:00:00Z', tz: 'America/New_York' })
+  })
+})

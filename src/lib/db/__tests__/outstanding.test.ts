@@ -375,3 +375,21 @@ describe('mergeOutstandingItems', () => {
     expect(mergeOutstandingItems([], [])).toEqual([])
   })
 })
+
+describe('mergeOutstandingItems instant branding', () => {
+  const lesson = { id: 'l-1', barn_id: 'barn-1', lesson_at: '2026-07-15T20:00:00Z', instructor_name: null, rider_names: [], fee: 50 }
+
+  it('should_brand_a_lesson_rows_date_with_the_barns_timezone', () => {
+    const [item] = mergeOutstandingItems([lesson], [], [], 'America/New_York')
+
+    expect(item.date).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
+  })
+
+  it('should_leave_a_charge_rows_date_only_period_unbranded', () => {
+    const charge = { id: 'c-1', kind: 'board' as const, period: '2026-07-01', riderName: 'Ann', fee: 10, agreementId: 'a-1' }
+
+    const [item] = mergeOutstandingItems([], [charge], [], 'America/New_York')
+
+    expect(item.date).toBe('2026-07-01')
+  })
+})

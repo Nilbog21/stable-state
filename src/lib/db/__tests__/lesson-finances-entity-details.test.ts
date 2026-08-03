@@ -629,3 +629,26 @@ describe('getTrainerIncomeDetail', () => {
   })
 })
 
+
+describe('income detail instant branding', () => {
+  const startDate = new Date('2026-05-01T00:00:00Z')
+  const endDate = new Date('2026-06-01T00:00:00Z')
+
+  beforeEach(() => {
+    vi.mocked(getLessonFeeRows).mockReset()
+    vi.mocked(getLessonJunctionRows).mockReset()
+    vi.mocked(resolveHorseNames).mockReset()
+    vi.mocked(getPaidCharges).mockReset()
+    vi.mocked(getPaidCharges).mockResolvedValue([])
+  })
+
+  it('should_brand_a_horse_detail_rows_lesson_at_with_the_barns_timezone', async () => {
+    vi.mocked(getLessonFeeRows).mockResolvedValue([{ lessonId: 'lesson-1', fee: 100, instructorCut: 0, collected: true, instructorId: null, occurredAt: '2026-07-15T20:00:00Z', tierName: 'Custom' }])
+    vi.mocked(getLessonJunctionRows).mockResolvedValue([{ lesson_id: 'lesson-1', horse_id: 'horse-1' }])
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map([['horse-1', 'Thunderbolt']]))
+
+    const result = await getHorseIncomeDetail('barn-1', 'horse-1', startDate, endDate, 'America/New_York')
+
+    expect(result.rows[0].lessonAt).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
+  })
+})

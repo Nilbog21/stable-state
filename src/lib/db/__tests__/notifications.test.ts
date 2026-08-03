@@ -740,3 +740,29 @@ describe('getNotifications', () => {
     await expect(getNotifications('user-1', 'barn-1')).rejects.toThrow('select failed')
   })
 })
+
+describe('getNotifications instant branding', () => {
+  beforeEach(() => {
+    vi.mocked(createClient).mockReset()
+  })
+
+  it('should_brand_created_at_with_the_barns_timezone', async () => {
+    vi.mocked(createClient).mockResolvedValue({
+      from: vi.fn().mockReturnValue({
+        select: vi.fn().mockReturnValue({
+          eq: vi.fn().mockReturnValue({
+            eq: vi.fn().mockReturnValue({
+              order: vi.fn().mockReturnValue({
+                limit: vi.fn().mockResolvedValue({ data: [{ id: 'n-1', created_at: '2026-07-15T20:00:00Z' }], error: null }),
+              }),
+            }),
+          }),
+        }),
+      }),
+    } as any)
+
+    const [row] = await getNotifications('user-1', 'barn-1', 'America/New_York')
+
+    expect(row.created_at).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
+  })
+})

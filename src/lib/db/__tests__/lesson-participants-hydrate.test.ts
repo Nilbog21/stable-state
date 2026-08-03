@@ -344,3 +344,30 @@ describe('hydrateParticipants', () => {
     expect(result.needs_attention).toBe(true)
   })
 })
+
+describe('hydrateParticipants instant branding', () => {
+  beforeEach(() => {
+    vi.mocked(resolveHorseNames).mockReset()
+    vi.mocked(resolveMemberNames).mockReset()
+  })
+
+  function makeInChain(data: unknown[] | null) {
+    const mockIn = vi.fn().mockResolvedValue({ data, error: null })
+    const mockEq = vi.fn().mockReturnValue({ in: mockIn })
+    return { select: vi.fn().mockReturnValue({ eq: mockEq }) }
+  }
+
+  function makeSupabase() {
+    return { from: vi.fn().mockImplementation(() => makeInChain([])) } as any
+  }
+
+  it('should_brand_lesson_at_with_the_barns_timezone', async () => {
+    const lesson = createMockLesson({ lesson_at: '2026-07-15T20:00:00Z' })
+    vi.mocked(resolveHorseNames).mockResolvedValue(new Map())
+    vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
+
+    const [result] = await hydrateParticipants(makeSupabase(), [lesson], 'barn-1', 'America/New_York')
+
+    expect(result.lesson_at).toEqual({ at: '2026-07-15T20:00:00Z', tz: 'America/New_York' })
+  })
+})
