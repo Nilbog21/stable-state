@@ -270,22 +270,22 @@ Lessons (`/barn/dev-barn/lessons`):
 - [ ] (e2e: willow_upcoming_lesson_shows_needs_attention_badge_on_dashboard_day_view) That same lesson shows the badge on the Dashboard's Day view (navigate to the lesson's date if it isn't today)
 - [ ] (e2e: needs_attention_badge_does_not_appear_on_willows_past_lesson) The badge does not appear on Willow's past lessons
 - [ ] (e2e: needs_attention_badge_does_not_appear_on_a_cancelled_lesson) The badge does not appear on a cancelled lesson
-- [ ] (e2e-candidate) Willow's flagged lesson's detail page shows a **Needs Attention** banner at the top reading "Willow is inactive"
-- [ ] (e2e-candidate) The same banner appears on that lesson's edit page
-- [ ] (e2e-candidate) The banner does not block editing or saving that lesson
-- [ ] (e2e-candidate) On Willow's flagged lesson's edit page, without changing any field, clicking a nav link (or hitting browser back) raises a confirm dialog warning about the unresolved horse issue
-- [ ] (e2e-candidate) That dialog defaults to **Stay**
-- [ ] (e2e-candidate) Swap Willow out for an active horse and save, then reopen the edit page — navigating away no longer prompts
-- [ ] (e2e-candidate) On a lesson's detail page (`/barn/dev-barn/lessons/[id]`), horse notes render read-only
-- [ ] (e2e-candidate) On that same page, rider notes render read-only
-- [ ] (e2e-candidate) On that same page, the Edit link is visible
-- [ ] (e2e-candidate) On a lesson with no notes recorded at all, every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
-- [ ] (e2e-candidate) Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
-- [ ] (e2e-candidate) The fee change appears on the detail page
-- [ ] (e2e-candidate) The horse notes from that same save appear on the detail page
-- [ ] (e2e-candidate) The rider notes from that same save appear on the detail page
-- [ ] (e2e-candidate) Edit the group lesson created in Phase 3 → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
-- [ ] (e2e-candidate) Delete one seeded lesson — it disappears from the list
+- [ ] (e2e: willows_flagged_lesson_detail_page_shows_the_inactive_horse_attention_banner) Willow's flagged lesson's detail page shows a **Needs Attention** banner at the top reading "Willow is inactive"
+- [ ] (e2e: willows_flagged_lesson_edit_page_shows_the_same_attention_banner) The same banner appears on that lesson's edit page
+- [ ] (manual) The banner does not block editing or saving that lesson
+- [ ] (e2e: clicking_a_nav_link_on_the_flagged_edit_page_raises_the_unresolved_horse_dialog) On Willow's flagged lesson's edit page, without changing any field, clicking a nav link (or hitting browser back) raises a confirm dialog warning about the unresolved horse issue
+- [ ] (e2e: choosing_stay_dismisses_the_dialog_and_keeps_you_on_the_edit_page) Choosing **Stay** in that dialog dismisses it without navigating away
+- [ ] (e2e: swapping_the_inactive_horse_for_an_active_one_stops_the_navigation_prompt) Swap Willow out for an active horse and save, then reopen the edit page — navigating away no longer prompts
+- [ ] (e2e: horse_notes_render_read_only_on_the_lesson_detail_page) On a lesson's detail page (`/barn/dev-barn/lessons/[id]`), horse notes render read-only
+- [ ] (e2e: rider_notes_render_read_only_on_the_lesson_detail_page) On that same page, rider notes render read-only
+- [ ] (e2e: the_edit_link_is_visible_on_the_lesson_detail_page) On that same page, the Edit link is visible
+- [ ] (e2e: every_note_label_is_hidden_on_a_lesson_with_no_notes) On a lesson with no notes recorded at all, every note label (Horse Notes, Rider Notes, Private, Your Notes, Cancellation Notes) is hidden entirely rather than showing an empty label or a "—" placeholder
+- [ ] (e2e: editing_a_lessons_fee_and_notes_persists_them_to_the_detail_page) Edit a lesson (`/barn/dev-barn/lessons/[id]/edit`) — change the fee, enter horse notes and rider notes, and save
+- [ ] (e2e: editing_a_lessons_fee_and_notes_persists_them_to_the_detail_page) The fee change appears on the detail page
+- [ ] (e2e: editing_a_lessons_fee_and_notes_persists_them_to_the_detail_page) The horse notes from that same save appear on the detail page
+- [ ] (e2e: editing_a_lessons_fee_and_notes_persists_them_to_the_detail_page) The rider notes from that same save appear on the detail page
+- [ ] (e2e: switching_a_group_lesson_to_normal_warns_before_dropping_extra_riders_and_horses) Edit the group lesson created in Phase 3 → switch type to normal → a downgrade warning asks you to pick one rider/horse to keep (cancel without saving)
+- [ ] (e2e: deleting_a_lesson_removes_it_from_the_lessons_list) Delete one seeded lesson — it disappears from the list
 - [ ] (e2e-candidate) A lesson's detail page header shows a single **Cancel** button next to **Edit**/**Delete**
 - [ ] (e2e-candidate) That **Cancel** button is shown to the manager even on a lesson another trainer instructs
 - [ ] (e2e-candidate) Clicking **Cancel** on a **normal** lesson opens a confirmation page with a **Cancelled by Rider** / **Cancelled by Instructor** toggle
