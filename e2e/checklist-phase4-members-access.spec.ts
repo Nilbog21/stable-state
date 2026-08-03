@@ -359,12 +359,25 @@ test.describe.serial('removing a member', () => {
   // waitForURL pins which page, the h1 pins that it rendered: 'commit' resolves before the new
   // document has rendered, so a notFound() or a server error at this same URL would satisfy the
   // wait on its own (#1202).
+  //
+  // Two properties this depends on, both checked rather than assumed (#1196):
+  //   - `waitForURL`, not `expect(page).toHaveURL`. The latter passes on its first poll, and an
+  //     App Router <Link> commits pushState only after the RSC payload lands — so it can pass
+  //     against the *old* URL. waitForURL fails the test outright if the URL never lands.
+  //   - The h1 has to distinguish the two pages, or it proves nothing about where we ended up.
+  //     It does: the member detail page's h1 is the member's own name (page.tsx renders
+  //     `{displayName}` there), and the Members list's is the literal "Members". Verified by
+  //     probe, not just by reading: asserting this exact locator on the member detail page fails.
+  //     `exact: true` because getByRole's name match is substring-based otherwise.
+  //
+  // The regex is anchored on `members$`, so the detail URL it navigates *from*
+  // (`…/members/{id}`) cannot satisfy it either.
   test('confirming_the_remove_prompt_redirects_to_the_members_list @manager', async ({ page }) => {
     collectDialogs(page, 'accept')
     await page.goto(memberPage(removableId))
     await memberHeader(page).getByRole('button', { name: 'Remove', exact: true }).click()
     await page.waitForURL(new RegExp(`${membersList()}$`), { waitUntil: 'commit' })
-    await expect(page.getByRole('heading', { level: 1, name: 'Members' })).toBeVisible()
+    await expect(page.getByRole('heading', { level: 1, name: 'Members', exact: true })).toBeVisible()
   })
 
   // The whole remaining roster, not a zero-count on the removed member: a bare absence check also
