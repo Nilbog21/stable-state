@@ -198,8 +198,13 @@ export function ExpenseForm({
       {/* Above Date, not below it: the calendar's dots are driven by this selection, so a
         * manager who fills the form top-down has an empty grid until they scroll past the date
         * they came here to pick. */}
-      <div className="flex flex-col gap-2">
-        <label className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+      <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
+        <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
+        {/* First row of the group it controls, divided off from the horses below: this is not a
+          * select-all. Ticking every horse writes N horse_id rows; ticking this writes the
+          * applies_to_all_horses flag, so a horse added later is retroactively covered. The
+          * divider is what keeps it from reading as one more horse. */}
+        <label className="flex items-center gap-2 border-b border-zinc-200 pb-3 text-sm text-zinc-900 dark:border-zinc-700 dark:text-zinc-50">
           <input
             type="checkbox"
             name="applies_to_all_horses"
@@ -208,34 +213,30 @@ export function ExpenseForm({
             onChange={(e) => setAppliesToAllHorses(e.target.checked)}
             className="rounded border-zinc-300 dark:border-zinc-600"
           />
-          Entire Barn
+          All
         </label>
-
-        <fieldset className="flex flex-col gap-2 border-0 p-0 m-0">
-          <legend className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horses</legend>
-          {horses.map((h) => (
-            <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
-              <input
-                type="checkbox"
-                name="horse_id"
-                value={h.id}
-                disabled={appliesToAllHorses}
-                checked={checkedHorseIds.has(h.id)}
-                onChange={(e) => {
-                  setCheckedHorseIds((prev) => {
-                    const next = new Set(prev)
-                    if (e.target.checked) next.add(h.id)
-                    else next.delete(h.id)
-                    return next
-                  })
-                }}
-                className="rounded border-zinc-300 dark:border-zinc-600"
-              />
-              {h.name}
-            </label>
-          ))}
-        </fieldset>
-      </div>
+        {horses.map((h) => (
+          <label key={h.id} className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
+            <input
+              type="checkbox"
+              name="horse_id"
+              value={h.id}
+              disabled={appliesToAllHorses}
+              checked={checkedHorseIds.has(h.id)}
+              onChange={(e) => {
+                setCheckedHorseIds((prev) => {
+                  const next = new Set(prev)
+                  if (e.target.checked) next.add(h.id)
+                  else next.delete(h.id)
+                  return next
+                })
+              }}
+              className="rounded border-zinc-300 dark:border-zinc-600"
+            />
+            {h.name}
+          </label>
+        ))}
+      </fieldset>
 
       {getScheduleRange ? (
         <>

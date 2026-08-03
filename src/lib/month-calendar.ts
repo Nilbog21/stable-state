@@ -8,7 +8,8 @@ import type { ScheduleItem } from '@/lib/db/types'
  * already-fetched `ScheduleItem[]` plus the form's current horse/rider selection, so
  * changing the selection re-renders without another round trip.
  *
- * Three signals, checked in this order. A barn-wide *selection* (#1020's "Entire Barn")
+ * Three signals, checked in this order. A barn-wide *selection* (#1020; labelled "All" on the
+ * appointment form, rendered as "Entire Barn" on cards)
  * outranks everything: it reaches every horse, so the dot marks any booking that names a
  * horse and there is no heatmap to draw. Otherwise horse selection dominates: with at least
  * one horse selected the day background is the projected-exertion heatmap and the dot marks
@@ -35,7 +36,7 @@ export interface DayDecoration {
   /** Something already booked collides with the current selection on this exact day. Three
    *  ways in: a selected horse has a lesson or appointment; a barn-wide appointment (#1147) is
    *  booked, which names no horse but concerns every one; or the *selection* is barn-wide
-   *  (#1020's "Entire Barn"), which collides with anything holding a horse. */
+   *  (#1020's barn-wide selection), which collides with anything holding a horse. */
   conflict: boolean
 }
 
@@ -49,7 +50,8 @@ export interface DayDecorationOptions {
   /** "YYYY-MM-DD" for today in the barn's own timezone (#1149, `barnToday`) — the same frame
    *  every other date on this grid is in. */
   todayStr: string
-  /** The appointment form's "Entire Barn" (#1020) — the mirror of #1147's barn-wide *item*.
+  /** The appointment form's barn-wide selection (#1020, labelled "All") — the mirror of #1147's
+   *  barn-wide *item*.
    *  It normally ticks no horses, so without this the horse branch below is skipped and the grid
    *  goes blank exactly when the appointment reaches the most horses. Don't reorder it after that
    *  branch on the assumption the two are mutually exclusive: `ExpenseForm` only *disables* the
