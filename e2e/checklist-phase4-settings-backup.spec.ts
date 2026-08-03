@@ -25,6 +25,7 @@
 import { readFileSync } from 'fs'
 import ExcelJS from 'exceljs'
 import JSZip from 'jszip'
+import { mustSucceed } from '@/lib/db/service-role'
 import { test, expect, withBarn, type Page } from './support/test'
 import {
   addExpense,
@@ -69,9 +70,11 @@ const EXPECTED_SHEETS = [
 // ---------------------------------------------------------------------------
 //
 // The barn above leaves Agreements, Agreement Charges and Horse Expenses empty and Horses at a
-// single row, so four of the formatting checkboxes — two newest-first orderings and the two
-// expense date/time cells — have nothing to be true of. These rows exist only to give them
-// something. Every one goes through a builder fixtures.ts already exports.
+// single row, so several of the formatting checkboxes — both newest-first orderings, the two
+// expense date/time cells, the date-column alignment, the signed expense amounts, and the
+// Horse Expenses entries in the zero-padding and column-width checks — have nothing to be true
+// of. These rows exist only to give them something. Every one goes through a builder
+// fixtures.ts already exports, bar the single created_at write below, which no builder offers.
 
 const SECOND_HORSE = 'Marigold'
 /**
@@ -80,9 +83,21 @@ const SECOND_HORSE = 'Marigold'
  * instantToLocalWallClock, which truncates to whole seconds — so both horses can land on the
  * same exported cell value, and a newest-first assertion against a tie passes by luck rather
  * than because the sheet is sorted.
+ *
+ * The write is checked for having actually matched a row (see the seed), not merely for not
+ * erroring: a zero-row UPDATE reports success, and it would silently reintroduce exactly the
+ * tie this constant exists to rule out.
  */
 const SECOND_HORSE_AGE_DAYS = 30
 
+/**
+ * Deliberately seeded oldest-first — the reverse of how they must come out.
+ *
+ * getTransactionRows issues no ORDER BY, so an All Transactions sheet that lost its sort would
+ * fall back on insertion order. Seeding these in the order the sheet is supposed to produce
+ * would make `all_transactions_sheet_rows_run_newest_first` pass against an unsorted export,
+ * which is the one thing it exists to catch. Same reasoning for the two appointments.
+ */
 const TIMED_EXPENSE = { recipient: 'Vale Farrier', time: '14:30', amount: 120, daysAgo: 40 }
 const UNTIMED_EXPENSE = { recipient: 'Ridge Vet', amount: 45, daysAgo: 50 }
 
@@ -90,8 +105,17 @@ const UNTIMED_EXPENSE = { recipient: 'Ridge Vet', amount: 45, daysAgo: 50 }
  * One lease per horse — two on the same horse would be a second live agreement against it —
  * placed far enough apart to give the Agreements sheet two distinct Start Dates.
  *
- * Their ledger rows can't overtake the expenses above however the suite's own run date falls:
- * a one_time agreement's transaction is stamped at date_trunc('month', start_date)
+ * Seeded newest-first, the *opposite* of the appointments above, and for the same underlying
+ * reason: an unsorted sheet must not come out in the right order by accident. Where the
+ * ledger falls back on insertion order, getAgreementsByBarn falls back on `created_at DESC` —
+ * so here it is oldest-first insertion that would hand the Agreements sheet the correct
+ * ordering for free, and newest-first insertion that exposes a missing sort. Verified by
+ * disabling sortByFirstColumn: with these two orders, all three ordering tests fail.
+ *
+ * The ledger stays exposed either way, because the two appointments already invert it.
+ *
+ * Their ledger rows can't overtake the appointments however the suite's own run date falls: a
+ * one_time agreement's transaction is stamped at date_trunc('month', start_date)
  * (create_agreement_with_first_charge), which is never later than the start date itself, and
  * both start dates are older than both expense dates.
  */
@@ -181,24 +205,31 @@ const barn = withBarn('phase4-settings-backup', async ({ supabase, barn, members
   // A second horse, explicitly aged, so the Horses sheet has two rows to order — see
   // SECOND_HORSE_AGE_DAYS for why the created_at is written rather than inherited.
   const secondHorse = await addHorse(supabase, barn.id, SECOND_HORSE)
-  const aged = await supabase
-    .from('horses')
-    .update({ created_at: daysAgo(SECOND_HORSE_AGE_DAYS).toISOString() })
-    .eq('id', secondHorse.id)
-  if (aged.error) throw aged.error
+  // .select().single() through mustSucceed, so an UPDATE that matched nothing throws here
+  // rather than leaving the two horses tied a second apart — see SECOND_HORSE_AGE_DAYS.
+  mustSucceed(
+    await supabase
+      .from('horses')
+      .update({ created_at: daysAgo(SECOND_HORSE_AGE_DAYS).toISOString() })
+      .eq('id', secondHorse.id)
+      .select('id')
+      .single(),
+    'backdate the second horse'
+  )
 
   // The Horse Expenses sheet's two shapes: an appointment booked at a time, and one booked
-  // without one. Both priced, so each also lands an `expense` row on the ledger sheet.
+  // without one. Both priced, so each also lands an `expense` row on the ledger sheet. Older
+  // first, so insertion order is the reverse of the export's — see UNTIMED_EXPENSE.
+  await addExpense(supabase, barn, {
+    at: daysAgo(UNTIMED_EXPENSE.daysAgo),
+    recipient: UNTIMED_EXPENSE.recipient,
+    amount: UNTIMED_EXPENSE.amount,
+  })
   timedExpense = await addExpense(supabase, barn, {
     at: daysAgo(TIMED_EXPENSE.daysAgo),
     recipient: TIMED_EXPENSE.recipient,
     time: TIMED_EXPENSE.time,
     amount: TIMED_EXPENSE.amount,
-  })
-  await addExpense(supabase, barn, {
-    at: daysAgo(UNTIMED_EXPENSE.daysAgo),
-    recipient: UNTIMED_EXPENSE.recipient,
-    amount: UNTIMED_EXPENSE.amount,
   })
 
   // Two leases, one per horse — see LEASES.
@@ -414,6 +445,14 @@ function expenseRowNumber(workbook: ExcelJS.Workbook, recipient: string): number
   return index + 2
 }
 
+/** The same, for the ledger sheet — and throwing for the same reason: a per-cell style read
+ *  resolves from the column, so it would answer just as readily for a row that isn't there. */
+function transactionRowNumber(workbook: ExcelJS.Workbook, kind: string): number {
+  const index = sheetRows(workbook, 'All Transactions').findIndex((row) => row.Kind === kind)
+  if (index < 0) throw new Error(`no "${kind}" row on the All Transactions sheet`)
+  return index + 2
+}
+
 /** `"$"#,##0.00` as Excel renders it: sign, dollar sign, thousands grouping, two decimals. */
 function moneyText(value: number): string {
   const [whole, fraction] = Math.abs(value).toFixed(2).split('.')
@@ -431,9 +470,9 @@ const DATE_ONLY_WIDTH = 10
 const MAX_COLUMN_WIDTH = 60
 // What a column with no width of its own renders at — and reading one back as "unset" is the
 // normal case, not a failure: exceljs treats a width of exactly 9 as the default and omits the
-// <col> element entirely (Column#isCustomWidth, exceljs/lib/doc/column.js:36), so four of this
-// barn's columns come back undefined having been sized to 9 on the way out. Defaulting them to
-// 0 would report them as unreadable when Excel in fact renders them at 9.
+// <col> element entirely (Column#isCustomWidth, exceljs/lib/doc/column.js:36), so any column
+// this export sizes to exactly 9 comes back undefined. Defaulting those to 0 would report them
+// as unreadable when Excel in fact renders them at 9.
 const DEFAULT_COLUMN_WIDTH = 9
 
 function renderedWidth(value: ExcelJS.CellValue, numFmt: string | undefined): number {
@@ -704,7 +743,8 @@ test.describe.serial('Data Backup — workbook formatting', () => {
   // "Format Cells reports category Date" and "switching the column to General turns it into a
   // serial number" are the same claim seen from two sides of Excel's UI: the cell holds a date,
   // not a string that looks like one. exceljs types the parsed cell, which is that claim
-  // directly — see the PR body for the narrowing.
+  // directly. That is the narrowing the issue pre-ratified: no library can drive the
+  // "switch the column to General" half, and it is the same fact seen from the other side.
   test('date_cells_are_real_excel_dates_not_text @manager', async ({ page }) => {
     const { workbook } = await downloadDataWorkbook(page)
     expect(workbook.getWorksheet('Horses')?.getRow(2).getCell(1).type).toBe(ExcelJS.ValueType.Date)
@@ -712,11 +752,19 @@ test.describe.serial('Data Backup — workbook formatting', () => {
 
   // mm/dd against m/d is the whole of "zero-padded, so they are all the same width" — a cell's
   // stored value has no padding either way, only its format does.
+  //
+  // Guarded on the cell being a real date rather than reading numFmt straight off row 2: a
+  // cell inherits its format from its column, so an *unwritten* row answers this question
+  // just as confidently as a written one, and a sheet that had lost all its rows would pass.
+  // The type is what distinguishes them (an unwritten cell is ValueType.Null).
   test('date_cells_render_zero_padded @manager', async ({ page }) => {
     const { workbook } = await downloadDataWorkbook(page)
-    expect(DATE_LED_SHEETS.map((name) => workbook.getWorksheet(name)?.getRow(2).getCell(1).numFmt)).toEqual(
-      Array(DATE_LED_SHEETS.length).fill(DATE_TIME_FMT)
-    )
+    expect(
+      DATE_LED_SHEETS.map((name) => {
+        const cell = workbook.getWorksheet(name)?.getRow(2).getCell(1)
+        return cell?.type === ExcelJS.ValueType.Date ? cell.numFmt : `no date cell on ${name}`
+      })
+    ).toEqual(Array(DATE_LED_SHEETS.length).fill(DATE_TIME_FMT))
   })
 
   // Excel right-aligns dates by default, which is what would knock a date-only row's date out
@@ -734,7 +782,10 @@ test.describe.serial('Data Backup — workbook formatting', () => {
 
   // --- The raw id columns #1218 dropped ---
   //
-  // Safe as assertions of absence only because sheetHeaders refuses to return an empty list.
+  // Assertions of absence, so they lean on sheetHeaders throwing rather than returning an
+  // empty list. In practice the header row is written unconditionally by sheet.columns, so
+  // what these four are really protected by is its sibling guard: sheetHeaders throws when
+  // the *sheet* is missing, which is the way this claim could actually go vacuous.
 
   test('all_transactions_sheet_has_no_lesson_id_column @manager', async ({ page }) => {
     const { workbook } = await downloadDataWorkbook(page)
@@ -778,10 +829,15 @@ test.describe.serial('Data Backup — workbook formatting', () => {
 
   // The number format, not the displayed text: "$" and two decimals are what the format
   // produces, and the cell's own value is a bare number either way.
+  //
+  // Read off a row located by kind rather than off row 2, for the same reason the zero-padding
+  // check guards on cell type: a format is inherited from the column, so an empty sheet would
+  // report the right one. transactionRowNumber throws when the row isn't there.
   test('transaction_amounts_render_as_currency @manager', async ({ page }) => {
     const { workbook } = await downloadDataWorkbook(page)
     const amountColumn = sheetHeaders(workbook, 'All Transactions').indexOf('Amount') + 1
-    expect(workbook.getWorksheet('All Transactions')?.getRow(2).getCell(amountColumn).numFmt).toBe(MONEY_FMT)
+    const row = transactionRowNumber(workbook, 'lesson_fee')
+    expect(workbook.getWorksheet('All Transactions')?.getRow(row).getCell(amountColumn).numFmt).toBe(MONEY_FMT)
   })
 
   // --- Column widths ---
