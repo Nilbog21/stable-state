@@ -132,9 +132,9 @@ function memberHeader(page: Page) {
   return page.getByRole('heading', { level: 1 }).locator('xpath=..')
 }
 
-/** A Members-list card addressed by the membership it points at rather than by any text. */
-function memberCard(page: Page, membershipId: string) {
-  return page.locator(`a[href="${memberPage(membershipId)}"]`)
+/** Every member the Members list links to, addressed by membership rather than by any text. */
+function memberLinks(page: Page) {
+  return page.locator(`a[href^="${membersList()}/"]`)
 }
 
 function instructorOptions(page: Page) {
@@ -169,7 +169,21 @@ function collectDialogs(page: Page, respond: 'accept' | 'dismiss'): string[] {
 async function gotoNewLessonForm(page: Page) {
   test.slow()
   await page.goto(`/barn/${barn.slug}/lessons/new`)
-  await expect(page.getByRole('heading', { level: 1, name: 'New Lesson' })).toBeVisible()
+  // waitFor, not an expect: this is a settle, and the repo's one-assertion-per-test rule reads
+  // better when the only expect() in a test body is the claim the test is named for.
+  await page.getByRole('heading', { level: 1, name: 'New Lesson' }).waitFor()
+}
+
+/**
+ * Settles until the Instructor Access button carries `label`, without spending an assertion.
+ *
+ * Used as the "the click took effect" guard in the two prompt-free tests, whose single claim is
+ * about the *absence* of a dialog: an empty `dialogs` array is also true of a click that did
+ * nothing, so something has to prove the submit went through — but that something is a wait, not
+ * the assertion those tests are named for.
+ */
+async function settleInstructorAccessButton(page: Page, label: string) {
+  await instructorAccess(page).getByRole('button', { name: label, exact: true }).waitFor()
 }
 
 // ---------------------------------------------------------------------------
@@ -238,7 +252,7 @@ test.describe.serial('a trainer\'s instructor access', () => {
     const dialogs = collectDialogs(page, 'dismiss')
     await page.goto(memberPage(trainerStubId))
     await instructorAccessButton(page).click()
-    await expect(instructorAccessButton(page)).toHaveText(REVOKE)
+    await settleInstructorAccessButton(page, REVOKE)
     expect(dialogs).toEqual([])
   })
 
@@ -264,7 +278,7 @@ test.describe.serial('your own instructor access', () => {
     const dialogs = collectDialogs(page, 'dismiss')
     await page.goto(ownPage())
     await instructorAccessButton(page).click()
-    await expect(instructorAccessButton(page)).toHaveText(REVOKE)
+    await settleInstructorAccessButton(page, REVOKE)
     expect(dialogs).toEqual([])
   })
 
@@ -353,17 +367,26 @@ test.describe.serial('removing a member', () => {
     await expect(page.getByRole('heading', { level: 1, name: 'Members' })).toBeVisible()
   })
 
-  // A bare zero-count over the removed member's card would pass on a Members list that rendered
-  // no cards at all. Pairing it with a card that must still be there, in one comparison, makes
-  // that failure mode show up as a mismatch instead of a pass.
+  // The whole remaining roster, not a zero-count on the removed member: a bare absence check also
+  // passes when the page errors, redirects, or changes its link shape, none of which mean the
+  // member was removed. This is the form #1092 rewrote its own near-identical removal test into
+  // (checklist-phase4-finances-mutations.spec.ts) for exactly that reason, and it is strictly
+  // stronger than the paired-count version it replaces here — a roster that loses or gains any
+  // *other* member fails too. Membership ids rather than names, so a member sharing a first or
+  // last name cannot stand in for the removed one.
   test('a_removed_member_no_longer_appears_on_the_members_list @manager', async ({ page }) => {
     await page.goto(membersList())
-    // Auto-waiting settle before the one-shot counts below (e2e/support/read.ts records why).
-    await memberCard(page, riderStubId).first().waitFor()
-    expect({
-      removed: await memberCard(page, removableId).count(),
-      stillListed: await memberCard(page, riderStubId).count(),
-    }).toEqual({ removed: 0, stillListed: 1 })
+    const { manager, trainer, rider, rider2 } = barn.data.members
+    // evaluateAll does not auto-wait: a not-yet-rendered roster yields [], which would read as
+    // "nobody is listed" rather than "this read was too early" (e2e/support/read.ts, #1238).
+    await memberLinks(page).first().waitFor()
+    const hrefs = await memberLinks(page).evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+    // Deduplicated defensively: the page renders a "You" card as well as the role sections, and
+    // only #1200's own-entry filter keeps that from being a second link to the same membership.
+    expect([...new Set(hrefs)].sort()).toEqual(
+      [manager.membershipId, trainer.membershipId, rider.membershipId, rider2.membershipId,
+        trainerStubId, riderStubId, secondManagerId].map(memberPage).sort()
+    )
   })
 })
 
