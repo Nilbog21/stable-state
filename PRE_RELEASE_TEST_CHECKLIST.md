@@ -718,20 +718,20 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Manager and Trainer are still checked there
 - [ ] (e2e-candidate) From the event's Edit page, tap **Delete** → the confirm page shows the event's title
 - [ ] (e2e-candidate) **Confirm Delete** → the event no longer appears in the Barn Events list
-- [ ] (e2e-candidate) **Data Backup** section shows a **Download All Documents** button
-- [ ] (e2e-candidate) That button is enabled (documents were already uploaded earlier in this phase)
-- [ ] (e2e-candidate) Tap **Download All Documents** → a `.zip` downloads
-- [ ] (e2e-candidate) That zip contains a `horse/<name>/` folder holding the horse documents uploaded earlier
-- [ ] (e2e-candidate) It contains a `member/<name>/` folder holding the member documents uploaded earlier
-- [ ] (e2e-candidate) Each file inside is named `<original>-<type>-<date>.<ext>`
-- [ ] (e2e-candidate) **Data Backup** section also shows a **Download Data** button
-- [ ] (e2e-candidate) That button is always enabled (no "nothing to export" state)
-- [ ] (e2e-candidate) Tap **Download Data** → an `.xlsx` downloads
-- [ ] (e2e-candidate) It has exactly 8 sheets: Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions
-- [ ] (e2e-candidate) A horse created earlier in this phase appears by name (not a raw id) on the Horses sheet
-- [ ] (e2e-candidate) A lesson created earlier in this phase appears on the Lessons sheet
-- [ ] (e2e-candidate) That lesson's row names its horse and rider (not raw ids)
-- [ ] (e2e-candidate) A member created earlier in this phase appears by name (not a raw id) on the Members sheet
+- [ ] (e2e: data_backup_section_shows_download_all_documents_button) **Data Backup** section shows a **Download All Documents** button
+- [ ] (e2e: download_all_documents_button_is_enabled_when_the_barn_has_documents) That button is enabled (documents were already uploaded earlier in this phase)
+- [ ] (e2e: download_all_documents_downloads_a_zip_file) Tap **Download All Documents** → a `.zip` downloads
+- [ ] (e2e: documents_zip_groups_horse_documents_under_a_folder_named_for_the_horse) That zip contains a `horse/<name>/` folder holding the horse documents uploaded earlier
+- [ ] (e2e: documents_zip_groups_member_documents_under_a_folder_named_for_the_member) It contains a `member/<name>/` folder holding the member documents uploaded earlier
+- [ ] (e2e: documents_zip_names_each_file_original_type_and_date) Each file inside is named `<original>-<type>-<date>.<ext>`
+- [ ] (e2e: data_backup_section_shows_download_data_button) **Data Backup** section also shows a **Download Data** button
+- [ ] (e2e: download_data_button_is_enabled_with_no_nothing_to_export_state) That button is always enabled (no "nothing to export" state)
+- [ ] (e2e: download_data_downloads_an_xlsx_file) Tap **Download Data** → an `.xlsx` downloads
+- [ ] (e2e: data_workbook_has_exactly_the_eight_expected_sheets) It has exactly 8 sheets: Horses, Lessons, Agreements, Agreement Charges, Horse Expenses, Members, Documents, All Transactions
+- [ ] (e2e: horses_sheet_lists_the_seeded_horse_by_name) A horse created earlier in this phase appears by name (not a raw id) on the Horses sheet
+- [ ] (e2e: lessons_sheet_lists_the_seeded_lesson) A lesson created earlier in this phase appears on the Lessons sheet
+- [ ] (e2e: lessons_sheet_row_names_its_horse_and_rider_not_ids) That lesson's row names its horse and rider (not raw ids)
+- [ ] (e2e: members_sheet_lists_the_seeded_member_by_name) A member created earlier in this phase appears by name (not a raw id) on the Members sheet
 - [ ] (e2e-candidate) **Date/Time Added** is the first column on the Horses sheet
 - [ ] (e2e-candidate) **Date/Time** is the first column on the Lessons sheet
 - [ ] (e2e-candidate) It is also the first column on the Horse Expenses sheet
