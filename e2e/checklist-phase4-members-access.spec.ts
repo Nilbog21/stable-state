@@ -245,8 +245,8 @@ test.describe.serial('a trainer\'s instructor access', () => {
   })
 
   // Grant is prompt-free by construction — InstructorAccess only calls window.confirm when
-  // canInstruct is true — so the claim is that no dialog was raised at all. The toHaveText is the
-  // auto-waiting guard that the click took effect; without it an empty `dialogs` would also be
+  // canInstruct is true — so the claim is that no dialog was raised at all. The settle above the
+  // assertion is what proves the click took effect; without it an empty `dialogs` would also be
   // true of a click that did nothing.
   test('granting_instructor_access_raises_no_confirm_prompt @manager', async ({ page }) => {
     const dialogs = collectDialogs(page, 'dismiss')
