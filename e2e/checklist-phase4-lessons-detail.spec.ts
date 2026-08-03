@@ -239,6 +239,21 @@ async function waitForEditFormHydrated(page: Page) {
   await page.getByRole('button', { name: /^Exhaustion: / }).first().waitFor()
 }
 
+/**
+ * Keyboard activation rather than a pointer `.click()`. LessonForm's submit sits at the bottom
+ * of a long scrollable form — the exact shape #501 (04c64505) diagnosed, where Chromium's
+ * scroll-into-view animation races Playwright's actionability check and something else
+ * intercepts the click mid-scroll. `checklist-timezone.spec.ts` already drives *this same
+ * component's* submit this way for that reason; in `edit` mode the form is longer still, since
+ * it adds the whole notes block (a textarea per horse and two per rider) below the button's
+ * `new`-mode position.
+ */
+async function saveLessonForm(page: Page) {
+  const save = page.getByRole('button', { name: 'Save' })
+  await save.focus()
+  await save.press('Enter')
+}
+
 // ---------------------------------------------------------------------------
 // The unresolved-horse banner, and the navigation guard behind it
 //
@@ -309,7 +324,7 @@ test('swapping_the_inactive_horse_for_an_active_one_stops_the_navigation_prompt 
   await waitForEditFormHydrated(page)
   await page.getByRole('checkbox', { name: `${WILLOW} (inactive)`, exact: true }).uncheck()
   await page.getByRole('checkbox', { name: APPLE, exact: true }).check()
-  await page.getByRole('button', { name: 'Save' }).click()
+  await saveLessonForm(page)
   await page.waitForURL(new RegExp(`/lessons/${flaggedId}$`), { waitUntil: 'commit' })
   // 'commit' resolves before the new document renders, so waitForURL alone is also satisfied by
   // a notFound() or a 500 at that same URL — and this one was selected *by* the id it waits for,
@@ -387,7 +402,7 @@ test('editing_a_lessons_fee_and_notes_persists_them_to_the_detail_page @manager'
   await page.getByLabel('Fee', { exact: true }).fill(String(ROUND_TRIP_FEE))
   await page.locator(`textarea[name="horse_notes_${appleId}"]`).fill(ROUND_TRIP_HORSE_NOTE)
   await page.locator(`textarea[name="rider_notes_${riderMembershipId}"]`).fill(ROUND_TRIP_RIDER_NOTE)
-  await page.getByRole('button', { name: 'Save' }).click()
+  await saveLessonForm(page)
   await page.waitForURL(new RegExp(`/lessons/${roundTripId}$`), { waitUntil: 'commit' })
 
   expect({
