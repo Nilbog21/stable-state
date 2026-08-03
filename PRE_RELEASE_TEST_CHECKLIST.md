@@ -455,21 +455,21 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 
 Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 
-- [ ] (e2e-candidate) A "You" card renders at the top of the Members list
-- [ ] (e2e-candidate) A **Managers** section renders, listing Morgan
-- [ ] (e2e-candidate) Your own entry is excluded from that Managers section
-- [ ] (e2e-candidate) A **Trainers** section renders
-- [ ] (e2e-candidate) A **Riders** section renders
-- [ ] (e2e-candidate) A trainer's member detail page shows a Phone row under **Contact Info**
-- [ ] (e2e-candidate) It shows an Emergency Contact Name row
-- [ ] (e2e-candidate) It shows an Emergency Contact Phone row
-- [ ] (e2e-candidate) Any of those three left blank renders as "—"
-- [ ] (e2e-candidate) Managed/unclaimed rider Harper Test's member detail page renders their name even though the account has no linked `user_id`
-- [ ] (e2e-candidate) That page renders **Contact Info** too
-- [ ] (e2e-candidate) Its Documents section renders normally, not blocked
-- [ ] (e2e-candidate) That Documents section has an **Add Document** button
-- [ ] (e2e-candidate) On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member)
-- [ ] (e2e-candidate) Set Phone, Emergency Contact Name and Emergency Contact Phone there and tap **Save** → the values persist on reload
+- [ ] (e2e: members_list_you_card_links_to_your_own_membership) A "You" card renders at the top of the Members list
+- [ ] (e2e: managers_section_lists_other_manager) A **Managers** section renders, listing Morgan
+- [ ] (e2e: managers_section_excludes_your_own_entry) Your own entry is excluded from that Managers section
+- [ ] (e2e: trainers_section_lists_trainer) A **Trainers** section renders
+- [ ] (e2e: riders_section_lists_rider) A **Riders** section renders
+- [ ] (e2e: trainer_detail_shows_phone_row) A trainer's member detail page shows a Phone row under **Contact Info**
+- [ ] (e2e: trainer_detail_shows_emergency_contact_name_row) It shows an Emergency Contact Name row
+- [ ] (e2e: trainer_detail_shows_emergency_contact_phone_row) It shows an Emergency Contact Phone row
+- [ ] (e2e: blank_contact_fields_render_as_dash) Any of those three left blank renders as "—"
+- [ ] (e2e: managed_rider_detail_renders_name_without_linked_user) Managed/unclaimed rider Harper Test's member detail page renders their name even though the account has no linked `user_id`
+- [ ] (e2e: managed_rider_detail_renders_contact_info) That page renders **Contact Info** too
+- [ ] (e2e: managed_rider_documents_section_renders) Its Documents section renders normally, not blocked
+- [ ] (e2e: managed_rider_documents_section_has_add_document_button) That Documents section has an **Add Document** button
+- [ ] (e2e: managed_rider_contact_info_is_editable_form) On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member)
+- [ ] (e2e: managed_rider_contact_info_values_persist_after_save_and_reload) Set Phone, Emergency Contact Name and Emergency Contact Phone there and tap **Save** → the values persist on reload
 - [ ] (e2e-candidate) On Harper Test's member detail page, tap **Set Photo** and choose `scripts/data/harper-photo.png` → the upload starts immediately
 - [ ] (e2e-candidate) You land back on the member page
 - [ ] (e2e-candidate) The photo displays there
