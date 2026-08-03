@@ -119,12 +119,17 @@ function breakdownTable(page: Page) {
 
 /** Header labels with the sort indicator stripped — the column list, independent of sort state. */
 async function columnLabels(page: Page): Promise<string[]> {
+  // `allTextContents` is the same one-shot, non-auto-waiting read as `bodyRows`' `evaluateAll`.
+  await breakdownTable(page).waitFor()
   const texts = await sortControls(breakdownTable(page)).allTextContents()
   return texts.map((text) => text.replace(/[▲▼]/g, '').trim())
 }
 
 /** Every body row's cells as text, in render order — the row order the sort produced. */
-function bodyRows(page: Page): Promise<string[][]> {
+async function bodyRows(page: Page): Promise<string[][]> {
+  // `evaluateAll` does not auto-wait, so a table that hasn't rendered yet yields `[]` — a diff
+  // that reads as "this tab rendered no table" rather than "this read was too early" (#1238).
+  await breakdownTable(page).waitFor()
   return breakdownTable(page)
     .locator('tbody tr')
     .evaluateAll((rows) =>

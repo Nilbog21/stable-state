@@ -16,6 +16,13 @@ export default defineConfig({
   // already changed, so the second attempt asserts against a barn that no longer matches the
   // fixture — a false pass or a misleading failure either way.
   retries: 0,
+  // Every worker points at one `next dev` server that compiles routes on demand, so worker
+  // count is really "concurrent load on a single largely-serial process". Playwright's default
+  // (cores/2 — 8 on a 16-core box) saturated it: navigation-heavy checks ran 5x slower and
+  // tripped fixed timeouts, failing only under multi-spec load (#1238). Fixed rather than a
+  // percentage on purpose — a fraction of core count misreads the bottleneck ('25%' on a
+  // 64-core box is 16 workers, which saturates the one server just the same).
+  workers: 4,
   use: {
     baseURL: process.env.E2E_BASE_URL,
     // The browser context's zone, pinned for the same reason vitest.config.mts pins TZ — see

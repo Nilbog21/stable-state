@@ -86,15 +86,28 @@ function breakdownTable(page: Page) {
 }
 
 /**
+ * Blocks until the breakdown table exists. Every reader below reaches it through
+ * `evaluateAll`, which — unlike `expect`'s matchers — does **not** auto-wait: a table that
+ * hasn't rendered yet silently yields `[]`, and the resulting diff reads as "this tab rendered
+ * no table" rather than "this read was too early". That misdiagnosis cost a full round of
+ * investigation on #1238. A tab whose data is genuinely empty renders an EmptyState and no
+ * table at all, so a timeout here is the honest failure for that case too.
+ */
+async function awaitBreakdownTable(page: Page): Promise<void> {
+  await breakdownTable(page).waitFor()
+}
+
+/**
  * The label of every "label above a big figure" block on the page, in document order. Each
  * such block is a direct `<section>`/`<div>` child of `<main>` whose first child is its own
  * label `<p>` — a structural handle rather than a class-name one. Only the leading text node
  * is read, so the label's trailing InfoPopover glyph is excluded.
  */
 async function summaryBlockLabels(page: Page): Promise<string[]> {
-  return page
-    .locator('main > section > p:first-child, main > div > p:first-child')
-    .evaluateAll((paragraphs) => paragraphs.map((p) => (p.childNodes[0]?.textContent ?? '').trim()))
+  const blocks = page.locator('main > section > p:first-child, main > div > p:first-child')
+  // Same no-auto-wait hazard `awaitBreakdownTable` guards against, on a different locator.
+  await blocks.first().waitFor()
+  return blocks.evaluateAll((paragraphs) => paragraphs.map((p) => (p.childNodes[0]?.textContent ?? '').trim()))
 }
 
 /**
@@ -104,6 +117,7 @@ async function summaryBlockLabels(page: Page): Promise<string[]> {
  * in CSS. The sort-direction glyph is stripped so an active column still compares equal.
  */
 async function moneyColumnHeaders(page: Page): Promise<string[]> {
+  await awaitBreakdownTable(page)
   return breakdownTable(page)
     .locator('thead th')
     .evaluateAll((headers) =>
@@ -113,6 +127,7 @@ async function moneyColumnHeaders(page: Page): Promise<string[]> {
 
 /** The reconciliation footer's row labels, in document order. */
 async function footerRowLabels(page: Page): Promise<string[]> {
+  await awaitBreakdownTable(page)
   return breakdownTable(page)
     .locator('tfoot tr')
     .evaluateAll((rows) => rows.map((row) => (row.querySelector('td')?.childNodes[0]?.textContent ?? '').trim()))

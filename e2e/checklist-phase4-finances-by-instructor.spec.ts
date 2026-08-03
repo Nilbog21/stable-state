@@ -163,6 +163,9 @@ function rowFor(page: Page, name: string) {
  * skipping the InfoPopover trigger that sits beside it.
  */
 async function headerLabels(page: Page): Promise<string[]> {
+  // `evaluateAll` does not auto-wait, so a table that hasn't rendered yet yields `[]` — a diff
+  // that reads as "this tab rendered no table" rather than "this read was too early" (#1238).
+  await table(page).waitFor()
   return table(page)
     .locator('thead th')
     .evaluateAll((headers) =>
@@ -171,6 +174,8 @@ async function headerLabels(page: Page): Promise<string[]> {
 }
 
 async function rowNames(page: Page): Promise<string[]> {
+  // `allInnerTexts` is the same one-shot, non-auto-waiting read as `evaluateAll` above.
+  await bodyRows(page).first().waitFor()
   return bodyRows(page).locator('td:first-child').allInnerTexts()
 }
 

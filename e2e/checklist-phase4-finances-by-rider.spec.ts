@@ -191,6 +191,9 @@ function headerCell(page: Page, index: number) {
  * trigger, and strips the ▲/▼ sort indicator the active column's label carries.
  */
 async function columnLabels(page: Page): Promise<string[]> {
+  // `evaluateAll` does not auto-wait, so a table that hasn't rendered yet yields `[]` — a diff
+  // that reads as "this tab rendered no table" rather than "this read was too early" (#1238).
+  await breakdownTable(page).waitFor()
   return breakdownTable(page)
     .locator('thead th')
     .evaluateAll((ths) =>

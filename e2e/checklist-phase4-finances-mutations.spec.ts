@@ -412,9 +412,11 @@ test.describe.serial('removing a trainer who has instructed a paid lesson', () =
   test('removed_trainer_no_longer_appears_on_the_members_list @manager', async ({ page }) => {
     await page.goto(`/barn/${barn.slug}/members`)
     const { manager, rider, rider2 } = barn.data.members
-    const memberHrefs = await page
-      .locator(`a[href^="/barn/${barn.slug}/members/"]`)
-      .evaluateAll((links) => links.map((link) => link.getAttribute('href')))
+    const memberLinks = page.locator(`a[href^="/barn/${barn.slug}/members/"]`)
+    // `evaluateAll` does not auto-wait: a not-yet-rendered roster yields `[]`, which would fail
+    // this check as "nobody is listed" rather than "this read was too early" (#1238).
+    await memberLinks.first().waitFor()
+    const memberHrefs = await memberLinks.evaluateAll((links) => links.map((link) => link.getAttribute('href')))
     // Deduplicated: the page links your own membership twice, once from the "you" card and
     // once from the managers list.
     expect([...new Set(memberHrefs)].sort()).toEqual(

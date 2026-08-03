@@ -275,6 +275,9 @@ function lessonHref(lessonId: string): string {
 
 /** Hrefs of the Outstanding Payments rows whose Type cell is one of `types`, sorted. */
 async function outstandingPageHrefsForTypes(page: Page, types: string[]): Promise<string[]> {
+  // Same guard the types-list read above carries, and for the same reason: `evaluateAll` is a
+  // one-shot read with no auto-wait, so a not-yet-rendered table yields `[]` (#1238).
+  await page.locator('tbody tr').first().waitFor()
   const hrefs = await page.locator('tbody tr').evaluateAll(
     (rows, wanted) =>
       rows
@@ -492,6 +495,15 @@ test.describe.serial('resolving a past-due planned expense', () => {
   })
 
   test('past_due_expense_still_outstanding_after_amount_entered_without_payment_type @manager', async ({ page }) => {
+    // The suite's heaviest single check — ~7 navigations (`readTabExpenseTotals`'s five, plus a
+    // form save and a further goto) — and the only one exempted from the 30s default. Measured
+    // 14.8s / 15.2s / 21.1s across three full runs at `workers: 4`, so the default leaves it
+    // one bad run from a timeout that would read as a regression rather than as its own cost.
+    // Deliberately per-test and not a config-wide bump: every other check keeps the 30s ceiling,
+    // which is what makes a genuine hang surface fast. The real fix is fewer navigations, and
+    // that means restructuring a describe.serial chain whose next test consumes the baseline
+    // this one reads — out of scope for #1238.
+    test.setTimeout(60_000)
     baselineTabExpenseTotals = await readTabExpenseTotals(page)
 
     await page.goto(`/barn/${barn.slug}/expenses/${seeded.plannedExpense.id}`)
