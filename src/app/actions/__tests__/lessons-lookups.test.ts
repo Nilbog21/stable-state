@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockBarn, createMockHorse, createMockMembership, createMockScheduleItem } from '@/test/fixtures'
+import { createMockBarn, createMockHorse, createMockMembership, createMockScheduleItem, instant } from '@/test/fixtures'
 import { guardAs } from '@/test/mocks/guard'
 
 vi.mock('@/lib/auth/guard', () => ({
@@ -73,7 +73,7 @@ const mockTrainerMembership = createMockMembership({ role: 'trainer', created_at
 
 describe('getProjectedExhaustionForBarn', () => {
   const mockThresholds = { high: 11, moderate: 5 }
-  const mockRows = [{ lessonAt: '2026-05-17T10:00:00Z', exertionLevel: 3 }]
+  const mockRows = [{ lessonAt: instant('2026-05-17T10:00:00Z'), exertionLevel: 3 }]
   const mockHorseIds = ['horse-1', 'horse-2']
 
   beforeEach(() => {
@@ -100,12 +100,12 @@ describe('getProjectedExhaustionForBarn', () => {
 
   it('should_pass_exclude_lesson_id_to_getHorseProjectedExhaustion_when_provided', async () => {
     await getProjectedExhaustionForBarn('barn-slug', 'lesson-1', '2026-05-17T10:00', mockHorseIds)
-    expect(vi.mocked(getHorseProjectedExhaustion).mock.calls[0][3]).toBe('lesson-1')
+    expect(vi.mocked(getHorseProjectedExhaustion).mock.calls[0][4]).toBe('lesson-1')
   })
 
   it('should_pass_undefined_exclude_lesson_id_when_null', async () => {
     await getProjectedExhaustionForBarn('barn-slug', null, '2026-05-17T10:00', mockHorseIds)
-    expect(vi.mocked(getHorseProjectedExhaustion).mock.calls[0][3]).toBeUndefined()
+    expect(vi.mocked(getHorseProjectedExhaustion).mock.calls[0][4]).toBeUndefined()
   })
 
   it('should_require_manager_or_trainer_membership', async () => {

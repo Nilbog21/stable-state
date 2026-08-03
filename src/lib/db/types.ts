@@ -4,6 +4,7 @@
  * agreements, expenses, documents, notifications, barn events), finance/reporting rows,
  * and schedule/calendar item shapes. No runtime code.
  */
+
 /**
  * A real instant (a `TIMESTAMPTZ`) together with the barn it belongs to. Produced only by
  * the DAL, which is the only layer that knows both — so `formatBarnDateTime(instant)` needs
@@ -157,7 +158,10 @@ export interface LessonSeries {
   instructor_cut: number
 }
 
-export interface LessonWithDetails extends Lesson {
+// The hydrated display shapes brand `lesson_at`; the raw `Lesson` row above keeps the
+// plain string PostgREST returns, which is what the write paths and RPCs still deal in.
+export interface LessonWithDetails extends Omit<Lesson, 'lesson_at'> {
+  lesson_at: Instant
   payment_type: PaymentType | null
   instructor_name: string | null
   horse_names: string[]
@@ -170,7 +174,8 @@ export interface LessonWithDetails extends Lesson {
   needs_attention: boolean
 }
 
-export interface LessonDetail extends Lesson {
+export interface LessonDetail extends Omit<Lesson, 'lesson_at'> {
+  lesson_at: Instant
   payment_type: PaymentType | null
   instructor_name: string | null
   instructor_user_id: string | null
@@ -244,15 +249,25 @@ export interface OutstandingCancellationFee {
   fee: number
 }
 
-export interface OutstandingItem {
+interface OutstandingItemBase {
   id: string
-  itemType: 'lesson' | 'lease' | 'board' | 'cancellation_fee'
-  date: string
   instructorName: string | null
   riderNames: string[]
   fee: number
   linkId?: string // id to link to, when different from `id` — lesson id for cancellation_fee, agreement id for lease/board
 }
+
+/**
+ * `date` holds two different frames depending on the row's origin, so `itemType`
+ * discriminates them: a lesson-derived row's date is a real `lesson_at` instant, while a
+ * lease/board row's is `agreement_charges.period`, a zoneless DATE. The union is what lets
+ * `OutstandingTable`'s existing per-type branch narrow to the right formatter for free.
+ */
+export type OutstandingItem =
+  | (OutstandingItemBase & { itemType: 'lesson'; date: Instant })
+  | (OutstandingItemBase & { itemType: 'cancellation_fee'; date: Instant })
+  | (OutstandingItemBase & { itemType: 'lease'; date: string })
+  | (OutstandingItemBase & { itemType: 'board'; date: string })
 
 export type ScheduleItemType = 'lesson' | 'expense' | 'event'
 
@@ -260,7 +275,7 @@ export interface ScheduleItem {
   id: string
   itemType: ScheduleItemType
   /** Barn-local wall clock "YYYY-MM-DDTHH:mm:ss" — NOT a UTC instant. Do not pass
-   *  through new Date()/<LocalDateTime> for display; see dal.md's schedule.ts entry. */
+   *  through new Date()/a barn formatter for display; see dal.md's schedule.ts entry. */
   start: string
   durationMinutes: number
   instructorId: string | null
@@ -282,7 +297,7 @@ export interface BarnEvent {
   id: string
   barn_id: string
   title: string
-  event_at: string
+  event_at: Instant
   notes: string | null
   visible_to_roles: Role[]
   created_at: string
@@ -313,7 +328,7 @@ export interface RiderChargeDetailRow {
 
 export interface HorseIncomeDetailRow {
   lessonId: string
-  lessonAt: string
+  lessonAt: Instant
   fee: number
   horseCount: number
   splitAmount: number
@@ -321,7 +336,7 @@ export interface HorseIncomeDetailRow {
 
 export interface RiderIncomeDetailRow {
   lessonId: string
-  lessonAt: string
+  lessonAt: Instant
   fee: number
   riderCount: number
   splitAmount: number
@@ -329,7 +344,7 @@ export interface RiderIncomeDetailRow {
 
 export interface TrainerIncomeDetailRow {
   lessonId: string
-  lessonAt: string
+  lessonAt: Instant
   fee: number
 }
 
@@ -406,7 +421,8 @@ export interface Notification {
   body: string | null
   link: string | null
   read_at: string | null
-  created_at: string
+  // Branded because `NotificationBell` renders it; `read_at` is never displayed.
+  created_at: Instant
 }
 
 export type AgreementKind = 'lease' | 'board'

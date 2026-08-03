@@ -24,8 +24,9 @@ import { createClient } from '@/lib/supabase/server'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { redirect } from 'next/navigation'
 import { canManageLesson, isLateCancellation, isLessonCancellationEligible } from '@/lib/lesson-authorization'
+import type { Instant } from '@/lib/db/types'
 
-function computeCancellationIsLate(lessonAt: string, formData: FormData, allowInstructorOverride: boolean): boolean {
+function computeCancellationIsLate(lessonAt: Instant, formData: FormData, allowInstructorOverride: boolean): boolean {
   const cancelledByInstructor = allowInstructorOverride && formData.get('cancel_type') === 'instructor'
   return isLateCancellation(lessonAt, cancelledByInstructor)
 }
@@ -72,9 +73,9 @@ export async function cancelLessonAction(
   lessonId: string,
   formData: FormData
 ): Promise<void> {
-  const { membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
+  const { barn, membership } = await requireMembership(barnSlug, ['manager', 'trainer'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons`)
     return
@@ -130,9 +131,9 @@ export async function cancelRiderParticipationAction(
   riderId: string,
   formData: FormData
 ): Promise<void> {
-  const { user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
+  const { barn, user, membership } = await requireMembership(barnSlug, ['manager', 'trainer', 'rider'])
 
-  const lesson = await getLessonById(lessonId, barnId, membership.role)
+  const lesson = await getLessonById(lessonId, barnId, membership.role, barn.timezone)
   if (!lesson) {
     redirect(`/barn/${barnSlug}/lessons/${lessonId}`)
     return

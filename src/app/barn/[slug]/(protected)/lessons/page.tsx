@@ -78,7 +78,7 @@ export default async function LessonsPage({
       ? filterParam
       : null
 
-  const allLessons = await getLessonsByBarn(barn.id, user.id, membership.role)
+  const allLessons = await getLessonsByBarn(barn.id, user.id, membership.role, barn.timezone)
   const isManager = membership.role === 'manager'
   const isTrainer = membership.role === 'trainer'
   const effectiveFilter = filter ?? (isTrainer ? 'mine' : 'all')
@@ -99,8 +99,8 @@ export default async function LessonsPage({
 
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - OLDER_LESSON_CUTOFF_DAYS)
-  const recentLessons = lessons.filter((l) => new Date(l.lesson_at) >= cutoff)
-  const olderLessons = lessons.filter((l) => new Date(l.lesson_at) < cutoff)
+  const recentLessons = lessons.filter((l) => new Date(l.lesson_at.at) >= cutoff)
+  const olderLessons = lessons.filter((l) => new Date(l.lesson_at.at) < cutoff)
 
   const riderOptions = isManager || isTrainer ? buildRiderOptions(allLessons) : []
   const trainerOptions = buildTrainerOptions(allLessons)

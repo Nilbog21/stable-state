@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockHorse, createMockUser } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockHorse, createMockUser, instant } from '@/test/fixtures'
 
 vi.mock('@/lib/auth/guard', () => ({ requireMembership: vi.fn() }))
 vi.mock('@/lib/db/horses', () => ({
@@ -548,8 +548,8 @@ describe('HorseDetailPage', () => {
 
   it('should_pass_projected_exhaustion_rows_to_exhaustion_bar', async () => {
     vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([
-      { lessonAt: '2026-07-20T10:00:00Z', exertionLevel: 3 },
-      { lessonAt: '2026-07-22T10:00:00Z', exertionLevel: 4 },
+      { lessonAt: instant('2026-07-20T10:00:00Z'), exertionLevel: 3 },
+      { lessonAt: instant('2026-07-22T10:00:00Z'), exertionLevel: 4 },
     ])
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
@@ -604,7 +604,7 @@ describe('HorseDetailPage', () => {
 
   it('should_render_a_link_to_each_upcoming_lessons_detail_page', async () => {
     vi.mocked(getUpcomingLessonsForHorse).mockResolvedValue([
-      { id: 'lesson-1', lessonAt: '2026-08-01T10:00:00Z' },
+      { id: 'lesson-1', lessonAt: instant('2026-08-01T10:00:00Z') },
     ])
     const jsx = await HorseDetailPage({ params: pageParams })
     render(jsx)
@@ -616,7 +616,7 @@ describe('HorseDetailPage', () => {
     mockRequireMembershipAs(riderMembership)
     vi.mocked(getMyHorseLessonReadPrivilege).mockResolvedValue(true)
     await HorseDetailPage({ params: pageParams })
-    expect(getUpcomingLessonsForHorse).toHaveBeenCalledWith('horse-1', 'barn-1')
+    expect(getUpcomingLessonsForHorse).toHaveBeenCalledWith('horse-1', 'barn-1', 'America/New_York')
   })
 
   it('should_not_call_get_upcoming_lessons_for_horse_for_rider_without_lesson_read_privilege', async () => {

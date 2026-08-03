@@ -19,7 +19,7 @@ import type { DueDocument } from '@/lib/db/types'
 import { DocumentRemindersSection } from './DocumentRemindersSection'
 import { Button } from '@/components/ui/Button'
 import { Pill } from '@/components/ui/Pill'
-import { LocalDateTime } from '@/components/LocalDateTime'
+import { formatBarnTime } from '@/lib/format-date'
 
 // Icon-only Prev/Next controls have no good structural fit with the shared Button
 // component (see ARCHITECTURE.md's documented exception, mirrored by LessonForm's
@@ -85,9 +85,9 @@ export default async function BarnDashboardPage({
       const eventIds = scopedItems.filter((item) => item.itemType === 'event').map((item) => item.id)
 
       const [lessons, expensesRaw, events] = await Promise.all([
-        getLessonsByIds(barn.id, lessonIds),
+        getLessonsByIds(barn.id, lessonIds, barn.timezone),
         getExpensesByIds(barn.id, expenseIds),
-        getEventsByIds(barn.id, eventIds),
+        getEventsByIds(barn.id, eventIds, barn.timezone),
       ])
       // Mirrors the pre-Day-view dashboard: only "planned" expenses (amount IS NULL) are
       // shown, not every timed appointment getScheduleForRange itself returns.
@@ -133,7 +133,7 @@ export default async function BarnDashboardPage({
       {demoResetAt && (
         <div className="mb-8 rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-200">
           This is a demo barn. Data resets at approximately{' '}
-          <LocalDateTime iso={demoResetAt} options={{ timeStyle: 'short' }} />.
+          {formatBarnTime({ at: demoResetAt, tz: barn.timezone })}.
         </div>
       )}
       {hasReminders && (

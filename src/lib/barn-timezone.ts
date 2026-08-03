@@ -1,10 +1,8 @@
-// Barn-relative timezone: every comparison against barn data resolves "today"/"now" here,
-// whether it runs with a viewer present or not (cron jobs, dashboard SSR, and — via a
-// server-computed prop — the client forms' own date comparisons, #1149). Display of real
-// instants (lesson_at) stays viewer-local, per #935, and never reads this. An input default
-// resolves here too when the day it seeds is a day of barn business (#1224 — the new-expense
-// Date, the new-lease/boarding Start Date); only a default seeding the viewer's own scheduling
-// choice stays viewer-local (see local-day.ts's localToday).
+// Barn-relative timezone. #1222 deleted the viewer frame entirely, so this is now the only
+// frame in which a real instant is resolved: every "today"/"now" comparison against barn
+// data, every date/hour a user enters, and every instant rendered back (via the `Instant`
+// brand, which carries this zone with it — see `format-date.ts`). The remaining frame is
+// zoneless calendar arithmetic on "YYYY-MM-DD" strings, in `local-day.ts`.
 export const BARN_TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern (New York)' },
   { value: 'America/Chicago', label: 'Central (Chicago)' },
@@ -34,9 +32,9 @@ export function instantToLocalWallClock(instant: Date, timeZone: string): string
   return `${get('year')}-${get('month')}-${get('day')}T${get('hour')}:${get('minute')}:${get('second')}`
 }
 
-// The barn's own calendar day for an instant — the barn-local counterpart to local-day.ts's
-// localToday, and the value every comparison against barn data measures against. Computed
-// server-side and handed to client components as a prop; they must not re-derive it.
+// The barn's own calendar day for an instant — the value every comparison against barn data
+// measures against, and the default for any date input. Computed server-side and handed to
+// Server Components' children as a prop where the value must match a server render.
 export function barnToday(timeZone: string, now: Date = new Date()): string {
   return instantToLocalWallClock(now, timeZone).slice(0, 10)
 }

@@ -2,11 +2,10 @@
 
 import { Badge } from '@/components/ui/Badge'
 import { Card } from '@/components/ui/Card'
-import { LocalDateTime } from '@/components/LocalDateTime'
+import { formatBarnDateTime } from '@/lib/format-date'
 import type { LessonWithDetails } from '@/lib/db/types'
 import { isLessonEligibleForAttentionBadge } from '@/lib/lesson-authorization'
 
-const LESSON_AT_OPTIONS: Intl.DateTimeFormatOptions = { dateStyle: 'medium', timeStyle: 'short' }
 
 interface Props {
   lesson: LessonWithDetails
@@ -28,7 +27,7 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembe
     <li>
       <Card href={`/barn/${slug}/lessons/${lesson.id}`} className="flex flex-col gap-1 p-4">
         <span className="text-sm font-medium text-zinc-900 dark:text-zinc-50">
-          <LocalDateTime iso={lesson.lesson_at} options={LESSON_AT_OPTIONS} />
+          {formatBarnDateTime(lesson.lesson_at)}
         </span>
         {lesson.instructor_name && (
           <span className="text-sm text-zinc-700 dark:text-zinc-300">{lesson.instructor_name}</span>
@@ -56,7 +55,7 @@ export function LessonListItem({ lesson, slug, isManager, isTrainer, viewerMembe
           {!isCancelled && isOwnParticipationCancelled && (
             <Badge tone="red">Cancelled</Badge>
           )}
-          {!isCancelled && lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
+          {!isCancelled && lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at.at) < new Date() && (
             <Badge tone="amber">Unpaid</Badge>
           )}
           {needsAttention && (

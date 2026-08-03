@@ -63,7 +63,7 @@ export default async function HorsesPage({
     exhaustionByHorseId = new Map(
       await Promise.all(
         activeHorses.map(async (h) => {
-          const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, today)
+          const existingRows = await getHorseProjectedExhaustion(h.id, barn.id, today, barn.timezone)
           const thresholds = resolveExhaustionThresholds(h, barn)
           return [h.id, { existingRows, thresholds }] as const
         })

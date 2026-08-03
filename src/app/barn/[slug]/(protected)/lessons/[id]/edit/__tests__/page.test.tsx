@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
-import { createMockBarn, createMockHorse, createMockLessonDetail, createMockMembership } from '@/test/fixtures'
+import { createMockBarn, createMockHorse, createMockLessonDetail, createMockMembership, instant } from '@/test/fixtures'
 
 afterEach(cleanup)
 
@@ -39,7 +39,7 @@ const mockBarn = createMockBarn()
 const mockLesson = createMockLessonDetail({
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:00:00Z',
+  lesson_at: instant('2026-05-17T10:00:00Z'),
   submitted_at: '2026-05-17T10:05:00Z',
   lesson_riders: [{ rider_notes: null, private_notes: null, cancellation_notes: null, cancelled_at: null, barn_membership: { id: 'mem-1', name: 'Alice', user_id: null } }],
 })
@@ -379,7 +379,7 @@ describe('EditLessonPage', () => {
   it('should_show_horse_status_banner_when_future_uncancelled_lesson_has_inactive_horse', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await EditLessonPage({ params })
@@ -390,7 +390,7 @@ describe('EditLessonPage', () => {
   it('should_hide_horse_status_banner_when_lesson_is_in_the_past', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
-      lesson_at: '2020-01-01T10:00:00Z',
+      lesson_at: instant('2020-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await EditLessonPage({ params })
@@ -399,7 +399,7 @@ describe('EditLessonPage', () => {
   })
 
   it('should_hide_horse_status_banner_when_all_horses_active_and_available', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: instant('2099-01-01T10:00:00Z') })
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.queryByText('Needs Attention')).toBeNull()
@@ -408,7 +408,7 @@ describe('EditLessonPage', () => {
   it('should_pass_has_horse_issue_true_when_lesson_needs_attention', async () => {
     vi.mocked(getLessonById).mockResolvedValue({
       ...mockLesson,
-      lesson_at: '2099-01-01T10:00:00Z',
+      lesson_at: instant('2099-01-01T10:00:00Z'),
       lesson_horses: [{ exertion_level: 3, horse_notes: null, horses: { id: 'horse-1', name: 'Buttercup', is_active: false, is_available: true, unavailability_reason: null } }],
     })
     const jsx = await EditLessonPage({ params })
@@ -417,7 +417,7 @@ describe('EditLessonPage', () => {
   })
 
   it('should_pass_has_horse_issue_false_when_lesson_has_no_horse_issue', async () => {
-    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: '2099-01-01T10:00:00Z' })
+    vi.mocked(getLessonById).mockResolvedValue({ ...mockLesson, lesson_at: instant('2099-01-01T10:00:00Z') })
     const jsx = await EditLessonPage({ params })
     render(jsx)
     expect(screen.getByTestId('edit-lesson-form').dataset.hasHorseIssue).toBe('false')

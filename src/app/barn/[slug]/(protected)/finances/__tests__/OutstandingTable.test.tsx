@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 import { render, screen, fireEvent, cleanup, act } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -24,7 +25,7 @@ import { OutstandingTable } from '../OutstandingTable'
 const lessonItem = {
   id: 'lesson-1',
   itemType: 'lesson' as const,
-  date: '2026-06-10T10:00:00Z',
+  date: instant('2026-06-10T10:00:00Z'),
   instructorName: 'Jane Doe',
   riderNames: ['Alice'],
   fee: 75,
@@ -51,7 +52,7 @@ const leaseItem = {
 const cancellationFeeItem = {
   id: 'lesson-rider-1',
   itemType: 'cancellation_fee' as const,
-  date: '2026-06-05T10:00:00Z',
+  date: instant('2026-06-05T10:00:00Z'),
   instructorName: 'Jane Doe',
   riderNames: ['Erin Rider'],
   fee: 50,
@@ -309,8 +310,8 @@ describe('OutstandingTable', () => {
 
     // 2026-06-10T02:00:00Z is 10:00 PM EDT on June 9 — a naive UTC-anchored formatter
     // would show June 10 instead.
-    const earlyUtcLessonItem = { ...lessonItem, date: '2026-06-10T02:00:00Z' }
-    const earlyUtcCancellationFeeItem = { ...cancellationFeeItem, date: '2026-06-10T02:00:00Z' }
+    const earlyUtcLessonItem = { ...lessonItem, date: instant('2026-06-10T02:00:00Z') }
+    const earlyUtcCancellationFeeItem = { ...cancellationFeeItem, date: instant('2026-06-10T02:00:00Z') }
 
     it('should_display_a_lesson_rows_date_in_the_viewers_local_timezone_not_utc', () => {
       render(<OutstandingTable items={[earlyUtcLessonItem]} barnSlug="green-acres" />)

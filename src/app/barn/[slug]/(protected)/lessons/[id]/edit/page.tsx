@@ -34,7 +34,7 @@ export default async function EditLessonPage({
   const role = membership.role as 'manager' | 'trainer'
 
   const [lesson, horses, riderMembers, tiers, instructorList] = await Promise.all([
-    getLessonById(id, barn.id, role),
+    getLessonById(id, barn.id, role, barn.timezone),
     getHorsesByBarn(barn.id),
     getActiveMembersWithProfiles(barn.id, 'rider'),
     getAllTiersByBarn(barn.id),
@@ -106,6 +106,7 @@ export default async function EditLessonPage({
         </div>
       )}
       <LessonForm
+        timezone={barn.timezone}
         mode="edit"
         initialLesson={lesson}
         horses={horsesForForm}

@@ -1,7 +1,7 @@
 import { describe, it, expect, afterEach, beforeEach } from 'vitest'
 import { render, screen, cleanup } from '@testing-library/react'
 import { LessonListItem } from '../LessonListItem'
-import { createMockLessonWithDetails } from '@/test/fixtures'
+import { createMockLessonWithDetails, instant } from '@/test/fixtures'
 
 afterEach(cleanup)
 
@@ -10,7 +10,7 @@ const baseLesson = {
   barn_id: 'barn-1',
   instructor_id: 'user-1',
   fee: 75,
-  lesson_at: '2026-05-17T10:00:00Z',
+  lesson_at: instant('2026-05-17T10:00:00Z'),
   submitted_at: '2026-05-17T10:05:00Z',
   instructor_name: 'Jane Smith',
   jumping: false as const,
@@ -164,7 +164,7 @@ describe('LessonListItem', () => {
   it('should_show_unpaid_badge_when_past_lesson_with_fee_and_no_payment', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: null }}
+        lesson={{ ...normalLesson, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 75, payment_type: null }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -176,7 +176,7 @@ describe('LessonListItem', () => {
   it('should_not_show_unpaid_badge_when_fee_is_zero', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null }}
+        lesson={{ ...normalLesson, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 0, payment_type: null }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -188,7 +188,7 @@ describe('LessonListItem', () => {
   it('should_not_show_unpaid_badge_when_payment_type_is_set', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 75, payment_type: 'cash' }}
+        lesson={{ ...normalLesson, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 75, payment_type: 'cash' }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -200,7 +200,7 @@ describe('LessonListItem', () => {
   it('should_not_show_unpaid_badge_when_lesson_is_in_future', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', fee: 75, payment_type: null }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z'), fee: 75, payment_type: null }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -236,7 +236,7 @@ describe('LessonListItem', () => {
   it('should_not_show_unpaid_badge_when_lesson_is_cancelled', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z', fee: 0, payment_type: null, cancelled_at: '2026-01-01T00:00:00Z' }}
+        lesson={{ ...normalLesson, lesson_at: instant('2026-05-17T10:00:00Z'), fee: 0, payment_type: null, cancelled_at: '2026-01-01T00:00:00Z' }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -248,7 +248,7 @@ describe('LessonListItem', () => {
   it('should_not_render_any_cancel_link_for_manager_on_eligible_lesson', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z') }}
         slug="green-acres"
         isManager={true}
         isTrainer={false}
@@ -260,7 +260,7 @@ describe('LessonListItem', () => {
   it('should_not_render_any_cancel_link_for_instructing_trainer_on_eligible_lesson', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, instructor_id: 'user-1', lesson_at: '2099-01-01T10:00:00Z' }}
+        lesson={{ ...normalLesson, instructor_id: 'user-1', lesson_at: instant('2099-01-01T10:00:00Z') }}
         slug="green-acres"
         isManager={false}
         isTrainer={true}
@@ -272,7 +272,7 @@ describe('LessonListItem', () => {
   it('should_not_render_any_cancel_link_for_rider_with_active_own_participation', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z'), rider_ids: ['viewer-mem-1'], rider_cancelled_ats: [null] }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -285,7 +285,7 @@ describe('LessonListItem', () => {
   it('should_show_cancelled_badge_for_rider_own_cancelled_participation', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z'), rider_ids: ['viewer-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -298,7 +298,7 @@ describe('LessonListItem', () => {
   it('should_not_show_participation_badge_for_rider_when_not_enrolled_in_lesson', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', rider_ids: ['other-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z'), rider_ids: ['other-mem-1'], rider_cancelled_ats: ['2026-01-01T00:00:00Z'] }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -311,7 +311,7 @@ describe('LessonListItem', () => {
   it('should_show_needs_attention_badge_when_future_uncancelled_lesson_needs_attention', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', needs_attention: true }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z'), needs_attention: true }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -323,7 +323,7 @@ describe('LessonListItem', () => {
   it('should_not_show_needs_attention_badge_when_lesson_is_in_the_past', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2026-01-01T10:00:00Z', needs_attention: true }}
+        lesson={{ ...normalLesson, lesson_at: instant('2026-01-01T10:00:00Z'), needs_attention: true }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -335,7 +335,7 @@ describe('LessonListItem', () => {
   it('should_not_show_needs_attention_badge_when_lesson_is_cancelled', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z'), needs_attention: true, cancelled_at: '2026-01-01T00:00:00Z' }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -347,7 +347,7 @@ describe('LessonListItem', () => {
   it('should_not_show_needs_attention_badge_when_needs_attention_is_false', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z', needs_attention: false }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z'), needs_attention: false }}
         slug="green-acres"
         isManager={false}
         isTrainer={false}
@@ -365,7 +365,7 @@ describe('LessonListItem', () => {
   it('should_render_exactly_one_link_per_row_regardless_of_role', () => {
     render(
       <LessonListItem
-        lesson={{ ...normalLesson, lesson_at: '2099-01-01T10:00:00Z' }}
+        lesson={{ ...normalLesson, lesson_at: instant('2099-01-01T10:00:00Z') }}
         slug="green-acres"
         isManager={true}
         isTrainer={false}
@@ -391,7 +391,7 @@ describe('LessonListItem', () => {
       // formatter would show 10:00 AM instead.
       render(
         <LessonListItem
-          lesson={{ ...normalLesson, lesson_at: '2026-05-17T10:00:00Z' }}
+          lesson={{ ...normalLesson, lesson_at: instant('2026-05-17T10:00:00Z') }}
           slug="green-acres"
           isManager={false}
           isTrainer={false}

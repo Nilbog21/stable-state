@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -663,7 +664,7 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockFrom).toHaveBeenCalledWith('notifications')
   })
@@ -672,7 +673,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockSelect } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockSelect).toHaveBeenCalledWith('*')
   })
@@ -681,7 +682,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockEq1 } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-99', 'barn-1')
+    await getNotifications('user-99', 'barn-1', 'America/New_York')
 
     expect(mockEq1).toHaveBeenCalledWith('user_id', 'user-99')
   })
@@ -690,7 +691,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockEq2 } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-42')
+    await getNotifications('user-1', 'barn-42', 'America/New_York')
 
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-42')
   })
@@ -699,7 +700,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockOrder } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockOrder).toHaveBeenCalledWith('created_at', { ascending: false })
   })
@@ -708,7 +709,7 @@ describe('getNotifications', () => {
     const { mockFrom, mockLimit } = makeChain({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await getNotifications('user-1', 'barn-1')
+    await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(mockLimit).toHaveBeenCalledWith(20)
   })
@@ -717,7 +718,7 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: null, error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    const result = await getNotifications('user-1', 'barn-1')
+    const result = await getNotifications('user-1', 'barn-1', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -727,9 +728,9 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: [notif], error: null })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    const result = await getNotifications('user-1', 'barn-1')
+    const result = await getNotifications('user-1', 'barn-1', 'America/New_York')
 
-    expect(result).toEqual([notif])
+    expect(result).toEqual([{ ...notif, created_at: instant('2026-01-01T00:00:00Z') }])
   })
 
   it('should_throw_when_supabase_returns_error', async () => {
@@ -737,7 +738,7 @@ describe('getNotifications', () => {
     const { mockFrom } = makeChain({ data: null, error: dbError })
     vi.mocked(createClient).mockResolvedValue({ from: mockFrom } as any)
 
-    await expect(getNotifications('user-1', 'barn-1')).rejects.toThrow('select failed')
+    await expect(getNotifications('user-1', 'barn-1', 'America/New_York')).rejects.toThrow('select failed')
   })
 })
 

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { markAllNotificationsReadAction } from '@/app/actions/notifications'
 import { useNavigationBlocker } from './NavigationBlocker'
 import type { Notification } from '@/lib/db/types'
+import { formatBarnDate } from '@/lib/format-date'
 
 interface Props {
   notifications: Notification[]
@@ -85,7 +86,7 @@ export function NotificationBell({ notifications, barnSlug }: Props) {
                       <p className="mt-0.5 text-xs text-zinc-500 line-clamp-2">{n.body}</p>
                     )}
                     <p className="mt-0.5 text-xs text-zinc-400">
-                      {new Date(n.created_at).toLocaleDateString()}
+                      {formatBarnDate(n.created_at)}
                     </p>
                   </div>
                 )

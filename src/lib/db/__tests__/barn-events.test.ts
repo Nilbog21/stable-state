@@ -18,6 +18,9 @@ const mockEvent = {
   created_at: '2026-06-13T00:00:00Z',
 }
 
+// What the three branded readers return: the same row with its zone attached.
+const brandedMockEvent = { ...mockEvent, event_at: { at: mockEvent.event_at, tz: 'America/New_York' } }
+
 const mockInput = {
   title: 'Costume Party',
   eventAt: '2026-10-31T22:00:00Z',
@@ -41,9 +44,9 @@ describe('getEventsByBarn', () => {
       }),
     } as any)
 
-    const result = await getEventsByBarn('barn-1')
+    const result = await getEventsByBarn('barn-1', 'America/New_York')
 
-    expect(result).toEqual([mockEvent])
+    expect(result).toEqual([brandedMockEvent])
   })
 
   it('should_return_empty_array_when_data_is_null', async () => {
@@ -57,7 +60,7 @@ describe('getEventsByBarn', () => {
       }),
     } as any)
 
-    const result = await getEventsByBarn('barn-1')
+    const result = await getEventsByBarn('barn-1', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -73,7 +76,7 @@ describe('getEventsByBarn', () => {
       }),
     } as any)
 
-    await expect(getEventsByBarn('barn-1')).rejects.toThrow('db error')
+    await expect(getEventsByBarn('barn-1', 'America/New_York')).rejects.toThrow('db error')
   })
 })
 
@@ -95,9 +98,9 @@ describe('getEventById', () => {
       }),
     } as any)
 
-    const result = await getEventById('event-1', 'barn-1')
+    const result = await getEventById('event-1', 'barn-1', 'America/New_York')
 
-    expect(result).toEqual(mockEvent)
+    expect(result).toEqual(brandedMockEvent)
   })
 
   it('should_return_null_when_event_not_found', async () => {
@@ -113,7 +116,7 @@ describe('getEventById', () => {
       }),
     } as any)
 
-    const result = await getEventById('event-1', 'barn-1')
+    const result = await getEventById('event-1', 'barn-1', 'America/New_York')
 
     expect(result).toBeNull()
   })
@@ -131,7 +134,7 @@ describe('getEventById', () => {
       }),
     } as any)
 
-    await expect(getEventById('event-1', 'barn-1')).rejects.toThrow('db error')
+    await expect(getEventById('event-1', 'barn-1', 'America/New_York')).rejects.toThrow('db error')
   })
 })
 
@@ -148,7 +151,7 @@ describe('getEventsByIds', () => {
   }
 
   it('should_return_empty_array_without_querying_when_ids_is_empty', async () => {
-    const result = await getEventsByIds('barn-1', [])
+    const result = await getEventsByIds('barn-1', [], 'America/New_York')
 
     expect(result).toEqual([])
     expect(createClient).not.toHaveBeenCalled()
@@ -158,7 +161,7 @@ describe('getEventsByIds', () => {
     const { select, mockEq } = makeEventsChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await getEventsByIds('barn-1', ['event-1'])
+    await getEventsByIds('barn-1', ['event-1'], 'America/New_York')
 
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
@@ -167,7 +170,7 @@ describe('getEventsByIds', () => {
     const { select, mockIn } = makeEventsChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await getEventsByIds('barn-1', ['event-1', 'event-2'])
+    await getEventsByIds('barn-1', ['event-1', 'event-2'], 'America/New_York')
 
     expect(mockIn).toHaveBeenCalledWith('id', ['event-1', 'event-2'])
   })
@@ -176,16 +179,16 @@ describe('getEventsByIds', () => {
     const { select } = makeEventsChain([mockEvent])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getEventsByIds('barn-1', ['event-1'])
+    const result = await getEventsByIds('barn-1', ['event-1'], 'America/New_York')
 
-    expect(result).toEqual([mockEvent])
+    expect(result).toEqual([brandedMockEvent])
   })
 
   it('should_treat_null_data_as_empty', async () => {
     const { select } = makeEventsChain(null)
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getEventsByIds('barn-1', ['event-1'])
+    const result = await getEventsByIds('barn-1', ['event-1'], 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -194,7 +197,7 @@ describe('getEventsByIds', () => {
     const { select } = makeEventsChain(null, new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await expect(getEventsByIds('barn-1', ['event-1'])).rejects.toThrow('db error')
+    await expect(getEventsByIds('barn-1', ['event-1'], 'America/New_York')).rejects.toThrow('db error')
   })
 })
 

@@ -111,7 +111,8 @@ async function overlayPaymentTypes(
 export async function getLessonsByBarn(
   barnId: string,
   userId: string,
-  role: 'manager' | 'trainer' | 'rider'
+  role: 'manager' | 'trainer' | 'rider',
+  timezone: string
 ): Promise<LessonWithDetails[]> {
   const supabase = await createClient()
 
@@ -126,7 +127,7 @@ export async function getLessonsByBarn(
       .eq('barn_id', barnId)
       .order('lesson_at', { ascending: false })
     if (lessonsError) throw lessonsError
-    const withDetails = await hydrateParticipants(supabase, lessons ?? [], barnId)
+    const withDetails = await hydrateParticipants(supabase, lessons ?? [], barnId, timezone)
     return overlayPaymentTypes(supabase, withDetails, barnId)
   }
 
@@ -136,14 +137,14 @@ export async function getLessonsByBarn(
     .eq('barn_id', barnId)
     .order('lesson_at', { ascending: false })
   if (lessonsError) throw lessonsError
-  const withDetails = await hydrateParticipants(supabase, lessons, barnId)
+  const withDetails = await hydrateParticipants(supabase, lessons, barnId, timezone)
   return overlayPaymentTypes(supabase, withDetails, barnId)
 }
 
 // Hydrates a set of getScheduleForRange lesson ids into display data. No role param -- RLS
 // still applies to this query independently, and the id list itself is already role-scoped
 // by the caller (scopeScheduleItemsForRole + getScheduleForRange).
-export async function getLessonsByIds(barnId: string, ids: string[]): Promise<LessonWithDetails[]> {
+export async function getLessonsByIds(barnId: string, ids: string[], timezone: string): Promise<LessonWithDetails[]> {
   if (!ids.length) return []
   const supabase = await createClient()
   const { data: lessons, error } = await supabase
@@ -152,10 +153,10 @@ export async function getLessonsByIds(barnId: string, ids: string[]): Promise<Le
     .eq('barn_id', barnId)
     .in('id', ids)
   if (error) throw error
-  return hydrateParticipants(supabase, lessons ?? [], barnId)
+  return hydrateParticipants(supabase, lessons ?? [], barnId, timezone)
 }
 
-export async function getLessonById(lessonId: string, barnId: string, _role: Role): Promise<LessonDetail | null> {
+export async function getLessonById(lessonId: string, barnId: string, _role: Role, timezone: string): Promise<LessonDetail | null> {
   const supabase = await createClient()
   // exertion_level and rider_notes/private_notes are never selected here directly for
   // any role -- both are merged in separately via fetchExertionLevels/fetchRiderNotes
@@ -249,6 +250,7 @@ export async function getLessonById(lessonId: string, barnId: string, _role: Rol
 
   return {
     ...lessonData,
+    lesson_at: { at: lessonData.lesson_at, tz: timezone },
     lesson_horses,
     payment_type: paymentMap.get(lessonId) ?? null,
     instructor_name,

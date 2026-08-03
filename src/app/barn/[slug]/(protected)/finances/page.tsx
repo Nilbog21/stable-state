@@ -51,7 +51,7 @@ export default async function FinancesPage({
     getRecipientExpenseSummary(barn.id, startDate, endDate, barn.timezone),
   ])
 
-  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees)
+  const outstandingItems = mergeOutstandingItems(outstandingLessons, outstandingCharges, outstandingCancellationFees, barn.timezone)
   const outstandingTotal = outstandingItems.reduce((sum, i) => sum + i.fee, 0)
   const outstandingExpensesTotal = outstandingExpenses.reduce((sum, e) => sum + (e.amount ?? 0), 0)
 

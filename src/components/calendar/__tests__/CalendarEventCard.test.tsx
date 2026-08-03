@@ -1,20 +1,13 @@
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { CalendarEventCard, formatEventTime } from '../CalendarEventCard'
-import { createMockBarnEvent } from '@/test/fixtures'
-
-describe('formatEventTime', () => {
-  it('should_format_the_event_start_time', () => {
-    const iso = '2026-07-09T14:00:00Z'
-    expect(formatEventTime(iso)).toBe(new Date(iso).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' }))
-  })
-})
+import { CalendarEventCard } from '../CalendarEventCard'
+import { createMockBarnEvent, instant } from '@/test/fixtures'
 
 describe('CalendarEventCard', () => {
-  it('should_render_formatted_time', () => {
-    const iso = '2026-07-15T14:00:00Z'
-    render(<CalendarEventCard event={createMockBarnEvent({ event_at: iso })} />)
-    expect(screen.getByText(formatEventTime(iso))).toBeDefined()
+  // See CalendarLessonCard.test.tsx — 14:00Z is 10:00 barn-local, 19:30 host-local.
+  it('should_render_the_time_in_the_barns_timezone', () => {
+    render(<CalendarEventCard event={createMockBarnEvent({ event_at: instant('2026-07-15T14:00:00Z') })} />)
+    expect(screen.getByText('10:00 AM')).toBeDefined()
   })
 
   it('should_render_title', () => {

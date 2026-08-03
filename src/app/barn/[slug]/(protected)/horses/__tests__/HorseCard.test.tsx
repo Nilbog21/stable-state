@@ -1,9 +1,10 @@
 import { describe, it, expect } from 'vitest'
+import { instant } from '@/test/fixtures'
 import { render, screen } from '@testing-library/react'
 import { HorseCard } from '../HorseCard'
 
 const exhaustion = {
-  existingRows: [{ lessonAt: '2026-07-01', exertionLevel: 3 }],
+  existingRows: [{ lessonAt: instant('2026-07-01'), exertionLevel: 3 }],
   thresholds: { high: 11, moderate: 5 },
 }
 

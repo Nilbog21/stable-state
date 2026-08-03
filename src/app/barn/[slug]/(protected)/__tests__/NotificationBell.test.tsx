@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { instant } from '@/test/fixtures'
 import { render, screen, cleanup, fireEvent, act } from '@testing-library/react'
 
 afterEach(cleanup)
@@ -43,7 +44,7 @@ const unreadNotif: Notification = {
   body: 'You have an outstanding payment.',
   link: '/barn/test/finances',
   read_at: null,
-  created_at: '2026-01-01T00:00:00Z',
+  created_at: instant('2026-01-01T00:00:00Z'),
 }
 
 const readNotif: Notification = {

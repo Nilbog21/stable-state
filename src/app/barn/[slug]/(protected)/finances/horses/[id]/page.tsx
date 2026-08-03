@@ -5,14 +5,19 @@ import { getHorseExpenseDetail } from '@/lib/db/expense-finances'
 import { resolveFinancesMonth, formatMonthParam } from '@/lib/finances-month'
 import { formatCurrency } from '@/lib/format-currency'
 import { formatShortDate } from '@/lib/format-date'
-import { LocalDateTime, DATE_ONLY_OPTIONS } from '@/components/LocalDateTime'
+import { formatBarnDate } from '@/lib/format-date'
+import type { Instant } from '@/lib/db/types'
 import { Th, Td } from '@/components/ui/Table'
 
 
 type CombinedRow =
-  | { kind: 'lesson'; key: string; date: string; href: string; amount: number; horseCount: number; split: number }
+  | { kind: 'lesson'; key: string; date: Instant; href: string; amount: number; horseCount: number; split: number }
   | { kind: 'lease' | 'board'; key: string; date: string; href: string; amount: number }
   | { kind: 'expense'; key: string; date: string; href: string; amount: number; horseCount: number; split: number }
+
+function sortableDate(date: Instant | string): string {
+  return typeof date === 'string' ? date : date.at
+}
 
 const TYPE_LABELS: Record<CombinedRow['kind'], string> = {
   lesson: 'Lesson',
@@ -35,7 +40,7 @@ export default async function HorseIncomePage({
   const { startDate, endDate, monthLabel } = resolveFinancesMonth(monthParam, barn.created_at, new Date())
 
   const [{ horseName, rows, chargeRows, total }, expenseDetail] = await Promise.all([
-    getHorseIncomeDetail(barn.id, horseId, startDate, endDate),
+    getHorseIncomeDetail(barn.id, horseId, startDate, endDate, barn.timezone),
     getHorseExpenseDetail(barn.id, horseId, startDate, endDate, barn.timezone),
   ])
 
@@ -65,7 +70,9 @@ export default async function HorseIncomePage({
       horseCount: row.horseCount,
       split: row.splitAmount,
     })),
-  ].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+  // A lesson row's date is a branded instant, a lease/board/expense row's a DATE-only
+  // string; both sort correctly on the ISO prefix they share.
+  ].sort((a, b) => sortableDate(a.date).localeCompare(sortableDate(b.date)))
 
   const net = total - expenseDetail.total
 
@@ -108,11 +115,7 @@ export default async function HorseIncomePage({
                   <tr key={row.key}>
                     <Td>
                       <Link href={row.href} className="underline">
-                        {row.kind === 'lesson' ? (
-                          <LocalDateTime iso={row.date} options={DATE_ONLY_OPTIONS} />
-                        ) : (
-                          formatShortDate(row.date)
-                        )}
+                        {row.kind === 'lesson' ? formatBarnDate(row.date) : formatShortDate(row.date)}
                       </Link>
                     </Td>
                     <Td>{TYPE_LABELS[row.kind]}</Td>

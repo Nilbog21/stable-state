@@ -8,7 +8,17 @@
 import { createClient } from '@/lib/supabase/server'
 import type { BarnEvent, BarnEventInput } from './types'
 
-export async function getEventsByBarn(barnId: string): Promise<BarnEvent[]> {
+// A `barn_events` row exactly as PostgREST returns it: `event_at` is a plain TIMESTAMPTZ
+// string. Every read brands it with the barn's zone so callers never see an unzoned instant
+// (#1222); the create/update writes return this raw shape, since neither caller reads it and
+// neither has a reason to take a timezone argument just to satisfy the brand.
+type BarnEventRow = Omit<BarnEvent, 'event_at'> & { event_at: string }
+
+function brandEvent(row: BarnEventRow, timezone: string): BarnEvent {
+  return { ...row, event_at: { at: row.event_at, tz: timezone } }
+}
+
+export async function getEventsByBarn(barnId: string, timezone: string): Promise<BarnEvent[]> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('barn_events')
@@ -17,10 +27,10 @@ export async function getEventsByBarn(barnId: string): Promise<BarnEvent[]> {
     .order('event_at', { ascending: true })
 
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((row) => brandEvent(row, timezone))
 }
 
-export async function getEventById(eventId: string, barnId: string): Promise<BarnEvent | null> {
+export async function getEventById(eventId: string, barnId: string, timezone: string): Promise<BarnEvent | null> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('barn_events')
@@ -30,13 +40,13 @@ export async function getEventById(eventId: string, barnId: string): Promise<Bar
     .maybeSingle()
 
   if (error) throw error
-  return data
+  return data ? brandEvent(data, timezone) : null
 }
 
 // Hydrates a set of getScheduleForRange event ids into display data, same idiom as
 // getLessonsByIds/getExpensesByIds. No extra hydration needed -- BarnEvent has no derived
 // display fields.
-export async function getEventsByIds(barnId: string, ids: string[]): Promise<BarnEvent[]> {
+export async function getEventsByIds(barnId: string, ids: string[], timezone: string): Promise<BarnEvent[]> {
   if (!ids.length) return []
   const supabase = await createClient()
   const { data, error } = await supabase
@@ -46,10 +56,10 @@ export async function getEventsByIds(barnId: string, ids: string[]): Promise<Bar
     .in('id', ids)
 
   if (error) throw error
-  return data ?? []
+  return (data ?? []).map((row) => brandEvent(row, timezone))
 }
 
-export async function createEvent(barnId: string, input: BarnEventInput): Promise<BarnEvent> {
+export async function createEvent(barnId: string, input: BarnEventInput): Promise<BarnEventRow> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('barn_events')
@@ -68,7 +78,7 @@ export async function createEvent(barnId: string, input: BarnEventInput): Promis
   return data
 }
 
-export async function updateEvent(eventId: string, barnId: string, input: BarnEventInput): Promise<BarnEvent> {
+export async function updateEvent(eventId: string, barnId: string, input: BarnEventInput): Promise<BarnEventRow> {
   const supabase = await createClient()
   const { data, error } = await supabase
     .from('barn_events')

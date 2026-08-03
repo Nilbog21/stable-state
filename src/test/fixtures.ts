@@ -1,4 +1,4 @@
-import type { Agreement, Appointment, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledAppointment, ScheduleItem } from '@/lib/db/types'
+import type { Agreement, Appointment, AgreementCharge, Barn, BarnEvent, BarnMembership, ExpenseWithHorses, Horse, HorseExertionSummary, HorseExpense, Instant, Lesson, LessonDetail, LessonSeries, LessonTier, LessonWithDetails, MemberHorsePrivilege, PaymentType, Profile, ScheduledAppointment, ScheduleItem } from '@/lib/db/types'
 
 export function createMockScheduleItem(overrides: Partial<ScheduleItem> = {}): ScheduleItem {
   return {
@@ -124,6 +124,14 @@ export function createMockMemberHorsePrivilege(overrides: Partial<MemberHorsePri
 }
 
 
+// Every branded fixture below carries the same zone `createMockBarn` uses, so a test that
+// pairs the two sees a consistent barn. `instant()` is the shorthand for overriding one.
+export const MOCK_BARN_TZ = 'America/New_York'
+
+export function instant(at: string, tz: string = MOCK_BARN_TZ): Instant {
+  return { at, tz }
+}
+
 export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
   return {
     id: 'lesson-1',
@@ -146,6 +154,7 @@ export function createMockLesson(overrides: Partial<Lesson> = {}): Lesson {
 export function createMockLessonWithDetails(overrides: Partial<LessonWithDetails> = {}): LessonWithDetails {
   return {
     ...createMockLesson(),
+    lesson_at: instant('2026-05-19T10:00:00Z'),
     payment_type: null,
     instructor_name: 'Jane Smith',
     horse_names: ['Thunderbolt'],
@@ -163,6 +172,7 @@ export function createMockLessonWithDetails(overrides: Partial<LessonWithDetails
 export function createMockLessonDetail(overrides: Partial<LessonDetail> = {}): LessonDetail {
   return {
     ...createMockLesson(),
+    lesson_at: instant('2026-05-19T10:00:00Z'),
     payment_type: null,
     instructor_name: 'Jane Smith',
     instructor_user_id: 'user-1',
@@ -180,8 +190,12 @@ export function makeLessonDetail(
   instructorUserId: string | null = null
 ) {
   const { payment_type = null, ...lessonOverrides } = overrides
+  const lesson = createMockLesson(lessonOverrides)
   return {
-    ...createMockLesson(lessonOverrides),
+    ...lesson,
+    // Callers override `lesson_at` with the plain string the raw row carries; branding it
+    // here keeps every one of them from restating the barn zone (#1222).
+    lesson_at: instant(lesson.lesson_at),
     payment_type,
     instructor_name: null,
     instructor_user_id: instructorUserId,
@@ -237,7 +251,7 @@ export function createMockBarnEvent(overrides: Partial<BarnEvent> = {}): BarnEve
     id: 'event-1',
     barn_id: 'barn-1',
     title: 'Costume Party',
-    event_at: '2026-07-01T10:00:00Z',
+    event_at: instant('2026-07-01T10:00:00Z'),
     notes: null,
     visible_to_roles: ['manager', 'trainer', 'rider'],
     created_at: '',

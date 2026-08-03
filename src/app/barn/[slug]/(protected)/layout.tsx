@@ -45,7 +45,7 @@ export default async function ProtectedBarnLayout({
   const [allMemberships, profileRows, notifications] = await Promise.all([
     getBarnMembershipsForUser(user.id),
     getProfilesByUserIds([user.id]),
-    getNotifications(user.id, barn.id),
+    getNotifications(user.id, barn.id, barn.timezone),
   ])
   const profile = profileRows[0] ?? null
   const initials =

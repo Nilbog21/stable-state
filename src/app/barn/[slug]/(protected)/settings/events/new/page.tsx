@@ -29,7 +29,7 @@ export default async function EventNewPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         New Event
       </h1>
-      <EventForm mode="new" action={save} />
+      <EventForm mode="new" timezone={barn.timezone} action={save} />
     </main>
   )
 }

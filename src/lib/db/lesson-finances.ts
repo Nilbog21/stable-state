@@ -525,12 +525,13 @@ export async function getHorseIncomeDetail(
   barnId: string,
   horseId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<{ horseName: string; rows: HorseIncomeDetailRow[]; chargeRows: HorseChargeDetailRow[]; total: number }> {
   const { name, rows, chargeRows, total } = await getEntityIncome(HORSE_INCOME_DESCRIPTOR, 'detail', barnId, startDate, endDate, horseId)
   return {
     horseName: name,
-    rows: rows.map((r) => ({ lessonId: r.lessonId, lessonAt: r.lessonAt, fee: r.fee, horseCount: r.count, splitAmount: r.splitAmount })),
+    rows: rows.map((r) => ({ lessonId: r.lessonId, lessonAt: { at: r.lessonAt, tz: timezone }, fee: r.fee, horseCount: r.count, splitAmount: r.splitAmount })),
     chargeRows,
     total,
   }
@@ -540,12 +541,13 @@ export async function getRiderIncomeDetail(
   barnId: string,
   riderId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<{ riderName: string; rows: RiderIncomeDetailRow[]; chargeRows: RiderChargeDetailRow[]; total: number }> {
   const { name, rows, chargeRows, total } = await getEntityIncome(RIDER_INCOME_DESCRIPTOR, 'detail', barnId, startDate, endDate, riderId)
   return {
     riderName: name,
-    rows: rows.map((r) => ({ lessonId: r.lessonId, lessonAt: r.lessonAt, fee: r.fee, riderCount: r.count, splitAmount: r.splitAmount })),
+    rows: rows.map((r) => ({ lessonId: r.lessonId, lessonAt: { at: r.lessonAt, tz: timezone }, fee: r.fee, riderCount: r.count, splitAmount: r.splitAmount })),
     chargeRows,
     total,
   }
@@ -555,12 +557,13 @@ export async function getTrainerIncomeDetail(
   barnId: string,
   trainerId: string,
   startDate: Date,
-  endDate: Date
+  endDate: Date,
+  timezone: string
 ): Promise<{ trainerName: string; rows: TrainerIncomeDetailRow[]; total: number }> {
   const { name, rows, total } = await getEntityIncome(TRAINER_INCOME_DESCRIPTOR, 'detail', barnId, startDate, endDate, trainerId)
   return {
     trainerName: name,
-    rows: rows.map((r) => ({ lessonId: r.lessonId, lessonAt: r.lessonAt, fee: r.fee })),
+    rows: rows.map((r) => ({ lessonId: r.lessonId, lessonAt: { at: r.lessonAt, tz: timezone }, fee: r.fee })),
     total,
   }
 }

@@ -72,7 +72,7 @@ describe('getLessonsByBarn', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
     expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: false })
@@ -84,7 +84,7 @@ describe('getLessonsByBarn', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -97,9 +97,9 @@ describe('getLessonsByBarn', () => {
       rpc: makePaymentInfoRpc(),
     } as any)
 
-    await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
-    expect(hydrateParticipants).toHaveBeenCalledWith(expect.anything(), [lesson], 'barn-1')
+    expect(hydrateParticipants).toHaveBeenCalledWith(expect.anything(), [lesson], 'barn-1', 'America/New_York')
   })
 
   it('should_return_whatever_hydrate_participants_resolves_to', async () => {
@@ -112,7 +112,7 @@ describe('getLessonsByBarn', () => {
     const hydrated = [createMockLessonWithDetails()]
     vi.mocked(hydrateParticipants).mockResolvedValueOnce(hydrated)
 
-    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(result).toEqual(hydrated)
   })
@@ -126,7 +126,7 @@ describe('getLessonsByBarn', () => {
       rpc: mockRpc,
     } as any)
 
-    await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(mockRpc).toHaveBeenCalledWith('get_lesson_payment_info', { p_lesson_ids: ['lesson-1'], p_barn_id: 'barn-1' })
   })
@@ -139,7 +139,7 @@ describe('getLessonsByBarn', () => {
       rpc: makePaymentInfoRpc([{ lesson_id: 'lesson-1', payment_type: 'venmo' }]),
     } as any)
 
-    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(result[0].payment_type).toBe('venmo')
   })
@@ -152,7 +152,7 @@ describe('getLessonsByBarn', () => {
       rpc: makePaymentInfoRpc([]),
     } as any)
 
-    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(result[0].payment_type).toBeNull()
   })
@@ -165,7 +165,7 @@ describe('getLessonsByBarn', () => {
       rpc: mockRpc,
     } as any)
 
-    await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(mockRpc).not.toHaveBeenCalled()
   })
@@ -178,7 +178,7 @@ describe('getLessonsByBarn', () => {
       rpc: makePaymentInfoRpc([], new Error('rpc error')),
     } as any)
 
-    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('rpc error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')).rejects.toThrow('rpc error')
   })
 
   it('should_default_payment_type_to_null_when_rpc_data_is_null', async () => {
@@ -189,7 +189,7 @@ describe('getLessonsByBarn', () => {
       rpc: vi.fn().mockResolvedValue({ data: null, error: null }),
     } as any)
 
-    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager')
+    const result = await getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')
 
     expect(result[0].payment_type).toBeNull()
   })
@@ -200,7 +200,7 @@ describe('getLessonsByBarn', () => {
       from: vi.fn().mockReturnValue({ select }),
     } as any)
 
-    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager')).rejects.toThrow('db error')
+    await expect(getLessonsByBarn('barn-1', 'user-1', 'manager', 'America/New_York')).rejects.toThrow('db error')
   })
 
   describe('role_filtering', () => {
@@ -234,7 +234,7 @@ describe('getLessonsByBarn', () => {
       const fromFn = vi.fn().mockReturnValue({ select })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
+      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer', 'America/New_York')
 
       expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
     })
@@ -244,7 +244,7 @@ describe('getLessonsByBarn', () => {
       const fromFn = vi.fn().mockReturnValue({ select })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
+      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer', 'America/New_York')
 
       expect(mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: false })
     })
@@ -254,7 +254,7 @@ describe('getLessonsByBarn', () => {
       const fromFn = vi.fn().mockReturnValue({ select })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer')
+      await getLessonsByBarn('barn-1', 'trainer-1', 'trainer', 'America/New_York')
 
       expect(fromFn).not.toHaveBeenCalledWith('barn_memberships')
     })
@@ -274,7 +274,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makePaymentInfoRpc() } as any)
 
-      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')
 
       expect(result).toHaveLength(1)
     })
@@ -294,7 +294,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makePaymentInfoRpc() } as any)
 
-      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')
 
       expect(result[0].id).toBe(lesson.id)
     })
@@ -308,7 +308,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')
 
       expect(result).toEqual([])
     })
@@ -323,7 +323,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      await getLessonsByBarn('barn-1', 'user-1', 'rider')
+      await getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')
 
       expect(mockBarnEq).toHaveBeenCalledWith('barn_id', 'barn-1')
     })
@@ -335,7 +335,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')
 
       expect(result).toEqual([])
     })
@@ -348,7 +348,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')
 
       expect(result).toEqual([])
     })
@@ -360,7 +360,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider')).rejects.toThrow('rider error')
+      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')).rejects.toThrow('rider error')
     })
 
     it('should_throw_when_enrollment_lookup_returns_error', async () => {
@@ -371,7 +371,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider')).rejects.toThrow('enrollment error')
+      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')).rejects.toThrow('enrollment error')
     })
 
     it('should_throw_when_rider_lessons_fetch_returns_error', async () => {
@@ -383,7 +383,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn } as any)
 
-      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider')).rejects.toThrow('lessons error')
+      await expect(getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')).rejects.toThrow('lessons error')
     })
 
     it('should_include_lessons_for_rider_role_when_their_own_participation_is_cancelled', async () => {
@@ -403,7 +403,7 @@ describe('getLessonsByBarn', () => {
       })
       vi.mocked(createClient).mockResolvedValue({ from: fromFn, rpc: makePaymentInfoRpc() } as any)
 
-      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider')
+      const result = await getLessonsByBarn('barn-1', 'user-1', 'rider', 'America/New_York')
 
       expect(result).toHaveLength(1)
     })
@@ -423,7 +423,7 @@ describe('getLessonsByIds', () => {
   }
 
   it('should_return_empty_array_without_querying_when_ids_is_empty', async () => {
-    const result = await getLessonsByIds('barn-1', [])
+    const result = await getLessonsByIds('barn-1', [], 'America/New_York')
 
     expect(result).toEqual([])
     expect(createClient).not.toHaveBeenCalled()
@@ -433,7 +433,7 @@ describe('getLessonsByIds', () => {
     const { select, mockEq } = makeLessonsChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await getLessonsByIds('barn-1', ['lesson-1'])
+    await getLessonsByIds('barn-1', ['lesson-1'], 'America/New_York')
 
     expect(mockEq).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
@@ -442,7 +442,7 @@ describe('getLessonsByIds', () => {
     const { select, mockIn } = makeLessonsChain([])
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await getLessonsByIds('barn-1', ['lesson-1', 'lesson-2'])
+    await getLessonsByIds('barn-1', ['lesson-1', 'lesson-2'], 'America/New_York')
 
     expect(mockIn).toHaveBeenCalledWith('id', ['lesson-1', 'lesson-2'])
   })
@@ -453,7 +453,7 @@ describe('getLessonsByIds', () => {
     const hydrated = [createMockLessonWithDetails({ id: mockLesson.id })]
     vi.mocked(hydrateParticipants).mockResolvedValue(hydrated as any)
 
-    const result = await getLessonsByIds('barn-1', [mockLesson.id])
+    const result = await getLessonsByIds('barn-1', [mockLesson.id], 'America/New_York')
 
     expect(result).toEqual(hydrated)
   })
@@ -462,7 +462,7 @@ describe('getLessonsByIds', () => {
     const { select } = makeLessonsChain(null)
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    const result = await getLessonsByIds('barn-1', ['lesson-1'])
+    const result = await getLessonsByIds('barn-1', ['lesson-1'], 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -471,7 +471,7 @@ describe('getLessonsByIds', () => {
     const { select } = makeLessonsChain(null, new Error('db error'))
     vi.mocked(createClient).mockResolvedValue({ from: vi.fn().mockReturnValue({ select }) } as any)
 
-    await expect(getLessonsByIds('barn-1', ['lesson-1'])).rejects.toThrow('db error')
+    await expect(getLessonsByIds('barn-1', ['lesson-1'], 'America/New_York')).rejects.toThrow('db error')
   })
 })
 

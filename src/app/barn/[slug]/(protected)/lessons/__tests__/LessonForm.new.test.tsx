@@ -40,7 +40,7 @@ describe('computeUnpaidWarn', () => {
 describe('LessonForm', () => {
   it('should_hide_exertion_input_when_horse_checkbox_is_unchecked', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     const checkbox = screen.getByRole('checkbox', { name: /Thunder/i }) as HTMLInputElement
     fireEvent.click(checkbox)
     expect(screen.queryByRole('spinbutton', { name: /Exertion level for Thunder/i })).not.toBeNull()
@@ -49,47 +49,47 @@ describe('LessonForm', () => {
   })
 
   it('should_label_horse_picker_as_singular_for_normal_lesson', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.getByText('Horse', { exact: true })).toBeDefined()
   })
 
   it('should_hide_select_at_least_one_hint_for_normal_lesson', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByText(/select at least one/i)).toBeNull()
   })
 
   it('should_label_horse_picker_as_plural_for_group_lesson', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     expect(screen.getByText(/Horses/)).toBeDefined()
   })
 
   it('should_show_select_at_least_one_hint_for_group_lesson', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     expect(screen.getByText(/select at least one/i)).toBeDefined()
   })
 
   it('should_not_render_instructor_select_when_isManager_is_false', () => {
-    render(<LessonForm {...baseProps} isManager={false} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={false} />)
     expect(screen.queryByLabelText(/instructor/i)).toBeNull()
   })
 
   it('should_hide_instructor_name_entirely_when_is_manager_is_false', () => {
     const instructors = [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' }]
-    render(<LessonForm {...baseProps} isManager={false} instructors={instructors} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={false} instructors={instructors} />)
     expect(screen.queryByText('Jane Doe')).toBeNull()
   })
 
   it('should_render_instructor_select_when_isManager_is_true', () => {
     const instructors = [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' }]
-    render(<LessonForm {...baseProps} isManager={true} instructors={instructors} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} instructors={instructors} />)
     expect(screen.queryByLabelText(/instructor/i)).not.toBeNull()
   })
 
   it('should_default_instructor_select_to_currentMembershipId', () => {
     const instructors = [{ membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' }]
-    render(<LessonForm {...baseProps} isManager={true} instructors={instructors} currentMembershipId="user-1" />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} instructors={instructors} currentMembershipId="user-1" />)
     const select = screen.getByLabelText(/instructor/i) as HTMLSelectElement
     expect(select.value).toBe('user-1')
   })
@@ -99,14 +99,14 @@ describe('LessonForm', () => {
       { membershipId: 'user-1', userId: 'user-1', name: 'Jane Doe' },
       { membershipId: 'user-2', userId: 'user-2', name: 'John Smith' },
     ]
-    render(<LessonForm {...baseProps} isManager={true} instructors={instructors} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} instructors={instructors} />)
     expect(screen.queryByRole('option', { name: 'Jane Doe' })).not.toBeNull()
     expect(screen.queryByRole('option', { name: 'John Smith' })).not.toBeNull()
   })
 
   it('should_render_error_message_when_action_returns_error', async () => {
     const errorAction = vi.fn().mockResolvedValue({ error: 'Something went wrong' })
-    render(<LessonForm {...baseProps} action={errorAction} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} action={errorAction} />)
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
     await waitFor(() => {
@@ -119,7 +119,7 @@ describe('LessonForm', () => {
     const pendingAction = vi.fn().mockImplementation(() => new Promise(() => {}))
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm {...baseProps} action={pendingAction} horses={[horse]} riders={[rider]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} action={pendingAction} horses={[horse]} riders={[rider]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const riderSelect = container.querySelector('select[name="rider_id"]') as HTMLSelectElement
     fireEvent.change(riderSelect, { target: { value: 'r1' } })
@@ -131,34 +131,34 @@ describe('LessonForm', () => {
   })
 
   it('should_render_normal_toggle_button', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('button', { name: 'Normal' })).not.toBeNull()
   })
 
   it('should_render_group_toggle_button', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.queryByRole('button', { name: 'Group' })).not.toBeNull()
   })
 
   it('should_default_lesson_type_hidden_input_to_normal', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const hiddenInput = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
     expect(hiddenInput).not.toBeNull()
     expect(hiddenInput.value).toBe('normal')
   })
 
   it('should_show_single_rider_select_in_normal_mode', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(container.querySelector('select[name="rider_id"]')).not.toBeNull()
   })
 
   it('should_not_show_rider_checkboxes_in_normal_mode', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(container.querySelector('input[type="checkbox"][name="rider_id"]')).toBeNull()
   })
 
   it('should_switch_to_group_mode_when_group_button_clicked', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     const hiddenInput = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
     expect(hiddenInput.value).toBe('group')
@@ -169,14 +169,14 @@ describe('LessonForm', () => {
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    const { container } = render(<LessonForm {...baseProps} riders={riders} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]')
     expect(checkboxes).toHaveLength(2)
   })
 
   it('should_hide_single_rider_select_in_group_mode', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     expect(container.querySelector('select[name="rider_id"]')).toBeNull()
   })
@@ -187,7 +187,7 @@ describe('LessonForm', () => {
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    render(<LessonForm {...baseProps} horses={[horse]} riders={riders} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
@@ -202,7 +202,7 @@ describe('LessonForm', () => {
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    render(<LessonForm {...baseProps} action={action} horses={[horse]} riders={riders} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} action={action} horses={[horse]} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
@@ -211,14 +211,14 @@ describe('LessonForm', () => {
   })
 
   it('should_restore_single_rider_select_when_normal_button_clicked_from_group_mode', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     expect(container.querySelector('select[name="rider_id"]')).not.toBeNull()
   })
 
   it('should_set_lesson_type_to_normal_when_normal_button_clicked_from_group_mode', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     fireEvent.click(screen.getByRole('button', { name: 'Normal' }))
     const hiddenInput = container.querySelector('input[name="lesson_type"]') as HTMLInputElement
@@ -230,7 +230,7 @@ describe('LessonForm', () => {
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    const { container } = render(<LessonForm {...baseProps} riders={riders} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]') as NodeListOf<HTMLInputElement>
     fireEvent.click(checkboxes[0])
@@ -242,7 +242,7 @@ describe('LessonForm', () => {
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    const { container } = render(<LessonForm {...baseProps} riders={riders} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]') as NodeListOf<HTMLInputElement>
     fireEvent.click(checkboxes[0])
@@ -251,64 +251,64 @@ describe('LessonForm', () => {
   })
 
   it('should_render_jumping_checkbox_unchecked_by_default', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const jumping = screen.getByRole('checkbox', { name: /jumping/i }) as HTMLInputElement
     expect(jumping.checked).toBe(false)
   })
 
   it('should_submit_jumping_as_false_by_default', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const jumpingInput = container.querySelector('input[name="jumping"]') as HTMLInputElement
     expect(jumpingInput.value).toBe('false')
   })
 
   it('should_submit_jumping_as_true_when_jumping_checkbox_is_checked', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     const jumpingInput = container.querySelector('input[name="jumping"]') as HTMLInputElement
     expect(jumpingInput.value).toBe('true')
   })
 
   it('should_render_recurring_checkbox_unchecked_by_default', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const recurring = screen.getByRole('checkbox', { name: /recurring/i }) as HTMLInputElement
     expect(recurring.checked).toBe(false)
   })
 
   it('should_submit_is_recurring_as_false_by_default', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const isRecurringInput = container.querySelector('input[name="is_recurring"]') as HTMLInputElement
     expect(isRecurringInput.value).toBe('false')
   })
 
   it('should_submit_is_recurring_as_true_when_recurring_checkbox_is_checked', () => {
-    const { container } = render(<LessonForm {...baseProps} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /recurring/i }))
     const isRecurringInput = container.querySelector('input[name="is_recurring"]') as HTMLInputElement
     expect(isRecurringInput.value).toBe('true')
   })
 
   it('should_render_recurring_checkbox_before_date_field', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const recurringCheckbox = screen.getByRole('checkbox', { name: /recurring/i })
     const dateField = screen.getByLabelText('Date')
     expect(recurringCheckbox.compareDocumentPosition(dateField) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
   })
 
   it('should_show_Date_label_by_default', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.getByLabelText('Date')).toBeDefined()
   })
 
   it('should_show_Starting_Date_label_when_recurring_checked', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /recurring/i }))
     expect(screen.getByLabelText('Starting Date')).toBeDefined()
   })
 
   it('should_snap_exertion_to_4_when_jumping_toggled_on_with_single_horse_below_4', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
@@ -320,7 +320,7 @@ describe('LessonForm', () => {
       createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
       createMockHorse({ id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ]
-    render(<LessonForm {...baseProps} horses={horses} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={horses} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Lightning/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
@@ -333,7 +333,7 @@ describe('LessonForm', () => {
       createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
       createMockHorse({ id: 'h2', name: 'Lightning', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' }),
     ]
-    render(<LessonForm {...baseProps} horses={horses} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={horses} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Lightning/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
@@ -343,7 +343,7 @@ describe('LessonForm', () => {
 
   it('should_not_change_exertion_when_jumping_toggled_on_and_exertion_is_4', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
     fireEvent.change(exertionInput, { target: { value: '4' } })
@@ -353,7 +353,7 @@ describe('LessonForm', () => {
 
   it('should_not_change_exertion_when_jumping_toggled_on_and_exertion_is_5', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
     fireEvent.change(exertionInput, { target: { value: '5' } })
@@ -363,7 +363,7 @@ describe('LessonForm', () => {
 
   it('should_not_change_exertion_when_jumping_toggled_off', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
@@ -373,7 +373,7 @@ describe('LessonForm', () => {
 
   it('should_default_exertion_to_4_when_horse_added_while_jumping_is_on', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
@@ -381,7 +381,7 @@ describe('LessonForm', () => {
   })
 
   it('should_default_new_horse_exertion_to_4_when_jumping_is_on_before_name_entered', () => {
-    render(<LessonForm {...baseProps} isManager={true} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
@@ -389,7 +389,7 @@ describe('LessonForm', () => {
   })
 
   it('should_snap_new_horse_exertion_to_4_when_jumping_toggled_on_with_name_already_entered', () => {
-    render(<LessonForm {...baseProps} isManager={true} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
@@ -397,7 +397,7 @@ describe('LessonForm', () => {
   })
 
   it('should_update_new_horse_exertion_when_changed_by_user', () => {
-    render(<LessonForm {...baseProps} isManager={true} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for new horse/i }) as HTMLInputElement
     fireEvent.change(exertionInput, { target: { value: '5' } })
@@ -406,67 +406,67 @@ describe('LessonForm', () => {
 
   it('should_show_exertion_label_when_existing_horse_is_checked', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
   })
 
   it('should_not_show_exertion_label_when_existing_horse_is_unchecked', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     expect(screen.queryByText('Exertion (1–5)')).toBeNull()
   })
 
   it('should_show_exertion_label_for_new_horse_when_name_is_entered', () => {
-    render(<LessonForm {...baseProps} isManager={true} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} />)
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     expect(screen.queryByText('Exertion (1–5)')).not.toBeNull()
   })
 
   it('should_show_blocked_state_when_tiers_is_empty', () => {
-    render(<LessonForm {...baseProps} tiers={[]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[]} />)
     expect(screen.getByRole('alert').textContent).toContain('No lesson tiers have been configured')
   })
 
   it('should_not_render_submit_button_when_tiers_is_empty', () => {
-    render(<LessonForm {...baseProps} tiers={[]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[]} />)
     expect(screen.queryByRole('button', { name: /submit/i })).toBeNull()
   })
 
   it('should_show_tier_dropdown_with_tier_options', () => {
     const tier = createMockLessonTier({ name: 'Premium', price: 100, is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     expect(screen.getByRole('option', { name: 'Premium - $100' })).toBeDefined()
   })
 
   it('should_show_custom_option_in_tier_dropdown', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     expect(screen.getByRole('option', { name: 'Custom' })).toBeDefined()
   })
 
   it('should_pre_select_default_tier_in_dropdown', () => {
     const tier = createMockLessonTier({ name: 'Default Tier', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     const select = screen.getByRole('combobox', { name: /tier/i }) as HTMLSelectElement
     expect(select.value).toBe(tier.id)
   })
 
   it('should_show_fee_input_when_named_tier_is_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     expect(screen.queryByRole('spinbutton', { name: /fee/i })).not.toBeNull()
   })
 
   it('should_show_fee_input_when_custom_tier_is_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     expect(screen.getByRole('spinbutton', { name: /fee/i })).toBeDefined()
   })
 
   it('should_show_payment_type_when_fee_is_nonzero', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     fireEvent.change(feeInput, { target: { value: '45' } })
     expect(screen.queryByLabelText(/payment type/i)).not.toBeNull()
@@ -474,7 +474,7 @@ describe('LessonForm', () => {
 
   it('should_hide_payment_type_when_fee_is_zero', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     fireEvent.change(feeInput, { target: { value: '0' } })
     expect(screen.queryByLabelText(/payment type/i)).toBeNull()
@@ -482,7 +482,7 @@ describe('LessonForm', () => {
 
   it('should_require_fee_input_when_custom_tier_is_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.required).toBe(true)
@@ -490,14 +490,14 @@ describe('LessonForm', () => {
 
   it('should_require_fee_input_when_named_tier_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.required).toBe(true)
   })
 
   it('should_prefill_fee_input_with_tier_price_when_named_tier_selected', () => {
     const tier = createMockLessonTier({ name: 'Standard', price: 60, is_default: true })
-    render(<LessonForm {...baseProps} tiers={[tier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.value).toBe('60')
   })
@@ -505,7 +505,7 @@ describe('LessonForm', () => {
   it('should_update_fee_value_when_switching_to_a_different_named_tier', () => {
     const tierA = createMockLessonTier({ id: 't-a', name: 'Standard', price: 60, is_default: true })
     const tierB = createMockLessonTier({ id: 't-b', name: 'Premium', price: 90 })
-    render(<LessonForm {...baseProps} tiers={[tierA, tierB]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tierA, tierB]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-b' } })
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     expect(feeInput.value).toBe('90')
@@ -513,7 +513,7 @@ describe('LessonForm', () => {
 
   it('should_not_change_tier_name_when_fee_is_manually_edited', () => {
     const tier = createMockLessonTier({ name: 'Standard', price: 60, is_default: true })
-    const { container } = render(<LessonForm {...baseProps} tiers={[tier]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[tier]} />)
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
     fireEvent.change(feeInput, { target: { value: '45' } })
     const tierNameInput = container.querySelector('input[name="tier_name"]') as HTMLInputElement
@@ -521,7 +521,7 @@ describe('LessonForm', () => {
   })
 
   it('should_show_error_when_normal_mode_submitted_with_no_horse_selected', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
     expect(screen.getByRole('alert').textContent).toContain('normal lesson requires exactly 1 horse')
@@ -529,7 +529,7 @@ describe('LessonForm', () => {
 
   it('should_not_call_action_when_normal_submitted_with_no_horse_selected', () => {
     const action = vi.fn().mockResolvedValue({ error: null })
-    render(<LessonForm {...baseProps} action={action} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} action={action} />)
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
     expect(action).not.toHaveBeenCalled()
@@ -537,7 +537,7 @@ describe('LessonForm', () => {
 
   it('should_show_error_when_normal_mode_submitted_with_no_rider_selected', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const form = screen.getByRole('button', { name: 'Submit' }).closest('form')!
     fireEvent.submit(form)
@@ -546,7 +546,7 @@ describe('LessonForm', () => {
 
   it('should_not_show_horse_error_when_new_horse_name_entered_without_existing_horse_in_normal_mode', () => {
     const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm {...baseProps} isManager={true} riders={[rider]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} riders={[rider]} />)
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
     fireEvent.submit(screen.getByRole('button', { name: 'Submit' }).closest('form')!)
@@ -556,7 +556,7 @@ describe('LessonForm', () => {
   it('should_show_conflict_error_when_new_horse_name_and_existing_horse_both_submitted_in_normal_mode', () => {
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm {...baseProps} isManager={true} horses={[horse]} riders={[rider]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} horses={[horse]} riders={[rider]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
@@ -568,7 +568,7 @@ describe('LessonForm', () => {
     const action = vi.fn().mockResolvedValue({ error: null })
     const horse = createMockHorse({ id: 'h1', name: 'Thunder', barn_id: 'b1', created_at: '2026-01-01', updated_at: '2026-01-01' })
     const rider = { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' }
-    const { container } = render(<LessonForm {...baseProps} action={action} isManager={true} horses={[horse]} riders={[rider]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} action={action} isManager={true} horses={[horse]} riders={[rider]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     fireEvent.change(container.querySelector('select[name="rider_id"]') as HTMLSelectElement, { target: { value: 'r1' } })
@@ -581,7 +581,7 @@ describe('LessonForm', () => {
       { id: 'r1', name: 'Alice', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
       { id: 'r2', name: 'Bob', barn_id: 'b1', user_id: null, created_at: '2026-01-01', updated_at: '2026-01-01' },
     ]
-    const { container } = render(<LessonForm {...baseProps} isManager={true} riders={riders} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} isManager={true} riders={riders} />)
     fireEvent.click(screen.getByRole('button', { name: 'Group' }))
     fireEvent.change(screen.getByPlaceholderText(/Add new horse/i), { target: { value: 'Blaze' } })
     const checkboxes = container.querySelectorAll('input[type="checkbox"][name="rider_id"]') as NodeListOf<HTMLInputElement>
@@ -599,7 +599,7 @@ describe('LessonForm tier cascade', () => {
   afterEach(() => vi.useRealTimers())
 
   it('should_render_tier_selector_before_jumping_checkbox', () => {
-    render(<LessonForm {...baseProps} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} />)
     const tierSelect = screen.getByRole('combobox', { name: /tier/i })
     const jumpingCheckbox = screen.getByRole('checkbox', { name: /jumping/i })
     expect(tierSelect.compareDocumentPosition(jumpingCheckbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
@@ -608,7 +608,7 @@ describe('LessonForm tier cascade', () => {
   it('should_cascade_default_jumping_true_when_tier_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const jumpTier = createMockLessonTier({ id: 't-jump', name: 'Jump Tier', default_jumping: true })
-    const { container } = render(<LessonForm {...baseProps} tiers={[baseTier, jumpTier]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, jumpTier]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-jump' } })
     const jumpingInput = container.querySelector('input[name="jumping"]') as HTMLInputElement
     expect(jumpingInput.value).toBe('true')
@@ -617,7 +617,7 @@ describe('LessonForm tier cascade', () => {
   it('should_cascade_default_jumping_false_when_tier_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const noJumpTier = createMockLessonTier({ id: 't-nojump', name: 'No Jump', default_jumping: false })
-    const { container } = render(<LessonForm {...baseProps} tiers={[baseTier, noJumpTier]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, noJumpTier]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-nojump' } })
     const jumpingInput = container.querySelector('input[name="jumping"]') as HTMLInputElement
@@ -627,7 +627,7 @@ describe('LessonForm tier cascade', () => {
   it('should_cascade_default_exertion_into_checked_horse_when_tier_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const exertionTier = createMockLessonTier({ id: 't-ex', name: 'Exertion Tier', default_exertion_level: 2 })
-    render(<LessonForm {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-ex' } })
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
@@ -637,7 +637,7 @@ describe('LessonForm tier cascade', () => {
   it('should_cascade_default_exertion_into_first_checked_horse_when_tier_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const exertionTier = createMockLessonTier({ id: 't-ex', name: 'Exertion Tier', default_exertion_level: 2 })
-    render(<LessonForm {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse, horse2]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse, horse2]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Lightning/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-ex' } })
@@ -648,7 +648,7 @@ describe('LessonForm tier cascade', () => {
   it('should_cascade_default_exertion_into_second_checked_horse_when_tier_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const exertionTier = createMockLessonTier({ id: 't-ex', name: 'Exertion Tier', default_exertion_level: 2 })
-    render(<LessonForm {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse, horse2]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse, horse2]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Lightning/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-ex' } })
@@ -659,7 +659,7 @@ describe('LessonForm tier cascade', () => {
   it('should_not_cascade_jumping_when_tier_default_jumping_is_null', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const nullTier = createMockLessonTier({ id: 't-null', name: 'Null Tier', default_jumping: null })
-    const { container } = render(<LessonForm {...baseProps} tiers={[baseTier, nullTier]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, nullTier]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-null' } })
     const jumpingInput = container.querySelector('input[name="jumping"]') as HTMLInputElement
@@ -669,7 +669,7 @@ describe('LessonForm tier cascade', () => {
   it('should_not_cascade_exertion_when_tier_default_exertion_is_null', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const nullTier = createMockLessonTier({ id: 't-null', name: 'Null Tier', default_exertion_level: null })
-    render(<LessonForm {...baseProps} tiers={[baseTier, nullTier]} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, nullTier]} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
     fireEvent.change(exertionInput, { target: { value: '5' } })
@@ -679,7 +679,7 @@ describe('LessonForm tier cascade', () => {
 
   it('should_reset_jumping_to_off_when_custom_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true, default_jumping: true })
-    const { container } = render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     const jumpingInput = container.querySelector('input[name="jumping"]') as HTMLInputElement
@@ -688,7 +688,7 @@ describe('LessonForm tier cascade', () => {
 
   it('should_reset_exertion_to_3_for_checked_horses_when_custom_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true, default_exertion_level: 5 })
-    render(<LessonForm {...baseProps} tiers={[baseTier]} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
@@ -699,7 +699,7 @@ describe('LessonForm tier cascade', () => {
   it('should_use_tier_default_exertion_when_horse_checked_after_tier_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const exertionTier = createMockLessonTier({ id: 't-ex', name: 'Exertion Tier', default_exertion_level: 2 })
-    render(<LessonForm {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-ex' } })
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     const exertionInput = screen.getByRole('spinbutton', { name: /Exertion level for Thunder/i }) as HTMLInputElement
@@ -709,7 +709,7 @@ describe('LessonForm tier cascade', () => {
   it('should_use_jumping_fallback_when_tier_has_no_default_exertion_and_horse_checked', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const noExTier = createMockLessonTier({ id: 't-noex', name: 'No Exertion', default_exertion_level: null })
-    render(<LessonForm {...baseProps} tiers={[baseTier, noExTier]} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, noExTier]} horses={[horse]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-noex' } })
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -719,7 +719,7 @@ describe('LessonForm tier cascade', () => {
 
   it('should_not_crash_when_selected_tier_id_is_unknown', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
-    const { container } = render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} />)
     const select = screen.getByRole('combobox', { name: /tier/i }) as HTMLSelectElement
     fireEvent.change(select, { target: { value: 'nonexistent-id' } })
     expect(container.querySelector('form')).not.toBeNull()
@@ -728,7 +728,7 @@ describe('LessonForm tier cascade', () => {
   it('should_bump_exertion_to_4_when_jumping_toggled_on_over_tier_default_below_4', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const exertionTier = createMockLessonTier({ id: 't-ex', name: 'Exertion Tier', default_exertion_level: 2 })
-    render(<LessonForm {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, exertionTier]} horses={[horse]} />)
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-ex' } })
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
@@ -740,7 +740,7 @@ describe('LessonForm tier cascade', () => {
     vi.useFakeTimers()
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const jumpTier = createMockLessonTier({ id: 't-jump', name: 'Jump Tier', default_jumping: true })
-    render(<LessonForm {...baseProps} tiers={[baseTier, jumpTier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, jumpTier]} />)
     act(() => {
       fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-jump' } })
     })
@@ -752,7 +752,7 @@ describe('LessonForm tier cascade', () => {
     vi.useFakeTimers()
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const jumpTier = createMockLessonTier({ id: 't-jump', name: 'Jump Tier', default_jumping: true })
-    render(<LessonForm {...baseProps} tiers={[baseTier, jumpTier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, jumpTier]} />)
     act(() => {
       fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-jump' } })
     })
@@ -766,7 +766,7 @@ describe('LessonForm tier cascade', () => {
   it('should_not_flash_jumping_when_custom_selected_and_jumping_already_off', () => {
     vi.useFakeTimers()
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} />)
     act(() => {
       fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     })
@@ -776,7 +776,7 @@ describe('LessonForm tier cascade', () => {
 
   it('should_reset_fee_to_blank_when_custom_selected', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true, price: 60 })
-    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     const feeInput = screen.getByRole('spinbutton', { name: /fee/i }) as HTMLInputElement
@@ -786,7 +786,7 @@ describe('LessonForm tier cascade', () => {
   it('should_flash_fee_when_tier_cascades_price', () => {
     vi.useFakeTimers()
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true, price: 60 })
-    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} />)
     act(() => {
       fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
     })
@@ -797,7 +797,7 @@ describe('LessonForm tier cascade', () => {
   it('should_clear_fee_flash_after_600ms', () => {
     vi.useFakeTimers()
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true, price: 60 })
-    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} />)
     act(() => {
       fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-base' } })
     })
@@ -811,7 +811,7 @@ describe('LessonForm tier cascade', () => {
   it('should_not_flash_fee_when_custom_selected_and_fee_already_blank', () => {
     vi.useFakeTimers()
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
-    render(<LessonForm {...baseProps} tiers={[baseTier]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier]} />)
     act(() => {
       fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: '__custom__' } })
     })
@@ -828,7 +828,7 @@ describe('LessonForm tier cascade', () => {
   it('should_floor_exertion_at_4_when_tier_default_below_4_and_jumping_on_and_horse_checked', () => {
     const baseTier = createMockLessonTier({ id: 't-base', is_default: true })
     const lowTier = createMockLessonTier({ id: 't-low', name: 'Low Tier', default_exertion_level: 2 })
-    render(<LessonForm {...baseProps} tiers={[baseTier, lowTier]} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} tiers={[baseTier, lowTier]} horses={[horse]} />)
     fireEvent.change(screen.getByRole('combobox', { name: /tier/i }), { target: { value: 't-low' } })
     fireEvent.click(screen.getByRole('checkbox', { name: /jumping/i }))
     fireEvent.click(screen.getByRole('checkbox', { name: /Thunder/i }))
@@ -844,7 +844,7 @@ describe('LessonForm exhaustion bars', () => {
 
   it('should_not_render_exhaustion_bar_before_getProjectedExhaustion_resolves', () => {
     const getProjectedExhaustion = vi.fn().mockImplementation(() => new Promise(() => {}))
-    render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
     expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
   })
 
@@ -852,7 +852,7 @@ describe('LessonForm exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       h1: { existingRows: [], thresholds },
     })
-    render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
@@ -863,7 +863,7 @@ describe('LessonForm exhaustion bars', () => {
       h1: { existingRows: [], thresholds },
       h2: { existingRows: [], thresholds },
     })
-    render(<LessonForm {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(2)
     })
@@ -874,7 +874,7 @@ describe('LessonForm exhaustion bars', () => {
       h1: { existingRows: [], thresholds },
       h2: { existingRows: [], thresholds },
     })
-    render(<LessonForm {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelectorAll('[data-testid="exhaustion-bar-solid"]')).toHaveLength(2)
     })
@@ -884,7 +884,7 @@ describe('LessonForm exhaustion bars', () => {
 
   it('should_refetch_when_date_changes', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    const { container } = render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(1))
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
@@ -893,7 +893,7 @@ describe('LessonForm exhaustion bars', () => {
 
   it('should_call_getProjectedExhaustion_with_the_new_date_after_a_date_change', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    const { container } = render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalledTimes(1))
     const dateInput = container.querySelector('input[type="date"]') as HTMLInputElement
     fireEvent.change(dateInput, { target: { value: '2026-06-15' } })
@@ -908,7 +908,7 @@ describe('LessonForm exhaustion bars', () => {
 
   it('should_call_getProjectedExhaustion_with_the_ids_of_every_horse_passed_in_props', async () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({})
-    render(<LessonForm {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse, horse2]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => expect(getProjectedExhaustion).toHaveBeenCalled())
     expect(getProjectedExhaustion.mock.calls[0][1]).toEqual(['h1', 'h2'])
   })
@@ -918,7 +918,7 @@ describe('LessonForm exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn()
       .mockResolvedValueOnce({ h1: { existingRows: [], thresholds } })
       .mockImplementationOnce(() => new Promise((resolve) => { resolveSecondFetch = resolve }))
-    const { container } = render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
@@ -933,7 +933,7 @@ describe('LessonForm exhaustion bars', () => {
   })
 
   it('should_not_render_exhaustion_bar_when_getProjectedExhaustion_is_omitted', () => {
-    render(<LessonForm {...baseProps} horses={[horse]} />)
+    render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} />)
     expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).toBeNull()
   })
 
@@ -941,7 +941,7 @@ describe('LessonForm exhaustion bars', () => {
     const getProjectedExhaustion = vi.fn().mockResolvedValue({
       h1: { existingRows: [], thresholds },
     })
-    const { container } = render(<LessonForm {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
+    const { container } = render(<LessonForm timezone={'America/New_York'} {...baseProps} horses={[horse]} getProjectedExhaustion={getProjectedExhaustion} />)
     await waitFor(() => {
       expect(document.querySelector('[data-testid="exhaustion-bar-solid"]')).not.toBeNull()
     })
@@ -976,7 +976,7 @@ describe('LessonForm — month conflict calendar', () => {
   async function renderWithCalendar(items: ReturnType<typeof createMockScheduleItem>[] = [], props = {}) {
     const getScheduleRange = vi.fn().mockResolvedValue(items)
     const result = render(
-      <LessonForm {...baseProps} horses={[thunder]} riders={[{ id: 'r1', name: 'Alice' }]} getScheduleRange={getScheduleRange} {...props} />
+      <LessonForm timezone={'America/New_York'} {...baseProps} horses={[thunder]} riders={[{ id: 'r1', name: 'Alice' }]} getScheduleRange={getScheduleRange} {...props} />
     )
     await act(async () => { await Promise.resolve() })
     return { ...result, getScheduleRange }

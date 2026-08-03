@@ -7,7 +7,8 @@ import { useNavigationBlocker } from '../NavigationBlocker'
 import { ExhaustionBar, type ExhaustionBarRow } from '@/components/ExhaustionBar'
 import { MonthCalendarPicker } from '@/components/calendar/MonthCalendarPicker'
 import { computeDayDecorations, getMonthGrid } from '@/lib/month-calendar'
-import { addDays, localToday } from '@/lib/local-day'
+import { addDays } from '@/lib/local-day'
+import { instantToLocalWallClock, wallClockToInstant } from '@/lib/barn-timezone'
 import { Button } from '@/components/ui/Button'
 
 type ExhaustionByHorseId = Record<string, { existingRows: ExhaustionBarRow[]; thresholds: { high: number; moderate: number } }>
@@ -25,11 +26,16 @@ function setsEqual<T>(a: Set<T>, b: Set<T>): boolean {
   return true
 }
 
-function isPastLessonAt(lessonAt: string): boolean {
+// "Past" is measured against the start of the barn's current hour, not the host's: the
+// picker only offers whole barn hours, so the current one must not count as past. Truncating
+// a host-zone Date instead lands 30 minutes off in any half-hour-offset zone (#1222).
+function isPastLessonAt(lessonAt: string, timezone: string): boolean {
   if (!lessonAt) return false
-  const now = new Date()
-  now.setMinutes(0, 0, 0)
-  return new Date(lessonAt) < now
+  const barnHourStart = wallClockToInstant(
+    `${instantToLocalWallClock(new Date(), timezone).slice(0, 13)}:00:00`,
+    timezone
+  )
+  return new Date(lessonAt) < barnHourStart
 }
 
 export function LessonForm({
@@ -42,6 +48,7 @@ export function LessonForm({
   currentMembershipId,
   tiers,
   todayStr,
+  timezone,
   initialLesson,
   initialNotes,
   getProjectedExhaustion,
@@ -59,8 +66,10 @@ export function LessonForm({
   tiers: LessonTier[]
   /** The barn's own calendar day ("YYYY-MM-DD"), computed server-side via `barnToday` — the
    *  month calendar's past-day cutoff, which has to sit in the same frame as every other date
-   *  on that grid. Not `localToday()`: the viewer's zone may differ from the barn's (#1149). */
+   *  on that grid (#1149). */
   todayStr: string
+  /** `barns.timezone` — the frame the lesson's date/hour are entered and decoded in (#1222). */
+  timezone: string
   initialLesson?: LessonDetail
   initialNotes?: {
     horses: Array<{ id: string; name: string; horse_notes: string | null }>
@@ -132,9 +141,11 @@ export function LessonForm({
   const [flashingKeys, setFlashingKeys] = useState<Set<string>>(new Set())
   const [notesDirty, setNotesDirty] = useState(false)
   const [lessonAt, setLessonAt] = useState('')
+  // Decoding a stored instant back to form values is barn-local, same as entering one.
+  const initialWallClock = initialLesson ? instantToLocalWallClock(new Date(initialLesson.lesson_at.at), timezone) : ''
   const [exhaustionData, setExhaustionData] = useState<{ lessonAt: string; data: ExhaustionByHorseId } | null>(null)
   const [calendarMonth, setCalendarMonth] = useState(
-    (initialLesson ? localToday(new Date(initialLesson.lesson_at)) : localToday()).slice(0, 7)
+    (initialLesson ? initialWallClock.slice(0, 10) : todayStr).slice(0, 7)
   )
   const [scheduleItems, setScheduleItems] = useState<ScheduleItem[]>([])
 
@@ -143,7 +154,7 @@ export function LessonForm({
   const unpaidPastDue =
     mode === 'edit' &&
     (initialLesson?.payment_type === null || initialLesson?.payment_type === undefined) &&
-    new Date(initialLesson?.lesson_at ?? 0) < new Date() &&
+    (initialLesson ? new Date(initialLesson.lesson_at.at) < new Date() : false) &&
     Number(initialLesson?.fee) > 0
   const unpaidWarn = computeUnpaidWarn(unpaidPastDue, paymentType, fee)
   const feeDirty = fee !== initialFee
@@ -245,14 +256,14 @@ export function LessonForm({
   const isCustom = selectedId === CUSTOM_ID
   const selectedTier = tiers.find(t => t.id === selectedId) ?? null
   const exhaustionByHorseId = exhaustionData?.lessonAt === lessonAt ? exhaustionData.data : undefined
-  const isPastLesson = isPastLessonAt(lessonAt)
+  const isPastLesson = isPastLessonAt(lessonAt, timezone)
 
   const selectedRiderIds = lessonType === 'normal'
     ? (normalRiderId ? [normalRiderId] : [])
     : [...checkedRiderIds]
   // Falls back to midnight only for the first render, before DateHourPicker's mount effect
   // reports a lessonAt — by the time a horse is selected the real hour is in hand.
-  const selectedHour = lessonAt ? new Date(lessonAt).getHours() : 0
+  const selectedHour = lessonAt ? Number(instantToLocalWallClock(new Date(lessonAt), timezone).slice(11, 13)) : 0
   const dayDecorations = computeDayDecorations(getMonthGrid(calendarMonth), scheduleItems, {
     selectedHorseIds: [...checkedHorseIds],
     selectedRiderIds,
@@ -621,8 +632,9 @@ export function LessonForm({
       )}
 
       <DateHourPicker
-        initialDate={mode === 'edit' && initialLesson ? localToday(new Date(initialLesson.lesson_at)) : undefined}
-        initialHour={mode === 'edit' && initialLesson ? new Date(initialLesson.lesson_at).getHours() : undefined}
+        timezone={timezone}
+        initialDate={mode === 'edit' && initialLesson ? initialWallClock.slice(0, 10) : undefined}
+        initialHour={mode === 'edit' && initialLesson ? Number(initialWallClock.slice(11, 13)) : undefined}
         onChange={setLessonAt}
         dateLabel={isRecurring ? 'Starting Date' : 'Date'}
         renderDate={getScheduleRange && ((value, setValue) => (

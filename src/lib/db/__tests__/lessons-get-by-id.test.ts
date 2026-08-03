@@ -97,7 +97,7 @@ describe('getLessonById', () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1', profile_id: 'profile-1' } as any)
     vi.mocked(getProfileById).mockResolvedValue({ first_name: 'Jane', last_name: 'Smith' } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.instructor_name).toBe('Jane Smith')
   })
@@ -107,7 +107,7 @@ describe('getLessonById', () => {
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1', profile_id: 'profile-1' } as any)
     vi.mocked(getProfileById).mockResolvedValue(null)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.instructor_name).toBe('mem-instructor-1')
   })
@@ -119,7 +119,7 @@ describe('getLessonById', () => {
     // get_active_barn_member_summaries RPC fallback twice for the same instructor. #845 follow-up.
     mockLessonsFrom(rawLessonData)
 
-    await getLessonById('lesson-1', 'barn-1', 'trainer')
+    await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(resolveMemberNames).toHaveBeenCalledWith(['mem-rider-1'], 'barn-1', expect.anything())
   })
@@ -128,7 +128,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(rawLessonData)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1' } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.instructor_user_id).toBe('user-instructor-1')
   })
@@ -141,7 +141,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(rawLessonData)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1' } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.instructor_user_id).toBe('user-instructor-1')
   })
@@ -150,7 +150,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(rawLessonData)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: 'user-instructor-1' } as any)
 
-    await getLessonById('lesson-1', 'barn-1', 'rider')
+    await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(getMembershipByIdForBarn).toHaveBeenCalledWith('mem-instructor-1', 'barn-1', expect.anything())
   })
@@ -159,7 +159,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(rawLessonData)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue({ user_id: null } as any)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.instructor_user_id).toBeNull()
   })
@@ -167,7 +167,7 @@ describe('getLessonById', () => {
   it('should_return_null_instructor_name_when_instructor_id_is_null', async () => {
     mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.instructor_name).toBeNull()
   })
@@ -175,7 +175,7 @@ describe('getLessonById', () => {
   it('should_return_null_instructor_user_id_when_instructor_id_is_null', async () => {
     mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.instructor_user_id).toBeNull()
   })
@@ -183,7 +183,7 @@ describe('getLessonById', () => {
   it('should_not_call_get_membership_by_id_for_barn_when_instructor_id_is_null', async () => {
     mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 
-    await getLessonById('lesson-1', 'barn-1', 'trainer')
+    await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(getMembershipByIdForBarn).not.toHaveBeenCalled()
   })
@@ -192,7 +192,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(rawLessonData)
     vi.mocked(getMembershipByIdForBarn).mockResolvedValue(null)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.instructor_name).toBeNull()
   })
@@ -201,7 +201,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(rawLessonData)
     vi.mocked(resolveMemberNames).mockRejectedValue(new Error('member names error'))
 
-    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('member names error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')).rejects.toThrow('member names error')
   })
 
   it('should_return_all_riders_for_group_lesson', async () => {
@@ -215,7 +215,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(groupLessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_riders).toHaveLength(2)
   })
@@ -223,7 +223,7 @@ describe('getLessonById', () => {
   it('should_query_by_lesson_id_and_barn_id', async () => {
     const { mockEq1, mockEq2 } = mockLessonsFrom({ ...rawLessonData, instructor_id: null })
 
-    await getLessonById('lesson-1', 'barn-1', 'trainer')
+    await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(mockEq1).toHaveBeenCalledWith('id', 'lesson-1')
     expect(mockEq2).toHaveBeenCalledWith('barn_id', 'barn-1')
@@ -232,7 +232,7 @@ describe('getLessonById', () => {
   it('should_return_null_when_lesson_not_found', async () => {
     mockLessonsFrom(null)
 
-    const result = await getLessonById('nonexistent', 'barn-1', 'trainer')
+    const result = await getLessonById('nonexistent', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result).toBeNull()
   })
@@ -240,7 +240,7 @@ describe('getLessonById', () => {
   it('should_throw_when_supabase_returns_an_error', async () => {
     mockLessonsFrom(null, new Error('db error'))
 
-    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('db error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')).rejects.toThrow('db error')
   })
 
   it('should_include_jumping_true_in_result', async () => {
@@ -251,7 +251,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(jumpingData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.jumping).toBe(true)
   })
@@ -260,7 +260,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'rider')
+    await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(select).toHaveBeenCalledWith(expect.stringContaining('rider_id'))
   })
@@ -272,7 +272,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'manager')
+    await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(select).not.toHaveBeenCalledWith(expect.stringContaining('private_notes'))
   })
@@ -281,7 +281,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'manager')
+    await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(select).not.toHaveBeenCalledWith(expect.stringContaining('rider_notes'))
   })
@@ -293,7 +293,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'manager')
+    await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(select).not.toHaveBeenCalledWith(expect.stringContaining('exertion_level'))
   })
@@ -302,7 +302,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { rpc } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'trainer')
+    await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(rpc).toHaveBeenCalledWith('get_lesson_horse_exertion_levels', { p_lesson_id: 'lesson-1', p_barn_id: 'barn-1' })
   })
@@ -311,7 +311,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { rpc } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'manager')
+    await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(rpc).toHaveBeenCalledWith('get_lesson_horse_exertion_levels', { p_lesson_id: 'lesson-1', p_barn_id: 'barn-1' })
   })
@@ -323,7 +323,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { rpc } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'rider')
+    await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(rpc).toHaveBeenCalledWith('get_lesson_horse_exertion_levels', { p_lesson_id: 'lesson-1', p_barn_id: 'barn-1' })
   })
@@ -336,7 +336,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData, null, [], [{ horse_id: 'horse-1', exertion_level: 4 }])
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_horses[0].exertion_level).toBe(4)
   })
@@ -352,7 +352,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData, null, [], [{ horse_id: 'horse-1', exertion_level: 2 }])
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.lesson_horses[0].exertion_level).toBe(2)
   })
@@ -368,7 +368,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.lesson_horses[0].exertion_level).toBeUndefined()
   })
@@ -382,7 +382,7 @@ describe('getLessonById', () => {
         : Promise.resolve({ data: [], error: null })
     )
 
-    await expect(getLessonById('lesson-1', 'barn-1', 'trainer')).rejects.toThrow('exertion rpc error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')).rejects.toThrow('exertion rpc error')
   })
 
   it('should_default_to_empty_map_when_exertion_rpc_returns_null_data', async () => {
@@ -398,7 +398,7 @@ describe('getLessonById', () => {
         : Promise.resolve({ data: [], error: null })
     )
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_horses[0].exertion_level).toBeUndefined()
   })
@@ -411,7 +411,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData, null, [], [{ horse_id: 'horse-1', exertion_level: 4 }])
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_horses[0].exertion_level).toBeUndefined()
   })
@@ -420,7 +420,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { rpc } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'rider')
+    await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(rpc).toHaveBeenCalledWith('get_lesson_rider_notes', { p_lesson_id: 'lesson-1', p_barn_id: 'barn-1' })
   })
@@ -433,7 +433,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData, null, [], [], [{ rider_id: 'mem-1', rider_notes: 'good position', private_notes: 'flaky payer' }])
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'manager')
+    const result = await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(result?.lesson_riders[0].rider_notes).toBe('good position')
   })
@@ -446,7 +446,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData, null, [], [], [{ rider_id: 'mem-1', rider_notes: 'good position', private_notes: 'flaky payer' }])
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'manager')
+    const result = await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(result?.lesson_riders[0].private_notes).toBe('flaky payer')
   })
@@ -461,7 +461,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.lesson_riders[0].rider_notes).toBeNull()
   })
@@ -474,7 +474,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.lesson_riders[0].private_notes).toBeNull()
   })
@@ -492,7 +492,7 @@ describe('getLessonById', () => {
         : Promise.resolve({ data: [], error: null })
     )
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'manager')
+    const result = await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(result?.lesson_riders[0].rider_notes).toBeNull()
   })
@@ -506,14 +506,14 @@ describe('getLessonById', () => {
         : Promise.resolve({ data: [], error: null })
     )
 
-    await expect(getLessonById('lesson-1', 'barn-1', 'manager')).rejects.toThrow('rider notes rpc error')
+    await expect(getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')).rejects.toThrow('rider notes rpc error')
   })
 
   it('should_select_cancelled_at_for_rider_role', async () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'rider')
+    await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(select).toHaveBeenCalledWith(expect.stringContaining('cancelled_at'))
   })
@@ -522,7 +522,7 @@ describe('getLessonById', () => {
     const noInstructorData = { ...createMockLesson({ instructor_id: null }), lesson_horses: [], lesson_riders: [] }
     const { select } = mockLessonsFrom(noInstructorData)
 
-    await getLessonById('lesson-1', 'barn-1', 'manager')
+    await getLessonById('lesson-1', 'barn-1', 'manager', 'America/New_York')
 
     expect(select).toHaveBeenCalledWith(expect.stringContaining('cancelled_at'))
   })
@@ -535,7 +535,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_riders[0].cancelled_at).toBe('2026-06-01T00:00:00Z')
   })
@@ -548,7 +548,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_riders[0].cancelled_at).toBeNull()
   })
@@ -561,7 +561,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_riders[0].cancellation_notes).toBe('Rider called in sick')
   })
@@ -574,7 +574,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(lessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_riders[0].cancellation_notes).toBeNull()
   })
@@ -587,7 +587,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(riderLessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.lesson_riders[0].cancellation_notes).toBe('called in sick')
   })
@@ -603,7 +603,7 @@ describe('getLessonById', () => {
     }
     mockLessonsFrom(riderLessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.lesson_riders[1].cancellation_notes).toBe('family emergency')
   })
@@ -617,7 +617,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(lessonData)
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map())
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_riders[0].barn_membership?.name).toBe('mem-1')
   })
@@ -635,7 +635,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(lessonData)
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-2', 'Riley Rider']]))
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'rider')
+    const result = await getLessonById('lesson-1', 'barn-1', 'rider', 'America/New_York')
 
     expect(result?.lesson_riders[0].barn_membership).toEqual({ id: 'mem-2', user_id: null, name: 'Riley Rider' })
   })
@@ -649,7 +649,7 @@ describe('getLessonById', () => {
     mockLessonsFrom(lessonData)
     vi.mocked(resolveMemberNames).mockResolvedValue(new Map([['mem-1', 'Alice Rider']]))
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.lesson_riders[0].barn_membership?.name).toBe('Alice Rider')
   })
@@ -657,7 +657,7 @@ describe('getLessonById', () => {
   it('should_call_payment_info_rpc_with_lesson_id_and_barn_id', async () => {
     const { rpc } = mockLessonsFrom(rawLessonData, null, [{ lesson_id: 'lesson-1', payment_type: 'zelle' }])
 
-    await getLessonById('lesson-1', 'barn-1', 'trainer')
+    await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(rpc).toHaveBeenCalledWith('get_lesson_payment_info', { p_lesson_ids: ['lesson-1'], p_barn_id: 'barn-1' })
   })
@@ -665,7 +665,7 @@ describe('getLessonById', () => {
   it('should_overlay_payment_type_from_get_lesson_payment_info_rpc', async () => {
     mockLessonsFrom(rawLessonData, null, [{ lesson_id: 'lesson-1', payment_type: 'zelle' }])
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.payment_type).toBe('zelle')
   })
@@ -673,7 +673,7 @@ describe('getLessonById', () => {
   it('should_default_payment_type_to_null_when_rpc_has_no_matching_row', async () => {
     mockLessonsFrom(rawLessonData)
 
-    const result = await getLessonById('lesson-1', 'barn-1', 'trainer')
+    const result = await getLessonById('lesson-1', 'barn-1', 'trainer', 'America/New_York')
 
     expect(result?.payment_type).toBeNull()
   })
@@ -681,7 +681,7 @@ describe('getLessonById', () => {
   it('should_not_call_the_payment_info_rpc_when_lesson_is_not_found', async () => {
     const { rpc } = mockLessonsFrom(null)
 
-    await getLessonById('nonexistent', 'barn-1', 'trainer')
+    await getLessonById('nonexistent', 'barn-1', 'trainer', 'America/New_York')
 
     expect(rpc).not.toHaveBeenCalled()
   })

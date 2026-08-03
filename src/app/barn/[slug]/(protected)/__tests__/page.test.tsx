@@ -263,7 +263,7 @@ describe('BarnDashboardPage', () => {
 
     await renderPage()
 
-    expect(getLessonsByIds).toHaveBeenCalledWith(mockBarn.id, ['lesson-1'])
+    expect(getLessonsByIds).toHaveBeenCalledWith(mockBarn.id, ['lesson-1'], 'America/New_York')
   })
 
   it('should_fetch_events_by_the_scoped_event_ids', async () => {
@@ -273,7 +273,7 @@ describe('BarnDashboardPage', () => {
 
     await renderPage()
 
-    expect(getEventsByIds).toHaveBeenCalledWith(mockBarn.id, ['event-1'])
+    expect(getEventsByIds).toHaveBeenCalledWith(mockBarn.id, ['event-1'], 'America/New_York')
   })
 
   it('should_filter_expenses_to_planned_only_amount_is_null', async () => {

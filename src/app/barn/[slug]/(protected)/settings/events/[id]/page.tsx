@@ -23,7 +23,7 @@ export default async function EventEditPage({
     redirect(`/barn/${slug}/login`)
   }
 
-  const event = await getEventById(id, barn.id)
+  const event = await getEventById(id, barn.id, barn.timezone)
   if (!event) notFound()
 
   const save = updateEventAction.bind(null, slug, id)
@@ -33,7 +33,7 @@ export default async function EventEditPage({
       <h1 className="mb-8 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
         Edit Event
       </h1>
-      <EventForm mode="edit" initialEvent={event} action={save} deleteHref={`/barn/${slug}/settings/events/${id}/delete`} />
+      <EventForm mode="edit" timezone={barn.timezone} initialEvent={event} action={save} deleteHref={`/barn/${slug}/settings/events/${id}/delete`} />
     </main>
   )
 }

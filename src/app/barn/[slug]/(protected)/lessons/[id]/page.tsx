@@ -7,7 +7,7 @@ import type { LessonDetail } from '@/lib/db/types'
 import { Badge } from '@/components/ui/Badge'
 import { Button } from '@/components/ui/Button'
 import { canManageLesson, isLessonCancellationEligible, getHorseAttentionReasons } from '@/lib/lesson-authorization'
-import { LocalDateTime } from '@/components/LocalDateTime'
+import { formatBarnDateTime } from '@/lib/format-date'
 import { DeleteLessonButton } from '../DeleteLessonButton'
 import { HorseStatusBanner } from '../HorseStatusBanner'
 import { deleteLessonAction } from '@/app/actions/lessons'
@@ -96,7 +96,7 @@ export default async function LessonDetailPage({
   }
 
   const role = membership.role
-  const lesson = await getLessonById(id, barn.id, role)
+  const lesson = await getLessonById(id, barn.id, role, barn.timezone)
 
   if (!lesson) {
     notFound()
@@ -185,7 +185,7 @@ export default async function LessonDetailPage({
           <div className="flex flex-col gap-1 py-4">
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Date &amp; Time</dt>
             <dd className="text-sm text-zinc-900 dark:text-zinc-50">
-              <LocalDateTime iso={lesson.lesson_at} options={{ dateStyle: 'medium', timeStyle: 'short' }} />
+              {formatBarnDateTime(lesson.lesson_at)}
             </dd>
           </div>
           <div className="flex flex-col gap-1 py-4">
@@ -276,7 +276,7 @@ export default async function LessonDetailPage({
             <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500 dark:text-zinc-400">Fee</dt>
             <dd className="flex items-center gap-2 text-sm text-zinc-900 dark:text-zinc-50">
               ${lesson.fee}
-              {lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at) < new Date() && (
+              {lesson.payment_type === null && lesson.fee > 0 && new Date(lesson.lesson_at.at) < new Date() && (
                 <Badge tone="amber">Unpaid</Badge>
               )}
             </dd>

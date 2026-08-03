@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import { createMockBarn, createMockMembership, createMockHorseExertionSummary, createMockHorse } from '@/test/fixtures'
+import { createMockBarn, createMockMembership, createMockHorseExertionSummary, createMockHorse, instant } from '@/test/fixtures'
 import { setupAuth } from '@/test/mocks/auth'
 
 vi.mock('@/lib/db/auth', () => ({ getAuthenticatedUser: vi.fn() }))
@@ -299,8 +299,8 @@ describe('HorsesPage', () => {
   it('should_pass_projected_exhaustion_rows_to_horse_card', async () => {
     vi.mocked(getHorseExertionSummary).mockResolvedValue([availableHorse])
     vi.mocked(getHorseProjectedExhaustion).mockResolvedValue([
-      { lessonAt: '2026-07-01T00:00:00Z', exertionLevel: 3 },
-      { lessonAt: '2026-07-02T00:00:00Z', exertionLevel: 4 },
+      { lessonAt: instant('2026-07-01T00:00:00Z'), exertionLevel: 3 },
+      { lessonAt: instant('2026-07-02T00:00:00Z'), exertionLevel: 4 },
     ])
     const jsx = await HorsesPage({ params: Promise.resolve({ slug: 'green-acres' }) })
     render(jsx)

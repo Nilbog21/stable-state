@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockHorse } from '@/test/fixtures'
+import { createMockHorse, instant } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -210,18 +210,18 @@ describe('getHorseProjectedExhaustion', () => {
       ]),
     } as any)
 
-    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'America/New_York')
 
     expect(result).toEqual([
-      { lessonAt: '2026-07-09T10:00:00Z', exertionLevel: 3 },
-      { lessonAt: '2026-07-11T10:00:00Z', exertionLevel: 4 },
+      { lessonAt: instant('2026-07-09T10:00:00Z'), exertionLevel: 3 },
+      { lessonAt: instant('2026-07-11T10:00:00Z'), exertionLevel: 4 },
     ])
   })
 
   it('should_return_empty_array_when_rpc_returns_null_data', async () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: makeRpc(null) } as any)
 
-    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+    const result = await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -229,14 +229,14 @@ describe('getHorseProjectedExhaustion', () => {
   it('should_throw_when_rpc_returns_an_error', async () => {
     vi.mocked(createClient).mockResolvedValue({ rpc: makeRpc(null, new Error('rpc error')) } as any)
 
-    await expect(getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)).rejects.toThrow('rpc error')
+    await expect(getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'America/New_York')).rejects.toThrow('rpc error')
   })
 
   it('should_call_rpc_with_null_exclude_lesson_id_when_omitted', async () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate)
+    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'America/New_York')
 
     expect(mockRpc).toHaveBeenCalledWith('get_horse_projected_exhaustion', {
       p_horse_id: 'horse-1',
@@ -250,7 +250,7 @@ describe('getHorseProjectedExhaustion', () => {
     const mockRpc = vi.fn().mockResolvedValue({ data: [], error: null })
     vi.mocked(createClient).mockResolvedValue({ rpc: mockRpc } as any)
 
-    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'lesson-1')
+    await getHorseProjectedExhaustion('horse-1', 'barn-1', targetDate, 'America/New_York', 'lesson-1')
 
     expect(mockRpc).toHaveBeenCalledWith('get_horse_projected_exhaustion', {
       p_horse_id: 'horse-1',

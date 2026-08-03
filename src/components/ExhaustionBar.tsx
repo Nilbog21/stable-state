@@ -3,9 +3,11 @@ import { useOutsideDismiss } from '@/components/useOutsideDismiss'
 import { getExhaustionBand } from '@/lib/exhaustion-band'
 import { BAND_FILL_CLASS } from '@/lib/band-colors'
 import { Button } from '@/components/ui/Button'
+import { formatBarnDate } from '@/lib/format-date'
+import type { Instant } from '@/lib/db/types'
 
 export interface ExhaustionBarRow {
-  lessonAt: string
+  lessonAt: Instant
   exertionLevel: number
 }
 
@@ -91,7 +93,7 @@ export function ExhaustionBar({ existingRows, ghostValue, thresholds }: Props) {
             <ul className="space-y-1">
               {existingRows.map((row, i) => (
                 <li key={i} data-testid="exhaustion-bar-row" className="flex justify-between text-zinc-700 dark:text-zinc-300">
-                  <span>{new Date(row.lessonAt).toLocaleDateString()}</span>
+                  <span>{formatBarnDate(row.lessonAt)}</span>
                   <span>{row.exertionLevel}</span>
                 </li>
               ))}

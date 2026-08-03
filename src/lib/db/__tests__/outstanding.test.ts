@@ -309,18 +309,19 @@ describe('mergeOutstandingItems', () => {
   it('should_map_a_lesson_row_to_an_outstanding_item', () => {
     const result = mergeOutstandingItems(
       [{ id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-06-10T10:00:00Z', instructor_name: 'Jane Doe', rider_names: ['Alice'], fee: 75 }],
-      []
+      [], [], 'America/New_York'
     )
 
     expect(result).toEqual([
-      { id: 'lesson-1', itemType: 'lesson', date: '2026-06-10T10:00:00Z', instructorName: 'Jane Doe', riderNames: ['Alice'], fee: 75 },
+      { id: 'lesson-1', itemType: 'lesson', date: { at: '2026-06-10T10:00:00Z', tz: 'America/New_York' }, instructorName: 'Jane Doe', riderNames: ['Alice'], fee: 75 },
     ])
   })
 
   it('should_map_a_charge_row_to_an_outstanding_item', () => {
     const result = mergeOutstandingItems(
       [],
-      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }]
+      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }],
+      [], 'America/New_York'
     )
 
     expect(result).toEqual([
@@ -331,7 +332,8 @@ describe('mergeOutstandingItems', () => {
   it('should_map_a_lease_charge_row_with_lease_item_type', () => {
     const result = mergeOutstandingItems(
       [],
-      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'lease', riderName: 'Alice Rider', fee: 200 }]
+      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'lease', riderName: 'Alice Rider', fee: 200 }],
+      [], 'America/New_York'
     )
 
     expect(result[0].itemType).toBe('lease')
@@ -340,24 +342,26 @@ describe('mergeOutstandingItems', () => {
   it('should_sort_merged_items_by_date_ascending', () => {
     const result = mergeOutstandingItems(
       [{ id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-06-15T10:00:00Z', instructor_name: null, rider_names: [], fee: 75 }],
-      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }]
+      [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }],
+      [], 'America/New_York'
     )
 
     expect(result.map((r) => r.id)).toEqual(['charge-1', 'lesson-1'])
   })
 
   it('should_return_empty_array_when_both_inputs_are_empty', () => {
-    expect(mergeOutstandingItems([], [])).toEqual([])
+    expect(mergeOutstandingItems([], [], [], 'America/New_York')).toEqual([])
   })
 
   it('should_map_a_cancellation_fee_row_to_an_outstanding_item', () => {
     const result = mergeOutstandingItems(
       [], [],
-      [{ id: 'lr-1', lessonId: 'lesson-1', lessonAt: '2026-06-05T10:00:00Z', instructorName: 'Jane Doe', riderName: 'Alice Rider', fee: 50 }]
+      [{ id: 'lr-1', lessonId: 'lesson-1', lessonAt: '2026-06-05T10:00:00Z', instructorName: 'Jane Doe', riderName: 'Alice Rider', fee: 50 }],
+      'America/New_York'
     )
 
     expect(result).toEqual([
-      { id: 'lr-1', itemType: 'cancellation_fee', date: '2026-06-05T10:00:00Z', instructorName: 'Jane Doe', riderNames: ['Alice Rider'], fee: 50, linkId: 'lesson-1' },
+      { id: 'lr-1', itemType: 'cancellation_fee', date: { at: '2026-06-05T10:00:00Z', tz: 'America/New_York' }, instructorName: 'Jane Doe', riderNames: ['Alice Rider'], fee: 50, linkId: 'lesson-1' },
     ])
   })
 
@@ -365,15 +369,13 @@ describe('mergeOutstandingItems', () => {
     const result = mergeOutstandingItems(
       [{ id: 'lesson-1', barn_id: 'barn-1', lesson_at: '2026-06-20T10:00:00Z', instructor_name: null, rider_names: [], fee: 75 }],
       [{ id: 'charge-1', agreementId: 'agreement-1', period: '2026-06-01', kind: 'board', riderName: 'Alice Rider', fee: 500 }],
-      [{ id: 'lr-1', lessonId: 'lesson-2', lessonAt: '2026-06-10T10:00:00Z', instructorName: null, riderName: 'Bob Rider', fee: 50 }]
+      [{ id: 'lr-1', lessonId: 'lesson-2', lessonAt: '2026-06-10T10:00:00Z', instructorName: null, riderName: 'Bob Rider', fee: 50 }],
+      'America/New_York'
     )
 
     expect(result.map((r) => r.id)).toEqual(['charge-1', 'lr-1', 'lesson-1'])
   })
 
-  it('should_default_cancellation_fees_to_empty_array_when_omitted', () => {
-    expect(mergeOutstandingItems([], [])).toEqual([])
-  })
 })
 
 describe('mergeOutstandingItems instant branding', () => {

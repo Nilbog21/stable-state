@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { createMockHorse } from '@/test/fixtures'
+import { createMockHorse, instant } from '@/test/fixtures'
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(),
@@ -430,7 +430,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValue(links),
     } as any)
 
-    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -441,7 +441,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValue(links),
     } as any)
 
-    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(links.mockEqHorseId).toHaveBeenCalledWith('horse_id', 'horse-1')
   })
@@ -452,7 +452,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValue(links),
     } as any)
 
-    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(links.mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
@@ -463,7 +463,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValue(links),
     } as any)
 
-    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -474,7 +474,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValue(links),
     } as any)
 
-    await expect(getUpcomingLessonsForHorse('horse-1', 'barn-1')).rejects.toThrow('link error')
+    await expect(getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')).rejects.toThrow('link error')
   })
 
   it('should_return_upcoming_non_cancelled_lessons_ordered_ascending', async () => {
@@ -487,11 +487,11 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(result).toEqual([
-      { id: 'lesson-1', lessonAt: '2026-08-01T10:00:00Z' },
-      { id: 'lesson-2', lessonAt: '2026-08-08T10:00:00Z' },
+      { id: 'lesson-1', lessonAt: instant('2026-08-01T10:00:00Z') },
+      { id: 'lesson-2', lessonAt: instant('2026-08-08T10:00:00Z') },
     ])
   })
 
@@ -502,7 +502,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(lessons.mockIn).toHaveBeenCalledWith('id', ['lesson-1'])
   })
@@ -514,7 +514,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(lessons.mockEqBarnId).toHaveBeenCalledWith('barn_id', 'barn-1')
   })
@@ -526,7 +526,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(lessons.mockIs).toHaveBeenCalledWith('cancelled_at', null)
   })
@@ -538,7 +538,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(lessons.mockGte).toHaveBeenCalledWith('lesson_at', expect.any(String))
   })
@@ -550,7 +550,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(lessons.mockOrder).toHaveBeenCalledWith('lesson_at', { ascending: true })
   })
@@ -562,7 +562,7 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1')
+    const result = await getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')
 
     expect(result).toEqual([])
   })
@@ -574,6 +574,6 @@ describe('getUpcomingLessonsForHorse', () => {
       from: vi.fn().mockReturnValueOnce(links).mockReturnValueOnce(lessons),
     } as any)
 
-    await expect(getUpcomingLessonsForHorse('horse-1', 'barn-1')).rejects.toThrow('lessons error')
+    await expect(getUpcomingLessonsForHorse('horse-1', 'barn-1', 'America/New_York')).rejects.toThrow('lessons error')
   })
 })
