@@ -112,7 +112,7 @@ const barn = withBarn('phase4-dashboard', async ({ supabase, barn, members }) =>
   await addExpense(supabase, barn, {
     at: daysFromNow(0, barn.timezone),
     time: '12:00',
-    recipient: 'Barn Vet Clinic',
+    recipient: 'Hilltop Equine',
     expenseType: 'Vet',
     horseIds: [bella.id],
   })
@@ -262,7 +262,13 @@ test('dashboard_unpaid_lease_reminder_links_to_outstanding @manager', async ({ p
 // so nothing below can pull that state out from under it.
 // =============================================================================================
 
-/** Every card the Day view renders is a <Card href> — exactly one <a> per entry. */
+/**
+ * Every *linked* card the Day view renders — one <a> per lesson and per appointment.
+ *
+ * Deliberately not "every card": CalendarEventCard renders a Card with **no** href, which
+ * Card.tsx emits as a plain <div>, so a barn event contributes no link here at all. Nothing in
+ * this barn seeds an event, which is what lets the exact counts below stand.
+ */
 const dayCards = (page: Page) => page.locator('a[href*="/lessons/"], a[href*="/expenses/"]')
 
 /**
@@ -308,7 +314,7 @@ test('dashboard_todays_lessons_appear_on_the_calendar @manager', async ({ page }
 
 test('dashboard_todays_planned_expense_appears_alongside_todays_lessons @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
-  await expect(page.locator('a[href*="/expenses/"]').filter({ hasText: 'Barn Vet Clinic' })).toBeVisible()
+  await expect(page.locator('a[href*="/expenses/"]').filter({ hasText: 'Hilltop Equine' })).toBeVisible()
 })
 
 // The whole point of the item is the *shape* of the sequence, so the assertion is the
@@ -317,9 +323,12 @@ test('dashboard_todays_planned_expense_appears_alongside_todays_lessons @manager
 // lesson → expense → lesson.
 test('dashboard_todays_lessons_and_expense_are_ordered_by_time_not_grouped_by_type @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
-  // evaluateAll is a one-shot read with no auto-wait — same guard the day+2 interleave test
-  // above uses, for the same reason.
-  await page.locator('a[href*="/expenses/"]').first().waitFor()
+  // evaluateAll is a one-shot read with no auto-wait, and e2e/support/read.ts deliberately
+  // leaves this call shape its inline guard rather than wrapping it. nth(2) rather than the
+  // expense card alone: waiting on only the expense could sample a document that has it but
+  // not yet both lessons, which reads as a *shorter* array and quietly weakens the claim
+  // instead of failing.
+  await dayCards(page).nth(2).waitFor()
   const hrefs = await dayCards(page).evaluateAll((els) => els.map((el) => el.getAttribute('href') ?? ''))
   expect(hrefs.map((h) => h.includes('/expenses/'))).toEqual([false, true, false])
 })
@@ -365,9 +374,18 @@ test('dashboard_entire_barn_expense_card_shows_entire_barn_instead_of_horses @ma
 // otherwise a card linking to the *wrong* expense would still pass.
 test('dashboard_tapping_an_expense_card_opens_its_detail_page @manager', async ({ page }) => {
   await page.goto(`/barn/${barn.slug}`)
-  await page.locator('a[href*="/expenses/"]').filter({ hasText: 'Barn Vet Clinic' }).click()
-  await page.waitForURL(new RegExp(`/barn/${barn.slug}/expenses/`), { waitUntil: 'commit' })
-  await expect(page.getByLabel('Recipient', { exact: true })).toHaveValue('Barn Vet Clinic')
+  const card = page.locator('a[href*="/expenses/"]').filter({ hasText: 'Hilltop Equine' })
+  // Wait on this card's own path, not a /expenses/ pattern: the card was *selected* by that
+  // fragment, so a pattern-shaped wait is satisfied by the selector itself and says nothing
+  // about where the click landed. Computed before the click, while the old document is still
+  // the one page.url() describes.
+  const expectedPath = new URL((await card.getAttribute('href'))!, page.url()).pathname
+  await card.click()
+  await page.waitForURL((url) => url.pathname === expectedPath, { waitUntil: 'commit' })
+  // 'commit' resolves before the new document has rendered, so the wait alone would also be
+  // satisfied by a notFound() or a 500 at that path. Reading a real form field is what proves
+  // the expense page rendered, and reading *this* value is what proves it is the right one.
+  await expect(page.getByLabel('Recipient', { exact: true })).toHaveValue('Hilltop Equine')
 })
 
 /**
@@ -477,9 +495,10 @@ async function restoreUncollected(rows: LedgerRow[]): Promise<void> {
   }
 }
 
-// One test, both directions, because the item is a single claim about a *relationship*
-// ("hidden individually … without hiding the other") rather than two adjacent claims — the
-// repo's one-assertion rule carves this case out and the checklist line is not split.
+// One test, both directions. The checklist line is a single claim about a *relationship*
+// ("hidden individually … without hiding the other") rather than two claims that happen to be
+// adjacent, so it takes this batch's ratified indivisible-claim exception rather than the
+// repo's general one-assertion-per-test default. The line is not split.
 //
 // Each direction is a single array equality, which proves both halves at once: the zeroed
 // card's absence and the other card's survival are the same assertion.
