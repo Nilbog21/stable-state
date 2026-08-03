@@ -6,6 +6,7 @@ import type { Locator } from '@playwright/test'
 import { addHorse, addLeaseCharge, addPaidLesson, addTier, monthAnchor } from './support/fixtures'
 import { mustSucceed } from '@/lib/db/service-role'
 import { formatMonthParam } from '@/lib/finances-month'
+import { settledInnerTexts } from './support/read'
 import { formatCurrency } from '@/lib/format-currency'
 import type { Agreement, Horse, LessonTier } from '@/lib/db/types'
 
@@ -441,7 +442,7 @@ test.describe.serial('removing a trainer who has instructed a paid lesson', () =
   // only instructor left, having taught Apple's lesson and the comped one.
   test('by_instructor_has_no_no_instructor_body_row_after_the_removal @manager', async ({ page }) => {
     await page.goto(financesUrl('trainer'))
-    const names = await breakdownTable(page).locator('tbody tr td:first-child').allInnerTexts()
+    const names = await settledInnerTexts(breakdownTable(page).locator('tbody tr td:first-child'))
     expect(names.map((name) => name.trim())).toEqual([MANAGER_NAME])
   })
 

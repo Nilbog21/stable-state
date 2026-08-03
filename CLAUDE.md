@@ -22,6 +22,7 @@
 ### E2E spec maintenance
 - A PR that changes UI (removes/renames/restructures a page, component, or user-facing flow) must update any `e2e/` spec covering that UI in the same PR — not as a follow-up
 - If unsure whether a spec covers the changed UI, grep `e2e/` for the route/selector/text being touched before merging
+- Never call `allInnerTexts()`/`allTextContents()` on a bare locator — they don't auto-retry, so a not-yet-rendered table yields `[]`, and an assertion that accepts an empty array then *passes on nothing* (#1243 found two such checks reading as covered while asserting nothing). Read through `settledInnerTexts`/`settledTextContents` in `e2e/support/read.ts`, whose wait doubles as the non-empty assertion. `evaluateAll` has the same hazard but keeps an inline `await locator.first().waitFor()` — wrapping a callback reads worse than the guard it replaces
 
 ## Architecture Docs
 
