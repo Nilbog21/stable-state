@@ -4,6 +4,18 @@
  * agreements, expenses, documents, notifications, barn events), finance/reporting rows,
  * and schedule/calendar item shapes. No runtime code.
  */
+/**
+ * A real instant (a `TIMESTAMPTZ`) together with the barn it belongs to. Produced only by
+ * the DAL, which is the only layer that knows both — so `formatBarnDateTime(instant)` needs
+ * no timezone argument, offers no render-mode choice, behaves identically in Server and
+ * Client Components, and cannot be called wrong (#1222, which deleted the viewer frame).
+ *
+ * Only instants that are rendered or compared carry the brand. Audit columns nobody
+ * displays (`created_at`, `updated_at`, `submitted_at`, `read_at`) stay plain strings; the
+ * formatters accept nothing else, so displaying one later forces branding it at the DAL.
+ */
+export type Instant = { at: string; tz: string }
+
 export type Role = 'manager' | 'trainer' | 'rider'
 export type NotificationType =
   | 'outstanding_payment'
