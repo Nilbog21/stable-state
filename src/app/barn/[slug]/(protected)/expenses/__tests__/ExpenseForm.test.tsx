@@ -462,6 +462,21 @@ describe('ExpenseForm', () => {
       expect(fd.get('occurred_at')).toBe('2026-01-15T05:00:00.000Z')
     })
 
+    it('should_compute_occurred_at_from_a_stored_time_that_carries_seconds', () => {
+      // `appointments.expense_time` is a Postgres `time`, so the edit page seeds this with
+      // "HH:MM:SS" — the time input only ever produces "HH:MM". Appending seconds blindly
+      // built "…T20:30:00:00", an Invalid Date that threw out of wallClockToInstant and
+      // 500'd the whole edit page.
+      const { container } = renderForm({
+        defaultDate: '2026-07-05',
+        initial: { recipient: '', expenseType: '', expenseTime: '20:30:00', amount: null, notes: null, appliesToAllHorses: false, horseIds: [] },
+      })
+      const form = container.querySelector('form')!
+      const fd = new FormData(form)
+      // 2026-07-05 20:30 America/New_York (EDT, UTC-4) => 00:30 UTC the next day
+      expect(fd.get('occurred_at')).toBe('2026-07-06T00:30:00.000Z')
+    })
+
     it('should_omit_the_occurred_at_field_when_date_is_cleared', () => {
       const { container } = renderForm({ defaultDate: '2026-07-05' })
       fireEvent.change(screen.getByLabelText(/date/i), { target: { value: '' } })
