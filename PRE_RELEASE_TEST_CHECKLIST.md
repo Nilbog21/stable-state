@@ -200,8 +200,8 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 <!-- Asserting role: manager, or role-agnostic. A line whose asserting eye is a trainer or rider belongs in Phase 5 or 6 — see the phase-partitioning Convention at the top. -->
 
 - [ ] (e2e: lesson_creation_stores_correct_utc_lesson_at_for_known_local_wall_clock) Compare a lesson's stored `lesson_at` in the DB (Supabase Studio or `supabase db` query) against the wall-clock time you entered when creating it in Phase 3 — it must be that time in the **barn's** timezone converted to UTC, regardless of your own machine's zone (#1222)
-- [ ] (e2e-candidate) On the Lessons list, a lesson's displayed time matches the wall-clock time you entered — with your machine's clock set to a zone that is neither UTC nor the barn's, this proves the display follows the barn (#1222) rather than your device or the server host
-- [ ] (e2e-candidate) On that lesson's detail page, its displayed time matches the same wall-clock time
+- [ ] (e2e: lesson_list_shows_the_barn_local_wall_clock_time_entered_on_the_form) On the Lessons list, a lesson's displayed time matches the wall-clock time you entered — with your machine's clock set to a zone that is neither UTC nor the barn's, this proves the display follows the barn (#1222) rather than your device or the server host
+- [ ] (e2e: lesson_detail_shows_the_same_barn_local_wall_clock_time) On that lesson's detail page, its displayed time matches the same wall-clock time
 
 Dashboard (`/barn/dev-barn`):
 
@@ -248,28 +248,28 @@ Dashboard (`/barn/dev-barn`):
 
 Lessons (`/barn/dev-barn/lessons`):
 
-- [ ] (e2e-candidate) Recent lessons (last 7 days) are shown immediately on page load
-- [ ] (e2e-candidate) Older lessons are not shown on page load
-- [ ] (e2e-candidate) Tapping the older-lessons toggle reveals them
-- [ ] (e2e-candidate) Each lesson renders as a full-width card of uniform height with its siblings
-- [ ] (e2e-candidate) The whole card is tappable and opens that lesson's detail page
-- [ ] (e2e-candidate) No **Cancel** button appears on any lesson in the list
-- [ ] (e2e-candidate) Filter pills show exactly `My Lessons | All | By Instructor | By Rider | By Horse | By Tier`
-- [ ] (e2e-candidate) At ~390px width those pills wrap onto multiple lines instead of requiring horizontal scroll
-- [ ] (e2e-candidate) **All** is the active pill on page load
-- [ ] (e2e-candidate) Picking **My Lessons** filters to only lessons you instruct
-- [ ] (e2e-candidate) Picking **All** shows every barn lesson regardless of instructor
-- [ ] (e2e-candidate) Picking **By Instructor → Alex** shows only Alex's lessons
-- [ ] (e2e-candidate) Picking **By Instructor → Alex** carries the URL `?filter=trainer&id=<uuid>`
-- [ ] (e2e-candidate) **By Rider → Dana** filters correctly
-- [ ] (e2e-candidate) **By Horse → Apple** filters correctly
-- [ ] (e2e-candidate) **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
-- [ ] (e2e-candidate) Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
-- [ ] (e2e-candidate) Times display in 12-hour AM/PM format everywhere (no military time)
-- [ ] (e2e-candidate) Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list (Willow is seeded inactive)
-- [ ] (e2e-candidate) That same lesson shows the badge on the Dashboard's Day view (navigate to the lesson's date if it isn't today)
-- [ ] (e2e-candidate) The badge does not appear on Willow's past lessons
-- [ ] (e2e-candidate) The badge does not appear on a cancelled lesson
+- [ ] (e2e: recent_lessons_are_shown_on_page_load) Recent lessons (last 7 days) are shown immediately on page load
+- [ ] (e2e: older_lessons_are_not_shown_on_page_load) Older lessons are not shown on page load
+- [ ] (e2e: older_lessons_toggle_reveals_them) Tapping the older-lessons toggle reveals them
+- [ ] (e2e: lesson_cards_are_full_width_and_uniform_height) Each lesson renders as a full-width card of uniform height with its siblings
+- [ ] (e2e: whole_lesson_card_opens_its_detail_page) The whole card is tappable and opens that lesson's detail page
+- [ ] (e2e: no_cancel_button_appears_on_any_lesson_in_the_list) No **Cancel** button appears on any lesson in the list
+- [ ] (e2e: filter_pills_show_the_six_expected_filters) Filter pills show exactly `My Lessons | All | By Instructor | By Rider | By Horse | By Tier`
+- [ ] (e2e: filter_pills_wrap_at_narrow_width_without_horizontal_scroll) At ~390px width those pills wrap onto multiple lines instead of requiring horizontal scroll
+- [ ] (e2e: all_is_the_active_pill_on_page_load) **All** is the active pill on page load
+- [ ] (e2e: my_lessons_filter_shows_only_lessons_you_instruct) Picking **My Lessons** filters to only lessons you instruct
+- [ ] (e2e: all_filter_shows_every_barn_lesson) Picking **All** shows every barn lesson regardless of instructor
+- [ ] (e2e: by_instructor_filter_shows_only_that_instructors_lessons) Picking **By Instructor → Alex** shows only Alex's lessons
+- [ ] (e2e: by_instructor_filter_url_carries_the_instructor_membership_id) Picking **By Instructor → Alex** carries the URL `?filter=trainer&id=<uuid>`
+- [ ] (e2e: by_rider_filter_shows_only_that_riders_lessons) **By Rider → Dana** filters correctly
+- [ ] (e2e: by_horse_filter_shows_only_that_horses_lessons) **By Horse → Apple** filters correctly
+- [ ] (e2e: by_tier_filter_shows_only_that_tiers_lessons) **By Tier → Custom** (or another tier name found among the barn's lessons) filters correctly
+- [ ] (e2e: by_tier_filter_url_carries_the_tier_name) Picking **By Tier → Custom** carries the URL `?filter=tier&id=<tier name>`
+- [ ] (e2e: lesson_list_times_display_in_twelve_hour_format) Times display in 12-hour AM/PM format on the Lessons list (no military time — the seeded 14:00 barn-local lesson must read "2:00 PM")
+- [ ] (e2e: willow_upcoming_lesson_shows_needs_attention_badge_on_lessons_list) Willow's upcoming lesson shows a **Needs Attention** badge on the Lessons list (Willow is seeded inactive)
+- [ ] (e2e: willow_upcoming_lesson_shows_needs_attention_badge_on_dashboard_day_view) That same lesson shows the badge on the Dashboard's Day view (navigate to the lesson's date if it isn't today)
+- [ ] (e2e: needs_attention_badge_does_not_appear_on_willows_past_lesson) The badge does not appear on Willow's past lessons
+- [ ] (e2e: needs_attention_badge_does_not_appear_on_a_cancelled_lesson) The badge does not appear on a cancelled lesson
 - [ ] (e2e-candidate) Willow's flagged lesson's detail page shows a **Needs Attention** banner at the top reading "Willow is inactive"
 - [ ] (e2e-candidate) The same banner appears on that lesson's edit page
 - [ ] (e2e-candidate) The banner does not block editing or saving that lesson
