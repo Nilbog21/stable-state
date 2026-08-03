@@ -351,7 +351,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (e2e-candidate) That auto-filled Expense Type field flashes to draw attention to itself
 - [ ] (e2e-candidate) Leaving the amount blank saves a planned expense
 - [ ] (e2e-candidate) Re-opening that planned expense's form later lets you fill the amount in and save
-- [ ] (e2e-candidate) Checking **Entire Barn** on the new-expense form disables the horse checkboxes
+- [ ] (e2e-candidate) Checking **All** on the new-expense form disables the horse checkboxes
 - [ ] (e2e-candidate) Saving that expense shows "Entire Barn" on its card instead of specific horses
 - [ ] (e2e-candidate) On the new-expense form, setting the date to yesterday hides the Time field
 - [ ] (e2e-candidate) Changing it back to today or a future date brings the Time field back
@@ -360,13 +360,13 @@ Expenses (`/barn/dev-barn/expenses`):
 
 - [ ] (#1020) The Date field renders as a month calendar grid, not a native date box
 - [ ] (#1020) Days before today are greyed out
-- [ ] (#1020) With no horse checked and **Entire Barn** unchecked, no day shows a dot
+- [ ] (#1020) With no horse checked and **All** unchecked, no day shows a dot
 - [ ] (#1020) No day is exertion-shaded at any point on this form — an appointment carries no workload, so the grid stays untinted even on a horse's heaviest day
 - [ ] (#1020) Check horse Apple — a day where Apple already has a lesson shows a small red dot
 - [ ] (#1020) Still with Apple checked, the day holding Apple's seeded vet/farrier expense also shows a dot (the vet+farrier same-day case)
 - [ ] (#1020) A day whose only booking belongs to a different horse shows no dot
-- [ ] (#1020) Uncheck Apple and check **Entire Barn** — every day holding any lesson or expense shows a dot
-- [ ] (#1020) With **Entire Barn** checked, a day holding only a barn event (Manage Barn → Events) shows no dot
+- [ ] (#1020) Uncheck Apple and check **All** — every day holding any lesson or expense shows a dot
+- [ ] (#1020) With **All** checked, a day holding only a barn event (Manage Barn → Events) shows no dot
 - [ ] (#1020) Tap a dotted day — a popup lists that day's items
 - [ ] (#1020) That popup names an expense by its recipient and type
 - [ ] (#1020) That popup names a lesson by its horses
@@ -375,7 +375,7 @@ Expenses (`/barn/dev-barn/expenses`):
 - [ ] (#1020) On a seeded expense's edit page (`/barn/dev-barn/expenses/[id]`), its own day shows no dot from itself
 - [ ] (#1020) The **&lt;** / **&gt;** month arrows match the ones on the lesson form and Finances page
 - [ ] (e2e-candidate) Editing a seeded expense (`/barn/dev-barn/expenses/[id]`) opens the form pre-filled with its stored values
-- [ ] (e2e-candidate) That form opens with the correct Entire Barn / specific-horse checkbox state
+- [ ] (e2e-candidate) That form opens with the correct All / specific-horse checkbox state
 - [ ] (e2e-candidate) Change the recipient and save → the card shows the new recipient
 - [ ] (e2e-candidate) Change the amount and save → the card shows the new amount
 - [ ] (e2e-candidate) On the new-expense form, set a **Payment Type**, save → it persists on reload

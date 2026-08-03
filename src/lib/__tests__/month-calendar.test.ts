@@ -391,7 +391,7 @@ describe('computeDayDecorations — conflict dot', () => {
 })
 
 // The mirror of #1147: that fix made a barn-wide *item* conflict with a selected horse; this is
-// a barn-wide *selection* — the appointment form's "Entire Barn" — conflicting with whatever is
+// a barn-wide *selection* — the appointment form's "All" checkbox — conflicting with whatever is
 // already booked. It ticks no horses, so without this the grid goes blank exactly when the
 // appointment reaches the most horses.
 describe('computeDayDecorations — barn-wide selection', () => {
