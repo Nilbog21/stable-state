@@ -202,4 +202,48 @@ describe('ChargesTable', () => {
     })
     expect(mockRefresh).not.toHaveBeenCalled()
   })
+
+  it('should_disable_payment_type_select_while_write_is_in_flight', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockReturnValue(new Promise(() => {}))
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByRole('combobox')).toHaveProperty('disabled', true)
+  })
+
+  it('should_re_enable_payment_type_select_after_write_completes', async () => {
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByRole('combobox')).toHaveProperty('disabled', false)
+  })
+
+  it('should_re_enable_payment_type_select_after_write_rejects', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockRejectedValue(new Error('network down'))
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByRole('combobox')).toHaveProperty('disabled', false)
+  })
+
+  it('should_roll_payment_type_back_when_write_rejects', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockRejectedValue(new Error('network down'))
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByRole('combobox')).toHaveProperty('value', charge.payment_type ?? '')
+  })
+
+  it('should_show_a_generic_error_when_payment_type_write_rejects', async () => {
+    vi.mocked(updateChargePaymentTypeAction).mockRejectedValue(new Error('network down'))
+    render(<ChargesTable charges={[charge]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByText('Could not save. Please try again.')).toBeDefined()
+  })
 })

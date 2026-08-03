@@ -211,6 +211,90 @@ describe('OutstandingTable', () => {
     expect(vi.mocked(updateChargePaymentTypeAction)).not.toHaveBeenCalled()
   })
 
+  it('should_show_error_message_when_action_returns_error', async () => {
+    vi.mocked(updatePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByText('Failed to update payment type')).toBeDefined()
+  })
+
+  it('should_reset_select_to_unpaid_when_action_returns_error', async () => {
+    vi.mocked(updatePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('')
+  })
+
+  it('should_not_call_router_refresh_when_action_returns_error', async () => {
+    const mockRefresh = vi.fn()
+    vi.mocked(useRouter).mockReturnValue({ refresh: mockRefresh } as any)
+    vi.mocked(updatePaymentTypeAction).mockResolvedValue({ error: 'Failed to update payment type' })
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(mockRefresh).not.toHaveBeenCalled()
+  })
+
+  it('should_disable_select_while_write_is_in_flight', async () => {
+    vi.mocked(updatePaymentTypeAction).mockReturnValue(new Promise(() => {}))
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect((screen.getByRole('combobox') as HTMLSelectElement).disabled).toBe(true)
+  })
+
+  it('should_re_enable_select_after_write_completes', async () => {
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect((screen.getByRole('combobox') as HTMLSelectElement).disabled).toBe(false)
+  })
+
+  it('should_reset_select_to_unpaid_when_action_rejects', async () => {
+    vi.mocked(updatePaymentTypeAction).mockRejectedValue(new Error('network down'))
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect((screen.getByRole('combobox') as HTMLSelectElement).value).toBe('')
+  })
+
+  it('should_re_enable_select_after_action_rejects', async () => {
+    vi.mocked(updatePaymentTypeAction).mockRejectedValue(new Error('network down'))
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect((screen.getByRole('combobox') as HTMLSelectElement).disabled).toBe(false)
+  })
+
+  it('should_show_a_generic_error_when_action_rejects', async () => {
+    vi.mocked(updatePaymentTypeAction).mockRejectedValue(new Error('network down'))
+    render(<OutstandingTable items={[lessonItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getByRole('combobox'), { target: { value: 'venmo' } })
+    })
+    expect(screen.getByText('Could not save. Please try again.')).toBeDefined()
+  })
+
+  // The per-row-state claim: saving state lives in each row, so an in-flight write on one
+  // row must not lock the manager out of every other row in the table.
+  it('should_leave_other_rows_enabled_while_one_rows_write_is_in_flight', async () => {
+    vi.mocked(updatePaymentTypeAction).mockReturnValue(new Promise(() => {}))
+    render(<OutstandingTable items={[lessonItem, boardItem]} barnSlug="green-acres" />)
+    await act(async () => {
+      fireEvent.change(screen.getAllByRole('combobox')[0], { target: { value: 'venmo' } })
+    })
+    expect((screen.getAllByRole('combobox')[1] as HTMLSelectElement).disabled).toBe(false)
+  })
+
   describe('timezone-aware date display', () => {
     let originalTz: string | undefined
 

@@ -24,6 +24,7 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
   const [paymentType, setPaymentType] = useState(charge.payment_type ?? '')
   const [feeError, setFeeError] = useState<string | null>(null)
   const [paymentTypeError, setPaymentTypeError] = useState<string | null>(null)
+  const [savingPaymentType, setSavingPaymentType] = useState(false)
   const feeSaved = useSaveFlash()
   const paymentTypeSaved = useSaveFlash()
 
@@ -42,15 +43,25 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
 
   async function handlePaymentTypeChange(value: string) {
     setPaymentType(value)
-    const result = await updateChargePaymentTypeAction(barnSlug, charge.id, value || null)
-    if (result.error) {
-      setPaymentTypeError(result.error)
+    setSavingPaymentType(true)
+    try {
+      const result = await updateChargePaymentTypeAction(barnSlug, charge.id, value || null)
+      if (result.error) {
+        setPaymentTypeError(result.error)
+        setPaymentType(charge.payment_type ?? '')
+        return
+      }
+      setPaymentTypeError(null)
+      router.refresh()
+      paymentTypeSaved.flash()
+    } catch {
+      // A rejected call is a transport failure, not an `{ error }` result — the server recorded
+      // nothing, so roll the select back and re-enable it rather than leaving the row locked.
+      setPaymentTypeError('Could not save. Please try again.')
       setPaymentType(charge.payment_type ?? '')
-      return
+    } finally {
+      setSavingPaymentType(false)
     }
-    setPaymentTypeError(null)
-    router.refresh()
-    paymentTypeSaved.flash()
   }
 
   return (
@@ -72,8 +83,9 @@ function ChargeRow({ charge, barnSlug }: { charge: AgreementCharge; barnSlug: st
       <Td>
         <select
           value={paymentType}
+          disabled={savingPaymentType}
           onChange={(e) => handlePaymentTypeChange(e.target.value)}
-          className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
+          className="rounded border border-zinc-300 bg-white px-2 py-1 text-sm text-zinc-900 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-50"
         >
           <option value="">Unpaid</option>
           {PAYMENT_TYPES.map((pt) => (
