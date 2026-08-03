@@ -205,32 +205,32 @@ All via `/barn/dev-barn/lessons/new`. Times entered here should display later in
 
 Dashboard (`/barn/dev-barn`):
 
-- [ ] (e2e-candidate) Dashboard shows a single-day calendar (one date's entries, not a week or a flat list)
+- [ ] (e2e: dashboard_day_view_shows_only_the_selected_days_entries) Dashboard shows a single-day calendar (one date's entries, not a week or a flat list)
 - [ ] (e2e: dashboard_today_indicator_visible_on_current_day) The calendar defaults to today, with today's date in the heading
-- [ ] (e2e-candidate) Prev/Next links appear alongside the calendar heading
-- [ ] (e2e-candidate) Today's seeded lessons appear on the calendar
-- [ ] (e2e-candidate) A planned expense scheduled for today (future date+time, no amount yet) appears on the same calendar alongside those lessons
-- [ ] (e2e-candidate) Today's lessons and that expense are ordered by time together, not grouped into separate blocks by type
-- [ ] (e2e-candidate) Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for
+- [ ] (e2e: dashboard_day_heading_has_previous_and_next_day_links) Prev/Next links appear alongside the calendar heading
+- [ ] (e2e: dashboard_todays_lessons_appear_on_the_calendar) Today's seeded lessons appear on the calendar
+- [ ] (e2e: dashboard_todays_planned_expense_appears_alongside_todays_lessons) A planned expense scheduled for today (future date+time, no amount yet) appears on the same calendar alongside those lessons
+- [ ] (e2e: dashboard_todays_lessons_and_expense_are_ordered_by_time_not_grouped_by_type) Today's lessons and that expense are ordered by time together, not grouped into separate blocks by type
+- [ ] (e2e: dashboard_clicking_next_twice_reaches_the_day_of_the_two_day_out_expense) Clicking Next twice navigates to the day the seeded Riverside Vet Clinic expense (2 days out) is scheduled for
 - [ ] (e2e: dashboard_expense_interleaved_with_lesson_by_time_on_shared_day) That expense appears on that day interleaved by time with the day's lessons, not grouped into a separate expenses block
-- [ ] (e2e-candidate) A "Today" link appears while viewing a day other than today
-- [ ] (e2e-candidate) That "Today" link returns to today's calendar when clicked
-- [ ] (e2e-candidate) No "Today" link appears while already viewing today
+- [ ] (e2e: dashboard_today_link_appears_when_viewing_another_day) A "Today" link appears while viewing a day other than today
+- [ ] (e2e: dashboard_today_link_returns_to_todays_calendar) That "Today" link returns to today's calendar when clicked
+- [ ] (e2e: dashboard_no_today_link_while_viewing_today) No "Today" link appears while already viewing today
 - [ ] (e2e: dashboard_date_only_planned_expense_not_shown) A date-only planned expense (no time set) does **not** appear on the calendar for its date
 - [ ] (e2e: dashboard_expense_card_shows_scheduled_time) An expense entry on the calendar shows its scheduled time (no per-entry date — the day heading already carries it)
 - [ ] (e2e: dashboard_expense_card_shows_recipient) That expense entry shows its recipient
 - [ ] (e2e: dashboard_expense_card_shows_type) That expense entry shows its expense type
 - [ ] (e2e: dashboard_expense_card_shows_horse) A horse-specific expense entry shows its horse(s)
-- [ ] (e2e-candidate) An **Entire Barn** expense entry shows "Entire Barn" in place of horse names
-- [ ] (e2e-candidate) Tapping an expense entry opens that expense's detail page
+- [ ] (e2e: dashboard_entire_barn_expense_card_shows_entire_barn_instead_of_horses) An **Entire Barn** expense entry shows "Entire Barn" in place of horse names
+- [ ] (e2e: dashboard_tapping_an_expense_card_opens_its_detail_page) Tapping an expense entry opens that expense's detail page
 - [ ] (e2e: dashboard_reminders_header_visible_for_manager) A "Reminders" section header appears above the document-reminders/unpaid-income cards
-- [ ] (e2e-candidate) No document-reminder cards appear under Reminders when no documents are past their reminder date
+- [ ] (e2e: dashboard_no_document_reminder_cards_when_no_document_is_past_its_reminder_date) No document-reminder cards appear under Reminders when no documents are past their reminder date
 - [ ] (e2e: dashboard_document_reminder_card_shown_after_setting_reminder_date) After setting a past reminder date on a document (see Horses/Members below), a single-line "{owner} — {record type} — {date}" card appears under Reminders
-- [ ] (e2e-candidate) That card appears directly under Reminders with no separate "Document Reminders" heading above it
-- [ ] (e2e-candidate) That card links to the horse's or member's detail page
+- [ ] (e2e: dashboard_document_reminder_card_sits_directly_under_reminders_without_its_own_heading) That card appears directly under Reminders with no separate "Document Reminders" heading above it
+- [ ] (e2e: dashboard_document_reminder_card_links_to_the_horses_detail_page) That card links to the horse's or member's detail page
 - [ ] (e2e: dashboard_unpaid_lesson_reminder_links_to_outstanding) With unpaid lessons in the barn, an "N unpaid lessons" card appears under Reminders linking to `/barn/dev-barn/finances/outstanding`
 - [ ] (e2e: dashboard_unpaid_lease_reminder_links_to_outstanding) With unpaid lease/boarding charges in the barn, an "N unpaid leases/boarding" card appears under Reminders linking to the same page
-- [ ] (e2e-candidate) Each of those two cards is hidden individually when its own count is zero, without hiding the other
+- [ ] (e2e: dashboard_unpaid_reminder_cards_hide_independently_of_each_other) Each of those two cards is hidden individually when its own count is zero, without hiding the other
 - [ ] (e2e-candidate) (#1016) A "Day"/"Week" pill switcher appears above the calendar
 - [ ] (e2e-candidate) (#1016) The Day view is active by default
 - [ ] (e2e-candidate) (#1070) Tapping "Week" switches to the calendar-aligned Sunday–Saturday week containing the currently viewed date, not a rolling 7-day window
