@@ -470,23 +470,23 @@ Members (`/barn/dev-barn/members` and `/barn/dev-barn/members/[membership_id]`):
 - [ ] (e2e: managed_rider_documents_section_has_add_document_button) That Documents section has an **Add Document** button
 - [ ] (e2e: managed_rider_contact_info_is_editable_form) On Harper Test's member detail page, **Contact Info** is an editable form (manager viewing an unclaimed/managed member)
 - [ ] (e2e: managed_rider_contact_info_values_persist_after_save_and_reload) Set Phone, Emergency Contact Name and Emergency Contact Phone there and tap **Save** → the values persist on reload
-- [ ] (e2e-candidate) On Harper Test's member detail page, tap **Set Photo** and choose `scripts/data/harper-photo.png` → the upload starts immediately
-- [ ] (e2e-candidate) You land back on the member page
-- [ ] (e2e-candidate) The photo displays there
-- [ ] (e2e-candidate) With Harper Test's photo set, tap **Replace Photo** and choose `scripts/data/emery-photo.jpg` (a different file *and* a different format) → the displayed word changes from `harper` to `emery`
-- [ ] (e2e-candidate) With Harper Test's photo set, tap **Remove** → the placeholder returns
-- [ ] (e2e-candidate) The **Set Photo** button returns with it
-- [ ] (e2e-candidate) A claimed trainer's member detail page shows no **Set Photo**/**Replace Photo**/**Remove** control (manager can't edit a claimed member's photo)
-- [ ] (e2e-candidate) On your own manager member detail page, tap **Set Photo** and upload `scripts/data/clover-photo.png` → the photo displays
-- [ ] (e2e-candidate) That photo persists on reload
-- [ ] (e2e-candidate) Tap **Add Document** on Harper Test's page and upload `scripts/data/test_1_kb.pdf` → redirects back to the member page
-- [ ] (e2e-candidate) The document is listed there
-- [ ] (e2e-candidate) Its signed-URL link opens the document
-- [ ] (e2e-candidate) Delete it → row disappears
-- [ ] (e2e-candidate) A trainer's member detail page has an **Add Document** button
-- [ ] (e2e-candidate) That button links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
-- [ ] (e2e-candidate) Rider Gale Test's member detail page has an **Add Document** button
-- [ ] (e2e-candidate) That button links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
+- [ ] (e2e: choosing_a_photo_file_uploads_it_immediately_and_returns_to_the_member_page) On Harper Test's member detail page, tap **Set Photo** and choose `scripts/data/harper-photo.png` → the upload starts immediately
+- [ ] (e2e: choosing_a_photo_file_uploads_it_immediately_and_returns_to_the_member_page) You land back on the member page
+- [ ] (e2e: the_uploaded_member_photo_displays_on_the_member_page) The photo displays there
+- [ ] (e2e: replacing_the_member_photo_with_a_jpg_repoints_the_displayed_image) With Harper Test's photo set, tap **Replace Photo** and choose `scripts/data/emery-photo.jpg` (a different file *and* a different format) → the displayed photo's signed URL repoints to the newly uploaded `.jpg` object
+- [ ] (e2e: removing_the_member_photo_restores_the_no_photo_placeholder) With Harper Test's photo set, tap **Remove** → the placeholder returns
+- [ ] (e2e: removing_the_member_photo_restores_the_set_photo_button) The **Set Photo** button returns with it
+- [ ] (e2e: claimed_member_photo_section_offers_no_edit_controls_to_a_manager) A claimed trainer's member detail page shows no **Set Photo**/**Replace Photo**/**Remove** control (manager can't edit a claimed member's photo)
+- [ ] (e2e: uploading_your_own_photo_displays_it_on_your_member_page) On your own manager member detail page, tap **Set Photo** and upload `scripts/data/clover-photo.png` → the photo displays
+- [ ] (e2e: your_own_member_photo_persists_across_a_reload) That photo persists on reload
+- [ ] (e2e: uploading_a_member_document_redirects_back_to_the_member_page) Tap **Add Document** on Harper Test's page and upload `scripts/data/test_1_kb.pdf` → redirects back to the member page
+- [ ] (e2e: the_uploaded_member_document_is_listed_on_the_member_page) The document is listed there
+- [ ] (e2e: the_member_document_signed_url_serves_the_pdf) Its signed-URL link returns 200 with `application/pdf`
+- [ ] (e2e: deleting_a_member_document_removes_its_row) Delete it → row disappears
+- [ ] (e2e: trainer_detail_has_an_add_document_button) A trainer's member detail page has an **Add Document** button
+- [ ] (e2e: trainer_add_document_button_links_to_the_trainer_upload_page) That button links to the shared `/barn/dev-barn/documents/new?entity=trainer&id=<id>` page
+- [ ] (e2e: rider_detail_has_an_add_document_button) Rider Gale Test's member detail page has an **Add Document** button
+- [ ] (e2e: rider_add_document_button_links_to_the_rider_upload_page) That button links to `/barn/dev-barn/documents/new?entity=rider&id=<id>`
 - [ ] (e2e-candidate) Rider Emery's member detail page shows an **Active Agreements** header
 - [ ] (e2e-candidate) It shows a card for her seeded lease agreement
 - [ ] (e2e-candidate) It shows a card for her seeded boarding agreement
