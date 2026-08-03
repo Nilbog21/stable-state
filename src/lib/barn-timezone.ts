@@ -1,8 +1,10 @@
 // Barn-relative timezone: every comparison against barn data resolves "today"/"now" here,
 // whether it runs with a viewer present or not (cron jobs, dashboard SSR, and — via a
 // server-computed prop — the client forms' own date comparisons, #1149). Display of real
-// instants (lesson_at) stays viewer-local, per #935, and never reads this; so do default
-// values for the user's own input (see local-day.ts's localToday).
+// instants (lesson_at) stays viewer-local, per #935, and never reads this. An input default
+// resolves here too when the day it seeds is a day of barn business (#1224 — the new-expense
+// Date, the new-lease/boarding Start Date); only a default seeding the viewer's own scheduling
+// choice stays viewer-local (see local-day.ts's localToday).
 export const BARN_TIMEZONES = [
   { value: 'America/New_York', label: 'Eastern (New York)' },
   { value: 'America/Chicago', label: 'Central (Chicago)' },

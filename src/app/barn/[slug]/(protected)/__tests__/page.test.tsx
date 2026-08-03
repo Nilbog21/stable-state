@@ -16,8 +16,8 @@ vi.mock('@/components/calendar/CalendarWeekView', () => ({
 }))
 
 vi.mock('../DocumentRemindersSection', () => ({
-  DocumentRemindersSection: ({ slug, today, dueDocuments }: { slug: string; today: string; dueDocuments: { id: string }[] }) => (
-    <div data-testid="document-reminders" data-slug={slug} data-today={today} data-due-count={dueDocuments.length} />
+  DocumentRemindersSection: ({ slug, dueDocuments }: { slug: string; dueDocuments: { id: string }[] }) => (
+    <div data-testid="document-reminders" data-slug={slug} data-due-count={dueDocuments.length} />
   ),
 }))
 
@@ -380,15 +380,37 @@ describe('BarnDashboardPage', () => {
     expect(screen.getByTestId('document-reminders').getAttribute('data-slug')).toBe('green-acres')
   })
 
-  // #1149 -- the due/not-yet-due split is the barn's own day, the same one the Day view heading
-  // already uses, rather than a re-derivation from the viewer's browser clock inside the component.
-  it('should_pass_a_barn_local_today_to_document_reminders_section', async () => {
-    vi.mocked(getDueDocuments).mockResolvedValue([mockDueHorseDoc])
+  // #1224 -- the due/not-yet-due cutoff is the barn's own day, applied by the fetch itself rather
+  // than the server host's UTC day (which runs ahead of every barn zone) with a narrower re-filter
+  // downstream. Pinned to 03:00Z on the 2nd, which is still the 1st in America/New_York.
+  it('should_fetch_due_documents_with_the_barns_day_not_the_server_hosts_utc_day', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-03-02T03:00:00Z'))
+    try {
+      await renderPage()
+      expect(getDueDocuments).toHaveBeenCalledWith(mockBarn.id, '2026-03-01')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
 
-    const jsx = await renderPage()
-    render(jsx)
+  // #1224 -- the Reminders header used to be computed from the raw pre-filter count, so a document
+  // due only by the server's UTC day rendered a header with no cards under it. With the cutoff in
+  // the fetch, that document is never returned and the header stays away.
+  it('should_not_render_reminders_heading_when_the_only_document_is_due_after_the_barns_day', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true })
+    vi.setSystemTime(new Date('2026-03-02T03:00:00Z'))
+    vi.mocked(getDueDocuments).mockImplementation(async (_barnId: string, today: string) =>
+      [{ ...mockDueHorseDoc, reminderDate: '2026-03-02' }].filter((doc) => doc.reminderDate <= today)
+    )
+    try {
+      const jsx = await renderPage()
+      render(jsx)
 
-    expect(screen.getByTestId('document-reminders').getAttribute('data-today')).toMatch(/^\d{4}-\d{2}-\d{2}$/)
+      expect(screen.queryByRole('heading', { name: 'Reminders' })).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('should_not_call_getDueDocuments_for_trainer', async () => {

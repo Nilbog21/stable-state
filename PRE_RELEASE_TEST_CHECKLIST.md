@@ -697,6 +697,8 @@ Manage Barn (`/barn/dev-barn/settings`):
 - [ ] (e2e-candidate) Under that setup, **New Lesson**'s month calendar greys out your machine's own current date as past — the cutoff follows the barn's day, which has already moved past it, not your device's
 - [ ] (e2e-candidate) Under that setup, a horse document whose Reminder Date is *tomorrow* by your machine's clock (i.e. the barn's current date) shows the amber **Reminder Due** badge on the horse detail page
 - [ ] (e2e-candidate) Under that setup, **Add Expense** with the Date set to your machine's own current date — already yesterday in barn time — hides the optional **Time** field, since the barn considers that date past
+- [ ] (e2e-candidate) Under that setup, **Add Expense**'s Date field pre-fills with the *barn's* date, one day ahead of your device's
+- [ ] (e2e-candidate) Under that setup, **Add Lease** / **Add Boarding**'s Start Date pre-fills with the barn's date, one day ahead of your device's
 - [ ] (e2e-candidate) **Add Event** under Barn Events (`/barn/dev-barn/settings/events/new`): the three **Visible to** role checkboxes (Manager, Trainer, Rider) are all checked by default
 - [ ] (e2e-candidate) Create an event with a title, date/hour, and notes → it appears in the Barn Events list under the correct title
 - [ ] (e2e-candidate) That list entry shows the correct date

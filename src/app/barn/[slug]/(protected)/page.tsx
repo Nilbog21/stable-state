@@ -73,7 +73,7 @@ export default async function BarnDashboardPage({
 
       const [scheduleItems, due, outstandingLessons, outstandingCancellationFees, outstandingCharges] = await Promise.all([
         getScheduleForRange(barn.id, rangeStart, rangeEnd, barn.timezone),
-        membership.role === 'manager' ? getDueDocuments(barn.id, new Date().toISOString().slice(0, 10)) : Promise.resolve([]),
+        membership.role === 'manager' ? getDueDocuments(barn.id, todayStr) : Promise.resolve([]),
         getOutstandingLessons(barn.id, user.id, membership.role),
         getOutstandingCancellationFees(barn.id, user.id, membership.role),
         getOutstandingCharges(barn.id, user.id, membership.role),
@@ -156,7 +156,7 @@ export default async function BarnDashboardPage({
                 </Button>
               </div>
             )}
-            <DocumentRemindersSection slug={slug} today={todayStr} dueDocuments={dueDocuments} />
+            <DocumentRemindersSection slug={slug} dueDocuments={dueDocuments} />
           </div>
         </section>
       )}

@@ -8,18 +8,15 @@ function dueDocumentHref(slug: string, doc: DueDocument): string {
   return doc.entity === 'horse' ? `/barn/${slug}/horses/${doc.ownerId}` : `/barn/${slug}/members/${doc.ownerId}`
 }
 
-// `today` is the barn's own day, computed server-side by the dashboard page (#1149) — the same
-// value its Day view heading uses. `getDueDocuments` fetches on a coarser UTC-day cutoff, so this
-// narrows the result to what the barn itself would call due, rather than re-deriving "today" from
-// the viewer's clock (which lands a day off whenever their device zone differs from the barn's).
-export function DocumentRemindersSection({ slug, today, dueDocuments }: { slug: string; today: string; dueDocuments: DueDocument[] }) {
-  const due = dueDocuments.filter((doc) => doc.reminderDate <= today)
-
-  if (due.length === 0) return null
+// #1224 — `getDueDocuments` now applies the barn's own day as its cutoff, so there is nothing left
+// to narrow here. The #1149-era `today` prop and its re-filter are gone; the dashboard's Reminders
+// header is computed from this same already-filtered list, so it can no longer render empty.
+export function DocumentRemindersSection({ slug, dueDocuments }: { slug: string; dueDocuments: DueDocument[] }) {
+  if (dueDocuments.length === 0) return null
 
   return (
     <>
-      {due.map((doc) => (
+      {dueDocuments.map((doc) => (
         <div key={doc.id}>
           <Button href={dueDocumentHref(slug, doc)} variant="warning">
             {doc.ownerName} — {RECORD_TYPE_LABELS[doc.recordType] ?? doc.recordType} — {formatShortDate(doc.reminderDate)}

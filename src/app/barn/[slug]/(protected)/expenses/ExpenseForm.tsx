@@ -26,12 +26,14 @@ type ExpenseFormProps = {
   horses: { id: string; name: string }[]
   recentRecipients: string[]
   recentExpenseTypes: string[]
+  /** In edit mode, the record's own `expense_date`. Omitted (the new-expense case), the Date
+   *  field seeds from `todayStr` — see below. */
   defaultDate?: string
   /** The barn's own calendar day, from `barnToday` (#1149) — required rather than defaulted to
    *  the viewer's clock, which would put this comparison in the wrong frame for anyone whose
-   *  device timezone differs from the barn's. `defaultDate` sits on the other side of that rule:
-   *  it seeds the user's own input rather than comparing against barn data, so it should be
-   *  viewer-local, not barn-local. */
+   *  device timezone differs from the barn's. #1224 made it the new-expense date default too:
+   *  the day being pre-filled is a day of *barn* business, and the alternative it replaced was
+   *  the server host's UTC day, which runs ahead of every zone the barn picker offers. */
   todayStr: string
   /** #1020 — supplied, the Date field becomes the same month conflict calendar the lesson form
    *  got in #1019; omitted, it stays a plain `<input type="date">`. Injected rather than called
@@ -73,7 +75,7 @@ export function ExpenseForm({
   onSave,
 }: ExpenseFormProps) {
   const [state, formAction] = useActionState(onSave, { error: null })
-  const [expenseDate, setExpenseDate] = useState(defaultDate ?? '')
+  const [expenseDate, setExpenseDate] = useState(defaultDate ?? todayStr)
   const isPastDate = expenseDate !== '' && expenseDate < todayStr
   const [expenseTime, setExpenseTime] = useState(initial?.expenseTime ?? '')
   const [recipient, setRecipient] = useState(initial?.recipient ?? '')
