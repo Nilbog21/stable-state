@@ -90,8 +90,10 @@ describe('wallClockToInstant across a DST transition (#1222)', () => {
   })
 
   // 2am doesn't exist on the spring-forward day -- the clock jumps 01:59:59 -> 03:00:00.
-  // There is no right answer, so this pins the one we give: the last instant before the gap.
-  it('should_resolve_the_wall_clock_skipped_by_spring_forward_to_the_instant_before_the_gap', () => {
+  // There is no right answer, so this pins the one we give: the entered wall clock minus the
+  // jump, i.e. 06:00Z, which renders back as 01:00 -- an hour earlier than entered, not the
+  // 01:59:59 boundary.
+  it('should_resolve_the_wall_clock_skipped_by_spring_forward_to_an_hour_before_it', () => {
     const result = wallClockToInstant('2026-03-08T02:00:00', 'America/New_York')
 
     expect(result.toISOString()).toBe('2026-03-08T06:00:00.000Z')

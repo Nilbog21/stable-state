@@ -51,8 +51,11 @@ export function barnToday(timeZone: string, now: Date = new Date()): string {
 // always lands within an hour of the truth, so re-measuring there is inside the right
 // regime: two passes round-trip exactly for every wall clock that exists, in every zone in
 // BARN_TIMEZONES. The single exception is the hour spring-forward skips (2am, which the
-// clock jumps straight over) — no instant renders back to it, and we resolve it to the last
-// instant before the gap.
+// clock jumps straight over) — no instant renders back to it, so no answer round-trips. What
+// falls out is the entered wall clock minus the jump: 02:15 lands on 01:15, an hour earlier
+// than entered rather than clamped to the 01:59:59 boundary. Deterministic and off by exactly
+// the amount the clock itself moved, which is as defensible as any other pick for a time that
+// doesn't exist — but it is not the boundary, so don't read it as one.
 export function wallClockToInstant(wallClock: string, timeZone: string): Date {
   const target = new Date(wallClock + 'Z').getTime()
   const driftFrom = (guess: Date) =>
