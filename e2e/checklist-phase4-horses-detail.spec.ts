@@ -32,6 +32,8 @@ const MEDICATION_NOTES = 'Bute 1g with the evening feed.'
 const FIRST_OVERRIDE = { moderate: 4, high: 9 }
 const SECOND_OVERRIDE = { moderate: 3, high: 8 }
 const THIRD_OVERRIDE = { moderate: 6, high: 10 }
+// The transient success confirmation's text, shared by the appears and doesn't-appear cases.
+const SAVED_TEXT = '✓ Saved'
 // moderate === high is the boundary the action rejects (`moderate >= high`).
 const REJECTED_THRESHOLD = 9
 
@@ -106,17 +108,18 @@ function saveButton(page: Page) {
   return sharedForm(page).getByRole('button', { name: 'Save', exact: true })
 }
 
+/** The row holding the Save button and, on a successful save, the transient confirmation. */
+function saveRow(page: Page) {
+  return saveButton(page).locator('..')
+}
+
 /**
- * The save confirmation, scoped to the Save button's own parent — which is the "next to the Save
- * button" half of the checkbox that asserts it appears.
- *
- * Deliberately the *same* locator for the appears case and the doesn't-appear case. An absence
- * assertion is vacuously true for a selector that never matches anything, so what rescues it here
- * is that saved_confirmation_appears_next_to_the_save_button asserts this exact locator visible
- * in the positive case. Change one and you must change both.
+ * The save confirmation, scoped to the Save row — which is the "next to the Save button" half of
+ * the checkbox that asserts it appears. One literal, `SAVED_TEXT`, is shared with the row read
+ * that asserts its absence, so the two cases cannot drift apart.
  */
 function savedIndicator(page: Page) {
-  return saveButton(page).locator('..').getByText('✓ Saved', { exact: true })
+  return saveRow(page).getByText(SAVED_TEXT, { exact: true })
 }
 
 /**
@@ -317,9 +320,15 @@ test('clearing_registered_name_removes_the_card_parenthetical @manager', async (
   await expect(horseCardLink(page, 'Available', appleId)).toHaveText(APPLE_RENAMED)
 })
 
-// The reload is load-bearing, not incidental: the known limitation this checkbox records is
-// that the Moderate/High inputs don't visually refresh until one. Two assertions, same ratified
-// exception; the form held THIRD_OVERRIDE going in, so neither value can pass unchanged.
+// The reload proves durability, not redraw. The checkbox's own text records a "known limitation,
+// accepted as-is: the Moderate/High inputs don't visually refresh until reload" — that limitation
+// is stale. HorseManagerForm remounts both inputs on every successful save (`key={saveCount}`) and
+// seeds them from the submitted FormData, and its unit test
+// should_display_barn_defaults_after_save_when_checked_instead_of_stale_horse_prop_values asserts
+// 5/11 immediately after submit with no reload. So the reload here earns its keep by proving the
+// per-horse overrides were actually nulled in the database, which is the half a redraw can't show.
+// Two assertions, same ratified exception; the form held THIRD_OVERRIDE going in, so neither value
+// can pass unchanged.
 test('re_checking_use_barn_defaults_reverts_thresholds_on_reload @manager', async ({ page }) => {
   await page.goto(horseHref(appleId))
   await page.getByLabel('Use barn defaults').check()
@@ -353,12 +362,16 @@ test('no_saved_confirmation_appears_for_a_rejected_save @manager', async ({ page
   // React commit, so this is exactly the instant a successful save would be showing one.
   await saveAndSettleRejected(page)
 
-  // A one-shot count, not `expect(locator).toHaveCount(0)`, and the exception to read.ts's rule
-  // against un-settled reads. The flash clears itself after 2s (SavedIndicator's FLASH_DURATION_MS)
-  // while expect retries for 5s — so a retrying absence matcher passes on a save that *did* flash,
-  // simply by outlasting it. Verified: forcing this test's save to succeed leaves the retrying form
-  // green and fails this one, which is the whole difference between asserting and not.
-  expect(await savedIndicator(page).count()).toBe(0)
+  // One-shot, deliberately, and *not* `expect(...).toHaveCount(0)`: the flash clears itself after
+  // 2s (SavedIndicator's FLASH_DURATION_MS) while expect retries for 5s, so a retrying absence
+  // matcher passes on a save that did flash, purely by outlasting it. Confirmed by probe — forcing
+  // this test's save to succeed leaves the retrying form green and fails this one.
+  //
+  // Read off the Save row rather than counting the indicator, because a count of a locator that
+  // never matches anything is zero for the wrong reason. `innerText` auto-waits for the row and
+  // throws if it is missing, so this either sees the row's real text or fails outright — the
+  // absence is structural rather than an inference about when React commits the two together.
+  expect(await saveRow(page).innerText()).not.toContain(SAVED_TEXT)
 })
 
 // The name and status are *changed in the form* before the rejected save, so "unchanged" is a
