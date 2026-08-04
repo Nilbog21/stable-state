@@ -416,4 +416,80 @@ describe('HorseManagerForm', () => {
     expect((screen.getByLabelText(/high threshold/i) as HTMLInputElement).value).toBe('11')
   })
 
+  // #1277 — the `horse` prop never changes across these saves, simulating revalidatePath's
+  // refresh not having landed yet. React 19's post-action reset reverts an *uncontrolled* field
+  // to its mount-time defaultValue; a field left holding the page-load value is what lets a
+  // subsequent save silently write that stale value back.
+  describe('field values survive a save', () => {
+    async function save() {
+      await act(async () => {
+        fireEvent.submit(screen.getByRole('button', { name: /save/i }).closest('form')!)
+      })
+    }
+
+    it('should_keep_the_saved_barn_name_in_the_input_after_a_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /barn name/i }), { target: { value: 'Buttercup' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /barn name/i }) as HTMLInputElement).value).toBe('Buttercup')
+    })
+
+    it('should_keep_the_barn_name_typed_before_a_second_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /barn name/i }), { target: { value: 'Buttercup' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /barn name/i }), { target: { value: 'Daisy' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /barn name/i }) as HTMLInputElement).value).toBe('Daisy')
+    })
+
+    it('should_keep_the_registered_name_across_a_second_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /registered name/i }), { target: { value: 'Blazing Comet' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /registered name/i }), { target: { value: 'Four-Leaf Clover' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /registered name/i }) as HTMLInputElement).value).toBe('Four-Leaf Clover')
+    })
+
+    it('should_keep_feed_notes_across_a_second_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '1 flake AM only' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /feed notes/i }), { target: { value: '2 flakes hay AM/PM' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /feed notes/i }) as HTMLTextAreaElement).value).toBe('2 flakes hay AM/PM')
+    })
+
+    it('should_keep_medication_notes_across_a_second_save', async () => {
+      render(<HorseManagerForm horse={activeHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Banamine PRN' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /medication notes/i }), { target: { value: 'Bute 1g daily' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /medication notes/i }) as HTMLTextAreaElement).value).toBe('Bute 1g daily')
+    })
+
+    it('should_keep_the_unavailability_reason_across_a_second_save', async () => {
+      render(<HorseManagerForm horse={unavailableHorse} barn={mockBarn} action={mockAction} />)
+      fireEvent.change(screen.getByRole('textbox', { name: /reason/i }), { target: { value: 'on stall rest' } })
+      await save()
+      fireEvent.change(screen.getByRole('textbox', { name: /reason/i }), { target: { value: 'off work' } })
+
+      await save()
+
+      expect((screen.getByRole('textbox', { name: /reason/i }) as HTMLTextAreaElement).value).toBe('off work')
+    })
+  })
+
 })

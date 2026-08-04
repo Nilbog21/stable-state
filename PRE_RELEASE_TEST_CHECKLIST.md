@@ -426,6 +426,7 @@ Horses (`/barn/dev-barn/horses` and `/barn/dev-barn/horses/[id]`):
 - [ ] (e2e: renamed_name_and_thresholds_persist_on_reload) Both values persist on reload
 - [ ] (e2e: use_barn_defaults_toggle_is_still_unchecked_on_reload) The "Use barn defaults" toggle is still unchecked on reload
 - [ ] (e2e: manager_form_name_field_is_labeled_barn_name) The manager form's name field is labeled **Barn Name**
+- [ ] (e2e: a_second_save_keeps_the_first_saves_name) (#1277) Rename Apple and Save, then Save a second time without retyping anything → the name is still your new one on reload (a second save must not write back a stale value)
 - [ ] (e2e: registered_name_persists_on_reload) Fill in **Registered Name** (e.g. "Four-Leaf Clover") → Save → it persists on reload
 - [ ] (e2e: horses_list_card_shows_registered_name_in_parentheses) Apple's card on the Horses list now shows "Apple (Four-Leaf Clover)"
 - [ ] (e2e: setting_yourself_as_owner_puts_my_horses_at_the_top_of_the_horses_list) (#1000) Make yourself the owning member of Clover (Access section) → a **My Horses** section appears at the top of the Horses list

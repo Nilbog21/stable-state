@@ -29,6 +29,7 @@ export function HorseManagerForm({
   action: (state: { error: string | null }, formData: FormData) => Promise<{ error: string | null }>
 }) {
   const [status, setStatus] = useState<Status>(deriveStatus(horse))
+  const [name, setName] = useState(horse.name)
   const [reason, setReason] = useState(horse.unavailability_reason ?? '')
   const [registeredName, setRegisteredName] = useState(horse.registered_name ?? '')
   const [feedNotes, setFeedNotes] = useState(horse.feed_notes ?? '')
@@ -78,11 +79,16 @@ export function HorseManagerForm({
         <label htmlFor="horse-name" className="text-xs font-medium uppercase tracking-wide text-zinc-500">
           Barn Name
         </label>
+        {/* Controlled, like Registered Name below — not `defaultValue`. React 19's post-action
+            form reset reverts an uncontrolled field to its mount-time defaultValue, and a
+            `key={saveCount}` remount wouldn't help here: it re-reads `horse.name`, which is the
+            stale prop the #759 note above already works around for the threshold inputs (#1277). */}
         <input
           id="horse-name"
           name="name"
           type="text"
-          defaultValue={horse.name}
+          value={name}
+          onChange={e => setName(e.target.value)}
           className="rounded-md border border-zinc-300 px-3 py-2 text-sm text-zinc-900 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-50"
         />
       </div>
