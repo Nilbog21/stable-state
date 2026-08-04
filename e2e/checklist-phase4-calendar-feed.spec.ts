@@ -163,6 +163,23 @@ async function copyCalendarLink(page: Page): Promise<string> {
   return page.evaluate(() => navigator.clipboard.readText())
 }
 
+/**
+ * A copied feed URL, obtained from scratch — this is what makes the payload block below
+ * independent of the lifecycle chain rather than a silent downstream of it.
+ *
+ * The `Get my calendar link` branch is a resilience path, not the normal one: the lifecycle
+ * chain mints the token first, so on a clean run the button is already `Copy Link`. It fires
+ * only when a worker restart has re-seeded the barn underneath this file, which is exactly the
+ * case that used to turn three payload tests into guard failures.
+ */
+async function copyFreshCalendarLink(page: Page, context: { grantPermissions: (p: string[]) => Promise<void> }) {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write'])
+  await page.goto(profileUrl())
+  const getLink = page.getByRole('button', { name: 'Get my calendar link', exact: true })
+  if (await getLink.count()) await getLink.click()
+  return copyCalendarLink(page)
+}
+
 /** Anchored on the page's own origin, so the assertion covers the host as well as the path. */
 function calendarUrlPattern(page: Page): RegExp {
   const origin = new URL(page.url()).origin.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
@@ -389,17 +406,22 @@ test.describe.serial('the calendar feed link', () => {
 })
 
 // ---------------------------------------------------------------------------
-// 799-801 — what the subscriber actually receives. Not serial: each test does its own
-// unauthenticated GET and none is the next one's precondition, so one failing leaves the
-// others' evidence intact and all three can be falsified in a single mutation pass.
+// 799-801 — what the subscriber actually receives. Not serial, and each test copies its OWN
+// link rather than reading one the chain above left behind.
 //
-// They read the URL the chain above ended on — copied by Copy Link exactly as line 798
-// describes, and proved live by the 200 in `the_pre_regenerate_calendar_url_stops_working`.
+// The first draft did share that state, and the mutation sweep is what condemned it: mutating
+// a single test in the lifecycle chain skipped the rest of that chain, so the URL these three
+// read was never captured and all three failed on the staleness guard — three ✘ marks that
+// had not reached their assertions at all (#1203's confounding, from the fixture side). Three
+// mutations were reported as unproven and re-run against this shape instead.
+//
+// Copying per test is also closer to what lines 799-801 say: "that URL" is the one you get by
+// tapping Copy Link, which is exactly what `copyFreshCalendarLink` does.
 // ---------------------------------------------------------------------------
 
 test.describe('the calendar feed payload', () => {
-  test('the_calendar_feed_url_serves_a_text_calendar_response @manager', async ({ playwright }) => {
-    const response = await fetchFeed(playwright, liveCopy(secondCopy, 'second'))
+  test('the_calendar_feed_url_serves_a_text_calendar_response @manager', async ({ page, context, playwright }) => {
+    const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
 
     // Full-string on the header, and the status alongside it — a 404 body would otherwise be
     // free to carry any content type it liked.
@@ -409,8 +431,8 @@ test.describe('the calendar feed payload', () => {
     })
   })
 
-  test('the_calendar_feed_body_carries_a_vevent_for_a_barn_lesson @manager', async ({ playwright }) => {
-    const response = await fetchFeed(playwright, liveCopy(secondCopy, 'second'))
+  test('the_calendar_feed_body_carries_a_vevent_for_a_barn_lesson @manager', async ({ page, context, playwright }) => {
+    const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
 
     // Every expected value is derived from the seeded lesson's own row, and the two DTs are
     // the barn-local-to-UTC conversion done explicitly — see note 1 in the file header.
@@ -422,8 +444,8 @@ test.describe('the calendar feed payload', () => {
     })
   })
 
-  test('the_calendar_feed_covers_lessons_from_every_instructor_in_the_barn @manager', async ({ playwright }) => {
-    const response = await fetchFeed(playwright, liveCopy(secondCopy, 'second'))
+  test('the_calendar_feed_covers_lessons_from_every_instructor_in_the_barn @manager', async ({ page, context, playwright }) => {
+    const response = await fetchFeed(playwright, await copyFreshCalendarLink(page, context))
 
     // Set equality over EVERY VEVENT, sorted — not containment, and not indexed. It
     // discriminates two distinct regressions with one assertion: collapse the manager branch
