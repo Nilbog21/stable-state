@@ -1,5 +1,6 @@
 // covers: src/app/barn/[slug]/(protected)/expenses/**
 // covers: src/app/barn/[slug]/(protected)/finances/**
+// covers: src/components/calendar/**
 //
 // The manager's expense form and both delete confirmations: recipient-driven expense-type
 // autofill and its flash, a planned expense saved with no amount and priced later, the "All"
@@ -74,6 +75,24 @@ const NEW_PAID_TYPE = 'Supplies'
 const RENAMED_RECIPIENT = 'Vesper Tack Repair'
 
 const EDITABLE_AMOUNT = 415
+/**
+ * How far from today the edit-form fixture sits. It must be **non-zero and positive**, and both
+ * halves of that are forced by the app — this is not a free choice, so do not "simplify" it.
+ *
+ * *Non-zero*, because `ExpenseForm` seeds its date state as `useState(defaultDate ?? todayStr)`
+ * (`ExpenseForm.tsx:86`) and the edit page passes `todayStr={barnToday(barn.timezone)}`
+ * (`[id]/page.tsx:60`). Seed this fixture at day 0 and `expense_date` *is* `todayStr`, so a form
+ * that dropped `defaultDate` altogether would render the identical `aria-pressed="true"` cell and
+ * the day leg of the pre-fill assertion below would pass while proving nothing.
+ *
+ * *Positive*, because a past date takes the `isPastDate` branch (`ExpenseForm.tsx:87`), which stops
+ * rendering `#expense-time` — and the same poll reads that field, so a negative offset would make
+ * the assertion throw instead of tightening it.
+ *
+ * Safe across a month boundary: the picker's `calendarMonth` also derives from `defaultDate`
+ * (`ExpenseForm.tsx:97`), so the selected cell is always on the month the calendar opens to.
+ */
+const EDITABLE_DAY_OFFSET = 3
 const EDITABLE_TIME = '10:15'
 /**
  * The same time as the edit form reports it back. Not a typo for the seed above: expense_time is
@@ -100,8 +119,25 @@ const PAY_EDIT_AMOUNT = 95
  */
 const KEEPER_AMOUNT = 210
 const SWEEPER_AMOUNT = 340
-/** Written beside the seed rather than derived from formatCurrency (the code under test). */
-const KEEPER_UNATTRIBUTED_RENDERED = '($210.00)'
+/**
+ * The reconciliation footer's Unattributed row once the keeper's record has been orphaned, whole:
+ * label, Gross, Expenses, Net. Written beside the seed rather than derived from formatCurrency
+ * (the code under test).
+ *
+ * The row rather than the Expenses cell alone, and that is the point rather than thoroughness:
+ * expenses/unattributed is 210 → `($210.00)`, and net/unattributed is `gross - expenses` =
+ * `0 - 210` = -210, which `formatCurrency`'s `currencySign: 'accounting'` *also* renders
+ * `($210.00)`. A single-cell assertion therefore cannot tell the Expenses column from the Net
+ * column, so an off-by-one in the index — or a column inserted later — would pass silently.
+ *
+ * Gross is what makes the row discriminating: it renders `$0.00` rather than an em dash, because
+ * `ValueCell`'s em-dash branch requires `forceParens` and only Expenses passes it
+ * (`ReconciliationFoot.tsx:15-18`). Nothing in this barn produces unattributed *income*, so 0 is
+ * the seed's value, not a reading taken from the page.
+ *
+ * The label is a regex because the cell also holds the `InfoPopover` trigger's `ⓘ` glyph.
+ */
+const UNATTRIBUTED_ROW_WITH_KEEPER = [/^Unattributed/, '$0.00', '($210.00)', '($210.00)']
 
 /** ExpenseCard's amount branch for a null amount. */
 const NO_AMOUNT_RENDERED = '(no amount specified)'
@@ -221,8 +257,9 @@ const barn = withBarn('phase4-expenses-form', async ({ supabase, barn }) => {
   // Unattributed bucket. That is the exact cell the delete chain reads, so a barn-wide amounted
   // fixture would quietly poison it. The one barn-wide expense this file creates (line 355)
   // carries no amount and so never reaches the ledger at all.
+  // EDITABLE_DAY_OFFSET, not 0, and that is load-bearing rather than arbitrary — see the constant.
   editable = await addExpense(supabase, barn, {
-    at: daysFromNow(0, barn.timezone),
+    at: daysFromNow(EDITABLE_DAY_OFFSET, barn.timezone),
     time: EDITABLE_TIME,
     recipient: EDITABLE_RECIPIENT,
     expenseType: EDITABLE_TYPE,
@@ -339,9 +376,9 @@ function financesCheckbox(page: Page) {
   return page.getByRole('checkbox', { name: FINANCES_CHECKBOX_LABEL, exact: true })
 }
 
-/** The Expenses column of the reconciliation footer's Unattributed row (label, Gross, Expenses, Net). */
-function unattributedExpensesCell(page: Page) {
-  return page.locator('main table tfoot tr').filter({ hasText: 'Unattributed' }).locator('td').nth(2)
+/** Every cell of the reconciliation footer's Unattributed row — see UNATTRIBUTED_ROW_WITH_KEEPER. */
+function unattributedRowCells(page: Page) {
+  return page.locator('main table tfoot tr').filter({ hasText: 'Unattributed' }).locator('td')
 }
 
 /**
@@ -736,7 +773,7 @@ test.describe.serial('deleting an expense that has an amount', () => {
   test('the_deleted_expenses_record_still_counts_in_finances_for_that_month @manager', async ({ page }) => {
     await page.goto(financesByHorsePath())
 
-    await expect(unattributedExpensesCell(page)).toHaveText(KEEPER_UNATTRIBUTED_RENDERED)
+    await expect(unattributedRowCells(page)).toHaveText(UNATTRIBUTED_ROW_WITH_KEEPER)
   })
 
   /**
@@ -756,6 +793,6 @@ test.describe.serial('deleting an expense that has an amount', () => {
     await page.locator(`a[href="${expenseHref(sweeper)}"]`).waitFor({ state: 'detached' })
     await page.goto(financesByHorsePath())
 
-    await expect(unattributedExpensesCell(page)).toHaveText(KEEPER_UNATTRIBUTED_RENDERED)
+    await expect(unattributedRowCells(page)).toHaveText(UNATTRIBUTED_ROW_WITH_KEEPER)
   })
 })
