@@ -336,17 +336,17 @@ Lessons (`/barn/dev-barn/lessons`):
 
 Expenses (`/barn/dev-barn/expenses`):
 
-- [ ] (e2e-candidate) Nav shows **Expenses** between Lessons and Horses
-- [ ] (e2e-candidate) A seeded expense renders as a full-card link showing its date/time
-- [ ] (e2e-candidate) That card shows its recipient
-- [ ] (e2e-candidate) That card shows its expense type
-- [ ] (e2e-candidate) That card shows its horse(s), or "Entire Barn"
-- [ ] (e2e-candidate) That card shows its amount
-- [ ] (e2e-candidate) The list is split into a recent and an older group
-- [ ] (e2e-candidate) The older group is revealed by the **Show older expenses** toggle
-- [ ] (e2e-candidate) At least one future-dated planned expense with no amount appears in the list
-- [ ] (e2e-candidate) Tapping anywhere on an expense card opens its edit page
-- [ ] (e2e-candidate) There is no separate row-level Delete link on the list
+- [ ] (e2e: nav_shows_expenses_between_lessons_and_horses) Nav shows **Expenses** between Lessons and Horses
+- [ ] (e2e: an_expense_card_is_a_full_card_link_showing_its_date_and_time) A seeded expense renders as a full-card link showing its date/time
+- [ ] (e2e: an_expense_card_shows_its_recipient) That card shows its recipient
+- [ ] (e2e: an_expense_card_shows_its_expense_type) That card shows its expense type
+- [ ] (e2e: an_expense_card_shows_its_horses_or_entire_barn) That card shows its horse(s), or "Entire Barn"
+- [ ] (e2e: an_expense_card_shows_its_amount) That card shows its amount
+- [ ] (e2e: the_list_splits_recent_expenses_from_older_ones) The list is split into a recent and an older group
+- [ ] (e2e: show_older_expenses_toggle_reveals_the_older_group) The older group is revealed by the **Show older expenses** toggle
+- [ ] (e2e: a_future_dated_planned_expense_with_no_amount_appears_in_the_list) At least one future-dated planned expense with no amount appears in the list
+- [ ] (e2e: tapping_an_expense_card_away_from_its_text_opens_its_edit_page) Tapping anywhere on an expense card opens its edit page
+- [ ] (e2e: the_expenses_list_has_no_row_level_delete_link) There is no separate row-level Delete link on the list
 - [ ] (e2e-candidate) On `/barn/dev-barn/expenses/new`, enter a recipient seen before (e.g. "Dr. Hoof Farrier") and tab out — Expense Type auto-fills
 - [ ] (e2e-candidate) That auto-filled Expense Type field flashes to draw attention to itself
 - [ ] (e2e-candidate) Leaving the amount blank saves a planned expense
