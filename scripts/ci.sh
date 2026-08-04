@@ -12,3 +12,5 @@ bash scripts/check-doc-size.sh
 bash scripts/check-doc-size.test.sh
 bash scripts/select-specs.sh --lint
 bash scripts/select-specs.test.sh
+bash scripts/check-pipefail-race.sh
+bash scripts/check-pipefail-race.test.sh
